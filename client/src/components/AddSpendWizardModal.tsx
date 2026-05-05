@@ -1130,6 +1130,12 @@ export function AddSpendWizardModal(props: {
           setIsAdPlatformTestMode(false);
           return;
         }
+        if (platform === "meta" && json.method !== "test_mode" && ENABLE_AD_PLATFORM_TEST_MODE) {
+          setAdPlatformConnected(false);
+          setAdPlatformConnectionName("");
+          setIsAdPlatformTestMode(false);
+          return;
+        }
         setAdPlatformConnected(true);
         setAdPlatformConnectionName(
           platform === "google_ads" ? (json.customerName || "Google Ads Account") : (json.adAccountName || "Meta Account")
@@ -1739,7 +1745,9 @@ export function AddSpendWizardModal(props: {
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground/70">
-                              Connect your {selectedPlatform === "meta" ? "Meta" : "Google Ads"} account to pull spend data directly.
+                              {selectedPlatform === "meta" && ENABLE_AD_PLATFORM_TEST_MODE
+                                ? "Use Meta test data to validate the spend import flow."
+                                : `Connect your ${selectedPlatform === "meta" ? "Meta" : "Google Ads"} account to pull spend data directly.`}
                             </p>
                             {isAdPlatformConnecting ? (
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1751,9 +1759,15 @@ export function AddSpendWizardModal(props: {
                                 type="button"
                                 variant="default"
                                 size="sm"
-                                onClick={connectAdPlatformOAuth}
+                                onClick={
+                                  selectedPlatform === "meta" && ENABLE_AD_PLATFORM_TEST_MODE
+                                    ? () => handleAdPlatformTestToggle(true)
+                                    : connectAdPlatformOAuth
+                                }
                               >
-                                Connect {selectedPlatform === "meta" ? "Meta Ads" : "Google Ads"}
+                                {selectedPlatform === "meta" && ENABLE_AD_PLATFORM_TEST_MODE
+                                  ? "Use test mode"
+                                  : `Connect ${selectedPlatform === "meta" ? "Meta Ads" : "Google Ads"}`}
                               </Button>
                             )}
                           </>

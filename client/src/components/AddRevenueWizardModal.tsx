@@ -867,11 +867,16 @@ export function AddRevenueWizardModal(props: {
       setSalesforceBackNonce((n) => n + 1);
       return;
     }
-    // Embedded Shopify wizard: go back inside the Shopify flow first (campaign-field),
-    // then exit to source selection if already at the first screen.
+    // Embedded Shopify wizard: outer Back should mirror the wizard's own one-step Back.
     if (step === "shopify") {
-      if (shopifyWizardStep && shopifyWizardStep !== "campaign-field") {
-        setShopifyExternalStep("campaign-field");
+      const previousShopifyStep =
+        shopifyWizardStep === "complete" ? "review" :
+        shopifyWizardStep === "review" ? "revenue" :
+        shopifyWizardStep === "revenue" ? "crosswalk" :
+        shopifyWizardStep === "crosswalk" ? "campaign-field" :
+        null;
+      if (previousShopifyStep) {
+        setShopifyExternalStep(previousShopifyStep);
         setShopifyExternalNonce((n) => n + 1);
         return;
       }

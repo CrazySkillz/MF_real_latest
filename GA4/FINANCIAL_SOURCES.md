@@ -217,7 +217,7 @@ Important meaning:
 
 - Shopify is an attribution workflow
 - the user is not entering a single total; they are defining how Shopify order revenue should belong to this campaign
-- Back navigation should preserve selected Shopify values when the attribution field has not changed; if the attribution field changes, stale values and campaign mappings should be cleared before reloading the matching-value step
+- both the inner Shopify `Back` button and the modal header `Back` button should move one step at a time through the Shopify flow and preserve selected Shopify values when the attribution field has not changed; if the attribution field changes, stale values and campaign mappings should be cleared before reloading the matching-value step
 
 ## Revenue Source 2: HubSpot Journey
 

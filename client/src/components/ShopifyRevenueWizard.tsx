@@ -359,9 +359,9 @@ export function ShopifyRevenueWizard(props: {
           }),
         });
         const json = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(json?.error || "Failed to process revenue metrics");
+        if (!resp.ok) throw new Error(json?.error || "Failed to import revenue");
         toast({
-          title: "Revenue Metrics Processed",
+          title: "Revenue imported",
           description:
           `Revenue connected: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
         });
@@ -369,7 +369,7 @@ export function ShopifyRevenueWizard(props: {
         setStep("complete");
       } catch (err: any) {
         toast({
-          title: "Failed to Process Revenue Metrics",
+          title: "Failed to import revenue",
           description: err?.message || "Please try again.",
           variant: "destructive",
         });

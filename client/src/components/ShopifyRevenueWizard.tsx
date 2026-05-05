@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -72,6 +72,7 @@ export function ShopifyRevenueWizard(props: {
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const loadedValuesFieldRef = useRef<string>("");
 
   // Per-LinkedIn-campaign mapping (crosswalk enhancement)
   const [linkedinCampaigns, setLinkedinCampaigns] = useState<Array<{ urn: string; name: string; status: string }>>([]);
@@ -251,6 +252,7 @@ export function ShopifyRevenueWizard(props: {
       }
       const vals = Array.isArray(json?.values) ? json.values : [];
       setUniqueValues(vals);
+      loadedValuesFieldRef.current = campaignField;
       const allowed = new Set(vals.map((v: any) => String(v.value)));
       setSelectedValues((prev) => prev.filter((v) => allowed.has(v)));
     } finally {
@@ -279,7 +281,7 @@ export function ShopifyRevenueWizard(props: {
   // Fetch crosswalk values only when entering crosswalk.
   useEffect(() => {
     if (step !== "crosswalk") return;
-    if (uniqueValues.length > 0) return;
+    if (uniqueValues.length > 0 && loadedValuesFieldRef.current === campaignField) return;
     void fetchUniqueValues();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, campaignField, days]);
@@ -311,8 +313,11 @@ export function ShopifyRevenueWizard(props: {
         toast({ title: "Connect Shopify", description: "Connect your Shopify store before continuing.", variant: "destructive" });
         return;
       }
-      setUniqueValues([]);
-      setSelectedValues([]);
+      if (loadedValuesFieldRef.current && loadedValuesFieldRef.current !== campaignField) {
+        setUniqueValues([]);
+        setSelectedValues([]);
+        setCampaignMappings([]);
+      }
       setStep("crosswalk");
       return;
     }
@@ -468,7 +473,7 @@ export function ShopifyRevenueWizard(props: {
             {step === "review" && (
               <>
                 <ClipboardCheck className="w-5 h-5 text-blue-600" />
-                Process Revenue Metrics
+                Review Settings
               </>
             )}
             {step === "complete" && (
@@ -736,12 +741,7 @@ export function ShopifyRevenueWizard(props: {
                 <strong>Revenue metric:</strong> {revenueMetric}
               </div>
               <div className="rounded-md border border-border bg-muted/40 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="font-medium">Preview</div>
-                  <Button variant="outline" size="sm" onClick={() => void fetchPreview()} disabled={previewLoading || isSaving}>
-                    {previewLoading ? "Refreshing…" : "Refresh preview"}
-                  </Button>
-                </div>
+                <div className="font-medium">Preview</div>
                 <div className="mt-2 text-sm">
                   {previewLoading ? (
                     <div className="text-muted-foreground">Computing…</div>
@@ -804,7 +804,7 @@ export function ShopifyRevenueWizard(props: {
                 valuesLoading || isSaving ||
                 (step === "crosswalk" && (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0))
               }>
-                {step === "review" ? (isSaving ? "Processing…" : "Process Revenue Metrics") : "Continue"}
+                {step === "review" ? (isSaving ? "Processing…" : "Import revenue") : "Continue"}
               </Button>
             </div>
           )}

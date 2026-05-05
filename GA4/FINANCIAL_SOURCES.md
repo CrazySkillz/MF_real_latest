@@ -208,7 +208,7 @@ The user journey is:
 5. the user configures how Shopify order revenue should be attributed to this campaign
 6. the user selects the campaign field / attribution field used to match Shopify data to this campaign
 7. the user selects the matching value or values for this campaign
-8. the user confirms the mapping and import settings
+8. the user confirms the mapping and import settings and clicks `Import revenue`
 9. the system saves a Shopify revenue source for this campaign
 10. the system materializes normalized revenue records for the matched Shopify orders
 11. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
@@ -217,6 +217,7 @@ Important meaning:
 
 - Shopify is an attribution workflow
 - the user is not entering a single total; they are defining how Shopify order revenue should belong to this campaign
+- Back navigation should preserve selected Shopify values when the attribution field has not changed; if the attribution field changes, stale values and campaign mappings should be cleared before reloading the matching-value step
 
 ## Revenue Source 2: HubSpot Journey
 

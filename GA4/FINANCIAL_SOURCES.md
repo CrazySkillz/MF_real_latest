@@ -457,7 +457,7 @@ The user journey is:
 1. user clicks `+` on `Total Spend`
 2. the modal opens and the user selects `Meta / Facebook`
 3. if Meta is not connected yet, the panel shows the real OAuth connection path
-4. the user can connect a real Meta account through OAuth
+4. the user can connect a real Meta account through OAuth, or enable `Test mode` only when `VITE_ENABLE_AD_PLATFORM_TEST_MODE=true`
 5. when the account is connected, the system fetches available Meta daily-metrics data and groups it by campaign
 6. the user sees a campaign list with spend, impressions, and clicks
 7. the user selects one or more Meta campaigns to include
@@ -468,8 +468,8 @@ The user journey is:
 
 Important current-state note:
 
-- the GA4 Overview spend modal no longer exposes Meta test mode; Meta spend connection and preview should use real OAuth/Graph API data so users can validate real/sandbox Meta accounts
-- if an older Meta test-mode connection exists for the campaign, the modal should treat it as not connected so the user can connect a real account
+- the GA4 Overview spend modal hides Meta test mode by default; set `VITE_ENABLE_AD_PLATFORM_TEST_MODE=true` only for demos while real Meta ad-account setup is in progress
+- if an older Meta test-mode connection exists for the campaign, the modal should treat it as not connected unless `VITE_ENABLE_AD_PLATFORM_TEST_MODE=true`
 - real Meta API errors must be surfaced to the user and must not silently fall back to generated mock campaigns in the spend flow
 - the import flow is campaign-selection-based, but the selected total is currently persisted through the manual spend-processing route with `ad_platforms` metadata
 - future changes should preserve the visible user journey while improving backend specialization only if needed

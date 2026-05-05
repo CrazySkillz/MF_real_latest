@@ -28,6 +28,8 @@ type Step =
 
 type AdPlatform = "linkedin" | "meta" | "google_ads";
 
+const ENABLE_AD_PLATFORM_TEST_MODE = String(import.meta.env.VITE_ENABLE_AD_PLATFORM_TEST_MODE || "").toLowerCase() === "true";
+
 type LinkedInSpendCampaign = {
   id: string;
   name: string;
@@ -1122,7 +1124,7 @@ export function AddSpendWizardModal(props: {
       const resp = await fetch(endpoint, { credentials: "include" });
       const json = await resp.json().catch(() => null);
       if (json?.connected) {
-        if (platform === "meta" && json.method === "test_mode") {
+        if (platform === "meta" && json.method === "test_mode" && !ENABLE_AD_PLATFORM_TEST_MODE) {
           setAdPlatformConnected(false);
           setAdPlatformConnectionName("");
           setIsAdPlatformTestMode(false);
@@ -1141,7 +1143,9 @@ export function AddSpendWizardModal(props: {
 
   // Handle test mode toggle for Meta / Google Ads
   const handleAdPlatformTestToggle = async (checked: boolean) => {
-    if (!checked || selectedPlatform !== "google_ads") return;
+    if (!checked || !selectedPlatform || selectedPlatform === "linkedin") return;
+    if (selectedPlatform === "meta" && !ENABLE_AD_PLATFORM_TEST_MODE) return;
+    if (selectedPlatform !== "meta" && selectedPlatform !== "google_ads") return;
     setIsAdPlatformTestMode(true);
     setIsAdPlatformConnecting(true);
     try {
@@ -1722,7 +1726,7 @@ export function AddSpendWizardModal(props: {
                               <div className="text-sm font-medium">
                                 {selectedPlatform === "meta" ? "Meta / Facebook Ads" : "Google Ads"} — Not connected
                               </div>
-                              {selectedPlatform === "google_ads" && (
+                              {(selectedPlatform === "google_ads" || (selectedPlatform === "meta" && ENABLE_AD_PLATFORM_TEST_MODE)) && (
                                 <div className="flex items-center gap-2">
                                   <Label htmlFor="ap-test-mode" className="text-xs text-muted-foreground cursor-pointer">Test mode</Label>
                                   <Switch

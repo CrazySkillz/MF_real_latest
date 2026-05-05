@@ -994,6 +994,30 @@ export function AddSpendWizardModal(props: {
     const startDate = "2020-01-01";
     const endDate = new Date().toISOString().slice(0, 10);
     try {
+      if (platform === "meta") {
+        const resp = await fetch(`/api/meta/${props.campaignId}/analytics`, { credentials: "include" });
+        const json = await resp.json().catch(() => ({ campaigns: [] }));
+        if (!resp.ok) throw new Error(json?.error || "Could not fetch Meta spend data.");
+
+        const campaigns = (Array.isArray(json?.campaigns) ? json.campaigns : []).map((item: any) => ({
+          id: String(item?.campaign?.id || item?.id || ""),
+          name: String(item?.campaign?.name || item?.name || "Meta campaign"),
+          spend: Number(Number(item?.totals?.spend || 0).toFixed(2)),
+          impressions: Number(item?.totals?.impressions || 0),
+          clicks: Number(item?.totals?.clicks || 0),
+        })).filter((c: any) => c.id);
+
+        if (!campaigns.length) {
+          toast({ title: "No campaigns found", description: "No Meta campaigns were found for this ad account.", variant: "destructive" });
+          setIsAdPlatformLoading(false);
+          return;
+        }
+
+        setAdPlatformCampaigns(campaigns);
+        setSelectedAdPlatformCampaignIds(campaigns.map((c: any) => c.id));
+        return;
+      }
+
       const apiPath = platform === "google_ads" ? "google-ads" : platform;
       const resp = await fetch(
         `/api/${apiPath}/${props.campaignId}/daily-metrics?startDate=${startDate}&endDate=${endDate}`
@@ -1098,6 +1122,12 @@ export function AddSpendWizardModal(props: {
       const resp = await fetch(endpoint, { credentials: "include" });
       const json = await resp.json().catch(() => null);
       if (json?.connected) {
+        if (platform === "meta" && json.method === "test_mode") {
+          setAdPlatformConnected(false);
+          setAdPlatformConnectionName("");
+          setIsAdPlatformTestMode(false);
+          return;
+        }
         setAdPlatformConnected(true);
         setAdPlatformConnectionName(
           platform === "google_ads" ? (json.customerName || "Google Ads Account") : (json.adAccountName || "Meta Account")
@@ -1111,7 +1141,7 @@ export function AddSpendWizardModal(props: {
 
   // Handle test mode toggle for Meta / Google Ads
   const handleAdPlatformTestToggle = async (checked: boolean) => {
-    if (!checked || !selectedPlatform || selectedPlatform === "linkedin") return;
+    if (!checked || selectedPlatform !== "google_ads") return;
     setIsAdPlatformTestMode(true);
     setIsAdPlatformConnecting(true);
     try {
@@ -1692,15 +1722,17 @@ export function AddSpendWizardModal(props: {
                               <div className="text-sm font-medium">
                                 {selectedPlatform === "meta" ? "Meta / Facebook Ads" : "Google Ads"} — Not connected
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Label htmlFor="ap-test-mode" className="text-xs text-muted-foreground cursor-pointer">Test mode</Label>
-                                <Switch
-                                  id="ap-test-mode"
-                                  checked={isAdPlatformTestMode}
-                                  disabled={isAdPlatformConnecting}
-                                  onCheckedChange={handleAdPlatformTestToggle}
-                                />
-                              </div>
+                              {selectedPlatform === "google_ads" && (
+                                <div className="flex items-center gap-2">
+                                  <Label htmlFor="ap-test-mode" className="text-xs text-muted-foreground cursor-pointer">Test mode</Label>
+                                  <Switch
+                                    id="ap-test-mode"
+                                    checked={isAdPlatformTestMode}
+                                    disabled={isAdPlatformConnecting}
+                                    onCheckedChange={handleAdPlatformTestToggle}
+                                  />
+                                </div>
+                              )}
                             </div>
                             <p className="text-xs text-muted-foreground/70">
                               Connect your {selectedPlatform === "meta" ? "Meta" : "Google Ads"} account to pull spend data directly.

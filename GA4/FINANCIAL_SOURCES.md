@@ -456,20 +456,21 @@ The user journey is:
 
 1. user clicks `+` on `Total Spend`
 2. the modal opens and the user selects `Meta / Facebook`
-3. if Meta is not connected yet, the panel shows two paths
+3. if Meta is not connected yet, the panel shows the real OAuth connection path
 4. the user can connect a real Meta account through OAuth
-5. or the user can enable `Test mode`
-6. when the account is connected, the system fetches available Meta daily-metrics data and groups it by campaign
-7. the user sees a campaign list with spend, impressions, and clicks
-8. the user selects one or more Meta campaigns to include
-9. the user clicks `Import spend`
-10. the system saves a Meta/Facebook spend source with campaign-selection breakdown metadata
-11. the system materializes spend records and recomputes campaign financial values
-12. the GA4 cards and source modal provenance refetches
+5. when the account is connected, the system fetches available Meta daily-metrics data and groups it by campaign
+6. the user sees a campaign list with spend, impressions, and clicks
+7. the user selects one or more Meta campaigns to include
+8. the user clicks `Import spend`
+9. the system saves a Meta/Facebook spend source with campaign-selection breakdown metadata
+10. the system materializes spend records and recomputes campaign financial values
+11. the GA4 cards and source modal provenance refetches
 
 Important current-state note:
 
-- `Test mode` is an explicit supported path for Meta spend in this modal
+- the GA4 Overview spend modal no longer exposes Meta test mode; Meta spend connection and preview should use real OAuth/Graph API data so users can validate real/sandbox Meta accounts
+- if an older Meta test-mode connection exists for the campaign, the modal should treat it as not connected so the user can connect a real account
+- real Meta API errors must be surfaced to the user and must not silently fall back to generated mock campaigns in the spend flow
 - the import flow is campaign-selection-based, but the selected total is currently persisted through the manual spend-processing route with `ad_platforms` metadata
 - future changes should preserve the visible user journey while improving backend specialization only if needed
 

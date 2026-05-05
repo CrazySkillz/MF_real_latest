@@ -17579,11 +17579,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
       // Store Meta connection
+      await storage.deleteMetaConnection(campaignId).catch(() => {});
       await storage.createMetaConnection({
         campaignId,
         adAccountId,
         adAccountName,
         accessToken,
+        method: 'oauth',
         expiresAt,
         spendOnly,
       } as any);
@@ -18035,17 +18037,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('[Meta Analytics] Error:', error);
-
-      // Fallback to mock data on error
-      if (error.message?.includes('Meta API')) {
-        console.log('[Meta Analytics] Meta API error, falling back to mock data');
-        const { generateMetaMockData } = await import('./utils/metaMockData');
-        const connection = await storage.getMetaConnection(req.params.campaignId);
-        if (connection) {
-          const mockData = generateMetaMockData(connection.adAccountId, connection.adAccountName || 'Meta Ad Account');
-          return res.json(mockData);
-        }
-      }
 
       res.status(500).json({ error: error.message || 'Failed to fetch Meta analytics' });
     }

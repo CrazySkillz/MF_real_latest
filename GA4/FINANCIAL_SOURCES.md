@@ -470,6 +470,7 @@ Important current-state note:
 
 - the GA4 Overview spend modal hides Meta test mode by default; set `VITE_ENABLE_AD_PLATFORM_TEST_MODE=true` only for demos while real Meta ad-account setup is in progress
 - if an older Meta test-mode connection exists for the campaign, the modal should treat it as not connected unless `VITE_ENABLE_AD_PLATFORM_TEST_MODE=true`
+- when `VITE_ENABLE_AD_PLATFORM_TEST_MODE=true`, a connected Meta account with no campaigns can be switched to test mode from the no-campaigns state for demo validation
 - real Meta API errors must be surfaced to the user and must not silently fall back to generated mock campaigns in the spend flow
 - the import flow is campaign-selection-based, but the selected total is currently persisted through the manual spend-processing route with `ad_platforms` metadata
 - future changes should preserve the visible user journey while improving backend specialization only if needed

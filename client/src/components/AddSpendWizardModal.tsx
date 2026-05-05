@@ -1825,9 +1825,22 @@ export function AddSpendWizardModal(props: {
                                 </div>
                               </>
                             ) : (
-                              <p className="text-xs text-muted-foreground/70">
-                                No campaigns found.
-                              </p>
+                              <div className="space-y-3">
+                                <p className="text-xs text-muted-foreground/70">
+                                  No campaigns found.
+                                </p>
+                                {selectedPlatform === "meta" && ENABLE_AD_PLATFORM_TEST_MODE && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={isAdPlatformConnecting}
+                                    onClick={() => handleAdPlatformTestToggle(true)}
+                                  >
+                                    {isAdPlatformConnecting ? "Setting up test data..." : "Use test mode"}
+                                  </Button>
+                                )}
+                              </div>
                             )}
                           </>
                         )}

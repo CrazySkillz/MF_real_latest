@@ -26490,6 +26490,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch {
         authType = null;
       }
+      if (connected && !authType) {
+        try {
+          const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
+          await shopifyApiFetch({
+            shopDomain: conn.shopDomain,
+            accessToken: conn.accessToken,
+            path: `/admin/api/${apiVersion}/oauth/access_scopes.json`,
+          });
+          authType = "oauth";
+        } catch (error: any) {
+          const msg = String(error?.message || "").toLowerCase();
+          if (error?.status === 404 || msg === "not found") authType = "token";
+        }
+      }
       res.json({
         connected,
         shopDomain: connected ? conn.shopDomain : null,

@@ -30,4 +30,13 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain("if (nextUrl) {");
     expect(routes).toContain("Shopify orders pagination limit exceeded");
   });
+
+  it("infers missing Shopify auth type without overriding saved auth type", () => {
+    const routes = read(ROUTES_FILE);
+
+    expect(routes).toContain("if (connected && !authType) {");
+    expect(routes).toContain("/oauth/access_scopes.json");
+    expect(routes).toContain('authType = "oauth";');
+    expect(routes).toContain('authType = "token";');
+  });
 });

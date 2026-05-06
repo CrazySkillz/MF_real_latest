@@ -219,8 +219,11 @@ Important meaning:
 - the user is not entering a single total; they are defining how Shopify order revenue should belong to this campaign
 - Shopify revenue edit mode should open on the saved `Review Settings` screen with the saved attribution key, selected Shopify values, revenue metric, and any saved campaign mappings populated
 - Shopify revenue edit mode should preserve the saved Shopify connection method on the first screen; token/Admin API connections should not fall back to showing OAuth when navigating back
+- if an older Shopify Admin API token connection is missing persisted connection-method metadata, Shopify status should recover the method from the stored token behavior so edit mode still reopens with `Admin API token` selected
 - the Admin API token field should be masked in the UI; tokens are credentials and should not be displayed as plain text while typing or pasting
 - both the inner Shopify `Back` button and the modal header `Back` button should move one step at a time through the Shopify flow and preserve selected Shopify values when the attribution field has not changed; if the attribution field changes, stale values and campaign mappings should be cleared before reloading the matching-value step
+- Shopify order reads used for attribution values, preview, save, and auto-recalculation should follow Shopify pagination and must fail clearly rather than silently saving partial revenue when an extreme page limit is exceeded
+- Shopify revenue edit saves should carry the existing revenue `sourceId` through the modal, wizard, and save route so the exact source being edited is updated instead of another active Shopify source
 
 ## Revenue Source 2: HubSpot Journey
 

@@ -1451,9 +1451,9 @@ export function SalesforceRevenueWizard(props: {
 
                   <div>
                     <div className="text-xs text-muted-foreground/70">Selected opportunity(ies)</div>
-                    <div className="font-medium text-foreground">
+                    <div className="space-y-0.5 font-medium text-foreground">
                       {selectedValues.length > 0
-                        ? `${selectedValues.slice(0, 6).join(", ")}${selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}`
+                        ? selectedValues.slice(0, 6).map((value) => <div key={value}>{value}</div>)
                         : "â€”"}
                     </div>
                   </div>

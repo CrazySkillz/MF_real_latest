@@ -1974,6 +1974,9 @@ export default function GA4Metrics() {
     if (String(source?.sourceType || "").trim().toLowerCase() === "ga4" || rawLabel === "GA4 Revenue") {
       return "Imported GA4 Revenue";
     }
+    if (String(source?.sourceType || "").trim().toLowerCase() === "shopify") {
+      return "Shopify";
+    }
     return rawLabel || "Revenue";
   };
 
@@ -5677,11 +5680,14 @@ export default function GA4Metrics() {
                               <p className="font-medium text-foreground">{entry?.providerLabel || "Provider"}</p>
                               <p className="font-medium tabular-nums text-foreground">{formatMoney(Number(entry?.totalToDate || 0))}</p>
                             </div>
-                            <div className="mt-1 text-xs text-muted-foreground/70">
-                              {[
-                                entry?.pipelineStageLabel ? `Stage: ${entry.pipelineStageLabel}` : null,
-                                Array.isArray(entry?.campaignValues) && entry.campaignValues.length > 0 ? `Campaigns: ${entry.campaignValues.join(", ")}` : null,
-                              ].filter(Boolean).join(" | ")}
+                            <div className="mt-1 space-y-0.5 text-xs text-muted-foreground/70">
+                              {Array.isArray(entry?.campaignValues) && entry.campaignValues.length > 0
+                                ? entry.campaignValues.map((value: any, valueIdx: number) => (
+                                  <p key={`${entry?.providerLabel || "provider"}-${idx}-${valueIdx}`}>
+                                    {[entry?.pipelineStageLabel, String(value || "").trim()].filter(Boolean).join(" | ")}
+                                  </p>
+                                ))
+                                : <p>{entry?.pipelineStageLabel || "Pipeline Proxy"}</p>}
                             </div>
                           </div>
                         ))}

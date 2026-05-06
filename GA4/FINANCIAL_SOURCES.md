@@ -203,7 +203,7 @@ The user journey is:
 
 1. user clicks `+` on `Total Revenue`
 2. the modal opens and the user selects `Shopify`
-3. if Shopify OAuth is not already authenticated, the user is taken through the Shopify connection step inside the flow
+3. if Shopify is not already authenticated, the user is taken through the Shopify connection step inside the flow using OAuth or an Admin API token
 4. once connected, the Shopify revenue wizard opens
 5. the user configures how Shopify order revenue should be attributed to this campaign
 6. the user selects the campaign field / attribution field used to match Shopify data to this campaign
@@ -218,6 +218,8 @@ Important meaning:
 - Shopify is an attribution workflow
 - the user is not entering a single total; they are defining how Shopify order revenue should belong to this campaign
 - Shopify revenue edit mode should open on the saved `Review Settings` screen with the saved attribution key, selected Shopify values, revenue metric, and any saved campaign mappings populated
+- Shopify revenue edit mode should preserve the saved Shopify connection method on the first screen; token/Admin API connections should not fall back to showing OAuth when navigating back
+- the Admin API token field should be masked in the UI; tokens are credentials and should not be displayed as plain text while typing or pasting
 - both the inner Shopify `Back` button and the modal header `Back` button should move one step at a time through the Shopify flow and preserve selected Shopify values when the attribution field has not changed; if the attribution field changes, stale values and campaign mappings should be cleared before reloading the matching-value step
 
 ## Revenue Source 2: HubSpot Journey

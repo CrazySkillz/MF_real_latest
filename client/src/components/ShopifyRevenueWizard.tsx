@@ -112,6 +112,7 @@ export function ShopifyRevenueWizard(props: {
     const isConnected = !!json?.connected;
     setConnected(isConnected);
     setShopName(isConnected ? (json?.shopName || null) : null);
+    if (isConnected) setConnectMethod(String(json?.authType || "").toLowerCase() === "token" ? "token" : "oauth");
     const serverDomain = isConnected ? String(json?.shopDomain || "") : "";
     setShopDomain((prev) => prev || serverDomain);
     if (serverDomain) {
@@ -583,6 +584,7 @@ export function ShopifyRevenueWizard(props: {
                   <div className="space-y-1">
                     <Label>Admin API token</Label>
                     <Input
+                      type="password"
                       value={adminToken}
                       onChange={(e) => setAdminToken(e.target.value)}
                       placeholder="shpat_…"

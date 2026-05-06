@@ -26427,10 +26427,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
       const conn: any = await storage.getShopifyConnection(campaignId);
       const connected = !!(conn && conn.isActive && conn.accessToken && conn.shopDomain);
+      let authType: string | null = null;
+      try {
+        const cfg = connected && conn.mappingConfig ? JSON.parse(String(conn.mappingConfig)) : null;
+        authType = cfg?.authType ? String(cfg.authType) : null;
+      } catch {
+        authType = null;
+      }
       res.json({
         connected,
         shopDomain: connected ? conn.shopDomain : null,
         shopName: connected ? conn.shopName : null,
+        authType: connected ? authType : null,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to check Shopify connection" });

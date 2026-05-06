@@ -70,6 +70,7 @@ async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord): P
     pipelineEnabled: mappingConfig.pipelineEnabled,
     pipelineStageId: mappingConfig.pipelineStageId,
     pipelineStageLabel: mappingConfig.pipelineStageLabel,
+    dateField: mappingConfig.dateField,
     platformContext: mappingConfig.platformContext,
     ...(Array.isArray(mappingConfig.campaignMappings) && mappingConfig.campaignMappings.length > 0
       ? { campaignMappings: mappingConfig.campaignMappings }

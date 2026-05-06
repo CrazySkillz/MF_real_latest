@@ -23,6 +23,7 @@ type UniqueValue = {
 
 export function HubSpotRevenueWizard(props: {
   campaignId: string;
+  sourceId?: string;
   mode?: "connect" | "edit";
   initialMappingConfig?: {
     campaignProperty?: string;
@@ -52,7 +53,7 @@ export function HubSpotRevenueWizard(props: {
    */
   platformContext?: "ga4" | "linkedin" | "meta";
 }) {
-  const { campaignId, mode = "connect", initialMappingConfig = null, onBack, onSuccess, onClose, externalBackNonce, platformContext = "ga4" } =
+  const { campaignId, sourceId, mode = "connect", initialMappingConfig = null, onBack, onSuccess, onClose, externalBackNonce, platformContext = "ga4" } =
     props;
   const { toast } = useToast();
   const isLinkedIn = platformContext === "linkedin";
@@ -474,6 +475,7 @@ export function HubSpotRevenueWizard(props: {
           conversionValueProperty: null,
           valueSource: "revenue",
           revenueClassification,
+          ...(sourceId ? { sourceId } : {}),
           days,
           dateField,
           pipelineEnabled,

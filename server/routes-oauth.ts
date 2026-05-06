@@ -13718,6 +13718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineStageLabel: z.string().trim().optional().nullable(),
           dateField: z.enum(["closedate", "hs_lastmodifieddate", "createdate"]).optional(),
           platformContext: zPlatformContext.optional(),
+          sourceId: z.string().trim().optional(),
           campaignMappings: z.array(z.object({
             crmValue: z.string(),
             linkedinCampaignUrn: z.string(),
@@ -14024,8 +14025,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Idempotent: reuse the same HubSpot revenue source id (stable provenance) across daily refreshes.
         const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any).catch(() => [] as any[]);
+        const requestedSourceId = String((body.data as any).sourceId || "").trim();
+        const selectedKey = selected.map((v: any) => String(v || "").trim()).sort().join("\n");
         const existingHubspot = (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
-          return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "hubspot";
+          if (!s || (s as any).isActive === false || String((s as any).sourceType || "") !== "hubspot") return false;
+          if (requestedSourceId) return String((s as any).id || "") === requestedSourceId;
+          try {
+            const cfg = (s as any)?.mappingConfig ? JSON.parse(String((s as any).mappingConfig)) : null;
+            const cfgKey = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map((v: any) => String(v || "").trim()).sort().join("\n") : "";
+            return String(cfg?.campaignProperty || "") === campaignProp
+              && cfgKey === selectedKey
+              && String(cfg?.revenueProperty || "") === revenueProp
+              && String(cfg?.dateField || "") === dateFieldChoice
+              && (cfg?.pipelineEnabled === true) === pipelineEnabled
+              && String(cfg?.pipelineStageId || "") === (pipelineEnabled ? pipelineStageId : "");
+          } catch {
+            return false;
+          }
         });
 
         // Note: do NOT deactivate existing sources — revenue sources are additive.

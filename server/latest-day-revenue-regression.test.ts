@@ -36,8 +36,20 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).toContain('const revenueDate = String(props?.[dateFieldChoice] || "").trim().slice(0, 10);');
     expect(routesFile).toContain('dailyMaterialization: platformCtx === "ga4" && revenueByCloseDate.size > 0 ? "selected_date_field_v1" : null,');
     expect(routesFile).toContain('if (platformCtx === "ga4" && revenueByCloseDate.size > 0) {');
+    expect(routesFile).toContain('sourceId: z.string().trim().optional(),');
+    expect(routesFile).toContain('if (requestedSourceId) return String((s as any).id || "") === requestedSourceId;');
+    expect(routesFile).toContain('&& String(cfg?.dateField || "") === dateFieldChoice');
     expect(routesFile).toContain('isEligibleForLatestDayRevenue(source)');
     expect(routesFile).toContain('storage.getRevenueBreakdownBySource(campaignId, date, date, "ga4")');
+  });
+
+  it("HubSpot refresh preserves the saved date field", () => {
+    const schedulerFile = readFileSync(
+      join(process.cwd(), "server", "auto-refresh-scheduler.ts"),
+      "utf-8"
+    );
+
+    expect(schedulerFile).toContain("dateField: mappingConfig.dateField,");
   });
 
   it("spend-daily endpoints use strict daily records rather than source-type exclusions", () => {

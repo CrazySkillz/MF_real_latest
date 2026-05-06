@@ -28,8 +28,15 @@ export function ShopifyRevenueWizard(props: {
   externalStep?: Step;
   externalNavNonce?: number;
   onStepChange?: (step: Step) => void;
+  mode?: "connect" | "edit";
+  initialMappingConfig?: {
+    campaignField?: string;
+    selectedValues?: string[];
+    revenueMetric?: string;
+    campaignMappings?: Array<{ crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string }>;
+  } | null;
 }) {
-  const { campaignId, onBack, onClose, onSuccess, platformContext = "ga4", externalStep, externalNavNonce, onStepChange } = props;
+  const { campaignId, onBack, onClose, onSuccess, platformContext = "ga4", externalStep, externalNavNonce, onStepChange, mode = "connect", initialMappingConfig } = props;
   const { toast } = useToast();
   const isLinkedIn = platformContext === "linkedin";
 
@@ -73,6 +80,17 @@ export function ShopifyRevenueWizard(props: {
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const loadedValuesFieldRef = useRef<string>("");
+
+  useEffect(() => {
+    if (mode !== "edit" || !initialMappingConfig) return;
+    const nextField = String(initialMappingConfig.campaignField || "utm_campaign");
+    setCampaignField(nextField);
+    loadedValuesFieldRef.current = nextField;
+    setSelectedValues(Array.isArray(initialMappingConfig.selectedValues) ? initialMappingConfig.selectedValues.map(String) : []);
+    setCampaignMappings(Array.isArray(initialMappingConfig.campaignMappings) ? initialMappingConfig.campaignMappings : []);
+    if (initialMappingConfig.revenueMetric) setRevenueMetric(String(initialMappingConfig.revenueMetric));
+    setStep("review");
+  }, [mode, initialMappingConfig]);
 
   // Per-LinkedIn-campaign mapping (crosswalk enhancement)
   const [linkedinCampaigns, setLinkedinCampaigns] = useState<Array<{ urn: string; name: string; status: string }>>([]);

@@ -214,6 +214,7 @@ export function AddRevenueWizardModal(props: {
   const [shopifyWizardStep, setShopifyWizardStep] = useState<any>("campaign-field");
   const [shopifyExternalStep, setShopifyExternalStep] = useState<any>(null);
   const [shopifyExternalNonce, setShopifyExternalNonce] = useState(0);
+  const [shopifyInitialMappingConfig, setShopifyInitialMappingConfig] = useState<any>(null);
   const [hubspotBackNonce, setHubspotBackNonce] = useState(0);
   const [salesforceBackNonce, setSalesforceBackNonce] = useState(0);
 
@@ -414,6 +415,7 @@ export function AddRevenueWizardModal(props: {
     setShopifyWizardStep("campaign-field");
     setShopifyExternalStep(null);
     setShopifyExternalNonce(0);
+    setShopifyInitialMappingConfig(null);
     setHubspotBackNonce(0);
     setSalesforceBackNonce(0);
     setHubspotInitialMappingConfig(null);
@@ -618,6 +620,18 @@ export function AddRevenueWizardModal(props: {
       };
       setHubspotInitialMappingConfig(next);
       setStep("hubspot");
+      return;
+    }
+
+    if (type === "shopify") {
+      const next = {
+        campaignField: config?.campaignField ? String(config.campaignField) : undefined,
+        selectedValues: Array.isArray(config?.selectedValues) ? config.selectedValues.map(String) : undefined,
+        revenueMetric: config?.revenueMetric ? String(config.revenueMetric) : undefined,
+        campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : undefined,
+      };
+      setShopifyInitialMappingConfig(next);
+      setStep("shopify");
       return;
     }
 
@@ -2357,6 +2371,12 @@ export function AddRevenueWizardModal(props: {
                 <ShopifyRevenueWizard
                   campaignId={campaignId}
                   platformContext={platformContext}
+                  mode={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "shopify" ? "edit" : "connect"}
+                  initialMappingConfig={
+                    isEditing && String(initialSource?.sourceType || "").toLowerCase() === "shopify"
+                      ? (shopifyInitialMappingConfig || null)
+                      : null
+                  }
                   onStepChange={(s) => setShopifyWizardStep(s as any)}
                   externalStep={shopifyExternalStep as any}
                   externalNavNonce={shopifyExternalNonce}

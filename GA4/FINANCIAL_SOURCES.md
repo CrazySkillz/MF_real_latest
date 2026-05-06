@@ -217,6 +217,7 @@ Important meaning:
 
 - Shopify is an attribution workflow
 - the user is not entering a single total; they are defining how Shopify order revenue should belong to this campaign
+- Shopify revenue edit mode should open on the saved `Review Settings` screen with the saved attribution key, selected Shopify values, revenue metric, and any saved campaign mappings populated
 - both the inner Shopify `Back` button and the modal header `Back` button should move one step at a time through the Shopify flow and preserve selected Shopify values when the attribution field has not changed; if the attribution field changes, stale values and campaign mappings should be cleared before reloading the matching-value step
 
 ## Revenue Source 2: HubSpot Journey

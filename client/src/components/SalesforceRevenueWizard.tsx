@@ -1208,9 +1208,6 @@ export function SalesforceRevenueWizard(props: {
                     ? <>Mapped: <strong>{campaignMappings.length}</strong> of {uniqueValues.length} values</>
                     : <>Selected: <strong>{selectedValues.length}</strong></>}
                 </div>
-                <Button variant="outline" size="sm" onClick={() => void fetchUniqueValues(campaignField)} disabled={valuesLoading}>
-                  {valuesLoading ? "Refreshing…" : "Refresh values"}
-                </Button>
               </div>
               <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
                 {valuesLoading ? (

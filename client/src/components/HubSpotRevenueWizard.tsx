@@ -892,16 +892,6 @@ export function HubSpotRevenueWizard(props: {
                       ? <>Mapped: <strong>{campaignMappings.length}</strong> of {uniqueValues.length} values</>
                       : <>Selected: <strong>{selectedValues.length}</strong></>}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void fetchUniqueValues(campaignProperty)}
-                      disabled={valuesLoading}
-                    >
-                      {valuesLoading ? "Refreshing…" : "Refresh values"}
-                    </Button>
-                  </div>
                 </div>
 
                 <div className="border rounded p-3 flex-1 min-h-0 overflow-y-auto">
@@ -986,9 +976,6 @@ export function HubSpotRevenueWizard(props: {
                   )}
                 </div>
 
-                <div className="text-xs text-muted-foreground shrink-0">
-                  Tip: after you update deals in HubSpot, use "Refresh values" to reload this list.
-                </div>
               </div>
             )}
 
@@ -1139,9 +1126,9 @@ export function HubSpotRevenueWizard(props: {
 
                       <div>
                         <div className="text-xs text-muted-foreground/70">Selected deal(s)</div>
-                        <div className="font-medium text-foreground">
+                        <div className="space-y-0.5 font-medium text-foreground">
                           {selectedValues.length > 0
-                            ? `${selectedValues.slice(0, 6).join(", ")}${selectedValues.length > 6 ? `, +${selectedValues.length - 6} more` : ""}`
+                            ? selectedValues.slice(0, 6).map((value) => <div key={value}>{value}</div>)
                             : "—"}
                         </div>
                       </div>

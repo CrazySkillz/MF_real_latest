@@ -5553,7 +5553,7 @@ export default function GA4Metrics() {
                           Sources contributing to Total Revenue.
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="space-y-2">
+                      <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
                         {ga4RevenueForFinancials > 0 && (
                           <div className="flex items-center justify-between rounded-md border border-border p-3 text-sm">
                             <div>
@@ -5686,7 +5686,10 @@ export default function GA4Metrics() {
                               {Array.isArray(entry?.campaignValues) && entry.campaignValues.length > 0
                                 ? entry.campaignValues.map((value: any, valueIdx: number) => (
                                   <p key={`${entry?.providerLabel || "provider"}-${idx}-${valueIdx}`}>
-                                    {[entry?.pipelineStageLabel, String(value || "").trim()].filter(Boolean).join(" | ")}
+                                    {[
+                                      entry?.pipelineStageLabel ? `Stage: ${entry.pipelineStageLabel}` : null,
+                                      String(value || "").trim(),
+                                    ].filter(Boolean).join(" | ")}
                                   </p>
                                 ))
                                 : <p>{entry?.pipelineStageLabel || "Pipeline Proxy"}</p>}

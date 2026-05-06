@@ -85,7 +85,7 @@ Important clarification:
 - only true daily-history sources should populate `Latest Day Revenue`
 - practical examples of snapshot-style revenue for this rule include:
   - existing stored `Manual` revenue snapshots
-  - CRM-style cumulative revenue imports such as HubSpot revenue-to-date
+  - CRM-style cumulative revenue imports that were saved without true dated daily rows
   - CSV or Google Sheets revenue imports without a real date column
 
 ## Spend Computation
@@ -254,8 +254,9 @@ Important meaning:
 - `Close Date` is the default for finance-style won-revenue reporting
 - `Last Modified Date` is useful when the user wants revenue tied to recently updated deals
 - `Created Date` is useful when the user wants revenue tied to when opportunities first entered HubSpot
-- in GA4 `Total Revenue only` mode, confirmed HubSpot revenue should materialize as true daily rows by each matched deal's selected `Date field`, rather than as one synthetic snapshot row
+- in GA4, confirmed HubSpot revenue should materialize as true daily rows by each matched deal's selected `Date field`, rather than as one synthetic snapshot row
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
+- if the user chooses `Total Revenue + Pipeline (Proxy)`, the confirmed/won HubSpot revenue portion still remains eligible for `Latest Day Revenue` when it has true daily rows; only the open Pipeline Proxy amount is excluded
 - the Pipeline Proxy stage filters the already selected HubSpot campaign values; it does not create a separate campaign-selection path
 - the final `Review Settings` step should show Pipeline Proxy stage and amount; the import action should be labeled `Import revenue`
 - the `Review Settings` subtitle should say `Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign.`

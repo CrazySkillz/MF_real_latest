@@ -1230,7 +1230,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (sourceType === "hubspot") {
       try {
         const cfg = (source as any)?.mappingConfig ? JSON.parse(String((source as any).mappingConfig)) : null;
-        return String(cfg?.platformContext || "ga4").trim().toLowerCase() === "ga4" && cfg?.pipelineEnabled !== true;
+        const isGa4 = String(cfg?.platformContext || "ga4").trim().toLowerCase() === "ga4";
+        if (!isGa4) return false;
+        if (cfg?.pipelineEnabled === true) return String(cfg?.dailyMaterialization || "") === "selected_date_field_v1";
+        return true;
       } catch {
         return false;
       }
@@ -14042,6 +14045,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineStageId: pipelineEnabled && pipelineStageId ? pipelineStageId : null,
           pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,
           ...(pipelineEnabled ? pipelineProxyFields : {}),
+          dateField: dateFieldChoice,
+          dailyMaterialization: platformCtx === "ga4" && revenueByCloseDate.size > 0 ? "selected_date_field_v1" : null,
           revenueClassification,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
           lastSyncedAt: new Date().toISOString(),
@@ -14104,12 +14109,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Revenue-to-date source semantics:
-        // This mapping represents a cumulative total, not daily revenue. Do NOT spread it across the date range,
-        // otherwise date-window queries (like LinkedIn's last-30-complete-days) will show a tiny fraction.
-        // Instead, materialize a single record on the most recent complete UTC day (yesterday), so
-        // range queries include the full to-date amount.
-        if (platformCtx === "ga4" && !pipelineEnabled && revenueByCloseDate.size > 0) {
+        // GA4 HubSpot uses each matched deal's selected date field as real daily revenue history.
+        // Other platform contexts keep the existing to-date snapshot behavior for compatibility.
+        if (platformCtx === "ga4" && revenueByCloseDate.size > 0) {
           const records = Array.from(revenueByCloseDate.entries())
             .sort((a, b) => a[0].localeCompare(b[0]))
             .map(([date, revenue]) => ({

@@ -1213,7 +1213,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const isEligibleForLatestDaySpend = (source: any): boolean => {
-    return !!source;
+    if (!source) return false;
+    try {
+      const cfg = (source as any)?.mappingConfig ? JSON.parse(String((source as any).mappingConfig)) : null;
+      if (cfg?.testMode === true) return false;
+    } catch {
+      // If config is malformed, keep existing behavior for the source.
+    }
+    return true;
   };
 
   const isEligibleForLatestDayRevenue = (source: any): boolean => {

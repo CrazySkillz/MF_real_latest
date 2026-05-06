@@ -113,6 +113,7 @@ Current implementation:
 
 - use the previous complete UTC day selected by the server-side daily endpoint
 - include every active spend source that has real daily spend records for that day
+- exclude ad-platform demo/test-mode sources marked with `testMode: true`
 - do not invent a latest-day value when no record exists for that date
 
 ## Derived Financial Metrics

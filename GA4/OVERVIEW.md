@@ -109,6 +109,7 @@ Current implementation:
 - GA4-native revenue remains available in GA4 metrics and `Total Revenue`, but is not added into this latest-day imported-revenue card
 - snapshot-style imported revenue may still increase `Total Revenue`, but it must not appear in `Latest Day Revenue` unless that source truly provides dated daily revenue rows
 - `Latest Day Spend` sums all active sources that have real daily spend records for that same day
+- `Latest Day Spend` excludes ad-platform demo/test-mode sources marked with `testMode: true`
 - these cards must not invent daily values for sources that do not have records on that date
 
 ### Summary Cards

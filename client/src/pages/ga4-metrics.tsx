@@ -5226,7 +5226,7 @@ export default function GA4Metrics() {
                             )}
                           </CardContent>
                         </Card>
-                        {/* Latest Day Spend — checks today and yesterday for spend records */}
+                        {/* Latest Day Spend — server-selected previous complete day */}
                         <Card>
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Latest Day Spend</p>

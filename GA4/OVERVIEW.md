@@ -166,11 +166,12 @@ Pipeline Proxy rule:
 - when the endpoint returns a fresh value, the card should use that value; if the endpoint path is stale or unavailable, the card may still render from the active source's saved Pipeline Proxy config
 - if both Salesforce and HubSpot have active Pipeline Proxy configuration for the same GA4 campaign, the card should aggregate their exact proxy totals into one card total
 - the card should show a compact `Sources` action; provider-specific provenance belongs in a read-only Pipeline Proxy sources modal rather than inline card microcopy
+- the `Sources` count should include only providers with positive Pipeline Proxy contribution; zero-value configured CRM providers should not show as contributing sources
 - the card is display-only; users manage the underlying CRM revenue source from `Total Revenue`, not from the `Pipeline Proxy` card
 - each provider entry in the read-only sources modal should render:
   - provider name
   - provider proxy amount
-  - selected/contributing campaign value or values
+  - selected/contributing campaign value or values, one per line with `Stage: <stage label> | <campaign value>` formatting
   - that provider's selected pipeline stage label
 - if the CRM connection is currently disconnected but the saved source is still active, the card and review/edit flows may fall back to saved proxy metadata and saved proxy amount until live preview data is available again
 - the card should not show explanatory stage microcopy such as `Contract Sent open-stage signal`
@@ -209,6 +210,7 @@ Important meaning:
 - the GA4 analytics page does not currently let users add or remove GA4 campaign values after setup; changing GA4 scope after setup would require a deliberate rescope workflow that refreshes Overview inputs and recomputes downstream KPI, Benchmark, Insight, alert, and report state
 - `Total Revenue` and `Total Spend` show compact totals in the cards; their `Sources` action opens the source-provenance modal where users can review, edit, or delete contributing sources
 - the source-provenance modal is presentation-only and must not change financial calculations, source persistence, or recomputation behavior
+- the revenue source-provenance modal should scroll vertically when many entries are present
 
 ### GA4 Scope Selection Lifecycle
 

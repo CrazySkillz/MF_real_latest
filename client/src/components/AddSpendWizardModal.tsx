@@ -542,6 +542,56 @@ export function AddSpendWizardModal(props: {
     return false;
   }, [isEditing, props.initialSource?.mappingConfig, spendColumn, spendDateColumn, effectiveCampaignColumn, campaignKeyValues, selectedSheetConnectionId]);
 
+  const hasMeaningfulManualEditChanges = useMemo(() => {
+    if (!isEditing) return true;
+    if (!props.initialSource?.mappingConfig) return false;
+
+    let initialMapping: any = null;
+    try {
+      initialMapping = JSON.parse(String(props.initialSource.mappingConfig));
+    } catch {
+      initialMapping = null;
+    }
+    if (!initialMapping) return false;
+
+    const initialAmount = Number(String(initialMapping?.amount ?? "").replace(/[$,]/g, ""));
+    const currentAmount = Number(String(manualAmount ?? "").replace(/[$,]/g, ""));
+    return Number.isFinite(initialAmount) && Number.isFinite(currentAmount) && initialAmount !== currentAmount;
+  }, [isEditing, props.initialSource?.mappingConfig, manualAmount]);
+
+  const hasMeaningfulAdPlatformEditChanges = useMemo(() => {
+    if (!isEditing) return true;
+    if (!props.initialSource?.mappingConfig) return false;
+
+    let initialMapping: any = null;
+    try {
+      initialMapping = JSON.parse(String(props.initialSource.mappingConfig));
+    } catch {
+      initialMapping = null;
+    }
+    if (!initialMapping) return false;
+
+    const currentPlatform = String(selectedPlatform || "").trim();
+    const sourceType = String(props.initialSource?.sourceType || "").toLowerCase();
+    const initialPlatform = String(
+      initialMapping?.platform || (sourceType === "linkedin_api" ? "linkedin" : sourceType === "ad_platforms" ? currentPlatform : "")
+    ).trim();
+    const initialIds = Array.isArray(initialMapping?.selectedCampaignIds)
+      ? initialMapping.selectedCampaignIds.map((v: any) => String(v ?? "").trim()).filter(Boolean)
+      : [];
+    const currentIds = (currentPlatform === "linkedin" ? selectedLinkedInCampaignIds : selectedAdPlatformCampaignIds)
+      .map((v) => String(v ?? "").trim()).filter(Boolean);
+
+    if (initialPlatform !== currentPlatform) return true;
+    if (initialIds.length !== currentIds.length) return true;
+
+    const initialSet = new Set(initialIds);
+    for (const id of currentIds) {
+      if (!initialSet.has(id)) return true;
+    }
+    return false;
+  }, [isEditing, props.initialSource?.mappingConfig, props.initialSource?.sourceType, selectedPlatform, selectedLinkedInCampaignIds, selectedAdPlatformCampaignIds]);
+
   // If we are editing a CSV spend source and the user re-uploads a file, try to apply the saved mapping.
   useEffect(() => {
     if (!csvPreview?.success) return;
@@ -1878,7 +1928,7 @@ export function AddSpendWizardModal(props: {
                       {selectedPlatform === "linkedin" && linkedInPreview && (
                         <Button
                           onClick={processLinkedInSpend}
-                          disabled={isProcessing || selectedLinkedInCampaignIds.length === 0}
+                          disabled={isProcessing || selectedLinkedInCampaignIds.length === 0 || (isEditing && !hasMeaningfulAdPlatformEditChanges)}
                         >
                           {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
                         </Button>
@@ -1886,12 +1936,9 @@ export function AddSpendWizardModal(props: {
                       {(selectedPlatform === "meta" || selectedPlatform === "google_ads") && adPlatformCampaigns.length > 0 && selectedAdPlatformCampaignIds.length > 0 && (
                         <Button
                           onClick={importAdPlatformSpend}
-                          disabled={isProcessing}
+                          disabled={isProcessing || (isEditing && !hasMeaningfulAdPlatformEditChanges)}
                         >
-                          {isProcessing ? "Importing..." : `Import $${adPlatformCampaigns
-                            .filter(c => selectedAdPlatformCampaignIds.includes(c.id))
-                            .reduce((sum, c) => sum + c.spend, 0)
-                            .toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                          {isProcessing ? "Importing..." : (isEditing ? "Update spend" : "Import spend")}
                         </Button>
                       )}
                     </div>
@@ -2198,9 +2245,9 @@ export function AddSpendWizardModal(props: {
                       <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
                       <Button
                         onClick={processManual}
-                        disabled={isProcessing || !manualAmount || isNaN(parseFloat(String(manualAmount).replace(/[$,]/g, "")))}
+                        disabled={isProcessing || !manualAmount || isNaN(parseFloat(String(manualAmount).replace(/[$,]/g, ""))) || (isEditing && !hasMeaningfulManualEditChanges)}
                       >
-                        {isProcessing ? "Saving..." : (isEditing ? "Update spend" : "Save spend")}
+                        {isProcessing ? "Saving..." : (isEditing ? "Update spend" : "Import spend")}
                       </Button>
                     </div>
                   </CardContent>

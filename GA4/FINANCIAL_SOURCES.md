@@ -133,6 +133,8 @@ Pipeline Proxy rule:
 - Pipeline Proxy is a separate Revenue subsection card when HubSpot or Salesforce `Total Revenue + Pipeline (Proxy)` is configured
 - it should show the card title, amount, and a compact `Sources` action
 - clicking `Sources` should open a read-only Pipeline Proxy sources modal with source provider, provider proxy amount, selected CRM stage label, and selected/contributing campaign values where available
+- the Pipeline Proxy `Sources` action should count and show only provider entries with a positive proxy amount; configured providers with `$0.00` proxy should not inflate the source count
+- each Pipeline Proxy source value should render on its own line as `Stage: <stage label> | <campaign value>`
 - Overview should render it from the active CRM revenue source configuration and enrich it with endpoint data when available; it must not disappear solely because the separate proxy endpoint is stale
 - if both HubSpot and Salesforce are active with Pipeline Proxy for the same GA4 campaign, the single Overview Pipeline Proxy card should aggregate both exact proxy totals
 - when multiple CRM providers contribute, modal provenance should render as separate provider entries rather than one flattened merged sentence
@@ -260,13 +262,16 @@ Important meaning:
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, the confirmed/won HubSpot revenue portion still remains eligible for `Latest Day Revenue` when it has true daily rows; only the open Pipeline Proxy amount is excluded
 - the Pipeline Proxy stage filters the already selected HubSpot campaign values; it does not create a separate campaign-selection path
 - the final `Review Settings` step should show Pipeline Proxy stage and amount; the import action should be labeled `Import revenue`
+- when editing an existing HubSpot revenue source, the review action should be labeled `Update revenue` and remain disabled until the user makes a meaningful setting change
 - the `Review Settings` subtitle should say `Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign.`
 - the `Review Settings` details card should not repeat a second heading such as `Review HubSpot revenue settings`
 - the `Review Settings` details card should keep `Selected deal(s)` directly under `Total Revenue (to date)` so the confirmed revenue and selected deals read as one continuous summary
+- `Selected deal(s)` should list each selected HubSpot value on its own line
 - the first HubSpot `Source` step should show `Connected to: <account>` above the main double-counting warning, with `Reconnect` as the related action
 - HubSpot account display should prefer the friendly HubSpot account name and must not show raw `Portal <id>` or generic `HubSpot account` text in the wizard
 - the HubSpot `Review Settings` summary should not repeat the account row; account context belongs on the first `Source` step
 - the HubSpot review step should label selected CRM records as `Selected deal(s)`, not generic selected values
+- the HubSpot Crosswalk step should not show a manual `Refresh values` button; values load as part of the existing wizard progression
 - the `Reconnect` action on the first HubSpot screen should render in a stable header/action area, not inside the main source-choice card or a shifting scroll region
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 - HubSpot OAuth should request offline access / refresh capability so the connection can survive access-token expiry after connect or reconnect
@@ -302,9 +307,12 @@ Important meaning:
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - the Pipeline Proxy stage filters the already selected Salesforce campaign/opportunity values; it does not create a separate campaign-selection path
 - the final `Review Settings` step should show Pipeline Proxy stage and amount; the import action should be labeled `Import revenue`
+- when editing an existing Salesforce revenue source, the review action should be labeled `Update revenue` and remain disabled until the user makes a meaningful setting change
 - the `Review Settings` subtitle should say `Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign.`
 - the `Review Settings` details card should not repeat a second heading such as `Review Salesforce revenue settings`
 - the Salesforce review step should label selected CRM records as `Selected opportunity(ies)`, not generic selected values
+- `Selected opportunity(ies)` should list each selected Salesforce value on its own line
+- the Salesforce Crosswalk step should not show a manual `Refresh values` button; values load as part of the existing wizard progression
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 - if Salesforce is disconnected in edit mode, the review step should still show the saved Pipeline Proxy stage and saved proxy amount until live preview becomes available again
 - if a saved Salesforce revenue source exists but live OAuth is down, the `Add revenue source` chooser should show `Reconnect required` rather than `Not connected`
@@ -619,6 +627,7 @@ Important meaning:
 - they do not directly edit the total card value
 - executive-facing provenance should be consolidated in a source modal / `Sources used` areas rather than repeated as per-card microcopy under every financial card
 - revenue provenance should enumerate the full active revenue source set, including GA4 native revenue when present, instead of only the first imported/manual revenue source
+- the Revenue Sources modal body should scroll vertically when many source entries are present so edit/delete actions remain accessible inside the dialog
 
 ## Edit And Delete Pattern
 
@@ -636,6 +645,7 @@ The required pattern is:
 - `Google Sheets` spend edit should keep `Update spend` disabled until the user makes a meaningful change
 - `Google Sheets` spend edit should allow recalculation when the user changes selected campaign values, mapped columns, or the selected sheet connection
 - `Google Sheets` spend edit must pass stable source identity through the save path so changing sheet/tab updates the existing source instead of creating a duplicate
+- `LinkedIn Ads`, `Meta / Facebook`, and `Google Ads` spend edit should label the action `Update spend` and keep it disabled until the selected platform campaign set changes
 - `CSV` spend edit should reopen the mapping flow
 - `CSV` spend edit should allow `Back` to the upload step and should clear stale preview/selection state when a replacement CSV is chosen
 - if only campaign-value selection changes and the stored import dataset is available, `Update spend` should recalculate without forcing a re-upload
@@ -648,6 +658,7 @@ The required pattern is:
 - Salesforce confirmed campaign-level provenance is built from exact confirmed Opportunity records and requires the save/materialization query to select the attribution field as well as filter by it
 - if an Ad Comparison or Overview provenance entry is missing, trace the field `campaignValueRevenueTotals` from CRM save -> persisted revenue source -> `/revenue-sources` response -> frontend merge -> table render before changing UI
 - `Manual` edit should overwrite the saved snapshot amount and then recompute downstream values
+- existing stored `Manual` spend edit should label the action `Update spend` and keep it disabled until the amount changes
 
 ### Campaign Filter Meaning For CSV And Google Sheets
 

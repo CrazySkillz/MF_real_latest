@@ -5617,7 +5617,7 @@ export default function GA4Metrics() {
                           Sources contributing to Total Spend.
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="space-y-2">
+                      <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
                         {spendDisplaySources.map((s: any) => (
                           <div key={s.sourceId} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
                             <div className="min-w-0">

@@ -112,6 +112,21 @@ export function HubSpotRevenueWizard(props: {
   const [linkedinCampaigns, setLinkedinCampaigns] = useState<Array<{ urn: string; name: string; status: string }>>([]);
   const [campaignMappings, setCampaignMappings] = useState<Array<{ crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string }>>([]);
 
+  const hasEditChanges = useMemo(() => {
+    if (mode !== "edit" || !initialMappingConfig) return true;
+    const normalize = (cfg: any) => JSON.stringify({
+      campaignProperty: String(cfg?.campaignProperty || ""),
+      selectedValues: Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map(String).sort() : [],
+      revenueProperty: String(cfg?.revenueProperty || "amount"),
+      revenueClassification: String(cfg?.revenueClassification || "offsite_not_in_ga4"),
+      pipelineEnabled: cfg?.pipelineEnabled === true,
+      pipelineStageId: cfg?.pipelineEnabled === true ? String(cfg?.pipelineStageId || "") : "",
+      dateField: String(cfg?.dateField || (isLinkedIn ? "hs_lastmodifieddate" : "closedate")),
+      campaignMappings: Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [],
+    });
+    return normalize({ campaignProperty, selectedValues, revenueProperty, revenueClassification, pipelineEnabled, pipelineStageId, dateField, campaignMappings }) !== normalize(initialMappingConfig);
+  }, [campaignMappings, campaignProperty, dateField, initialMappingConfig, isLinkedIn, mode, pipelineEnabled, pipelineStageId, revenueClassification, revenueProperty, selectedValues]);
+
   // Fetch LinkedIn campaigns when in linkedin context
   useEffect(() => {
     if (!isLinkedIn || !campaignId) return;
@@ -1212,10 +1227,11 @@ export function HubSpotRevenueWizard(props: {
                     step === "crosswalk" ? (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0) :
                       step === "pipeline" ? (!pipelineStageId) :
                         step === "revenue" ? (!revenueProperty) :
-                          false)
+                          false) ||
+                  (step === "review" && mode === "edit" && !hasEditChanges)
                 }
               >
-                {step === "review" ? (isSaving ? "Importing…" : "Import revenue") : "Continue"}
+                {step === "review" ? (isSaving ? "Importing..." : mode === "edit" ? "Update revenue" : "Import revenue") : "Continue"}
               </Button>
             </div>
           )}

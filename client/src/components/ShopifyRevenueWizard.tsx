@@ -97,6 +97,17 @@ export function ShopifyRevenueWizard(props: {
   const [linkedinCampaigns, setLinkedinCampaigns] = useState<Array<{ urn: string; name: string; status: string }>>([]);
   const [campaignMappings, setCampaignMappings] = useState<Array<{ crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string }>>([]);
 
+  const hasEditChanges = useMemo(() => {
+    if (mode !== "edit" || !initialMappingConfig) return true;
+    const normalize = (cfg: any) => JSON.stringify({
+      campaignField: String(cfg?.campaignField || "utm_campaign"),
+      selectedValues: Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map(String).sort() : [],
+      revenueMetric: String(cfg?.revenueMetric || "total_price"),
+      campaignMappings: Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [],
+    });
+    return normalize({ campaignField, selectedValues, revenueMetric, campaignMappings }) !== normalize(initialMappingConfig);
+  }, [campaignField, campaignMappings, initialMappingConfig, mode, revenueMetric, selectedValues]);
+
   // Fetch LinkedIn campaigns when in linkedin context
   useEffect(() => {
     if (!isLinkedIn || !campaignId) return;
@@ -825,9 +836,10 @@ export function ShopifyRevenueWizard(props: {
               </Button>
               <Button onClick={() => void handleNext()} disabled={
                 valuesLoading || isSaving ||
-                (step === "crosswalk" && (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0))
+                (step === "crosswalk" && (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0)) ||
+                (step === "review" && mode === "edit" && !hasEditChanges)
               }>
-                {step === "review" ? (isSaving ? "Processing…" : "Import revenue") : "Continue"}
+                {step === "review" ? (isSaving ? "Processing..." : mode === "edit" ? "Update revenue" : "Import revenue") : "Continue"}
               </Button>
             </div>
           )}

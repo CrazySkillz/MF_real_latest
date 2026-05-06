@@ -124,6 +124,21 @@ export function SalesforceRevenueWizard(props: {
   const [linkedinCampaigns, setLinkedinCampaigns] = useState<Array<{ urn: string; name: string; status: string }>>([]);
   const [campaignMappings, setCampaignMappings] = useState<Array<{ crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string }>>([]);
 
+  const hasEditChanges = useMemo(() => {
+    if (mode !== "edit" || !initialMappingConfig) return true;
+    const normalize = (cfg: any) => JSON.stringify({
+      campaignField: String(cfg?.campaignField || "Name"),
+      selectedValues: Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map(String).sort() : [],
+      revenueField: String(cfg?.revenueField || "Amount"),
+      valueSource: String(cfg?.valueSource || "revenue"),
+      pipelineEnabled: cfg?.pipelineEnabled === true,
+      pipelineStageName: cfg?.pipelineEnabled === true ? String(cfg?.pipelineStageName || "") : "",
+      dateField: String(cfg?.dateField || "CloseDate"),
+      campaignMappings: Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [],
+    });
+    return normalize({ campaignField, selectedValues, revenueField, valueSource, pipelineEnabled, pipelineStageName, dateField, campaignMappings }) !== normalize(initialMappingConfig);
+  }, [campaignField, campaignMappings, dateField, initialMappingConfig, mode, pipelineEnabled, pipelineStageName, revenueField, selectedValues, valueSource]);
+
   // Fetch LinkedIn campaigns when in linkedin context
   useEffect(() => {
     if (!isLinkedIn || !campaignId) return;
@@ -1503,10 +1518,11 @@ export function SalesforceRevenueWizard(props: {
                   (step === "crosswalk" && (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0)) ||
                   (step === "pipeline" && !pipelineStageName) ||
                   // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.
-                  (step === "review" && effectiveCurrencyMismatch)
+                  (step === "review" && effectiveCurrencyMismatch) ||
+                  (step === "review" && mode === "edit" && !hasEditChanges)
                 }
               >
-                {step === "review" ? (isSaving ? "Importing…" : "Import revenue") : "Continue"}
+                {step === "review" ? (isSaving ? "Importing..." : mode === "edit" ? "Update revenue" : "Import revenue") : "Continue"}
               </Button>
             </div>
           )}

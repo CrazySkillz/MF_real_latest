@@ -2223,9 +2223,11 @@ export default function GA4Metrics() {
   const financialSpend = Number(totalSpendForFinancials || 0);
   const revenueSourcesCount = revenueDisplaySources.length + (ga4RevenueForFinancials > 0 ? 1 : 0);
   const spendSourcesCount = spendDisplaySources.length;
-  const pipelineProxySourcesCount = Array.isArray(pipelineProxyData?.providerEntries) && pipelineProxyData.providerEntries.length > 0
-    ? pipelineProxyData.providerEntries.length
-    : pipelineProxyData?.success ? 1 : 0;
+  const pipelineProxySourceEntries = (Array.isArray(pipelineProxyData?.providerEntries) && pipelineProxyData.providerEntries.length > 0
+    ? pipelineProxyData.providerEntries
+    : pipelineProxyData?.success ? [pipelineProxyData] : []
+  ).filter((entry: any) => Number(entry?.totalToDate || 0) > 0);
+  const pipelineProxySourcesCount = pipelineProxySourceEntries.length;
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);
   const financialCPA = computeCpa(financialSpend, financialConversions);
@@ -5664,8 +5666,8 @@ export default function GA4Metrics() {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-2">
-                        {(Array.isArray(pipelineProxyData?.providerEntries) && pipelineProxyData.providerEntries.length > 0
-                          ? pipelineProxyData.providerEntries
+                        {(pipelineProxySourceEntries.length > 0
+                          ? pipelineProxySourceEntries
                           : [{
                               providerLabel: pipelineProxyData?.providerLabel,
                               pipelineStageLabel: pipelineProxyData?.pipelineStageLabel,

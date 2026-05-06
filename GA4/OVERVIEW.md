@@ -104,7 +104,7 @@ Intended behavior:
 
 Current implementation:
 
-- both cards use the previous complete local day
+- both cards use the previous complete UTC day selected by the server-side daily endpoints
 - `Latest Day Revenue` combines:
   - GA4-native daily revenue for that day
   - imported revenue from all active sources that have real daily revenue records for that same day

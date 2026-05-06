@@ -73,7 +73,7 @@ Intended behavior:
 
 Current implementation:
 
-- use the previous complete local day
+- use the previous complete UTC day selected by the server-side daily endpoint
 - include every active revenue source that has real daily revenue records for that day
 - include GA4-native daily revenue for that same day
 - do not invent daily values for snapshot-only sources that have no record on that date
@@ -111,7 +111,7 @@ This includes:
 
 Current implementation:
 
-- use the previous complete local day
+- use the previous complete UTC day selected by the server-side daily endpoint
 - include every active spend source that has real daily spend records for that day
 - do not invent a latest-day value when no record exists for that date
 
@@ -362,26 +362,29 @@ The user journey is:
 3. the user uploads a CSV file
 4. the system generates a CSV preview
 5. the user selects the revenue column
-6. the user selects the campaign column
-7. the user selects one or more campaign values to keep for this campaign
-8. the user confirms the mapping and runs the import
-9. the system saves a CSV revenue source with the mapping configuration
-10. the system materializes normalized revenue records from the kept CSV rows
-11. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
+6. the user can optionally select a date column for daily revenue tracking
+7. the user selects the campaign column
+8. the user selects one or more campaign values to keep for this campaign
+9. the user confirms the mapping and runs the import
+10. the system saves a CSV revenue source with the mapping configuration
+11. the system materializes normalized revenue records from the kept CSV rows
+12. campaign financial values are recomputed and the GA4 cards/source modal provenance refetches
 
 Important meaning:
 
 - CSV is a structured import workflow, not a simple file attachment
 - CSV revenue is imported as a revenue-to-date source in the normal GA4 UI
+- CSV revenue can materialize daily revenue records when a date column is mapped; if no date column is selected, it remains a revenue-to-date snapshot-style source
 - because CSV is manual, updates require re-upload rather than automatic refresh
 - CSV should be treated as a one-time or occasional import, not an auto-syncing source
 - the CSV upload/re-upload helper text should list only the required primary column as `Required columns: Revenue`; optional campaign mapping is handled on the mapping screen
+- the CSV revenue mapping screen should show `Revenue`, optional `Date column`, optional campaign identifier/value controls, preview table, and action buttons
 - if a campaign column is selected and matching values are available, at least one campaign value must be selected before import
 - the UI should make it explicit that CSV updates require manual re-upload
 - CSV revenue edit should reopen directly into the mapping screen when the stored imported dataset is available
 - CSV revenue edit upload/re-upload screen should not show the outer header `Back` button; users either upload and continue, cancel, or close
 - if only campaign-value selection changes, CSV revenue should recalculate without forcing a re-upload
-- if structural mappings change, such as revenue column, conversion value column, campaign column, or value-source mode, re-upload is still required
+- if structural mappings change, such as revenue column, conversion value column, date column, campaign column, or value-source mode, re-upload is still required
 - when a replacement CSV is selected in edit mode, stale saved prefill, campaign search, and selected campaign values from the previous CSV must be cleared before the new preview/mapping is shown
 - `Update revenue` should remain disabled until a meaningful edit is made
 - CSV revenue preview and process endpoints must enforce normal campaign access checks before reading, previewing, processing, updating, or materializing uploaded data
@@ -563,26 +566,27 @@ The user journey is:
 3. the user uploads a CSV file
 4. the system generates a preview of headers and sample rows
 5. the user selects the spend column
-6. the user can optionally select a campaign identifier column and one or more campaign values
-7. the user confirms the mapping and runs the import
-8. the system saves a CSV spend source with the mapping configuration
-9. the system materializes spend records and recomputes campaign financial values
-10. the GA4 cards and source modal provenance refetches
+6. the user can optionally select a date column for daily spend tracking
+7. the user can optionally select a campaign identifier column and one or more campaign values
+8. the user confirms the mapping and runs the import
+9. the system saves a CSV spend source with the mapping configuration
+10. the system materializes spend records and recomputes campaign financial values
+11. the GA4 cards and source modal provenance refetches
 
 Important meaning:
 
 - CSV spend is a structured import workflow, not a file attachment
-- the visible flow behaves like a spend-to-date snapshot import
+- CSV spend can materialize daily spend records when a date column is mapped; if no date column is selected, it remains a spend-to-date snapshot-style source
 - the CSV upload/re-upload helper text should list only the required primary column as `Required columns: Spend`; optional campaign mapping is handled on the mapping screen
 - the CSV spend mapping screen should show `Spend` as a direct dropdown field; it should not require an `Edit columns` sub-action to change the spend column
-- the CSV spend mapping screen should not show extra section headings named `Columns` or `Campaign mapping`; the visible controls are the spend dropdown, optional campaign identifier/value controls, preview table, and action buttons
+- the CSV spend mapping screen should not show extra section headings named `Columns` or `Campaign mapping`; the visible controls are the spend dropdown, optional date-column dropdown, optional campaign identifier/value controls, preview table, and action buttons
 - CSV spend does not auto-refresh on a schedule
 - CSV spend preview should show all uploaded columns in the preview table, not only mapped processing columns
 - CSV spend edit should expose `Back` from mapping to upload so the user can replace the CSV file before previewing again
 - when a new CSV is selected in edit mode, stale preview rows, campaign search, and selected campaign values from the previous CSV must be cleared before the new preview/mapping is shown
 - CSV spend edit should preserve full preview metadata for reopening the source, while processing can still store normalized spend/campaign rows for recalculation
 - once a CSV spend source has been imported with the persisted edit payload, edit mode can recalculate from the stored imported dataset when the user changes only campaign-value selection
-- if the user changes mapped columns or the original stored dataset is not available, re-upload is still required
+- if the user changes mapped columns, including the date column, or the original stored dataset is not available, re-upload is still required
 - CSV spend preview and process endpoints must enforce normal campaign access checks before reading, previewing, processing, updating, or materializing uploaded data
 
 ## Spend Source 6: Existing Stored Manual Spend
@@ -685,8 +689,8 @@ The required pattern is:
 - `Google Sheets` spend is a refreshable source after setup
 - `LinkedIn Ads` spend is connector-based and refreshable through the platform refresh pipeline
 - `Meta / Facebook` and `Google Ads` spend currently use connected-platform selection flows, but their current persisted spend handling is still more snapshot-like than a fully specialized connector pipeline
-- `Upload CSV` revenue is a manual snapshot source and requires re-upload for updates
-- `Upload CSV` spend is a manual snapshot source for import cadence, but spend-source edit can recalculate from the stored imported dataset when only campaign-value selection changes
+- `Upload CSV` revenue is manual for import cadence and requires re-upload for source-file updates; when a date column is mapped, it can still materialize daily revenue rows
+- `Upload CSV` spend is manual for import cadence; when a date column is mapped, it can still materialize daily spend rows, and spend-source edit can recalculate from the stored imported dataset when only campaign-value selection changes
 - existing stored `Manual` revenue/spend remains a manual snapshot source and requires direct manual updates
 - new direct `Manual` source creation is no longer available from the production pickers
 

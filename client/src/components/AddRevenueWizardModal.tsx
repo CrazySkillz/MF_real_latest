@@ -1016,6 +1016,7 @@ export function AddRevenueWizardModal(props: {
         }
       }
       setCsvCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
+      setCsvDateCol(headers.find((h) => /^(date|day|time|timestamp)$/i.test(h.trim())) || "");
       setCsvCampaignValues([]);
       setCsvCampaignQuery("");
       setStep("csv_map");
@@ -1026,9 +1027,11 @@ export function AddRevenueWizardModal(props: {
         const rc = pickIfExists(csvPrefill.revenueColumn);
         const cvc = pickIfExists(csvPrefill.conversionValueColumn);
         const cc = pickIfExists(csvPrefill.campaignColumn);
+        const dc = pickIfExists(csvPrefill.dateColumn);
         if (rc) setCsvRevenueCol(rc);
         if (cvc) setCsvConversionValueCol(cvc);
         if (cc) setCsvCampaignCol(cc);
+        if (dc) setCsvDateCol(dc);
         if (Array.isArray(csvPrefill.campaignValues) && csvPrefill.campaignValues.length > 0) {
           setCsvCampaignValues(csvPrefill.campaignValues.map(String));
         }
@@ -1779,6 +1782,27 @@ export function AddRevenueWizardModal(props: {
                               </Select>
                             </div>
                           )}
+                        </div>
+
+                        <div className="pt-2 border-t space-y-2">
+                          <Label className="font-normal">Date column (recommended for daily tracking)</Label>
+                          <Select
+                            value={csvDateCol || SELECT_NONE}
+                            onValueChange={(v) => setCsvDateCol(v === SELECT_NONE ? "" : v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="None" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[10000]">
+                              <SelectItem value={SELECT_NONE}>None</SelectItem>
+                              {csvHeaders.map((h) => (
+                                <SelectItem key={h} value={h}>{h}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground/70">
+                            Select a date column for daily revenue tracking. If you leave this blank, the source will behave like a revenue-to-date snapshot rather than daily history.
+                          </p>
                         </div>
 
                         <div className="pt-2 border-t space-y-3">

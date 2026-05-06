@@ -3169,8 +3169,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (Array.isArray(storedSpendRows) && storedSpendRows.length > 0) {
           const storedSpendColumn = String(existingMapping?.storedSpendColumn || existingMapping?.spendColumn || "");
           const storedCampaignColumn = String(existingMapping?.storedCampaignColumn || existingMapping?.campaignColumn || "");
+          const storedDateColumn = String(existingMapping?.storedDateColumn || existingMapping?.dateColumn || "");
           if (storedSpendColumn && String(mapping.spendColumn) !== storedSpendColumn) {
             return res.status(400).json({ success: false, error: "Re-upload required when changing the spend column for a CSV source" });
+          }
+          if ((mapping.dateColumn ? String(mapping.dateColumn) : null) !== (storedDateColumn || null)) {
+            return res.status(400).json({ success: false, error: "Re-upload required when changing the date column for a CSV source" });
           }
           const requestedCampaignColumn = mapping.campaignColumn ? String(mapping.campaignColumn) : null;
           const storedCampaignColOrNull = storedCampaignColumn || null;
@@ -3180,8 +3184,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           parsedRows = storedSpendRows.map((r: any) => ({
             [storedSpendColumn]: String(r?.spendRaw ?? r?.spend ?? ""),
             ...(storedCampaignColOrNull ? { [storedCampaignColOrNull]: String(r?.campaignKey ?? "") } : {}),
+            ...(storedDateColumn ? { [storedDateColumn]: String(r?.dateRaw ?? "") } : {}),
           }));
-          parsedHeaders = [storedSpendColumn, ...(storedCampaignColOrNull ? [storedCampaignColOrNull] : [])];
+          parsedHeaders = [storedSpendColumn, ...(storedCampaignColOrNull ? [storedCampaignColOrNull] : []), ...(storedDateColumn ? [storedDateColumn] : [])];
         } else if (canUseSampleRows) {
           parsedRows = storedSampleRows as Array<Record<string, any>>;
           parsedHeaders = Array.isArray(existingMapping?.csvHeaders) ? existingMapping.csvHeaders.map((h: any) => String(h ?? "")) : Object.keys(parsedRows[0] || {});
@@ -3205,7 +3210,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let kept = 0;
       const spendCol = String(mapping.spendColumn);
+      const dateCol = mapping.dateColumn ? String(mapping.dateColumn) : null;
       let totalSpend = 0;
+      const dailySpendMap = new Map<string, number>();
 
       for (const row of parsedRows) {
         if (campaignCol && (campaignValueSet || campaignValue)) {
@@ -3220,6 +3227,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!(spend > 0)) continue;
         kept++;
         totalSpend += spend;
+        if (dateCol) {
+          const dateStr = String((row as any)[dateCol] ?? "").trim();
+          if (dateStr) {
+            const date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+              const normalizedDate = date.toISOString().split('T')[0];
+              dailySpendMap.set(normalizedDate, (dailySpendMap.get(normalizedDate) || 0) + spend);
+            }
+          }
+        }
       }
 
       const campaign = await storage.getCampaign(campaignId);
@@ -3237,12 +3254,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const normalizedStoredRows = parsedRows.map((row: any) => ({
         campaignKey: campaignCol ? String(row?.[campaignCol] ?? "").trim() : "",
         spendRaw: String(row?.[spendCol] ?? "").trim(),
+        dateRaw: dateCol ? String(row?.[dateCol] ?? "").trim() : "",
       }));
       const mappingForStorage = {
         ...mapping,
         mode: "spend_to_date",
         storedSpendColumn: spendCol,
         storedCampaignColumn: campaignCol,
+        storedDateColumn: dateCol,
         csvStoredSpendRows: normalizedStoredRows,
         csvHeaders: previewHeadersForStorage,
         csvSampleRows: previewRowsForStorage,
@@ -3271,17 +3290,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } as any);
       }
 
-      // Create spend_record so spend-breakdown shows correct per-source amount
+      // Create spend_record(s) so spend-breakdown shows correct per-source amount
       try {
-        const today = new Date().toISOString().split("T")[0];
-        await storage.createSpendRecords([{
-          campaignId,
-          spendSourceId: String(source.id),
-          date: today,
-          spend: totalSpend.toFixed(2),
-          currency,
-          sourceType: "csv",
-        }] as any);
+        if (dateCol && dailySpendMap.size > 0) {
+          const records = Array.from(dailySpendMap.entries())
+            .filter(([, spend]) => spend > 0)
+            .map(([date, spend]) => ({
+              campaignId,
+              spendSourceId: String(source.id),
+              date,
+              spend: Number(spend.toFixed(2)).toFixed(2),
+              currency,
+              sourceType: "csv",
+            }));
+          if (records.length > 0) await storage.createSpendRecords(records as any);
+        } else {
+          const today = new Date().toISOString().split("T")[0];
+          await storage.createSpendRecords([{
+            campaignId,
+            spendSourceId: String(source.id),
+            date: today,
+            spend: totalSpend.toFixed(2),
+            currency,
+            sourceType: "csv",
+          }] as any);
+        }
       } catch (e: any) {
         console.warn("[CSV Spend] Failed to create spend_record:", e?.message);
       }

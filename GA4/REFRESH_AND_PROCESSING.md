@@ -232,4 +232,5 @@ Important meaning:
 - new direct `Manual` source creation is no longer available from the production revenue/spend pickers
 - existing stored `Manual` sources do not participate in scheduled daily source refresh on their own
 - `Upload CSV` sources do not participate in scheduled daily source refresh on their own
+- `Upload CSV` sources may materialize daily rows when a date column is mapped, but those rows still update only when the user imports or edits the CSV source
 - existing stored snapshot sources are still included in recomputed totals until the user edits, replaces, or deletes them

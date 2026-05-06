@@ -292,6 +292,7 @@ export function AddSpendWizardModal(props: {
       }
       if (mapCampaignVals.length) setCampaignKeyValues(mapCampaignVals);
       if (mapSpend) setSpendColumn(mapSpend);
+      if (mapDate) setSpendDateColumn(mapDate);
       return;
     }
 
@@ -463,16 +464,19 @@ export function AddSpendWizardModal(props: {
 
     const storedSpendColumn = String(csvPrefillMapping?.storedSpendColumn || csvPrefillMapping?.spendColumn || "");
     const storedCampaignColumn = String(csvPrefillMapping?.storedCampaignColumn || csvPrefillMapping?.campaignColumn || "");
+    const storedDateColumn = String(csvPrefillMapping?.storedDateColumn || csvPrefillMapping?.dateColumn || "");
 
     const spendColumnMatches = !spendColumn || !storedSpendColumn || spendColumn === storedSpendColumn;
+    const dateColumnMatches = String(spendDateColumn || "") === storedDateColumn;
     const campaignColumnMatches =
       (!effectiveCampaignColumn && !storedCampaignColumn) ||
       (!!effectiveCampaignColumn && !!storedCampaignColumn && effectiveCampaignColumn === storedCampaignColumn);
 
     return (Array.isArray(storedSpendRows) && storedSpendRows.length > 0 || hasCompleteSampleDataset)
       && spendColumnMatches
+      && dateColumnMatches
       && campaignColumnMatches;
-  }, [isEditing, csvFile, csvPrefillMapping, spendColumn, effectiveCampaignColumn]);
+  }, [isEditing, csvFile, csvPrefillMapping, spendColumn, spendDateColumn, effectiveCampaignColumn]);
 
   const hasMeaningfulCsvEditChanges = useMemo(() => {
     if (!isEditing) return true;
@@ -480,6 +484,7 @@ export function AddSpendWizardModal(props: {
     if (!csvPrefillMapping) return false;
 
     const initialSpendColumn = String(csvPrefillMapping?.spendColumn || "");
+    const initialDateColumn = String(csvPrefillMapping?.storedDateColumn || csvPrefillMapping?.dateColumn || "");
     const initialCampaignColumn = String(csvPrefillMapping?.campaignColumn || "");
     const initialCampaignValues = Array.isArray(csvPrefillMapping?.campaignValues)
       ? csvPrefillMapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v)
@@ -489,6 +494,7 @@ export function AddSpendWizardModal(props: {
     const currentCampaignValues = campaignKeyValues.map((v) => String(v ?? "").trim()).filter(Boolean);
 
     if (String(spendColumn || "") !== initialSpendColumn) return true;
+    if (String(spendDateColumn || "") !== initialDateColumn) return true;
     if (currentCampaignColumn !== initialCampaignColumn) return true;
     if (currentCampaignValues.length !== initialCampaignValues.length) return true;
 
@@ -497,7 +503,7 @@ export function AddSpendWizardModal(props: {
       if (!initialSet.has(value)) return true;
     }
     return false;
-  }, [isEditing, csvFile, csvPrefillMapping, spendColumn, effectiveCampaignColumn, campaignKeyValues]);
+  }, [isEditing, csvFile, csvPrefillMapping, spendColumn, spendDateColumn, effectiveCampaignColumn, campaignKeyValues]);
 
   const hasMeaningfulSheetsEditChanges = useMemo(() => {
     if (!isEditing) return true;
@@ -541,8 +547,10 @@ export function AddSpendWizardModal(props: {
     if (!csvPreview?.success) return;
     if (!csvPrefillMapping) return;
     const mapSpend = csvPrefillMapping?.spendColumn ? String(csvPrefillMapping.spendColumn) : "";
+    const mapDate = csvPrefillMapping?.dateColumn ? String(csvPrefillMapping.dateColumn) : "";
     const mapCampaignCol = csvPrefillMapping?.campaignColumn ? String(csvPrefillMapping.campaignColumn) : "";
     if (mapSpend && headers.includes(mapSpend)) setSpendColumn(mapSpend);
+    if (mapDate && headers.includes(mapDate)) setSpendDateColumn(mapDate);
     if (mapCampaignCol && headers.includes(mapCampaignCol)) setCampaignKeyColumn(mapCampaignCol);
   }, [csvPreview?.success, csvPrefillMapping, headers]);
 
@@ -568,7 +576,10 @@ export function AddSpendWizardModal(props: {
         throw new Error(json?.error || "Failed to preview CSV");
       }
       const nextHeaders = Array.isArray(json?.headers) ? json.headers.map((h: any) => String(h ?? "")) : [];
+      const guessDateColumn = nextHeaders.find((h: string) => /^date$/i.test(h.trim()) || /(^|[_\s-])date($|[_\s-])/i.test(h)) || "";
       if (spendColumn && !nextHeaders.includes(spendColumn)) setSpendColumn("");
+      if (spendDateColumn && !nextHeaders.includes(spendDateColumn)) setSpendDateColumn(guessDateColumn);
+      if (!spendDateColumn) setSpendDateColumn(guessDateColumn);
       if (campaignKeyColumn && !nextHeaders.includes(campaignKeyColumn)) setCampaignKeyColumn("");
       setCampaignKeyValues([]);
       setCampaignKeySearch("");
@@ -766,7 +777,7 @@ export function AddSpendWizardModal(props: {
       const hasCampaignScope = !!effectiveCampaignColumn && campaignKeyValues.length > 0;
       const mapping = {
         displayName: csvFile?.name || csvPrefillMapping?.displayName || props.initialSource?.displayName || "CSV",
-        dateColumn: null, // date-agnostic: always distribute spend across the selected period
+        dateColumn: spendDateColumn || null,
         spendColumn,
         campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null,
         campaignValue: hasCampaignScope && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
@@ -2302,7 +2313,7 @@ export function AddSpendWizardModal(props: {
                             </div>
                           </div>
                         </div>
-                        {step === "sheets_map" && (
+                        {(step === "csv_map" || step === "sheets_map") && (
                           <div className="pt-2 border-t space-y-2">
                             <Label className="font-normal">Date column (recommended for daily tracking)</Label>
                             <Select

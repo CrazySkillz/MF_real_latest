@@ -26179,6 +26179,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return json;
   };
 
+  const shopifyFetchAllOrders = async (args: {
+    shopDomain: string;
+    accessToken: string;
+    apiVersion: string;
+    createdAtMin: string;
+    maxPages?: number;
+  }) => {
+    const { shopDomain, accessToken, apiVersion, createdAtMin, maxPages = 1000 } = args;
+    const base = `https://${shopDomain}`;
+    const headers = {
+      "X-Shopify-Access-Token": accessToken,
+      "Content-Type": "application/json",
+    };
+    const orders: any[] = [];
+    const seenUrls = new Set<string>();
+    let nextUrl: string | null = `${base}/admin/api/${apiVersion}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(createdAtMin)}`;
+
+    for (let page = 0; nextUrl && page < maxPages; page++) {
+      if (seenUrls.has(nextUrl)) break;
+      seenUrls.add(nextUrl);
+      const resp: Response = await fetch(nextUrl, { headers });
+      const text: string = await resp.text().catch(() => "");
+      let json: any = {};
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch {
+        json = {};
+      }
+      if (!resp.ok) {
+        const msg =
+          json?.errors ||
+          json?.error ||
+          json?.message ||
+          (text && text.length < 300 ? text : "") ||
+          `Shopify API error (HTTP ${resp.status})`;
+        const err: any = new Error(String(msg));
+        err.status = resp.status;
+        err._shopifyText = text;
+        throw err;
+      }
+
+      const pageOrders = Array.isArray(json?.orders) ? json.orders : [];
+      orders.push(...pageOrders);
+
+      const linkHeader: string = resp.headers.get("link") || resp.headers.get("Link") || "";
+      const nextMatch: RegExpMatchArray | null = linkHeader.match(/<([^>]+)>;\s*rel="?next"?/i);
+      nextUrl = nextMatch ? nextMatch[1] : null;
+    }
+
+    if (nextUrl) {
+      throw new Error(`Shopify orders pagination limit exceeded (${maxPages} pages). Narrow the date window and try again.`);
+    }
+
+    return orders;
+  };
+
   const shopifyRequiresMerchantApproval = (err: any): boolean => {
     const msg = String(err?.message || "");
     return msg.toLowerCase().includes("requires merchant approval") && msg.toLowerCase().includes("read_orders");
@@ -26289,12 +26345,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch orders from Shopify
       const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
       const createdAtMin = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString();
-      const ordersResp = await shopifyApiFetch({
+      const orders = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
-        path: `/admin/api/${apiVersion}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(createdAtMin)}`,
+        apiVersion,
+        createdAtMin,
       });
-      const orders: any[] = Array.isArray(ordersResp?.orders) ? ordersResp.orders : [];
 
       // Match orders
       const getFieldValue = (o: any): string => {
@@ -26562,12 +26618,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Default: last 90 days
       const createdAtMin = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-      const ordersResp = await shopifyApiFetch({
+      const orders = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
-        path: `/admin/api/${apiVersion}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(createdAtMin)}`,
+        apiVersion,
+        createdAtMin,
       });
-      const orders: any[] = Array.isArray(ordersResp?.orders) ? ordersResp.orders : [];
 
       const availableColumns = [
         "Order",
@@ -26634,12 +26690,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
       const createdAtMin = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-      const ordersResp = await shopifyApiFetch({
+      const orders = await shopifyFetchAllOrders({
         shopDomain: conn.shopDomain,
         accessToken: conn.accessToken,
-        path: `/admin/api/${apiVersion}/orders.json?status=any&limit=250&created_at_min=${encodeURIComponent(createdAtMin)}`,
+        apiVersion,
+        createdAtMin,
       });
-      const orders: any[] = Array.isArray(ordersResp?.orders) ? ordersResp.orders : [];
 
       const getValue = (o: any): string => {
         const utm = getUtmFromOrder(o);
@@ -26705,6 +26761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
       const body = z
         .object({
+          sourceId: z.string().trim().optional(),
           campaignField: z.string().trim().min(1),
           selectedValues: zSelectedValues,
           revenueMetric: z.string().trim().optional(),
@@ -26733,6 +26790,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const effectiveValueSource: "revenue" = "revenue";
       const isDryRun = Boolean(body.data.dryRun);
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
+      const requestedSourceId = String(body.data.sourceId || "").trim();
 
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";
@@ -26846,7 +26904,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Persist mapping config on the active Shopify connection
       const shopifyConn: any = await storage.getShopifyConnection(campaignId);
       if (shopifyConn) {
+        let existingConnConfig: any = {};
+        try {
+          existingConnConfig = shopifyConn.mappingConfig ? JSON.parse(String(shopifyConn.mappingConfig)) : {};
+        } catch {
+          existingConnConfig = {};
+        }
         const mappingConfig = {
+          ...(existingConnConfig?.authType ? { authType: String(existingConnConfig.authType) } : {}),
+          ...(Object.prototype.hasOwnProperty.call(existingConnConfig || {}, "grantedScopes")
+            ? { grantedScopes: existingConnConfig.grantedScopes }
+            : {}),
+          ...(Array.isArray(existingConnConfig?.grantedScopesList)
+            ? { grantedScopesList: existingConnConfig.grantedScopesList }
+            : {}),
+          ...(existingConnConfig?.connectedAt ? { connectedAt: existingConnConfig.connectedAt } : {}),
           objectType: "orders",
           platformContext: platformCtx,
           valueSource: effectiveValueSource,
@@ -26889,7 +26961,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any).catch(() => [] as any[]);
         const existingShopify = (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
-          return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "shopify";
+          if (!s || (s as any).isActive === false || String((s as any).sourceType || "") !== "shopify") return false;
+          if (requestedSourceId) return String((s as any).id || "") === requestedSourceId;
+          return true;
         });
 
         // Note: do NOT deactivate existing sources — revenue sources are additive.

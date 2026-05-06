@@ -30,6 +30,7 @@ export function ShopifyRevenueWizard(props: {
   onStepChange?: (step: Step) => void;
   mode?: "connect" | "edit";
   initialMappingConfig?: {
+    sourceId?: string;
     campaignField?: string;
     selectedValues?: string[];
     revenueMetric?: string;
@@ -367,6 +368,7 @@ export function ShopifyRevenueWizard(props: {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            ...(initialMappingConfig?.sourceId ? { sourceId: initialMappingConfig.sourceId } : {}),
             campaignField,
             selectedValues,
             revenueMetric,
@@ -405,6 +407,7 @@ export function ShopifyRevenueWizard(props: {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            ...(initialMappingConfig?.sourceId ? { sourceId: initialMappingConfig.sourceId } : {}),
             campaignField,
             selectedValues,
             revenueMetric,

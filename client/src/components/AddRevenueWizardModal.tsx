@@ -625,6 +625,7 @@ export function AddRevenueWizardModal(props: {
 
     if (type === "shopify") {
       const next = {
+        sourceId: initialSource?.id ? String(initialSource.id) : undefined,
         campaignField: config?.campaignField ? String(config.campaignField) : undefined,
         selectedValues: Array.isArray(config?.selectedValues) ? config.selectedValues.map(String) : undefined,
         revenueMetric: config?.revenueMetric ? String(config.revenueMetric) : undefined,

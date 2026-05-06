@@ -13822,8 +13822,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
           if (!Number.isFinite(r)) continue;
           totalRevenue += r;
-          const closeDate = String(props?.closedate || "").trim().slice(0, 10);
-          if (closeDate) revenueByCloseDate.set(closeDate, (revenueByCloseDate.get(closeDate) || 0) + r);
+          const revenueDate = String(props?.[dateFieldChoice] || "").trim().slice(0, 10);
+          if (revenueDate) revenueByCloseDate.set(revenueDate, (revenueByCloseDate.get(revenueDate) || 0) + r);
           const campaignValue = String(props[campaignProp] || "").trim();
           if (campaignValue) campaignValueRevenueTotals.set(campaignValue, (campaignValueRevenueTotals.get(campaignValue) || 0) + r);
 

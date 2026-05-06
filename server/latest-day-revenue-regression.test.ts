@@ -15,6 +15,8 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain("Latest Day Revenue uses imported daily revenue records for the server-selected previous complete UTC day.");
     expect(clientFile).toContain("const latestDayRevenue = Number(revenueDailyResp?.totalRevenue || 0);");
     expect(clientFile).toContain("formatMoney(Number(revenueDailyResp?.totalRevenue || 0))");
+    expect(clientFile).toContain('queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });');
+    expect(clientFile).toContain('queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });');
     expect(clientFile).not.toContain("ga4LatestDayRevenue");
     expect(clientFile).not.toContain("const revenueDailyDate = ga4ReportDate || spendDailyYesterday;");
     expect(clientFile).not.toContain("const revenueDailyDate = spendDailyYesterday;");
@@ -31,6 +33,7 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).toContain('if (sourceType === "hubspot") {');
     expect(routesFile).toContain('String(cfg?.platformContext || "ga4").trim().toLowerCase() === "ga4" && cfg?.pipelineEnabled !== true');
     expect(routesFile).toContain('const date = String(req.query.date || "").trim() || yesterdayUTC();');
+    expect(routesFile).toContain('const revenueDate = String(props?.[dateFieldChoice] || "").trim().slice(0, 10);');
     expect(routesFile).toContain('isEligibleForLatestDayRevenue(source)');
     expect(routesFile).toContain('storage.getRevenueBreakdownBySource(campaignId, date, date, "ga4")');
   });
@@ -42,7 +45,9 @@ describe("Latest Day Revenue regression guard", () => {
     );
 
     expect(routesFile).toContain("const isEligibleForLatestDaySpend = (source: any): boolean => {");
-    expect(routesFile).toContain("return !!source;");
+    expect(routesFile).toContain("if (!source) return false;");
+    expect(routesFile).toContain("if (cfg?.testMode === true) return false;");
+    expect(routesFile).toContain("return true;");
     expect(routesFile).toContain('isEligibleForLatestDaySpend(source)');
     expect(routesFile).toContain('storage.getSpendBreakdownBySource(campaignId, date, date)');
   });

@@ -254,7 +254,7 @@ Important meaning:
 - `Close Date` is the default for finance-style won-revenue reporting
 - `Last Modified Date` is useful when the user wants revenue tied to recently updated deals
 - `Created Date` is useful when the user wants revenue tied to when opportunities first entered HubSpot
-- in GA4 `Total Revenue only` mode, confirmed HubSpot revenue should materialize as true daily won rows by each matched deal's `Close Date`, rather than as one synthetic snapshot row
+- in GA4 `Total Revenue only` mode, confirmed HubSpot revenue should materialize as true daily rows by each matched deal's selected `Date field`, rather than as one synthetic snapshot row
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - the Pipeline Proxy stage filters the already selected HubSpot campaign values; it does not create a separate campaign-selection path
 - the final `Review Settings` step should show Pipeline Proxy stage and amount; the import action should be labeled `Import revenue`
@@ -669,7 +669,7 @@ The required pattern is:
 - `HubSpot`
   - updated immediately on save/edit
   - updated again on scheduled auto-refresh
-  - in GA4 `Total Revenue only`, materializes true daily won rows by `Close Date`
+  - in GA4 `Total Revenue only`, materializes true daily rows by the selected HubSpot date field, typically `Close Date`
 - `Salesforce`
   - updated immediately on save/edit
   - updated again on scheduled auto-refresh

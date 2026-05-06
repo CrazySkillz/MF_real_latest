@@ -83,10 +83,19 @@ export function AddRevenueWizardModal(props: {
     }
 
     // GA4 KPI tab caches (revenue-to-date affects financial KPIs when GA4 revenue is missing).
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
+    void queryClient.invalidateQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
     void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/kpis"], exact: false });
     void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/kpis", campaignId], exact: false });
 
     // Best-effort immediate refresh when mounted (keeps Overview feeling instant).
+    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
+    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
     void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
 

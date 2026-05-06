@@ -1905,41 +1905,33 @@ export default function GA4Metrics() {
     },
   });
 
-  // Latest Day Spend should use the previous complete day across all spend sources.
-  const spendDailyYesterday = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }, []);
-  const { data: spendDailyYesterdayResp } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/spend-daily`, spendDailyYesterday],
+  // Latest-day endpoints default to the server's previous complete UTC day.
+  const { data: spendDailyResp, isError: spendDailyError } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/spend-daily`, "latest"],
     enabled: !!campaignId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/spend-daily?date=${spendDailyYesterday}`);
-      if (!resp.ok) return { success: false, totalSpend: 0 };
+      const resp = await fetch(`/api/campaigns/${campaignId}/spend-daily`);
+      if (!resp.ok) throw new Error("Failed to fetch latest-day spend");
       return resp.json().catch(() => ({ success: false, totalSpend: 0 }));
     },
   });
-  const spendDailyResp = spendDailyYesterdayResp;
 
-  // Latest Day Revenue should use the previous complete day across GA4 native + imported revenue sources.
-  const revenueDailyDate = spendDailyYesterday;
-  const { data: revenueDailyResp } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/revenue-daily`, revenueDailyDate],
+  const { data: revenueDailyResp, isError: revenueDailyError } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/revenue-daily`, "latest"],
     enabled: !!campaignId,
     staleTime: 0,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaignId}/revenue-daily?date=${revenueDailyDate}`, { credentials: "include" });
-      if (!resp.ok) return { success: false, totalRevenue: 0 };
+      const resp = await fetch(`/api/campaigns/${campaignId}/revenue-daily`, { credentials: "include" });
+      if (!resp.ok) throw new Error("Failed to fetch latest-day revenue");
       return resp.json().catch(() => ({ success: false, totalRevenue: 0 }));
     },
   });
+  // Latest Day Revenue should use the previous complete day across GA4 native + imported revenue sources.
+  const revenueDailyDate = String(revenueDailyResp?.date || spendDailyResp?.date || "");
   const ga4LatestDayRevenue = useMemo(() => {
+    if (!revenueDailyDate) return 0;
     return Number(ga4DailyRows.find((r: any) => String(r?.date) === String(revenueDailyDate))?.revenue || 0);
   }, [ga4DailyRows, revenueDailyDate]);
 
@@ -5179,10 +5171,12 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Latest Day Revenue</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {formatMoney(
-                                Number(ga4LatestDayRevenue || 0)
-                                + Number(revenueDailyResp?.totalRevenue || 0)
-                              )}
+                              {revenueDailyError
+                                ? "Unavailable"
+                                : formatMoney(
+                                  Number(ga4LatestDayRevenue || 0)
+                                  + Number(revenueDailyResp?.totalRevenue || 0)
+                                )}
                             </p>
                           </CardContent>
                         </Card>
@@ -5245,7 +5239,7 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Latest Day Spend</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {formatMoney(Number(spendDailyResp?.totalSpend || 0))}
+                              {spendDailyError ? "Unavailable" : formatMoney(Number(spendDailyResp?.totalSpend || 0))}
                             </p>
                           </CardContent>
                         </Card>

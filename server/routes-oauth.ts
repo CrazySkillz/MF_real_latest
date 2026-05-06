@@ -1219,7 +1219,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const isEligibleForLatestDayRevenue = (source: any): boolean => {
     if (!source) return false;
     const sourceType = String((source as any)?.sourceType || "").trim().toLowerCase();
-    if (sourceType === "manual" || sourceType === "hubspot") return false;
+    if (sourceType === "manual") return false;
+    if (sourceType === "hubspot") {
+      try {
+        const cfg = (source as any)?.mappingConfig ? JSON.parse(String((source as any).mappingConfig)) : null;
+        return String(cfg?.platformContext || "ga4").trim().toLowerCase() === "ga4" && cfg?.pipelineEnabled !== true;
+      } catch {
+        return false;
+      }
+    }
     if (sourceType === "csv" || sourceType === "google_sheets") {
       try {
         const cfg = (source as any)?.mappingConfig ? JSON.parse(String((source as any).mappingConfig)) : null;
@@ -1303,7 +1311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
-      const date = String(req.query.date || "").trim();
+      const date = String(req.query.date || "").trim() || yesterdayUTC();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return res.status(400).json({ success: false, error: "Missing/invalid date (YYYY-MM-DD)" });
       }
@@ -1338,7 +1346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
-      const date = String(req.query.date || "").trim();
+      const date = String(req.query.date || "").trim() || yesterdayUTC();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return res.status(400).json({ success: false, error: "Missing/invalid date (YYYY-MM-DD)" });
       }

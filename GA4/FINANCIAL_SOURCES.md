@@ -69,13 +69,13 @@ Important clarification:
 
 Intended behavior:
 
-- `Latest Day Revenue` should show the previous day's total revenue for the campaign across all applicable revenue sources
+- `Latest Day Revenue` should show the previous day's imported daily revenue for the campaign across all applicable external revenue sources
 
 Current implementation:
 
 - use the previous complete UTC day selected by the server-side daily endpoint
 - include every active revenue source that has real daily revenue records for that day
-- include GA4-native daily revenue for that same day
+- do not add GA4-native daily revenue into this card; GA4-native revenue remains visible in GA4 metrics and `Total Revenue`
 - do not invent daily values for snapshot-only sources that have no record on that date
 
 Important clarification:

@@ -12,9 +12,10 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain('queryKey: [`/api/campaigns/${campaignId}/revenue-daily`, "latest"]');
     expect(clientFile).toContain('fetch(`/api/campaigns/${campaignId}/revenue-daily`, { credentials: "include" })');
     expect(clientFile).toContain('throw new Error("Failed to fetch latest-day revenue")');
-    expect(clientFile).toContain('const revenueDailyDate = String(revenueDailyResp?.date || spendDailyResp?.date || "");');
-    expect(clientFile).toContain("const ga4LatestDayRevenue = useMemo(() => {");
-    expect(clientFile).toContain("Latest Day Revenue should use the previous complete day across GA4 native + imported revenue sources.");
+    expect(clientFile).toContain("Latest Day Revenue uses imported daily revenue records for the server-selected previous complete UTC day.");
+    expect(clientFile).toContain("const latestDayRevenue = Number(revenueDailyResp?.totalRevenue || 0);");
+    expect(clientFile).toContain("formatMoney(Number(revenueDailyResp?.totalRevenue || 0))");
+    expect(clientFile).not.toContain("ga4LatestDayRevenue");
     expect(clientFile).not.toContain("const revenueDailyDate = ga4ReportDate || spendDailyYesterday;");
     expect(clientFile).not.toContain("const revenueDailyDate = spendDailyYesterday;");
   });

@@ -1928,12 +1928,7 @@ export default function GA4Metrics() {
       return resp.json().catch(() => ({ success: false, totalRevenue: 0 }));
     },
   });
-  // Latest Day Revenue should use the previous complete day across GA4 native + imported revenue sources.
-  const revenueDailyDate = String(revenueDailyResp?.date || spendDailyResp?.date || "");
-  const ga4LatestDayRevenue = useMemo(() => {
-    if (!revenueDailyDate) return 0;
-    return Number(ga4DailyRows.find((r: any) => String(r?.date) === String(revenueDailyDate))?.revenue || 0);
-  }, [ga4DailyRows, revenueDailyDate]);
+  // Latest Day Revenue uses imported daily revenue records for the server-selected previous complete UTC day.
 
   const spendSourceLabels = useMemo(() => {
     const persistedSpend = Number(spendToDateResp?.spendToDate || 0);
@@ -2650,7 +2645,7 @@ export default function GA4Metrics() {
       if (includeOverviewRevenue || includeOverviewSpend || includeOverviewPerformance) subheading("Revenue & Financial", 10);
       if (includeOverviewRevenue) {
         subheading("Revenue");
-      const latestDayRevenue = Number(ga4LatestDayRevenue || 0) + Number(revenueDailyResp?.totalRevenue || 0);
+      const latestDayRevenue = Number(revenueDailyResp?.totalRevenue || 0);
       const revenueCards: [string, string][] = [
         ["Total Revenue", fC(rev)],
         ["Latest Day Revenue", fC(latestDayRevenue)],
@@ -5166,17 +5161,14 @@ export default function GA4Metrics() {
                             )}
                           </CardContent>
                         </Card>
-                        {/* Latest Day Revenue — GA4 native + imported sources for most recent complete day */}
+                        {/* Latest Day Revenue — imported sources for most recent complete day */}
                         <Card>
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Latest Day Revenue</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
                               {revenueDailyError
                                 ? "Unavailable"
-                                : formatMoney(
-                                  Number(ga4LatestDayRevenue || 0)
-                                  + Number(revenueDailyResp?.totalRevenue || 0)
-                                )}
+                                : formatMoney(Number(revenueDailyResp?.totalRevenue || 0))}
                             </p>
                           </CardContent>
                         </Card>

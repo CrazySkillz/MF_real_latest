@@ -99,15 +99,14 @@ These cards are derived from fetched or recomputed inputs:
 
 Intended behavior:
 
-- `Latest Day Revenue` should show the previous day's total revenue for the campaign across all applicable revenue sources
+- `Latest Day Revenue` should show the previous day's imported daily revenue for the campaign across all applicable external revenue sources
 - `Latest Day Spend` should show the previous day's total spend for the campaign across all applicable spend sources
 
 Current implementation:
 
 - both cards use the previous complete UTC day selected by the server-side daily endpoints
-- `Latest Day Revenue` combines:
-  - GA4-native daily revenue for that day
-  - imported revenue from all active sources that have real daily revenue records for that same day
+- `Latest Day Revenue` uses imported revenue from all active external sources that have real daily revenue records for that same day
+- GA4-native revenue remains available in GA4 metrics and `Total Revenue`, but is not added into this latest-day imported-revenue card
 - snapshot-style imported revenue may still increase `Total Revenue`, but it must not appear in `Latest Day Revenue` unless that source truly provides dated daily revenue rows
 - `Latest Day Spend` sums all active sources that have real daily spend records for that same day
 - these cards must not invent daily values for sources that do not have records on that date

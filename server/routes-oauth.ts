@@ -12201,6 +12201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const quoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(',');
+      const wonClause = `(IsWon = true OR StageName LIKE 'Closed Won%')`;
 
       const baseHeaders = (includeCurrency: boolean) =>
         Array.from(
@@ -12230,8 +12231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const soql =
           `SELECT ${baseFields.join(', ')} ` +
           `FROM Opportunity ` +
-          // Use IsWon instead of StageName. Stage labels vary per org.
-          `WHERE IsWon = true AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
+          `WHERE ${wonClause} AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
           `ORDER BY ${dateFieldChoice} DESC ` +
           `LIMIT ${rowLimit}`;
         return { soql, headers: baseFields };
@@ -12421,6 +12421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Query opportunities matching crosswalk values
       const quoted = selected.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(',');
+      const wonClause = `(IsWon = true OR StageName LIKE 'Closed Won%')`;
 
       // Some orgs (non-multi-currency) do not have CurrencyIsoCode on Opportunity.
       // We'll try with CurrencyIsoCode first, then fall back without it if Salesforce reports INVALID_FIELD.
@@ -12428,8 +12429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Salesforce does not allow aliasing non-aggregate expressions in SOQL.
         `SELECT Id, ${attribField}, ${dateFieldChoice}, ${revenue}${effectiveValueSource === 'conversion_value' ? `, ${convValueField}` : ''}${includeCurrency ? ', CurrencyIsoCode' : ''} ` +
         `FROM Opportunity ` +
-        // Use IsWon instead of StageName. Stage labels vary per org.
-        `WHERE IsWon = true AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
+        `WHERE ${wonClause} AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
         `LIMIT 2000`;
 
       const fetchOppRecords = async (includeCurrency: boolean): Promise<{ records: any[]; includeCurrency: boolean }> => {

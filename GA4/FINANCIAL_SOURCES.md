@@ -305,6 +305,7 @@ Important meaning:
 - this path is sensitive because it can include currency validation and attribution-field matching
 - in edit mode, Salesforce revenue must preserve the existing revenue `sourceId` all the way through the save request so the system updates the existing source instead of creating an additive duplicate
 - Salesforce review-step `Total Revenue (to date)` should prefer fresh preview data from the current edit session over stored `lastTotalRevenue` values from the previous save
+- Salesforce confirmed revenue uses the saved attribution values plus the selected date field and treats opportunities as won when Salesforce returns `IsWon = true` or the stage name starts with `Closed Won`, so Review Settings, save/materialization, scheduler refresh, and Latest Day Revenue stay aligned for orgs with custom Closed Won stage labels
 - the first Salesforce `Source` step should show `Total Revenue + Pipeline (Proxy)` above `Total Revenue only (no Pipeline card)` and default to the pipeline option in new connect mode
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - the Pipeline Proxy stage filters the already selected Salesforce campaign/opportunity values; it does not create a separate campaign-selection path
@@ -732,6 +733,8 @@ Important meaning:
 - source definitions plus normalized records are the source of truth
 - recomputation must happen after add, edit, delete, and eligible auto-refresh operations
 - downstream KPI, benchmark, ad comparison, insights, and report values must use the recomputed financial state
+- source-preview, save, scheduler, materialization, API, and card reads must preserve the same critical source fields before a financial number is trusted
+- for revenue, spend, scheduler, source-preview, or source-provenance fixes, apply the analytics source checklist in `GA4_DEVELOPMENT_WORKFLOW.md` before editing code
 
 ## Current-State Note
 

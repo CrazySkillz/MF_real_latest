@@ -209,6 +209,8 @@ For data/provenance bugs, prove the exact data-loss boundary before editing:
 - do not patch the visible UI until the lost boundary is known
 - if existing production data was already damaged, fix the forward path and add the smallest safe self-heal/fallback for existing damaged records only when it uses exact source data and does not invent allocation
 
+For revenue, spend, scheduler, source-preview, or source-provenance bugs, also apply the analytics source checklist in `GA4_DEVELOPMENT_WORKFLOW.md` before editing code.
+
 ## Validation Requirements
 
 Before considering a fix complete:

@@ -163,6 +163,11 @@ export function SalesforceRevenueWizard(props: {
   const [previewBuild, setPreviewBuild] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const canUpdateRevenue = useMemo(() => {
+    if (mode !== "edit") return true;
+    return hasEditChanges || previewTotalRevenue != null;
+  }, [hasEditChanges, mode, previewTotalRevenue]);
+
   const steps = useMemo(
     () => pipelineEnabled ? [
       { id: "value-source" as const, label: "Source", icon: DollarSign },
@@ -1522,7 +1527,7 @@ export function SalesforceRevenueWizard(props: {
                   (step === "pipeline" && !pipelineStageName) ||
                   // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.
                   (step === "review" && effectiveCurrencyMismatch) ||
-                  (step === "review" && mode === "edit" && !hasEditChanges)
+                  (step === "review" && mode === "edit" && !canUpdateRevenue)
                 }
               >
                 {step === "review" ? (isSaving ? "Importing..." : mode === "edit" ? "Update revenue" : "Import revenue") : "Continue"}

@@ -116,6 +116,7 @@ Google Sheets spend auto-refresh rule:
 CRM auto-reprocess rule:
 
 - saved HubSpot and Salesforce mappings should be reprocessed by the daily auto-refresh scheduler without requiring a user to manually reopen and save the wizard
+- HubSpot auto-reprocess should use active HubSpot revenue source mappings as the source of truth and pass the stable revenue `sourceId`
 - the scheduler may use an internal same-process authorization path for its own loopback requests
 - public HubSpot and Salesforce save-mapping endpoints must still require normal user authentication and campaign access
 - refreshed CRM revenue should update materialized revenue records and recomputed campaign financial state

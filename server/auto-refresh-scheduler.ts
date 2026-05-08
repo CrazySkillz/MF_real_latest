@@ -74,7 +74,7 @@ async function withTimeout<T>(label: string, promise: Promise<T>, timeoutMs: num
   }
 }
 
-async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
+async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {
   const body: AnyRecord = {
     campaignProperty: mappingConfig.campaignProperty,
     selectedValues: mappingConfig.selectedValues,
@@ -88,6 +88,7 @@ async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord): P
     pipelineStageLabel: mappingConfig.pipelineStageLabel,
     dateField: mappingConfig.dateField,
     platformContext: mappingConfig.platformContext,
+    ...(sourceId ? { sourceId } : {}),
     ...(Array.isArray(mappingConfig.campaignMappings) && mappingConfig.campaignMappings.length > 0
       ? { campaignMappings: mappingConfig.campaignMappings }
       : {}),
@@ -446,15 +447,19 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
       const campaignId = campaign.id;
       try {
         let anyUpdated = false;
-        // HubSpot
-        const hub = await storage.getHubspotConnection(campaignId);
-        const hubCfg = safeJsonParse(hub?.mappingConfig);
-        if (hub && (hub as any).isActive !== false && hubCfg?.selectedValues?.length) {
-          attempted++;
-          if (await reprocessHubSpot(campaignId, hubCfg)) { succeeded++; anyUpdated = true; }
-        } else {
-          skipped++;
+        // HubSpot revenue sources are the source of truth for saved campaign mappings.
+        const hubspotRevenueSources = (await storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]))
+          .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "hubspot");
+        for (const hubspotSource of hubspotRevenueSources) {
+          const hubCfg = safeJsonParse(hubspotSource?.mappingConfig);
+          if (hubCfg?.selectedValues?.length) {
+            attempted++;
+            if (await reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))) { succeeded++; anyUpdated = true; }
+          } else {
+            skipped++;
+          }
         }
+        if (hubspotRevenueSources.length === 0) skipped++;
 
         // Salesforce
         const sf = await storage.getSalesforceConnection(campaignId);

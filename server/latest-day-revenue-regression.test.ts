@@ -27,6 +27,10 @@ describe("Latest Day Revenue regression guard", () => {
       join(process.cwd(), "server", "routes-oauth.ts"),
       "utf-8"
     );
+    const schedulerFile = readFileSync(
+      join(process.cwd(), "server", "auto-refresh-scheduler.ts"),
+      "utf-8"
+    );
 
     expect(routesFile).toContain("const isEligibleForLatestDayRevenue = (source: any): boolean => {");
     expect(routesFile).toContain('if (sourceType === "manual") return false;');
@@ -84,6 +88,10 @@ describe("Latest Day Revenue regression guard", () => {
       join(process.cwd(), "server", "routes-oauth.ts"),
       "utf-8"
     );
+    const schedulerFile = readFileSync(
+      join(process.cwd(), "server", "auto-refresh-scheduler.ts"),
+      "utf-8"
+    );
 
     expect(clientFile).toContain("dateField,");
     expect(clientFile).toContain("setDateField((cfg as any).dateField ? String((cfg as any).dateField) : \"CloseDate\");");
@@ -93,6 +101,9 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).toContain("const wonClause = `(IsWon = true OR StageName LIKE 'Closed Won%')`;");
     expect(routesFile).toContain("`WHERE ${wonClause} AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) `");
     expect(routesFile).toContain("totalRevenue: Number(totalRevenue.toFixed(2)),");
+    expect(routesFile).toContain("materializedRecordCount,");
+    expect(routesFile).toContain("Salesforce revenue was fetched but no daily revenue records were materialized.");
+    expect(schedulerFile).toContain("[Auto Refresh] Salesforce reprocess produced no materialized revenue records");
     expect(routesFile).toContain("dateField: dateFieldChoice,");
     expect(routesFile).toContain('dailyMaterialization: platformCtx === "ga4" && revenueByDate.size > 0 ? "selected_date_field_v1" : null,');
   });

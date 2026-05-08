@@ -121,6 +121,12 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord,
     console.error(`[Auto Refresh] Salesforce reprocess failed for campaign ${campaignId}:`, result.status, result.json?.error || result.text);
     return false;
   }
+  const totalRevenue = Number(result.json?.totalRevenue || 0);
+  const materializedRecordCount = Number(result.json?.materializedRecordCount || 0);
+  if (totalRevenue > 0 && materializedRecordCount <= 0) {
+    console.error(`[Auto Refresh] Salesforce reprocess produced no materialized revenue records for campaign ${campaignId}`);
+    return false;
+  }
   return true;
 }
 

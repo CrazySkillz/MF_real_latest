@@ -12871,10 +12871,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Materialize revenue into revenue_sources/revenue_records so GA4 Overview can use it.
-      try {
-        const cur = campaignCurrency;
+      const cur = campaignCurrency;
+      let materializedRecordCount = 0;
 
-        const normalizedMapping = {
+      const normalizedMapping = {
           provider: "salesforce",
           platformContext: platformCtx,
           mode: "revenue_to_date",
@@ -12900,67 +12900,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         };
 
-        let source: any;
-        if (existingSourceIdOrNull) {
-          source = await storage.updateRevenueSource(existingSourceIdOrNull, {
-            sourceType: "salesforce",
-            displayName: `Salesforce (Opportunities)`,
-            currency: cur,
-            mappingConfig: JSON.stringify(normalizedMapping),
-            isActive: true,
-          } as any);
-          if (!source) source = { id: existingSourceIdOrNull };
-          await storage.deleteRevenueRecordsBySource(existingSourceIdOrNull);
-        } else {
-          source = await storage.createRevenueSource({
-            campaignId,
-            sourceType: "salesforce",
-            platformContext: platformCtx,
-            displayName: `Salesforce (Opportunities)`,
-            currency: cur,
-            mappingConfig: JSON.stringify(normalizedMapping),
-            isActive: true,
-          } as any);
-          await storage.deleteRevenueRecordsBySource(source.id);
-        }
+      let source: any;
+      if (existingSourceIdOrNull) {
+        source = await storage.updateRevenueSource(existingSourceIdOrNull, {
+          sourceType: "salesforce",
+          displayName: `Salesforce (Opportunities)`,
+          currency: cur,
+          mappingConfig: JSON.stringify(normalizedMapping),
+          isActive: true,
+        } as any);
+        if (!source) source = { id: existingSourceIdOrNull };
+        await storage.deleteRevenueRecordsBySource(existingSourceIdOrNull);
+      } else {
+        source = await storage.createRevenueSource({
+          campaignId,
+          sourceType: "salesforce",
+          platformContext: platformCtx,
+          displayName: `Salesforce (Opportunities)`,
+          currency: cur,
+          mappingConfig: JSON.stringify(normalizedMapping),
+          isActive: true,
+        } as any);
+        await storage.deleteRevenueRecordsBySource(source.id);
+      }
 
         // Enterprise accuracy: record revenue on actual Opportunity CloseDate (daily totals),
         // rather than distributing evenly across the range.
-        const records = Array.from(revenueByDate.entries())
-          .filter(([d]) => !!d)
-          .sort((a, b) => a[0].localeCompare(b[0]))
-          .map(([date, amt]) => ({
-            campaignId,
-            revenueSourceId: source.id,
-            date,
-            revenue: Number(amt.toFixed(2)).toFixed(2) as any,
-            currency: cur,
-            sourceType: 'salesforce',
-          })) as any[];
+      const revenueRecordsToInsert = Array.from(revenueByDate.entries())
+        .filter(([d]) => !!d)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, amt]) => ({
+          campaignId,
+          revenueSourceId: source.id,
+          date,
+          revenue: Number(amt.toFixed(2)).toFixed(2) as any,
+          currency: cur,
+          sourceType: 'salesforce',
+        })) as any[];
 
         // Add per-LinkedIn-campaign revenue records when campaignMappings exist
-        if (campaignMappings.length > 0 && revenueByDateAndCampaign.size > 0) {
-          for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
-            const [date, urn] = key.split(":");
-            if (date && urn) {
-              records.push({
-                campaignId,
-                revenueSourceId: source.id,
-                date,
-                revenue: Number(rev.toFixed(2)).toFixed(2) as any,
-                currency: cur,
-                sourceType: 'salesforce',
-                subCampaignUrn: urn,
-              } as any);
-            }
+      if (campaignMappings.length > 0 && revenueByDateAndCampaign.size > 0) {
+        for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
+          const [date, urn] = key.split(":");
+          if (date && urn) {
+            revenueRecordsToInsert.push({
+              campaignId,
+              revenueSourceId: source.id,
+              date,
+              revenue: Number(rev.toFixed(2)).toFixed(2) as any,
+              currency: cur,
+              sourceType: 'salesforce',
+              subCampaignUrn: urn,
+            } as any);
           }
         }
+      }
 
-        if (records.length > 0) {
-          await storage.createRevenueRecords(records);
-        }
-      } catch (e) {
-        console.warn("[Salesforce Save Mappings] Failed to materialize revenue records:", e);
+      if (revenueRecordsToInsert.length > 0) {
+        const inserted = await storage.createRevenueRecords(revenueRecordsToInsert);
+        materializedRecordCount = Array.isArray(inserted) ? inserted.length : revenueRecordsToInsert.length;
+      }
+      if (platformCtx === "ga4" && totalRevenue > 0 && materializedRecordCount <= 0) {
+        return res.status(500).json({ error: "Salesforce revenue was fetched but no daily revenue records were materialized." });
       }
 
       // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.
@@ -12973,6 +12974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalRevenue: Number(totalRevenue.toFixed(2)),
         totalConversions: totalConversions ?? 0,
         currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
+        materializedRecordCount,
         sessionId: latestSession?.id || null,
       });
     } catch (error: any) {

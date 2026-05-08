@@ -101,6 +101,7 @@ Ad-platform spend auto-refresh rule:
 - scheduler refresh must not broaden spend to all campaigns available in the connected account
 - scheduler refresh must not append duplicate rows on repeated runs
 - internal scheduler self-calls should have a bounded timeout so one stalled provider refresh cannot prevent the full auto-refresh cycle from completing
+- the LinkedIn refresh phase inside the external auto-refresh scheduler should also have a bounded timeout so CRM/ecommerce revenue reprocess can still run when LinkedIn refresh stalls
 
 Google Sheets spend auto-refresh rule:
 

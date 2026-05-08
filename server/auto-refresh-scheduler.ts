@@ -60,6 +60,20 @@ function safeJsonParse<T = any>(raw: any): T | null {
   }
 }
 
+async function withTimeout<T>(label: string, promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeout: NodeJS.Timeout | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
   const body: AnyRecord = {
     campaignProperty: mappingConfig.campaignProperty,
@@ -412,7 +426,8 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
     // 1) Refresh LinkedIn first (ensures latest conversions are available in latest import session).
     try {
       console.log("[Auto Refresh] Step 1/2: Refreshing LinkedIn data for all campaigns...");
-      await refreshAllLinkedInData();
+      const linkedInTimeoutMs = Math.max(parseInt(String(process.env.AUTO_REFRESH_LINKEDIN_TIMEOUT_MS || "120000"), 10) || 120000, 10000);
+      await withTimeout("LinkedIn auto-refresh", refreshAllLinkedInData(), linkedInTimeoutMs);
       console.log("[Auto Refresh] ✅ LinkedIn refresh complete");
     } catch (e: any) {
       console.error("[Auto Refresh] ⚠️ LinkedIn refresh failed (continuing to revenue reprocess):", e?.message || e);

@@ -627,7 +627,7 @@ Important meaning:
 - they do not directly edit the total card value
 - executive-facing provenance should be consolidated in a source modal / `Sources used` areas rather than repeated as per-card microcopy under every financial card
 - revenue provenance should enumerate the full active revenue source set, including GA4 native revenue when present, instead of only the first imported/manual revenue source
-- the Revenue Sources modal body should scroll vertically when many source entries are present so edit/delete actions remain accessible inside the dialog
+- the Revenue Sources and Spend Sources modal bodies should scroll vertically when many source entries are present so edit/delete actions remain accessible inside the dialog
 
 ## Edit And Delete Pattern
 
@@ -704,6 +704,7 @@ The required pattern is:
 - `Google Sheets` spend is a refreshable source after setup
 - `LinkedIn Ads` spend is connector-based and refreshable through the platform refresh pipeline
 - `Meta / Facebook` and `Google Ads` spend currently use connected-platform selection flows, but their current persisted spend handling is still more snapshot-like than a fully specialized connector pipeline
+- scheduled Meta / Facebook and Google Ads spend refresh must reuse the saved selected campaign IDs and replace the source's prior materialized spend records rather than append duplicates
 - `Upload CSV` revenue is manual for import cadence and requires re-upload for source-file updates; when a date column is mapped, it can still materialize daily revenue rows
 - `Upload CSV` spend is manual for import cadence; when a date column is mapped, it can still materialize daily spend rows, and spend-source edit can recalculate from the stored imported dataset when only campaign-value selection changes
 - existing stored `Manual` revenue/spend remains a manual snapshot source and requires direct manual updates

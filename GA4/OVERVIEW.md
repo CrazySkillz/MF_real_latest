@@ -210,7 +210,7 @@ Important meaning:
 - the GA4 analytics page does not currently let users add or remove GA4 campaign values after setup; changing GA4 scope after setup would require a deliberate rescope workflow that refreshes Overview inputs and recomputes downstream KPI, Benchmark, Insight, alert, and report state
 - `Total Revenue` and `Total Spend` show compact totals in the cards; their `Sources` action opens the source-provenance modal where users can review, edit, or delete contributing sources
 - the source-provenance modal is presentation-only and must not change financial calculations, source persistence, or recomputation behavior
-- the revenue source-provenance modal should scroll vertically when many entries are present
+- the revenue and spend source-provenance modals should scroll vertically when many entries are present
 
 ### GA4 Scope Selection Lifecycle
 

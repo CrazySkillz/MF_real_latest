@@ -33,10 +33,12 @@ function getServerBaseUrl(): string {
 
 async function postJson(path: string, body: AnyRecord): Promise<{ ok: boolean; status: number; json?: any; text?: string }> {
   const url = `${getServerBaseUrl()}${path.startsWith("/") ? "" : "/"}${path}`;
+  const timeoutMs = Math.max(parseInt(String(process.env.AUTO_REFRESH_INTERNAL_TIMEOUT_MS || "120000"), 10) || 120000, 10000);
   const resp = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-internal-auto-refresh-token": getInternalAutoRefreshToken() },
     body: JSON.stringify(body || {}),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const text = await resp.text().catch(() => "");
   let json: any = undefined;
@@ -503,14 +505,20 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
             if ((src as any).isActive === false) continue;
             if (String((src as any).sourceType || "") !== "ad_platforms") continue;
             const displayName = String((src as any).displayName || "");
+            const cfg = safeJsonParse((src as any).mappingConfig);
+            const selectedIds = Array.isArray(cfg?.selectedCampaignIds)
+              ? new Set(cfg.selectedCampaignIds.map((id: any) => String(id || "").trim()).filter(Boolean))
+              : null;
             const startDate = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
             const endDate = new Date().toISOString().slice(0, 10);
 
             let rows: any[] = [];
             if (displayName.includes("Google Ads")) {
               rows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate)) || [];
+              if (selectedIds && selectedIds.size > 0) rows = rows.filter((r: any) => selectedIds.has(String(r?.googleCampaignId || "").trim()));
             } else if (displayName.includes("Meta")) {
               rows = (await storage.getMetaDailyMetrics(campaignId, startDate, endDate)) || [];
+              if (selectedIds && selectedIds.size > 0) rows = rows.filter((r: any) => selectedIds.has(String(r?.metaCampaignId || "").trim()));
             } else {
               continue;
             }
@@ -535,6 +543,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
             if (records.length > 0) {
               attempted++;
               try {
+                await storage.deleteSpendRecordsBySource(String((src as any).id));
                 await storage.createSpendRecords(records);
                 const allSpend = await storage.getSpendTotalForRange(campaignId, "2020-01-01", endDate);
                 await storage.updateCampaign(campaignId, { spend: String(allSpend.totalSpend.toFixed(2)) } as any);

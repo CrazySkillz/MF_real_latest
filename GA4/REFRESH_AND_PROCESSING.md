@@ -94,6 +94,14 @@ Current eligible sources include:
 - Meta spend through `ad_platforms`
 - Google Ads spend through `ad_platforms`
 
+Ad-platform spend auto-refresh rule:
+
+- Meta and Google Ads spend refresh must reuse the campaign IDs saved in the Spend source mapping
+- refresh must replace that source's previously materialized spend records before inserting refreshed daily rows
+- scheduler refresh must not broaden spend to all campaigns available in the connected account
+- scheduler refresh must not append duplicate rows on repeated runs
+- internal scheduler self-calls should have a bounded timeout so one stalled provider refresh cannot prevent the full auto-refresh cycle from completing
+
 Google Sheets spend auto-refresh rule:
 
 - Google Sheets spend is refreshed by the external value auto-refresh scheduler, not by `GA4_DAILY_REFRESH_INTERVAL_HOURS`

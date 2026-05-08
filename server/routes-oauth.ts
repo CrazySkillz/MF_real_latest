@@ -12963,6 +12963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (platformCtx === "ga4" && totalRevenue > 0 && materializedRecordCount <= 0) {
         return res.status(500).json({ error: "Salesforce revenue was fetched but no daily revenue records were materialized." });
       }
+      const materializedDates = Array.from(revenueByDate.keys()).sort();
 
       // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.
       await recomputeCampaignDerivedValues(campaignId);
@@ -12975,6 +12976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalConversions: totalConversions ?? 0,
         currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
         materializedRecordCount,
+        materializedDates,
         sessionId: latestSession?.id || null,
       });
     } catch (error: any) {

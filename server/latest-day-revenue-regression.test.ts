@@ -107,6 +107,8 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).toContain("`WHERE ${wonClause} AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) `");
     expect(routesFile).toContain("totalRevenue: Number(totalRevenue.toFixed(2)),");
     expect(routesFile).toContain("materializedRecordCount,");
+    expect(routesFile).toContain("materializedDates,");
+    expect(schedulerFile).toContain("Salesforce reprocess complete for campaign");
     expect(routesFile).toContain("Salesforce revenue was fetched but no daily revenue records were materialized.");
     expect(schedulerFile).toContain("[Auto Refresh] Salesforce reprocess produced no materialized revenue records");
     expect(routesFile).toContain("dateField: dateFieldChoice,");

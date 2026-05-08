@@ -613,9 +613,10 @@ export function SalesforceRevenueWizard(props: {
         selectedValues: [...selectedValues].sort(),
         pipelineEnabled,
         pipelineStageName,
+        dateField,
         days,
       }),
-    [step, campaignField, revenueField, selectedValues, pipelineEnabled, pipelineStageName, days]
+    [step, campaignField, revenueField, selectedValues, pipelineEnabled, pipelineStageName, dateField, days]
   );
   const reviewPreviewFiredKeyRef = useRef<string | null>(null);
   useEffect(() => {
@@ -698,6 +699,7 @@ export function SalesforceRevenueWizard(props: {
           selectedValues,
           revenueField,
           days,
+          dateField,
           limit: 25,
           pipelineEnabled,
           pipelineStageName: pipelineEnabled ? pipelineStageName : null,

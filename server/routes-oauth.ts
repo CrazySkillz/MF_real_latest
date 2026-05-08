@@ -12174,6 +12174,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selected: string[] = Array.isArray(selectedValues) ? selectedValues.map((v: any) => String(v).trim()).filter(Boolean) : [];
       const rangeDays = Math.min(Math.max(parseInt(String(days || '90'), 10) || 90, 1), 3650);
       const rowLimit = Math.min(Math.max(parseInt(String(limit || '25'), 10) || 25, 5), 200);
+      const dateFieldChoice = ["CloseDate", "CreatedDate", "LastModifiedDate"].includes(String((req.body as any)?.dateField || ""))
+        ? String((req.body as any).dateField)
+        : "CloseDate";
       const wantPipelinePreview = pipelineEnabled === true && String(pipelineStageName || '').trim().length > 0;
       const pipelineStage = String(pipelineStageName || '').trim();
 
@@ -12205,7 +12208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             'Id',
             'Name',
             'StageName',
-            'CloseDate',
+            dateFieldChoice,
             attribField,
             revenue,
             ...(includeCurrency ? ['CurrencyIsoCode'] : []),
@@ -12218,7 +12221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             'Id',
             'Name',
             'StageName',
-            'CloseDate',
+            dateFieldChoice,
             attribField,
             revenue,
             ...(includeCurrency ? ['CurrencyIsoCode'] : []),
@@ -12228,8 +12231,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           `SELECT ${baseFields.join(', ')} ` +
           `FROM Opportunity ` +
           // Use IsWon instead of StageName. Stage labels vary per org.
-          `WHERE IsWon = true AND CloseDate = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
-          `ORDER BY CloseDate DESC ` +
+          `WHERE IsWon = true AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
+          `ORDER BY ${dateFieldChoice} DESC ` +
           `LIMIT ${rowLimit}`;
         return { soql, headers: baseFields };
       };
@@ -12874,8 +12877,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           selectedValues: selected,
           revenueField: revenue,
           days: rangeDays,
+          dateField: dateFieldChoice,
           revenueClassification,
           lastTotalRevenue: Number(totalRevenue.toFixed(2)),
+          lastSyncedAt: new Date().toISOString(),
+          dailyMaterialization: platformCtx === "ga4" && revenueByDate.size > 0 ? "selected_date_field_v1" : null,
           pipelineEnabled: !!pipelineEnabled,
           pipelineStageName: pipelineEnabled && pipelineStageName ? pipelineStageName : null,
           pipelineStageLabel: pipelineEnabled && pipelineStageLabel ? pipelineStageLabel : null,

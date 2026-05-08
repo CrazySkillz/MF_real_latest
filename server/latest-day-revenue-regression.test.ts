@@ -75,6 +75,23 @@ describe("Latest Day Revenue regression guard", () => {
     expect(schedulerFile).toContain("reprocessSalesforce(campaignId, sfCfg, String(salesforceSource.id))");
   });
 
+  it("Salesforce review preview and persisted source metadata use the selected date field", () => {
+    const clientFile = readFileSync(
+      join(process.cwd(), "client", "src", "components", "SalesforceRevenueWizard.tsx"),
+      "utf-8"
+    );
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    expect(clientFile).toContain("dateField,");
+    expect(routesFile).toContain('const dateFieldChoice = ["CloseDate", "CreatedDate", "LastModifiedDate"].includes');
+    expect(routesFile).toContain("`WHERE IsWon = true AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) `");
+    expect(routesFile).toContain("dateField: dateFieldChoice,");
+    expect(routesFile).toContain('dailyMaterialization: platformCtx === "ga4" && revenueByDate.size > 0 ? "selected_date_field_v1" : null,');
+  });
+
   it("spend-daily endpoints use strict daily records rather than source-type exclusions", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),

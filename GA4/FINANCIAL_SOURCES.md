@@ -658,6 +658,7 @@ The required pattern is:
 - review-step totals in CRM edit flows should refresh from the current preview inputs and should not let stale saved totals override fresh preview totals
 - Salesforce confirmed campaign-level provenance depends on `mappingConfig.campaignValueRevenueTotals`; Pipeline Proxy refresh/persistence must preserve that confirmed field and must not replace it with `pipelineValueRevenueTotals`
 - Salesforce confirmed campaign-level provenance is built from exact confirmed Opportunity records and requires the save/materialization query to select the attribution field as well as filter by it
+- Salesforce Review Settings preview should use the same selected date field as save/materialization so the displayed Total Revenue (to date) matches the source rows that will be persisted
 - if an Ad Comparison or Overview provenance entry is missing, trace the field `campaignValueRevenueTotals` from CRM save -> persisted revenue source -> `/revenue-sources` response -> frontend merge -> table render before changing UI
 - `Manual` edit should overwrite the saved snapshot amount and then recompute downstream values
 - existing stored `Manual` spend edit should label the action `Update spend` and keep it disabled until the amount changes

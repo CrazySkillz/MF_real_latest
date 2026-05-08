@@ -62,6 +62,19 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).toContain("HubSpot access token missing and no refresh token available. Please reconnect HubSpot.");
   });
 
+  it("Salesforce refresh updates the saved revenue source instead of creating duplicates", () => {
+    const schedulerFile = readFileSync(
+      join(process.cwd(), "server", "auto-refresh-scheduler.ts"),
+      "utf-8"
+    );
+
+    expect(schedulerFile).toContain("async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {");
+    expect(schedulerFile).toContain("dateField: mappingConfig.dateField,");
+    expect(schedulerFile).toContain("...(sourceId ? { sourceId } : {}),");
+    expect(schedulerFile).toContain('String(s.sourceType || "").toLowerCase() === "salesforce"');
+    expect(schedulerFile).toContain("reprocessSalesforce(campaignId, sfCfg, String(salesforceSource.id))");
+  });
+
   it("spend-daily endpoints use strict daily records rather than source-type exclusions", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),

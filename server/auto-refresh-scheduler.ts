@@ -98,7 +98,7 @@ async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, so
   return true;
 }
 
-async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
+async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {
   const body: AnyRecord = {
     campaignField: mappingConfig.campaignField,
     selectedValues: mappingConfig.selectedValues,
@@ -106,10 +106,12 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord)
     conversionValueField: mappingConfig.conversionValueField,
     valueSource: mappingConfig.valueSource,
     days: mappingConfig.days,
+    dateField: mappingConfig.dateField,
     pipelineEnabled: mappingConfig.pipelineEnabled,
     pipelineStageName: mappingConfig.pipelineStageName,
     pipelineStageLabel: mappingConfig.pipelineStageLabel,
     platformContext: mappingConfig.platformContext,
+    ...(sourceId ? { sourceId } : {}),
     ...(Array.isArray(mappingConfig.campaignMappings) && mappingConfig.campaignMappings.length > 0
       ? { campaignMappings: mappingConfig.campaignMappings }
       : {}),
@@ -458,15 +460,19 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
         }
         if (hubspotRevenueSources.length === 0) skipped++;
 
-        // Salesforce
-        const sf = await storage.getSalesforceConnection(campaignId);
-        const sfCfg = safeJsonParse(sf?.mappingConfig);
-        if (sf && (sf as any).isActive !== false && sfCfg?.selectedValues?.length) {
-          attempted++;
-          if (await reprocessSalesforce(campaignId, sfCfg)) { succeeded++; anyUpdated = true; }
-        } else {
-          skipped++;
+        // Salesforce revenue sources are the source of truth for saved campaign mappings.
+        const salesforceRevenueSources = (await storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]))
+          .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "salesforce");
+        for (const salesforceSource of salesforceRevenueSources) {
+          const sfCfg = safeJsonParse(salesforceSource?.mappingConfig);
+          if (sfCfg?.selectedValues?.length) {
+            attempted++;
+            if (await reprocessSalesforce(campaignId, sfCfg, String(salesforceSource.id))) { succeeded++; anyUpdated = true; }
+          } else {
+            skipped++;
+          }
         }
+        if (salesforceRevenueSources.length === 0) skipped++;
 
         // Shopify
         const shop = await storage.getShopifyConnection(campaignId);

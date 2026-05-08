@@ -40,6 +40,8 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).toContain('sourceId: z.string().trim().optional(),');
     expect(routesFile).toContain('if (requestedSourceId) return String((s as any).id || "") === requestedSourceId;');
     expect(routesFile).toContain('&& String(cfg?.dateField || "") === dateFieldChoice');
+    expect(routesFile).toContain('const isLegacyClosedWonOnly = hasCallerStageIds && effectiveStageIds.length === 1 && effectiveStageIds[0].toLowerCase() === "closedwon";');
+    expect(routesFile).toContain('if (derived.length > 0 && (!hasCallerStageIds || isLegacyClosedWonOnly)) effectiveStageIds = derived;');
     expect(routesFile).toContain('isEligibleForLatestDayRevenue(source)');
     expect(routesFile).toContain('storage.getRevenueBreakdownBySource(campaignId, date, date, "ga4")');
   });

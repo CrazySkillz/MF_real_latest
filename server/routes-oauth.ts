@@ -13765,20 +13765,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // - linkedin: non-lost stages (so "revenue" can reflect pipeline/opps too, per exec expectation)
       // - ga4: closed-won-ish stages (finance-grade)
       let effectiveStageIds: string[] = Array.isArray(stageIds) && stageIds.length > 0 ? stageIds.map((v: any) => String(v)) : ['closedwon'];
-      if (!Array.isArray(stageIds) || stageIds.length === 0) {
-        try {
-          const pipelinesResp = await fetch('https://api.hubapi.com/crm/v3/pipelines/deals', {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-          const pipelinesJson: any = await pipelinesResp.json().catch(() => ({}));
-          if (pipelinesResp.ok) {
-            const pipelines = Array.isArray(pipelinesJson?.results) ? pipelinesJson.results : [];
-            const derived = platformCtx === "linkedin" ? deriveDefaultNonLostStageIds(pipelines) : deriveDefaultClosedWonStageIds(pipelines);
-            if (derived.length > 0) effectiveStageIds = derived;
-          }
-        } catch {
-          // ignore
+      try {
+        const pipelinesResp = await fetch('https://api.hubapi.com/crm/v3/pipelines/deals', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const pipelinesJson: any = await pipelinesResp.json().catch(() => ({}));
+        if (pipelinesResp.ok) {
+          const pipelines = Array.isArray(pipelinesJson?.results) ? pipelinesJson.results : [];
+          const derived = platformCtx === "linkedin" ? deriveDefaultNonLostStageIds(pipelines) : deriveDefaultClosedWonStageIds(pipelines);
+          const hasCallerStageIds = Array.isArray(stageIds) && stageIds.length > 0;
+          const isLegacyClosedWonOnly = hasCallerStageIds && effectiveStageIds.length === 1 && effectiveStageIds[0].toLowerCase() === "closedwon";
+          if (derived.length > 0 && (!hasCallerStageIds || isLegacyClosedWonOnly)) effectiveStageIds = derived;
         }
+      } catch {
+        // ignore
       }
 
       const startMs = Date.now() - rangeDays * 24 * 60 * 60 * 1000;

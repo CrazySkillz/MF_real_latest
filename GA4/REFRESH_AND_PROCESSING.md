@@ -117,6 +117,7 @@ CRM auto-reprocess rule:
 
 - saved HubSpot and Salesforce mappings should be reprocessed by the daily auto-refresh scheduler without requiring a user to manually reopen and save the wizard
 - HubSpot auto-reprocess should use active HubSpot revenue source mappings as the source of truth and pass the stable revenue `sourceId`
+- HubSpot auto-reprocess should self-heal legacy `stageIds:["closedwon"]` mappings by resolving the account's current Closed Won stage IDs before querying deals
 - the scheduler may use an internal same-process authorization path for its own loopback requests
 - internal scheduler self-calls should use same-process loopback so the internal auto-refresh token is accepted by campaign access checks
 - public HubSpot and Salesforce save-mapping endpoints must still require normal user authentication and campaign access

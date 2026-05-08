@@ -12554,11 +12554,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If fetchOppRecords returned an Express response (error), stop here.
       if (!fetched || typeof (fetched as any).includeCurrency !== 'boolean') return;
       const { records, includeCurrency } = fetched as any;
+      const matchedSelectedValues = new Set<string>();
       for (const rec of records) {
         const rRaw = readField(rec, revenue);
         const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
         if (Number.isFinite(r)) totalRevenue += r;
         const campaignValue = String(readField(rec, attribField) || "").trim();
+        if (campaignValue) matchedSelectedValues.add(campaignValue);
         if (Number.isFinite(r) && campaignValue) {
           campaignValueRevenueTotals.set(campaignValue, (campaignValueRevenueTotals.get(campaignValue) || 0) + r);
         }
@@ -12964,6 +12966,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: "Salesforce revenue was fetched but no daily revenue records were materialized." });
       }
       const materializedDates = Array.from(revenueByDate.keys()).sort();
+      const unmatchedSelectedValues = selected.filter((value) => !matchedSelectedValues.has(value));
 
       // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.
       await recomputeCampaignDerivedValues(campaignId);
@@ -12977,6 +12980,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency: currencies.size === 1 ? Array.from(currencies)[0] : null,
         materializedRecordCount,
         materializedDates,
+        unmatchedSelectedValues,
         sessionId: latestSession?.id || null,
       });
     } catch (error: any) {

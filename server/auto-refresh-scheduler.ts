@@ -124,11 +124,12 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord,
   const totalRevenue = Number(result.json?.totalRevenue || 0);
   const materializedRecordCount = Number(result.json?.materializedRecordCount || 0);
   const materializedDates = Array.isArray(result.json?.materializedDates) ? result.json.materializedDates.map(String) : [];
+  const unmatchedSelectedValues = Array.isArray(result.json?.unmatchedSelectedValues) ? result.json.unmatchedSelectedValues.map(String) : [];
   if (totalRevenue > 0 && materializedRecordCount <= 0) {
     console.error(`[Auto Refresh] Salesforce reprocess produced no materialized revenue records for campaign ${campaignId}`);
     return false;
   }
-  console.log(`[Auto Refresh] Salesforce reprocess complete for campaign ${campaignId}: source=${sourceId || "new"}, totalRevenue=${totalRevenue}, materializedRecordCount=${materializedRecordCount}, dateField=${String(mappingConfig.dateField || "CloseDate")}, dates=${materializedDates.join(",") || "none"}`);
+  console.log(`[Auto Refresh] Salesforce reprocess complete for campaign ${campaignId}: source=${sourceId || "new"}, totalRevenue=${totalRevenue}, materializedRecordCount=${materializedRecordCount}, dateField=${String(mappingConfig.dateField || "CloseDate")}, dates=${materializedDates.join(",") || "none"}, unmatchedSelectedValues=${unmatchedSelectedValues.join(",") || "none"}`);
   return true;
 }
 

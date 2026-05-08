@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit';
+import { isInternalAutoRefreshRequest } from '../internal-request-auth';
 
 /**
  * Rate limiter for OAuth endpoints
@@ -15,7 +16,7 @@ export const oauthRateLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   // Skip rate limiting for test mode
   skip: (req) => {
-    return req.body?.isTestMode === true;
+    return req.body?.isTestMode === true || isInternalAutoRefreshRequest(req);
   }
 });
 

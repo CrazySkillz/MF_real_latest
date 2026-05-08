@@ -71,12 +71,17 @@ describe("Latest Day Revenue regression guard", () => {
       join(process.cwd(), "server", "auto-refresh-scheduler.ts"),
       "utf-8"
     );
+    const rateLimiterFile = readFileSync(
+      join(process.cwd(), "server", "middleware", "rateLimiter.ts"),
+      "utf-8"
+    );
 
     expect(schedulerFile).toContain("async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {");
     expect(schedulerFile).toContain("dateField: mappingConfig.dateField,");
     expect(schedulerFile).toContain("...(sourceId ? { sourceId } : {}),");
     expect(schedulerFile).toContain('String(s.sourceType || "").toLowerCase() === "salesforce"');
     expect(schedulerFile).toContain("reprocessSalesforce(campaignId, sfCfg, String(salesforceSource.id))");
+    expect(rateLimiterFile).toContain("isInternalAutoRefreshRequest(req)");
   });
 
   it("Salesforce review preview and persisted source metadata use the selected date field", () => {

@@ -14428,16 +14428,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   async function getHubspotAccessTokenForCampaign(campaignId: string): Promise<{ accessToken: string; connectionId: string }> {
     const conn: any = await storage.getHubspotConnection(campaignId);
-    if (!conn || !conn.accessToken) throw new Error('No HubSpot connection found');
+    if (!conn) throw new Error('No HubSpot connection found');
 
     let accessToken = conn.accessToken;
-    try {
-      const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
-      if (shouldRefresh && conn.refreshToken) {
-        accessToken = await refreshHubspotToken(conn);
-      }
-    } catch {
-      // ignore and try existing token
+    const shouldRefresh = conn.expiresAt && new Date(conn.expiresAt).getTime() < Date.now() + (5 * 60 * 1000);
+    if ((!accessToken || shouldRefresh) && conn.refreshToken) {
+      accessToken = await refreshHubspotToken(conn);
+    }
+    if (!accessToken) {
+      throw new Error('HubSpot access token missing and no refresh token available. Please reconnect HubSpot.');
     }
 
     return { accessToken, connectionId: String(conn.id) };

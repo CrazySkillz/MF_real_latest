@@ -51,8 +51,15 @@ describe("Latest Day Revenue regression guard", () => {
       join(process.cwd(), "server", "auto-refresh-scheduler.ts"),
       "utf-8"
     );
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
 
     expect(schedulerFile).toContain("dateField: mappingConfig.dateField,");
+    expect(routesFile).toContain("if ((!accessToken || shouldRefresh) && conn.refreshToken) {");
+    expect(routesFile).toContain("accessToken = await refreshHubspotToken(conn);");
+    expect(routesFile).toContain("HubSpot access token missing and no refresh token available. Please reconnect HubSpot.");
   });
 
   it("spend-daily endpoints use strict daily records rather than source-type exclusions", () => {

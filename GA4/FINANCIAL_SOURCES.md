@@ -305,6 +305,8 @@ Important meaning:
 - this path is sensitive because it can include currency validation and attribution-field matching
 - in edit mode, Salesforce revenue must preserve the existing revenue `sourceId` all the way through the save request so the system updates the existing source instead of creating an additive duplicate
 - Salesforce review-step `Total Revenue (to date)` should prefer fresh preview data from the current edit session over stored `lastTotalRevenue` values from the previous save
+- Salesforce review-step `Total Revenue (to date)` must use the preview endpoint's full matched total, not the limited sample rows shown in the preview table
+- Salesforce edit mode must default missing legacy `dateField` values back to `CloseDate` so external Close Date changes materialize onto the expected Latest Day Revenue date
 - Salesforce confirmed revenue uses the saved attribution values plus the selected date field and treats opportunities as won when Salesforce returns `IsWon = true` or the stage name starts with `Closed Won`, so Review Settings, save/materialization, scheduler refresh, and Latest Day Revenue stay aligned for orgs with custom Closed Won stage labels
 - the first Salesforce `Source` step should show `Total Revenue + Pipeline (Proxy)` above `Total Revenue only (no Pipeline card)` and default to the pipeline option in new connect mode
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue

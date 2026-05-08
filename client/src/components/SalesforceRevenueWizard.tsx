@@ -157,6 +157,7 @@ export function SalesforceRevenueWizard(props: {
   const [pipelinePreviewRows, setPipelinePreviewRows] = useState<string[][]>([]);
   const [previewCampaignCurrency, setPreviewCampaignCurrency] = useState<string | null>(null);
   const [previewDetectedCurrency, setPreviewDetectedCurrency] = useState<string | null>(null);
+  const [previewTotalRevenue, setPreviewTotalRevenue] = useState<number | null>(null);
   const [previewCurrencyMismatch, setPreviewCurrencyMismatch] = useState<boolean>(false);
   const [previewCurrencyDebugSteps, setPreviewCurrencyDebugSteps] = useState<any[] | null>(null);
   const [previewBuild, setPreviewBuild] = useState<string | null>(null);
@@ -252,7 +253,7 @@ export function SalesforceRevenueWizard(props: {
     // when user navigates back (API may be unavailable with expired tokens)
     setUniqueValues(nextSelectedValues.map((v) => ({ value: v, count: 0 })));
     setDays(nextDays); // persisted value when editing; no setter exposed in UI
-    if ((cfg as any).dateField) setDateField(String((cfg as any).dateField));
+    setDateField((cfg as any).dateField ? String((cfg as any).dateField) : "CloseDate");
     setLastSaveResult(null);
     // Edit mode: jump to review so user sees current settings with preview
     setStep("review");
@@ -633,6 +634,7 @@ export function SalesforceRevenueWizard(props: {
   // Returns a number (including 0) when data is available, null when no data yet
   const reviewRevenue = useMemo(() => {
     if (lastSaveResult?.totalRevenue != null) return Number(lastSaveResult.totalRevenue);
+    if (Number.isFinite(Number(previewTotalRevenue))) return Number(previewTotalRevenue);
     if (previewHeaders.length > 0) {
       const amtIdx = previewHeaders.findIndex((h) => h.toLowerCase() === "amount" || h === revenueField);
       if (amtIdx >= 0) {
@@ -651,7 +653,7 @@ export function SalesforceRevenueWizard(props: {
       return 0;
     }
     return null;
-  }, [lastSaveResult, initialMappingConfig, previewRows, previewHeaders, revenueField]);
+  }, [lastSaveResult, previewTotalRevenue, initialMappingConfig, previewRows, previewHeaders, revenueField]);
 
   const reviewPipelineProxyAmount = useMemo(() => {
     if (!pipelineEnabled) return null;
@@ -709,6 +711,7 @@ export function SalesforceRevenueWizard(props: {
       if (!resp.ok) throw new Error(json?.error || "Failed to load preview");
       setPreviewHeaders(Array.isArray(json?.headers) ? json.headers : []);
       setPreviewRows(Array.isArray(json?.rows) ? json.rows : []);
+      setPreviewTotalRevenue(Number.isFinite(Number(json?.totalRevenue)) ? Number(json.totalRevenue) : null);
       const pp = json?.pipelinePreview || null;
       if (pp?.error) {
         setPipelinePreviewError(String(pp.error));
@@ -732,6 +735,7 @@ export function SalesforceRevenueWizard(props: {
       setPreviewError(err?.message || "Failed to load preview");
       setPreviewHeaders([]);
       setPreviewRows([]);
+      setPreviewTotalRevenue(null);
       setPipelinePreviewError(null);
       setPipelinePreviewHeaders([]);
       setPipelinePreviewRows([]);

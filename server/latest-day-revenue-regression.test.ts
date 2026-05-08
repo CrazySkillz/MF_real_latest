@@ -86,9 +86,12 @@ describe("Latest Day Revenue regression guard", () => {
     );
 
     expect(clientFile).toContain("dateField,");
+    expect(clientFile).toContain("setDateField((cfg as any).dateField ? String((cfg as any).dateField) : \"CloseDate\");");
+    expect(clientFile).toContain("if (Number.isFinite(Number(previewTotalRevenue))) return Number(previewTotalRevenue);");
     expect(routesFile).toContain('const dateFieldChoice = ["CloseDate", "CreatedDate", "LastModifiedDate"].includes');
     expect(routesFile).toContain("const wonClause = `(IsWon = true OR StageName LIKE 'Closed Won%')`;");
     expect(routesFile).toContain("`WHERE ${wonClause} AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) `");
+    expect(routesFile).toContain("totalRevenue: Number(totalRevenue.toFixed(2)),");
     expect(routesFile).toContain("dateField: dateFieldChoice,");
     expect(routesFile).toContain('dailyMaterialization: platformCtx === "ga4" && revenueByDate.size > 0 ? "selected_date_field_v1" : null,');
   });

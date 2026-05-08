@@ -12233,7 +12233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           `FROM Opportunity ` +
           `WHERE ${wonClause} AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) ` +
           `ORDER BY ${dateFieldChoice} DESC ` +
-          `LIMIT ${rowLimit}`;
+          `LIMIT 2000`;
         return { soql, headers: baseFields };
       };
 
@@ -12258,7 +12258,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const headers = result.headers;
       const records = result.records || [];
-      const rows = records.map((r: any) => headers.map((h: string) => String(readField(r, h) ?? '')));
+      const totalRevenue = records.reduce((sum: number, r: any) => {
+        const raw = readField(r, revenue);
+        const value = raw === undefined || raw === null ? NaN : Number(String(raw).replace(/[^0-9.\-]/g, ''));
+        return Number.isFinite(value) ? sum + value : sum;
+      }, 0);
+      const rows = records.slice(0, rowLimit).map((r: any) => headers.map((h: string) => String(readField(r, h) ?? '')));
 
       // Optional pipeline preview: Opportunities currently in selected stage (not filtered to IsWon).
       let pipelinePreview: any = null;
@@ -12329,6 +12334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         headers,
         rows,
         rowCount: rows.length,
+        totalRevenue: Number(totalRevenue.toFixed(2)),
         pipelinePreview,
         campaignCurrency,
         detectedCurrency,

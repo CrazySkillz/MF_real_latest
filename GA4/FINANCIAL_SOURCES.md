@@ -258,6 +258,7 @@ Important meaning:
 - `Last Modified Date` is useful when the user wants revenue tied to recently updated deals
 - `Created Date` is useful when the user wants revenue tied to when opportunities first entered HubSpot
 - in GA4, confirmed HubSpot revenue should materialize as true daily rows by each matched deal's selected `Date field`, rather than as one synthetic snapshot row
+- HubSpot date fields must be normalized before daily materialization because HubSpot may return date properties as either ISO/date strings or epoch-millisecond strings
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, the confirmed/won HubSpot revenue portion still remains eligible for `Latest Day Revenue` when it has true daily rows; only the open Pipeline Proxy amount is excluded
 - the Pipeline Proxy stage filters the already selected HubSpot campaign values; it does not create a separate campaign-selection path

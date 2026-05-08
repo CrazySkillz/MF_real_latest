@@ -750,6 +750,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const y = m2[3];
       return `${y}-${mo}-${d}`;
     }
+    if (/^\d{10,13}$/.test(s)) {
+      const n = Number(s);
+      const dt = new Date(s.length === 10 ? n * 1000 : n);
+      if (!Number.isNaN(dt.getTime())) {
+        const y = dt.getUTCFullYear();
+        const mo = String(dt.getUTCMonth() + 1).padStart(2, "0");
+        const d = String(dt.getUTCDate()).padStart(2, "0");
+        return `${y}-${mo}-${d}`;
+      }
+    }
     const dt = new Date(s);
     if (!Number.isNaN(dt.getTime())) {
       const y = dt.getUTCFullYear();
@@ -13826,7 +13836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
           if (!Number.isFinite(r)) continue;
           totalRevenue += r;
-          const revenueDate = String(props?.[dateFieldChoice] || "").trim().slice(0, 10);
+          const revenueDate = normalizeDate(props?.[dateFieldChoice]);
           if (revenueDate) revenueByCloseDate.set(revenueDate, (revenueByCloseDate.get(revenueDate) || 0) + r);
           const campaignValue = String(props[campaignProp] || "").trim();
           if (campaignValue) campaignValueRevenueTotals.set(campaignValue, (campaignValueRevenueTotals.get(campaignValue) || 0) + r);

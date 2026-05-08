@@ -33,7 +33,8 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).toContain('if (sourceType === "hubspot") {');
     expect(routesFile).toContain('if (cfg?.pipelineEnabled === true) return String(cfg?.dailyMaterialization || "") === "selected_date_field_v1";');
     expect(routesFile).toContain('const date = String(req.query.date || "").trim() || yesterdayUTC();');
-    expect(routesFile).toContain('const revenueDate = String(props?.[dateFieldChoice] || "").trim().slice(0, 10);');
+    expect(routesFile).toContain('const revenueDate = normalizeDate(props?.[dateFieldChoice]);');
+    expect(routesFile).toContain('if (/^\\d{10,13}$/.test(s)) {');
     expect(routesFile).toContain('dailyMaterialization: platformCtx === "ga4" && revenueByCloseDate.size > 0 ? "selected_date_field_v1" : null,');
     expect(routesFile).toContain('if (platformCtx === "ga4" && revenueByCloseDate.size > 0) {');
     expect(routesFile).toContain('sourceId: z.string().trim().optional(),');

@@ -12967,6 +12967,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const materializedDates = Array.from(revenueByDate.keys()).sort();
       const unmatchedSelectedValues = selected.filter((value) => !matchedSelectedValues.has(value));
+      const unmatchedSelectedDiagnostics: any[] = [];
+      if (unmatchedSelectedValues.length > 0) {
+        try {
+          const unmatchedQuoted = unmatchedSelectedValues.map((v) => `'${String(v).replace(/'/g, "\\'")}'`).join(",");
+          const soql =
+            `SELECT Id, ${attribField}, StageName, IsWon, ${dateFieldChoice}, ${revenue} ` +
+            `FROM Opportunity ` +
+            `WHERE ${attribField} IN (${unmatchedQuoted}) ` +
+            `LIMIT 25`;
+          const url = `${instanceUrl}/services/data/${version}/query?q=${encodeURIComponent(soql)}`;
+          const diagResp = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const diagJson: any = await diagResp.json().catch(() => ({}));
+          const diagRecords = Array.isArray(diagJson?.records) ? diagJson.records : [];
+          for (const rec of diagRecords) {
+            unmatchedSelectedDiagnostics.push({
+              value: String(readField(rec, attribField) || ""),
+              stage: String(rec?.StageName || ""),
+              isWon: rec?.IsWon === true,
+              date: String(rec?.[dateFieldChoice] || ""),
+              amount: String(readField(rec, revenue) ?? ""),
+            });
+          }
+        } catch {
+          // Diagnostics only; do not change materialization behavior.
+        }
+      }
 
       // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.
       await recomputeCampaignDerivedValues(campaignId);
@@ -12981,6 +13007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         materializedRecordCount,
         materializedDates,
         unmatchedSelectedValues,
+        unmatchedSelectedDiagnostics,
         sessionId: latestSession?.id || null,
       });
     } catch (error: any) {

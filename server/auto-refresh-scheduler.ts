@@ -125,11 +125,15 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord,
   const materializedRecordCount = Number(result.json?.materializedRecordCount || 0);
   const materializedDates = Array.isArray(result.json?.materializedDates) ? result.json.materializedDates.map(String) : [];
   const unmatchedSelectedValues = Array.isArray(result.json?.unmatchedSelectedValues) ? result.json.unmatchedSelectedValues.map(String) : [];
+  const unmatchedSelectedDiagnostics = Array.isArray(result.json?.unmatchedSelectedDiagnostics) ? result.json.unmatchedSelectedDiagnostics : [];
   if (totalRevenue > 0 && materializedRecordCount <= 0) {
     console.error(`[Auto Refresh] Salesforce reprocess produced no materialized revenue records for campaign ${campaignId}`);
     return false;
   }
   console.log(`[Auto Refresh] Salesforce reprocess complete for campaign ${campaignId}: source=${sourceId || "new"}, totalRevenue=${totalRevenue}, materializedRecordCount=${materializedRecordCount}, dateField=${String(mappingConfig.dateField || "CloseDate")}, dates=${materializedDates.join(",") || "none"}, unmatchedSelectedValues=${unmatchedSelectedValues.join(",") || "none"}`);
+  if (unmatchedSelectedDiagnostics.length > 0) {
+    console.log(`[Auto Refresh] Salesforce unmatched diagnostics for campaign ${campaignId}: ${JSON.stringify(unmatchedSelectedDiagnostics)}`);
+  }
   return true;
 }
 

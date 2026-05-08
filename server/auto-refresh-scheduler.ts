@@ -23,10 +23,7 @@ import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 type AnyRecord = Record<string, any>;
 
 function getServerBaseUrl(): string {
-  // Prefer explicit base URL when deployed behind a proxy.
-  const explicit = (process.env.INTERNAL_API_BASE_URL || "").trim();
-  if (explicit) return explicit.replace(/\/+$/, "");
-
+  // Internal auto-refresh auth is intentionally loopback-only.
   const port = String(process.env.PORT || "5000");
   return `http://127.0.0.1:${port}`;
 }

@@ -68,6 +68,13 @@ The KPI grid is the detailed record of KPI state.
 
 The executive snapshot tracker is a summary derived from the KPI grid, not a separate source of truth.
 
+When editing an existing KPI:
+
+- the edit modal should highlight the matching predefined KPI tile when the KPI maps to a standard template
+- custom KPIs should not force-highlight a predefined tile
+- opening edit mode should not auto-select or visually highlight the KPI name input text
+- the KPI name field remains editable, but template selection should be visually represented by the tile grid
+
 ## KPI Value Sources
 
 KPI current values are driven by the same live data model as the GA4 page:
@@ -163,6 +170,8 @@ Expected behavior:
 - opening the bell, opening Notifications, or simply loading the GA4 page should not be relied on as the reconciliation trigger for restoring a missing GA4 in-app alert row
 - if the KPI unit is `count`, alert text should omit the literal word `count` in bell, Notifications, and email output
 - alert text should use the same human-readable number style as KPI cards rather than raw parenthesized decimals
+- alert emails should include both client and campaign context when the campaign is known
+- alert email action text should use the display label `KPI`, not lowercase `kpi`
 - example alert text:
   `Client: Test_client`
   `Campaign: myGA4`

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData, useQueries } from "@tanstack/react-query";
-import { useState, useCallback, useEffect, useLayoutEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useLocation, useRoute } from "wouter";
 import { ArrowLeft, BarChart3, Users, MousePointer, TrendingUp, Clock, Globe, Target, Plus, X, Trash2, Edit, Pencil, MoreVertical, TrendingDown, DollarSign, BadgeCheck, AlertTriangle, AlertCircle, CheckCircle2, Download, FileText, Settings, Activity, Info, Trophy } from "lucide-react";
 import { Link } from "wouter";
@@ -216,6 +216,7 @@ export default function GA4Metrics() {
   const [showCreateBenchmark, setShowCreateBenchmark] = useState(false);
   const [selectedBenchmarkTemplate, setSelectedBenchmarkTemplate] = useState<any>(null);
   const [editingBenchmark, setEditingBenchmark] = useState<Benchmark | null>(null);
+  const benchmarkEditFocusRestoreRef = useRef(false);
   const [showGA4ReportModal, setShowGA4ReportModal] = useState(false);
   const [ga4ReportModalStep, setGa4ReportModalStep] = useState<"standard" | "custom">("standard");
   const [editingGA4ReportId, setEditingGA4ReportId] = useState<string | null>(null);
@@ -992,6 +993,7 @@ export default function GA4Metrics() {
   };
 
   const handleEditBenchmark = (benchmark: Benchmark) => {
+    benchmarkEditFocusRestoreRef.current = true;
     setEditingBenchmark(benchmark);
     setShowCreateBenchmark(true);
     const metric = (benchmark as any).metric || "";
@@ -6180,7 +6182,14 @@ export default function GA4Metrics() {
                           </Button>
                         </DialogTrigger>
                         {/* Avoid forcing extreme z-index here; it can cause Radix Select menus to render behind the modal. */}
-                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border p-6">
+                        <DialogContent
+                          className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border p-6"
+                          onCloseAutoFocus={(event) => {
+                            if (!benchmarkEditFocusRestoreRef.current) return;
+                            event.preventDefault();
+                            benchmarkEditFocusRestoreRef.current = false;
+                          }}
+                        >
                           <DialogClose className="absolute right-4 top-4 rounded-full p-2 bg-muted hover:bg-muted dark:hover:bg-slate-700 transition-colors z-[60]">
                             <X className="h-4 w-4 text-muted-foreground/70" />
                             <span className="sr-only">Close</span>

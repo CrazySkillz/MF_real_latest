@@ -16,4 +16,14 @@ describe("GA4 KPI edit modal regression guard", () => {
     expect(source).toContain("setSelectedKPITemplate(getKpiTemplateForEdit(kpi));");
     expect(source).toContain("if (editingKPI) event.preventDefault();");
   });
+
+  it("does not restore focus to the top Create Benchmark trigger after benchmark edit closes", () => {
+    const source = readGa4Metrics();
+
+    expect(source).toContain("const benchmarkEditFocusRestoreRef = useRef(false);");
+    expect(source).toContain("benchmarkEditFocusRestoreRef.current = true;");
+    expect(source).toContain("onCloseAutoFocus={(event) => {");
+    expect(source).toContain("if (!benchmarkEditFocusRestoreRef.current) return;");
+    expect(source).toContain("benchmarkEditFocusRestoreRef.current = false;");
+  });
 });

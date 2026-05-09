@@ -166,6 +166,8 @@ Expected behavior:
 - opening the bell, opening Notifications, or simply loading the GA4 page should not be relied on as the reconciliation trigger for restoring a missing GA4 in-app alert row
 - if the benchmark unit is `count`, alert text should omit the literal word `count` in bell, Notifications, and email output
 - alert text should use the same human-readable number style as benchmark cards rather than raw parenthesized decimals
+- alert emails should include both client and campaign context when the campaign is known
+- alert email action text should use the display label `Benchmark`, not lowercase `benchmark`
 - example alert text:
   `Client: Test_client`
   `Campaign: myGA4`

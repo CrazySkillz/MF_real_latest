@@ -82,6 +82,28 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain("reviewPipelineProxyDisplayAmount != null");
   });
 
+  it("Shopify revenue supports order tags as an attribution key", () => {
+    const clientFile = readFileSync(
+      join(process.cwd(), "client", "src", "components", "ShopifyRevenueWizard.tsx"),
+      "utf-8"
+    );
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+    const schedulerFile = readFileSync(
+      join(process.cwd(), "server", "auto-refresh-scheduler.ts"),
+      "utf-8"
+    );
+
+    expect(clientFile).toContain('<SelectItem value="tags">Tags</SelectItem>');
+    expect(clientFile).toContain('if (campaignField === "tags") return "Tags";');
+    expect(routesFile).toContain("const getShopifyOrderTags = (order: any): string[] => {");
+    expect(routesFile).toContain('if (field === "tags") return getShopifyOrderTags(o)[0] || "";');
+    expect(routesFile).toContain('const values = field === "tags" ? getShopifyOrderTags(o) : [getFieldValue(o).trim()].filter(Boolean);');
+    expect(schedulerFile).toContain("campaignField: mappingConfig.campaignField,");
+  });
+
   it("Salesforce refresh updates the saved revenue source instead of creating duplicates", () => {
     const schedulerFile = readFileSync(
       join(process.cwd(), "server", "auto-refresh-scheduler.ts"),

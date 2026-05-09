@@ -108,6 +108,15 @@ export function ShopifyRevenueWizard(props: {
     return normalize({ campaignField, selectedValues, revenueMetric, campaignMappings }) !== normalize(initialMappingConfig);
   }, [campaignField, campaignMappings, initialMappingConfig, mode, revenueMetric, selectedValues]);
 
+  const campaignFieldLabel = useMemo(() => {
+    if (campaignField === "utm_campaign") return "UTM Campaign (recommended)";
+    if (campaignField === "utm_source") return "UTM Source";
+    if (campaignField === "utm_medium") return "UTM Medium";
+    if (campaignField === "discount_code") return "Discount code";
+    if (campaignField === "tags") return "Tags";
+    return campaignField;
+  }, [campaignField]);
+
   // Fetch LinkedIn campaigns when in linkedin context
   useEffect(() => {
     if (!isLinkedIn || !campaignId) return;
@@ -634,13 +643,14 @@ export function ShopifyRevenueWizard(props: {
               <Label>Attribution key</Label>
               <Select value={campaignField} onValueChange={(v) => setCampaignField(v)}>
                 <SelectTrigger>
-                  <span>{campaignField === "utm_campaign" ? "UTM Campaign (recommended)" : campaignField}</span>
+                  <span>{campaignFieldLabel}</span>
                 </SelectTrigger>
                 <SelectContent className="z-[10000]">
                   <SelectItem value="utm_campaign">UTM Campaign (recommended)</SelectItem>
                   <SelectItem value="utm_source">UTM Source</SelectItem>
                   <SelectItem value="utm_medium">UTM Medium</SelectItem>
                   <SelectItem value="discount_code">Discount code</SelectItem>
+                  <SelectItem value="tags">Tags</SelectItem>
                 </SelectContent>
               </Select>
               <div className="text-xs text-muted-foreground">

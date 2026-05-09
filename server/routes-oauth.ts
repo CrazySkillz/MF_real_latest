@@ -26415,6 +26415,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
   };
 
+  const getShopifyOrderTags = (order: any): string[] => {
+    return String(order?.tags || "")
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  };
+
   const getShopifyConnectionForCampaign = async (campaignId: string) => {
     const conn: any = await storage.getShopifyConnection(campaignId);
     if (!conn || !conn.isActive || !conn.accessToken || !conn.shopDomain) {
@@ -26484,6 +26491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const codes = Array.isArray(o?.discount_codes) ? o.discount_codes.map((d: any) => d?.code).filter(Boolean) : [];
           return codes.length > 0 ? String(codes[0]) : "";
         }
+        if (field === "tags") return getShopifyOrderTags(o)[0] || "";
         return "";
       };
 
@@ -26503,7 +26511,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const matchedOrders: any[] = [];
       const selectedSet = new Set(selected);
       for (const o of orders) {
-        const v = getFieldValue(o).trim();
+        const values = field === "tags" ? getShopifyOrderTags(o) : [getFieldValue(o).trim()].filter(Boolean);
+        const v = values.find((value) => selectedSet.has(value)) || "";
         if (!v || !selectedSet.has(v)) continue;
         matchedOrders.push(o);
         totalRevenue += getOrderAmount(o);
@@ -26767,6 +26776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "Total Price",
         "Currency",
         "Discount Codes",
+        "Tags",
         "Landing Site",
         "Referring Site",
         "UTM Campaign",
@@ -26787,6 +26797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "Total Price": o?.total_price || "",
           "Currency": o?.currency || "",
           "Discount Codes": discountCodes,
+          "Tags": getShopifyOrderTags(o).join(", "),
           "Landing Site": o?.landing_site || "",
           "Referring Site": o?.referring_site || "",
           "UTM Campaign": (utm as any).utm_campaign || "",
@@ -26842,16 +26853,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const codes = Array.isArray(o?.discount_codes) ? o.discount_codes.map((d: any) => d?.code).filter(Boolean) : [];
           return codes.length > 0 ? String(codes[0]) : "";
         }
+        if (field === "tags") return getShopifyOrderTags(o)[0] || "";
         return "";
       };
 
       const counts = new Map<string, number>();
       const sample: string[] = [];
       for (const o of orders) {
-        const v = getValue(o).trim();
-        if (!v) continue;
-        counts.set(v, (counts.get(v) || 0) + 1);
-        if (sample.length < 5 && !sample.includes(v)) sample.push(v);
+        const values = field === "tags" ? getShopifyOrderTags(o) : [getValue(o).trim()].filter(Boolean);
+        for (const v of values) {
+          counts.set(v, (counts.get(v) || 0) + 1);
+          if (sample.length < 5 && !sample.includes(v)) sample.push(v);
+        }
       }
 
       const values = Array.from(counts.entries())
@@ -26985,7 +26998,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectedSet = new Set(selected);
       const campaignValueRevenueTotals = new Map<string, number>();
       for (const o of orders) {
-        const v = getFieldValue(o).trim();
+        const values = field === "tags" ? getShopifyOrderTags(o) : [getFieldValue(o).trim()].filter(Boolean);
+        const v = values.find((value) => selectedSet.has(value)) || "";
         if (!v || !selectedSet.has(v)) continue;
         matchedOrders.push(o);
         const amt = getOrderAmounts(o);

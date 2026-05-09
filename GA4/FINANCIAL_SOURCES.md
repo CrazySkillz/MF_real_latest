@@ -221,6 +221,7 @@ Important meaning:
 
 - Shopify is an attribution workflow
 - the user is not entering a single total; they are defining how Shopify order revenue should belong to this campaign
+- Shopify attribution keys include `UTM Campaign`, `UTM Source`, `UTM Medium`, `Discount code`, and `Tags`; tags are matched as exact individual Shopify order tags and are useful for no-card admin validation because Shopify order tags can be edited directly in Shopify Admin
 - Shopify revenue edit mode should open on the saved `Review Settings` screen with the saved attribution key, selected Shopify values, revenue metric, and any saved campaign mappings populated
 - Shopify revenue edit mode should preserve the saved Shopify connection method on the first screen; token/Admin API connections should not fall back to showing OAuth when navigating back
 - if an older Shopify Admin API token connection is missing persisted connection-method metadata, Shopify status should recover the method from the stored token behavior so edit mode still reopens with `Admin API token` selected

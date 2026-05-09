@@ -4884,7 +4884,7 @@ export default function GA4Metrics() {
             <Link href={`/campaigns/${campaignId}`}>
               <Button variant="ghost" size="sm" className="mb-3">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Campaign
+                Back to main Campaign Overview
               </Button>
             </Link>
             <div className="flex items-center justify-between mb-6">

@@ -5223,7 +5223,7 @@ export default function CampaignDetail() {
                 <Link href="/campaigns">
                   <Button variant="ghost" size="sm">
                     <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Campaigns
+                    Back to All Campaigns
                   </Button>
                 </Link>
                 <Card>
@@ -5696,6 +5696,8 @@ export default function CampaignDetail() {
                 </div>
               </div>
 
+              {false && (
+              <>
               {/* Revenue & Spend Sources */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -6012,6 +6014,8 @@ export default function CampaignDetail() {
                   );
                 })()}
               </div>
+              </>
+              )}
 
               {/* Revenue Wizard Modal */}
               {campaign && (

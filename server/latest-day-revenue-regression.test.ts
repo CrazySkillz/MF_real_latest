@@ -114,6 +114,25 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain("rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: 0, mappingConfig: d.mappingConfig });");
   });
 
+  it("Total Revenue to-date endpoints include today's imported revenue records", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    const revenueToDateStart = routesFile.indexOf('app.get("/api/campaigns/:id/revenue-to-date"');
+    const revenueBreakdownStart = routesFile.indexOf('app.get("/api/campaigns/:id/revenue-breakdown"');
+    const spendBreakdownStart = routesFile.indexOf('app.get("/api/campaigns/:id/spend-breakdown"');
+    expect(revenueToDateStart).toBeGreaterThan(-1);
+    expect(revenueBreakdownStart).toBeGreaterThan(revenueToDateStart);
+    expect(spendBreakdownStart).toBeGreaterThan(revenueBreakdownStart);
+
+    const revenueToDateRoute = routesFile.slice(revenueToDateStart, revenueBreakdownStart);
+    const revenueBreakdownRoute = routesFile.slice(revenueBreakdownStart, spendBreakdownStart);
+    expect(revenueToDateRoute).toContain('const endDate = new Date().toISOString().slice(0, 10);');
+    expect(revenueBreakdownRoute).toContain('const endDate = new Date().toISOString().slice(0, 10);');
+  });
+
   it("Salesforce refresh updates the saved revenue source instead of creating duplicates", () => {
     const schedulerFile = readFileSync(
       join(process.cwd(), "server", "auto-refresh-scheduler.ts"),

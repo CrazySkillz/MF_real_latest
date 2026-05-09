@@ -1275,7 +1275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toISODateUTC((campaign as any)?.startDate) ||
         toISODateUTC((campaign as any)?.createdAt) ||
         "2020-01-01";
-      const endDate = yesterdayUTC();
+      const endDate = new Date().toISOString().slice(0, 10);
 
       const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext as "ga4" | "linkedin");
       res.json({ success: true, platformContext, startDate, endDate, ...totals });
@@ -1295,7 +1295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) return;
 
       const startDate = toISODateUTC((campaign as any)?.startDate) || toISODateUTC((campaign as any)?.createdAt) || "2020-01-01";
-      const endDate = yesterdayUTC();
+      const endDate = new Date().toISOString().slice(0, 10);
 
       const sources = await storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, platformContext as any);
       const totalRevenue = sources.reduce((sum: number, s: any) => sum + s.revenue, 0);

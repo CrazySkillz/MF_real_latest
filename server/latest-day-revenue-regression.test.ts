@@ -100,6 +100,7 @@ describe("Latest Day Revenue regression guard", () => {
 
     expect(clientFile).toContain("dateField,");
     expect(clientFile).toContain("setDateField((cfg as any).dateField ? String((cfg as any).dateField) : \"CloseDate\");");
+    expect(clientFile).toContain("setPreviewTotalRevenue(null);");
     expect(clientFile).toContain("if (Number.isFinite(Number(previewTotalRevenue))) return Number(previewTotalRevenue);");
     expect(clientFile).toContain("return hasEditChanges || previewTotalRevenue != null;");
     expect(routesFile).toContain('const dateFieldChoice = ["CloseDate", "CreatedDate", "LastModifiedDate"].includes');

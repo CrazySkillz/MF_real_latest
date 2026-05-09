@@ -260,6 +260,13 @@ export function SalesforceRevenueWizard(props: {
     setDays(nextDays); // persisted value when editing; no setter exposed in UI
     setDateField((cfg as any).dateField ? String((cfg as any).dateField) : "CloseDate");
     setLastSaveResult(null);
+    setPreviewHeaders([]);
+    setPreviewRows([]);
+    setPreviewTotalRevenue(null);
+    setPipelinePreviewHeaders([]);
+    setPipelinePreviewRows([]);
+    setPreviewError(null);
+    setPipelinePreviewError(null);
     // Edit mode: jump to review so user sees current settings with preview
     setStep("review");
   }, [campaignId, mode, initialMappingConfig]);

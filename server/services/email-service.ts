@@ -342,21 +342,10 @@ class EmailService {
               margin: 0 auto;
               padding: 20px;
             }
-            .header {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 30px;
-              border-radius: 8px 8px 0 0;
-              text-align: center;
-            }
-            .header h1 {
-              margin: 0;
-              font-size: 24px;
-            }
             .content {
               background: #f9fafb;
               padding: 30px;
-              border-radius: 0 0 8px 8px;
+              border-radius: 8px;
             }
             .alert-box {
               background: white;
@@ -390,9 +379,6 @@ class EmailService {
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>📊 Performance Alert</h1>
-          </div>
           <div class="content">
             <p>You're receiving this alert because a ${data.type.toUpperCase()} has ${conditionText} its configured threshold.</p>
             
@@ -406,13 +392,13 @@ class EmailService {
             </div>
             
             <p style="margin-top: 20px;">
-              <strong>Action Required:</strong> Review this ${data.type} in your MetricMind dashboard 
+              <strong>Action Required:</strong> Review this ${data.type} in your MimoSaaS dashboard
               and take appropriate action to address the issue.
             </p>
           </div>
           
           <div class="footer">
-            <p>This is an automated alert from MetricMind</p>
+            <p>This is an automated alert from MimoSaaS</p>
             <p>To manage your alert settings, log in to your dashboard</p>
           </div>
         </body>

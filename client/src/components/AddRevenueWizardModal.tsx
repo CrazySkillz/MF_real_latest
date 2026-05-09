@@ -602,8 +602,8 @@ export function AddRevenueWizardModal(props: {
         pipelineStageName: config?.pipelineStageName ? String(config.pipelineStageName) : undefined,
         pipelineStageLabel: config?.pipelineStageLabel ? String(config.pipelineStageLabel) : undefined,
         pipelineTotalToDate: Number.isFinite(Number(config?.pipelineTotalToDate)) ? Number(config.pipelineTotalToDate) : undefined,
-        lastTotalRevenue: Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue)
-          : Number.isFinite(Number(initialSource?.revenue)) ? Number(initialSource.revenue) : undefined,
+        lastTotalRevenue: initialSource?.revenue != null && Number.isFinite(Number(initialSource.revenue)) ? Number(initialSource.revenue)
+          : Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue) : undefined,
         dateField: config?.dateField ? String(config.dateField) : undefined,
       };
       setSalesforceInitialMappingConfig(next);

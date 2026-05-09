@@ -104,6 +104,16 @@ describe("Latest Day Revenue regression guard", () => {
     expect(schedulerFile).toContain("campaignField: mappingConfig.campaignField,");
   });
 
+  it("Revenue Sources modal keeps active source definitions visible when breakdown rows exist", () => {
+    const clientFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+
+    expect(clientFile).toContain("const shownIds = new Set(rows.map((s: any) => String(s.sourceId || \"\")));");
+    expect(clientFile).toContain("rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: 0, mappingConfig: d.mappingConfig });");
+  });
+
   it("Salesforce refresh updates the saved revenue source instead of creating duplicates", () => {
     const schedulerFile = readFileSync(
       join(process.cwd(), "server", "auto-refresh-scheduler.ts"),

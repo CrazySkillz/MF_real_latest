@@ -2028,13 +2028,20 @@ export default function GA4Metrics() {
 
     const breakdownSources = Array.isArray((revenueBreakdownResp as any)?.sources) ? (revenueBreakdownResp as any).sources : [];
     if (breakdownSources.length > 0) {
-      return breakdownSources.map((s: any) => ({
+      const rows = breakdownSources.map((s: any) => ({
         ...s,
         mappingConfig: defsMap.get(String(s.sourceId))?.mappingConfig
           || defsWithCampaignTotalsByType.get(String(s.sourceType || "").toLowerCase())?.mappingConfig
           || defsByType.get(String(s.sourceType || "").toLowerCase())?.mappingConfig
           || null,
       }));
+      const shownIds = new Set(rows.map((s: any) => String(s.sourceId || "")));
+      for (const d of defs.filter((d: any) => d?.isActive !== false)) {
+        if (!shownIds.has(String(d.id))) {
+          rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: 0, mappingConfig: d.mappingConfig });
+        }
+      }
+      return rows;
     }
     return defs.filter((d: any) => d?.isActive !== false).map((d: any) => ({
       sourceId: d.id,

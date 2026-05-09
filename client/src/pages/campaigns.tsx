@@ -675,7 +675,7 @@ export default function Campaigns() {
           const valsJson = await valsResp.json().catch(() => null);
           const vals = Array.isArray(valsJson?.campaigns) ? valsJson.campaigns : [];
           setGA4CampaignValues(vals);
-          setSelectedGA4CampaignValues(vals.length > 0 ? [vals[0].name] : []);
+          setSelectedGA4CampaignValues([]);
           setGa4ConfigSubStep('campaigns');
         } catch (e) {
           console.warn('Failed to fetch GA4 campaign values:', e);

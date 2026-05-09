@@ -1,17 +1,42 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { Building2, ChevronRight, Plus } from "lucide-react";
+import { Building2, ChevronRight, Plus, Trash2 } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import CreateClientModal from "@/components/modals/create-client-modal";
 import { useClient } from "@/lib/clientContext";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { clients, setSelectedClientId } = useClient();
+  const [clientToDelete, setClientToDelete] = useState<any | null>(null);
+  const { clients, selectedClientId, setSelectedClientId } = useClient();
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const deleteClientMutation = useMutation({
+    mutationFn: async (clientId: string) => {
+      const response = await apiRequest("DELETE", `/api/clients/${clientId}`);
+      const data = await response.json();
+      if (!data.success) throw new Error(data.message || "Failed to delete client");
+      return data;
+    },
+    onSuccess: (_data, clientId) => {
+      if (selectedClientId === clientId) setSelectedClientId(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      setClientToDelete(null);
+      toast({ title: "Client deleted", description: "Client and related campaigns were deleted." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Delete failed", description: error?.message || "Failed to delete client.", variant: "destructive" });
+    },
+  });
 
   const handleSelectClient = (clientId: string) => {
     setSelectedClientId(clientId);
@@ -53,29 +78,40 @@ export default function HomePage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {clients.map((client) => (
-                <button
-                  key={client.id}
-                  onClick={() => handleSelectClient(client.id)}
-                  className="w-full text-left p-5 bg-card rounded-2xl border border-border hover:border-blue-300 hover:shadow-sm transition-all group"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-                        style={{ background: "var(--gradient-primary)" }}
-                      >
-                        <Building2 className="w-6 h-6 text-white" />
+                <div key={client.id} className="relative">
+                  <button
+                    onClick={() => handleSelectClient(client.id)}
+                    className="w-full text-left p-5 bg-card rounded-2xl border border-border hover:border-blue-300 hover:shadow-sm transition-all group"
+                  >
+                    <div className="flex items-start justify-between gap-4 pr-10">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                          style={{ background: "var(--gradient-primary)" }}
+                        >
+                          <Building2 className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-foreground truncate">{client.name}</p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">
+                            Added {formatDistanceToNow(new Date(client.createdAt), { addSuffix: true })}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-foreground truncate">{client.name}</p>
-                        <p className="text-xs text-muted-foreground/70 mt-1">
-                          Added {formatDistanceToNow(new Date(client.createdAt), { addSuffix: true })}
-                        </p>
-                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors shrink-0" />
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors shrink-0" />
-                  </div>
-                </button>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-3 top-3 h-8 w-8 p-0"
+                    onClick={() => setClientToDelete(client)}
+                    disabled={deleteClientMutation.isPending}
+                    aria-label={`Delete ${client.name}`}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </Button>
+                </div>
               ))}
             </div>
           )}
@@ -83,6 +119,31 @@ export default function HomePage() {
       </div>
 
       <CreateClientModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <Dialog open={!!clientToDelete} onOpenChange={() => setClientToDelete(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-500" />
+              Delete Client
+            </DialogTitle>
+            <DialogDescription>
+              Delete <strong>{clientToDelete?.name}</strong>? This will permanently delete this client, its campaigns, analytics connections, notifications, reports, KPIs, and benchmarks.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="outline" onClick={() => setClientToDelete(null)} disabled={deleteClientMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => clientToDelete && deleteClientMutation.mutate(clientToDelete.id)}
+              disabled={deleteClientMutation.isPending}
+            >
+              {deleteClientMutation.isPending ? "Deleting..." : "Delete Client"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

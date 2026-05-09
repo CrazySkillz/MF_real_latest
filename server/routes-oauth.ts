@@ -5204,6 +5204,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/clients/:id", async (req, res) => {
+    try {
+      const actorId = getActorId(req as any);
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      }
+      const success = await storage.deleteClientCascade(actorId, req.params.id);
+      if (!success) {
+        return res.status(404).json({ success: false, message: "Client not found" });
+      }
+      res.json({ success: true, message: "Client deleted successfully" });
+    } catch (error) {
+      console.error("[Client Delete] Error:", error);
+      res.status(500).json({ success: false, message: "Failed to delete client" });
+    }
+  });
+
   app.get("/api/campaigns", async (req, res) => {
     try {
       const actorId = getActorId(req as any);
@@ -5400,26 +5417,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
-      const success = await storage.deleteCampaign(campaignId);
+      const success = await storage.deleteCampaignCascade(campaignId);
 
       if (!success) {
         return res.status(404).json({ message: "Campaign not found" });
-      }
-
-      // Also delete any associated GA4 connection
-      await storage.deleteGA4Connection(campaignId);
-
-      try {
-        const notifs = await storage.getNotifications().catch(() => []);
-        await Promise.all(
-          (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
-            if (String((n as any)?.campaignId || "") === String(campaignId)) {
-              await storage.deleteNotification(String((n as any).id));
-            }
-          })
-        );
-      } catch (e) {
-        console.warn("[Campaign Delete] Failed to cascade delete campaign notifications:", e);
       }
 
       res.json({ success: true, message: "Campaign deleted successfully" });

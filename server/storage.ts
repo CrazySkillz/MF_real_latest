@@ -1,7 +1,7 @@
-import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, notifications, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, notifications, emailAlertEvents, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, reportSnapshots, reportSendEvents, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
-import { eq, and, or, isNull, desc, sql, gte, lte } from "drizzle-orm";
+import { eq, and, or, isNull, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { buildEncryptedTokens, decryptTokens, type EncryptedTokens } from "./utils/tokenVault";
 
 const isProd = String(process.env.NODE_ENV || "").toLowerCase() === "production";
@@ -29,6 +29,7 @@ export interface IStorage {
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
   updateCampaign(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined>;
   deleteCampaign(id: string): Promise<boolean>;
+  deleteCampaignCascade(id: string): Promise<boolean>;
 
   // Metrics
   getMetrics(): Promise<Metric[]>;
@@ -375,6 +376,7 @@ export interface IStorage {
   // Clients
   getClients(ownerId: string): Promise<Client[]>;
   createClient(data: InsertClient): Promise<Client>;
+  deleteClientCascade(ownerId: string, clientId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -416,6 +418,91 @@ export class DatabaseStorage implements IStorage {
       .delete(campaigns)
       .where(eq(campaigns.id, id));
     return (result.rowCount || 0) > 0;
+  }
+
+  private async deleteCampaignChildren(campaignId: string, tx: any = db): Promise<void> {
+    const kpiRows = await tx.select({ id: kpis.id }).from(kpis).where(eq(kpis.campaignId, campaignId));
+    const kpiIds = kpiRows.map((row: any) => String(row.id));
+    if (kpiIds.length > 0) {
+      await tx.delete(kpiProgress).where(inArray(kpiProgress.kpiId, kpiIds));
+      await tx.delete(kpiAlerts).where(inArray(kpiAlerts.kpiId, kpiIds));
+      await tx.delete(kpiPeriods).where(inArray(kpiPeriods.kpiId, kpiIds));
+    }
+
+    const benchmarkRows = await tx.select({ id: benchmarks.id }).from(benchmarks).where(eq(benchmarks.campaignId, campaignId));
+    const benchmarkIds = benchmarkRows.map((row: any) => String(row.id));
+    if (benchmarkIds.length > 0) {
+      await tx.delete(benchmarkHistory).where(inArray(benchmarkHistory.benchmarkId, benchmarkIds));
+    }
+
+    const linkedInSessionRows = await tx.select({ id: linkedinImportSessions.id }).from(linkedinImportSessions).where(eq(linkedinImportSessions.campaignId, campaignId));
+    const linkedInSessionIds = linkedInSessionRows.map((row: any) => String(row.id));
+    if (linkedInSessionIds.length > 0) {
+      await tx.delete(linkedinImportMetrics).where(inArray(linkedinImportMetrics.sessionId, linkedInSessionIds));
+      await tx.delete(linkedinAdPerformance).where(inArray(linkedinAdPerformance.sessionId, linkedInSessionIds));
+    }
+
+    const linkedInReportRows = await tx.select({ id: linkedinReports.id }).from(linkedinReports).where(eq(linkedinReports.campaignId, campaignId));
+    const kpiReportRows = await tx.select({ id: kpiReports.id }).from(kpiReports).where(eq(kpiReports.campaignId, campaignId));
+    const reportIds = [...linkedInReportRows, ...kpiReportRows].map((row: any) => String(row.id));
+    if (reportIds.length > 0) {
+      await tx.delete(reportSendEvents).where(inArray(reportSendEvents.reportId, reportIds));
+      await tx.delete(reportSnapshots).where(inArray(reportSnapshots.reportId, reportIds));
+    }
+
+    const abTestRows = await tx.select({ id: abTests.id }).from(abTests).where(eq(abTests.campaignId, campaignId));
+    const abTestIds = abTestRows.map((row: any) => String(row.id));
+    if (abTestIds.length > 0) {
+      await tx.delete(abTestEvents).where(inArray(abTestEvents.testId, abTestIds));
+      await tx.delete(abTestResults).where(inArray(abTestResults.testId, abTestIds));
+      await tx.delete(abTestVariants).where(inArray(abTestVariants.testId, abTestIds));
+    }
+
+    await tx.delete(spendRecords).where(eq(spendRecords.campaignId, campaignId));
+    await tx.delete(revenueRecords).where(eq(revenueRecords.campaignId, campaignId));
+    await tx.delete(spendSources).where(eq(spendSources.campaignId, campaignId));
+    await tx.delete(revenueSources).where(eq(revenueSources.campaignId, campaignId));
+    await tx.delete(ga4DailyMetrics).where(eq(ga4DailyMetrics.campaignId, campaignId));
+    await tx.delete(linkedinDailyMetrics).where(eq(linkedinDailyMetrics.campaignId, campaignId));
+    await tx.delete(metaDailyMetrics).where(eq(metaDailyMetrics.campaignId, campaignId));
+    await tx.delete(googleAdsDailyMetrics).where(eq(googleAdsDailyMetrics.campaignId, campaignId));
+    await tx.delete(ga4Connections).where(eq(ga4Connections.campaignId, campaignId));
+    await tx.delete(googleSheetsConnections).where(eq(googleSheetsConnections.campaignId, campaignId));
+    await tx.delete(hubspotConnections).where(eq(hubspotConnections.campaignId, campaignId));
+    await tx.delete(salesforceConnections).where(eq(salesforceConnections.campaignId, campaignId));
+    await tx.delete(shopifyConnections).where(eq(shopifyConnections.campaignId, campaignId));
+    await tx.delete(linkedinConnections).where(eq(linkedinConnections.campaignId, campaignId));
+    await tx.delete(metaConnections).where(eq(metaConnections.campaignId, campaignId));
+    await tx.delete(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId));
+    await tx.delete(metaKpis).where(eq(metaKpis.campaignId, campaignId));
+    await tx.delete(metaBenchmarks).where(eq(metaBenchmarks.campaignId, campaignId));
+    await tx.delete(metaReports).where(eq(metaReports.campaignId, campaignId));
+    await tx.delete(linkedinImportSessions).where(eq(linkedinImportSessions.campaignId, campaignId));
+    await tx.delete(linkedinReports).where(eq(linkedinReports.campaignId, campaignId));
+    await tx.delete(reportSnapshots).where(eq(reportSnapshots.campaignId, campaignId));
+    await tx.delete(customIntegrationMetrics).where(eq(customIntegrationMetrics.campaignId, campaignId));
+    await tx.delete(customIntegrations).where(eq(customIntegrations.campaignId, campaignId));
+    await tx.delete(conversionEvents).where(eq(conversionEvents.campaignId, campaignId));
+    await tx.delete(kpis).where(eq(kpis.campaignId, campaignId));
+    await tx.delete(kpiReports).where(eq(kpiReports.campaignId, campaignId));
+    await tx.delete(benchmarks).where(eq(benchmarks.campaignId, campaignId));
+    await tx.delete(metricSnapshots).where(eq(metricSnapshots.campaignId, campaignId));
+    await tx.delete(abTests).where(eq(abTests.campaignId, campaignId));
+    await tx.delete(notifications).where(eq(notifications.campaignId, campaignId));
+    await tx.delete(emailAlertEvents).where(eq(emailAlertEvents.campaignId, campaignId));
+    await tx.delete(touchpoints).where(eq(touchpoints.campaignId, campaignId));
+    await tx.delete(attributionResults).where(eq(attributionResults.campaignId, campaignId));
+    await tx.delete(attributionInsights).where(eq(attributionInsights.campaignId, campaignId));
+  }
+
+  async deleteCampaignCascade(id: string): Promise<boolean> {
+    const existing = await this.getCampaign(id);
+    if (!existing) return false;
+    await db.transaction(async (tx: any) => {
+      await this.deleteCampaignChildren(id, tx);
+      await tx.delete(campaigns).where(eq(campaigns.id, id));
+    });
+    return true;
   }
 
   // Metrics methods
@@ -3222,6 +3309,32 @@ export class DatabaseStorage implements IStorage {
   async createClient(data: InsertClient): Promise<Client> {
     const [client] = await db.insert(clients).values(data).returning();
     return client;
+  }
+
+  async deleteClientCascade(ownerId: string, clientId: string): Promise<boolean> {
+    const [client] = await db
+      .select()
+      .from(clients)
+      .where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId)));
+    if (!client) return false;
+
+    const clientCampaigns = await db
+      .select({ id: campaigns.id })
+      .from(campaigns)
+      .where(and(
+        eq(campaigns.clientId, clientId),
+        or(eq(campaigns.ownerId, ownerId), isNull(campaigns.ownerId)),
+      ));
+
+    await db.transaction(async (tx: any) => {
+      for (const campaign of clientCampaigns) {
+        await this.deleteCampaignChildren(String(campaign.id), tx);
+        await tx.delete(campaigns).where(eq(campaigns.id, String(campaign.id)));
+      }
+      await tx.delete(clients).where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId)));
+    });
+
+    return true;
   }
 
   // A/B Test methods

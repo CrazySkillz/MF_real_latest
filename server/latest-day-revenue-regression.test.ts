@@ -109,7 +109,7 @@ describe("Latest Day Revenue regression guard", () => {
     expect(modalFile).toContain("lastTotalRevenue: initialSource?.revenue != null && Number.isFinite(Number(initialSource.revenue)) ? Number(initialSource.revenue)");
     expect(clientFile).toContain("const hasCurrentPreview = previewKey === reviewPreviewKey;");
     expect(clientFile).toContain("if (hasCurrentPreview && Number.isFinite(Number(previewTotalRevenue))) return Number(previewTotalRevenue);");
-    expect(clientFile).toContain("return hasEditChanges || previewTotalRevenue != null;");
+    expect(clientFile).toContain("Math.abs(currentPreviewTotal - storedTotal) >= 0.01");
     expect(routesFile).toContain('const dateFieldChoice = ["CloseDate", "CreatedDate", "LastModifiedDate"].includes');
     expect(routesFile).toContain("const wonClause = `(IsWon = true OR StageName LIKE 'Closed Won%')`;");
     expect(routesFile).toContain("`WHERE ${wonClause} AND ${dateFieldChoice} = LAST_N_DAYS:${rangeDays} AND ${attribField} IN (${quoted}) `");

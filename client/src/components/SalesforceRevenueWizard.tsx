@@ -164,11 +164,6 @@ export function SalesforceRevenueWizard(props: {
   const [previewKey, setPreviewKey] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const canUpdateRevenue = useMemo(() => {
-    if (mode !== "edit") return true;
-    return hasEditChanges || previewTotalRevenue != null;
-  }, [hasEditChanges, mode, previewTotalRevenue]);
-
   const steps = useMemo(
     () => pipelineEnabled ? [
       { id: "value-source" as const, label: "Source", icon: DollarSign },
@@ -633,6 +628,19 @@ export function SalesforceRevenueWizard(props: {
       }),
     [step, campaignField, revenueField, selectedValues, pipelineEnabled, pipelineStageName, dateField, days]
   );
+  const canUpdateRevenue = useMemo(() => {
+    if (mode !== "edit") return true;
+    const currentPreviewTotal = previewKey === reviewPreviewKey && previewTotalRevenue != null
+      ? Number(previewTotalRevenue)
+      : null;
+    const storedTotal = Number(initialMappingConfig?.lastTotalRevenue);
+    return hasEditChanges || (
+      currentPreviewTotal != null &&
+      Number.isFinite(currentPreviewTotal) &&
+      Number.isFinite(storedTotal) &&
+      Math.abs(currentPreviewTotal - storedTotal) >= 0.01
+    );
+  }, [hasEditChanges, initialMappingConfig, mode, previewKey, previewTotalRevenue, reviewPreviewKey]);
   const reviewPreviewFiredKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (step !== "review") return;

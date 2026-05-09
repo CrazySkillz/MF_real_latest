@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useRoute } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useClient } from "@/lib/clientContext";
 import { ArrowLeft, BarChart3, Users, MousePointer, DollarSign, FileSpreadsheet, ChevronDown, Settings, Target, Download, FileText, Calendar, PieChart, TrendingUp, TrendingDown, Copy, Share2, Filter, CheckCircle2, Clock, AlertCircle, GitCompare, Briefcase, Send, MessageCircle, Bot, User, Award, Plus, Edit2, Trash2, Pencil, Star, X, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
@@ -38,6 +39,7 @@ import { formatPct } from "@shared/metric-math";
 interface Campaign {
   id: string;
   name: string;
+  clientId?: string | null;
   clientWebsite?: string;
   label?: string;
   budget?: string;
@@ -4269,6 +4271,7 @@ export default function CampaignDetail() {
   const [, params] = useRoute("/campaigns/:id");
   const campaignId = params?.id;
   const { toast: toastHook } = useToast();
+  const { clients } = useClient();
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -4894,6 +4897,7 @@ export default function CampaignDetail() {
       </div>
     );
   }
+  const clientName = clients.find((client) => client.id === campaign.clientId)?.name || "—";
 
   const connectedPlatforms = platformMetrics.filter(p => p.connected);
   
@@ -5214,28 +5218,20 @@ export default function CampaignDetail() {
         <main className="flex-1 p-8">
           {/* Header */}
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
+            <div className="mb-6">
+              <div className="space-y-3">
                 <Link href="/campaigns">
                   <Button variant="ghost" size="sm">
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Campaigns
                   </Button>
                 </Link>
-                <div>
-                  <h1 className="text-3xl font-bold text-foreground">{campaign.name}</h1>
-                  <div className="flex items-center space-x-3 mt-2">
-                    {getStatusBadge(campaign.status)}
-                    {campaign.label && (
-                      <Badge variant="outline">{campaign.label}</Badge>
-                    )}
-                    {campaign.budget && (
-                      <span className="text-sm text-muted-foreground/70">
-                        Budget: {formatCurrency(campaign.budget)}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <Card>
+                  <CardContent className="p-4 text-sm text-muted-foreground/80 space-y-1">
+                    <div><span className="font-medium text-foreground">Client:</span> {clientName}</div>
+                    <div><span className="font-medium text-foreground">Campaign:</span> {campaign.name}</div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>

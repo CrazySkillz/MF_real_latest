@@ -32,12 +32,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct } from "@shared/metric-math";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBand, computeAttainmentPct, computeAttainmentFillPct } from "@shared/kpi-math";
 
 interface Campaign {
   id: string;
   name: string;
+  clientId?: string | null;
   platform?: string;
   status: string;
   ga4CampaignFilter?: string;
@@ -146,6 +148,7 @@ export default function GA4Metrics() {
   const [location] = useLocation();
   const [, params] = useRoute("/campaigns/:id/ga4-metrics");
   const campaignId = params?.id;
+  const { clients } = useClient();
   const initialSearchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const initialTabParam = initialSearchParams.get("tab");
   const initialTab = initialTabParam && VALID_GA4_TABS.includes(initialTabParam as any)
@@ -4737,7 +4740,19 @@ export default function GA4Metrics() {
     (ga4Connection as any)?.connections?.find((c: any) => c?.isPrimary)?.propertyId ||
     (ga4Connection as any)?.connections?.[0]?.propertyId ||
     "";
-  const provenanceCampaignFilter = (campaign as any)?.ga4CampaignFilter || (ga4Diagnostics as any)?.campaignFilter || "";
+  const headerClientName = clients.find((client) => client.id === (campaign as any)?.clientId)?.name || "—";
+  const headerPropertyCampaigns = selectedGa4CampaignFilterList.length > 0 ? selectedGa4CampaignFilterList.join(", ") : "All campaigns";
+  const headerLastUpdated = provenanceLastUpdated
+    ? new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    }).format(new Date(provenanceLastUpdated))
+    : "—";
   const diagnosticsWarnings: string[] = Array.isArray((ga4Diagnostics as any)?.warnings) ? (ga4Diagnostics as any).warnings : [];
   // Hide warnings that are noisy/confusing in the MVP UI.
   const visibleDiagnosticsWarnings = diagnosticsWarnings.filter((w) => {
@@ -4879,8 +4894,6 @@ export default function GA4Metrics() {
                     <SiGoogle className="w-8 h-8 text-orange-500" />
                     <h1 className="text-3xl font-bold text-foreground">Google Analytics</h1>
                   </div>
-                  <p className="text-muted-foreground/70">Detailed metrics for {campaign.name}</p>
-
                 </div>
               </div>
 
@@ -4908,29 +4921,15 @@ export default function GA4Metrics() {
                 )}
               </div>
             </div>
-            <div className="text-xs text-muted-foreground/70">
-              <span className="font-medium text-muted-foreground/60">Data:</span> {provenanceProperty}
-              {provenancePropertyId ? ` (Property ID: ${provenancePropertyId})` : ""}
-              {" • "}
-              <span className="font-medium text-muted-foreground/60">Report date (UTC):</span> {ga4ReportDate || "—"}
-              {(
-                (Array.isArray(selectedGa4CampaignFilterList) && selectedGa4CampaignFilterList.length > 0) ||
-                provenanceCampaignFilter
-              ) ? (
-                <>
-                  {" • "}
-                  <span className="font-medium text-muted-foreground/60">Campaigns:</span>{" "}
-                  {selectedGa4CampaignFilterList.length} selected
-                </>
-              ) : null}
-              {provenanceLastUpdated ? (
-                <>
-                  {" • "}
-                  <span className="font-medium text-muted-foreground/60">Last updated:</span>{" "}
-                  {new Date(provenanceLastUpdated).toLocaleString()}
-                </>
-              ) : null}
-            </div>
+            <Card>
+              <CardContent className="p-4 text-sm text-muted-foreground/80 space-y-1">
+                <div><span className="font-medium text-foreground">Client:</span> {headerClientName}</div>
+                <div><span className="font-medium text-foreground">Campaign:</span> {campaign.name}</div>
+                <div><span className="font-medium text-foreground">GA4 Property ID:</span> {provenancePropertyId || provenanceProperty}</div>
+                <div><span className="font-medium text-foreground">Property Campaigns:</span> {headerPropertyCampaigns}</div>
+                <div><span className="font-medium text-foreground">Last updated:</span> {headerLastUpdated}</div>
+              </CardContent>
+            </Card>
             {/* Intentionally no inline "Data warnings" banner in the MVP UI (keeps the page clean for execs). */}
           </div>
 

@@ -112,6 +112,7 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).toContain("unmatchedSelectedDiagnostics,");
     expect(schedulerFile).toContain("Salesforce reprocess complete for campaign");
     expect(schedulerFile).toContain("unmatchedSelectedValues=");
+    expect(schedulerFile).toContain("if (unmatchedSelectedValues.length > 0)");
     expect(schedulerFile).toContain("Salesforce unmatched diagnostics for campaign");
     expect(routesFile).toContain("Salesforce revenue was fetched but no daily revenue records were materialized.");
     expect(schedulerFile).toContain("[Auto Refresh] Salesforce reprocess produced no materialized revenue records");

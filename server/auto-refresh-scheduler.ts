@@ -131,7 +131,7 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord,
     return false;
   }
   console.log(`[Auto Refresh] Salesforce reprocess complete for campaign ${campaignId}: source=${sourceId || "new"}, totalRevenue=${totalRevenue}, materializedRecordCount=${materializedRecordCount}, dateField=${String(mappingConfig.dateField || "CloseDate")}, dates=${materializedDates.join(",") || "none"}, unmatchedSelectedValues=${unmatchedSelectedValues.join(",") || "none"}`);
-  if (unmatchedSelectedDiagnostics.length > 0) {
+  if (unmatchedSelectedValues.length > 0) {
     console.log(`[Auto Refresh] Salesforce unmatched diagnostics for campaign ${campaignId}: ${JSON.stringify(unmatchedSelectedDiagnostics)}`);
   }
   return true;

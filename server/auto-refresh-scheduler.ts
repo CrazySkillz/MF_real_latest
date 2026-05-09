@@ -595,13 +595,14 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
                 succeeded++;
                 anyUpdated = true;
                 console.log(`[Auto Refresh] ✅ ${displayName} spend refreshed for campaign ${campaignId}: ${records.length} days`);
-              } catch {
-                // ignore duplicate records
+              } catch (err: any) {
+                const provider = displayName.includes("Google Ads") ? "Google Ads" : displayName.includes("Meta") ? "Meta" : "Ad platform";
+                console.error(`[Auto Refresh] ${provider} spend reprocess failed for campaign ${campaignId}:`, err?.message || err);
               }
             }
           }
-        } catch {
-          // ignore
+        } catch (err: any) {
+          console.error(`[Auto Refresh] Ad platform spend reprocess failed for campaign ${campaignId}:`, err?.message || err);
         }
 
         // Google Sheets (Revenue) — process ALL active Sheets revenue sources across all platform contexts

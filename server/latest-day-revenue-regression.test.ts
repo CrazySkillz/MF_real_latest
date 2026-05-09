@@ -137,6 +137,18 @@ describe("Latest Day Revenue regression guard", () => {
     expect(revenueBreakdownRoute).toContain('const endDate = new Date().toISOString().slice(0, 10);');
   });
 
+  it("Auto-refresh scheduler has source-specific spend failure logs", () => {
+    const schedulerFile = readFileSync(
+      join(process.cwd(), "server", "auto-refresh-scheduler.ts"),
+      "utf-8"
+    );
+
+    expect(schedulerFile).toContain("Google Sheets spend reprocess failed");
+    expect(schedulerFile).toContain("LinkedIn spend reprocess failed");
+    expect(schedulerFile).toContain('displayName.includes("Google Ads") ? "Google Ads" : displayName.includes("Meta") ? "Meta" : "Ad platform"');
+    expect(schedulerFile).toContain("${provider} spend reprocess failed");
+  });
+
   it("Salesforce refresh updates the saved revenue source instead of creating duplicates", () => {
     const schedulerFile = readFileSync(
       join(process.cwd(), "server", "auto-refresh-scheduler.ts"),

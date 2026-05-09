@@ -393,6 +393,21 @@ export default function GA4Metrics() {
     emailNotifications: false,
     emailRecipients: "",
   });
+  const getKpiTemplateForEdit = (kpi: any) => {
+    const values = [kpi?.metric, kpi?.name].map((v) => String(v || "").trim().toLowerCase()).filter(Boolean);
+    const templates = [
+      { name: "ROAS", aliases: ["roas"] },
+      { name: "ROI", aliases: ["roi"] },
+      { name: "CPA", aliases: ["cpa"] },
+      { name: "Revenue", aliases: ["revenue"] },
+      { name: "Total Conversions", aliases: ["conversions", "total conversions"] },
+      { name: "Engagement Rate", aliases: ["engagementrate", "engagement rate"] },
+      { name: "Conversion Rate", aliases: ["conversionrate", "conversion rate"] },
+      { name: "Total Users", aliases: ["users", "total users"] },
+      { name: "Total Sessions", aliases: ["sessions", "total sessions"] },
+    ];
+    return templates.find((template) => values.some((value) => value === template.name.toLowerCase() || template.aliases.includes(value))) || null;
+  };
 
   const stripNumberFormatting = (s: string) => String(s || "").replace(/,/g, "").trim();
 
@@ -5992,7 +6007,7 @@ export default function GA4Metrics() {
                                               size="icon"
                                               onClick={() => {
                                                 setEditingKPI(kpi);
-                                                setSelectedKPITemplate(null);
+                                                setSelectedKPITemplate(getKpiTemplateForEdit(kpi));
                                                 kpiForm.reset({
                                                   ...kpiForm.getValues(),
                                                   name: String(kpi?.name || ""),
@@ -7682,7 +7697,12 @@ export default function GA4Metrics() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border"
+          onOpenAutoFocus={(event) => {
+            if (editingKPI) event.preventDefault();
+          }}
+        >
           <DialogHeader className="pb-4 pr-8">
             <DialogTitle>{editingKPI ? "Edit KPI" : "Create New KPI"}</DialogTitle>
             <DialogDescription>

@@ -315,19 +315,22 @@ class EmailService {
     const subject = `⚠️ Alert: ${data.name} has ${conditionText} threshold`;
     const summaryLine = this.buildAlertSummary(data);
     let clientName = "";
+    let campaignName = data.campaignName || auditContext?.campaignName || "";
     if (db && auditContext?.campaignId) {
       try {
         const rows = await db
-          .select({ clientName: clients.name })
+          .select({ clientName: clients.name, campaignName: campaigns.name })
           .from(campaigns)
           .leftJoin(clients, eq(campaigns.clientId, clients.id))
           .where(eq(campaigns.id, auditContext.campaignId))
           .limit(1);
         clientName = String(rows?.[0]?.clientName || "");
+        campaignName = campaignName || String(rows?.[0]?.campaignName || "");
       } catch {
         clientName = "";
       }
     }
+    const alertTypeLabel = data.type === "kpi" ? "KPI" : "Benchmark";
     
     const html = `
       <!DOCTYPE html>
@@ -386,13 +389,13 @@ class EmailService {
               <h2 style="margin-top: 0; color: #ef4444;">${data.name}</h2>
               
               ${clientName ? `<p><strong>Client:</strong> ${clientName}</p>` : ''}
-              ${data.campaignName ? `<p><strong>Campaign:</strong> ${data.campaignName}</p>` : ''}
+              ${campaignName ? `<p><strong>Campaign:</strong> ${campaignName}</p>` : ''}
               <p>${summaryLine}</p>
               <p>Alert threshold value: ${this.formatAlertDisplayValue(data.thresholdValue, data.unit)}</p>
             </div>
             
             <p style="margin-top: 20px;">
-              <strong>Action Required:</strong> Review this ${data.type} in your MimoSaaS dashboard
+              <strong>Action Required:</strong> Review this ${alertTypeLabel} in your MimoSaaS dashboard
               and take appropriate action to address the issue.
             </p>
           </div>

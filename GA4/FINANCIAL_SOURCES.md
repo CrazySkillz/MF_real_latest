@@ -57,6 +57,7 @@ Important clarification:
 - in those cases, users may rely entirely on imported external revenue sources
 - the GA4 revenue metric is optional to the overall campaign revenue model; external revenue import is a valid primary path
 - when GA4 native revenue exists, refresh should update the GA4-native aggregated revenue amount for the campaign's selected GA4 scope
+- imported `Total Revenue` is a to-date total and includes source-backed revenue records through the current UTC day; `Latest Day Revenue` remains previous-complete-day only
 - the `GA4 Revenue` source entry in the `Total Revenue` source modal should show that full aggregated GA4 amount, not a partial or single-day figure
 - for GA4 `Ad Comparison`, external revenue may be added into campaign rows only when the source saves real campaign-identifying values that match GA4 campaign rows exactly
 - for GA4 `Overview -> Campaign Breakdown`, the same exact campaign-matched rule applies, so that table's column label should be `Revenue`, not `GA4 Revenue`
@@ -229,6 +230,7 @@ Important meaning:
 - both the inner Shopify `Back` button and the modal header `Back` button should move one step at a time through the Shopify flow and preserve selected Shopify values when the attribution field has not changed; if the attribution field changes, stale values and campaign mappings should be cleared before reloading the matching-value step
 - Shopify order reads used for attribution values, preview, save, and auto-recalculation should follow Shopify pagination and must fail clearly rather than silently saving partial revenue when an extreme page limit is exceeded
 - Shopify revenue edit saves should carry the existing revenue `sourceId` through the modal, wizard, and save route so the exact source being edited is updated instead of another active Shopify source
+- Shopify scheduled refresh should use active Shopify revenue source mappings as the source of truth and pass the stable revenue `sourceId` so refresh updates the existing source instead of creating or updating the wrong Shopify source
 
 ## Revenue Source 2: HubSpot Journey
 
@@ -641,6 +643,7 @@ Important meaning:
 - they do not directly edit the total card value
 - executive-facing provenance should be consolidated in a source modal / `Sources used` areas rather than repeated as per-card microcopy under every financial card
 - revenue provenance should enumerate the full active revenue source set, including GA4 native revenue when present, instead of only the first imported/manual revenue source
+- revenue provenance should keep active source definitions visible even when another source has breakdown rows and the active source currently contributes `$0.00`
 - the Revenue Sources and Spend Sources modal bodies should scroll vertically when many source entries are present so edit/delete actions remain accessible inside the dialog
 
 ## Edit And Delete Pattern

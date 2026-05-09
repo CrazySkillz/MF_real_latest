@@ -128,6 +128,13 @@ CRM auto-reprocess rule:
 - Overview Pipeline Proxy visibility should be anchored to the active saved CRM revenue source config; refreshed endpoint data may update the amount/provenance, but a stale endpoint response must not hide an otherwise configured active Pipeline Proxy card
 - if both HubSpot and Salesforce have active Pipeline Proxy configuration, the Overview card should aggregate both providers' exact proxy totals while keeping provider-specific provenance in the read-only Pipeline Proxy sources modal
 
+Shopify auto-reprocess rule:
+
+- saved Shopify revenue mappings should be reprocessed by the daily auto-refresh scheduler without requiring a user to manually reopen and save the wizard
+- Shopify auto-reprocess should use active Shopify revenue source mappings as the source of truth and pass the stable revenue `sourceId`
+- refreshed Shopify revenue should update the existing source's materialized order-date revenue records and recomputed campaign financial state
+- Shopify `Tags` attribution should match exact individual Shopify order tags during manual edit and scheduled refresh
+
 CRM token continuity rule:
 
 - HubSpot and Salesforce reconnect flows should request offline/refresh capability so scheduled refresh and on-demand proxy/status endpoints do not drop out after short-lived access-token expiry

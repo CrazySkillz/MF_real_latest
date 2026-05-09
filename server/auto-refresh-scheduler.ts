@@ -137,7 +137,7 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord,
   return true;
 }
 
-async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
+async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean> {
   const body: AnyRecord = {
     campaignField: mappingConfig.campaignField,
     selectedValues: mappingConfig.selectedValues,
@@ -146,6 +146,7 @@ async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord): P
     days: mappingConfig.days,
     platformContext: mappingConfig.platformContext,
     valueSource: mappingConfig.valueSource,
+    ...(sourceId ? { sourceId } : {}),
     ...(Array.isArray(mappingConfig.campaignMappings) && mappingConfig.campaignMappings.length > 0
       ? { campaignMappings: mappingConfig.campaignMappings }
       : {}),
@@ -487,15 +488,23 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
         }
         if (salesforceRevenueSources.length === 0) skipped++;
 
-        // Shopify
-        const shop = await storage.getShopifyConnection(campaignId);
-        const shopCfg = safeJsonParse(shop?.mappingConfig);
-        if (shop && (shop as any).isActive !== false && shopCfg?.selectedValues?.length) {
-          attempted++;
-          if (await reprocessShopify(campaignId, shopCfg)) { succeeded++; anyUpdated = true; }
-        } else {
-          skipped++;
+        // Shopify revenue sources are the source of truth for saved campaign mappings.
+        let shopifyRevenueCount = 0;
+        for (const ctx of ["ga4", "linkedin", "meta"] as const) {
+          const shopifyRevenueSources = (await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]))
+            .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "shopify");
+          for (const shopifySource of shopifyRevenueSources) {
+            shopifyRevenueCount++;
+            const shopCfg = safeJsonParse(shopifySource?.mappingConfig);
+            if (shopCfg?.selectedValues?.length) {
+              attempted++;
+              if (await reprocessShopify(campaignId, shopCfg, String(shopifySource.id))) { succeeded++; anyUpdated = true; }
+            } else {
+              skipped++;
+            }
+          }
         }
+        if (shopifyRevenueCount === 0) skipped++;
 
         // Google Sheets (Spend) — process ALL active Sheets spend sources
         try {

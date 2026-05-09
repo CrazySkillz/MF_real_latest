@@ -39,4 +39,14 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain('authType = "oauth";');
     expect(routes).toContain('authType = "token";');
   });
+
+  it("starts new Shopify revenue connections from a clean OAuth-first state", () => {
+    const wizard = read(SHOPIFY_WIZARD_FILE);
+
+    expect(wizard).toContain('if (mode !== "edit") return "";');
+    expect(wizard).toContain("const fetchStatus = async (applyExistingConnection = true) =>");
+    expect(wizard).toContain('await fetchStatus(mode === "edit");');
+    expect(wizard).toContain('setConnectMethod("oauth");');
+    expect(wizard).not.toContain("Shopify doesn’t store LinkedIn campaign ids directly by default");
+  });
 });

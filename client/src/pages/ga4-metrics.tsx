@@ -3107,8 +3107,8 @@ export default function GA4Metrics() {
           y += 22;
         }
         y += 2;
-        const spendSourcesText = spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Not connected";
-        const revenueSourcesText = revenueSourceLabels.length > 0 ? revenueSourceLabels.join(" + ") : "Not connected";
+        const spendSourcesText = spendSourceLabels.length > 0 ? spendSourceLabels.join(", ") : "Not connected";
+        const revenueSourcesText = revenueSourceLabels.length > 0 ? revenueSourceLabels.join(", ") : "Not connected";
         checkPage(18);
         doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.textTert);
         doc.text("SOURCES USED", MX + 2, y + 4);
@@ -7084,11 +7084,11 @@ export default function GA4Metrics() {
                           <div className="font-medium text-foreground/80/60 mb-1">Sources used</div>
                           <div className="grid gap-1">
                             <div>
-                              <span className="font-medium">Spend</span>: {spendSourceLabels.length > 0 ? spendSourceLabels.join(" + ") : "Not connected"}
+                              <span className="font-medium">Spend</span>: {spendSourceLabels.length > 0 ? spendSourceLabels.join(", ") : "Not connected"}
                             </div>
                             <div>
                               <span className="font-medium">Revenue</span>:{" "}
-                              {revenueSourceLabels.length > 0 ? revenueSourceLabels.join(" + ") : "Not connected"}
+                              {revenueSourceLabels.length > 0 ? revenueSourceLabels.join(", ") : "Not connected"}
                             </div>
                           </div>
                         </div>

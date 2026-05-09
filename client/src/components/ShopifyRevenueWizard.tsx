@@ -64,6 +64,7 @@ export function ShopifyRevenueWizard(props: {
   // OAuth / connection
   const [shopName, setShopName] = useState<string | null>(null);
   const [shopDomain, setShopDomain] = useState<string>(() => {
+    if (mode !== "edit") return "";
     try {
       return localStorage.getItem(`mm:shopifyDomain:${campaignId}`) || "";
     } catch {
@@ -126,11 +127,18 @@ export function ShopifyRevenueWizard(props: {
       .catch(() => setLinkedinCampaigns([]));
   }, [isLinkedIn, campaignId]);
 
-  const fetchStatus = async () => {
+  const fetchStatus = async (applyExistingConnection = true) => {
     const resp = await fetch(`/api/shopify/${campaignId}/status`, { credentials: "include" });
     const json = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(json?.error || "Failed to check Shopify connection");
     const isConnected = !!json?.connected;
+    if (!applyExistingConnection && isConnected) {
+      setConnected(false);
+      setShopName(null);
+      setConnectMethod("oauth");
+      setShopDomain("");
+      return false;
+    }
     setConnected(isConnected);
     setShopName(isConnected ? (json?.shopName || null) : null);
     if (isConnected) setConnectMethod(String(json?.authType || "").toLowerCase() === "token" ? "token" : "oauth");
@@ -305,7 +313,7 @@ export function ShopifyRevenueWizard(props: {
     let mounted = true;
     void (async () => {
       try {
-        await fetchStatus();
+        await fetchStatus(mode === "edit");
       } catch {
         // ignore
       } finally {
@@ -316,7 +324,7 @@ export function ShopifyRevenueWizard(props: {
       mounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignId]);
+  }, [campaignId, mode]);
 
   // Fetch crosswalk values only when entering crosswalk.
   useEffect(() => {
@@ -653,9 +661,6 @@ export function ShopifyRevenueWizard(props: {
                   <SelectItem value="tags">Tags</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="text-xs text-muted-foreground">
-                Shopify doesn’t store LinkedIn campaign ids directly by default—UTMs and discount codes are the most common attribution keys.
-              </div>
             </div>
           )}
 

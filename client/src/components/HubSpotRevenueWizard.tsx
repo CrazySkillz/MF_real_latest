@@ -36,6 +36,7 @@ export function HubSpotRevenueWizard(props: {
     pipelineEnabled?: boolean;
     pipelineStageId?: string;
     pipelineStageLabel?: string;
+    pipelineTotalToDate?: number;
     lastTotalRevenue?: number;
     dateField?: string;
   } | null;
@@ -126,6 +127,13 @@ export function HubSpotRevenueWizard(props: {
     });
     return normalize({ campaignProperty, selectedValues, revenueProperty, revenueClassification, pipelineEnabled, pipelineStageId, dateField, campaignMappings }) !== normalize(initialMappingConfig);
   }, [campaignMappings, campaignProperty, dateField, initialMappingConfig, isLinkedIn, mode, pipelineEnabled, pipelineStageId, revenueClassification, revenueProperty, selectedValues]);
+
+  const reviewPipelineProxyDisplayAmount = useMemo(() => {
+    if (reviewPipelineProxyAmount != null) return reviewPipelineProxyAmount;
+    const stored = Number(initialMappingConfig?.pipelineTotalToDate);
+    if (mode === "edit" && !hasEditChanges && Number.isFinite(stored) && stored >= 0) return stored;
+    return null;
+  }, [hasEditChanges, initialMappingConfig, mode, reviewPipelineProxyAmount]);
 
   // Fetch LinkedIn campaigns when in linkedin context
   useEffect(() => {
@@ -1147,8 +1155,8 @@ export function HubSpotRevenueWizard(props: {
                             {pipelineStageLabel || pipelineStageId || "—"}
                           </div>
                           <div className="mt-1 text-sm font-medium text-foreground">
-                            {reviewPipelineProxyAmount != null
-                              ? `$${Number(reviewPipelineProxyAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            {reviewPipelineProxyDisplayAmount != null
+                              ? `$${Number(reviewPipelineProxyDisplayAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                               : "—"}
                           </div>
                           <div className="mt-1 text-xs text-muted-foreground/70">

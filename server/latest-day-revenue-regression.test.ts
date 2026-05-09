@@ -66,6 +66,22 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).toContain("HubSpot access token missing and no refresh token available. Please reconnect HubSpot.");
   });
 
+  it("HubSpot edit review uses the saved pipeline proxy amount before live preview", () => {
+    const modalFile = readFileSync(
+      join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"),
+      "utf-8"
+    );
+    const clientFile = readFileSync(
+      join(process.cwd(), "client", "src", "components", "HubSpotRevenueWizard.tsx"),
+      "utf-8"
+    );
+
+    expect(modalFile).toContain("pipelineTotalToDate: Number.isFinite(Number(config?.pipelineTotalToDate)) ? Number(config.pipelineTotalToDate) : undefined,");
+    expect(clientFile).toContain("const reviewPipelineProxyDisplayAmount = useMemo(() => {");
+    expect(clientFile).toContain("if (mode === \"edit\" && !hasEditChanges && Number.isFinite(stored) && stored >= 0) return stored;");
+    expect(clientFile).toContain("reviewPipelineProxyDisplayAmount != null");
+  });
+
   it("Salesforce refresh updates the saved revenue source instead of creating duplicates", () => {
     const schedulerFile = readFileSync(
       join(process.cwd(), "server", "auto-refresh-scheduler.ts"),

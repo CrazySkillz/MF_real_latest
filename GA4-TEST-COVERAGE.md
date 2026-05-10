@@ -1,5 +1,24 @@
 # GA4 Test Coverage — Complete Reference
 
+## Current GA4 Stabilization Regression Guards
+
+These are the current lightweight regression guards added during GA4 stabilization. They protect the highest-risk GA4 template behavior before expanding to more browser coverage.
+
+| File | What it protects |
+|------|------------------|
+| `server/ga4-ui-regression.test.ts` | GA4 campaign creation and UI state rules that should not regress |
+| `server/ga4-auto-refresh-regression.test.ts` | scheduler-triggered external revenue/spend refresh orchestration |
+| `server/ga4-financial-rules.test.ts` | all-source financial formulas and source aggregation rules |
+| `server/ga4-insights-regression.test.ts` | Insights Executive Financials and source-provenance rendering rules |
+
+Last validated on 2026-05-10:
+
+- `npx vitest run server/ga4-insights-regression.test.ts --pool forks`
+- `npm run check`
+- `npm run test`
+
+Result: all checks passed.
+
 > **281 total tests** (140 unit + 141 E2E) covering every section of every GA4 tab, with exact value verification, cumulative refresh validation, and multi-campaign aggregation.
 
 ---

@@ -5381,14 +5381,11 @@ export default function CampaignDetail() {
                   <p className="text-muted-foreground/70">Platform performance and connection status</p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 items-start">
+                <div className="columns-1 md:columns-2 gap-4 space-y-4">
               {platformMetrics.map((platform, index) => (
                 <Card 
                   key={platform.platform} 
-                  className={`${platform.connected ? "border-green-200 dark:border-green-800" : "border-border"} ${
-                    // Position Facebook Ads with minimal single-line gap under Google Analytics
-                    platform.platform === "Facebook Ads" ? "md:-mt-3" : ""
-                  }`}
+                  className={`break-inside-avoid ${platform.connected ? "border-green-200 dark:border-green-800" : "border-border"}`}
                 >
                   {/* Platform Header - Always Visible */}
                   <div

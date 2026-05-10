@@ -97,6 +97,12 @@ Current-value hierarchy:
 - efficiency KPIs like `ROAS`, `ROI`, and `CPA` should be derived from the current recomputed financial state
 - if dependencies are missing, the KPI should be blocked instead of showing a misleading value
 
+Campaign-level KPI source previews:
+
+- the campaign-level `Create KPI` modal must use the same GA4-scoped totals as the GA4 Overview page for GA4 source values
+- GA4 revenue, conversions, sessions, and users shown in campaign-level KPI source options must be derived from the selected GA4 connection using the GA4 to-date response plus persisted daily rows, matching the GA4 Overview fallback rules
+- do not read GA4 campaign KPI source values only from generic campaign outcome totals when a GA4-page-specific total exists, because that can drift from the values shown in GA4 Overview and Total Revenue Sources
+
 ## Revenue / Spend-Dependent KPI Gating
 
 Some KPI types are intentionally blocked until prerequisites exist.

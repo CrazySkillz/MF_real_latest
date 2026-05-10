@@ -192,14 +192,22 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       return resp.json().catch(() => null);
     },
   });
-  const kpiGA4DailyRevenueTotal = useMemo(() => {
+  const kpiGA4MetricTotals = useMemo(() => {
     const rows = Array.isArray(kpiGA4DailyResp?.data) ? kpiGA4DailyResp.data : Array.isArray(kpiGA4DailyResp) ? kpiGA4DailyResp : [];
-    const total = rows.reduce((sum: number, row: any) => {
-      const revenue = Number(row?.revenue || 0);
-      return sum + (Number.isFinite(revenue) ? revenue : 0);
-    }, 0);
-    return Number(total.toFixed(2));
-  }, [kpiGA4DailyResp]);
+    const daily = rows.reduce((acc: any, row: any) => ({
+      sessions: acc.sessions + (Number(row?.sessions || 0) || 0),
+      conversions: acc.conversions + (Number(row?.conversions || 0) || 0),
+      users: acc.users + (Number(row?.users || 0) || 0),
+      revenue: acc.revenue + (Number(row?.revenue || 0) || 0),
+    }), { sessions: 0, conversions: 0, users: 0, revenue: 0 });
+    const totals = (kpiGA4ToDate as any)?.totals || {};
+    return {
+      sessions: Math.max(Number(totals?.sessions || 0), daily.sessions),
+      conversions: Math.max(Number(totals?.conversions || 0), daily.conversions),
+      users: Number(totals?.users || 0) || daily.users,
+      revenue: Math.max(Number(totals?.revenue || 0), Number(daily.revenue.toFixed(2))),
+    };
+  }, [kpiGA4DailyResp, kpiGA4ToDate]);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -334,7 +342,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       const cfg = parseJsonSafe(ga4Source?.mappingConfig);
       const cfgTotal = parseNumSafe(cfg?.lastTotalRevenue);
       const toDateTotal = parseNumSafe(kpiGA4ToDate?.totals?.revenue);
-      const dailyTotal = parseNumSafe(kpiGA4DailyRevenueTotal);
+      const dailyTotal = parseNumSafe((kpiGA4MetricTotals as any)?.revenue);
       const outcomeTotal = parseNumSafe(ot?.revenue?.onsiteRevenue ?? ot?.webAnalytics?.revenue ?? ot?.ga4?.revenue);
       return Math.max(directTotal, cfgTotal, toDateTotal, dailyTotal, outcomeTotal);
     }
@@ -365,9 +373,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
     // Website analytics-style metrics (GA4 or Custom Integration)
     if (sourceId === 'ga4') {
-      if (inputKey === 'conversions') return parseNumSafe(ot?.ga4?.conversions);
-      if (inputKey === 'sessions') return parseNumSafe(ot?.ga4?.sessions);
-      if (inputKey === 'users') return parseNumSafe(ot?.ga4?.users);
+      if (inputKey === 'conversions') return parseNumSafe((kpiGA4MetricTotals as any)?.conversions);
+      if (inputKey === 'sessions') return parseNumSafe((kpiGA4MetricTotals as any)?.sessions);
+      if (inputKey === 'users') return parseNumSafe((kpiGA4MetricTotals as any)?.users);
     }
     if (sourceId === 'custom_integration') {
       if (inputKey === 'conversions') return parseNumSafe(platforms?.customIntegration?.conversions);
@@ -532,7 +540,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'conversions') {
-      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: parseNumSafe((outcomeTotals || {})?.ga4?.conversions) });
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: getMetricSourceValue('conversions', 'ga4') });
       if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.conversions) });
       if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.conversions) });
       if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.conversions) });
@@ -540,7 +548,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'sessions') {
-      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: parseNumSafe((outcomeTotals || {})?.ga4?.sessions) });
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: getMetricSourceValue('sessions', 'ga4') });
       if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.sessions) });
       // Show ad platforms as connected but disabled for sessions
       if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: false, reason: 'Sessions not available for this platform' });
@@ -549,7 +557,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'users') {
-      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: parseNumSafe((outcomeTotals || {})?.ga4?.users) });
+      if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: getMetricSourceValue('users', 'ga4') });
       if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.users) });
       if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: false, reason: 'Users not available for this platform' });
       if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: false, reason: 'Users not available for this platform' });
@@ -1604,7 +1612,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           });
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={(event) => event.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Create Campaign KPI</DialogTitle>
             <DialogDescription>

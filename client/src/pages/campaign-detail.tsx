@@ -5381,11 +5381,16 @@ export default function CampaignDetail() {
                   <p className="text-muted-foreground/70">Platform performance and connection status</p>
                 </div>
 
-                <div className="columns-1 md:columns-2 gap-4 space-y-4">
-              {platformMetrics.map((platform, index) => (
+                <div className="grid gap-4 md:grid-cols-2 items-start">
+                  {[
+                    platformMetrics.filter((platform) => ["Google Analytics", "Google Sheets"].includes(platform.platform)),
+                    platformMetrics.filter((platform) => !["Google Analytics", "Google Sheets"].includes(platform.platform)),
+                  ].map((columnPlatforms, columnIndex) => (
+                    <div key={columnIndex} className="space-y-4">
+              {columnPlatforms.map((platform, index) => (
                 <Card 
                   key={platform.platform} 
-                  className={`break-inside-avoid ${platform.connected ? "border-green-200 dark:border-green-800" : "border-border"}`}
+                  className={platform.connected ? "border-green-200 dark:border-green-800" : "border-border"}
                 >
                   {/* Platform Header - Always Visible */}
                   <div
@@ -5551,7 +5556,7 @@ export default function CampaignDetail() {
                       ? true
                       : (!platform.connected || platform.needsSetup || platform.requiresImport || (platform.platform === "Google Sheets" && canAddMoreSheets))
                   ) && (
-                    <div className="border-t bg-muted/50 p-3">
+                    <div className="border-t bg-muted/50 p-3 animate-in fade-in-0 slide-in-from-top-1 duration-200">
                       {platform.platform === "Google Analytics" ? (
                         <GA4ConnectionFlow
                           campaignId={campaign.id}
@@ -5738,6 +5743,8 @@ export default function CampaignDetail() {
                   )}
                 </Card>
                 ))}
+                    </div>
+                  ))}
                 </div>
               </div>
 

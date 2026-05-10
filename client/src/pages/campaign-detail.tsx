@@ -160,6 +160,27 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       return Array.isArray(data?.sources) ? data.sources : [];
     },
   });
+  const { data: kpiGA4Connections = [] } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaign.id}/ga4-connections`],
+    enabled: !!campaign.id,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-connections`);
+      if (!resp.ok) return [];
+      const data = await resp.json().catch(() => null);
+      return Array.isArray(data?.connections) ? data.connections : [];
+    },
+  });
+  const kpiGA4Connection = (kpiGA4Connections || []).find((conn: any) => conn?.isPrimary) || (kpiGA4Connections || [])[0];
+  const kpiGA4PropertyId = String(kpiGA4Connection?.propertyId || "").trim();
+  const { data: kpiGA4ToDate } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaign.id}/ga4-to-date`, kpiGA4PropertyId],
+    enabled: !!campaign.id && !!kpiGA4PropertyId,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-to-date?propertyId=${encodeURIComponent(kpiGA4PropertyId)}&dateRange=30days`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -291,10 +312,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     if (sourceId === 'ga4') {
       const ga4Source = (kpiRevenueSources || []).find((s: any) => String(s?.sourceType || '').toLowerCase() === 'ga4');
       const directTotal = parseNumSafe(ga4Source?.lastTotalRevenue);
-      if (directTotal > 0) return directTotal;
       const cfg = parseJsonSafe(ga4Source?.mappingConfig);
       const cfgTotal = parseNumSafe(cfg?.lastTotalRevenue);
-      return cfgTotal > 0 ? cfgTotal : parseNumSafe(ot?.ga4?.revenue);
+      const toDateTotal = parseNumSafe(kpiGA4ToDate?.totals?.revenue);
+      const outcomeTotal = parseNumSafe(ot?.revenue?.onsiteRevenue ?? ot?.webAnalytics?.revenue ?? ot?.ga4?.revenue);
+      return Math.max(directTotal, cfgTotal, toDateTotal, outcomeTotal);
     }
     if (sourceId === 'custom_integration') return parseNumSafe(platforms?.customIntegration?.revenue);
     if (sourceId === 'linkedin') return parseNumSafe(platforms?.linkedin?.attributedRevenue);

@@ -150,6 +150,16 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       return resp.json().catch(() => null);
     },
   });
+  const { data: kpiRevenueSources = [] } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaign.id}/revenue-sources`, "ga4"],
+    enabled: !!campaign.id,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/revenue-sources?platformContext=ga4`);
+      if (!resp.ok) return [];
+      const data = await resp.json().catch(() => null);
+      return Array.isArray(data?.sources) ? data.sources : [];
+    },
+  });
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -184,6 +194,15 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     if (val === null || val === undefined || val === '') return 0;
     const n = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : Number(val);
     return Number.isFinite(n) ? n : 0;
+  };
+  const parseJsonSafe = (raw: any): any => {
+    if (!raw) return null;
+    if (typeof raw !== 'string') return raw;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   };
 
   type CalcInputKey =
@@ -261,6 +280,14 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     const ot = outcomeTotals || {};
     const platforms = ot?.platforms || {};
     const revenueSources = ot?.revenueSources || [];
+    if (String(sourceId || '').startsWith('revenue-source:')) {
+      const rowId = String(sourceId).replace('revenue-source:', '');
+      const row = (kpiRevenueSources || []).find((s: any) => String(s?.id || '') === rowId);
+      const directTotal = parseNumSafe(row?.lastTotalRevenue);
+      if (directTotal > 0) return directTotal;
+      const cfg = parseJsonSafe(row?.mappingConfig);
+      return parseNumSafe(cfg?.lastTotalRevenue);
+    }
     if (sourceId === 'ga4') return parseNumSafe(ot?.ga4?.revenue);
     if (sourceId === 'custom_integration') return parseNumSafe(platforms?.customIntegration?.revenue);
     if (sourceId === 'linkedin') return parseNumSafe(platforms?.linkedin?.attributedRevenue);
@@ -410,15 +437,22 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: getRevenueSourceValue('ga4') });
       // Custom integration revenue
       if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: getRevenueSourceValue('custom_integration') });
-      // Revenue connectors
-      if (connected.shopify) {
-        base.push({ id: 'shopify', label: 'Shopify', enabled: true, value: getRevenueSourceValue('shopify') });
-      }
-      if (connected.hubspot) {
-        base.push({ id: 'hubspot', label: 'HubSpot', enabled: true, value: getRevenueSourceValue('hubspot') });
-      }
-      if (connected.salesforce) {
-        base.push({ id: 'salesforce', label: 'Salesforce', enabled: true, value: getRevenueSourceValue('salesforce') });
+      const sourceRows = (kpiRevenueSources || []).filter((source: any) => {
+        const type = String(source?.sourceType || '').toLowerCase();
+        return source?.isActive !== false && type !== 'manual' && type !== 'ga4';
+      });
+      if (sourceRows.length) {
+        for (const source of sourceRows) {
+          const type = String(source?.sourceType || '').toLowerCase();
+          const fallbackLabel = type === 'google_sheets' ? 'Google Sheets' : type === 'csv' ? 'CSV' : type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Revenue source';
+          const id = `revenue-source:${source.id}`;
+          base.push({ id, label: String(source?.displayName || fallbackLabel), enabled: true, value: getRevenueSourceValue(id) });
+        }
+      } else {
+        // Backward-compatible fallback for older responses.
+        if (connected.shopify) base.push({ id: 'shopify', label: 'Shopify', enabled: true, value: getRevenueSourceValue('shopify') });
+        if (connected.hubspot) base.push({ id: 'hubspot', label: 'HubSpot', enabled: true, value: getRevenueSourceValue('hubspot') });
+        if (connected.salesforce) base.push({ id: 'salesforce', label: 'Salesforce', enabled: true, value: getRevenueSourceValue('salesforce') });
       }
 
       // Show connected ad platforms (disabled for revenue unless present)
@@ -552,6 +586,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   };
 
   const formatSourceLabel = (id: string): string => {
+    if (String(id || '').startsWith('revenue-source:')) {
+      const sourceId = String(id).replace('revenue-source:', '');
+      const source = (kpiRevenueSources || []).find((s: any) => String(s?.id || '') === sourceId);
+      return String(source?.displayName || source?.sourceType || 'Revenue source');
+    }
     switch (String(id || '')) {
       case 'ga4':
         return 'GA4';
@@ -572,6 +611,89 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       default:
         return String(id || '');
     }
+  };
+
+  const renderKpiSourceSelector = (
+    key: CalcInputKey,
+    options: Array<{ id: string; label: string; enabled: boolean; reason?: string; value?: number }>,
+    selectedIds: string[],
+    toggle: (inputKey: CalcInputKey, sourceId: string) => void,
+  ) => {
+    if (key === 'revenue') {
+      const selectedOptions = options.filter((opt) => selectedIds.includes(opt.id));
+      const summary = selectedOptions.length
+        ? `${selectedOptions.length} selected: ${selectedOptions.slice(0, 2).map((opt) => opt.label).join(', ')}${selectedOptions.length > 2 ? '...' : ''}`
+        : 'Select revenue sources';
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full justify-between font-normal">
+              <span className="truncate">{summary}</span>
+              <ChevronDown className="h-4 w-4 opacity-70" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-80 overflow-y-auto">
+            <DropdownMenuLabel>Revenue sources</DropdownMenuLabel>
+            {options.map((opt) => {
+              const selected = selectedIds.includes(opt.id);
+              const isDisabled = !opt.enabled;
+              return (
+                <DropdownMenuItem
+                  key={opt.id}
+                  disabled={isDisabled}
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    if (isDisabled) return;
+                    toggle(key, opt.id);
+                  }}
+                  className="items-start gap-2"
+                >
+                  <Checkbox checked={selected} disabled={isDisabled} className="mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{opt.label}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {isDisabled ? opt.reason || 'Not available' : opt.value !== undefined ? `Value: ${formatNumber(opt.value)}` : 'Available'}
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {options.map((opt) => {
+          const selected = selectedIds.includes(opt.id);
+          const isDisabled = !opt.enabled;
+          return (
+            <label
+              key={opt.id}
+              className={`flex items-start gap-2 p-2 border rounded-md ${
+                isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-blue-300'
+              }`}
+            >
+              <Checkbox
+                checked={selected}
+                onCheckedChange={() => {
+                  if (isDisabled) return;
+                  toggle(key, opt.id);
+                }}
+              />
+              <div className="flex-1">
+                <div className="text-sm font-medium text-foreground">{opt.label}</div>
+                <div className="text-xs text-muted-foreground/70">
+                  {isDisabled ? opt.reason || 'Not available' : opt.value !== undefined ? `Value: ${formatNumber(opt.value)}` : 'Available'}
+                </div>
+              </div>
+            </label>
+          );
+        })}
+      </div>
+    );
   };
 
   const formatSourcesSelected = (rawConfig: any): string => {
@@ -1625,35 +1747,12 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                                 : 'Lead sources'}{' '}
                               <span className="text-red-500">*</span>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              {options.map((opt) => {
-                                const cfg2 = normalizeCalcConfig(kpiCalculationConfig) as any;
-                                const selected = (cfg2?.inputs?.[key] || []).includes(opt.id);
-                                const isDisabled = !opt.enabled;
-                                return (
-                                  <label
-                                    key={opt.id}
-                                    className={`flex items-start gap-2 p-2 border rounded-md ${
-                                      isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-blue-300'
-                                    }`}
-                                  >
-                                    <Checkbox
-                                      checked={selected}
-                                      onCheckedChange={() => {
-                                        if (isDisabled) return;
-                                        toggle(key, opt.id);
-                                      }}
-                                    />
-                                    <div className="flex-1">
-                                      <div className="text-sm font-medium text-foreground">{opt.label}</div>
-                                      <div className="text-xs text-muted-foreground/70">
-                                        {isDisabled ? opt.reason || 'Not available' : (opt.value !== undefined ? `Value: ${formatNumber(opt.value)}` : 'Available')}
-                                      </div>
-                                    </div>
-                                  </label>
-                                );
-                              })}
-                            </div>
+                            {renderKpiSourceSelector(
+                              key,
+                              options,
+                              ((normalizeCalcConfig(kpiCalculationConfig) as any)?.inputs?.[key] || []),
+                              toggle,
+                            )}
                           </div>
                         );
                       })}
@@ -1985,35 +2084,12 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                                 : 'Lead sources'}{' '}
                               <span className="text-red-500">*</span>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              {options.map((opt) => {
-                                const cfg2 = normalizeCalcConfig(kpiCalculationConfig) as any;
-                                const selected = (cfg2?.inputs?.[key] || []).includes(opt.id);
-                                const isDisabled = !opt.enabled;
-                                return (
-                                  <label
-                                    key={opt.id}
-                                    className={`flex items-start gap-2 p-2 border rounded-md ${
-                                      isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-blue-300'
-                                    }`}
-                                  >
-                                    <Checkbox
-                                      checked={selected}
-                                      onCheckedChange={() => {
-                                        if (isDisabled) return;
-                                        toggle(key, opt.id);
-                                      }}
-                                    />
-                                    <div className="flex-1">
-                                      <div className="text-sm font-medium text-foreground">{opt.label}</div>
-                                      <div className="text-xs text-muted-foreground/70">
-                                        {isDisabled ? opt.reason || 'Not available' : (opt.value !== undefined ? `Value: ${formatNumber(opt.value)}` : 'Available')}
-                                      </div>
-                                    </div>
-                                  </label>
-                                );
-                              })}
-                            </div>
+                            {renderKpiSourceSelector(
+                              key,
+                              options,
+                              ((normalizeCalcConfig(kpiCalculationConfig) as any)?.inputs?.[key] || []),
+                              toggle,
+                            )}
                           </div>
                         );
                       })}

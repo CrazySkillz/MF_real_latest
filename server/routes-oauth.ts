@@ -1405,7 +1405,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
       const sources = await storage.getRevenueSources(campaignId, platformContext);
-      res.json({ success: true, sources });
+      const breakdown = await storage.getRevenueBreakdownBySource(campaignId, "1900-01-01", "2999-12-31", platformContext).catch(() => [] as any[]);
+      const totalsBySource = new Map((Array.isArray(breakdown) ? breakdown : []).map((row: any) => [String(row?.sourceId || ""), Number(row?.revenue || 0)]));
+      const sourcesWithTotals = (Array.isArray(sources) ? sources : []).map((source: any) => {
+        let cfgTotal = 0;
+        try {
+          const cfg = source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : null;
+          cfgTotal = Number(cfg?.lastTotalRevenue || 0);
+        } catch {}
+        const recordTotal = totalsBySource.get(String(source?.id || "")) || 0;
+        return { ...source, lastTotalRevenue: Number((recordTotal || cfgTotal || 0).toFixed(2)) };
+      });
+      res.json({ success: true, sources: sourcesWithTotals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue sources" });
     }

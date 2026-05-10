@@ -387,7 +387,18 @@ function isReportDueNow(report: ReportWithCampaign, now: Date): { due: boolean; 
   const hhmm = parseHHMM(scheduleTime) || { hh: 9, mm: 0 };
 
   const zp = getZonedParts(now, tz);
-  if (zp.hour !== hhmm.hh || zp.minute !== hhmm.mm) return { due: false };
+  const scheduledMinuteOfDay = hhmm.hh * 60 + hhmm.mm;
+  const currentMinuteOfDay = zp.hour * 60 + zp.minute;
+  if (currentMinuteOfDay < scheduledMinuteOfDay) return { due: false };
+
+  const createdAt = (report as any).createdAt ? new Date((report as any).createdAt) : null;
+  if (createdAt && Number.isFinite(createdAt.getTime())) {
+    const createdParts = getZonedParts(createdAt, tz);
+    const createdMinuteOfDay = createdParts.hour * 60 + createdParts.minute;
+    if (createdParts.localDate === zp.localDate && createdMinuteOfDay > scheduledMinuteOfDay) {
+      return { due: false };
+    }
+  }
 
   const monthLast = lastDayOfMonth(zp.year, zp.month);
   const dayOfMonth = zp.day;

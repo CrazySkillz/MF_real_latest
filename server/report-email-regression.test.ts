@@ -14,8 +14,14 @@ describe("scheduled report email regression guard", () => {
 
     expect(source).toContain("Your scheduled MimoSaaS report is ready.");
     expect(source).toContain("Frequency:&nbsp;");
+    expect(source).toContain("Report Type:&nbsp;");
+    expect(source).toContain("Generated:&nbsp;");
+    expect(source).toContain("<strong>MimoSaaS</strong> - Executive Marketing Analytics");
     expect(source).not.toContain("View Report in Dashboard");
     expect(source).not.toContain("<span class=\"info-label\">Window:");
+    expect(source).not.toContain("<div class=\"header\">");
+    expect(source).not.toContain("Overview Report</h1>");
+    expect(source).not.toContain("Daily Report Delivery");
     expect(source).not.toContain("Your scheduled MetricMind report is ready.");
   });
 

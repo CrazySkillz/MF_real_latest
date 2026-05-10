@@ -172,15 +172,34 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   });
   const kpiGA4Connection = (kpiGA4Connections || []).find((conn: any) => conn?.isPrimary) || (kpiGA4Connections || [])[0];
   const kpiGA4PropertyId = String(kpiGA4Connection?.propertyId || "").trim();
+  const kpiGA4LookbackDays = Number((kpiGA4Connection as any)?.lookbackDays) || 90;
+  const kpiGA4DateRange = `${kpiGA4LookbackDays}days`;
   const { data: kpiGA4ToDate } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaign.id}/ga4-to-date`, kpiGA4PropertyId],
+    queryKey: [`/api/campaigns/${campaign.id}/ga4-to-date`, kpiGA4PropertyId, kpiGA4DateRange],
     enabled: !!campaign.id && !!kpiGA4PropertyId,
     queryFn: async () => {
-      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-to-date?propertyId=${encodeURIComponent(kpiGA4PropertyId)}&dateRange=30days`);
+      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-to-date?propertyId=${encodeURIComponent(kpiGA4PropertyId)}&dateRange=${encodeURIComponent(kpiGA4DateRange)}`);
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },
   });
+  const { data: kpiGA4DailyResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaign.id}/ga4-daily`, kpiGA4PropertyId, kpiGA4LookbackDays],
+    enabled: !!campaign.id && !!kpiGA4PropertyId,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-daily?days=${encodeURIComponent(String(kpiGA4LookbackDays))}&propertyId=${encodeURIComponent(kpiGA4PropertyId)}`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
+  const kpiGA4DailyRevenueTotal = useMemo(() => {
+    const rows = Array.isArray(kpiGA4DailyResp?.data) ? kpiGA4DailyResp.data : Array.isArray(kpiGA4DailyResp) ? kpiGA4DailyResp : [];
+    const total = rows.reduce((sum: number, row: any) => {
+      const revenue = Number(row?.revenue || 0);
+      return sum + (Number.isFinite(revenue) ? revenue : 0);
+    }, 0);
+    return Number(total.toFixed(2));
+  }, [kpiGA4DailyResp]);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -315,8 +334,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       const cfg = parseJsonSafe(ga4Source?.mappingConfig);
       const cfgTotal = parseNumSafe(cfg?.lastTotalRevenue);
       const toDateTotal = parseNumSafe(kpiGA4ToDate?.totals?.revenue);
+      const dailyTotal = parseNumSafe(kpiGA4DailyRevenueTotal);
       const outcomeTotal = parseNumSafe(ot?.revenue?.onsiteRevenue ?? ot?.webAnalytics?.revenue ?? ot?.ga4?.revenue);
-      return Math.max(directTotal, cfgTotal, toDateTotal, outcomeTotal);
+      return Math.max(directTotal, cfgTotal, toDateTotal, dailyTotal, outcomeTotal);
     }
     if (sourceId === 'custom_integration') return parseNumSafe(platforms?.customIntegration?.revenue);
     if (sourceId === 'linkedin') return parseNumSafe(platforms?.linkedin?.attributedRevenue);

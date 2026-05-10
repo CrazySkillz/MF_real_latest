@@ -2827,7 +2827,10 @@ export class DatabaseStorage implements IStorage {
 
   // KPI methods
   async getCampaignKPIs(campaignId: string): Promise<KPI[]> {
-    return db.select().from(kpis).where(eq(kpis.campaignId, campaignId));
+    return db.select().from(kpis).where(and(
+      eq(kpis.campaignId, campaignId),
+      or(isNull(kpis.platformType), eq(kpis.platformType, 'campaign'))
+    ));
   }
 
   async getPlatformKPIs(platformType: string, campaignId?: string): Promise<KPI[]> {

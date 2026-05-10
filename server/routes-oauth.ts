@@ -20742,6 +20742,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestData = {
         ...req.body,
         campaignId: id,
+        platformType: null,
         targetValue: req.body.targetValue?.toString() || "0",
         currentValue: req.body.currentValue?.toString() || "0",
         timeframe: req.body.timeframe || "monthly",
@@ -20778,6 +20779,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (campaignId && String((okKpi as any)?.campaignId || "") !== campaignId) {
         return res.status(404).json({ message: "KPI not found" });
       }
+      const platformType = String((okKpi as any)?.platformType || "").trim().toLowerCase();
+      if (platformType && platformType !== "campaign") {
+        return res.status(404).json({ message: "KPI not found" });
+      }
 
       const okCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!okCampaign) return;
@@ -20786,6 +20791,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateData: any = {
         ...req.body,
       };
+      delete updateData.campaignId;
+      delete updateData.platformType;
 
       if (req.body.targetValue !== undefined) {
         updateData.targetValue = req.body.targetValue?.toString();
@@ -20832,9 +20839,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/campaigns/:id/kpis/:kpiId", async (req, res) => {
     try {
-      const { id, kpiId } = req.params;
-      const ok = await ensureCampaignAccess(req as any, res as any, id);
-      if (!ok) return;
+      const campaignId = String(req.params.id || "").trim();
+      const { kpiId } = req.params;
+      const okKpi = await ensureKpiAccess(req as any, res as any, kpiId);
+      if (!okKpi) return;
+      if (String((okKpi as any)?.campaignId || "") !== campaignId) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
+      const platformType = String((okKpi as any)?.platformType || "").trim().toLowerCase();
+      if (platformType && platformType !== "campaign") {
+        return res.status(404).json({ message: "KPI not found" });
+      }
+      const okCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!okCampaign) return;
 
       const deleted = await storage.deleteKPI(kpiId);
       if (!deleted) {

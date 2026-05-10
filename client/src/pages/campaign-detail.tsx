@@ -288,7 +288,14 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       const cfg = parseJsonSafe(row?.mappingConfig);
       return parseNumSafe(cfg?.lastTotalRevenue);
     }
-    if (sourceId === 'ga4') return parseNumSafe(ot?.ga4?.revenue);
+    if (sourceId === 'ga4') {
+      const ga4Source = (kpiRevenueSources || []).find((s: any) => String(s?.sourceType || '').toLowerCase() === 'ga4');
+      const directTotal = parseNumSafe(ga4Source?.lastTotalRevenue);
+      if (directTotal > 0) return directTotal;
+      const cfg = parseJsonSafe(ga4Source?.mappingConfig);
+      const cfgTotal = parseNumSafe(cfg?.lastTotalRevenue);
+      return cfgTotal > 0 ? cfgTotal : parseNumSafe(ot?.ga4?.revenue);
+    }
     if (sourceId === 'custom_integration') return parseNumSafe(platforms?.customIntegration?.revenue);
     if (sourceId === 'linkedin') return parseNumSafe(platforms?.linkedin?.attributedRevenue);
     if (sourceId === 'shopify' || sourceId === 'hubspot' || sourceId === 'salesforce') {
@@ -619,51 +626,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     selectedIds: string[],
     toggle: (inputKey: CalcInputKey, sourceId: string) => void,
   ) => {
-    if (key === 'revenue') {
-      const selectedOptions = options.filter((opt) => selectedIds.includes(opt.id));
-      const summary = selectedOptions.length
-        ? `${selectedOptions.length} selected: ${selectedOptions.slice(0, 2).map((opt) => opt.label).join(', ')}${selectedOptions.length > 2 ? '...' : ''}`
-        : 'Select revenue sources';
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full justify-between font-normal">
-              <span className="truncate">{summary}</span>
-              <ChevronDown className="h-4 w-4 opacity-70" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-80 overflow-y-auto">
-            <DropdownMenuLabel>Revenue sources</DropdownMenuLabel>
-            {options.map((opt) => {
-              const selected = selectedIds.includes(opt.id);
-              const isDisabled = !opt.enabled;
-              return (
-                <DropdownMenuItem
-                  key={opt.id}
-                  disabled={isDisabled}
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    if (isDisabled) return;
-                    toggle(key, opt.id);
-                  }}
-                  className="items-start gap-2"
-                >
-                  <Checkbox checked={selected} disabled={isDisabled} className="mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{opt.label}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {isDisabled ? opt.reason || 'Not available' : opt.value !== undefined ? `Value: ${formatNumber(opt.value)}` : 'Available'}
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    }
-
     return (
       <div className="grid grid-cols-2 gap-2">
         {options.map((opt) => {

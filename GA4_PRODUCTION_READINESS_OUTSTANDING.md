@@ -65,6 +65,7 @@ Current conclusion:
 4. Report email timing still depends on shared scheduler/email infrastructure.
 
 5. The production build still reports large frontend chunks.
-   Root cause: `client/src/App.tsx` statically imports all major route pages, including the largest analytics pages, so code for routes a user has not opened is bundled into the main app chunk.
-   Safe future fix: use route-level lazy loading in `App.tsx` only, keep route paths and page responsibilities unchanged, add one shared loading fallback, and validate with `npm run check`, `npm run build`, plus smoke tests for the main routes.
-   Do not mix this with analytics logic, platform page refactors, source-flow changes, or chart/report behavior changes.
+   Mitigation completed: large route pages are lazy-loaded from `client/src/App.tsx`, which reduced the main app chunk from about 2.46 MB to about 729 KB without changing analytics/page internals.
+   Validation completed: `npm run check`, `npm run build`, `npm run test`, and post-deploy route smoke testing passed for Home, Campaigns, Campaign Detail, GA4, LinkedIn, Meta, Google Ads, Google Sheets, Reports, and Notifications.
+   Remaining warning: Vite still reports chunks over 500 KB, mainly the reduced app entry plus `charts-vendor` and `pdf-vendor`.
+   Future chunk work should be optional and separate from GA4/template integration work. Do not mix it with analytics logic, platform page refactors, source-flow changes, or chart/report behavior changes.

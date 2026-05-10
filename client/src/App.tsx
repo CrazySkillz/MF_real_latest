@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -15,19 +16,19 @@ import {
 import { ClientProvider, useClient } from "@/lib/clientContext";
 import Dashboard from "@/pages/dashboard";
 import Campaigns from "@/pages/campaigns";
-import CampaignDetail from "@/pages/campaign-detail";
-import CampaignPerformance from "@/pages/campaign-performance";
-import PlatformComparison from "@/pages/platform-comparison";
+const CampaignDetail = lazy(() => import("@/pages/campaign-detail"));
+const CampaignPerformance = lazy(() => import("@/pages/campaign-performance"));
+const PlatformComparison = lazy(() => import("@/pages/platform-comparison"));
 import ComingSoon from "@/pages/coming-soon";
-import TrendAnalysis from "@/pages/trend-analysis";
-import ExecutiveSummary from "@/pages/executive-summary";
-import FinancialAnalysis from "@/pages/financial-analysis";
-import GA4Metrics from "@/pages/ga4-metrics";
-import GoogleSheetsData from "@/pages/google-sheets-data";
-import LinkedInAnalytics from "@/pages/linkedin-analytics";
-import MetaAnalytics from "@/pages/meta-analytics";
-import GoogleAdsAnalytics from "@/pages/google-ads-analytics";
-import CustomIntegrationAnalytics from "@/pages/custom-integration-analytics";
+const TrendAnalysis = lazy(() => import("@/pages/trend-analysis"));
+const ExecutiveSummary = lazy(() => import("@/pages/executive-summary"));
+const FinancialAnalysis = lazy(() => import("@/pages/financial-analysis"));
+const GA4Metrics = lazy(() => import("@/pages/ga4-metrics"));
+const GoogleSheetsData = lazy(() => import("@/pages/google-sheets-data"));
+const LinkedInAnalytics = lazy(() => import("@/pages/linkedin-analytics"));
+const MetaAnalytics = lazy(() => import("@/pages/meta-analytics"));
+const GoogleAdsAnalytics = lazy(() => import("@/pages/google-ads-analytics"));
+const CustomIntegrationAnalytics = lazy(() => import("@/pages/custom-integration-analytics"));
 import KPIs from "@/pages/kpis";
 import PlatformKPIs from "@/pages/platform-kpis";
 import Audiences from "@/pages/audiences";
@@ -38,6 +39,17 @@ import WelcomePage from "@/pages/welcome";
 import ClientsPage from "@/pages/clients";
 import HomePage from "@/pages/home";
 import NotFound from "@/pages/not-found";
+
+function PageLoading() {
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
+}
 
 function AuthPage() {
   const [location, setLocation] = useLocation();
@@ -99,34 +111,36 @@ function ProtectedRouter() {
   return (
     <ClientProvider>
       <WelcomeGate>
-        <Switch>
-          <Route path="/" component={HomePage} />
-          <Route path="/welcome" component={HomePage} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/clients" component={ClientsPage} />
-          <Route path="/campaigns" component={Campaigns} />
-          <Route path="/campaigns/:id" component={CampaignDetail} />
-          <Route path="/campaigns/:id/performance" component={CampaignPerformance} />
-          <Route path="/campaigns/:id/platform-comparison" component={PlatformComparison} />
-          <Route path="/campaigns/:id/trend-analysis" component={TrendAnalysis} />
-          <Route path="/campaigns/:id/executive-summary" component={ExecutiveSummary} />
-          <Route path="/campaigns/:id/financial-analysis" component={FinancialAnalysis} />
-          <Route path="/campaigns/:id/ga4-metrics" component={GA4Metrics} />
-          <Route path="/campaigns/:id/google-sheets-data" component={GoogleSheetsData} />
-          <Route path="/campaigns/:id/linkedin-analytics" component={LinkedInAnalytics} />
-          <Route path="/campaigns/:id/meta-analytics" component={MetaAnalytics} />
-          <Route path="/campaigns/:id/google-ads-analytics" component={GoogleAdsAnalytics} />
-          <Route path="/campaigns/:id/custom-integration-analytics" component={CustomIntegrationAnalytics} />
-          <Route path="/integrations/:id/analytics" component={CustomIntegrationAnalytics} />
-          <Route path="/campaigns/:id/kpis" component={KPIs} />
-          <Route path="/platforms/:platformType/kpis" component={PlatformKPIs} />
-          <Route path="/linkedin-analytics" component={LinkedInAnalytics} />
-          <Route path="/audiences" component={Audiences} />
-          <Route path="/reports" component={Reports} />
-          <Route path="/notifications" component={Notifications} />
-          <Route path="/auth/google/callback" component={GoogleAuthCallback} />
-          <Route component={NotFound} />
-        </Switch>
+        <Suspense fallback={<PageLoading />}>
+          <Switch>
+            <Route path="/" component={HomePage} />
+            <Route path="/welcome" component={HomePage} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/clients" component={ClientsPage} />
+            <Route path="/campaigns" component={Campaigns} />
+            <Route path="/campaigns/:id" component={CampaignDetail} />
+            <Route path="/campaigns/:id/performance" component={CampaignPerformance} />
+            <Route path="/campaigns/:id/platform-comparison" component={PlatformComparison} />
+            <Route path="/campaigns/:id/trend-analysis" component={TrendAnalysis} />
+            <Route path="/campaigns/:id/executive-summary" component={ExecutiveSummary} />
+            <Route path="/campaigns/:id/financial-analysis" component={FinancialAnalysis} />
+            <Route path="/campaigns/:id/ga4-metrics" component={GA4Metrics} />
+            <Route path="/campaigns/:id/google-sheets-data" component={GoogleSheetsData} />
+            <Route path="/campaigns/:id/linkedin-analytics" component={LinkedInAnalytics} />
+            <Route path="/campaigns/:id/meta-analytics" component={MetaAnalytics} />
+            <Route path="/campaigns/:id/google-ads-analytics" component={GoogleAdsAnalytics} />
+            <Route path="/campaigns/:id/custom-integration-analytics" component={CustomIntegrationAnalytics} />
+            <Route path="/integrations/:id/analytics" component={CustomIntegrationAnalytics} />
+            <Route path="/campaigns/:id/kpis" component={KPIs} />
+            <Route path="/platforms/:platformType/kpis" component={PlatformKPIs} />
+            <Route path="/linkedin-analytics" component={LinkedInAnalytics} />
+            <Route path="/audiences" component={Audiences} />
+            <Route path="/reports" component={Reports} />
+            <Route path="/notifications" component={Notifications} />
+            <Route path="/auth/google/callback" component={GoogleAuthCallback} />
+            <Route component={NotFound} />
+          </Switch>
+        </Suspense>
       </WelcomeGate>
     </ClientProvider>
   );

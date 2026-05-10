@@ -458,6 +458,13 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(abTestVariants).where(inArray(abTestVariants.testId, abTestIds));
     }
 
+    const deleteOptionalCampaignTable = async (tableName: string): Promise<void> => {
+      const exists = await tx.execute(sql`SELECT to_regclass(${tableName}) AS table_name`);
+      if (exists.rows?.[0]?.table_name) {
+        await tx.execute(sql`DELETE FROM ${sql.raw(tableName)} WHERE campaign_id = ${campaignId}`);
+      }
+    };
+
     await tx.delete(spendRecords).where(eq(spendRecords.campaignId, campaignId));
     await tx.delete(revenueRecords).where(eq(revenueRecords.campaignId, campaignId));
     await tx.delete(spendSources).where(eq(spendSources.campaignId, campaignId));
@@ -474,9 +481,9 @@ export class DatabaseStorage implements IStorage {
     await tx.delete(linkedinConnections).where(eq(linkedinConnections.campaignId, campaignId));
     await tx.delete(metaConnections).where(eq(metaConnections.campaignId, campaignId));
     await tx.delete(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId));
-    await tx.delete(metaKpis).where(eq(metaKpis.campaignId, campaignId));
-    await tx.delete(metaBenchmarks).where(eq(metaBenchmarks.campaignId, campaignId));
-    await tx.delete(metaReports).where(eq(metaReports.campaignId, campaignId));
+    await deleteOptionalCampaignTable("meta_kpis");
+    await deleteOptionalCampaignTable("meta_benchmarks");
+    await deleteOptionalCampaignTable("meta_reports");
     await tx.delete(linkedinImportSessions).where(eq(linkedinImportSessions.campaignId, campaignId));
     await tx.delete(linkedinReports).where(eq(linkedinReports.campaignId, campaignId));
     await tx.delete(reportSnapshots).where(eq(reportSnapshots.campaignId, campaignId));

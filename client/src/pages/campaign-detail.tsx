@@ -358,6 +358,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const getMetricSourceValue = (inputKey: CalcInputKey, sourceId: string): number => {
     const ot = outcomeTotals || {};
     const platforms = ot?.platforms || {};
+    if (sourceId === 'total_revenue') return parseNumSafe(ot?.revenue?.totalRevenue);
+    if (sourceId === 'total_spend') return parseNumSafe(ot?.spend?.unifiedSpend);
+    if (sourceId === 'total_conversions') return getUnifiedConversions();
 
     // Spend sources
     if (inputKey === 'spend') {
@@ -486,10 +489,17 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     const connected = getConnectedPlatformFlags();
     const platforms = (outcomeTotals || {})?.platforms || {};
     const revenueSources = (outcomeTotals || {})?.revenueSources || [];
+    const selectedMetric = String(kpiForm.metric || '');
+    const aggregateEfficiency = selectedMetric === 'roas' || selectedMetric === 'roi';
+    const aggregateCpa = selectedMetric === 'cpa';
 
     const base: Array<{ id: string; label: string; enabled: boolean; reason?: string; value?: number }> = [];
 
     if (inputKey === 'revenue') {
+      if (aggregateEfficiency) {
+        const value = getMetricSourceValue('revenue', 'total_revenue');
+        return [{ id: 'total_revenue', label: 'Total Revenue', enabled: value > 0, reason: 'No revenue connected', value }];
+      }
       // GA4 (website analytics)
       if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: getRevenueSourceValue('ga4') });
       // Custom integration revenue
@@ -531,6 +541,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'spend') {
+      if (aggregateEfficiency || aggregateCpa) {
+        const value = getMetricSourceValue('spend', 'total_spend');
+        return [{ id: 'total_spend', label: 'Total Spend', enabled: value > 0, reason: 'No spend connected', value }];
+      }
       const imported = parseNumSafe((outcomeTotals || {})?.spend?.persistedSpend) > 0;
       base.push({ id: 'imported_spend', label: 'Imported Spend', enabled: imported, reason: imported ? undefined : 'No imported spend connected', value: parseNumSafe((outcomeTotals || {})?.spend?.persistedSpend) });
       if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.spend) });
@@ -540,6 +554,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'conversions') {
+      if (aggregateCpa) {
+        const value = getMetricSourceValue('conversions', 'total_conversions');
+        return [{ id: 'total_conversions', label: 'Total Conversions', enabled: value > 0, reason: 'No conversions connected', value }];
+      }
       if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: getMetricSourceValue('conversions', 'ga4') });
       if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.conversions) });
       if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.conversions) });
@@ -659,6 +677,12 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         return 'Custom Integration';
       case 'imported_spend':
         return 'Imported Spend';
+      case 'total_revenue':
+        return 'Total Revenue';
+      case 'total_spend':
+        return 'Total Spend';
+      case 'total_conversions':
+        return 'Total Conversions';
       case 'shopify':
         return 'Shopify';
       case 'hubspot':

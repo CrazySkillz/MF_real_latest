@@ -26,16 +26,22 @@ describe("GA4 Benchmark regression guard", () => {
     expect(autoRefreshFile).toContain('import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";');
     expect(autoRefreshFile).toContain("await checkBenchmarkPerformanceAlerts().catch((e) => {");
     expect(ga4JobsFile).toContain("Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,");
-    expect(ga4JobsFile).toContain("await storage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);");
+    expect(ga4JobsFile).toContain("await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);");
   });
 
-  it("refetches notifications immediately after GA4 Run refresh", () => {
-    const ga4MetricsFile = readFileSync(
-      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+  it("runs notification checks immediately after GA4 refresh paths", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+    const ga4JobsFile = readFileSync(
+      join(process.cwd(), "server", "ga4-kpi-benchmark-jobs.ts"),
       "utf-8"
     );
 
-    expect(ga4MetricsFile).toContain('queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });');
-    expect(ga4MetricsFile).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"] });');
+    expect(routesFile).toContain('const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");');
+    expect(routesFile).toContain("await checkBenchmarkPerformanceAlerts();");
+    expect(ga4JobsFile).toContain('const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");');
+    expect(ga4JobsFile).toContain("await checkBenchmarkPerformanceAlerts();");
   });
 });

@@ -171,6 +171,11 @@ Revenue source options:
 4. `Google Sheets`
 5. `Upload CSV`
 
+Visible source-picker helper text:
+
+- `Google Sheets`: `Import revenue from a connected Google Sheets tab`
+- `Upload CSV`: `Import revenue from a CSV. Requires manual re-upload to update.`
+
 When the user clicks `+` on the `Total Revenue` card:
 
 1. the revenue-source modal opens

@@ -22,7 +22,7 @@ describe("GA4 KPI regression guard", () => {
       "utf-8"
     );
     const activeKpisQueryMatch = schedulerFile.match(
-      /const activeKPIs = await db\.select\(\)\s*\.from\(kpis\)\s*\.where\(and\(([\s\S]*?)\)\);/
+      /const activeKPIsRaw = await db\.select\(\)\s*\.from\(kpis\)\s*\.where\(and\(([\s\S]*?)\)\);/
     );
     const activeKpisQuery = activeKpisQueryMatch?.[0] || "";
 

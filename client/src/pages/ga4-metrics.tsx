@@ -4927,7 +4927,6 @@ export default function GA4Metrics() {
                 <div><span className="font-medium text-foreground">Campaign:</span> {campaign.name}</div>
                 <div><span className="font-medium text-foreground">GA4 Property ID:</span> {provenancePropertyId || provenanceProperty}</div>
                 <div><span className="font-medium text-foreground">Property Campaigns:</span> {headerPropertyCampaigns}</div>
-                <div><span className="font-medium text-foreground">Last updated:</span> {headerLastUpdated}</div>
               </CardContent>
             </Card>
             {/* Intentionally no inline "Data warnings" banner in the MVP UI (keeps the page clean for execs). */}

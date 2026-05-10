@@ -1470,7 +1470,7 @@ export function AddRevenueWizardModal(props: {
                       <FileSpreadsheet className="w-4 h-4" />
                       Google Sheets
                     </CardTitle>
-                    <CardDescription>Import revenue from a connected Google Sheet tab. With a date column this behaves like daily history; without one it behaves like a revenue snapshot.</CardDescription>
+                    <CardDescription>Import revenue from a connected Google Sheets tab</CardDescription>
                   </CardHeader>
                 </Card>
 
@@ -1483,7 +1483,7 @@ export function AddRevenueWizardModal(props: {
                     <CardDescription>
                       <div className="flex items-start gap-2">
                         <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
-                        <span>Import revenue from a CSV. This is a one-time import and does not auto-sync; update it later by uploading a new file.</span>
+                        <span>Import revenue from a CSV. Requires manual re-upload to update.</span>
                       </div>
                     </CardDescription>
                   </CardHeader>

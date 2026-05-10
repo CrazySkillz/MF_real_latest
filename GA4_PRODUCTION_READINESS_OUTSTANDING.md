@@ -63,3 +63,8 @@ Current conclusion:
 3. Insights use a rule-based engine. UI/report copy now frames outputs as recommended checks, not causal proof.
 
 4. Report email timing still depends on shared scheduler/email infrastructure.
+
+5. The production build still reports large frontend chunks.
+   Root cause: `client/src/App.tsx` statically imports all major route pages, including the largest analytics pages, so code for routes a user has not opened is bundled into the main app chunk.
+   Safe future fix: use route-level lazy loading in `App.tsx` only, keep route paths and page responsibilities unchanged, add one shared loading fallback, and validate with `npm run check`, `npm run build`, plus smoke tests for the main routes.
+   Do not mix this with analytics logic, platform page refactors, source-flow changes, or chart/report behavior changes.

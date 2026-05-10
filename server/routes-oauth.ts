@@ -9722,6 +9722,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Persisted spend totals (manual/CSV/Sheets imports)
       const { startDate, endDate } = getDateRangeBounds(dateRange);
+      if (activeGA4 && parseNum(ga4Totals.revenue) <= 0) {
+        try {
+          const primaryGA4 = (ga4Connections || []).find((c: any) => c?.isPrimary) || (ga4Connections || [])[0];
+          if (primaryGA4?.propertyId) {
+            const rows = await storage.getGA4DailyMetrics(campaignId, String(primaryGA4.propertyId), startDate, endDate);
+            const persistedRevenue = (rows || []).reduce((sum: number, row: any) => sum + parseNum(row?.revenue), 0);
+            if (persistedRevenue > 0) ga4Totals.revenue = Number(persistedRevenue.toFixed(2));
+          }
+        } catch {
+          // Keep live GA4 result if persisted fallback is unavailable.
+        }
+      }
       const spendTotals = await storage.getSpendTotalForRange(campaignId, startDate, endDate);
       const persistedSpend = parseNum((spendTotals as any)?.totalSpend);
 

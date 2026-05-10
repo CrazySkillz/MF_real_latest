@@ -9674,35 +9674,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      const [campaign, linkedInConn, metaConn, customIntegration] = await Promise.all([
+      const [campaign, ga4Connections, linkedInConn, metaConn, customIntegration] = await Promise.all([
         storage.getCampaign(campaignId),
+        storage.getGA4Connections(campaignId),
         storage.getLinkedInConnection(campaignId),
         storage.getMetaConnection(campaignId),
         storage.getCustomIntegration(campaignId),
       ]);
+      const activeGA4 = (ga4Connections || []).some((c: any) => c?.propertyId && c.propertyId !== "");
 
       // GA4 totals
       let ga4Totals: any = {
-        connected: false,
+        connected: activeGA4,
         revenue: 0,
         conversions: 0,
         sessions: 0,
         users: 0,
       };
       try {
-        const ga4DateRange = toGa4DateRange(dateRange);
-        const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
-        const result = await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, undefined, 2000, campaignFilter);
-        ga4Totals = {
-          connected: true,
-          revenue: parseNum(result?.totals?.revenue),
-          conversions: parseNum(result?.totals?.conversions),
-          sessions: parseNum(result?.totals?.sessions),
-          users: parseNum(result?.totals?.users),
-        };
+        if (activeGA4) {
+          const ga4DateRange = toGa4DateRange(dateRange);
+          const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+          const result = await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, undefined, 2000, campaignFilter);
+          ga4Totals = {
+            connected: true,
+            revenue: parseNum(result?.totals?.revenue),
+            conversions: parseNum(result?.totals?.conversions),
+            sessions: parseNum(result?.totals?.sessions),
+            users: parseNum(result?.totals?.users),
+          };
+        }
       } catch (e: any) {
         // Best-effort: allow this endpoint to return even if GA4 is not connected.
-        ga4Totals = { ...ga4Totals, connected: false, error: e?.message || "GA4 unavailable" };
+        ga4Totals = { ...ga4Totals, connected: activeGA4, error: e?.message || "GA4 unavailable" };
       }
 
       // Persisted spend totals (manual/CSV/Sheets imports)
@@ -9714,7 +9718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let linkedIn: any = { connected: false };
       let linkedInSpend = 0;
       try {
-        if (linkedInConn && linkedInConn.adAccountId) {
+        if (linkedInConn && linkedInConn.adAccountId && !(linkedInConn as any).spendOnly) {
           const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
           if (latestSession) {
             const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
@@ -9782,7 +9786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let meta: any = { connected: false };
       let metaSpend = 0;
       try {
-        if (metaConn) {
+        if (metaConn && !(metaConn as any).spendOnly) {
           let spend = 0, clicks = 0, impressions = 0, conversions = 0;
 
           if ((metaConn as any).method === "test_mode") {

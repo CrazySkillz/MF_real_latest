@@ -264,6 +264,19 @@ The GA4 section should be treated as production-ready only when:
 - refresh/recompute behavior is trustworthy
 - report outputs reflect the refreshed state correctly
 
+## Delete Flow Validation
+
+Client and campaign deletion are destructive production paths.
+For future changes touching delete behavior:
+
+- keep the endpoint in `server/routes-oauth.ts` and persistence cleanup in `server/storage.ts`
+- delete campaign-scoped children before deleting the campaign row
+- keep client deletion transactional across all campaigns owned by that client
+- verify optional platform tables exist before deleting from them because some deployed databases may not contain every schema-declared table
+- validate with a disposable client/campaign, or with an explicit rollback simulation when checking production-like data
+- confirm deleted campaigns disappear from Campaigns, Notifications, KPI/Benchmark lists, Reports, connected source lists, and platform analytics entry points
+- do not broaden delete behavior to unrelated clients or campaigns
+
 ## Non-Negotiable Rules
 
 - preserve existing architecture

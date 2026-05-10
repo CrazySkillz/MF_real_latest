@@ -94,6 +94,10 @@ The concrete top-of-funnel journey should be understood as:
 7. the new client appears as a client card on the Home page
 8. clicking a client card should route the user to that client's `Campaigns` page
 
+Client deletion is allowed from the Home page and is intentionally destructive.
+Deleting a client must also delete that client's campaigns and their campaign-scoped analytics children, including source connections, normalized spend/revenue records, KPIs, benchmarks, notifications, report records, snapshots, and related platform analytics rows.
+This delete path must remain transactional: if any required child cleanup fails, the client/campaign delete should fail rather than leave a partially deleted analytics state.
+
 ### Left Sidebar Pattern
 
 Current intended pattern:
@@ -548,6 +552,10 @@ That page should:
 - let the user edit campaigns
 - let the user pause or re-activate campaigns
 - let the user delete campaigns
+
+Deleting a campaign must delete the campaign-scoped analytics data that depends on it before deleting the campaign record.
+This includes connected source rows, materialized revenue/spend records, platform daily metrics, KPIs, benchmarks, notifications, reports, snapshots, and other campaign-scoped children.
+Optional platform tables that may not exist in every deployed database must be existence-checked before deletion; missing optional tables must not block deletion of real campaign data.
 
 ### Campaign Creation Wizard Pattern
 

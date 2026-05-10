@@ -1225,9 +1225,9 @@ export default function Campaigns() {
                     /* Step 5: Confirm & Create */
                     <div className="space-y-4">
                       <div className="border rounded-lg p-4 space-y-3">
-                        <div className="flex justify-between text-sm">
+                        <div className="text-sm">
                           <span className="text-muted-foreground">Campaign Name</span>
-                          <span className="font-medium">{campaignData?.name}</span>
+                          <div className="font-medium mt-1">{campaignData?.name}</div>
                         </div>
                         {campaignData?.budget && (
                           <div className="flex justify-between text-sm">

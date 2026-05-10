@@ -4786,6 +4786,38 @@ export default function CampaignDetail() {
     enabled: !!campaignId,
   });
 
+  const sourceItemsByPlatform = useMemo(() => {
+    const contextForPlatform = (platformName: string) => {
+      if (platformName === "LinkedIn Ads") return "linkedin";
+      if (platformName === "Facebook Ads") return "meta";
+      if (platformName === "Google Ads") return "google-ads";
+      return platformName === "Google Analytics" ? "ga4" : "";
+    };
+    const sourceMeta = (sourceType: string) => {
+      if (sourceType === "hubspot") return { label: "HubSpot", Icon: SiHubspot, className: "text-orange-500" };
+      if (sourceType === "salesforce") return { label: "Salesforce", Icon: SiSalesforce, className: "text-blue-500" };
+      if (sourceType === "shopify") return { label: "Shopify", Icon: SiShopify, className: "text-green-600" };
+      if (sourceType === "google_sheets") return { label: "Google Sheets", Icon: FileSpreadsheet, className: "text-green-600" };
+      if (sourceType === "csv") return { label: "CSV", Icon: FileText, className: "text-blue-500" };
+      return { label: sourceType || "Source", Icon: FileText, className: "text-muted-foreground" };
+    };
+    const allSources = [
+      ...(dataSources?.revenueSources || []).map((source: any) => ({ ...source, sourceKind: "Revenue" })),
+      ...(dataSources?.spendSources || []).map((source: any) => ({ ...source, sourceKind: "Spend" })),
+    ];
+    return (platformName: string) => {
+      const ctx = contextForPlatform(platformName);
+      if (!ctx) return [];
+      return allSources
+        .filter((source: any) => source?.isActive !== false && source?.sourceType !== "manual")
+        .filter((source: any) => String(source?.platformContext || "ga4").trim().toLowerCase() === ctx)
+        .map((source: any) => {
+          const meta = sourceMeta(String(source?.sourceType || ""));
+          return { ...meta, label: source?.sourceType === "csv" ? String(source?.displayName || meta.label) : meta.label, id: source?.id, sourceKind: source.sourceKind };
+        });
+    };
+  }, [dataSources]);
+
   // Auto-expand GA4 when it needs setup (authenticated but no property selected)
   const ga4NeedsSetup = allPlatformMetrics.find(p => p.platform === "Google Analytics")?.needsSetup;
   useEffect(() => {
@@ -5492,6 +5524,22 @@ export default function CampaignDetail() {
                                 View Detailed Analytics
                               </Button>
                             </Link>
+                          </div>
+                        )}
+                        {sourceItemsByPlatform(platform.platform).length > 0 && (
+                          <div className="pt-2 border-t">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Revenue & Spend Sources</p>
+                            <div className="flex flex-wrap gap-2">
+                              {sourceItemsByPlatform(platform.platform).map((source: any) => {
+                                const Icon = source.Icon;
+                                return (
+                                  <Badge key={`${source.sourceKind}-${source.id}`} variant="outline" className="flex items-center gap-1.5 py-1 px-2">
+                                    <Icon className={`w-3.5 h-3.5 ${source.className}`} />
+                                    {source.label}
+                                  </Badge>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>

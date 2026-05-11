@@ -1383,12 +1383,44 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     }
   };
 
+  const getCampaignKpiSnapshot = (kpi: any): { band: 'above' | 'near' | 'below'; progressPct: number } | null => {
+    const current = getKpiCurrentNumber(kpi);
+    const target = parseNumSafe(kpi?.targetValue) || 0;
+    if (!(target > 0)) return null;
+    const lowerBetter = isLowerBetterMetric(String(kpi?.metric || ''));
+    const effectiveDeltaPct = lowerBetter ? ((target - current) / target) * 100 : ((current - target) / target) * 100;
+    const progressRatio = lowerBetter ? (current > 0 ? target / current : 1) : current / target;
+    const progressPct = Math.max(0, Math.min(100, progressRatio * 100));
+    return {
+      band: effectiveDeltaPct > 5 ? 'above' : effectiveDeltaPct >= -5 ? 'near' : 'below',
+      progressPct,
+    };
+  };
+
+  const campaignKpiSnapshot = (() => {
+    let above = 0;
+    let near = 0;
+    let below = 0;
+    let scored = 0;
+    let sumPct = 0;
+    kpis.forEach((kpi: any) => {
+      const snapshot = getCampaignKpiSnapshot(kpi);
+      if (!snapshot) return;
+      scored += 1;
+      sumPct += snapshot.progressPct;
+      if (snapshot.band === 'above') above += 1;
+      else if (snapshot.band === 'near') near += 1;
+      else below += 1;
+    });
+    return { total: kpis.length, above, near, below, avgPct: scored > 0 ? sumPct / scored : 0 };
+  })();
+
   return (
     <div className="space-y-6 fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Campaign KPIs</h2>
+          <h2 className="text-lg font-semibold text-foreground">Campaign Key Performance Indicators</h2>
           <p className="text-muted-foreground/70">
             Track key performance indicators and monitor campaign success metrics
           </p>
@@ -1406,11 +1438,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         <>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             {[
-              { label: 'Total KPIs', value: '0', icon: <Award className="w-8 h-8 text-blue-500" />, desc: '' },
-              { label: 'On Track', value: '0', icon: <CheckCircle2 className="w-8 h-8 text-green-500" />, desc: 'meeting or exceeding target', color: 'text-green-600' },
-              { label: 'Needs Attention', value: '0', icon: <AlertCircle className="w-8 h-8 text-amber-500" />, desc: 'within 70–90% of target', color: 'text-amber-600' },
-              { label: 'Behind', value: '0', icon: <TrendingDown className="w-8 h-8 text-red-500" />, desc: 'below 70% of target', color: 'text-red-600' },
-              { label: 'Avg. Progress', value: '0.0%', icon: <TrendingUp className="w-8 h-8 text-purple-500" />, desc: 'across all KPIs' },
+              { label: 'Total KPIs', value: '0', icon: <Target className="w-8 h-8 text-purple-500" />, desc: '' },
+              { label: 'Above Target', value: '0', icon: <TrendingUp className="w-8 h-8 text-green-500" />, desc: 'more than +5% above target', color: 'text-green-600' },
+              { label: 'On Track', value: '0', icon: <CheckCircle2 className="w-8 h-8 text-blue-500" />, desc: 'within ±5% of target', color: 'text-blue-600' },
+              { label: 'Below Target', value: '0', icon: <AlertCircle className="w-8 h-8 text-red-500" />, desc: 'more than −5% below target', color: 'text-red-600' },
+              { label: 'Avg. Progress', value: '0.0%', icon: <TrendingUp className="w-8 h-8 text-violet-600" />, desc: '' },
             ].map((s, i) => (
               <Card key={i}>
                 <CardContent className="p-4">
@@ -1437,10 +1469,25 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   <div>
                     <p className="text-sm text-muted-foreground/70">Total KPIs</p>
                     <p className="text-2xl font-bold text-foreground" data-testid="text-total-kpis">
-                      {kpis.length}
+                      {campaignKpiSnapshot.total}
                     </p>
                   </div>
-                  <Award className="w-8 h-8 text-blue-500" />
+                  <Target className="w-8 h-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground/70">Above Target</p>
+                    <p className="text-2xl font-bold text-green-600" data-testid="text-kpis-above-target">
+                      {campaignKpiSnapshot.above}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">more than +5% above target</p>
+                  </div>
+                  <TrendingUp className="w-8 h-8 text-green-500" />
                 </div>
               </CardContent>
             </Card>
@@ -1450,20 +1497,12 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground/70">On Track</p>
-                    <p className="text-2xl font-bold text-green-600" data-testid="text-kpis-above-target">
-                      {kpis.filter(k => {
-                        const current = getKpiCurrentNumber(k);
-                        const target = parseNumSafe(k?.targetValue) || 0;
-                        const lowerBetter = isLowerBetterMetric(String(k?.metric || ''));
-                        if (target <= 0) return false;
-                        const ratio = lowerBetter ? (current > 0 ? target / current : 0) : (current / target);
-                        const pct = ratio * 100;
-                        return pct >= 90;
-                      }).length}
+                    <p className="text-2xl font-bold text-blue-600" data-testid="text-kpis-on-track">
+                      {campaignKpiSnapshot.near}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">meeting or exceeding target</p>
+                    <p className="text-xs text-muted-foreground mt-1">within ±5% of target</p>
                   </div>
-                  <CheckCircle2 className="w-8 h-8 text-green-500" />
+                  <CheckCircle2 className="w-8 h-8 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
@@ -1472,44 +1511,13 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground/70">Needs Attention</p>
-                    <p className="text-2xl font-bold text-amber-600" data-testid="text-kpis-below-target">
-                      {kpis.filter(k => {
-                        const current = getKpiCurrentNumber(k);
-                        const target = parseNumSafe(k?.targetValue) || 0;
-                        const lowerBetter = isLowerBetterMetric(String(k?.metric || ''));
-                        if (target <= 0) return false;
-                        const ratio = lowerBetter ? (current > 0 ? target / current : 0) : (current / target);
-                        const pct = ratio * 100;
-                        return pct >= 70 && pct < 90;
-                      }).length}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">within 70–90% of target</p>
-                  </div>
-                  <AlertCircle className="w-8 h-8 text-amber-500" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground/70">Behind</p>
+                    <p className="text-sm text-muted-foreground/70">Below Target</p>
                     <p className="text-2xl font-bold text-red-600" data-testid="text-kpis-behind">
-                      {kpis.filter(k => {
-                        const current = getKpiCurrentNumber(k);
-                        const target = parseNumSafe(k?.targetValue) || 0;
-                        const lowerBetter = isLowerBetterMetric(String(k?.metric || ''));
-                        if (target <= 0) return false;
-                        const ratio = lowerBetter ? (current > 0 ? target / current : 0) : (current / target);
-                        const pct = ratio * 100;
-                        return pct < 70;
-                      }).length}
+                      {campaignKpiSnapshot.below}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">below 70% of target</p>
+                    <p className="text-xs text-muted-foreground mt-1">more than −5% below target</p>
                   </div>
-                  <TrendingDown className="w-8 h-8 text-red-500" />
+                  <AlertCircle className="w-8 h-8 text-red-500" />
                 </div>
               </CardContent>
             </Card>
@@ -1520,22 +1528,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   <div>
                     <p className="text-sm text-muted-foreground/70">Avg. Progress</p>
                     <p className="text-2xl font-bold text-foreground" data-testid="text-avg-progress">
-                      {kpis.length > 0
-                        ? (
-                            kpis.reduce((sum, k) => {
-                              const current = getKpiCurrentNumber(k);
-                              const target = parseNumSafe(k?.targetValue) || 0;
-                              if (!(target > 0)) return sum;
-                              const lowerBetter = isLowerBetterMetric(String(k?.metric || ''));
-                              const ratio = lowerBetter ? (current > 0 ? target / current : 0) : (current / target);
-                              return sum + (ratio * 100);
-                            }, 0) / kpis.length
-                          ).toFixed(1)
-                        : '0.0'}%
+                      {campaignKpiSnapshot.avgPct.toFixed(1)}%
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">across all KPIs</p>
                   </div>
-                  <TrendingUp className="w-8 h-8 text-purple-500" />
+                  <TrendingUp className="w-8 h-8 text-violet-600" />
                 </div>
               </CardContent>
             </Card>

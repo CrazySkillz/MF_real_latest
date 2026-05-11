@@ -240,6 +240,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     spend: Number((kpiSpendBreakdownResp as any)?.totalSpend || (kpiSpendToDateResp as any)?.spendToDate || 0),
     conversions: Number((kpiGA4MetricTotals as any)?.conversions || 0),
     users: Number((kpiGA4MetricTotals as any)?.users || 0),
+    sessions: Number((kpiGA4MetricTotals as any)?.sessions || 0),
   }), [kpiGA4MetricTotals, kpiImportedRevenueToDateResp, kpiSpendBreakdownResp, kpiSpendToDateResp]);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -395,6 +396,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     if (sourceId === 'total_spend') return parseNumSafe((kpiConnectedPlatformTotals as any)?.spend) || parseNumSafe(ot?.spend?.unifiedSpend);
     if (sourceId === 'total_conversions') return parseNumSafe((kpiConnectedPlatformTotals as any)?.conversions) || getUnifiedConversions();
     if (sourceId === 'total_users') return parseNumSafe((kpiConnectedPlatformTotals as any)?.users);
+    if (sourceId === 'total_sessions') return parseNumSafe((kpiConnectedPlatformTotals as any)?.sessions);
 
     // Spend sources
     if (inputKey === 'spend') {
@@ -592,6 +594,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         const value = getMetricSourceValue('conversions', 'total_conversions');
         return [{ id: 'total_conversions', label: 'Total Conversions', enabled: value > 0, reason: 'No conversions connected', value }];
       }
+      if (isAggregateEfficiencyMetric(selectedMetric)) {
+        const value = getMetricSourceValue('conversions', 'total_conversions');
+        return [{ id: 'total_conversions', label: 'Total Conversions', enabled: value > 0, reason: 'No conversions connected', value }];
+      }
       if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: getMetricSourceValue('conversions', 'ga4') });
       if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: true, value: parseNumSafe(platforms?.linkedin?.conversions) });
       if (connected.meta) base.push({ id: 'meta', label: 'Meta', enabled: true, value: parseNumSafe(platforms?.meta?.conversions) });
@@ -600,6 +606,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'sessions') {
+      if (isAggregateEfficiencyMetric(selectedMetric)) {
+        const value = getMetricSourceValue('sessions', 'total_sessions');
+        return [{ id: 'total_sessions', label: 'Total Sessions', enabled: value > 0, reason: 'No sessions connected', value }];
+      }
       if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: getMetricSourceValue('sessions', 'ga4') });
       if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.sessions) });
       // Show ad platforms as connected but disabled for sessions
@@ -669,6 +679,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     if (m === 'revenue') return { metric: m, inputs: { revenue: ['total_revenue'] } };
     if (m === 'conversions') return { metric: m, inputs: { conversions: ['total_conversions'] } };
     if (m === 'users') return { metric: m, inputs: { users: ['total_users'] } };
+    if (m === 'conversion-rate-website') return { metric: m, inputs: { conversions: ['total_conversions'], sessions: ['total_sessions'] } };
     if (m === 'roas' || m === 'roi') return { metric: m, inputs: { revenue: ['total_revenue'], spend: ['total_spend'] } };
     if (m === 'cpa') return { metric: m, inputs: { spend: ['total_spend'], conversions: ['total_conversions'] } };
     if (isTileMetric(m)) return { metric: m, inputs: {} };
@@ -677,7 +688,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
   const isAggregateEfficiencyMetric = (metric: string): boolean => {
     const m = String(metric || '');
-    return m === 'revenue' || m === 'conversions' || m === 'users' || m === 'roas' || m === 'roi' || m === 'cpa';
+    return m === 'revenue' || m === 'conversions' || m === 'users' || m === 'conversion-rate-website' || m === 'roas' || m === 'roi' || m === 'cpa';
   };
 
   const getMetricDisplayUnit = (metric: string): string => {
@@ -740,6 +751,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         return 'Total Conversions';
       case 'total_users':
         return 'Total Users';
+      case 'total_sessions':
+        return 'Total Sessions';
       case 'shopify':
         return 'Shopify';
       case 'hubspot':

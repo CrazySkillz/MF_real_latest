@@ -1458,6 +1458,13 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               </Card>
             ))}
           </div>
+          <div className="text-center text-muted-foreground/70 py-8">
+            <Target className="w-12 h-12 text-muted-foreground/70 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">No KPIs yet</h3>
+            <p className="text-muted-foreground/70 mb-4">
+              Create your first KPI to track overall campaign performance.
+            </p>
+          </div>
         </>
       ) : (
         <>

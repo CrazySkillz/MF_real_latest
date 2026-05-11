@@ -345,6 +345,7 @@ These KPI definitions are meant to evaluate the campaign as a whole, not just on
 Implementation note:
 
 The code currently supports this pattern by computing campaign KPI values from unified campaign totals and selected connected sources rather than treating KPIs as purely platform-specific values.
+Campaign-level KPI current values must use the same connected-platform inputs shown in the platform detail cards. For GA4-only campaigns, ROAS, ROI, and CPA must use GA4 financial card inputs: Total Revenue, Total Spend, and Total Conversions.
 
 ### Benchmarks Tab
 
@@ -368,6 +369,7 @@ Both belong at the campaign layer and should continue to be interpreted together
 Implementation note:
 
 The current codebase keeps Benchmarks aligned with the same normalized campaign totals used for campaign KPIs so those two tabs do not drift conceptually.
+Campaign-level Benchmark current values must follow the same connected-platform input rule as KPIs so benchmark status does not drift from the visible campaign/platform cards.
 
 ### Freestyle Chat
 

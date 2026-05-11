@@ -192,6 +192,33 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       return resp.json().catch(() => null);
     },
   });
+  const { data: kpiImportedRevenueToDateResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaign.id}/revenue-to-date`],
+    enabled: !!campaign.id,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/revenue-to-date`);
+      if (!resp.ok) return { success: false, totalRevenue: 0, sourceIds: [] };
+      return resp.json().catch(() => ({ success: false, totalRevenue: 0, sourceIds: [] }));
+    },
+  });
+  const { data: kpiSpendBreakdownResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaign.id}/spend-breakdown`],
+    enabled: !!campaign.id,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/spend-breakdown`);
+      if (!resp.ok) return { success: false, totalSpend: 0, sources: [] };
+      return resp.json().catch(() => ({ success: false, totalSpend: 0, sources: [] }));
+    },
+  });
+  const { data: kpiSpendToDateResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaign.id}/spend-to-date`],
+    enabled: !!campaign.id,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/spend-to-date`);
+      if (!resp.ok) return { success: false, spendToDate: 0, sourceIds: [] };
+      return resp.json().catch(() => ({ success: false, spendToDate: 0, sourceIds: [] }));
+    },
+  });
   const kpiGA4MetricTotals = useMemo(() => {
     const rows = Array.isArray(kpiGA4DailyResp?.data) ? kpiGA4DailyResp.data : Array.isArray(kpiGA4DailyResp) ? kpiGA4DailyResp : [];
     const daily = rows.reduce((acc: any, row: any) => ({
@@ -208,6 +235,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       revenue: Math.max(Number(totals?.revenue || 0), Number(daily.revenue.toFixed(2))),
     };
   }, [kpiGA4DailyResp, kpiGA4ToDate]);
+  const kpiConnectedPlatformTotals = useMemo(() => ({
+    revenue: Number((Number((kpiGA4MetricTotals as any)?.revenue || 0) + Number((kpiImportedRevenueToDateResp as any)?.totalRevenue || 0)).toFixed(2)),
+    spend: Number((kpiSpendBreakdownResp as any)?.totalSpend || (kpiSpendToDateResp as any)?.spendToDate || 0),
+    conversions: Number((kpiGA4MetricTotals as any)?.conversions || 0),
+  }), [kpiGA4MetricTotals, kpiImportedRevenueToDateResp, kpiSpendBreakdownResp, kpiSpendToDateResp]);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -358,9 +390,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const getMetricSourceValue = (inputKey: CalcInputKey, sourceId: string): number => {
     const ot = outcomeTotals || {};
     const platforms = ot?.platforms || {};
-    if (sourceId === 'total_revenue') return parseNumSafe(ot?.revenue?.totalRevenue);
-    if (sourceId === 'total_spend') return parseNumSafe(ot?.spend?.unifiedSpend);
-    if (sourceId === 'total_conversions') return getUnifiedConversions();
+    if (sourceId === 'total_revenue') return parseNumSafe((kpiConnectedPlatformTotals as any)?.revenue) || parseNumSafe(ot?.revenue?.totalRevenue);
+    if (sourceId === 'total_spend') return parseNumSafe((kpiConnectedPlatformTotals as any)?.spend) || parseNumSafe(ot?.spend?.unifiedSpend);
+    if (sourceId === 'total_conversions') return parseNumSafe((kpiConnectedPlatformTotals as any)?.conversions) || getUnifiedConversions();
 
     // Spend sources
     if (inputKey === 'spend') {
@@ -460,8 +492,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     if (metric === 'roas') {
       const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
       const spend = sumSelected('spend', cfg.inputs?.spend || []);
-      const roasPct = spend > 0 ? (revenue / spend) * 100 : 0;
-      return { value: roasPct, unit: '%' };
+      const roas = spend > 0 ? revenue / spend : 0;
+      return { value: roas, unit: 'x' };
     }
     if (metric === 'roi') {
       const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
@@ -629,7 +661,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const getMetricDisplayUnit = (metric: string): string => {
     const m = String(metric || '');
     if (m === 'revenue' || m === 'spend' || m === 'cpa' || m === 'cpl') return '$';
-    if (m === 'roi' || m === 'ctr' || m === 'conversion-rate-website' || m === 'conversion-rate-click' || m === 'roas') return '%';
+    if (m === 'roas') return 'x';
+    if (m === 'roi' || m === 'ctr' || m === 'conversion-rate-website' || m === 'conversion-rate-click') return '%';
     return '';
   };
 
@@ -1480,9 +1513,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   </div>
                   <div className="flex-1">
                     <CardTitle className="text-lg">{kpi.name}</CardTitle>
-                    <CardDescription className="text-sm">
-                      {kpi.description}
-                    </CardDescription>
                     {shouldShowSources && (
                       <div className="mt-1 text-xs text-muted-foreground/70" data-testid={`text-kpi-sources-${kpi.id}`}>
                         <span className="font-medium">Sources selected:</span> {sourcesSelected}
@@ -1699,9 +1729,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="font-medium text-sm text-foreground">{template.name}</div>
-                      </div>
-                      <div className="text-xs text-muted-foreground/70 mt-1">
-                        {disabled ? reason : template.description}
                       </div>
                     </div>
                   );
@@ -2486,6 +2513,86 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       return resp.json().catch(() => null);
     },
   });
+  const { data: benchGA4Connections = [] } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaign.id}/ga4-connections`, "benchmarks"],
+    enabled: !!campaign.id,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-connections`);
+      if (!resp.ok) return [];
+      const data = await resp.json().catch(() => null);
+      return Array.isArray(data?.connections) ? data.connections : [];
+    },
+  });
+  const benchGA4Connection = (benchGA4Connections || []).find((conn: any) => conn?.isPrimary) || (benchGA4Connections || [])[0];
+  const benchGA4PropertyId = String(benchGA4Connection?.propertyId || "").trim();
+  const benchGA4LookbackDays = Number((benchGA4Connection as any)?.lookbackDays) || 90;
+  const benchGA4DateRange = `${benchGA4LookbackDays}days`;
+  const { data: benchGA4ToDate } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaign.id}/ga4-to-date`, benchGA4PropertyId, benchGA4DateRange, "benchmarks"],
+    enabled: !!campaign.id && !!benchGA4PropertyId,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-to-date?propertyId=${encodeURIComponent(benchGA4PropertyId)}&dateRange=${encodeURIComponent(benchGA4DateRange)}`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
+  const { data: benchGA4DailyResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaign.id}/ga4-daily`, benchGA4PropertyId, benchGA4LookbackDays, "benchmarks"],
+    enabled: !!campaign.id && !!benchGA4PropertyId,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/ga4-daily?days=${encodeURIComponent(String(benchGA4LookbackDays))}&propertyId=${encodeURIComponent(benchGA4PropertyId)}`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
+  const { data: benchImportedRevenueToDateResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaign.id}/revenue-to-date`, "benchmarks"],
+    enabled: !!campaign.id,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/revenue-to-date`);
+      if (!resp.ok) return { success: false, totalRevenue: 0, sourceIds: [] };
+      return resp.json().catch(() => ({ success: false, totalRevenue: 0, sourceIds: [] }));
+    },
+  });
+  const { data: benchSpendBreakdownResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaign.id}/spend-breakdown`, "benchmarks"],
+    enabled: !!campaign.id,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/spend-breakdown`);
+      if (!resp.ok) return { success: false, totalSpend: 0, sources: [] };
+      return resp.json().catch(() => ({ success: false, totalSpend: 0, sources: [] }));
+    },
+  });
+  const { data: benchSpendToDateResp } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaign.id}/spend-to-date`, "benchmarks"],
+    enabled: !!campaign.id,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaign.id}/spend-to-date`);
+      if (!resp.ok) return { success: false, spendToDate: 0, sourceIds: [] };
+      return resp.json().catch(() => ({ success: false, spendToDate: 0, sourceIds: [] }));
+    },
+  });
+  const benchGA4MetricTotals = useMemo(() => {
+    const rows = Array.isArray(benchGA4DailyResp?.data) ? benchGA4DailyResp.data : Array.isArray(benchGA4DailyResp) ? benchGA4DailyResp : [];
+    const daily = rows.reduce((acc: any, row: any) => ({
+      sessions: acc.sessions + (Number(row?.sessions || 0) || 0),
+      conversions: acc.conversions + (Number(row?.conversions || 0) || 0),
+      users: acc.users + (Number(row?.users || 0) || 0),
+      revenue: acc.revenue + (Number(row?.revenue || 0) || 0),
+    }), { sessions: 0, conversions: 0, users: 0, revenue: 0 });
+    const totals = (benchGA4ToDate as any)?.totals || {};
+    return {
+      sessions: Math.max(Number(totals?.sessions || 0), daily.sessions),
+      conversions: Math.max(Number(totals?.conversions || 0), daily.conversions),
+      users: Number(totals?.users || 0) || daily.users,
+      revenue: Math.max(Number(totals?.revenue || 0), Number(daily.revenue.toFixed(2))),
+    };
+  }, [benchGA4DailyResp, benchGA4ToDate]);
+  const benchConnectedPlatformTotals = useMemo(() => ({
+    revenue: Number((Number((benchGA4MetricTotals as any)?.revenue || 0) + Number((benchImportedRevenueToDateResp as any)?.totalRevenue || 0)).toFixed(2)),
+    spend: Number((benchSpendBreakdownResp as any)?.totalSpend || (benchSpendToDateResp as any)?.spendToDate || 0),
+    conversions: Number((benchGA4MetricTotals as any)?.conversions || 0),
+  }), [benchGA4MetricTotals, benchImportedRevenueToDateResp, benchSpendBreakdownResp, benchSpendToDateResp]);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -2559,7 +2666,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     const ot = outcomeTotals || {};
     const platforms = ot?.platforms || {};
     const revenueSources = ot?.revenueSources || [];
-    if (sourceId === 'ga4') return parseNumSafe(ot?.ga4?.revenue);
+    if (sourceId === 'ga4') return parseNumSafe((benchGA4MetricTotals as any)?.revenue) || parseNumSafe(ot?.ga4?.revenue);
     if (sourceId === 'custom_integration') return parseNumSafe(platforms?.customIntegration?.revenue);
     if (sourceId === 'linkedin') return parseNumSafe(platforms?.linkedin?.attributedRevenue);
     const found = (revenueSources || []).find((s: any) => String(s?.type || '') === sourceId);
@@ -2572,6 +2679,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     const platforms = ot?.platforms || {};
     const spend = ot?.spend || {};
 
+    if (sourceId === 'total_revenue') return parseNumSafe((benchConnectedPlatformTotals as any)?.revenue) || parseNumSafe(ot?.revenue?.totalRevenue);
+    if (sourceId === 'total_spend') return parseNumSafe((benchConnectedPlatformTotals as any)?.spend) || parseNumSafe(spend?.unifiedSpend);
+    if (sourceId === 'total_conversions') return parseNumSafe((benchConnectedPlatformTotals as any)?.conversions) || getUnifiedConversions();
+
     if (inputKey === 'revenue') return getRevenueSourceValue(sourceId);
     if (inputKey === 'spend') {
       if (sourceId === 'imported_spend') return parseNumSafe(spend?.persistedSpend);
@@ -2582,9 +2693,9 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     }
 
     if (sourceId === 'ga4') {
-      if (inputKey === 'conversions') return parseNumSafe(ot?.ga4?.conversions);
-      if (inputKey === 'sessions') return parseNumSafe(ot?.ga4?.sessions);
-      if (inputKey === 'users') return parseNumSafe(ot?.ga4?.users);
+      if (inputKey === 'conversions') return parseNumSafe((benchGA4MetricTotals as any)?.conversions);
+      if (inputKey === 'sessions') return parseNumSafe((benchGA4MetricTotals as any)?.sessions);
+      if (inputKey === 'users') return parseNumSafe((benchGA4MetricTotals as any)?.users);
       return 0;
     }
 
@@ -2660,8 +2771,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     if (metric === 'roas') {
       const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
       const spend = sumSelected('spend', cfg.inputs?.spend || []);
-      const roasPct = spend > 0 ? (revenue / spend) * 100 : 0;
-      return { value: roasPct, unit: '%' };
+      const roas = spend > 0 ? revenue / spend : 0;
+      return { value: roas, unit: 'x' };
     }
     if (metric === 'roi') {
       const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
@@ -2683,6 +2794,9 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     const ot = outcomeTotals || {};
     const platforms = ot?.platforms || {};
     const spend = ot?.spend || {};
+    const selectedMetric = String(benchmarkForm.metric || '');
+    const aggregateEfficiency = selectedMetric === 'roas' || selectedMetric === 'roi';
+    const aggregateCpa = selectedMetric === 'cpa';
 
     const base: Array<{ id: string; label: string; enabled: boolean; reason?: string; value?: number }> = [];
 
@@ -2693,6 +2807,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     };
 
     if (inputKey === 'revenue') {
+      if (aggregateEfficiency) {
+        const value = getMetricSourceValue('revenue', 'total_revenue');
+        return [{ id: 'total_revenue', label: 'Total Revenue', enabled: value > 0, reason: 'No revenue connected', value }];
+      }
       if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: getRevenueSourceValue('ga4') });
       if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: getRevenueSourceValue('custom_integration') });
       if (connected.shopify) base.push({ id: 'shopify', label: 'Shopify', enabled: true, value: getRevenueSourceValue('shopify') });
@@ -2716,6 +2834,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'spend') {
+      if (aggregateEfficiency || aggregateCpa) {
+        const value = getMetricSourceValue('spend', 'total_spend');
+        return [{ id: 'total_spend', label: 'Total Spend', enabled: value > 0, reason: 'No spend connected', value }];
+      }
       const imported = parseNumSafe(spend?.persistedSpend) > 0;
       base.push({
         id: 'imported_spend',
@@ -2732,7 +2854,11 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'conversions') {
-      if (connected.ga4) pushConnected('ga4', 'GA4', true, parseNumSafe(ot?.ga4?.conversions));
+      if (aggregateCpa) {
+        const value = getMetricSourceValue('conversions', 'total_conversions');
+        return [{ id: 'total_conversions', label: 'Total Conversions', enabled: value > 0, reason: 'No conversions connected', value }];
+      }
+      if (connected.ga4) pushConnected('ga4', 'GA4', true, getMetricSourceValue('conversions', 'ga4'));
       if (connected.customIntegration) pushConnected('custom_integration', 'Custom Integration', true, parseNumSafe(platforms?.customIntegration?.conversions));
       if (connected.linkedin) pushConnected('linkedin', 'LinkedIn', true, parseNumSafe(platforms?.linkedin?.conversions));
       if (connected.meta) pushConnected('meta', 'Meta', true, parseNumSafe(platforms?.meta?.conversions));
@@ -2740,7 +2866,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'sessions') {
-      if (connected.ga4) pushConnected('ga4', 'GA4', true, parseNumSafe(ot?.ga4?.sessions));
+      if (connected.ga4) pushConnected('ga4', 'GA4', true, getMetricSourceValue('sessions', 'ga4'));
       if (connected.customIntegration) pushConnected('custom_integration', 'Custom Integration', true, parseNumSafe(platforms?.customIntegration?.sessions));
       if (connected.linkedin) pushConnected('linkedin', 'LinkedIn', false, undefined, 'Sessions is a web analytics metric');
       if (connected.meta) pushConnected('meta', 'Meta', false, undefined, 'Sessions is a web analytics metric');
@@ -2748,7 +2874,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'users') {
-      if (connected.ga4) pushConnected('ga4', 'GA4', true, parseNumSafe(ot?.ga4?.users));
+      if (connected.ga4) pushConnected('ga4', 'GA4', true, getMetricSourceValue('users', 'ga4'));
       if (connected.customIntegration) pushConnected('custom_integration', 'Custom Integration', true, parseNumSafe(platforms?.customIntegration?.users));
       if (connected.linkedin) pushConnected('linkedin', 'LinkedIn', false, undefined, 'Users is a web analytics metric');
       if (connected.meta) pushConnected('meta', 'Meta', false, undefined, 'Users is a web analytics metric');
@@ -2844,7 +2970,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
   const CAMPAIGN_BENCHMARK_TEMPLATES: CampaignBenchmarkTemplate[] = useMemo(
     () => [
       { name: 'Revenue', metric: 'revenue', unit: '$', description: 'Total revenue for the selected period', category: 'Revenue', industryMetric: 'revenue', requires: ['revenue'] },
-      { name: 'ROAS', metric: 'roas', unit: '%', description: 'Revenue ÷ Spend × 100', category: 'Performance', industryMetric: 'roas', requires: ['revenue', 'spend'] },
+      { name: 'ROAS', metric: 'roas', unit: 'x', description: 'Revenue ÷ Spend', category: 'Performance', industryMetric: 'roas', requires: ['revenue', 'spend'] },
       { name: 'ROI', metric: 'roi', unit: '%', description: '(Revenue − Spend) ÷ Spend × 100', category: 'Performance', industryMetric: 'roi', requires: ['revenue', 'spend'] },
       { name: 'Spend', metric: 'spend', unit: '$', description: 'Total marketing spend for the selected period', category: 'Cost', industryMetric: 'spend', requires: ['spend'] },
       { name: 'Conversions', metric: 'conversions', unit: 'count', description: 'Total conversions for the selected period', category: 'Performance', industryMetric: 'conversions', requires: ['conversions'] },
@@ -2865,12 +2991,12 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     const web = ot?.webAnalytics || ot?.ga4 || {};
     const spend = ot?.spend || {};
     const rev = ot?.revenue || {};
-    const unifiedSpend = parseNumSafe(spend?.unifiedSpend);
-    const totalRevenue = parseNumSafe(rev?.totalRevenue ?? web?.revenue);
+    const unifiedSpend = parseNumSafe((benchConnectedPlatformTotals as any)?.spend) || parseNumSafe(spend?.unifiedSpend);
+    const totalRevenue = parseNumSafe((benchConnectedPlatformTotals as any)?.revenue) || parseNumSafe(rev?.totalRevenue ?? web?.revenue);
     const webConversions = parseNumSafe(web?.conversions);
     const sessions = parseNumSafe(web?.sessions);
     const users = parseNumSafe(web?.users);
-    const totalConversions = getUnifiedConversions();
+    const totalConversions = parseNumSafe((benchConnectedPlatformTotals as any)?.conversions) || getUnifiedConversions();
     const { clicks, impressions } = getAdClicksImpressions();
     const adConversions = getAdConversions();
 
@@ -2896,8 +3022,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
         return { value: rate, unit: '%' };
       }
       case 'roas': {
-        const roasPct = unifiedSpend > 0 ? (totalRevenue / unifiedSpend) * 100 : 0;
-        return { value: roasPct, unit: '%' };
+        const roas = unifiedSpend > 0 ? totalRevenue / unifiedSpend : 0;
+        return { value: roas, unit: 'x' };
       }
       case 'roi': {
         const roi = unifiedSpend > 0 ? ((totalRevenue - unifiedSpend) / unifiedSpend) * 100 : 0;
@@ -2917,13 +3043,13 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     const web = ot?.webAnalytics || ot?.ga4 || {};
     const spend = ot?.spend || {};
     const rev = ot?.revenue || {};
-    const unifiedSpend = parseNumSafe(spend?.unifiedSpend);
-    const totalRevenue = parseNumSafe(rev?.totalRevenue ?? web?.revenue);
+    const unifiedSpend = parseNumSafe((benchConnectedPlatformTotals as any)?.spend) || parseNumSafe(spend?.unifiedSpend);
+    const totalRevenue = parseNumSafe((benchConnectedPlatformTotals as any)?.revenue) || parseNumSafe(rev?.totalRevenue ?? web?.revenue);
     const webConnected = Boolean(web?.connected);
     const webSessions = parseNumSafe(web?.sessions);
     const webUsers = parseNumSafe(web?.users);
     const { clicks, impressions } = getAdClicksImpressions();
-    const totalConversions = getUnifiedConversions();
+    const totalConversions = parseNumSafe((benchConnectedPlatformTotals as any)?.conversions) || getUnifiedConversions();
     const adConversions = getAdConversions();
 
     const needs = template.requires || [];
@@ -2999,6 +3125,12 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               return 'Custom Integration';
             case 'imported_spend':
               return 'Imported Spend';
+            case 'total_revenue':
+              return 'Total Revenue';
+            case 'total_spend':
+              return 'Total Spend';
+            case 'total_conversions':
+              return 'Total Conversions';
             case 'linkedin':
               return 'LinkedIn';
             case 'meta':

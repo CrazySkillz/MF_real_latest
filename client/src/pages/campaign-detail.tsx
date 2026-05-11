@@ -2120,14 +2120,73 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           });
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border" onOpenAutoFocus={(event) => event.preventDefault()}>
+          <DialogHeader className="pb-4 pr-8">
             <DialogTitle>Edit Campaign KPI</DialogTitle>
             <DialogDescription>
               Update the KPI settings and targets for this campaign metric.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
+            <div className="space-y-4 p-4 bg-muted rounded-lg">
+              <div className="flex items-center justify-between gap-3">
+                <h4 className="font-medium text-foreground">Select KPI Template</h4>
+              </div>
+              <p className="text-sm text-muted-foreground/70">
+                Choose a predefined KPI that will automatically calculate from your platform data, or create a custom one.
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { name: "ROAS", metric: "roas", category: "Performance", description: "Revenue ÷ Spend" },
+                  { name: "ROI", metric: "roi", category: "Performance", description: "(Revenue − Spend) ÷ Spend × 100" },
+                  { name: "CPA", metric: "cpa", category: "Cost Efficiency", description: "Spend ÷ Conversions" },
+                  { name: "Revenue", metric: "revenue", category: "Revenue", description: "Total revenue" },
+                  { name: "Total Conversions", metric: "conversions", category: "Performance", description: "Total conversions" },
+                  { name: "Total Users", metric: "users", category: "Engagement", description: "Total users" },
+                  { name: "Conversion Rate", metric: "conversion-rate-website", category: "Performance", description: "Conversions ÷ Sessions × 100" },
+                  { name: "Create Custom KPI", metric: "custom", category: "Custom", description: "Choose name + unit, then set values" },
+                ].map((template) => {
+                  const reason = getTileDisabledReason(template.metric);
+                  const disabled = Boolean(reason);
+                  const isSelected = String(kpiForm.metric || '') === String(template.metric);
+
+                  return (
+                    <div
+                      key={template.metric}
+                      className={`p-3 border-2 rounded-lg transition-all ${
+                        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                      } ${
+                        isSelected
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                          : "border-border hover:border-blue-300"
+                      }`}
+                      onClick={() => {
+                        if (disabled) return;
+                        setKpiCalculationConfig(getDefaultKpiCalculationConfig(template.metric));
+                        setKpiForm((prev) => ({
+                          ...prev,
+                          name: template.name,
+                          metric: template.metric,
+                          currentValue: '',
+                          unit: getMetricDisplayUnit(template.metric),
+                          category: template.category,
+                        }));
+                      }}
+                      data-testid={`edit-campaign-kpi-template-${template.metric}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-medium text-sm text-foreground">{template.name}</div>
+                      </div>
+                      {template.metric === 'custom' && (
+                        <div className="text-xs text-muted-foreground/70 mt-1">{template.description}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="edit-kpi-name">KPI Name *</Label>
               <Input
@@ -2139,50 +2198,15 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-kpi-metric">Aggregated Metric</Label>
-              <Select
-                value={kpiForm.metric}
-                onValueChange={(value) => {
-                  setKpiCalculationConfig(isTileMetric(value) ? { metric: value, inputs: {} } : null);
-                  const unit = isTileMetric(value) ? getMetricDisplayUnit(value) : '';
-                  setKpiForm({ ...kpiForm, name: getMetricDisplayName(value), metric: value, currentValue: '', unit });
-                }}
-              >
-                <SelectTrigger id="edit-kpi-metric" data-testid="select-edit-campaign-kpi-metric">
-                  <SelectValue placeholder="Select metric or enter custom" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[400px]">
-                  <SelectGroup>
-                    <SelectLabel>📊 Campaign KPIs</SelectLabel>
-                    <SelectItem value="roas">ROAS</SelectItem>
-                    <SelectItem value="roi">ROI</SelectItem>
-                    <SelectItem value="cpa">CPA</SelectItem>
-                    <SelectItem value="revenue">Revenue</SelectItem>
-                    <SelectItem value="conversions">Conversions</SelectItem>
-                    <SelectItem value="users">Users</SelectItem>
-                    <SelectItem value="spend">Spend</SelectItem>
-                    <SelectItem value="ctr">CTR</SelectItem>
-                    <SelectItem value="conversion-rate-website">Conversion Rate (website)</SelectItem>
-                    <SelectItem value="conversion-rate-click">Conversion Rate (click-based)</SelectItem>
-                  </SelectGroup>
-                  <SelectSeparator />
-                  
-                  <SelectGroup>
-                    <SelectLabel>✏️ Manual Entry</SelectLabel>
-                    <SelectItem value="custom">Custom Value</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Source selection (no defaults) */}
             {isTileMetric(kpiForm.metric) && (
               <div className="space-y-3 p-4 border rounded-lg">
                 <div>
                   <div className="font-medium text-foreground">Sources used for Current Value</div>
                   <div className="text-sm text-muted-foreground/70">
-                    Update the sources included in this KPI. Current Value will update when required inputs are selected.
+                    {isAggregateEfficiencyMetric(kpiForm.metric)
+                      ? 'This value is calculated from Google Analytics in Connected Platforms.'
+                      : 'Update the sources included in this KPI. Current Value will update when required inputs are selected.'}
                   </div>
                 </div>
 
@@ -2191,6 +2215,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   const metric = String(kpiForm.metric || '');
                   const required = getRequiredInputsForMetric(metric);
                   const requiredWithDenom = required;
+                  const aggregateEfficiency = isAggregateEfficiencyMetric(metric);
+                  const computed = computeCurrentFromConfig(kpiCalculationConfig);
+                  const preview = computed.value === null ? '—' : formatValueWithUnit(computed.value, computed.unit || getMetricDisplayUnit(metric));
 
                   const toggle = (inputKey: CalcInputKey, sourceId: string) => {
                     setKpiCalculationConfig((prev: any) => {
@@ -2211,7 +2238,19 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
                   return (
                     <div className="space-y-4">
-                      {requiredWithDenom.map((inputKey: any) => {
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground/70">Current Value</div>
+                          <div className="text-lg font-semibold text-foreground">{preview}</div>
+                        </div>
+                        <div className="text-xs text-muted-foreground self-end">
+                          {aggregateEfficiency
+                            ? 'Source: Google Analytics in Connected Platforms'
+                            : 'Required inputs must be selected before you can update this KPI.'}
+                        </div>
+                      </div>
+
+                      {!aggregateEfficiency && requiredWithDenom.map((inputKey: any) => {
                         const key = inputKey as CalcInputKey;
                         const options = getInputOptions(key);
                         return (
@@ -2300,63 +2339,110 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               </div>
             </div>
 
-            {/* Email Alerts Section */}
-            <div className="space-y-3 pt-4 border-t">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="edit-alert-enabled"
-                  checked={kpiForm.alertEnabled}
-                  onChange={(e) => setKpiForm({ ...kpiForm, alertEnabled: e.target.checked })}
-                  className="rounded"
-                  data-testid="checkbox-edit-campaign-kpi-alert-enabled"
-                />
-                <Label htmlFor="edit-alert-enabled" className="font-medium">
-                  Enable Email Alerts
-                </Label>
+            {/* Alert Settings */}
+            <div className="space-y-4 pt-4 border-t border-border">
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-alert-enabled"
+                    checked={kpiForm.alertEnabled}
+                    onCheckedChange={(checked) => setKpiForm({ ...kpiForm, alertEnabled: checked as boolean })}
+                    data-testid="checkbox-edit-campaign-kpi-alert-enabled"
+                  />
+                  <Label htmlFor="edit-alert-enabled" className="text-base cursor-pointer font-semibold">
+                    Enable alerts for this KPI
+                  </Label>
+                </div>
+                <p className="text-sm text-muted-foreground/70 pl-6">
+                  Receive notifications for KPI performance alerts on the bell icon &amp; in your Notifications center
+                </p>
               </div>
 
               {kpiForm.alertEnabled && (
-                <div className="grid grid-cols-3 gap-4 pl-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-alert-threshold">Alert Threshold</Label>
-                    <Input
-                      id="edit-alert-threshold"
-                      type="text"
-                      placeholder="e.g., 50"
-                      value={kpiForm.alertThreshold}
-                      onChange={(e) => setKpiForm({ ...kpiForm, alertThreshold: formatInputNumber(e.target.value) })}
-                      data-testid="input-edit-campaign-kpi-alert-threshold"
-                    />
+                <div className="space-y-4 pl-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-alert-threshold">Alert Threshold *</Label>
+                      <Input
+                        id="edit-alert-threshold"
+                        type="text"
+                        placeholder="e.g., 80"
+                        value={kpiForm.alertThreshold}
+                        onChange={(e) => setKpiForm({ ...kpiForm, alertThreshold: formatInputNumber(e.target.value) })}
+                        data-testid="input-edit-campaign-kpi-alert-threshold"
+                      />
+                      <p className="text-xs text-muted-foreground/70">Value at which to trigger the alert</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-alert-condition">Alert When</Label>
+                      <Select
+                        value={kpiForm.alertCondition}
+                        onValueChange={(value: 'below' | 'above' | 'equals') =>
+                          setKpiForm({ ...kpiForm, alertCondition: value })
+                        }
+                      >
+                        <SelectTrigger id="edit-alert-condition" data-testid="select-edit-campaign-kpi-alert-condition">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="below">Value Goes Below</SelectItem>
+                          <SelectItem value="above">Value Goes Above</SelectItem>
+                          <SelectItem value="equals">Value Equals</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-alert-condition">Condition</Label>
-                    <Select
-                      value={kpiForm.alertCondition}
-                      onValueChange={(value: 'below' | 'above' | 'equals') => 
-                        setKpiForm({ ...kpiForm, alertCondition: value })
-                      }
-                    >
-                      <SelectTrigger id="edit-alert-condition" data-testid="select-edit-campaign-kpi-alert-condition">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="below">Below</SelectItem>
-                        <SelectItem value="above">Above</SelectItem>
-                        <SelectItem value="equals">Equals</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 col-span-3">
-                    <Label htmlFor="edit-alert-emails">Email Recipients (comma-separated)</Label>
-                    <Input
-                      id="edit-alert-emails"
-                      type="text"
-                      placeholder="email1@example.com, email2@example.com"
-                      value={kpiForm.alertEmails}
-                      onChange={(e) => setKpiForm({ ...kpiForm, alertEmails: e.target.value })}
-                      data-testid="input-edit-campaign-kpi-alert-emails"
-                    />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-alert-frequency">Alert Frequency</Label>
+                      <Select
+                        value={kpiForm.alertFrequency || 'immediate'}
+                        onValueChange={(value) => setKpiForm({ ...kpiForm, alertFrequency: value })}
+                      >
+                        <SelectTrigger id="edit-alert-frequency" data-testid="select-edit-campaign-kpi-alert-frequency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="immediate">Immediate</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground/70">
+                        Bell and Notifications keep one active alert record. This setting controls reminder emails while the breach stays unresolved.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2 pt-1">
+                        <Checkbox
+                          id="edit-email-notifications"
+                          checked={kpiForm.emailNotifications}
+                          onCheckedChange={(checked) => setKpiForm({ ...kpiForm, emailNotifications: checked as boolean })}
+                          data-testid="checkbox-edit-campaign-kpi-email-notifications"
+                        />
+                        <Label htmlFor="edit-email-notifications" className="cursor-pointer font-medium">
+                          Send email notifications
+                        </Label>
+                      </div>
+                      {kpiForm.emailNotifications && (
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-alert-emails">Email addresses *</Label>
+                          <Input
+                            id="edit-alert-emails"
+                            type="text"
+                            placeholder="email1@example.com, email2@example.com"
+                            value={kpiForm.alertEmails}
+                            onChange={(e) => setKpiForm({ ...kpiForm, alertEmails: e.target.value })}
+                            data-testid="input-edit-campaign-kpi-alert-emails"
+                          />
+                          <p className="text-xs text-muted-foreground/70">
+                            Comma-separated. Best for execs who want alerts outside the app.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

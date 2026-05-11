@@ -250,6 +250,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportMode, setExportMode] = useState<'download' | 'schedule'>('download');
   const [editingKPI, setEditingKPI] = useState<any>(null);
+  const [initialEditKpiSnapshot, setInitialEditKpiSnapshot] = useState<string | null>(null);
   const [kpiCalculationConfig, setKpiCalculationConfig] = useState<any>(null);
   const [scheduleForm, setScheduleForm] = useState({
     frequency: 'monthly',
@@ -870,6 +871,32 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     return requiredInputs.every((k) => (cfg.inputs?.[k] || []).length > 0);
   };
 
+  const buildKpiEditSnapshot = (form: any, rawConfig: any): string => {
+    const metric = String(form?.metric || '');
+    const tileMetric = isTileMetric(metric);
+    return JSON.stringify({
+      name: String(form?.name || '').trim(),
+      description: String(form?.description || ''),
+      metric,
+      currentValue: tileMetric ? null : parseFormattedNumber(String(form?.currentValue || '')),
+      targetValue: parseFormattedNumber(String(form?.targetValue || '')),
+      unit: tileMetric ? null : String(form?.unit || ''),
+      category: tileMetric ? null : String(form?.category || ''),
+      priority: String(form?.priority || 'medium'),
+      timeframe: String(form?.timeframe || 'Monthly'),
+      targetDate: String(form?.targetDate || ''),
+      alertEnabled: Boolean(form?.alertEnabled),
+      alertThreshold: form?.alertEnabled ? parseFormattedNumber(String(form?.alertThreshold || '')) : null,
+      alertCondition: String(form?.alertCondition || 'below'),
+      alertFrequency: String(form?.alertFrequency || 'immediate'),
+      emailNotifications: Boolean(form?.emailNotifications),
+      alertEmails: form?.emailNotifications ? String(form?.alertEmails || '').trim() : '',
+      calculationConfig: tileMetric ? normalizeCalcConfig(rawConfig) : null,
+    });
+  };
+
+  const isEditKpiDirty = Boolean(initialEditKpiSnapshot) && buildKpiEditSnapshot(kpiForm, kpiCalculationConfig) !== initialEditKpiSnapshot;
+
   // Keep Current Value in sync with selected sources; efficiency KPIs use aggregate campaign inputs by default.
   useEffect(() => {
     if (!isTileMetric(kpiForm.metric)) return;
@@ -1179,7 +1206,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     setKpiCalculationConfig(cfg);
     const computed = cfg ? computeCurrentFromConfig(cfg) : { value: null, unit: '' };
     const live = kpi?.metric ? getLiveCampaignMetric(String(kpi.metric)) : { value: '', unit: '', category: '' };
-    setKpiForm({
+    const nextForm = {
       name: kpi.name,
       description: kpi.description || '',
       metric: kpi.metric || '',
@@ -1198,7 +1225,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       alertFrequency: kpi.alertFrequency || 'immediate',
       emailNotifications: kpi.emailNotifications || false,
       alertEmails: kpi.emailRecipients || '',
-    });
+    };
+    setKpiForm(nextForm);
+    setInitialEditKpiSnapshot(buildKpiEditSnapshot(nextForm, cfg));
     setShowEditDialog(true);
   };
 
@@ -2111,6 +2140,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         if (!open) {
           setEditingKPI(null);
           setKpiCalculationConfig(null);
+          setInitialEditKpiSnapshot(null);
           setKpiForm({
             name: '',
             description: '',
@@ -2472,6 +2502,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               onClick={handleUpdateKPI} 
               disabled={
                 updateKpiMutation.isPending ||
+                !isEditKpiDirty ||
                 !kpiForm.name ||
                 !kpiForm.targetValue ||
                 !isConfigCompleteForMetric(String(kpiForm.metric || ''), kpiCalculationConfig)

@@ -459,11 +459,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     }
     if (metric === 'conversions') {
       const conv = sumSelected('conversions', cfg.inputs?.conversions || []);
-      return { value: conv, unit: '' };
+      return { value: conv, unit: 'count' };
     }
     if (metric === 'users') {
       const users = sumSelected('users', cfg.inputs?.users || []);
-      return { value: users, unit: '' };
+      return { value: users, unit: 'count' };
     }
     if (metric === 'sessions') {
       const sessions = sumSelected('sessions', cfg.inputs?.sessions || []);
@@ -696,6 +696,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     if (m === 'revenue' || m === 'spend' || m === 'cpa' || m === 'cpl') return '$';
     if (m === 'roas') return 'x';
     if (m === 'roi' || m === 'ctr' || m === 'conversion-rate-website' || m === 'conversion-rate-click') return '%';
+    if (m === 'conversions' || m === 'users') return 'count';
     return '';
   };
 
@@ -914,7 +915,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
     switch (String(key || '')) {
       case 'total-conversions':
-        return { value: formatNumber(totalConversions), unit: '', category: 'Performance' };
+        return { value: formatNumber(totalConversions), unit: 'count', category: 'Performance' };
       case 'ga4-revenue':
         return { value: formatNumber(onsiteRevenue), unit: '$', category: 'Revenue' };
       case 'offsite-revenue':
@@ -922,7 +923,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       case 'total-revenue':
         return { value: formatNumber(totalRevenue), unit: '$', category: 'Revenue' };
       case 'ga4-conversions':
-        return { value: formatNumber(conversions), unit: '', category: 'Performance' };
+        return { value: formatNumber(conversions), unit: 'count', category: 'Performance' };
       case 'ga4-conversion-rate':
         return { value: formatNumber(conversionRate), unit: '%', category: 'Performance' };
       case 'total-spend':
@@ -934,7 +935,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       case 'cpa':
         return { value: formatNumber(cpa), unit: '$', category: 'Cost Efficiency' };
       case 'ga4-users':
-        return { value: formatNumber(users), unit: '', category: 'Engagement' };
+        return { value: formatNumber(users), unit: 'count', category: 'Engagement' };
       case 'ga4-sessions':
         return { value: formatNumber(sessions), unit: '', category: 'Engagement' };
       default:
@@ -1704,7 +1705,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         }
       }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={(event) => event.preventDefault()}>
-          <DialogHeader>
+          <DialogHeader className="pb-4 pr-8">
             <DialogTitle>Create Campaign KPI</DialogTitle>
             <DialogDescription>
               Pick a KPI, choose which connected sources to use for the Current Value, then set a target.
@@ -1712,13 +1713,13 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           </DialogHeader>
           <div className="space-y-4">
             {/* KPI Template Selection (tiles) */}
-            <div className="space-y-3 p-4 bg-muted rounded-lg">
-              <div>
-                <h4 className="font-medium text-foreground">Choose a KPI</h4>
-                <p className="text-sm text-muted-foreground/70">
-                  Efficiency KPIs use connected campaign totals; other KPIs let you choose sources.
-                </p>
+            <div className="space-y-4 p-4 bg-muted rounded-lg">
+              <div className="flex items-center justify-between gap-3">
+                <h4 className="font-medium text-foreground">Select KPI Template</h4>
               </div>
+              <p className="text-sm text-muted-foreground/70">
+                Choose a predefined KPI that will automatically calculate from your connected platform data, or create a custom one.
+              </p>
 
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -1865,7 +1866,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4">
               <div className="space-y-2">
                 <Label htmlFor="kpi-name">KPI Name *</Label>
                 <Input
@@ -1875,43 +1876,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
                   data-testid="input-campaign-kpi-name"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="kpi-metric">Aggregated Metric</Label>
-                <Select
-                  value={kpiForm.metric || ''}
-                  onValueChange={(value) => {
-                    setKpiCalculationConfig(getDefaultKpiCalculationConfig(value));
-                    const unit = isTileMetric(value) ? getMetricDisplayUnit(value) : '';
-                    setKpiForm({ ...kpiForm, name: getMetricDisplayName(value), metric: value, currentValue: '', unit });
-                  }}
-                >
-                  <SelectTrigger id="kpi-metric" data-testid="select-campaign-kpi-metric">
-                    <SelectValue placeholder="Select metric or enter custom" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[400px]">
-                    {/* Aggregated Campaign Metrics - Always visible */}
-                    <SelectGroup>
-                      <SelectLabel>📊 Campaign KPIs</SelectLabel>
-                      <SelectItem value="roas">ROAS</SelectItem>
-                      <SelectItem value="roi">ROI</SelectItem>
-                      <SelectItem value="cpa">CPA</SelectItem>
-                      <SelectItem value="revenue">Revenue</SelectItem>
-                      <SelectItem value="conversions">Conversions</SelectItem>
-                      <SelectItem value="users">Users</SelectItem>
-                      <SelectItem value="spend">Spend</SelectItem>
-                      <SelectItem value="ctr">CTR</SelectItem>
-                      <SelectItem value="conversion-rate-website">Conversion Rate (website)</SelectItem>
-                      <SelectItem value="conversion-rate-click">Conversion Rate (click-based)</SelectItem>
-                    </SelectGroup>
-                    <SelectSeparator />
-                    
-                    <SelectGroup>
-                      <SelectLabel>✏️ Manual Entry</SelectLabel>
-                      <SelectItem value="custom">Custom Value</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
 

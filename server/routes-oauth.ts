@@ -20768,6 +20768,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platformType: null,
         targetValue: req.body.targetValue?.toString() || "0",
         currentValue: req.body.currentValue?.toString() || "0",
+        alertThreshold: (req.body.alertThreshold === '' || req.body.alertThreshold === null || typeof req.body.alertThreshold === 'undefined')
+          ? null
+          : req.body.alertThreshold.toString(),
         timeframe: req.body.timeframe || "monthly",
         trackingPeriod: req.body.trackingPeriod || 30,
         rollingAverage: req.body.rollingAverage || "7day",

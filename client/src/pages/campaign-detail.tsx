@@ -2187,7 +2187,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="order-1 space-y-2">
               <Label htmlFor="edit-kpi-name">KPI Name *</Label>
               <Input
                 id="edit-kpi-name"
@@ -2200,7 +2200,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
             {/* Source selection (no defaults) */}
             {isTileMetric(kpiForm.metric) && (
-              <div className="space-y-3 p-4 border rounded-lg">
+              <div className="order-4 space-y-3 p-4 border rounded-lg">
                 <div>
                   <div className="font-medium text-foreground">Sources used for Current Value</div>
                   <div className="text-sm text-muted-foreground/70">
@@ -2288,7 +2288,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               </div>
             )}
 
-            <div className="space-y-2">
+            <div className="order-2 space-y-2">
               <Label htmlFor="edit-kpi-description">Description</Label>
               <Textarea
                 id="edit-kpi-description"
@@ -2300,7 +2300,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="order-3 grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-kpi-current">Current Value</Label>
                 <Input
@@ -2340,7 +2340,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
             </div>
 
             {/* Alert Settings */}
-            <div className="space-y-4 pt-4 border-t border-border">
+            <div className="order-6 space-y-4 pt-4 border-t border-border">
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <Checkbox

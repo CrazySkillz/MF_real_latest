@@ -1435,37 +1435,41 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
       {/* Empty State */}
       {kpis.length === 0 ? (
-        <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            {[
-              { label: 'Total KPIs', value: '0', icon: <Target className="w-8 h-8 text-purple-500" />, desc: '' },
-              { label: 'Above Target', value: '0', icon: <TrendingUp className="w-8 h-8 text-green-500" />, desc: 'more than +5% above target', color: 'text-green-600' },
-              { label: 'On Track', value: '0', icon: <CheckCircle2 className="w-8 h-8 text-blue-500" />, desc: 'within ±5% of target', color: 'text-blue-600' },
-              { label: 'Below Target', value: '0', icon: <AlertCircle className="w-8 h-8 text-red-500" />, desc: 'more than −5% below target', color: 'text-red-600' },
-              { label: 'Avg. Progress', value: '0.0%', icon: <TrendingUp className="w-8 h-8 text-violet-600" />, desc: '' },
-            ].map((s, i) => (
-              <Card key={i}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground/70">{s.label}</p>
-                      <p className={`text-2xl font-bold ${s.color || 'text-foreground'}`}>{s.value}</p>
-                      {s.desc && <p className="text-xs text-muted-foreground mt-1">{s.desc}</p>}
-                    </div>
-                    {s.icon}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <div className="text-center text-muted-foreground/70 py-8">
-            <Target className="w-12 h-12 text-muted-foreground/70 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">No KPIs yet</h3>
-            <p className="text-muted-foreground/70 mb-4">
-              Create your first KPI to track overall campaign performance.
-            </p>
-          </div>
-        </>
+        <Card>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                {[
+                  { label: 'Total KPIs', value: '0', icon: <Target className="w-8 h-8 text-purple-500" />, desc: '' },
+                  { label: 'Above Target', value: '0', icon: <TrendingUp className="w-8 h-8 text-green-500" />, desc: 'more than +5% above target', color: 'text-green-600' },
+                  { label: 'On Track', value: '0', icon: <CheckCircle2 className="w-8 h-8 text-blue-500" />, desc: 'within ±5% of target', color: 'text-blue-600' },
+                  { label: 'Below Target', value: '0', icon: <AlertCircle className="w-8 h-8 text-red-500" />, desc: 'more than −5% below target', color: 'text-red-600' },
+                  { label: 'Avg. Progress', value: '0.0%', icon: <TrendingUp className="w-8 h-8 text-violet-600" />, desc: '' },
+                ].map((s, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground/70">{s.label}</p>
+                          <p className={`text-2xl font-bold ${s.color || 'text-foreground'}`}>{s.value}</p>
+                          {s.desc && <p className="text-xs text-muted-foreground mt-1">{s.desc}</p>}
+                        </div>
+                        {s.icon}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <div className="text-center text-muted-foreground/70 py-8">
+                <Target className="w-12 h-12 text-muted-foreground/70 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No KPIs yet</h3>
+                <p className="text-muted-foreground/70 mb-4">
+                  Create your first KPI to track overall campaign performance.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <>
           {/* KPI Summary Panel */}

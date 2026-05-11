@@ -91,6 +91,8 @@ const devError = (...args: any[]) => {
   }
 };
 
+const KPI_DESC_MAX = 200;
+
 // Benchmark Interface
 interface Benchmark {
   id: string;
@@ -1648,6 +1650,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {kpi.description && (
+                <p className="text-sm text-muted-foreground/80" data-testid={`text-kpi-description-${kpi.id}`}>
+                  {kpi.description}
+                </p>
+              )}
               {/* Current vs Target Values */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-muted rounded-lg">
@@ -1904,10 +1911,14 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 id="kpi-description"
                 placeholder="Describe what this KPI measures and why it's important"
                 value={kpiForm.description}
-                onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value })}
+                maxLength={KPI_DESC_MAX}
+                onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value.slice(0, KPI_DESC_MAX) })}
                 rows={3}
                 data-testid="input-campaign-kpi-description"
               />
+              <div className="text-xs text-muted-foreground/70 text-right">
+                {(kpiForm.description || "").length}/{KPI_DESC_MAX}
+              </div>
             </div>
 
             <div className="order-3 grid grid-cols-3 gap-4">
@@ -2294,10 +2305,14 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 id="edit-kpi-description"
                 placeholder="Describe what this KPI measures and why it's important"
                 value={kpiForm.description}
-                onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value })}
+                maxLength={KPI_DESC_MAX}
+                onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value.slice(0, KPI_DESC_MAX) })}
                 rows={3}
                 data-testid="input-edit-campaign-kpi-description"
               />
+              <div className="text-xs text-muted-foreground/70 text-right">
+                {(kpiForm.description || "").length}/{KPI_DESC_MAX}
+              </div>
             </div>
 
             <div className="order-3 grid grid-cols-3 gap-4">
@@ -2463,7 +2478,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               }
               data-testid="button-edit-campaign-kpi-save"
             >
-              {updateKpiMutation.isPending ? 'Saving...' : 'Save Changes'}
+              {updateKpiMutation.isPending ? 'Saving...' : 'Update KPI'}
             </Button>
           </div>
         </DialogContent>

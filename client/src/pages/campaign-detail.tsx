@@ -239,6 +239,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     revenue: Number((Number((kpiGA4MetricTotals as any)?.revenue || 0) + Number((kpiImportedRevenueToDateResp as any)?.totalRevenue || 0)).toFixed(2)),
     spend: Number((kpiSpendBreakdownResp as any)?.totalSpend || (kpiSpendToDateResp as any)?.spendToDate || 0),
     conversions: Number((kpiGA4MetricTotals as any)?.conversions || 0),
+    users: Number((kpiGA4MetricTotals as any)?.users || 0),
   }), [kpiGA4MetricTotals, kpiImportedRevenueToDateResp, kpiSpendBreakdownResp, kpiSpendToDateResp]);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -393,6 +394,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     if (sourceId === 'total_revenue') return parseNumSafe((kpiConnectedPlatformTotals as any)?.revenue) || parseNumSafe(ot?.revenue?.totalRevenue);
     if (sourceId === 'total_spend') return parseNumSafe((kpiConnectedPlatformTotals as any)?.spend) || parseNumSafe(ot?.spend?.unifiedSpend);
     if (sourceId === 'total_conversions') return parseNumSafe((kpiConnectedPlatformTotals as any)?.conversions) || getUnifiedConversions();
+    if (sourceId === 'total_users') return parseNumSafe((kpiConnectedPlatformTotals as any)?.users);
 
     // Spend sources
     if (inputKey === 'spend') {
@@ -607,6 +609,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'users') {
+      if (isAggregateEfficiencyMetric(selectedMetric)) {
+        const value = getMetricSourceValue('users', 'total_users');
+        return [{ id: 'total_users', label: 'Total Users', enabled: value > 0, reason: 'No users connected', value }];
+      }
       if (connected.ga4) base.push({ id: 'ga4', label: 'GA4', enabled: true, value: getMetricSourceValue('users', 'ga4') });
       if (connected.customIntegration) base.push({ id: 'custom_integration', label: 'Custom Integration', enabled: true, value: parseNumSafe(platforms?.customIntegration?.users) });
       if (connected.linkedin) base.push({ id: 'linkedin', label: 'LinkedIn', enabled: false, reason: 'Users not available for this platform' });
@@ -660,6 +666,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
   const getDefaultKpiCalculationConfig = (metric: string): CalcConfig | null => {
     const m = String(metric || '');
+    if (m === 'revenue') return { metric: m, inputs: { revenue: ['total_revenue'] } };
+    if (m === 'conversions') return { metric: m, inputs: { conversions: ['total_conversions'] } };
+    if (m === 'users') return { metric: m, inputs: { users: ['total_users'] } };
     if (m === 'roas' || m === 'roi') return { metric: m, inputs: { revenue: ['total_revenue'], spend: ['total_spend'] } };
     if (m === 'cpa') return { metric: m, inputs: { spend: ['total_spend'], conversions: ['total_conversions'] } };
     if (isTileMetric(m)) return { metric: m, inputs: {} };
@@ -668,7 +677,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
   const isAggregateEfficiencyMetric = (metric: string): boolean => {
     const m = String(metric || '');
-    return m === 'roas' || m === 'roi' || m === 'cpa';
+    return m === 'revenue' || m === 'conversions' || m === 'users' || m === 'roas' || m === 'roi' || m === 'cpa';
   };
 
   const getMetricDisplayUnit = (metric: string): string => {
@@ -729,6 +738,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
         return 'Total Spend';
       case 'total_conversions':
         return 'Total Conversions';
+      case 'total_users':
+        return 'Total Users';
       case 'shopify':
         return 'Shopify';
       case 'hubspot':
@@ -1704,10 +1715,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   { name: "Revenue", metric: "revenue", category: "Revenue", description: "Total revenue (selected sources)" },
                   { name: "Conversions", metric: "conversions", category: "Performance", description: "Total conversions (selected sources)" },
                   { name: "Users", metric: "users", category: "Engagement", description: "Total users (selected sources)" },
-                  { name: "Spend", metric: "spend", category: "Cost Efficiency", description: "Total spend (selected sources)" },
-                  { name: "CTR", metric: "ctr", category: "Performance", description: "Clicks ÷ Impressions × 100" },
-                  { name: "Conversion Rate (website)", metric: "conversion-rate-website", category: "Performance", description: "Conversions ÷ Sessions × 100" },
-                  { name: "Conversion Rate (click-based)", metric: "conversion-rate-click", category: "Performance", description: "Conversions ÷ Clicks × 100" },
+                  { name: "Conversion Rate", metric: "conversion-rate-website", category: "Performance", description: "Conversions ÷ Sessions × 100" },
+                  { name: "Create Custom KPI", metric: "custom", category: "Custom", description: "Choose name + unit, then set values" },
                 ].map((template) => {
                   const reason = getTileDisabledReason(template.metric);
                   const disabled = Boolean(reason);
@@ -1740,6 +1749,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       <div className="flex items-center justify-between gap-2">
                         <div className="font-medium text-sm text-foreground">{template.name}</div>
                       </div>
+                      {template.metric === 'custom' && (
+                        <div className="text-xs text-muted-foreground/70 mt-1">{template.description}</div>
+                      )}
                     </div>
                   );
                 })}

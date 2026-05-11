@@ -100,6 +100,11 @@ Current-value hierarchy:
 Campaign-level KPI source previews:
 
 - campaign-level KPI current values must be populated from connected-platform values, not from a separate generic fallback when a connected-platform value exists
+- connected-platform metrics are the upstream source of truth for campaign-level KPI current values; when a connected platform value changes in GA4, the matching campaign-level KPI current value must update from that connected-platform value
+- campaign-level `Revenue` must use the connected GA4 `Total Revenue` value directly and must not show a separate revenue-source picker in the create flow
+- campaign-level `Conversions` must use the connected GA4 `Total Conversions` value directly and must not show a separate conversion-source picker in the create flow
+- campaign-level `Users` must use the connected GA4 `Total Users` value directly and must not show a separate user-source picker in the create flow
+- campaign-level KPI template tiles should expose only campaign-level KPI choices: `ROAS`, `ROI`, `CPA`, `Revenue`, `Conversions`, `Users`, `Conversion Rate`, and `Create Custom KPI`; source-specific tiles like `Spend`, `CTR`, and click-based conversion rate should not be shown in the campaign-level create flow
 - for GA4-only campaigns, the campaign-level `ROAS`, `ROI`, and `CPA` inputs must match the GA4 financial card inputs: `Total Revenue` = GA4 native revenue plus imported revenue, `Total Spend` = spend breakdown/spend-to-date, and `Total Conversions` = GA4 connected conversions
 - `ROAS` is displayed as an `x` ratio (`Revenue ÷ Spend`), while `ROI` remains a percent (`(Revenue - Spend) ÷ Spend × 100`) and `CPA` remains currency (`Spend ÷ Conversions`)
 - selecting campaign-level `ROAS`, `ROI`, or `CPA` must preselect those aggregate connected-platform inputs so the Current Value preview immediately matches the visible campaign/GA4 card value

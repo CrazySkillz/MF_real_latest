@@ -102,6 +102,7 @@ Campaign-level KPI source previews:
 - campaign-level KPI current values must be populated from connected-platform values, not from a separate generic fallback when a connected-platform value exists
 - for GA4-only campaigns, the campaign-level `ROAS`, `ROI`, and `CPA` inputs must match the GA4 financial card inputs: `Total Revenue` = GA4 native revenue plus imported revenue, `Total Spend` = spend breakdown/spend-to-date, and `Total Conversions` = GA4 connected conversions
 - `ROAS` is displayed as an `x` ratio (`Revenue ÷ Spend`), while `ROI` remains a percent (`(Revenue - Spend) ÷ Spend × 100`) and `CPA` remains currency (`Spend ÷ Conversions`)
+- selecting campaign-level `ROAS`, `ROI`, or `CPA` must preselect those aggregate connected-platform inputs so the Current Value preview immediately matches the visible campaign/GA4 card value
 - the campaign-level `Create KPI` modal must use the same GA4-scoped totals as the GA4 Overview page for GA4 source values
 - GA4 revenue, conversions, sessions, and users shown in campaign-level KPI source options must be derived from the selected GA4 connection using the GA4 to-date response plus persisted daily rows, matching the GA4 Overview fallback rules
 - do not read GA4 campaign KPI source values only from generic campaign outcome totals when a GA4-page-specific total exists, because that can drift from the values shown in GA4 Overview and Total Revenue Sources

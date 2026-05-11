@@ -658,6 +658,14 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     return [];
   };
 
+  const getDefaultKpiCalculationConfig = (metric: string): CalcConfig | null => {
+    const m = String(metric || '');
+    if (m === 'roas' || m === 'roi') return { metric: m, inputs: { revenue: ['total_revenue'], spend: ['total_spend'] } };
+    if (m === 'cpa') return { metric: m, inputs: { spend: ['total_spend'], conversions: ['total_conversions'] } };
+    if (isTileMetric(m)) return { metric: m, inputs: {} };
+    return null;
+  };
+
   const getMetricDisplayUnit = (metric: string): string => {
     const m = String(metric || '');
     if (m === 'revenue' || m === 'spend' || m === 'cpa' || m === 'cpl') return '$';
@@ -827,7 +835,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     return requiredInputs.every((k) => (cfg.inputs?.[k] || []).length > 0);
   };
 
-  // Keep Current Value in sync with selected sources (no defaults; computed preview becomes the stored currentValue snapshot).
+  // Keep Current Value in sync with selected sources; efficiency KPIs use aggregate campaign inputs by default.
   useEffect(() => {
     if (!isTileMetric(kpiForm.metric)) return;
     const computed = computeCurrentFromConfig(kpiCalculationConfig);
@@ -1679,7 +1687,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <div>
                 <h4 className="font-medium text-foreground">Choose a KPI</h4>
                 <p className="text-sm text-muted-foreground/70">
-                  No defaults: you control which connected sources are used to calculate Current Value.
+                  Efficiency KPIs use connected campaign totals; other KPIs let you choose sources.
                 </p>
               </div>
 
@@ -1712,10 +1720,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                       }`}
                       onClick={() => {
                         if (disabled) return;
-                        setKpiCalculationConfig({
-                          metric: template.metric,
-                          inputs: {},
-                        });
+                        setKpiCalculationConfig(getDefaultKpiCalculationConfig(template.metric));
                         setKpiForm((prev) => ({
                           ...prev,
                           name: template.name,
@@ -1841,7 +1846,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 <Select
                   value={kpiForm.metric || ''}
                   onValueChange={(value) => {
-                    setKpiCalculationConfig(isTileMetric(value) ? { metric: value, inputs: {} } : null);
+                    setKpiCalculationConfig(getDefaultKpiCalculationConfig(value));
                     const unit = isTileMetric(value) ? getMetricDisplayUnit(value) : '';
                     setKpiForm({ ...kpiForm, name: getMetricDisplayName(value), metric: value, currentValue: '', unit });
                   }}

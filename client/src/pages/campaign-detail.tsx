@@ -666,6 +666,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     return null;
   };
 
+  const isAggregateEfficiencyMetric = (metric: string): boolean => {
+    const m = String(metric || '');
+    return m === 'roas' || m === 'roi' || m === 'cpa';
+  };
+
   const getMetricDisplayUnit = (metric: string): string => {
     const m = String(metric || '');
     if (m === 'revenue' || m === 'spend' || m === 'cpa' || m === 'cpl') return '$';
@@ -1748,7 +1753,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   <div>
                     <div className="font-medium text-foreground">Sources used for Current Value</div>
                     <div className="text-sm text-muted-foreground/70">
-                      Select the sources you want included. Current Value will update once required inputs are selected.
+                      {isAggregateEfficiencyMetric(kpiForm.metric)
+                        ? 'This value is calculated from Google Analytics in Connected Platforms.'
+                        : 'Select the sources you want included. Current Value will update once required inputs are selected.'}
                     </div>
                   </div>
                 </div>
@@ -1759,9 +1766,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   const metric = String(kpiForm.metric || '');
                   const required = getRequiredInputsForMetric(metric);
                   const requiredWithDenom = required;
+                  const aggregateEfficiency = isAggregateEfficiencyMetric(metric);
 
                   const computed = computeCurrentFromConfig(kpiCalculationConfig);
-                  const preview = computed.value === null ? '—' : formatNumber(computed.value);
+                  const preview = computed.value === null ? '—' : formatValueWithUnit(computed.value, computed.unit || getMetricDisplayUnit(metric));
 
                   const toggle = (inputKey: CalcInputKey, sourceId: string) => {
                     setKpiCalculationConfig((prev: any) => {
@@ -1784,15 +1792,17 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                          <div className="text-xs text-muted-foreground/70">Current Value (preview)</div>
+                          <div className="text-xs text-muted-foreground/70">Current Value</div>
                           <div className="text-lg font-semibold text-foreground">{preview}</div>
                         </div>
                         <div className="text-xs text-muted-foreground self-end">
-                          Required inputs must be selected before you can create this KPI.
+                          {aggregateEfficiency
+                            ? 'Source: Google Analytics in Connected Platforms'
+                            : 'Required inputs must be selected before you can create this KPI.'}
                         </div>
                       </div>
 
-                      {requiredWithDenom.map((inputKey: any) => {
+                      {!aggregateEfficiency && requiredWithDenom.map((inputKey: any) => {
                         const key = inputKey as CalcInputKey;
                         const options = getInputOptions(key);
                         return (

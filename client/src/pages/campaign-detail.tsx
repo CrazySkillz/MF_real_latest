@@ -1560,9 +1560,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               const progressPercentRaw = Math.max(0, Math.min(ratio * 100, 100));
               const progressPercentLabel = progressPercentRaw.toFixed(1);
               const liveDisplay = formatValueWithUnit(current, displayUnit);
-              const sourcesSelectedRaw = formatSourcesSelected(kpi?.calculationConfig);
-              const shouldShowSources = isTileMetric(String(kpi?.metric || '')) || Boolean(kpi?.calculationConfig);
-              const sourcesSelected = sourcesSelectedRaw || (shouldShowSources ? '—' : '');
               const targetDisplay = formatValueWithUnit(target, displayUnit);
               
               return (
@@ -1575,11 +1572,6 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                   </div>
                   <div className="flex-1">
                     <CardTitle className="text-lg">{kpi.name}</CardTitle>
-                    {shouldShowSources && (
-                      <div className="mt-1 text-xs text-muted-foreground/70" data-testid={`text-kpi-sources-${kpi.id}`}>
-                        <span className="font-medium">Sources selected:</span> {sourcesSelected}
-                      </div>
-                    )}
                     {(kpi.metric || kpi.alertsEnabled || kpi.priority) && (
                       <div className="mt-2 flex items-center flex-wrap gap-2">
                         {kpi.metric && (

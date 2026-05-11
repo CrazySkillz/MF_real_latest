@@ -3774,6 +3774,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const escaped = String(sheetName).replace(/'/g, "''");
     return `'${escaped}'!`;
   };
+  const notificationPlatformLabel = (platformType?: string | null): string => {
+    const p = String(platformType || '').trim().toLowerCase();
+    if (!p || p === 'campaign') return 'Campaign';
+    if (p === 'google_analytics') return 'GA4';
+    if (p === 'google_ads') return 'Google Ads';
+    if (p === 'google_sheets') return 'Google Sheets';
+    if (p === 'linkedin') return 'LinkedIn';
+    if (p === 'meta' || p === 'facebook') return 'Meta';
+    if (p === 'custom-integration' || p === 'custom_integration') return 'Custom Integration';
+    return p.split(/[_-]+/).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+  };
 
   // Notifications routes
   app.get("/api/notifications", async (req, res) => {
@@ -3807,7 +3818,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return true;
             }
           });
-        return res.json(visible);
+        const scoped = await Promise.all(visible.map(async (n: any) => {
+          try {
+            const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
+            if (meta?.kpiId) {
+              const { kpis } = await import("../shared/schema");
+              const [kpi] = await db.select().from(kpis).where(eq((kpis as any).id, String(meta.kpiId))).limit(1);
+              if (kpi) return { ...n, title: `${notificationPlatformLabel((kpi as any).platformType)} KPI Alert: ${(kpi as any).name}` };
+            }
+            if (meta?.benchmarkId) {
+              const { benchmarks } = await import("../shared/schema");
+              const [benchmark] = await db.select().from(benchmarks).where(eq((benchmarks as any).id, String(meta.benchmarkId))).limit(1);
+              if (benchmark) return { ...n, title: `${notificationPlatformLabel((benchmark as any).platformType)} Benchmark Alert: ${(benchmark as any).name}` };
+            }
+          } catch {
+            // Keep legacy title if metadata/entity lookup fails.
+          }
+          return n;
+        }));
+        return res.json(scoped);
       }
 
       // In-memory fallback (dev/no-DB): filter using campaign ownership in memory.

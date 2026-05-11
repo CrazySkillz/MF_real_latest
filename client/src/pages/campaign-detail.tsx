@@ -1794,7 +1794,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 
             {/* Source selection (no defaults) */}
             {isTileMetric(kpiForm.metric) && (
-              <div className="order-4 space-y-3 p-4 border rounded-lg">
+              <div className="order-3 space-y-3 p-4 border rounded-lg">
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <div className="font-medium text-foreground">Sources used for Current Value</div>
@@ -1911,7 +1911,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               />
             </div>
 
-            <div className="order-3 grid grid-cols-3 gap-4">
+            <div className="order-4 grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="kpi-current">Current Value</Label>
                 <Input

@@ -4349,92 +4349,6 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               </div>
             </div>
 
-            {/* Sources used for Current Value */}
-            {isTemplateMetric(String(benchmarkForm.metric || '')) && (
-              <div className="space-y-3 p-4 border border-border rounded-lg">
-                <div>
-                  <div className="font-medium text-foreground">Sources used for Current Value</div>
-                  <div className="text-sm text-muted-foreground/70">
-                    Select the sources you want included. Current Value will update once the required inputs are selected.
-                  </div>
-                </div>
-
-                {getRequiredInputsForMetric(String(benchmarkForm.metric || '')).map((key) => {
-                  const options = getBenchInputOptions(key);
-                  const cfg = normalizeBenchCalcConfig(benchmarkCalculationConfig) as any;
-                  const selectedIds: string[] = cfg?.inputs?.[key] || [];
-                  const label =
-                    key === 'revenue'
-                      ? 'Revenue'
-                      : key === 'spend'
-                      ? 'Spend'
-                      : key === 'conversions'
-                      ? 'Conversions'
-                      : key === 'sessions'
-                      ? 'Sessions'
-                      : key === 'users'
-                      ? 'Users'
-                      : key === 'engagementRate'
-                      ? 'Engagement Rate'
-                      : key === 'clicks'
-                      ? 'Clicks'
-                      : key === 'impressions'
-                      ? 'Impressions'
-                      : key;
-
-                  return (
-                    <div key={key} className="space-y-2">
-                      <div className="text-sm font-medium text-foreground">{label} sources</div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {options.map((opt) => {
-                          const checked = selectedIds.includes(opt.id);
-                          const disabled = !opt.enabled;
-                          return (
-                            <label
-                              key={opt.id}
-                              className={`flex items-start gap-3 p-3 rounded-md border ${
-                                disabled
-                                  ? 'opacity-50 cursor-not-allowed border-border'
-                                  : 'cursor-pointer border-border hover:border-blue-300'
-                              }`}
-                            >
-                              <Checkbox
-                                checked={checked}
-                                disabled={disabled}
-                                onCheckedChange={(c) => toggleBenchSource(key, opt.id, Boolean(c))}
-                              />
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="text-sm font-medium text-foreground">{opt.label}</div>
-                                  <div className="text-xs text-muted-foreground/70">
-                                    {typeof opt.value === 'number' ? formatNumber(opt.value) : ''}
-                                  </div>
-                                </div>
-                                {disabled && opt.reason && (
-                                  <div className="text-xs text-muted-foreground mt-1">{opt.reason}</div>
-                                )}
-                              </div>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                <div className="pt-2 border-t border-border">
-                  <div className="text-xs text-muted-foreground/70">Current Value (preview)</div>
-                  <div className="text-sm font-semibold text-foreground">
-                    {(() => {
-                      const computed = computeCurrentFromBenchConfig(benchmarkCalculationConfig);
-                      if (computed.value === null) return '—';
-                      return `${formatNumber(computed.value)}${computed.unit === '$' ? '' : computed.unit ? ` ${computed.unit}` : ''}`;
-                    })()}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Benchmark Name + Unit */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -4525,6 +4439,32 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 />
               </div>
             </div>
+
+            {/* Sources used for Current Value */}
+            {isTemplateMetric(String(benchmarkForm.metric || '')) && (
+              <div className="space-y-3 p-4 border border-border rounded-lg">
+                <div>
+                  <div className="font-medium text-foreground">Sources used for Current Value</div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground/70">Current Value</div>
+                    <div className="text-lg font-semibold text-foreground">
+                      {(() => {
+                        const computed = computeCurrentFromBenchConfig(benchmarkCalculationConfig);
+                        if (computed.value === null) return '—';
+                        if (computed.unit === '$') return `$${formatNumber(computed.value)}`;
+                        if (computed.unit === 'count') return formatNumber(computed.value);
+                        return `${formatNumber(computed.value)}${computed.unit || ''}`;
+                      })()}
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground self-end">
+                    Source: Google Analytics in Connected Platforms
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Benchmark Type + Industry */}
             <div className="grid grid-cols-2 gap-4">

@@ -113,6 +113,7 @@ Current-value hierarchy:
 Campaign-level benchmark source previews:
 
 - campaign-level Benchmark current values must be populated from connected-platform values, not from a separate generic fallback when a connected-platform value exists
+- campaign-level Benchmark current values MUST be fed by the connected platform metrics shown for the campaign; this is the standard rule for campaign Benchmarks and must not be replaced with a separate selectable-source calculation UI
 - for GA4-only campaigns, campaign-level `ROAS`, `ROI`, and `CPA` benchmark inputs must match the GA4 financial card inputs: `Total Revenue` = GA4 native revenue plus imported revenue, `Total Spend` = spend breakdown/spend-to-date, and `Total Conversions` = GA4 connected conversions
 - `ROAS` is displayed as an `x` ratio (`Revenue ÷ Spend`), while `ROI` remains a percent (`(Revenue - Spend) ÷ Spend × 100`) and `CPA` remains currency (`Spend ÷ Conversions`)
 - campaign efficiency benchmarks must use aggregate campaign inputs: `ROAS` and `ROI` use `Total Revenue` plus `Total Spend`; `CPA` uses `Total Spend` plus `Total Conversions`

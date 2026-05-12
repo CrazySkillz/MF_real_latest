@@ -503,7 +503,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
       const spend = sumSelected('spend', cfg.inputs?.spend || []);
       const roas = spend > 0 ? revenue / spend : 0;
-      return { value: roas, unit: 'x' };
+      return { value: roas, unit: 'ratio' };
     }
     if (metric === 'roi') {
       const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
@@ -700,10 +700,31 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const getMetricDisplayUnit = (metric: string): string => {
     const m = String(metric || '');
     if (m === 'revenue' || m === 'spend' || m === 'cpa' || m === 'cpl') return '$';
-    if (m === 'roas') return 'x';
+    if (m === 'roas') return 'ratio';
     if (m === 'roi' || m === 'ctr' || m === 'conversion-rate-website' || m === 'conversion-rate-click') return '%';
     if (m === 'conversions' || m === 'users') return 'count';
     return '';
+  };
+
+  const getDefaultCampaignKpiDescription = (metric: string): string => {
+    switch (String(metric || '')) {
+      case 'roas':
+        return 'Revenue generated per dollar of spend (e.g., 5.0 = 5x return)';
+      case 'roi':
+        return 'Return relative to spend (revenue-based ROI)';
+      case 'cpa':
+        return 'Average cost per conversion';
+      case 'revenue':
+        return 'Total revenue for this campaign';
+      case 'conversions':
+        return 'Total conversions for the selected period';
+      case 'users':
+        return 'Total users for the selected period';
+      case 'conversion-rate-website':
+        return 'Overall conversion rate for the selected period';
+      default:
+        return '';
+    }
   };
 
   const isTileMetric = (metric: string): boolean => {
@@ -855,8 +876,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       n.toLocaleString('en-US', { maximumFractionDigits: 0 });
 
     if (u === '$') return `$${fixed2(value)}`;
-    if (u === '%') return `${fixed2(value)}%`;
-    if (u === 'x') return `${fixed2(value)}x`;
+    if (u === '%') return formatPct(value);
+    if (u === 'x' || u === 'ratio') return `${fixed2(value)}x`;
 
     // Default: counts / whole-number metrics
     return integer(value);
@@ -869,6 +890,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     const m = String(metric || '');
     const requiredInputs = getRequiredInputsForMetric(m);
     return requiredInputs.every((k) => (cfg.inputs?.[k] || []).length > 0);
+  };
+
+  const formatTileCurrentValueForInput = (value: number, unit: string): string => {
+    if (unit === '%') return formatPct(value).replace('%', '');
+    return formatNumber(value);
   };
 
   const buildKpiEditSnapshot = (form: any, rawConfig: any): string => {
@@ -905,7 +931,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     setKpiForm((prev) => ({
       ...prev,
       unit,
-      currentValue: computed.value === null ? '' : formatNumber(computed.value),
+      currentValue: computed.value === null ? '' : formatTileCurrentValueForInput(computed.value, unit),
     }));
   }, [kpiCalculationConfig, kpiForm.metric]);
 
@@ -1211,7 +1237,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       description: kpi.description || '',
       metric: kpi.metric || '',
       currentValue: cfg
-        ? (computed.value === null ? '' : formatInputNumber(String(computed.value)))
+        ? (computed.value === null ? '' : formatTileCurrentValueForInput(computed.value, computed.unit || getMetricDisplayUnit(String(kpi.metric || ''))))
         : (live.value ? formatInputNumber(live.value) : (kpi.currentValue ? formatInputNumber(kpi.currentValue.toString()) : '')),
       targetValue: kpi.targetValue ? formatInputNumber(kpi.targetValue.toString()) : '',
       unit: live.unit || kpi.unit || '',
@@ -1763,7 +1789,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           <DialogHeader className="pb-4 pr-8">
             <DialogTitle>Create Campaign KPI</DialogTitle>
             <DialogDescription>
-              Pick a KPI, choose which connected sources to use for the Current Value, then set a target.
+              Set up a key performance indicator for this campaign.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
@@ -1811,6 +1837,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                           currentValue: '',
                           unit: getMetricDisplayUnit(template.metric),
                           category: template.category,
+                          description: getDefaultCampaignKpiDescription(template.metric),
                         }));
                       }}
                       data-testid={`campaign-kpi-template-${template.metric}`}
@@ -2212,6 +2239,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                           currentValue: '',
                           unit: getMetricDisplayUnit(template.metric),
                           category: template.category,
+                          description: getDefaultCampaignKpiDescription(template.metric),
                         }));
                       }}
                       data-testid={`edit-campaign-kpi-template-${template.metric}`}

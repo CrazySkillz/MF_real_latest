@@ -2831,19 +2831,27 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       conversions: acc.conversions + (Number(row?.conversions || 0) || 0),
       users: acc.users + (Number(row?.users || 0) || 0),
       revenue: acc.revenue + (Number(row?.revenue || 0) || 0),
-    }), { sessions: 0, conversions: 0, users: 0, revenue: 0 });
+      engagementRateSum: acc.engagementRateSum + (Number(row?.engagementRate || 0) || 0),
+      engagementRateRows: acc.engagementRateRows + (Number(row?.engagementRate || 0) > 0 ? 1 : 0),
+    }), { sessions: 0, conversions: 0, users: 0, revenue: 0, engagementRateSum: 0, engagementRateRows: 0 });
     const totals = (benchGA4ToDate as any)?.totals || {};
+    const rawEngagementRate = Number(totals?.engagementRate || 0) || (daily.engagementRateRows > 0 ? daily.engagementRateSum / daily.engagementRateRows : 0);
+    const engagementRate = rawEngagementRate > 0 && rawEngagementRate <= 1 ? rawEngagementRate * 100 : rawEngagementRate;
     return {
       sessions: Math.max(Number(totals?.sessions || 0), daily.sessions),
       conversions: Math.max(Number(totals?.conversions || 0), daily.conversions),
       users: Number(totals?.users || 0) || daily.users,
       revenue: Math.max(Number(totals?.revenue || 0), Number(daily.revenue.toFixed(2))),
+      engagementRate,
     };
   }, [benchGA4DailyResp, benchGA4ToDate]);
   const benchConnectedPlatformTotals = useMemo(() => ({
     revenue: Number((Number((benchGA4MetricTotals as any)?.revenue || 0) + Number((benchImportedRevenueToDateResp as any)?.totalRevenue || 0)).toFixed(2)),
     spend: Number((benchSpendBreakdownResp as any)?.totalSpend || (benchSpendToDateResp as any)?.spendToDate || 0),
     conversions: Number((benchGA4MetricTotals as any)?.conversions || 0),
+    sessions: Number((benchGA4MetricTotals as any)?.sessions || 0),
+    users: Number((benchGA4MetricTotals as any)?.users || 0),
+    engagementRate: Number((benchGA4MetricTotals as any)?.engagementRate || 0),
   }), [benchGA4MetricTotals, benchImportedRevenueToDateResp, benchSpendBreakdownResp, benchSpendToDateResp]);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -2881,7 +2889,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     return Number.isFinite(n) ? n : 0;
   };
 
-  type BenchCalcInputKey = 'revenue' | 'spend' | 'conversions' | 'sessions' | 'users' | 'clicks' | 'impressions';
+  type BenchCalcInputKey = 'revenue' | 'spend' | 'conversions' | 'sessions' | 'users' | 'clicks' | 'impressions' | 'engagementRate';
   type BenchCalcConfig = {
     metric: string;
     inputs: Partial<Record<BenchCalcInputKey, string[]>>;
@@ -2934,6 +2942,9 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     if (sourceId === 'total_revenue') return parseNumSafe((benchConnectedPlatformTotals as any)?.revenue) || parseNumSafe(ot?.revenue?.totalRevenue);
     if (sourceId === 'total_spend') return parseNumSafe((benchConnectedPlatformTotals as any)?.spend) || parseNumSafe(spend?.unifiedSpend);
     if (sourceId === 'total_conversions') return parseNumSafe((benchConnectedPlatformTotals as any)?.conversions) || getUnifiedConversions();
+    if (sourceId === 'total_sessions') return parseNumSafe((benchConnectedPlatformTotals as any)?.sessions);
+    if (sourceId === 'total_users') return parseNumSafe((benchConnectedPlatformTotals as any)?.users);
+    if (sourceId === 'total_engagement_rate') return parseNumSafe((benchConnectedPlatformTotals as any)?.engagementRate);
 
     if (inputKey === 'revenue') return getRevenueSourceValue(sourceId);
     if (inputKey === 'spend') {
@@ -2948,6 +2959,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       if (inputKey === 'conversions') return parseNumSafe((benchGA4MetricTotals as any)?.conversions);
       if (inputKey === 'sessions') return parseNumSafe((benchGA4MetricTotals as any)?.sessions);
       if (inputKey === 'users') return parseNumSafe((benchGA4MetricTotals as any)?.users);
+      if (inputKey === 'engagementRate') return parseNumSafe((benchGA4MetricTotals as any)?.engagementRate);
       return 0;
     }
 
@@ -2955,6 +2967,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       if (inputKey === 'conversions') return parseNumSafe(platforms?.customIntegration?.conversions);
       if (inputKey === 'sessions') return parseNumSafe(platforms?.customIntegration?.sessions);
       if (inputKey === 'users') return parseNumSafe(platforms?.customIntegration?.users);
+      if (inputKey === 'engagementRate') return parseNumSafe(platforms?.customIntegration?.engagementRate);
       if (inputKey === 'clicks') return parseNumSafe(platforms?.customIntegration?.clicks);
       if (inputKey === 'impressions') return parseNumSafe(platforms?.customIntegration?.impressions);
       return 0;
@@ -3001,6 +3014,14 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     if (metric === 'users') {
       const users = sumSelected('users', cfg.inputs?.users || []);
       return { value: users, unit: 'count' };
+    }
+    if (metric === 'sessions') {
+      const sessions = sumSelected('sessions', cfg.inputs?.sessions || []);
+      return { value: sessions, unit: 'count' };
+    }
+    if (metric === 'engagementRate') {
+      const engagementRate = sumSelected('engagementRate', cfg.inputs?.engagementRate || []);
+      return { value: engagementRate, unit: '%' };
     }
     if (metric === 'ctr') {
       const clicks = sumSelected('clicks', cfg.inputs?.clicks || []);
@@ -3133,6 +3154,11 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       return base;
     }
 
+    if (inputKey === 'engagementRate') {
+      const value = getMetricSourceValue('engagementRate', 'total_engagement_rate');
+      return [{ id: 'total_engagement_rate', label: 'Engagement Rate', enabled: value > 0, reason: 'No engagement rate connected', value }];
+    }
+
     if (inputKey === 'clicks') {
       if (connected.ga4) pushConnected('ga4', 'GA4', false, undefined, 'Clicks is an ad-platform metric');
       if (connected.linkedin) pushConnected('linkedin', 'LinkedIn', true, parseNumSafe(platforms?.linkedin?.clicks));
@@ -3215,7 +3241,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     description: string;
     category: string;
     industryMetric: string;
-    requires?: Array<'spend' | 'revenue' | 'conversions' | 'sessions' | 'clicks' | 'impressions' | 'users'>;
+    requires?: Array<'spend' | 'revenue' | 'conversions' | 'sessions' | 'clicks' | 'impressions' | 'users' | 'engagementRate'>;
     lowerIsBetter?: boolean;
   };
 
@@ -3227,7 +3253,9 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       { name: 'Spend', metric: 'spend', unit: '$', description: 'Total marketing spend for the selected period', category: 'Cost', industryMetric: 'spend', requires: ['spend'] },
       { name: 'Conversions', metric: 'conversions', unit: 'count', description: 'Total conversions for the selected period', category: 'Performance', industryMetric: 'conversions', requires: ['conversions'] },
       { name: 'CPA', metric: 'cpa', unit: '$', description: 'Spend ÷ Conversions', category: 'Cost Efficiency', industryMetric: 'cpa', requires: ['spend', 'conversions'], lowerIsBetter: true },
+      { name: 'Engagement Rate', metric: 'engagementRate', unit: '%', description: 'Engaged Sessions ÷ Sessions × 100', category: 'Engagement', industryMetric: 'engagementRate', requires: ['engagementRate'] },
       { name: 'Users', metric: 'users', unit: 'count', description: 'Total users for the selected period', category: 'Audience', industryMetric: 'users', requires: ['users'] },
+      { name: 'Total Sessions', metric: 'sessions', unit: 'count', description: 'Total sessions for the selected period', category: 'Engagement', industryMetric: 'sessions', requires: ['sessions'] },
       { name: 'CTR', metric: 'ctr', unit: '%', description: 'Clicks ÷ Impressions × 100', category: 'Performance', industryMetric: 'ctr', requires: ['clicks', 'impressions'] },
       { name: 'Conversion Rate (website)', metric: 'conversion-rate-website', unit: '%', description: 'Conversions ÷ Sessions × 100', category: 'Performance', industryMetric: 'conversionRate', requires: ['conversions', 'sessions'] },
       { name: 'Conversion Rate (click-based)', metric: 'conversion-rate-click', unit: '%', description: 'Conversions ÷ Clicks × 100', category: 'Performance', industryMetric: 'cvr', requires: ['conversions', 'clicks'] },
@@ -3261,6 +3289,12 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
         return { value: totalConversions, unit: 'count' };
       case 'users':
         return { value: users, unit: 'count' };
+      case 'sessions':
+        return { value: sessions, unit: 'count' };
+      case 'engagementRate': {
+        const raw = parseNumSafe((benchConnectedPlatformTotals as any)?.engagementRate);
+        return { value: raw, unit: '%' };
+      }
       case 'ctr': {
         const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
         return { value: ctr, unit: '%' };
@@ -3300,6 +3334,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     const webConnected = Boolean(web?.connected);
     const webSessions = parseNumSafe(web?.sessions);
     const webUsers = parseNumSafe(web?.users);
+    const engagementRate = parseNumSafe((benchConnectedPlatformTotals as any)?.engagementRate);
     const { clicks, impressions } = getAdClicksImpressions();
     const totalConversions = parseNumSafe((benchConnectedPlatformTotals as any)?.conversions) || getUnifiedConversions();
     const adConversions = getAdConversions();
@@ -3317,6 +3352,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
           return webConnected && webSessions > 0;
         case 'users':
           return webConnected && webUsers > 0;
+        case 'engagementRate':
+          return engagementRate > 0;
         case 'clicks':
           return clicks > 0;
         case 'impressions':
@@ -3340,6 +3377,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
         if (k === 'conversions') return { available: false, reason: 'Conversions required' };
         if (k === 'sessions') return { available: false, reason: 'Web analytics sessions required' };
         if (k === 'users') return { available: false, reason: 'Web analytics users required' };
+        if (k === 'engagementRate') return { available: false, reason: 'Engagement rate required' };
         if (k === 'clicks' || k === 'impressions') return { available: false, reason: 'Ad impressions + clicks required' };
         return { available: false, reason: 'Required inputs missing' };
       }
@@ -4144,7 +4182,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
           resetBenchmarkForm();
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border p-6">
           <DialogHeader className="pb-4 pr-8">
             <DialogTitle className="pr-8 text-lg">{editingBenchmark ? 'Edit Benchmark' : 'Create New Benchmark'}</DialogTitle>
             <DialogDescription className="text-sm">
@@ -4164,13 +4202,16 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                {CAMPAIGN_BENCHMARK_TEMPLATES.slice().sort((a, b) => {
-                  const order = ['roas', 'roi', 'cpa', 'revenue', 'conversions', 'conversion-rate-website', 'users'];
+                {[...CAMPAIGN_BENCHMARK_TEMPLATES, { name: 'Create Custom Benchmark', metric: '__custom__', unit: '', description: '', category: 'Custom', industryMetric: '' }].filter((template) => {
+                  return ['roas', 'roi', 'cpa', 'revenue', 'conversions', 'conversion-rate-website', 'engagementRate', 'users', 'sessions', '__custom__'].includes(template.metric);
+                }).sort((a, b) => {
+                  const order = ['roas', 'roi', 'cpa', 'revenue', 'conversions', 'conversion-rate-website', 'engagementRate', 'users', 'sessions', '__custom__'];
                   const ai = order.indexOf(a.metric);
                   const bi = order.indexOf(b.metric);
                   return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
                 }).map((template) => {
-                  const availability = getInputAvailability(template);
+                  const isCustom = template.metric === '__custom__';
+                  const availability = isCustom ? { available: true } : getInputAvailability(template);
                   const disabled = !availability.available;
                   const selected = selectedBenchmarkTemplate?.metric === template.metric;
                   const displayName =
@@ -4188,6 +4229,22 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       }`}
                       onClick={async () => {
                         if (disabled) return;
+                        if (isCustom) {
+                          setSelectedBenchmarkTemplate(null);
+                          setBenchmarkCalculationConfig(null);
+                          setBenchmarkForm((prev) => ({
+                            ...prev,
+                            metric: '',
+                            category: 'Custom',
+                            name: '',
+                            unit: '',
+                            benchmarkType: 'custom',
+                            currentValue: '',
+                            benchmarkValue: '',
+                            industry: '',
+                          }));
+                          return;
+                        }
                         setSelectedBenchmarkTemplate(template);
                         // No defaults: user chooses sources before Current Value is computed.
                         setBenchmarkCalculationConfig({ metric: template.metric, inputs: {} });

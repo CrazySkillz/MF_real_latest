@@ -3080,7 +3080,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     };
 
     if (inputKey === 'revenue') {
-      if (aggregateEfficiency) {
+      if (aggregateEfficiency || selectedMetric === 'revenue') {
         const value = getMetricSourceValue('revenue', 'total_revenue');
         return [{ id: 'total_revenue', label: 'Total Revenue', enabled: value > 0, reason: 'No revenue connected', value }];
       }
@@ -3127,7 +3127,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'conversions') {
-      if (aggregateCpa) {
+      if (aggregateCpa || selectedMetric === 'conversions' || selectedMetric === 'conversion-rate-website') {
         const value = getMetricSourceValue('conversions', 'total_conversions');
         return [{ id: 'total_conversions', label: 'Total Conversions', enabled: value > 0, reason: 'No conversions connected', value }];
       }
@@ -3139,6 +3139,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'sessions') {
+      if (selectedMetric === 'sessions' || selectedMetric === 'conversion-rate-website') {
+        const value = getMetricSourceValue('sessions', 'total_sessions');
+        return [{ id: 'total_sessions', label: 'Total Sessions', enabled: true, value }];
+      }
       if (connected.ga4) pushConnected('ga4', 'GA4', true, getMetricSourceValue('sessions', 'ga4'));
       if (connected.customIntegration) pushConnected('custom_integration', 'Custom Integration', true, parseNumSafe(platforms?.customIntegration?.sessions));
       if (connected.linkedin) pushConnected('linkedin', 'LinkedIn', false, undefined, 'Sessions is a web analytics metric');
@@ -3147,6 +3151,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     }
 
     if (inputKey === 'users') {
+      if (selectedMetric === 'users') {
+        const value = getMetricSourceValue('users', 'total_users');
+        return [{ id: 'total_users', label: 'Total Users', enabled: true, value }];
+      }
       if (connected.ga4) pushConnected('ga4', 'GA4', true, getMetricSourceValue('users', 'ga4'));
       if (connected.customIntegration) pushConnected('custom_integration', 'Custom Integration', true, parseNumSafe(platforms?.customIntegration?.users));
       if (connected.linkedin) pushConnected('linkedin', 'LinkedIn', false, undefined, 'Users is a web analytics metric');
@@ -3397,6 +3405,30 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     const req = getRequiredInputsForMetric(metric);
     if (!req.length) return true;
     return req.every((k) => (cfg.inputs?.[k] || []).length > 0);
+  };
+
+  const getDefaultBenchCalculationConfig = (metric: string): BenchCalcConfig => {
+    switch (String(metric || '')) {
+      case 'revenue':
+        return { metric, inputs: { revenue: ['total_revenue'] } };
+      case 'roas':
+      case 'roi':
+        return { metric, inputs: { revenue: ['total_revenue'], spend: ['total_spend'] } };
+      case 'cpa':
+        return { metric, inputs: { spend: ['total_spend'], conversions: ['total_conversions'] } };
+      case 'conversions':
+        return { metric, inputs: { conversions: ['total_conversions'] } };
+      case 'conversion-rate-website':
+        return { metric, inputs: { conversions: ['total_conversions'], sessions: ['total_sessions'] } };
+      case 'engagementRate':
+        return { metric, inputs: { engagementRate: ['total_engagement_rate'] } };
+      case 'users':
+        return { metric, inputs: { users: ['total_users'] } };
+      case 'sessions':
+        return { metric, inputs: { sessions: ['total_sessions'] } };
+      default:
+        return { metric, inputs: {} };
+    }
   };
 
   const formatBenchmarkSourcesSelected = (rawConfig: any): string => {
@@ -4211,7 +4243,23 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
                 }).map((template) => {
                   const isCustom = template.metric === '__custom__';
-                  const availability = isCustom ? { available: true } : getInputAvailability(template);
+                  const requiresSpend = template.metric === 'roas' || template.metric === 'roi' || template.metric === 'cpa';
+                  const requiresRevenue = template.metric === 'roas' || template.metric === 'roi' || template.metric === 'revenue';
+                  const spendAvailable = getMetricSourceValue('spend', 'total_spend') > 0;
+                  const revenueAvailable = getMetricSourceValue('revenue', 'total_revenue') > 0;
+                  const availability = isCustom
+                    ? { available: true }
+                    : {
+                        available: !(requiresSpend && !spendAvailable) && !(requiresRevenue && !revenueAvailable),
+                        reason:
+                          requiresSpend && !spendAvailable && requiresRevenue && !revenueAvailable
+                            ? 'Spend + Revenue required'
+                            : requiresSpend && !spendAvailable
+                            ? 'Spend required'
+                            : requiresRevenue && !revenueAvailable
+                            ? 'Revenue required'
+                            : undefined,
+                      };
                   const disabled = !availability.available;
                   const selected = selectedBenchmarkTemplate?.metric === template.metric;
                   const displayName =
@@ -4246,8 +4294,9 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                           return;
                         }
                         setSelectedBenchmarkTemplate(template);
-                        // No defaults: user chooses sources before Current Value is computed.
-                        setBenchmarkCalculationConfig({ metric: template.metric, inputs: {} });
+                        const nextConfig = getDefaultBenchCalculationConfig(template.metric);
+                        const computed = computeCurrentFromBenchConfig(nextConfig);
+                        setBenchmarkCalculationConfig(nextConfig);
 
                         // Keep name/unit/metric in sync with the selected template.
                         setBenchmarkForm((prev) => ({
@@ -4256,7 +4305,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                           category: template.category,
                           name: template.name,
                           unit: template.unit,
-                          currentValue: '',
+                          currentValue: computed.value === null ? '' : formatNumber(computed.value),
                           // If industry type + industry already chosen, clear stale benchmarkValue and refetch below.
                           benchmarkValue: prev.benchmarkType === 'industry' && prev.industry ? '' : prev.benchmarkValue,
                         }));
@@ -4300,7 +4349,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               </div>
             </div>
 
-            {/* Sources used for Current Value (no defaults) */}
+            {/* Sources used for Current Value */}
             {isTemplateMetric(String(benchmarkForm.metric || '')) && (
               <div className="space-y-3 p-4 border border-border rounded-lg">
                 <div>
@@ -4325,6 +4374,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       ? 'Sessions'
                       : key === 'users'
                       ? 'Users'
+                      : key === 'engagementRate'
+                      ? 'Engagement Rate'
                       : key === 'clicks'
                       ? 'Clicks'
                       : key === 'impressions'

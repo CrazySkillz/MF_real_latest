@@ -4144,13 +4144,13 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
           resetBenchmarkForm();
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingBenchmark ? 'Edit Benchmark' : 'Create New Benchmark'}</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
+          <DialogHeader className="pb-4 pr-8">
+            <DialogTitle className="pr-8 text-lg">{editingBenchmark ? 'Edit Benchmark' : 'Create New Benchmark'}</DialogTitle>
+            <DialogDescription className="text-sm">
               {editingBenchmark 
-                ? 'Update this benchmark. You can switch templates to benchmark a different metric.'
-                : 'Choose a benchmark template, then set the benchmark target (industry or custom).'}
+                ? 'Update this benchmark to reflect your latest targets or industry standard.'
+                : 'Set up a new performance benchmark to track against industry standards or custom targets'}
             </DialogDescription>
           </DialogHeader>
           
@@ -4160,14 +4160,24 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               <div>
                 <div className="font-medium text-foreground">Select Benchmark Template</div>
                 <div className="text-sm text-muted-foreground/70">
-                  Pick a metric to benchmark, then choose which connected sources to use for the Current Value (no defaults).
+                  Choose a metric to benchmark, then fill in the benchmark details below.
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                {CAMPAIGN_BENCHMARK_TEMPLATES.map((template) => {
+                {CAMPAIGN_BENCHMARK_TEMPLATES.slice().sort((a, b) => {
+                  const order = ['roas', 'roi', 'cpa', 'revenue', 'conversions', 'conversion-rate-website', 'users'];
+                  const ai = order.indexOf(a.metric);
+                  const bi = order.indexOf(b.metric);
+                  return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+                }).map((template) => {
                   const availability = getInputAvailability(template);
                   const disabled = !availability.available;
                   const selected = selectedBenchmarkTemplate?.metric === template.metric;
+                  const displayName =
+                    template.metric === 'conversions' ? 'Total Conversions' :
+                    template.metric === 'users' ? 'Total Users' :
+                    template.metric === 'conversion-rate-website' ? 'Conversion Rate' :
+                    template.name;
                   return (
                     <div
                       key={template.metric}
@@ -4221,10 +4231,12 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                       }}
                       data-testid={`tile-benchmark-${template.metric}`}
                     >
-                      <div className="font-medium text-sm text-foreground">{template.name}</div>
-                      <div className="text-xs text-muted-foreground/70 mt-1">
-                        {disabled ? (availability.reason || 'Not available') : template.description}
-                      </div>
+                      <div className="font-medium text-sm text-foreground">{displayName}</div>
+                      {disabled && (
+                        <div className="text-xs text-muted-foreground/70 mt-1">
+                          {availability.reason || 'Not available'}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

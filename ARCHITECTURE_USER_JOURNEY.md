@@ -347,6 +347,7 @@ Implementation note:
 The code currently supports this pattern by computing campaign KPI values from unified campaign totals and selected connected sources rather than treating KPIs as purely platform-specific values.
 Campaign-level KPI current values must use the same connected-platform inputs shown in the platform detail cards. For GA4-only campaigns, ROAS, ROI, and CPA must use GA4 financial card inputs: Total Revenue, Total Spend, and Total Conversions.
 Connected-platform metrics are the standard upstream source of truth for campaign-level KPI current values. If GA4 Total Revenue, Total Conversions, Total Users, Total Sessions, or another connected-platform metric updates, the corresponding campaign-level KPI current value must update from that connected-platform metric rather than requiring a separate source selection.
+Campaign-level KPI create/edit forms must follow the same unit-display conventions as platform KPI forms. Percent targets should display as clean percentages without forced trailing decimals, count targets as whole numbers, currency targets with currency formatting, and ROAS/ratio targets with ratio-style display.
 
 ### Benchmarks Tab
 

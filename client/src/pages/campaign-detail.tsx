@@ -2880,6 +2880,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     alertsEnabled: false,
     alertThreshold: '',
     alertCondition: 'below' as 'below' | 'above' | 'equals',
+    alertFrequency: 'immediate',
+    emailNotifications: false,
     emailRecipients: ''
   });
 
@@ -3273,6 +3275,31 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 
   const isTemplateMetric = (metric: string) =>
     CAMPAIGN_BENCHMARK_TEMPLATES.some((t) => t.metric === String(metric || ''));
+
+  const getDefaultCampaignBenchmarkDescription = (metric: string): string => {
+    switch (String(metric || '')) {
+      case 'roas':
+        return 'Revenue generated per dollar of spend (as a %)';
+      case 'roi':
+        return 'Return relative to spend (revenue-based ROI)';
+      case 'cpa':
+        return 'Average cost per conversion';
+      case 'revenue':
+        return 'Total revenue for the selected period';
+      case 'conversions':
+        return 'Total conversions for the selected period';
+      case 'conversion-rate-website':
+        return 'Overall conversion rate for the selected period';
+      case 'engagementRate':
+        return 'Percent of sessions that were engaged';
+      case 'users':
+        return 'Total users for the selected period';
+      case 'sessions':
+        return 'Total sessions for the selected period';
+      default:
+        return 'Benchmark target for this metric.';
+    }
+  };
 
   const getLiveBenchmarkCurrentValue = (metric: string): { value: number; unit: string } => {
     const ot = outcomeTotals || {};
@@ -3675,6 +3702,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       alertsEnabled: false,
       alertThreshold: '',
       alertCondition: 'below',
+      alertFrequency: 'immediate',
+      emailNotifications: false,
       emailRecipients: ''
     });
     setSelectedBenchmarkTemplate(null);
@@ -3716,7 +3745,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       benchmarkValue: cleanNumber(benchmarkForm.benchmarkValue),
       currentValue: benchmarkForm.currentValue ? cleanNumber(benchmarkForm.currentValue) : 0,
       alertThreshold: benchmarkForm.alertsEnabled ? cleanNumber(benchmarkForm.alertThreshold) : null,
-      emailRecipients: benchmarkForm.alertsEnabled && benchmarkForm.emailRecipients ? benchmarkForm.emailRecipients.split(',').map(e => e.trim()) : null,
+      emailRecipients: benchmarkForm.alertsEnabled && benchmarkForm.emailNotifications && benchmarkForm.emailRecipients ? benchmarkForm.emailRecipients.split(',').map(e => e.trim()) : null,
     };
 
     if (editingBenchmark) {
@@ -3745,6 +3774,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       alertsEnabled: benchmark.alertsEnabled || false,
       alertThreshold: String(benchmark.alertThreshold || ''),
       alertCondition: benchmark.alertCondition || 'below',
+      alertFrequency: benchmark.alertFrequency || 'immediate',
+      emailNotifications: benchmark.emailNotifications || false,
       emailRecipients: benchmark.emailRecipients || ''
     });
     setShowCreateDialog(true);
@@ -4214,7 +4245,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
           resetBenchmarkForm();
         }
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border p-6">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border p-6" onOpenAutoFocus={(event) => event.preventDefault()}>
           <DialogHeader className="pb-4 pr-8">
             <DialogTitle className="pr-8 text-lg">{editingBenchmark ? 'Edit Benchmark' : 'Create New Benchmark'}</DialogTitle>
             <DialogDescription className="text-sm">
@@ -4305,6 +4336,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                           category: template.category,
                           name: template.name,
                           unit: template.unit,
+                          description: prev.description || getDefaultCampaignBenchmarkDescription(template.metric),
                           currentValue: computed.value === null ? '' : formatNumber(computed.value),
                           // If industry type + industry already chosen, clear stale benchmarkValue and refetch below.
                           benchmarkValue: prev.benchmarkType === 'industry' && prev.industry ? '' : prev.benchmarkValue,
@@ -4349,35 +4381,20 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               </div>
             </div>
 
-            {/* Benchmark Name + Unit */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-name">Benchmark Name *</Label>
-                <Input
-                  id="benchmark-name"
-                  placeholder="e.g., ROAS"
-                  value={benchmarkForm.name}
-                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
-                  data-testid="input-benchmark-name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="unit">Unit *</Label>
-                <Select value={benchmarkForm.unit} onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, unit: value })}>
-                  <SelectTrigger id="unit">
-                    <SelectValue placeholder="Select unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="%">%</SelectItem>
-                    <SelectItem value="$">$</SelectItem>
-                    <SelectItem value="count">Count</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Benchmark Name */}
+            <div className="space-y-2">
+              <Label htmlFor="benchmark-name">Benchmark Name *</Label>
+              <Input
+                id="benchmark-name"
+                placeholder="e.g., ROAS"
+                value={benchmarkForm.name}
+                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, name: e.target.value })}
+                data-testid="input-benchmark-name"
+              />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description (Optional)</Label>
+              <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 placeholder="Describe what this benchmark represents"
@@ -4389,7 +4406,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
             </div>
 
             {/* Current Value + Benchmark Value */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="current-value">Current Value</Label>
                 <Input
@@ -4437,6 +4454,19 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   }}
                   data-testid="input-benchmark-value"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="unit">Unit</Label>
+                <Select value={benchmarkForm.unit} onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, unit: value })}>
+                  <SelectTrigger id="unit">
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="%">%</SelectItem>
+                    <SelectItem value="$">$</SelectItem>
+                    <SelectItem value="count">Count</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -4541,61 +4571,104 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               )}
             </div>
 
-            {/* Email Alert Settings */}
-            <div className="space-y-3 pt-4 border-t">
+            {/* Alert Settings */}
+            <div className="space-y-4 pt-4 border-t">
               <div className="flex items-center space-x-2">
-                <Checkbox 
+                <Checkbox
                   id="alert-enabled"
                   checked={benchmarkForm.alertsEnabled}
                   onCheckedChange={(checked) => setBenchmarkForm({ ...benchmarkForm, alertsEnabled: checked as boolean })}
                   data-testid="checkbox-benchmark-alert"
                 />
-                <Label htmlFor="alert-enabled" className="text-sm font-medium">
-                  Enable Email Alerts
+                <Label htmlFor="alert-enabled" className="text-base cursor-pointer font-semibold">
+                  Enable alerts for this Benchmark
                 </Label>
               </div>
+              <p className="text-sm text-muted-foreground/70 -mt-2">
+                Receive notifications when this benchmark crosses a threshold you define.
+              </p>
 
               {benchmarkForm.alertsEnabled && (
-                <div className="grid grid-cols-3 gap-4 pl-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="alert-threshold">Alert Threshold</Label>
-                    <Input
-                      id="alert-threshold"
-                      type="number"
-                      step="0.01"
-                      placeholder="0"
-                      value={benchmarkForm.alertThreshold}
-                      onChange={(e) => setBenchmarkForm({ ...benchmarkForm, alertThreshold: e.target.value })}
-                      data-testid="input-benchmark-alert-threshold"
-                    />
+                <div className="space-y-4 pl-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="alert-threshold">Alert Threshold *</Label>
+                      <Input
+                        id="alert-threshold"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="e.g., 80"
+                        value={benchmarkForm.alertThreshold}
+                        onChange={(e) => setBenchmarkForm({ ...benchmarkForm, alertThreshold: e.target.value })}
+                        data-testid="input-benchmark-alert-threshold"
+                      />
+                      <p className="text-xs text-muted-foreground/70">Value at which to trigger the alert</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="alert-condition">Alert When</Label>
+                      <Select
+                        value={benchmarkForm.alertCondition}
+                        onValueChange={(value: any) => setBenchmarkForm({ ...benchmarkForm, alertCondition: value })}
+                      >
+                        <SelectTrigger id="alert-condition">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="below">Value Goes Below</SelectItem>
+                          <SelectItem value="above">Value Goes Above</SelectItem>
+                          <SelectItem value="equals">Value Equals</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="alert-condition">Condition</Label>
-                    <Select
-                      value={benchmarkForm.alertCondition}
-                      onValueChange={(value: any) => setBenchmarkForm({ ...benchmarkForm, alertCondition: value })}
-                    >
-                      <SelectTrigger id="alert-condition">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="below">Below</SelectItem>
-                        <SelectItem value="above">Above</SelectItem>
-                        <SelectItem value="equals">Equals</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="alert-frequency">Alert Frequency</Label>
+                      <Select
+                        value={benchmarkForm.alertFrequency || 'immediate'}
+                        onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, alertFrequency: value })}
+                      >
+                        <SelectTrigger id="alert-frequency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="immediate">Immediate</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground/70">
+                        Bell and Notifications keep one active alert record. This setting controls reminder emails while the breach stays unresolved.
+                      </p>
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="alert-emails">Email Recipients</Label>
-                    <Input
-                      id="alert-emails"
-                      placeholder="email1@example.com, email2@example.com"
-                      value={benchmarkForm.emailRecipients}
-                      onChange={(e) => setBenchmarkForm({ ...benchmarkForm, emailRecipients: e.target.value })}
-                      data-testid="input-benchmark-alert-emails"
-                    />
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2 pt-1">
+                        <Checkbox
+                          id="benchmark-email-notifications"
+                          checked={benchmarkForm.emailNotifications}
+                          onCheckedChange={(checked) => setBenchmarkForm({ ...benchmarkForm, emailNotifications: checked as boolean })}
+                        />
+                        <Label htmlFor="benchmark-email-notifications" className="cursor-pointer font-medium">
+                          Send email notifications
+                        </Label>
+                      </div>
+                      {benchmarkForm.emailNotifications && (
+                        <div className="space-y-2">
+                          <Label htmlFor="alert-emails">Email addresses *</Label>
+                          <Input
+                            id="alert-emails"
+                            placeholder="email1@example.com, email2@example.com"
+                            value={benchmarkForm.emailRecipients}
+                            onChange={(e) => setBenchmarkForm({ ...benchmarkForm, emailRecipients: e.target.value })}
+                            data-testid="input-benchmark-alert-emails"
+                          />
+                          <p className="text-xs text-muted-foreground/70">Comma-separated email addresses for alerts.</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

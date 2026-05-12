@@ -1528,7 +1528,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
           </CardContent>
         </Card>
       ) : (
-        <>
+        <Card>
+          <CardContent>
+            <div className="space-y-6">
           {/* KPI Summary Panel */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <Card>
@@ -1756,7 +1758,9 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               );
             })}
           </div>
-        </>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Create KPI Dialog */}
@@ -1860,11 +1864,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <div className="font-medium text-foreground">Sources used for Current Value</div>
-                    <div className="text-sm text-muted-foreground/70">
-                      {isAggregateEfficiencyMetric(kpiForm.metric)
-                        ? 'This value is calculated from Google Analytics in Connected Platforms.'
-                        : 'Select the sources you want included. Current Value will update once required inputs are selected.'}
-                    </div>
+                    {!isAggregateEfficiencyMetric(kpiForm.metric) && (
+                      <div className="text-sm text-muted-foreground/70">
+                        Select the sources you want included. Current Value will update once required inputs are selected.
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -2272,11 +2276,11 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               <div className="order-4 space-y-3 p-4 border rounded-lg">
                 <div>
                   <div className="font-medium text-foreground">Sources used for Current Value</div>
-                  <div className="text-sm text-muted-foreground/70">
-                    {isAggregateEfficiencyMetric(kpiForm.metric)
-                      ? 'This value is calculated from Google Analytics in Connected Platforms.'
-                      : 'Update the sources included in this KPI. Current Value will update when required inputs are selected.'}
-                  </div>
+                  {!isAggregateEfficiencyMetric(kpiForm.metric) && (
+                    <div className="text-sm text-muted-foreground/70">
+                      Update the sources included in this KPI. Current Value will update when required inputs are selected.
+                    </div>
+                  )}
                 </div>
 
                 {(() => {

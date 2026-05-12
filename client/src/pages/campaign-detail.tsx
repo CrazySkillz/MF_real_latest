@@ -92,6 +92,7 @@ const devError = (...args: any[]) => {
 };
 
 const KPI_DESC_MAX = 200;
+const BENCHMARK_DESC_MAX = 200;
 
 // Benchmark Interface
 interface Benchmark {
@@ -2874,7 +2875,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     unit: '',
     benchmarkValue: '',
     currentValue: '',
-    benchmarkType: 'industry' as 'industry' | 'custom',
+    benchmarkType: 'custom' as 'industry' | 'custom',
     industry: '',
     description: '',
     alertsEnabled: false,
@@ -3519,12 +3520,6 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     }));
   }, [benchmarkCalculationConfig, benchmarkForm.metric]);
 
-  // Fetch industry list
-  const { data: industryData } = useQuery<{ industries: Array<{ value: string; label: string }> }>({
-    queryKey: ['/api/industry-benchmarks'],
-    staleTime: Infinity, // Industry list doesn't change
-  });
-
   // Create Benchmark mutation
   const createBenchmarkMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -3696,7 +3691,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       unit: '',
       benchmarkValue: '',
       currentValue: '',
-      benchmarkType: 'industry',
+      benchmarkType: 'custom',
       industry: '',
       description: '',
       alertsEnabled: false,
@@ -3741,6 +3736,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       campaignId: campaign.id,
       platformType: null, // Campaign-level benchmark
       ...benchmarkForm,
+      benchmarkType: 'custom',
+      industry: '',
       calculationConfig: isTemplateMetric(metricKey) ? normalizeBenchCalcConfig(benchmarkCalculationConfig) : null,
       benchmarkValue: cleanNumber(benchmarkForm.benchmarkValue),
       currentValue: benchmarkForm.currentValue ? cleanNumber(benchmarkForm.currentValue) : 0,
@@ -4399,10 +4396,14 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 id="description"
                 placeholder="Describe what this benchmark represents"
                 value={benchmarkForm.description}
-                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, description: e.target.value })}
+                maxLength={BENCHMARK_DESC_MAX}
+                onChange={(e) => setBenchmarkForm({ ...benchmarkForm, description: e.target.value.slice(0, BENCHMARK_DESC_MAX) })}
                 rows={2}
                 data-testid="input-benchmark-description"
               />
+              <div className="text-xs text-muted-foreground/70 text-right">
+                {(benchmarkForm.description || '').length}/{BENCHMARK_DESC_MAX}
+              </div>
             </div>
 
             {/* Current Value + Benchmark Value */}
@@ -4495,81 +4496,6 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 </div>
               </div>
             )}
-
-            {/* Benchmark Type + Industry */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-type">Benchmark Type *</Label>
-                <Select
-                  value={benchmarkForm.benchmarkType}
-                  onValueChange={(value: any) => {
-                    const nextType = value === 'custom' ? 'custom' : 'industry';
-                    setBenchmarkForm((prev) => ({
-                      ...prev,
-                      benchmarkType: nextType,
-                      industry: nextType === 'industry' ? prev.industry : '',
-                    }));
-                  }}
-                >
-                  <SelectTrigger id="benchmark-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="industry">Industry</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {benchmarkForm.benchmarkType === 'industry' ? (
-                <div className="space-y-2">
-                  <Label htmlFor="benchmark-industry">Industry</Label>
-                  <Select
-                    value={benchmarkForm.industry || "__none__"}
-                    onValueChange={async (value) => {
-                      const nextIndustry = value === "__none__" ? "" : value;
-                      setBenchmarkForm((prev) => ({ ...prev, industry: nextIndustry }));
-
-                      const tpl = selectedBenchmarkTemplate || CAMPAIGN_BENCHMARK_TEMPLATES.find((t) => t.metric === String(benchmarkForm.metric || ''));
-                      if (!nextIndustry || !tpl) return;
-                      try {
-                        const resp = await fetch(
-                          `/api/industry-benchmarks/${encodeURIComponent(nextIndustry)}/${encodeURIComponent(tpl.industryMetric)}`
-                        );
-                        if (!resp.ok) return;
-                        const data = await resp.json().catch(() => null);
-                        if (data && typeof data.value !== 'undefined') {
-                          setBenchmarkForm((prev) => ({
-                            ...prev,
-                            benchmarkValue: String(data.value),
-                            unit: prev.unit || data.unit || prev.unit,
-                          }));
-                        }
-                      } catch {
-                        // best-effort
-                      }
-                    }}
-                  >
-                    <SelectTrigger id="benchmark-industry">
-                      <SelectValue placeholder="Select industry" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Select industry</SelectItem>
-                      {industryData?.industries.map((industry) => (
-                        <SelectItem key={industry.value} value={industry.value}>
-                          {industry.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground/70">
-                    Selecting an industry will auto-fill the Benchmark Value for the chosen metric.
-                  </p>
-                </div>
-              ) : (
-                <div />
-              )}
-            </div>
 
             {/* Alert Settings */}
             <div className="space-y-4 pt-4 border-t">

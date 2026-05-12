@@ -1232,6 +1232,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     setKpiCalculationConfig(cfg);
     const computed = cfg ? computeCurrentFromConfig(cfg) : { value: null, unit: '' };
     const live = kpi?.metric ? getLiveCampaignMetric(String(kpi.metric)) : { value: '', unit: '', category: '' };
+    const displayUnit = live.unit || kpi.unit || getMetricDisplayUnit(String(kpi.metric || ''));
     const nextForm = {
       name: kpi.name,
       description: kpi.description || '',
@@ -1239,8 +1240,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       currentValue: cfg
         ? (computed.value === null ? '' : formatTileCurrentValueForInput(computed.value, computed.unit || getMetricDisplayUnit(String(kpi.metric || ''))))
         : (live.value ? formatInputNumber(live.value) : (kpi.currentValue ? formatInputNumber(kpi.currentValue.toString()) : '')),
-      targetValue: kpi.targetValue ? formatInputNumber(kpi.targetValue.toString()) : '',
-      unit: live.unit || kpi.unit || '',
+      targetValue: kpi.targetValue ? formatTileCurrentValueForInput(parseNumSafe(kpi.targetValue), displayUnit) : '',
+      unit: displayUnit,
       category: live.category || kpi.category || '',
       priority: kpi.priority || 'medium',
       timeframe: kpi.timeframe || 'Monthly',

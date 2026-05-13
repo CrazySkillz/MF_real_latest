@@ -3459,55 +3459,6 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     }
   };
 
-  const formatBenchmarkSourcesSelected = (rawConfig: any): string => {
-    const cfg = normalizeBenchCalcConfig(rawConfig) as any;
-    if (!cfg || !cfg.inputs) return '';
-    const parts: string[] = [];
-    const add = (label: string, ids: string[] | undefined) => {
-      const uniq = Array.from(new Set((ids || []).filter(Boolean)));
-      if (!uniq.length) return;
-      const pretty = uniq
-        .map((id) => {
-          switch (id) {
-            case 'ga4':
-              return 'GA4';
-            case 'custom_integration':
-              return 'Custom Integration';
-            case 'imported_spend':
-              return 'Imported Spend';
-            case 'total_revenue':
-              return 'Total Revenue';
-            case 'total_spend':
-              return 'Total Spend';
-            case 'total_conversions':
-              return 'Total Conversions';
-            case 'linkedin':
-              return 'LinkedIn';
-            case 'meta':
-              return 'Meta';
-            case 'shopify':
-              return 'Shopify';
-            case 'hubspot':
-              return 'HubSpot';
-            case 'salesforce':
-              return 'Salesforce';
-            default:
-              return String(id);
-          }
-        })
-        .join('+');
-      parts.push(`${label}(${pretty})`);
-    };
-    add('Rev', cfg.inputs.revenue);
-    add('Spend', cfg.inputs.spend);
-    add('Conv', cfg.inputs.conversions);
-    add('Sessions', cfg.inputs.sessions);
-    add('Users', cfg.inputs.users);
-    add('Clicks', cfg.inputs.clicks);
-    add('Impr', cfg.inputs.impressions);
-    return parts.join(' • ');
-  };
-
   // Keep Current Value in sync with selected sources (no defaults; computed preview becomes the stored currentValue snapshot).
   useEffect(() => {
     const m = String(benchmarkForm.metric || '');
@@ -3762,7 +3713,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       metric,
       name: benchmark.name || '',
       category: benchmark.category || 'performance',
-      unit: benchmark.unit || '',
+      unit: String(benchmark.unit || '').toLowerCase(),
       benchmarkValue: String(benchmark.benchmarkValue || ''),
       currentValue: String(benchmark.currentValue || ''),
       benchmarkType: (benchmark.benchmarkType === 'custom' ? 'custom' : 'industry'),
@@ -3902,6 +3853,15 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
         }, 0) / benchmarks.length
       : 0;
 
+  const formatBenchmarkDisplayValue = (value: any, unit: any): string => {
+    const num = parseNumSafe(value);
+    const u = String(unit || '').trim().toLowerCase();
+    if (u === '$') return `$${formatNumber(num)}`;
+    if (u === '%') return `${formatNumber(num)}%`;
+    if (u === 'x' || u === 'ratio') return `${formatNumber(num)}x`;
+    return formatNumber(num);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -3940,7 +3900,9 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       </div>
 
       {benchmarks.length > 0 ? (
-        <>
+        <Card>
+          <CardContent>
+            <div className="space-y-6">
           {/* Benchmark Summary Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <Card>
@@ -4030,51 +3992,6 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                   <p className="text-sm text-muted-foreground/70 mt-1">
                     {benchmark.description || 'No description provided'}
                   </p>
-                  {(() => {
-                    const sourcesSelected = formatBenchmarkSourcesSelected(benchmark.calculationConfig);
-                    return (
-                      <div className="text-xs text-muted-foreground/70 mt-2">
-                        <span className="font-medium">Sources selected:</span> {sourcesSelected || '—'}
-                      </div>
-                    );
-                  })()}
-                  {(benchmark.metric || campaign) && (
-                    <div className="mt-2 flex items-center flex-wrap gap-2">
-                      {benchmark.metric && (
-                        <Badge
-                          variant="outline"
-                          className="text-xs font-normal bg-muted text-foreground/80/60 border-border"
-                          data-testid={`badge-benchmark-metric-${benchmark.id}`}
-                        >
-                          {benchmark.metric.toUpperCase()}
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className="text-xs font-normal bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800">
-                        Campaign: {campaign.name}
-                      </Badge>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                    {benchmark.benchmarkType && <span>Type: {benchmark.benchmarkType}</span>}
-                    {benchmark.industry && (
-                      <>
-                        <span>•</span>
-                        <span>{benchmark.industry}</span>
-                      </>
-                    )}
-                    {benchmark.period && String(benchmark.period || "").toLowerCase() !== "monthly" && (
-                      <>
-                        <span>•</span>
-                        <span>{benchmark.period}</span>
-                      </>
-                    )}
-                    {benchmark.category && (
-                      <>
-                        <span>•</span>
-                        <span>{benchmark.category}</span>
-                      </>
-                    )}
-                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -4118,13 +4035,13 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2 mb-4">
                 <div className="p-3 bg-muted rounded-lg">
                   <div className="text-sm font-medium text-muted-foreground/70 mb-1">
-                    Your Performance
+                    Current Value
                   </div>
                   <div className="text-lg font-bold text-foreground" data-testid={`text-current-${benchmark.id}`}>
-                    {formatNumber(benchmark.currentValue)}{benchmark.unit || ''}
+                    {formatBenchmarkDisplayValue(benchmark.currentValue, benchmark.unit)}
                   </div>
                 </div>
 
@@ -4133,16 +4050,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     Benchmark Value
                   </div>
                   <div className="text-lg font-bold text-foreground" data-testid={`text-benchmark-${benchmark.id}`}>
-                    {formatNumber(benchmark.benchmarkValue)}{benchmark.unit || ''}
-                  </div>
-                </div>
-
-                <div className="p-3 bg-muted rounded-lg">
-                  <div className="text-sm font-medium text-muted-foreground/70 mb-1">
-                    Source
-                  </div>
-                  <div className="text-lg font-bold text-foreground">
-                    {benchmark.source || 'Market Data'}
+                    {formatBenchmarkDisplayValue(benchmark.benchmarkValue, benchmark.unit)}
                   </div>
                 </div>
               </div>
@@ -4209,9 +4117,13 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
           </Card>
             ))}
           </div>
-        </>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
-        <>
+        <Card>
+          <CardContent>
+            <div className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             {[
               { label: 'Total Benchmarks', value: '0', icon: <Award className="w-8 h-8 text-blue-500" />, desc: '' },
@@ -4234,7 +4146,9 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               </Card>
             ))}
           </div>
-        </>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Create/Edit Benchmark Dialog (template-first, aligned to Campaign KPI tiles) */}
@@ -4461,16 +4375,12 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="unit">Unit</Label>
-                <Select value={benchmarkForm.unit} onValueChange={(value) => setBenchmarkForm({ ...benchmarkForm, unit: value })}>
-                  <SelectTrigger id="unit">
-                    <SelectValue placeholder="Select unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="%">%</SelectItem>
-                    <SelectItem value="$">$</SelectItem>
-                    <SelectItem value="count">Count</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  id="unit"
+                  placeholder="%, $, count, etc."
+                  value={benchmarkForm.unit}
+                  onChange={(e) => setBenchmarkForm({ ...benchmarkForm, unit: e.target.value.toLowerCase() })}
+                />
               </div>
             </div>
 

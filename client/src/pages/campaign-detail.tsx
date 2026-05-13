@@ -3658,11 +3658,6 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 
   const handleBenchmarkSubmit = () => {
     if (!benchmarkForm.name || !benchmarkForm.benchmarkValue) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in required fields (Name, Benchmark Value)",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -3693,7 +3688,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       benchmarkValue: cleanNumber(benchmarkForm.benchmarkValue),
       currentValue: benchmarkForm.currentValue ? cleanNumber(benchmarkForm.currentValue) : 0,
       alertThreshold: benchmarkForm.alertsEnabled ? cleanNumber(benchmarkForm.alertThreshold) : null,
-      emailRecipients: benchmarkForm.alertsEnabled && benchmarkForm.emailNotifications && benchmarkForm.emailRecipients ? benchmarkForm.emailRecipients.split(',').map(e => e.trim()) : null,
+      emailRecipients: benchmarkForm.alertsEnabled && benchmarkForm.emailNotifications && benchmarkForm.emailRecipients ? benchmarkForm.emailRecipients : null,
     };
 
     if (editingBenchmark) {
@@ -4527,6 +4522,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               disabled={
                 createBenchmarkMutation.isPending ||
                 updateBenchmarkMutation.isPending ||
+                !String(benchmarkForm.name || '').trim() ||
+                !String(benchmarkForm.benchmarkValue || '').trim() ||
                 (isTemplateMetric(String(benchmarkForm.metric || '')) &&
                   !isBenchConfigCompleteForMetric(String(benchmarkForm.metric || ''), benchmarkCalculationConfig))
               }

@@ -3892,10 +3892,14 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     return getBenchmarkPerformanceBucket(progress) === 'behind';
   }).length;
 
-  const avgImprovement =
+  const avgBenchmarkProgress =
     benchmarks.length > 0
-      ? benchmarks.reduce((sum, b) => sum + calculateImprovement(String(b.metric || ''), b.currentValue || '0', b.benchmarkValue || '0'), 0) /
-        benchmarks.length
+      ? benchmarks.reduce((sum, b) => {
+          const metricKey = String(b.metric || '');
+          const current = parseFloat(String((b.currentValue as any) ?? '0').replace(/,/g, '') || '0');
+          const benchmark = parseFloat(String((b.benchmarkValue as any) ?? '0').replace(/,/g, '') || '0');
+          return sum + getBenchmarkProgressPct(metricKey, current, benchmark);
+        }, 0) / benchmarks.length
       : 0;
 
   if (isLoading) {
@@ -3914,9 +3918,9 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Campaign Benchmarks</h2>
-          <p className="text-muted-foreground/70">
-            Track and compare your campaign performance against industry standards
+          <h2 className="text-lg font-semibold text-foreground">Campaign Benchmarks</h2>
+          <p className="text-sm text-muted-foreground/70 mt-1">
+            Track and measure overall campaign benchmark performance
           </p>
         </div>
         <div className="flex items-center space-x-3">
@@ -3961,7 +3965,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     <p className="text-2xl font-bold text-green-600" data-testid="text-above-target">
                       {onTrackCount}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">meeting or exceeding benchmark</p>
+                    <p className="text-xs text-muted-foreground mt-1">90% or more of benchmark</p>
                   </div>
                   <CheckCircle2 className="w-8 h-8 text-green-500" />
                 </div>
@@ -3976,7 +3980,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     <p className="text-2xl font-bold text-yellow-600" data-testid="text-below-target">
                       {needsAttentionCount}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">within 70–90% of benchmark</p>
+                    <p className="text-xs text-muted-foreground mt-1">70% to under 90% of benchmark</p>
                   </div>
                   <AlertCircle className="w-8 h-8 text-yellow-500" />
                 </div>
@@ -4002,11 +4006,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground/70">Avg. Improvement</p>
+                    <p className="text-sm text-muted-foreground/70">Avg. Progress</p>
                     <p className="text-2xl font-bold text-foreground" data-testid="text-avg-improvement-percent">
-                      {avgImprovement.toFixed(1)}%
+                      {avgBenchmarkProgress.toFixed(1)}%
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">across all benchmarks</p>
                   </div>
                   <TrendingUp className="w-8 h-8 text-purple-500" />
                 </div>
@@ -4212,10 +4215,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             {[
               { label: 'Total Benchmarks', value: '0', icon: <Award className="w-8 h-8 text-blue-500" />, desc: '' },
-              { label: 'On Track', value: '0', icon: <CheckCircle2 className="w-8 h-8 text-green-500" />, desc: 'meeting or exceeding benchmark', color: 'text-green-600' },
-              { label: 'Needs Attention', value: '0', icon: <AlertCircle className="w-8 h-8 text-yellow-500" />, desc: 'within 70–90% of benchmark', color: 'text-yellow-600' },
+              { label: 'On Track', value: '0', icon: <CheckCircle2 className="w-8 h-8 text-green-500" />, desc: '90% or more of benchmark', color: 'text-green-600' },
+              { label: 'Needs Attention', value: '0', icon: <AlertCircle className="w-8 h-8 text-yellow-500" />, desc: '70% to under 90% of benchmark', color: 'text-yellow-600' },
               { label: 'Behind', value: '0', icon: <AlertCircle className="w-8 h-8 text-red-500" />, desc: 'below 70% of benchmark', color: 'text-red-600' },
-              { label: 'Avg. Improvement', value: '0.0%', icon: <TrendingUp className="w-8 h-8 text-purple-500" />, desc: 'across all benchmarks' },
+              { label: 'Avg. Progress', value: '0.0%', icon: <TrendingUp className="w-8 h-8 text-purple-500" />, desc: '' },
             ].map((s, i) => (
               <Card key={i}>
                 <CardContent className="p-4">

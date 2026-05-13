@@ -3720,7 +3720,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       industry: benchmark.industry || '',
       description: benchmark.description || '',
       alertsEnabled: benchmark.alertsEnabled || false,
-      alertThreshold: String(benchmark.alertThreshold || ''),
+      alertThreshold: benchmark.alertThreshold ? formatInputNumber(String(benchmark.alertThreshold)) : '',
       alertCondition: benchmark.alertCondition || 'below',
       alertFrequency: benchmark.alertFrequency || 'immediate',
       emailNotifications: benchmark.emailNotifications || false,
@@ -4438,7 +4438,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                         inputMode="decimal"
                         placeholder="e.g., 80"
                         value={benchmarkForm.alertThreshold}
-                        onChange={(e) => setBenchmarkForm({ ...benchmarkForm, alertThreshold: e.target.value })}
+                        onChange={(e) => setBenchmarkForm({ ...benchmarkForm, alertThreshold: formatInputNumber(e.target.value) })}
                         data-testid="input-benchmark-alert-threshold"
                       />
                       <p className="text-xs text-muted-foreground/70">Value at which to trigger the alert</p>

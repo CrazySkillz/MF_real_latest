@@ -174,6 +174,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     try {
       const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
       if (meta?.resolved) return false;
+      if (meta?.dismissedAt) return false;
       if (isGA4) return String(meta.kpiId || '') === String(kpi.id);
       const createdAt = new Date(n.createdAt);
       const sameWindow = windowKey
@@ -189,7 +190,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     if (!n.metadata) return false;
     try {
       const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
-      return String(meta.kpiId || '') === String(kpi.id) && !meta.resolved;
+      return String(meta.kpiId || '') === String(kpi.id) && !meta.resolved && !meta.dismissedAt;
     } catch {
       return false;
     }

@@ -175,6 +175,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
       if (!n?.metadata) return false;
       try {
         const meta = typeof n.metadata === "string" ? JSON.parse(n.metadata) : n.metadata;
+        if (meta?.dismissedAt) return false;
         const createdAt = new Date(n.createdAt);
         if (isGA4) {
           return String(meta?.benchmarkId || "") === String(b.id) && !meta?.resolved;

@@ -2658,7 +2658,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(linkedinReports)
       .where(eq(linkedinReports.id, id));
-    return true;
+    return (result.rowCount || 0) > 0;
   }
 
   // Platform Reports methods

@@ -23,6 +23,7 @@ Rule: do not mark an item complete unless the route/job/storage path has been tr
 - Stale failed scheduled report sends with no `sentAt` can retry once safely.
 - Sent scheduled report rows do not show stale old failure errors.
 - Shared `deleteNotification(id)` now soft-hides notifications instead of hard-deleting them.
+- Resolved KPI alert notifications are hidden from the bell/list while their history remains preserved.
 
 ## Outstanding
 

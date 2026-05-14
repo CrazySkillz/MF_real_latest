@@ -3808,7 +3808,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const notificationMetadata = (value: any) => {
     try { return typeof value === "string" && value ? JSON.parse(value) : (value || {}); } catch { return {}; }
   };
-  const isNotificationDismissed = (n: any) => !!notificationMetadata(n?.metadata)?.dismissedAt;
+  const isNotificationDismissed = (n: any) => {
+    const meta = notificationMetadata(n?.metadata);
+    return !!meta?.dismissedAt || !!meta?.resolved;
+  };
   const dismissedNotificationMetadata = (n: any, actorId: string, reason = "dismissed") => JSON.stringify({
     ...notificationMetadata(n?.metadata),
     dismissedAt: new Date().toISOString(),

@@ -779,10 +779,11 @@ export async function checkScheduledReports(): Promise<void> {
           .limit(1)
           .catch(() => []);
         const existingStatus = String((existingEvent as any)?.status || "").toLowerCase();
+        const existingError = String((existingEvent as any)?.error || "").trim();
         const existingCreatedAt = (existingEvent as any)?.createdAt ? new Date((existingEvent as any).createdAt) : null;
         const stalePending = existingStatus === "pending" && (!existingCreatedAt || now.getTime() - existingCreatedAt.getTime() > 10 * 60 * 1000);
         if (!stalePending) {
-          console.log(`[Report Scheduler] Report "${report.name}" already processed for ${due.scheduledKey} (status=${existingStatus || "unknown"})`);
+          console.log(`[Report Scheduler] Report "${report.name}" already processed for ${due.scheduledKey} (status=${existingStatus || "unknown"}${existingError ? `, error=${existingError}` : ""})`);
           continue; // already processed
         }
         console.warn(`[Report Scheduler] Retrying stale pending report "${report.name}" for ${due.scheduledKey}`);

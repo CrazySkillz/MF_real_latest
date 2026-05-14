@@ -3826,6 +3826,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (condition === "equals") return Math.abs(current - threshold) < 0.01;
     return current < threshold;
   };
+  const visiblePerformanceAlertKey = (n: any): string | null => {
+    if (String(n?.type || "") !== "performance-alert") return null;
+    const meta = notificationMetadata(n?.metadata);
+    if (meta?.kpiId) return `kpi:${String(meta.kpiId)}`;
+    if (meta?.benchmarkId) return `benchmark:${String(meta.benchmarkId)}`;
+    return null;
+  };
+  const dedupeVisiblePerformanceAlerts = (rows: any[]) => {
+    const seen = new Set<string>();
+    return rows.filter((n: any) => {
+      const key = visiblePerformanceAlertKey(n);
+      if (!key) return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
   const dismissedNotificationMetadata = (n: any, actorId: string, reason = "dismissed") => JSON.stringify({
     ...notificationMetadata(n?.metadata),
     dismissedAt: new Date().toISOString(),
@@ -3885,7 +3902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           return n;
         }));
-        const scoped = scopedRows.filter(Boolean);
+        const scoped = dedupeVisiblePerformanceAlerts(scopedRows.filter(Boolean));
         return res.json(scoped);
       }
 
@@ -3916,7 +3933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
       const list = (Array.isArray(allNotifications) ? allNotifications : []).filter((_n: any, index: number) => fallbackRows[index]);
       list.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      return res.json(list);
+      return res.json(dedupeVisiblePerformanceAlerts(list));
     } catch (error) {
       console.error('[Notifications API] Error:', error);
       res.status(500).json({

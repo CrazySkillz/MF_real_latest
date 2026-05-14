@@ -39,4 +39,38 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain("&& isAlertRowBreached(kpi);");
     expect(routesFile).toContain("&& isAlertRowBreached(benchmark);");
   });
+
+  it("deduplicates visible performance alerts by linked KPI or Benchmark", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    expect(routesFile).toContain("const visiblePerformanceAlertKey = (n: any): string | null => {");
+    expect(routesFile).toContain('if (meta?.kpiId) return `kpi:${String(meta.kpiId)}`;');
+    expect(routesFile).toContain('if (meta?.benchmarkId) return `benchmark:${String(meta.benchmarkId)}`;');
+    expect(routesFile).toContain("const dedupeVisiblePerformanceAlerts = (rows: any[]) => {");
+    expect(routesFile).toContain("const scoped = dedupeVisiblePerformanceAlerts(scopedRows.filter(Boolean));");
+    expect(routesFile).toContain("return res.json(dedupeVisiblePerformanceAlerts(list));");
+  });
+
+  it("prevents stale KPI and Benchmark alert creation from missing campaigns or non-breaches", () => {
+    const kpiNotificationsFile = readFileSync(
+      join(process.cwd(), "server", "kpi-notifications.ts"),
+      "utf-8"
+    );
+    const benchmarkNotificationsFile = readFileSync(
+      join(process.cwd(), "server", "benchmark-notifications.ts"),
+      "utf-8"
+    );
+
+    expect(kpiNotificationsFile).toContain("if (!shouldTriggerAlert(kpi)) {");
+    expect(kpiNotificationsFile).toContain("await resolveKPIAlerts(String(kpi.id), 'cleared');");
+    expect(kpiNotificationsFile).toContain('const campaignId = String(kpi.campaignId || "").trim();');
+    expect(kpiNotificationsFile).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => undefined);");
+    expect(kpiNotificationsFile).toContain("if (!campaign) return;");
+    expect(benchmarkNotificationsFile).toContain('const campaignId = String(b.campaignId || "").trim();');
+    expect(benchmarkNotificationsFile).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => undefined);");
+    expect(benchmarkNotificationsFile).toContain("if (!campaign) continue;");
+  });
 });

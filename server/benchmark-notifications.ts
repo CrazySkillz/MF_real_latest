@@ -190,15 +190,10 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
     });
     if (hasRecent) continue;
 
-    let campaignName: string | undefined = undefined;
-    if (b.campaignId) {
-      try {
-        const c = await storage.getCampaign(String(b.campaignId));
-        campaignName = c?.name;
-      } catch {
-        // ignore
-      }
-    }
+    const campaignId = String(b.campaignId || "").trim();
+    if (!campaignId) continue;
+    const campaign = await storage.getCampaign(campaignId).catch(() => undefined);
+    if (!campaign) continue;
 
     const actionUrl = buildBenchmarkActionUrl(b);
     const metadata = JSON.stringify({
@@ -213,8 +208,8 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
       message: `Current value: ${formatAlertDisplayValue(currentValue, b.unit)}. Alert threshold value: ${formatAlertDisplayValue(thresholdValue, b.unit)}`,
       type: "performance-alert",
       priority: "high",
-      campaignId: b.campaignId || undefined,
-      campaignName,
+      campaignId,
+      campaignName: campaign.name,
       read: false,
       metadata,
     };

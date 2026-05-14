@@ -125,6 +125,15 @@ export async function createKPIReminder(kpi: KPI): Promise<void> {
  * Triggered when current value breaches alert threshold
  */
 export async function createKPIAlert(kpi: KPI): Promise<void> {
+  if (!shouldTriggerAlert(kpi)) {
+    await resolveKPIAlerts(String(kpi.id), 'cleared');
+    return;
+  }
+  const campaignId = String(kpi.campaignId || "").trim();
+  if (!campaignId) return;
+  const campaign = await storage.getCampaign(campaignId).catch(() => undefined);
+  if (!campaign) return;
+
   // Dedupe:
   // - default: prevent duplicates within the same real-world day
   // - LinkedIn test-mode: prevent duplicates per simulated day (windowKey == latest daily metrics date)
@@ -240,16 +249,6 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   const actionUrl = buildKPIActionUrl(kpi);
   
   // Fetch campaign name if campaignId exists
-  let campaignName: string | undefined = undefined;
-  if (kpi.campaignId) {
-    try {
-      const campaign = await storage.getCampaign(kpi.campaignId);
-      campaignName = campaign?.name;
-    } catch (error) {
-      console.error(`[KPI Notification] Failed to fetch campaign name for ${kpi.campaignId}:`, error);
-    }
-  }
-  
   const metadata = JSON.stringify({
     kpiId: kpi.id,
     alertType: 'performance-alert',
@@ -262,8 +261,8 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     message: nextMessage,
     type: 'performance-alert',
     priority: kpi.priority === 'high' ? 'high' : 'normal',
-    campaignId: kpi.campaignId || undefined,
-    campaignName: campaignName,
+    campaignId,
+    campaignName: campaign.name,
     read: false,
     metadata
   };

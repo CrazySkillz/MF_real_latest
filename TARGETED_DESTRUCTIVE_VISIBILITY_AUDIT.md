@@ -49,6 +49,8 @@ Subsystem order:
 - Orphaned or cross-campaign KPI/Benchmark performance-alert notifications are hidden from the bell/list while their history remains preserved.
 - Notification visibility rules are aligned between the database path and in-memory fallback path.
 - KPI/Benchmark performance-alert notifications are hidden when their linked row no longer breaches its alert threshold.
+- Duplicate visible KPI/Benchmark performance-alert notifications are collapsed to one active bell row per linked KPI/Benchmark while history remains preserved.
+- KPI/Benchmark alert creation jobs now fail closed when the linked campaign is missing, and KPI alert creation resolves existing rows instead of creating alerts for non-breaching KPIs.
 
 ## Outstanding
 

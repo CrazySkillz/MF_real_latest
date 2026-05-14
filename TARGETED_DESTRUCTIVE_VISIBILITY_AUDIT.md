@@ -51,6 +51,7 @@ Subsystem order:
 - KPI/Benchmark performance-alert notifications are hidden when their linked row no longer breaches its alert threshold.
 - Duplicate visible KPI/Benchmark performance-alert notifications are collapsed to one active bell row per linked KPI/Benchmark while history remains preserved.
 - KPI/Benchmark alert creation jobs now fail closed when the linked campaign is missing, and KPI alert creation resolves existing rows instead of creating alerts for non-breaching KPIs.
+- Campaign-level KPI/Benchmark alert creation now uses one active unresolved alert per linked KPI/Benchmark, matching GA4 behavior and preventing repeated creation logs for the same active breach.
 
 ## Outstanding
 

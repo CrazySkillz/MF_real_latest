@@ -69,8 +69,10 @@ describe("notification visibility regression guard", () => {
     expect(kpiNotificationsFile).toContain('const campaignId = String(kpi.campaignId || "").trim();');
     expect(kpiNotificationsFile).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => undefined);");
     expect(kpiNotificationsFile).toContain("if (!campaign) return;");
+    expect(kpiNotificationsFile).toContain('const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";');
     expect(benchmarkNotificationsFile).toContain('const campaignId = String(b.campaignId || "").trim();');
     expect(benchmarkNotificationsFile).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => undefined);");
     expect(benchmarkNotificationsFile).toContain("if (!campaign) continue;");
+    expect(benchmarkNotificationsFile).toContain('const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";');
   });
 });

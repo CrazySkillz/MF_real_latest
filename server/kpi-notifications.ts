@@ -139,7 +139,8 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   // - LinkedIn test-mode: prevent duplicates per simulated day (windowKey == latest daily metrics date)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const isGA4 = String((kpi as any)?.platformType || "").trim().toLowerCase() === "google_analytics";
+  const platformType = String((kpi as any)?.platformType || "").trim().toLowerCase();
+  const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
   let windowKey: string | null = null;
   try {
     if (kpi.campaignId) {
@@ -184,7 +185,7 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
       const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
       if (meta?.resolved) return false;
       if (meta?.dismissedAt) return false;
-      if (isGA4) return String(meta.kpiId || '') === String(kpi.id);
+      if (usesSingleActiveAlert) return String(meta.kpiId || '') === String(kpi.id);
       const createdAt = new Date(n.createdAt);
       const sameWindow = windowKey
         ? String(meta.kpiId) === String(kpi.id) && String(meta.windowKey || "") === windowKey

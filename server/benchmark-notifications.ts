@@ -136,7 +136,8 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
     if (!Number.isFinite(currentValue)) continue;
 
     const condition = (String(b.alertCondition || "below") as any) as 'below' | 'above' | 'equals';
-    const isGA4 = String((b?.platformType || "")).trim().toLowerCase() === "google_analytics";
+    const platformType = String((b?.platformType || "")).trim().toLowerCase();
+    const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
     if (!shouldTriggerBenchmarkAlert({ currentValue, thresholdValue, condition })) continue;
 
     // For LinkedIn test-mode, dedupe per simulated day instead of per real day.
@@ -177,7 +178,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
         const meta = typeof n.metadata === "string" ? JSON.parse(n.metadata) : n.metadata;
         if (meta?.dismissedAt) return false;
         const createdAt = new Date(n.createdAt);
-        if (isGA4) {
+        if (usesSingleActiveAlert) {
           return String(meta?.benchmarkId || "") === String(b.id) && !meta?.resolved;
         }
         if (windowKey) {

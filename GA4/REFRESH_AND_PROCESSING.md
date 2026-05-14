@@ -213,6 +213,10 @@ Important meaning:
 - reports should render from refreshed GA4 tab inputs
 - reports must not become a competing source of truth for campaign metrics
 - report delivery continues even if the best-effort pre-send recompute logs a warning
+- scheduled report delivery must verify the campaign still exists before snapshot creation, GA4 recompute, PDF generation, email sending, or report send-bookkeeping updates
+- if a campaign-scoped scheduled report points to a missing campaign, the scheduler should mark that scheduled send as skipped/failed and not send the report
+- scheduled report selection should deduplicate by report ID before due checks so shared legacy storage and platform-specific report queries cannot process the same report twice
+- scheduled report idempotency remains based on `reportId + scheduledKey`, but deduplication should prevent duplicate in-memory processing before the idempotency insert
 
 ## Current-State Notes
 
@@ -230,6 +234,7 @@ What is true today:
 - Insights refreshes indirectly from refreshed inputs
 - report outputs are generated from already-refreshed tab inputs, with scheduled GA4 reports also performing a best-effort KPI/Benchmark recompute before PDF generation
 - scheduled/server-generated GA4 reports now have dedicated server-side rendering for `Overview`, `Ad Comparison`, `Insights`, and `Custom`, using saved report config plus existing refreshed GA4 inputs
+- scheduled report processing now fails closed for missing campaign ownership and deduplicates report rows before due checks
 
 What is not yet fully consolidated:
 

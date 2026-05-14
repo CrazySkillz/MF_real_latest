@@ -113,6 +113,9 @@ Important meaning:
 - the `Notifications` page is a global surface that aggregates notifications across campaigns
 - users can filter that page by client after opening it
 - dismissing a notification hides the current alert record only; it does not resolve the underlying KPI or benchmark breach
+- clearing or dismissing notifications is a visibility action, not proof that the underlying breached KPI or Benchmark is resolved
+- if a breached KPI or Benchmark still exists, the next valid alert check may create a new active alert row; this must be scoped to the exact campaign and item that breached
+- campaign deletion should hide/remove only notifications for that deleted campaign and must not remove notifications for other campaigns
 - KPI and Benchmark alert links from both the bell and the Notifications page should deep-link to the correct campaign, correct analytics tab, and exact item card
 
 ### Current-State Note: Dashboard
@@ -562,6 +565,29 @@ That page should:
 Deleting a campaign must delete the campaign-scoped analytics data that depends on it before deleting the campaign record.
 This includes connected source rows, materialized revenue/spend records, platform daily metrics, KPIs, benchmarks, notifications, reports, snapshots, and other campaign-scoped children.
 Optional platform tables that may not exist in every deployed database must be existence-checked before deletion; missing optional tables must not block deletion of real campaign data.
+Delete behavior must remain campaign-scoped. A campaign delete must not delete or hide notifications, reports, KPIs, Benchmarks, sources, or platform metrics belonging to a different campaign or client.
+
+### Destructive And Visibility Safety Pattern
+
+The following paths are production-sensitive because they can remove data from the user's view or trigger business-facing outputs:
+
+- client deletion
+- campaign deletion
+- source deletion
+- KPI and Benchmark deletion
+- notification dismiss, clear, read, recreate, and alert-resolution behavior
+- report update/delete
+- report scheduling and scheduled email sending
+- scheduler refresh/recompute jobs
+
+Required behavior:
+
+- destructive routes must verify the campaign/client/platform/report boundary before mutating rows
+- user-visible notification dismissal must not be treated as analytical resolution
+- alert checks may recreate a notification only when the underlying KPI or Benchmark is still breached and the recreated row is scoped to the correct campaign/item
+- report delete/update routes must only mutate reports belonging to the requested campaign/platform context
+- scheduled report delivery must verify campaign existence before creating snapshots, recomputing dependent analytics, sending email, or updating `lastSentAt`
+- scheduled report processing must deduplicate report rows by ID before due checks because legacy and platform-specific storage paths may return overlapping rows
 
 ### Campaign Creation Wizard Pattern
 

@@ -23908,7 +23908,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all LinkedIn reports
   app.get("/api/linkedin/reports", async (req, res) => {
     try {
-      const reports = await storage.getLinkedInReports();
+      const campaignId = String(req.query.campaignId || "").trim();
+      if (!campaignId) {
+        return res.status(400).json({ message: "campaignId is required" });
+      }
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+      const reports = await storage.getPlatformReports("linkedin", campaignId);
       res.json(reports);
     } catch (error) {
       console.error('Failed to fetch LinkedIn reports:', error);
@@ -23920,9 +23926,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/linkedin/reports/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const report = await storage.getLinkedInReport(id);
-
-      if (!report) {
+      const report = await ensurePlatformReportAccess(req as any, res as any, id);
+      if (!report) return;
+      if (String((report as any)?.platformType || "").trim().toLowerCase() !== "linkedin") {
         return res.status(404).json({ message: "Report not found" });
       }
 
@@ -23936,7 +23942,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create LinkedIn report
   app.post("/api/linkedin/reports", async (req, res) => {
     try {
-      const report = await storage.createLinkedInReport(req.body);
+      const campaignId = String(req.body?.campaignId || "").trim();
+      if (!campaignId) {
+        return res.status(400).json({ message: "campaignId is required" });
+      }
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+      const reportData = insertLinkedInReportSchema.parse({ ...req.body, campaignId, platformType: "linkedin" });
+      const report = await storage.createLinkedInReport(reportData);
       res.status(201).json(report);
     } catch (error) {
       console.error('Failed to create LinkedIn report:', error);
@@ -23948,8 +23961,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/linkedin/reports/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const updated = await storage.updateLinkedInReport(id, req.body);
-
+      const existing = await ensurePlatformReportAccess(req as any, res as any, id);
+      if (!existing) return;
+      if (String((existing as any)?.platformType || "").trim().toLowerCase() !== "linkedin") {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      const validated = insertLinkedInReportSchema.partial().parse({
+        ...req.body,
+        campaignId: (existing as any).campaignId,
+        platformType: "linkedin",
+      }) as any;
+      delete validated.campaignId;
+      delete validated.platformType;
+      const updated = await storage.updateLinkedInReport(id, validated);
       if (!updated) {
         return res.status(404).json({ message: "Report not found" });
       }
@@ -23965,8 +23989,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/linkedin/reports/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const updated = await storage.updateLinkedInReport(id, req.body);
-
+      const existing = await ensurePlatformReportAccess(req as any, res as any, id);
+      if (!existing) return;
+      if (String((existing as any)?.platformType || "").trim().toLowerCase() !== "linkedin") {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      const validated = insertLinkedInReportSchema.partial().parse({
+        ...req.body,
+        campaignId: (existing as any).campaignId,
+        platformType: "linkedin",
+      }) as any;
+      delete validated.campaignId;
+      delete validated.platformType;
+      const updated = await storage.updateLinkedInReport(id, validated);
       if (!updated) {
         return res.status(404).json({ message: "Report not found" });
       }
@@ -23982,6 +24017,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/linkedin/reports/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      const existing = await ensurePlatformReportAccess(req as any, res as any, id);
+      if (!existing) return;
+      if (String((existing as any)?.platformType || "").trim().toLowerCase() !== "linkedin") {
+        return res.status(404).json({ message: "Report not found" });
+      }
       const deleted = await storage.deleteLinkedInReport(id);
 
       if (!deleted) {

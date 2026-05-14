@@ -24,6 +24,12 @@ The current list shows:
 - last sent date when available
 - created date
 
+Delete behavior:
+
+- deleting a saved report should remove only that report record
+- the delete route must return failure when no report row was actually deleted
+- deleting one campaign's saved report must not mutate reports belonging to another campaign or platform context
+
 ## Create Report Entry Flow
 
 1. user opens the GA4 `Reports` tab
@@ -153,6 +159,11 @@ The UI uses the user's time zone.
 Important meaning:
 
 - scheduled delivery timing should be interpreted in the user's saved time zone, not raw server time
+- scheduled reports are production-visible outputs and must be guarded by campaign/platform ownership checks
+- before sending a campaign-scoped scheduled report, the scheduler must verify that the campaign still exists
+- if the campaign is missing, the scheduler must not create a report snapshot, recompute GA4 KPI/Benchmark state, generate/send the email, or update report `lastSentAt`
+- scheduler report selection must deduplicate report rows by report ID before due checks because the shared report table can be reached through legacy and platform-specific storage paths
+- scheduled send events remain the audit/idempotency layer for each `reportId + scheduledKey`
 
 ## Backend Report Model
 
@@ -168,6 +179,8 @@ Current implementation detail:
 
 - GA4 reports use `/api/platforms/google_analytics/reports`
 - under the hood they currently reuse the shared platform report storage model based on `linkedin_reports`
+- active GA4 report library actions should use the platform report routes, not stale campaign-level KPI report routes
+- stale campaign-level report route/UI code should not be treated as a current product surface unless a current caller is traced first
 
 ## Reports Refresh Pattern
 
@@ -203,6 +216,9 @@ Aligned:
   - `Custom`
 - `Custom` server-side rendering reuses those same section renderers and respects the saved selected sections/subsections
 - standard-template and custom-report PDFs should now be evaluated for section parity against the live tab, not against older lightweight cover-page output
+- report delete status now reflects whether a row was actually deleted
+- scheduled delivery skips or fails closed when a campaign-scoped report no longer has a valid campaign
+- scheduled delivery deduplicates report rows before due checks
 
 Important caveats:
 

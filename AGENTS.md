@@ -161,6 +161,8 @@ Treat these areas as high risk and change them only with extreme care:
 - GA4, LinkedIn, Meta, Google Ads, and Google Sheets import/refresh flows
 - Scheduler-triggered refresh and snapshot behavior
 - Multi-tenant ownership and campaign access checks
+- Destructive actions such as client, campaign, source, KPI, Benchmark, report, and notification delete/dismiss flows
+- Visibility actions such as notification hide/read state, alert recreation, report library visibility, and scheduled email delivery
 
 For these areas:
 
@@ -169,6 +171,21 @@ For these areas:
 - Do not alter field meanings.
 - Do not rename fields in responses.
 - Do not silently "improve" calculations.
+
+## Destructive And Visibility Path Rules
+
+For destructive or visibility-related changes:
+
+- prove the exact owner, client, campaign, platform, report, KPI, Benchmark, source, or notification boundary before editing
+- do not broaden a delete/update route beyond the current campaign/platform scope
+- do not hard-delete user-visible alert history unless the user explicitly asked for permanent deletion and the route is documented as destructive
+- notification dismiss/clear behavior should hide current alert records from the bell/UI without being confused with resolving the underlying KPI or Benchmark breach
+- campaign/client deletion may hide or remove campaign-scoped child rows only for that campaign/client; it must not affect unrelated campaigns, platform-level rows, or other clients
+- scheduled jobs must fail closed when campaign/platform ownership cannot be verified
+- scheduled report jobs must not snapshot, email, recompute, or update send bookkeeping for a campaign-scoped report whose campaign no longer exists
+- scheduler report selection should deduplicate reports by report ID before processing so legacy and platform-specific storage paths cannot process the same report twice
+- report update/delete routes must return accurate success/failure based on the row actually changed or removed
+- legacy routes must be traced to a current UI/API caller before giving validation instructions or changing behavior
 
 ## Development Guidelines
 

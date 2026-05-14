@@ -3812,6 +3812,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const meta = notificationMetadata(n?.metadata);
     return !!meta?.dismissedAt || !!meta?.resolved;
   };
+  const parseNotificationNumber = (value: any): number => {
+    const n = parseFloat(String(value ?? "").replace(/,/g, "").replace(/[^\d.-]/g, ""));
+    return Number.isFinite(n) ? n : NaN;
+  };
+  const isAlertRowBreached = (row: any): boolean => {
+    if (!row?.alertsEnabled || row?.alertThreshold === null || typeof row?.alertThreshold === "undefined") return false;
+    const current = parseNotificationNumber(row?.currentValue);
+    const threshold = parseNotificationNumber(row?.alertThreshold);
+    if (!Number.isFinite(current) || !Number.isFinite(threshold)) return false;
+    const condition = String(row?.alertCondition || "below");
+    if (condition === "above") return current > threshold;
+    if (condition === "equals") return Math.abs(current - threshold) < 0.01;
+    return current < threshold;
+  };
   const dismissedNotificationMetadata = (n: any, actorId: string, reason = "dismissed") => JSON.stringify({
     ...notificationMetadata(n?.metadata),
     dismissedAt: new Date().toISOString(),
@@ -3847,24 +3861,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(or(eq((campaigns as any).ownerId, actorId), isNull((campaigns as any).ownerId), eq((campaigns as any).ownerId, "")))
           .orderBy(desc((notifications as any).createdAt));
         const visible = rows.map((r: any) => r.n).filter((n: any) => !isNotificationDismissed(n));
-        const scoped = await Promise.all(visible.map(async (n: any) => {
+        const scopedRows = await Promise.all(visible.map(async (n: any) => {
           try {
-            const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
+            const meta = notificationMetadata(n.metadata);
+            const isPerformanceAlert = String(n.type || "") === "performance-alert";
             if (meta?.kpiId) {
               const { kpis } = await import("../shared/schema");
               const [kpi] = await db.select().from(kpis).where(eq((kpis as any).id, String(meta.kpiId))).limit(1);
+              if (!kpi || String((kpi as any).campaignId || "") !== String(n.campaignId || "")) return null;
+              if (isPerformanceAlert && !isAlertRowBreached(kpi)) return null;
               if (kpi) return { ...n, title: `${notificationPlatformLabel((kpi as any).platformType)} KPI Alert: ${(kpi as any).name}` };
             }
             if (meta?.benchmarkId) {
               const { benchmarks } = await import("../shared/schema");
               const [benchmark] = await db.select().from(benchmarks).where(eq((benchmarks as any).id, String(meta.benchmarkId))).limit(1);
+              if (!benchmark || String((benchmark as any).campaignId || "") !== String(n.campaignId || "")) return null;
+              if (isPerformanceAlert && !isAlertRowBreached(benchmark)) return null;
               if (benchmark) return { ...n, title: `${notificationPlatformLabel((benchmark as any).platformType)} Benchmark Alert: ${(benchmark as any).name}` };
             }
+            if (isPerformanceAlert) return null;
           } catch {
-            // Keep legacy title if metadata/entity lookup fails.
+            if (String(n.type || "") === "performance-alert") return null;
           }
           return n;
         }));
+        const scoped = scopedRows.filter(Boolean);
         return res.json(scoped);
       }
 
@@ -3879,9 +3900,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .filter(Boolean);
 
       const allNotifications = await storage.getNotifications().catch(() => [] as any[]);
-      const list = (Array.isArray(allNotifications) ? allNotifications : []).filter((n: any) =>
-        ownedIds.includes(String((n as any)?.campaignId || "")) && !isNotificationDismissed(n)
-      );
+      const fallbackRows = await Promise.all((Array.isArray(allNotifications) ? allNotifications : []).map(async (n: any) => {
+        if (!ownedIds.includes(String((n as any)?.campaignId || "")) || isNotificationDismissed(n)) return false;
+        if (String((n as any)?.type || "") !== "performance-alert") return true;
+        const meta = notificationMetadata((n as any)?.metadata);
+        if (meta?.kpiId) {
+          const kpi = await storage.getKPI(String(meta.kpiId)).catch(() => undefined as any);
+          return !!kpi && String((kpi as any).campaignId || "") === String((n as any).campaignId || "") && isAlertRowBreached(kpi);
+        }
+        if (meta?.benchmarkId) {
+          const benchmark = await storage.getBenchmark(String(meta.benchmarkId)).catch(() => undefined as any);
+          return !!benchmark && String((benchmark as any).campaignId || "") === String((n as any).campaignId || "") && isAlertRowBreached(benchmark);
+        }
+        return false;
+      }));
+      const list = (Array.isArray(allNotifications) ? allNotifications : []).filter((_n: any, index: number) => fallbackRows[index]);
       list.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       return res.json(list);
     } catch (error) {

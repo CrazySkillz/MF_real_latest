@@ -8,6 +8,28 @@ This audit covers user-visible data loss, hidden records, scheduler side effects
 
 Rule: do not mark an item complete unless the route/job/storage path has been traced end to end and validated.
 
+## Execution Method
+
+Work through this audit by subsystem, not by isolated symptoms.
+
+For each subsystem:
+
+- define the destructive or visibility invariant before editing
+- trace frontend caller, API route, storage method, scheduler path, and UI read path where applicable
+- implement only the smallest confirmed fix
+- add or update the narrowest regression guard available
+- validate the fixed path and one adjacent same-subsystem path
+- update this tracker immediately after validation
+
+Subsystem order:
+
+1. Notification lifecycle and alert visibility.
+2. KPI/Benchmark campaign-vs-platform route isolation.
+3. Report update/delete/scheduler/send visibility.
+4. Source edit/delete and normalized-record cleanup.
+5. Campaign/client delete cascades.
+6. Legacy route/schema/storage cleanup only after reachability is proven.
+
 ## Proven Complete
 
 - Campaign notifications are soft-hidden, not broadly hard-deleted, when a campaign is deleted.
@@ -24,6 +46,9 @@ Rule: do not mark an item complete unless the route/job/storage path has been tr
 - Sent scheduled report rows do not show stale old failure errors.
 - Shared `deleteNotification(id)` now soft-hides notifications instead of hard-deleting them.
 - Resolved KPI alert notifications are hidden from the bell/list while their history remains preserved.
+- Orphaned or cross-campaign KPI/Benchmark performance-alert notifications are hidden from the bell/list while their history remains preserved.
+- Notification visibility rules are aligned between the database path and in-memory fallback path.
+- KPI/Benchmark performance-alert notifications are hidden when their linked row no longer breaches its alert threshold.
 
 ## Outstanding
 

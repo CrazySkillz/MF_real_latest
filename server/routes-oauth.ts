@@ -3799,13 +3799,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { db } = await import("./db");
       if (db) {
         const { notifications, campaigns } = await import("../shared/schema");
-        const { eq, desc } = await import("drizzle-orm");
+        const { eq, desc, or, isNull } = await import("drizzle-orm");
 
         const rows = await db
           .select({ n: notifications })
           .from(notifications)
           .innerJoin(campaigns as any, eq((notifications as any).campaignId, (campaigns as any).id))
-          .where(eq((campaigns as any).ownerId, actorId))
+          .where(or(eq((campaigns as any).ownerId, actorId), isNull((campaigns as any).ownerId), eq((campaigns as any).ownerId, "")))
           .orderBy(desc((notifications as any).createdAt));
         const visible = rows
           .map((r: any) => r.n)
@@ -3882,12 +3882,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { db } = await import("./db");
       if (!db) return res.status(503).json({ success: false, message: "Database not configured" });
       const { notifications, campaigns } = await import("../shared/schema");
-      const { eq, and, inArray } = await import("drizzle-orm");
+      const { eq, and, inArray, or, isNull } = await import("drizzle-orm");
 
       const owned = await db
         .select({ id: (campaigns as any).id })
         .from(campaigns as any)
-        .where(eq((campaigns as any).ownerId, actorId));
+        .where(or(eq((campaigns as any).ownerId, actorId), isNull((campaigns as any).ownerId), eq((campaigns as any).ownerId, "")));
       const ownedCampaignIds = (owned || []).map((r: any) => String(r?.id || "")).filter(Boolean);
 
       if (ownedCampaignIds.length === 0) {
@@ -3920,12 +3920,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { db } = await import("./db");
       if (!db) return res.status(503).json({ success: false, message: "Database not configured" });
       const { notifications, campaigns } = await import("../shared/schema");
-      const { eq, inArray } = await import("drizzle-orm");
+      const { eq, inArray, or, isNull } = await import("drizzle-orm");
 
       const owned = await db
         .select({ id: (campaigns as any).id })
         .from(campaigns as any)
-        .where(eq((campaigns as any).ownerId, actorId));
+        .where(or(eq((campaigns as any).ownerId, actorId), isNull((campaigns as any).ownerId), eq((campaigns as any).ownerId, "")));
       const ownedCampaignIds = (owned || []).map((r: any) => String(r?.id || "")).filter(Boolean);
 
       if (ownedCampaignIds.length === 0) {

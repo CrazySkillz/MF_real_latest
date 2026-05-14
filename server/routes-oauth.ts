@@ -20847,6 +20847,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedKPI = insertKPISchema.parse(requestData);
 
       const kpi = await storage.createKPI(validatedKPI);
+      try {
+        await checkPerformanceAlerts();
+      } catch (e: any) {
+        console.warn("[Campaign KPI Create] checkPerformanceAlerts failed:", e?.message || e);
+      }
       res.json(kpi);
     } catch (error) {
       console.error('KPI create error:', error);

@@ -1076,6 +1076,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       setShowCreateDialog(false);
       setKpiCalculationConfig(null);
       setKpiForm({
@@ -1138,6 +1139,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       setShowEditDialog(false);
       setEditingKPI(null);
       setKpiCalculationConfig(null);

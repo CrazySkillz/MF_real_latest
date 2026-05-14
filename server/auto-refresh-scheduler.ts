@@ -57,6 +57,11 @@ function safeJsonParse<T = any>(raw: any): T | null {
   }
 }
 
+function isSourceOutsideCampaign(source: any, campaignId: string): boolean {
+  const sourceCampaignId = String(source?.campaignId || "").trim();
+  return !!sourceCampaignId && sourceCampaignId !== String(campaignId || "").trim();
+}
+
 async function withTimeout<T>(label: string, promise: Promise<T>, timeoutMs: number): Promise<T> {
   let timeout: NodeJS.Timeout | null = null;
   try {
@@ -178,6 +183,10 @@ async function reprocessGoogleSheetsSpend(campaignId: string, mappingConfig: Any
 async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean> {
   const connectionId = String(mappingConfig?.connectionId || "").trim();
   if (!connectionId) return false;
+  if (isSourceOutsideCampaign(source, campaignId)) {
+    console.error(`[Auto Refresh] Refusing Google Sheets revenue reprocess for source outside campaign ${campaignId}: source=${String(source?.id || "")}`);
+    return false;
+  }
   try {
     // Direct DB operations — avoids auth/rate-limit issues from HTTP self-calls
     const connections = await storage.getGoogleSheetsConnections(campaignId);
@@ -549,6 +558,11 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
           for (const src of (Array.isArray(spendSrcs) ? spendSrcs : [])) {
             if ((src as any).isActive === false) continue;
             if (String((src as any).sourceType || "") !== "ad_platforms") continue;
+            if (isSourceOutsideCampaign(src, campaignId)) {
+              console.error(`[Auto Refresh] Refusing ad platform spend reprocess for source outside campaign ${campaignId}: source=${String((src as any).id || "")}`);
+              skipped++;
+              continue;
+            }
             const displayName = String((src as any).displayName || "");
             const cfg = safeJsonParse((src as any).mappingConfig);
             const selectedIds = Array.isArray(cfg?.selectedCampaignIds)

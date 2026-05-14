@@ -53,11 +53,12 @@ Subsystem order:
 - KPI/Benchmark alert creation jobs now fail closed when the linked campaign is missing, and KPI alert creation resolves existing rows instead of creating alerts for non-breaching KPIs.
 - Campaign-level KPI/Benchmark alert creation now uses one active unresolved alert per linked KPI/Benchmark, matching GA4 behavior and preventing repeated creation logs for the same active breach.
 - KPI/Benchmark email alert lifecycle now fails closed when the linked campaign is missing and parses formatted numeric values consistently before sending email, updating `lastAlertSent`, or writing alert audit state.
+- Generic platform KPI routes now reject reserved campaign-layer platform values before read/create/update/delete, preventing platform KPI endpoints from mutating campaign-level KPI rows.
 
 ## Current Status By Subsystem
 
-- Notification lifecycle and alert visibility: in-app bell visibility, single dismiss, clear-all, mark-read scoping, KPI/Benchmark delete hiding, campaign delete hiding, alert recreation, non-breach hiding, missing-campaign fail-closed behavior, duplicate active alert suppression, and email-alert missing-campaign/numeric parsing boundaries have been traced and hardened. Remaining scope is final runtime validation only.
-- KPI/Benchmark campaign-vs-platform route isolation: not complete.
+- Notification lifecycle and alert visibility: code audit is complete for the targeted scope. In-app bell visibility, single dismiss, clear-all, mark-read scoping, KPI/Benchmark delete hiding, campaign delete hiding, alert recreation, non-breach hiding, missing-campaign fail-closed behavior, duplicate active alert suppression, and email-alert missing-campaign/numeric parsing boundaries have been traced and hardened. Ongoing production validation remains listed under Runtime Validation Required.
+- KPI/Benchmark campaign-vs-platform route isolation: partially hardened. Generic platform KPI routes now fail closed for campaign-layer values; remaining KPI/Benchmark paths still require the listed route-isolation pass.
 - Report update/delete/scheduler/send visibility: partially hardened; final pass still required.
 - Source edit/delete and normalized-record cleanup: not started.
 - Campaign/client delete cascades: partially hardened; final table-by-table pass still required.
@@ -65,7 +66,7 @@ Subsystem order:
 
 ## Outstanding
 
-- KPI routes: confirm campaign-level and platform-level KPI routes cannot mutate/delete each other's records, alerts, notifications, or progress rows.
+- KPI routes: generic platform KPI route reserved-value guard is complete. Still confirm generic KPI progress/analytics paths, alert side effects, and any legacy platform KPI callers cannot mutate/delete across campaign-vs-platform boundaries.
 - Benchmark routes: confirm campaign-level and platform-level Benchmark routes cannot mutate/delete each other's records, alerts, notifications, or history rows.
 - Report routes: complete final check of remaining report scheduler/update/delete/test-send paths for stale legacy callers and cross-campaign report IDs.
 - Source delete/edit flows: review CSV, Google Sheets, HubSpot, Salesforce, Shopify, LinkedIn, Meta, Google Ads, and Custom Integration delete/edit routes. Confirm each route only mutates the intended campaign/source/platform records.
@@ -82,6 +83,7 @@ Subsystem order:
 
 ## Runtime Validation Required
 
+- Notification lifecycle: monitor Render logs after deploy for unexpected repeated `Created alert`, `Alert sent for KPI`, `Alert sent for Benchmark`, `Error checking KPI alerts`, or `Error checking Benchmark alerts` entries.
 - Render scheduler timing and repeated job behavior.
 - Mailgun delivery and recipient inbox delivery.
 - Production database state for legacy ownerless records.

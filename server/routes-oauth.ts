@@ -20645,6 +20645,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // KPI routes
+  const isCampaignKPIPlatformType = (value: unknown): boolean => {
+    const platformType = String(value || "").trim().toLowerCase();
+    return !platformType || platformType === "campaign";
+  };
+
   app.get("/api/campaigns/:id/kpis", async (req, res) => {
     try {
       const { id } = req.params;
@@ -20678,6 +20683,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/platforms/:platformType/kpis", async (req, res) => {
     try {
       const { platformType } = req.params;
+      if (isCampaignKPIPlatformType(platformType)) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
       const { campaignId } = req.query;
       if (!campaignId) return res.json([]);
       const ok = await ensureCampaignAccess(req as any, res as any, String(campaignId));
@@ -20705,6 +20713,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/platforms/:platformType/kpis", async (req, res) => {
     try {
       const { platformType } = req.params;
+      if (isCampaignKPIPlatformType(platformType)) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
       if (!req.body?.campaignId) {
         return res.status(400).json({ message: "campaignId is required" });
       }
@@ -20768,6 +20779,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/platforms/:platformType/kpis/:kpiId", async (req, res) => {
     try {
       const { platformType, kpiId } = req.params;
+      if (isCampaignKPIPlatformType(platformType)) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
       const okKpi = await ensureKpiAccess(req as any, res as any, kpiId);
       if (!okKpi) return;
       if (String((okKpi as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
@@ -20837,6 +20851,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/platforms/:platformType/kpis/:kpiId", async (req, res) => {
     try {
       const { platformType, kpiId } = req.params;
+      if (isCampaignKPIPlatformType(platformType)) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
       const okKpi = await ensureKpiAccess(req as any, res as any, kpiId);
       if (!okKpi) return;
       if (String((okKpi as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {

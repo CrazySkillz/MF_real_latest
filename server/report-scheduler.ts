@@ -742,7 +742,10 @@ export async function checkScheduledReports(): Promise<void> {
       return;
     }
 
-    const scheduledReports = allReports.filter(r => r.scheduleEnabled && r.status === 'active');
+    const uniqueReports = Array.from(
+      new Map(allReports.map(report => [String(report.id), report])).values()
+    );
+    const scheduledReports = uniqueReports.filter(r => r.scheduleEnabled && r.status === 'active');
 
     if (scheduledReports.length === 0) {
       console.log('[Report Scheduler] No scheduled reports found');
@@ -794,10 +797,27 @@ export async function checkScheduledReports(): Promise<void> {
       try {
         if ((report as any).campaignId) {
           const [c] = await db.select().from(campaigns).where(eq(campaigns.id, String((report as any).campaignId)));
+          if (!c) {
+            const error = "Campaign not found; skipped scheduled report";
+            console.warn(`[Report Scheduler] ${error}: report=${report.id}, campaign=${(report as any).campaignId}`);
+            await db
+              .update(reportSendEvents)
+              .set({ status: "skipped", error } as any)
+              .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+              .catch(() => { });
+            continue;
+          }
           campaignName = (c as any)?.name || null;
         }
-      } catch {
-        campaignName = null;
+      } catch (error: any) {
+        const message = error?.message || "Campaign lookup failed; skipped scheduled report";
+        console.warn(`[Report Scheduler] Campaign lookup failed; skipped scheduled report: report=${report.id}, campaign=${(report as any).campaignId}, error=${message}`);
+        await db
+          .update(reportSendEvents)
+          .set({ status: "failed", error: message } as any)
+          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .catch(() => { });
+        continue;
       }
 
       const snapshotPayload = {

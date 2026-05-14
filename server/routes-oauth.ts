@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getAuth } from "@clerk/express";
 import { storage } from "./storage";
-import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertKPIReportSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections } from "@shared/schema";
+import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, insertPerformanceDataSchema, insertGA4ConnectionSchema, insertGoogleSheetsConnectionSchema, insertLinkedInConnectionSchema, insertKPISchema, insertKPIProgressSchema, insertBenchmarkSchema, insertBenchmarkHistorySchema, insertLinkedInReportSchema, insertAttributionModelSchema, insertCustomerJourneySchema, insertTouchpointSchema, ga4Connections } from "@shared/schema";
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
@@ -21368,86 +21368,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ message: "Failed to record KPI progress" });
       }
-    }
-  });
-
-  // KPI Report routes
-  app.get("/api/campaigns/:id/kpi-reports", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const ok = await ensureCampaignAccess(req as any, res as any, id);
-      if (!ok) return;
-      const reports = await storage.getCampaignKPIReports(id);
-      res.json(reports);
-    } catch (error) {
-      console.error('KPI reports fetch error:', error);
-      res.status(500).json({ message: "Failed to fetch KPI reports" });
-    }
-  });
-
-  app.post("/api/campaigns/:id/kpi-reports", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const ok = await ensureCampaignAccess(req as any, res as any, id);
-      if (!ok) return;
-      const validated = insertKPIReportSchema.parse({ ...(req.body || {}), campaignId: id });
-      const report = await storage.createKPIReport(validated);
-      res.json(report);
-    } catch (error) {
-      console.error('KPI report creation error:', error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid KPI report data", errors: error.errors });
-      } else {
-        res.status(500).json({ message: "Failed to create KPI report" });
-      }
-    }
-  });
-
-  app.patch("/api/campaigns/:id/kpi-reports/:reportId", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const ok = await ensureCampaignAccess(req as any, res as any, id);
-      if (!ok) return;
-      const { reportId } = req.params;
-      const existingReport = await storage.getKPIReport(reportId);
-      if (!existingReport || String(existingReport.campaignId || "") !== String(id)) {
-        return res.status(404).json({ message: "Report not found" });
-      }
-      const validated = insertKPIReportSchema.partial().parse(req.body || {}) as any;
-      delete validated.campaignId;
-      const report = await storage.updateKPIReport(reportId, validated);
-      if (!report) {
-        return res.status(404).json({ message: "Report not found" });
-      }
-      res.json(report);
-    } catch (error) {
-      console.error('KPI report update error:', error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid KPI report data", errors: error.errors });
-      } else {
-        res.status(500).json({ message: "Failed to update KPI report" });
-      }
-    }
-  });
-
-  app.delete("/api/campaigns/:id/kpi-reports/:reportId", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const ok = await ensureCampaignAccess(req as any, res as any, id);
-      if (!ok) return;
-      const { reportId } = req.params;
-      const existingReport = await storage.getKPIReport(reportId);
-      if (!existingReport || String(existingReport.campaignId || "") !== String(id)) {
-        return res.status(404).json({ message: "Report not found" });
-      }
-      const deleted = await storage.deleteKPIReport(reportId);
-      if (!deleted) {
-        return res.status(404).json({ message: "Report not found" });
-      }
-      res.json({ message: "Report deleted successfully" });
-    } catch (error) {
-      console.error('KPI report deletion error:', error);
-      res.status(500).json({ message: "Failed to delete KPI report" });
     }
   });
 

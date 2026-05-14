@@ -198,9 +198,12 @@ Follow this order every time:
 
 Do not code first and investigate later.
 Do not guess at fixes.
+Do not guess when explaining how a user should validate a fix.
 Do not patch symptoms without understanding the source.
 Do not implement speculative "likely fixes".
 If root cause is not confirmed yet, do not change code.
+If the validation path is uncertain, trace the frontend caller, API route, storage method, and visible UI entry point before giving instructions.
+If a route or feature appears to be legacy, hidden, or not reachable from the current UI, say that clearly instead of inventing a UI validation path.
 
 For data/provenance bugs, prove the exact data-loss boundary before editing:
 
@@ -221,6 +224,8 @@ Before considering a fix complete:
 - If a response shape is involved, confirm consumers still match it.
 - If a calculation is involved, check that totals and derived values remain consistent.
 - If auth or campaign scoping is involved, confirm access rules still hold.
+- Validation instructions given to the user must be specific to the confirmed UI/API path touched by the change.
+- Do not tell the user to validate through a screen unless the code has been traced to that screen.
 
 If you cannot validate fully, state that clearly and limit the change even further.
 

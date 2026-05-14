@@ -1524,6 +1524,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               const ratio = target > 0 ? (lowerBetter ? (current > 0 ? target / current : 0) : (current / target)) : 0;
               const progressPercentRaw = Math.max(0, Math.min(ratio * 100, 100));
               const progressPercentLabel = progressPercentRaw.toFixed(1);
+              const progressBand = getCampaignKpiSnapshot(kpi)?.band || 'below';
               const liveDisplay = formatValueWithUnit(current, displayUnit);
               const targetDisplay = formatValueWithUnit(target, displayUnit);
               
@@ -1643,8 +1644,8 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
                 <div className="w-full bg-muted rounded-full h-2">
                   <div
                     className={`h-2 rounded-full transition-all ${
-                      progressPercentRaw >= 100 ? 'bg-green-600' :
-                      progressPercentRaw >= 70 ? 'bg-yellow-600' : 'bg-red-600'
+                      progressBand === 'above' ? 'bg-green-600' :
+                      progressBand === 'near' ? 'bg-blue-600' : 'bg-red-600'
                     }`}
                     style={{ width: `${progressPercentRaw}%` }}
                   />

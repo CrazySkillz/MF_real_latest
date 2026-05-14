@@ -21409,6 +21409,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, id);
       if (!ok) return;
       const { reportId } = req.params;
+      const existingReport = await storage.getKPIReport(reportId);
+      if (!existingReport || String(existingReport.campaignId || "") !== String(id)) {
+        return res.status(404).json({ message: "Report not found" });
+      }
       const validated = insertKPIReportSchema.partial().parse(req.body || {}) as any;
       delete validated.campaignId;
       const report = await storage.updateKPIReport(reportId, validated);
@@ -21432,6 +21436,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, id);
       if (!ok) return;
       const { reportId } = req.params;
+      const existingReport = await storage.getKPIReport(reportId);
+      if (!existingReport || String(existingReport.campaignId || "") !== String(id)) {
+        return res.status(404).json({ message: "Report not found" });
+      }
       const deleted = await storage.deleteKPIReport(reportId);
       if (!deleted) {
         return res.status(404).json({ message: "Report not found" });

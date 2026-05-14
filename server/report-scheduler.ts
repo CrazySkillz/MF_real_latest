@@ -801,10 +801,10 @@ export async function checkScheduledReports(): Promise<void> {
         const existingStatus = String((existingEvent as any)?.status || "").toLowerCase();
         const existingReportId = String((report as any).id);
         const existingError = String((existingEvent as any)?.error || "").trim();
-        const auditError = !existingError || existingError === "Email send failed after retries"
+        const auditError = existingStatus !== "sent" && (!existingError || existingError === "Email send failed after retries")
           ? await getLatestReportEmailError(existingReportId)
           : "";
-        const displayError = auditError || existingError;
+        const displayError = existingStatus === "sent" ? "" : (auditError || existingError);
         const existingCreatedAt = (existingEvent as any)?.createdAt ? new Date((existingEvent as any).createdAt) : null;
         const stalePending = existingStatus === "pending" && (!existingCreatedAt || now.getTime() - existingCreatedAt.getTime() > 10 * 60 * 1000);
         const staleFailed = existingStatus === "failed"

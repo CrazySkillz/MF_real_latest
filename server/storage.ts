@@ -3287,6 +3287,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteNotification(id: string): Promise<boolean> {
+    // Hard delete is reserved for intentional destructive cascades.
+    // User-facing dismiss/clear flows must soft-hide notifications to preserve alert history.
     const result = await db
       .delete(notifications)
       .where(eq(notifications.id, id));

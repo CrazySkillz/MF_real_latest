@@ -1714,6 +1714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingSpendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
       const deletingSource = (Array.isArray(existingSpendSources) ? existingSpendSources : [])
         .find((s: any) => String(s?.id || "") === String(sourceId));
+      if (!deletingSource) return res.status(404).json({ success: false, error: "Spend source not found" });
       let deletingSheetsConnectionId = "";
       if (String((deletingSource as any)?.sourceType || "") === "google_sheets") {
         try {
@@ -1877,6 +1878,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let source: any;
       if (existingSourceId) {
+        const existingSource = await storage.getRevenueSource(campaignId, existingSourceId);
+        if (!existingSource) return res.status(404).json({ success: false, error: "Revenue source not found" });
+        if (String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== platformContext) {
+          return res.status(404).json({ success: false, error: "Revenue source not found" });
+        }
         // Edit mode: update existing source
         source = await storage.updateRevenueSource(existingSourceId, {
           sourceType: "manual",
@@ -2042,6 +2048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let parsedRows: Array<Record<string, any>> = [];
         let parsedHeaders: string[] = [];
         let rowCountForResponse = 0;
+        let existingSourceForEdit: any = null;
         if (file) {
           const csvText = Buffer.from(file.buffer).toString("utf-8");
           const approxLines = countLinesUpTo(csvText, MAX_CSV_ROWS_PROCESS + 5);
@@ -2061,6 +2068,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!existingSource) {
             return res.status(404).json({ success: false, error: "Revenue source not found" });
           }
+          if (String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== platformContext) {
+            return res.status(404).json({ success: false, error: "Revenue source not found" });
+          }
+          existingSourceForEdit = existingSource;
           let existingMapping: any = null;
           try {
             existingMapping = (existingSource as any)?.mappingConfig ? JSON.parse(String((existingSource as any).mappingConfig)) : null;
@@ -2212,10 +2223,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         delete (normalizedMapping as any).sourceId; // don't persist sourceId in mappingConfig
 
-        let source: any;
-        if (existingSourceIdOrNull) {
-          // Edit mode: update existing source, delete old records
-          source = await storage.updateRevenueSource(existingSourceIdOrNull, {
+      let source: any;
+      if (existingSourceIdOrNull) {
+        const existingSource = existingSourceForEdit || await storage.getRevenueSource(campaignId, existingSourceIdOrNull);
+        if (!existingSource) return res.status(404).json({ success: false, error: "Revenue source not found" });
+        if (String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== platformContext) {
+          return res.status(404).json({ success: false, error: "Revenue source not found" });
+        }
+        // Edit mode: update existing source, delete old records
+        source = await storage.updateRevenueSource(existingSourceIdOrNull, {
             sourceType: "csv",
             displayName: mapping.displayName || file?.originalname || (existingSourceIdOrNull ? "CSV" : "CSV"),
             currency,
@@ -2817,6 +2833,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let source: any;
       if (existingSourceId) {
+        const existingSource = await storage.getSpendSource(campaignId, existingSourceId);
+        if (!existingSource) return res.status(404).json({ success: false, error: "Spend source not found" });
         // Update existing source instead of creating a new one
         source = await storage.updateSpendSource(existingSourceId, {
           sourceType: effectiveSourceType,
@@ -3302,6 +3320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let source: any;
       if (existingSourceId) {
+        const existingSource = await storage.getSpendSource(campaignId, existingSourceId);
+        if (!existingSource) return res.status(404).json({ success: false, error: "Spend source not found" });
         source = await storage.updateSpendSource(existingSourceId, {
           displayName: mapping.displayName || "CSV",
           currency,
@@ -3785,6 +3805,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (p === 'custom-integration' || p === 'custom_integration') return 'Custom Integration';
     return p.split(/[_-]+/).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
   };
+  const notificationMetadata = (value: any) => {
+    try { return typeof value === "string" && value ? JSON.parse(value) : (value || {}); } catch { return {}; }
+  };
+  const isNotificationDismissed = (n: any) => !!notificationMetadata(n?.metadata)?.dismissedAt;
+  const dismissedNotificationMetadata = (n: any, actorId: string, reason = "dismissed") => JSON.stringify({
+    ...notificationMetadata(n?.metadata),
+    dismissedAt: new Date().toISOString(),
+    dismissedBy: actorId,
+    dismissalReason: reason,
+  });
+  const softHideNotification = async (n: any, actorId: string, reason: string) => {
+    await storage.updateNotification(String(n?.id || ""), {
+      read: true,
+      metadata: dismissedNotificationMetadata(n, actorId, reason),
+    } as any);
+  };
 
   // Notifications routes
   app.get("/api/notifications", async (req, res) => {
@@ -3807,7 +3843,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .innerJoin(campaigns as any, eq((notifications as any).campaignId, (campaigns as any).id))
           .where(or(eq((campaigns as any).ownerId, actorId), isNull((campaigns as any).ownerId), eq((campaigns as any).ownerId, "")))
           .orderBy(desc((notifications as any).createdAt));
-        const visible = rows.map((r: any) => r.n);
+        const visible = rows.map((r: any) => r.n).filter((n: any) => !isNotificationDismissed(n));
         const scoped = await Promise.all(visible.map(async (n: any) => {
           try {
             const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
@@ -3841,7 +3877,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const allNotifications = await storage.getNotifications().catch(() => [] as any[]);
       const list = (Array.isArray(allNotifications) ? allNotifications : []).filter((n: any) =>
-        ownedIds.includes(String((n as any)?.campaignId || ""))
+        ownedIds.includes(String((n as any)?.campaignId || "")) && !isNotificationDismissed(n)
       );
       list.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       return res.json(list);
@@ -3915,15 +3951,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ success: true, message: "Deleted 0 notifications", deletedCount: 0 });
       }
 
-      // Delete only notifications tied to caller-owned campaigns.
-      const result = await db
-        .delete(notifications as any)
-        .where(inArray((notifications as any).campaignId, ownedCampaignIds));
+      const rows = await db.select().from(notifications as any).where(inArray((notifications as any).campaignId, ownedCampaignIds));
+      let hiddenCount = 0;
+      for (const n of rows || []) {
+        if (isNotificationDismissed(n)) continue;
+        await db.update(notifications as any)
+          .set({ read: true, metadata: dismissedNotificationMetadata(n, actorId, "clear_all") })
+          .where(eq((notifications as any).id, String((n as any).id)));
+        hiddenCount++;
+      }
 
       res.json({
         success: true,
-        message: `Deleted ${(result as any)?.rowCount ?? 0} notifications`,
-        deletedCount: (result as any)?.rowCount ?? 0
+        message: `Deleted ${hiddenCount} notifications`,
+        deletedCount: hiddenCount
       });
     } catch (error) {
       console.error('[Notifications API] Error deleting all notifications:', error);
@@ -3934,6 +3975,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/notifications/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      const actorId = getActorId(req as any);
+      if (!actorId) {
+        return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });
+      }
 
       // Enforce ownership via campaign access.
       const { db } = await import("./db");
@@ -3947,7 +3992,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const okCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!okCampaign) return;
 
-      const result = await db.delete(notifications).where(eq(notifications.id, id));
+      await db.update(notifications as any)
+        .set({ read: true, metadata: dismissedNotificationMetadata(existing, actorId, "dismissed") })
+        .where(eq((notifications as any).id, id));
 
       res.json({ success: true, message: "Notification deleted" });
     } catch (error) {
@@ -18734,7 +18781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
               if (String(meta?.kpiId || "") === String(kpiId)) {
-                await storage.deleteNotification(String((n as any).id));
+                await softHideNotification(n, getActorId(req as any) || "system", "kpi_deleted");
               }
             } catch {}
           })
@@ -19434,7 +19481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
               if (String(meta?.benchmarkId || "") === String(benchmarkId)) {
-                await storage.deleteNotification(String((n as any).id));
+                await softHideNotification(n, getActorId(req as any) || "system", "benchmark_deleted");
               }
             } catch {}
           })
@@ -20661,9 +20708,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/platforms/:platformType/kpis/:kpiId", async (req, res) => {
     try {
-      const { kpiId } = req.params;
+      const { platformType, kpiId } = req.params;
       const okKpi = await ensureKpiAccess(req as any, res as any, kpiId);
       if (!okKpi) return;
+      if (String((okKpi as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
 
       const toDecimalStringOrUndefined = (v: any): string | undefined => {
         if (typeof v === 'undefined') return undefined;
@@ -20727,9 +20777,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/platforms/:platformType/kpis/:kpiId", async (req, res) => {
     try {
-      const { kpiId } = req.params;
+      const { platformType, kpiId } = req.params;
       const okKpi = await ensureKpiAccess(req as any, res as any, kpiId);
       if (!okKpi) return;
+      if (String((okKpi as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
+        return res.status(404).json({ message: "KPI not found" });
+      }
       const deleted = await storage.deleteKPI(kpiId);
 
       if (!deleted) {
@@ -20747,7 +20800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
               if (String(meta?.kpiId || "") === String(kpiId)) {
-                await storage.deleteNotification(String((n as any).id));
+                await softHideNotification(n, getActorId(req as any) || "system", "kpi_deleted");
               }
             } catch {
               // ignore non-JSON metadata
@@ -20905,7 +20958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
               if (String(meta?.kpiId || "") === String(kpiId)) {
-                await storage.deleteNotification(String((n as any).id));
+                await softHideNotification(n, getActorId(req as any) || "system", "kpi_deleted");
               }
             } catch {}
           })
@@ -21244,7 +21297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
               if (String(meta?.benchmarkId || "") === String(benchmarkId)) {
-                await storage.deleteNotification(String((n as any).id));
+                await softHideNotification(n, getActorId(req as any) || "system", "benchmark_deleted");
               }
             } catch {
               // ignore non-JSON metadata
@@ -21506,7 +21559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
               if (String(meta?.benchmarkId || "") === String(benchmarkId)) {
-                await storage.deleteNotification(String((n as any).id));
+                await softHideNotification(n, getActorId(req as any) || "system", "benchmark_deleted");
               }
             } catch {}
           })
@@ -21657,10 +21710,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update platform report
   app.patch("/api/platforms/:platformType/reports/:reportId", async (req, res) => {
     try {
-      const { reportId } = req.params;
+      const { platformType, reportId } = req.params;
       const body = (req.body || {}) as any;
       const existing = await ensurePlatformReportAccess(req as any, res as any, reportId);
       if (!existing) return;
+      if (String((existing as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
+        return res.status(404).json({ message: "Report not found" });
+      }
 
       // Validate schedule fields (finance-grade correctness)
       if (body?.scheduleEnabled) {
@@ -21724,9 +21780,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete platform report
   app.delete("/api/platforms/:platformType/reports/:reportId", async (req, res) => {
     try {
-      const { reportId } = req.params;
+      const { platformType, reportId } = req.params;
       const existing = await ensurePlatformReportAccess(req as any, res as any, reportId);
       if (!existing) return;
+      if (String((existing as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
+        return res.status(404).json({ message: "Report not found" });
+      }
 
       const deleted = await storage.deletePlatformReport(reportId);
       if (!deleted) {
@@ -21743,9 +21802,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send test report email
   app.post("/api/platforms/:platformType/reports/:reportId/send-test", async (req, res) => {
     try {
-      const { reportId } = req.params;
+      const { platformType, reportId } = req.params;
       const existing = await ensurePlatformReportAccess(req as any, res as any, reportId);
       if (!existing) return;
+      if (String((existing as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
+        return res.status(404).json({ message: "Report not found" });
+      }
 
       // Check email configuration first
       const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
@@ -21790,9 +21852,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/platforms/:platformType/reports/:reportId/snapshots", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
-      const { reportId } = req.params;
+      const { platformType, reportId } = req.params;
       const existing = await ensurePlatformReportAccess(req as any, res as any, reportId);
       if (!existing) return;
+      if (String((existing as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
+        return res.status(404).json({ success: false, error: "Report not found" });
+      }
       const { db } = await import("./db");
       if (!db) return res.status(503).json({ success: false, error: "Database not configured" });
       const { reportSnapshots } = await import("../shared/schema");
@@ -21815,6 +21880,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { platformType, reportId } = req.params;
       const existing = await ensurePlatformReportAccess(req as any, res as any, reportId);
       if (!existing) return;
+      if (String((existing as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
+        return res.status(404).json({ success: false, error: "Report not found" });
+      }
       const { db } = await import("./db");
       if (!db) return res.status(503).json({ success: false, error: "Database not configured" });
       const { reportSnapshots } = await import("../shared/schema");
@@ -22043,7 +22111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
               if (String(meta?.benchmarkId || "") === String(id)) {
-                await storage.deleteNotification(String((n as any).id));
+                await softHideNotification(n, getActorId(req as any) || "system", "benchmark_deleted");
               }
             } catch {}
           })

@@ -3012,22 +3012,11 @@ export class DatabaseStorage implements IStorage {
 
   // Benchmark methods for DatabaseStorage
   async getCampaignBenchmarks(campaignId: string): Promise<Benchmark[]> {
-    // Get benchmarks that are either:
-    // 1. Created in this campaign AND scoped to all campaigns (applyTo = 'all')
-    // 2. Scoped specifically to this campaign (specificCampaignId = campaignId), regardless of where created
     const results = await db.select().from(benchmarks)
       .where(
-        or(
-          // Global benchmarks created in this campaign
-          and(
-            eq(benchmarks.campaignId, campaignId),
-            or(
-              eq(benchmarks.applyTo, 'all'),
-              isNull(benchmarks.specificCampaignId)
-            )
-          ),
-          // Campaign-specific benchmarks targeting this campaign (from any source)
-          eq(benchmarks.specificCampaignId, campaignId)
+        and(
+          eq(benchmarks.campaignId, campaignId),
+          or(isNull(benchmarks.platformType), eq(benchmarks.platformType, 'campaign'))
         )
       )
       .orderBy(benchmarks.category, benchmarks.name);

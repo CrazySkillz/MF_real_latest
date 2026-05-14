@@ -3807,17 +3807,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .innerJoin(campaigns as any, eq((notifications as any).campaignId, (campaigns as any).id))
           .where(or(eq((campaigns as any).ownerId, actorId), isNull((campaigns as any).ownerId), eq((campaigns as any).ownerId, "")))
           .orderBy(desc((notifications as any).createdAt));
-        const visible = rows
-          .map((r: any) => r.n)
-          .filter((n: any) => {
-            if (String(n?.type || '') !== 'performance-alert' || !n?.metadata) return true;
-            try {
-              const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
-              return !meta?.resolved;
-            } catch {
-              return true;
-            }
-          });
+        const visible = rows.map((r: any) => r.n);
         const scoped = await Promise.all(visible.map(async (n: any) => {
           try {
             const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
@@ -3850,16 +3840,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .filter(Boolean);
 
       const allNotifications = await storage.getNotifications().catch(() => [] as any[]);
-      const list = (Array.isArray(allNotifications) ? allNotifications : []).filter((n: any) => {
-        if (!ownedIds.includes(String((n as any)?.campaignId || ""))) return false;
-        if (String((n as any)?.type || '') !== 'performance-alert' || !(n as any)?.metadata) return true;
-        try {
-          const meta = typeof (n as any).metadata === 'string' ? JSON.parse((n as any).metadata) : (n as any).metadata;
-          return !meta?.resolved;
-        } catch {
-          return true;
-        }
-      });
+      const list = (Array.isArray(allNotifications) ? allNotifications : []).filter((n: any) =>
+        ownedIds.includes(String((n as any)?.campaignId || ""))
+      );
       list.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       return res.json(list);
     } catch (error) {
@@ -21201,6 +21184,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { benchmarkId } = req.params;
       const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
       if (!existing) return;
+      const platformType = String((existing as any)?.platformType || "").trim().toLowerCase();
+      if (platformType && platformType !== "campaign") {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
 
       // Convert numeric values to strings for decimal fields
       const cleanedData = { ...req.body };
@@ -21236,6 +21223,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { benchmarkId } = req.params;
       const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
       if (!existing) return;
+      const platformType = String((existing as any)?.platformType || "").trim().toLowerCase();
+      if (platformType && platformType !== "campaign") {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
 
       const deleted = await storage.deleteBenchmark(benchmarkId);
       if (!deleted) {
@@ -21451,9 +21442,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update platform benchmark
   app.put("/api/platforms/:platformType/benchmarks/:benchmarkId", async (req, res) => {
     try {
-      const { benchmarkId } = req.params;
+      const { platformType, benchmarkId } = req.params;
       const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
       if (!existing) return;
+      if (String((existing as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
 
       const validatedData = insertBenchmarkSchema.partial().parse(req.body);
 
@@ -21491,9 +21485,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete platform benchmark
   app.delete("/api/platforms/:platformType/benchmarks/:benchmarkId", async (req, res) => {
     try {
-      const { benchmarkId } = req.params;
+      const { platformType, benchmarkId } = req.params;
       const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
       if (!existing) return;
+      if (String((existing as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
 
       const deleted = await storage.deleteBenchmark(benchmarkId);
       if (!deleted) {

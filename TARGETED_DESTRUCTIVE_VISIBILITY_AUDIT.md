@@ -52,17 +52,26 @@ Subsystem order:
 - Duplicate visible KPI/Benchmark performance-alert notifications are collapsed to one active bell row per linked KPI/Benchmark while history remains preserved.
 - KPI/Benchmark alert creation jobs now fail closed when the linked campaign is missing, and KPI alert creation resolves existing rows instead of creating alerts for non-breaching KPIs.
 - Campaign-level KPI/Benchmark alert creation now uses one active unresolved alert per linked KPI/Benchmark, matching GA4 behavior and preventing repeated creation logs for the same active breach.
+- KPI/Benchmark email alert lifecycle now fails closed when the linked campaign is missing and parses formatted numeric values consistently before sending email, updating `lastAlertSent`, or writing alert audit state.
+
+## Current Status By Subsystem
+
+- Notification lifecycle and alert visibility: in-app bell visibility, single dismiss, clear-all, mark-read scoping, KPI/Benchmark delete hiding, campaign delete hiding, alert recreation, non-breach hiding, missing-campaign fail-closed behavior, duplicate active alert suppression, and email-alert missing-campaign/numeric parsing boundaries have been traced and hardened. Remaining scope is final runtime validation only.
+- KPI/Benchmark campaign-vs-platform route isolation: not complete.
+- Report update/delete/scheduler/send visibility: partially hardened; final pass still required.
+- Source edit/delete and normalized-record cleanup: not started.
+- Campaign/client delete cascades: partially hardened; final table-by-table pass still required.
+- Legacy route/schema/storage cleanup: not started and must remain last.
 
 ## Outstanding
 
-- Source delete/edit flows: review CSV, Google Sheets, HubSpot, Salesforce, Shopify, LinkedIn, Meta, Google Ads, and Custom Integration delete/edit routes. Confirm each route only mutates the intended campaign/source/platform records.
-- Notification lifecycle: review `dismiss`, `clear all`, `mark read`, alert resolution, alert recreation, KPI delete, Benchmark delete, campaign delete, and client delete end to end.
-- Client delete cascade: trace all child campaign records, reports, KPIs, benchmarks, notifications, alerts, sources, snapshots, send events, and email audit rows.
-- Campaign delete cascade: complete a final table-by-table scoping pass for all child rows.
-- Platform-specific disconnect/delete routes: review GA4, Google Sheets, HubSpot, Salesforce, Shopify, LinkedIn, Meta, Google Ads, and Custom Integration disconnect routes.
 - KPI routes: confirm campaign-level and platform-level KPI routes cannot mutate/delete each other's records, alerts, notifications, or progress rows.
 - Benchmark routes: confirm campaign-level and platform-level Benchmark routes cannot mutate/delete each other's records, alerts, notifications, or history rows.
 - Report routes: complete final check of remaining report scheduler/update/delete/test-send paths for stale legacy callers and cross-campaign report IDs.
+- Source delete/edit flows: review CSV, Google Sheets, HubSpot, Salesforce, Shopify, LinkedIn, Meta, Google Ads, and Custom Integration delete/edit routes. Confirm each route only mutates the intended campaign/source/platform records.
+- Client delete cascade: trace all child campaign records, reports, KPIs, benchmarks, notifications, alerts, sources, snapshots, send events, and email audit rows.
+- Campaign delete cascade: complete a final table-by-table scoping pass for all child rows.
+- Platform-specific disconnect/delete routes: review GA4, Google Sheets, HubSpot, Salesforce, Shopify, LinkedIn, Meta, Google Ads, and Custom Integration disconnect routes.
 - Scheduler jobs: review auto-refresh, alert checks, report scheduler, KPI/Benchmark recompute, source refresh, and notification creation jobs for campaign/platform scoping.
 - Legacy LinkedIn and shared report storage: prove which legacy routes are still reachable before removing or further guarding them.
 - Legacy ownerless data: verify old records without modern owner/campaign metadata cannot be exposed, mutated, or deleted across users/clients.

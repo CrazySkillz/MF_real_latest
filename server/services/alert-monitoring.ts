@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { kpis, benchmarks, kpiAlerts } from "../../shared/schema.js";
+import { campaigns, kpis, benchmarks, kpiAlerts } from "../../shared/schema.js";
 import { eq, and, sql } from "drizzle-orm";
 import { emailService } from "./email-service.js";
 
@@ -50,9 +50,23 @@ class AlertMonitoringService {
     return recipients.split(',').map(email => email.trim()).filter(email => email.length > 0);
   }
 
+  private parseAlertNumber(value: unknown): number {
+    const n = parseFloat(String(value ?? '').replace(/,/g, '').replace(/[^\d.-]/g, ''));
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  private async getExistingCampaignName(campaignId: unknown): Promise<string | null> {
+    const id = String(campaignId || '').trim();
+    if (!id) return null;
+    const [campaign] = await db.select({ name: campaigns.name }).from(campaigns).where(eq(campaigns.id, id)).limit(1);
+    return campaign?.name || null;
+  }
+
   async sendImmediateKPIAlertIfNeeded(kpiId: string): Promise<boolean> {
     const [kpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
     if (!kpi || !kpi.alertsEnabled || !kpi.emailNotifications || !kpi.emailRecipients) return false;
+    const campaignName = await this.getExistingCampaignName((kpi as any).campaignId);
+    if (!campaignName) return false;
 
     const frequency = (kpi.alertFrequency || 'daily') as any;
     const frequencyHours =
@@ -61,8 +75,9 @@ class AlertMonitoringService {
       24;
     if (this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) return false;
 
-    const currentValue = parseFloat(kpi.currentValue?.toString() || '0');
-    const thresholdValue = parseFloat(kpi.alertThreshold?.toString() || '0');
+    const currentValue = this.parseAlertNumber(kpi.currentValue);
+    const thresholdValue = this.parseAlertNumber(kpi.alertThreshold);
+    if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) return false;
     const condition = (kpi.alertCondition || 'below') as 'below' | 'above' | 'equals';
     if (!this.shouldSendAlert(currentValue, thresholdValue, condition)) return false;
 
@@ -80,7 +95,7 @@ class AlertMonitoringService {
     }, {
       entityId: kpi.id,
       campaignId: (kpi as any).campaignId || undefined,
-      campaignName: (kpi as any).campaignName || undefined,
+      campaignName,
     });
 
     if (!emailSent) return false;
@@ -103,6 +118,9 @@ class AlertMonitoringService {
   async sendImmediateBenchmarkAlertIfNeeded(benchmarkId: string): Promise<boolean> {
     const [benchmark] = await db.select().from(benchmarks).where(eq(benchmarks.id, benchmarkId));
     if (!benchmark || !benchmark.alertsEnabled || !benchmark.emailNotifications || !benchmark.emailRecipients) return false;
+    if (String((benchmark as any).status || 'active') !== 'active') return false;
+    const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId);
+    if (!campaignName) return false;
 
     const frequency = (benchmark.alertFrequency || 'daily') as any;
     const frequencyHours =
@@ -111,8 +129,9 @@ class AlertMonitoringService {
       24;
     if (this.shouldThrottleAlert(benchmark.lastAlertSent, frequencyHours)) return false;
 
-    const currentValue = parseFloat(benchmark.currentValue?.toString() || '0');
-    const thresholdValue = parseFloat(benchmark.alertThreshold?.toString() || '0');
+    const currentValue = this.parseAlertNumber(benchmark.currentValue);
+    const thresholdValue = this.parseAlertNumber(benchmark.alertThreshold);
+    if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) return false;
     const condition = (benchmark.alertCondition || 'below') as 'below' | 'above' | 'equals';
     if (!this.shouldSendAlert(currentValue, thresholdValue, condition)) return false;
 
@@ -130,7 +149,7 @@ class AlertMonitoringService {
     }, {
       entityId: benchmark.id,
       campaignId: (benchmark as any).campaignId || undefined,
-      campaignName: (benchmark as any).campaignName || undefined,
+      campaignName,
     });
 
     if (!emailSent) return false;
@@ -153,6 +172,8 @@ class AlertMonitoringService {
       for (const kpi of kpisToCheck) {
         // Skip if no email recipients configured
         if (!kpi.emailRecipients) continue;
+        const campaignName = await this.getExistingCampaignName((kpi as any).campaignId);
+        if (!campaignName) continue;
 
         const frequency = (kpi.alertFrequency || 'daily') as any;
         const frequencyHours =
@@ -166,8 +187,9 @@ class AlertMonitoringService {
           continue;
         }
 
-        const currentValue = parseFloat(kpi.currentValue?.toString() || '0');
-        const thresholdValue = parseFloat(kpi.alertThreshold?.toString() || '0');
+        const currentValue = this.parseAlertNumber(kpi.currentValue);
+        const thresholdValue = this.parseAlertNumber(kpi.alertThreshold);
+        if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) continue;
         const condition = (kpi.alertCondition || 'below') as 'below' | 'above' | 'equals';
 
         // Check if alert condition is met
@@ -188,7 +210,7 @@ class AlertMonitoringService {
           }, {
             entityId: kpi.id,
             campaignId: (kpi as any).campaignId || undefined,
-            campaignName: (kpi as any).campaignName || undefined,
+            campaignName,
           });
 
           if (emailSent) {
@@ -238,6 +260,8 @@ class AlertMonitoringService {
       for (const benchmark of benchmarksToCheck) {
         // Skip if no email recipients configured
         if (!benchmark.emailRecipients) continue;
+        const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId);
+        if (!campaignName) continue;
 
         const frequency = (benchmark.alertFrequency || 'daily') as any;
         const frequencyHours =
@@ -251,8 +275,9 @@ class AlertMonitoringService {
           continue;
         }
 
-        const currentValue = parseFloat(benchmark.currentValue?.toString() || '0');
-        const thresholdValue = parseFloat(benchmark.alertThreshold?.toString() || '0');
+        const currentValue = this.parseAlertNumber(benchmark.currentValue);
+        const thresholdValue = this.parseAlertNumber(benchmark.alertThreshold);
+        if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) continue;
         const condition = (benchmark.alertCondition || 'below') as 'below' | 'above' | 'equals';
 
         // Check if alert condition is met
@@ -273,7 +298,7 @@ class AlertMonitoringService {
           }, {
             entityId: benchmark.id,
             campaignId: (benchmark as any).campaignId || undefined,
-            campaignName: (benchmark as any).campaignName || undefined,
+            campaignName,
           });
 
           if (emailSent) {

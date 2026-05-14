@@ -3292,12 +3292,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteNotification(id: string): Promise<boolean> {
-    // Hard delete is reserved for intentional destructive cascades.
     // User-facing dismiss/clear flows must soft-hide notifications to preserve alert history.
     const result = await db
-      .delete(notifications)
-      .where(eq(notifications.id, id));
-    return (result.rowCount || 0) > 0;
+      .update(notifications)
+      .set({
+        read: true,
+        metadata: sql`(COALESCE(NULLIF(${notifications.metadata}, '')::jsonb, '{}'::jsonb) || jsonb_build_object('dismissedAt', NOW(), 'dismissedBy', 'system', 'dismissalReason', 'deleted_via_storage'))::text`,
+      })
+      .where(eq(notifications.id, id))
+      .returning();
+    return Array.isArray(result) ? result.length > 0 : (result.rowCount || 0) > 0;
   }
 
   async markAllNotificationsAsRead(): Promise<boolean> {

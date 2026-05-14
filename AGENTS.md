@@ -61,6 +61,20 @@ If a metric, transformation, attribution path, rollup, or report output is uncer
 Do not ship changes that "probably work" in analytics paths.
 Preserve trust in the numbers above all else.
 Do not take short cuts.
+Do not provide partial audit inventories as if they are complete.
+Do not infer completeness from a narrow code trace.
+When the user asks for production readiness, destructive-path safety, visibility-path safety, scheduler safety, or analytics correctness, be exhaustive within the requested scope.
+Separate clearly:
+
+- what has been proven
+- what has been partially reviewed
+- what remains unreviewed
+- what cannot be verified from local code alone
+
+If a route, job, or storage path has not been traced end to end, say it is unverified.
+Do not imply it is safe.
+Do not collapse broad production-readiness work into only the next small fix.
+The next small fix can be narrow, but the status report must be complete for the stated scope.
 
 ## Required Product Pattern
 

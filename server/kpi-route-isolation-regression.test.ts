@@ -28,4 +28,27 @@ describe("KPI route isolation regression guard", () => {
     expect(routesFile).toContain('if (platformType && platformType !== "campaign") {');
     expect(routesFile).toContain("delete updateData.platformType;");
   });
+
+  it("requires explicit layer scope before recording KPI progress", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+    const campaignKpisPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "kpis.tsx"),
+      "utf-8"
+    );
+    const platformKpisPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "platform-kpis.tsx"),
+      "utf-8"
+    );
+
+    expect(routesFile).toContain('const expectedScope = String(req.body?.expectedScope || "").trim().toLowerCase();');
+    expect(routesFile).toContain('if (expectedScope === "campaign") {');
+    expect(routesFile).toContain('return res.status(400).json({ message: "campaignId is required" });');
+    expect(routesFile).toContain('} else if (expectedScope === "platform") {');
+    expect(routesFile).toContain('return res.status(400).json({ message: "KPI progress scope is required" });');
+    expect(campaignKpisPage).toContain('expectedScope: "campaign"');
+    expect(platformKpisPage).toContain('expectedScope: "platform"');
+  });
 });

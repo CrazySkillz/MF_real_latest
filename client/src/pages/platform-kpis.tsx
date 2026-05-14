@@ -163,7 +163,7 @@ export default function PlatformKPIs() {
 
   const onRecordProgress = async (data: ProgressFormData) => {
     if (!selectedKPI) return;
-    recordProgressMutation.mutate({ kpiId: selectedKPI.id, progressData: data });
+    recordProgressMutation.mutate({ kpiId: selectedKPI.id, progressData: { ...data, expectedScope: "platform", platformType } as any });
   };
 
   const formatValue = (value: string, unit: string) => {

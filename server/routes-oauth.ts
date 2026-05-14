@@ -21418,6 +21418,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const okKpi = await ensureKpiAccess(req as any, res as any, id);
       if (!okKpi) return;
+      const expectedScope = String(req.body?.expectedScope || "").trim().toLowerCase();
+      const kpiPlatformType = String((okKpi as any)?.platformType || "").trim().toLowerCase();
+      if (expectedScope === "campaign") {
+        if (!req.body?.campaignId) {
+          return res.status(400).json({ message: "campaignId is required" });
+        }
+        if (kpiPlatformType && kpiPlatformType !== "campaign") {
+          return res.status(404).json({ message: "KPI not found" });
+        }
+        if (String((okKpi as any)?.campaignId || "") !== String(req.body.campaignId)) {
+          return res.status(404).json({ message: "KPI not found" });
+        }
+      } else if (expectedScope === "platform") {
+        if (isCampaignKPIPlatformType(kpiPlatformType) || String(req.body?.platformType || "").trim().toLowerCase() !== kpiPlatformType) {
+          return res.status(404).json({ message: "KPI not found" });
+        }
+      } else {
+        return res.status(400).json({ message: "KPI progress scope is required" });
+      }
 
       const progressData = {
         kpiId: id,

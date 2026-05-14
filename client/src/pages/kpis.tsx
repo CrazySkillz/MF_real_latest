@@ -289,7 +289,7 @@ export default function KPIsPage() {
     if (!selectedKPI) return;
     recordProgressMutation.mutate({
       kpiId: selectedKPI.id,
-      progressData: data,
+      progressData: { ...data, expectedScope: "campaign", campaignId } as any,
     });
   };
 

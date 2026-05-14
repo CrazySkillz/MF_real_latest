@@ -495,7 +495,12 @@ export class DatabaseStorage implements IStorage {
     await tx.delete(benchmarks).where(eq(benchmarks.campaignId, campaignId));
     await tx.delete(metricSnapshots).where(eq(metricSnapshots.campaignId, campaignId));
     await tx.delete(abTests).where(eq(abTests.campaignId, campaignId));
-    await tx.delete(notifications).where(eq(notifications.campaignId, campaignId));
+    await tx.update(notifications)
+      .set({
+        read: true,
+        metadata: sql`(COALESCE(NULLIF(${notifications.metadata}, '')::jsonb, '{}'::jsonb) || jsonb_build_object('dismissedAt', NOW(), 'dismissedBy', 'system', 'dismissalReason', 'campaign_deleted'))::text`,
+      })
+      .where(eq(notifications.campaignId, campaignId));
     await tx.delete(emailAlertEvents).where(eq(emailAlertEvents.campaignId, campaignId));
     await tx.delete(touchpoints).where(eq(touchpoints.campaignId, campaignId));
     await tx.delete(attributionResults).where(eq(attributionResults.campaignId, campaignId));

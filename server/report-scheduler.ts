@@ -1,8 +1,8 @@
 import { db } from "./db";
 import { emailService } from "./services/email-service";
 import { storage } from "./storage";
-import { campaigns, linkedinReports, reportSendEvents, reportSnapshots } from "../shared/schema";
-import { and, eq } from "drizzle-orm";
+import { campaigns, emailAlertEvents, linkedinReports, reportSendEvents, reportSnapshots } from "../shared/schema";
+import { and, desc, eq } from "drizzle-orm";
 import type { LinkedInReport } from "../shared/schema";
 import * as cron from "node-cron";
 import { DateTime } from "luxon";
@@ -28,6 +28,25 @@ const schedulerMetrics = {
   lastErrorTime: null as Date | null,
   lastError: null as string | null,
 };
+
+async function getLatestReportEmailError(reportId: string): Promise<string> {
+  const rows = await db
+    .select({ provider: emailAlertEvents.provider, error: emailAlertEvents.error })
+    .from(emailAlertEvents)
+    .where(and(
+      eq(emailAlertEvents.kind, "report"),
+      eq(emailAlertEvents.entityType, "report"),
+      eq(emailAlertEvents.entityId, reportId),
+      eq(emailAlertEvents.success, false),
+    ))
+    .orderBy(desc(emailAlertEvents.createdAt))
+    .limit(1)
+    .catch(() => []);
+  const row = rows[0];
+  const error = String(row?.error || "").trim();
+  const provider = String(row?.provider || "").trim();
+  return error ? `${provider ? `${provider}: ` : ""}${error}` : "";
+}
 
 function coercePdfBufferFromDoc(doc: any): Buffer | null {
   // Try the most reliable forms across Node runtimes and bundlers.
@@ -779,11 +798,16 @@ export async function checkScheduledReports(): Promise<void> {
           .limit(1)
           .catch(() => []);
         const existingStatus = String((existingEvent as any)?.status || "").toLowerCase();
+        const existingReportId = String((report as any).id);
         const existingError = String((existingEvent as any)?.error || "").trim();
+        const auditError = !existingError || existingError === "Email send failed after retries"
+          ? await getLatestReportEmailError(existingReportId)
+          : "";
+        const displayError = auditError || existingError;
         const existingCreatedAt = (existingEvent as any)?.createdAt ? new Date((existingEvent as any).createdAt) : null;
         const stalePending = existingStatus === "pending" && (!existingCreatedAt || now.getTime() - existingCreatedAt.getTime() > 10 * 60 * 1000);
         if (!stalePending) {
-          console.log(`[Report Scheduler] Report "${report.name}" already processed for ${due.scheduledKey} (status=${existingStatus || "unknown"}${existingError ? `, error=${existingError}` : ""})`);
+          console.log(`[Report Scheduler] Report "${report.name}" already processed for ${due.scheduledKey} (status=${existingStatus || "unknown"}${displayError ? `, error=${displayError}` : ""})`);
           continue; // already processed
         }
         console.warn(`[Report Scheduler] Retrying stale pending report "${report.name}" for ${due.scheduledKey}`);
@@ -899,20 +923,23 @@ export async function checkScheduledReports(): Promise<void> {
       });
 
       // Update metrics
+      const emailError = sent ? "" : await getLatestReportEmailError(snapshotPayload.reportId);
+      const sendError = emailError || "Email send failed after retries";
+
       if (sent) {
         schedulerMetrics.totalSent++;
         schedulerMetrics.lastSuccessTime = new Date();
       } else {
         schedulerMetrics.totalFailed++;
         schedulerMetrics.lastErrorTime = new Date();
-        schedulerMetrics.lastError = "Email send failed after retries";
+        schedulerMetrics.lastError = sendError;
       }
 
       await db
         .update(reportSendEvents)
         .set({
           status: sent ? "sent" : "failed",
-          error: sent ? null : "Email send failed after retries",
+          error: sent ? null : sendError,
           sentAt: sent ? new Date() : null,
           snapshotId: (snap as any)?.id ? String((snap as any).id) : null,
         } as any)

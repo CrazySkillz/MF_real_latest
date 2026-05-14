@@ -17437,6 +17437,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/linkedin/:campaignId/connection", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       console.log(`[LinkedIn] Deleting connection for campaign ${campaignId}`);
 
       await storage.deleteLinkedInConnection(campaignId);
@@ -18007,6 +18009,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/meta/:campaignId/connection", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       console.log(`[Meta] Deleting connection for campaign ${campaignId}`);
 
       await storage.deleteMetaConnection(campaignId);
@@ -19075,6 +19079,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/google-ads/:campaignId/connection", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       await storage.deleteGoogleAdsConnection(campaignId);
       res.json({ success: true, message: 'Google Ads connection deleted' });
     } catch (error: any) {
@@ -24803,6 +24809,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/custom-integration/:campaignId", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       console.log(`[Custom Integration] Deleting integration for campaign ${campaignId}`);
       const success = await storage.deleteCustomIntegration(campaignId);
       if (success) {

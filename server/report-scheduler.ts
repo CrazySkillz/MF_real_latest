@@ -776,6 +776,7 @@ export async function checkScheduledReports(): Promise<void> {
     for (const report of scheduledReports) {
       const due = isReportDueNow(report, now);
       if (!due.due || !due.scheduledKey) continue;
+      let retryingFailedSend = false;
 
       // Idempotency: ensure we only send once per scheduled slot.
       const inserted = await db
@@ -806,11 +807,16 @@ export async function checkScheduledReports(): Promise<void> {
         const displayError = auditError || existingError;
         const existingCreatedAt = (existingEvent as any)?.createdAt ? new Date((existingEvent as any).createdAt) : null;
         const stalePending = existingStatus === "pending" && (!existingCreatedAt || now.getTime() - existingCreatedAt.getTime() > 10 * 60 * 1000);
-        if (!stalePending) {
+        const staleFailed = existingStatus === "failed"
+          && !(existingEvent as any)?.sentAt
+          && !String(existingError || "").startsWith("Retry failed after previous failure:")
+          && (!existingCreatedAt || now.getTime() - existingCreatedAt.getTime() > 10 * 60 * 1000);
+        if (!stalePending && !staleFailed) {
           console.log(`[Report Scheduler] Report "${report.name}" already processed for ${due.scheduledKey} (status=${existingStatus || "unknown"}${displayError ? `, error=${displayError}` : ""})`);
           continue; // already processed
         }
-        console.warn(`[Report Scheduler] Retrying stale pending report "${report.name}" for ${due.scheduledKey}`);
+        retryingFailedSend = staleFailed;
+        console.warn(`[Report Scheduler] Retrying ${staleFailed ? "stale failed" : "stale pending"} report "${report.name}" for ${due.scheduledKey}`);
         await db
           .update(reportSendEvents)
           .set({ status: "pending", error: null, recipients: (report as any).scheduleRecipients || null } as any)
@@ -925,6 +931,7 @@ export async function checkScheduledReports(): Promise<void> {
       // Update metrics
       const emailError = sent ? "" : await getLatestReportEmailError(snapshotPayload.reportId);
       const sendError = emailError || "Email send failed after retries";
+      const persistedSendError = retryingFailedSend ? `Retry failed after previous failure: ${sendError}` : sendError;
 
       if (sent) {
         schedulerMetrics.totalSent++;
@@ -932,14 +939,14 @@ export async function checkScheduledReports(): Promise<void> {
       } else {
         schedulerMetrics.totalFailed++;
         schedulerMetrics.lastErrorTime = new Date();
-        schedulerMetrics.lastError = sendError;
+        schedulerMetrics.lastError = persistedSendError;
       }
 
       await db
         .update(reportSendEvents)
         .set({
           status: sent ? "sent" : "failed",
-          error: sent ? null : sendError,
+          error: sent ? null : persistedSendError,
           sentAt: sent ? new Date() : null,
           snapshotId: (snap as any)?.id ? String((snap as any).id) : null,
         } as any)

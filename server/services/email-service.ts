@@ -89,13 +89,17 @@ class EmailService {
     this.initializeTransporter();
   }
 
-  private initializeTransporter() {
-    // Auto-detect provider if EMAIL_PROVIDER isn't explicitly set (prevents "configured but not used" confusion).
+  private getConfiguredProvider(): string {
     const autoProvider =
       (process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) || (process.env.MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS)
         ? 'mailgun'
         : (process.env.SENDGRID_API_KEY ? 'sendgrid' : 'smtp');
-    const emailProvider = (process.env.EMAIL_PROVIDER || autoProvider || 'smtp').trim();
+    return (process.env.EMAIL_PROVIDER || autoProvider || 'smtp').trim().toLowerCase();
+  }
+
+  private initializeTransporter() {
+    // Auto-detect provider if EMAIL_PROVIDER isn't explicitly set (prevents "configured but not used" confusion).
+    const emailProvider = this.getConfiguredProvider();
     
     console.log(`[Email Service] Initializing with provider: ${emailProvider}`);
     
@@ -161,7 +165,8 @@ class EmailService {
     console.log(`[Email Service] Attachments: ${Array.isArray(options.attachments) ? options.attachments.length : 0}${attachmentSummary ? ` → ${attachmentSummary}` : ""}`);
 
     // Try Mailgun HTTP API first if configured (more reliable than SMTP)
-    if (process.env.EMAIL_PROVIDER === 'mailgun' && process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) {
+    const emailProvider = this.getConfiguredProvider();
+    if (emailProvider === 'mailgun' && process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) {
       console.log('[Email Service] Using Mailgun HTTP API');
       const result = await this.sendViaMailgunAPI(from, options);
       await this.logEmailAuditEvent({
@@ -194,9 +199,9 @@ class EmailService {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      const provider = (process.env.EMAIL_PROVIDER || '').toLowerCase() === 'sendgrid'
+      const provider = emailProvider === 'sendgrid'
         ? 'sendgrid-smtp'
-        : (process.env.EMAIL_PROVIDER || '').toLowerCase() === 'mailgun'
+        : emailProvider === 'mailgun'
           ? 'mailgun-smtp'
           : 'smtp';
 

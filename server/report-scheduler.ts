@@ -772,7 +772,25 @@ export async function checkScheduledReports(): Promise<void> {
         .returning()
         .catch(() => []);
       if (!inserted || inserted.length === 0) {
-        continue; // already processed
+        const [existingEvent] = await db
+          .select()
+          .from(reportSendEvents)
+          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .limit(1)
+          .catch(() => []);
+        const existingStatus = String((existingEvent as any)?.status || "").toLowerCase();
+        const existingCreatedAt = (existingEvent as any)?.createdAt ? new Date((existingEvent as any).createdAt) : null;
+        const stalePending = existingStatus === "pending" && (!existingCreatedAt || now.getTime() - existingCreatedAt.getTime() > 10 * 60 * 1000);
+        if (!stalePending) {
+          console.log(`[Report Scheduler] Report "${report.name}" already processed for ${due.scheduledKey} (status=${existingStatus || "unknown"})`);
+          continue; // already processed
+        }
+        console.warn(`[Report Scheduler] Retrying stale pending report "${report.name}" for ${due.scheduledKey}`);
+        await db
+          .update(reportSendEvents)
+          .set({ status: "pending", error: null, recipients: (report as any).scheduleRecipients || null } as any)
+          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .catch(() => { });
       }
 
       console.log(`[Report Scheduler] Report "${report.name}" is due now (${due.scheduledKey})`);
@@ -782,6 +800,11 @@ export async function checkScheduledReports(): Promise<void> {
 
       if (!recipients || recipients.length === 0) {
         console.warn(`[Report Scheduler] Report "${report.name}" has no recipients, skipping`);
+        await db
+          .update(reportSendEvents)
+          .set({ status: "skipped", error: "No recipients configured" } as any)
+          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .catch(() => { });
         continue;
       }
 

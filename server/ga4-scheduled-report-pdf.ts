@@ -278,16 +278,19 @@ async function buildGA4ReportPayload(report: any) {
     d.setUTCDate(d.getUTCDate() - 89);
     return d.toISOString().slice(0, 10);
   })();
+  const logPartFailure = (label: string, error: any) => {
+    console.warn(`[GA4 Scheduled PDF] ${label} failed; using persisted fallback:`, error?.message || error);
+  };
   const benchmarkStorage = storage as typeof storage & {
     getPlatformBenchmarks(platformType: string, campaignId?: string): Promise<any[]>;
   };
 
   const [metrics, breakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
-    ga4Service.getMetricsWithAutoRefresh(campaignId, storage, REPORT_LOOKBACK_RANGE, propertyId, campaignFilter),
-    ga4Service.getAcquisitionBreakdown(campaignId, storage, REPORT_LOOKBACK_RANGE, propertyId, 2000, campaignFilter),
-    ga4Service.getLandingPagesReport(campaignId, storage, startDate, propertyId, 50, campaignFilter),
-    ga4Service.getConversionEventsReport(campaignId, storage, startDate, propertyId, 50, campaignFilter),
-    ga4Service.getTimeSeriesData(campaignId, storage, dailyStart, propertyId, campaignFilter),
+    ga4Service.getMetricsWithAutoRefresh(campaignId, storage, REPORT_LOOKBACK_RANGE, propertyId, campaignFilter).catch((e) => { logPartFailure("metrics", e); return {} as any; }),
+    ga4Service.getAcquisitionBreakdown(campaignId, storage, REPORT_LOOKBACK_RANGE, propertyId, 2000, campaignFilter).catch((e) => { logPartFailure("acquisition breakdown", e); return { rows: [] }; }),
+    ga4Service.getLandingPagesReport(campaignId, storage, startDate, propertyId, 50, campaignFilter).catch((e) => { logPartFailure("landing pages", e); return { rows: [] }; }),
+    ga4Service.getConversionEventsReport(campaignId, storage, startDate, propertyId, 50, campaignFilter).catch((e) => { logPartFailure("conversion events", e); return { rows: [] }; }),
+    ga4Service.getTimeSeriesData(campaignId, storage, dailyStart, propertyId, campaignFilter).catch((e) => { logPartFailure("time series", e); return []; }),
     storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]),
     storage.getSpendSources(campaignId).catch(() => [] as any[]),
     storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, "ga4").catch(() => [] as any[]),
@@ -298,6 +301,9 @@ async function buildGA4ReportPayload(report: any) {
 
   const ga4ToDate = await withTokenRefresh(connection, async (token) => {
     return await ga4Service.getTotalsWithRevenue(propertyId, token, startDate, endDate, campaignFilter);
+  }).catch((e) => {
+    logPartFailure("totals with revenue", e);
+    return { totals: {} };
   });
 
   let dailyRows = await storage.getGA4DailyMetrics(campaignId, propertyId, dailyStart, endDate).catch(() => [] as any[]);

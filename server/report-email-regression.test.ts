@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 const REPORT_SCHEDULER_FILE = join(__dirname, "report-scheduler.ts");
+const GA4_SCHEDULED_PDF_FILE = join(__dirname, "ga4-scheduled-report-pdf.ts");
 
 function readReportScheduler(): string {
   return readFileSync(REPORT_SCHEDULER_FILE, "utf-8");
@@ -34,6 +35,15 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain("GA4 PDF builder failed; refusing generic fallback");
     expect(source).toContain("Refusing generic fallback for GA4");
     expect(source).toContain("Refusing to send report");
+  });
+
+  it("keeps GA4 scheduled PDFs resilient to optional section query failures", () => {
+    const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
+
+    expect(source).toContain("[GA4 Scheduled PDF]");
+    expect(source).toContain("using persisted fallback");
+    expect(source).toContain('return { rows: [] };');
+    expect(source).toContain("return { totals: {} };");
   });
 
   it("keeps report test-send aligned with Mailgun HTTP API configuration", () => {

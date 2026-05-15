@@ -136,9 +136,11 @@ async function buildPdfAttachmentForReport(args: {
           });
           if (ga4Pdf) return ga4Pdf;
         } catch (e) {
-          console.warn("[Report Scheduler] GA4 PDF builder failed; using generic PDF fallback:", e);
+          console.warn("[Report Scheduler] GA4 PDF builder failed; refusing generic fallback:", e);
         }
       }
+      console.error(`[Report Scheduler] Refusing generic fallback for GA4 ${ga4ReportType || "report"} PDF`);
+      return null;
     }
 
     const { jsPDF } = await import("jspdf");

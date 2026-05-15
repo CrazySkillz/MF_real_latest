@@ -31,7 +31,8 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain("PDF attachment bytes:");
     expect(source).toContain("attachments: meta?.attachment");
     expect(source).toContain("contentType: 'application/pdf'");
-    expect(source).toContain("GA4 PDF builder failed; using generic PDF fallback");
+    expect(source).toContain("GA4 PDF builder failed; refusing generic fallback");
+    expect(source).toContain("Refusing generic fallback for GA4");
     expect(source).toContain("Refusing to send report");
   });
 

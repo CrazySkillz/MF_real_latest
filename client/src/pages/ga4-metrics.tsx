@@ -1232,6 +1232,14 @@ export default function GA4Metrics() {
     }
   };
 
+  const formatKpiCardValue = (value: string, unit: string) => {
+    if (unit !== "%") return formatValue(value, unit);
+    const numValue = parseFloat(value);
+    if (!Number.isFinite(numValue)) return formatValue(value, unit);
+    const rounded = Math.round(numValue * 100) / 100;
+    return `${rounded.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "achieved":
@@ -6049,13 +6057,13 @@ export default function GA4Metrics() {
                                           <div className="bg-muted rounded-lg p-3">
                                             <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current</div>
                                             <div className="text-xl font-bold text-foreground">
-                                              {isBlocked ? "—" : formatValue(getLiveKpiValue(kpi) || "0", kpi.unit)}
+                                              {isBlocked ? "—" : formatKpiCardValue(getLiveKpiValue(kpi) || "0", kpi.unit)}
                                             </div>
                                           </div>
                                           <div className="bg-muted rounded-lg p-3">
                                             <div className="text-sm font-medium text-muted-foreground/70 mb-1">Target</div>
                                             <div className="text-xl font-bold text-foreground">
-                                              {formatValue(String(t.effectiveTarget), kpi.unit)}
+                                              {formatKpiCardValue(String(t.effectiveTarget), kpi.unit)}
                                             </div>
                                           </div>
                                         </div>
@@ -6082,7 +6090,7 @@ export default function GA4Metrics() {
                                             {(() => {
                                               if (Math.abs(p.effectiveDeltaPct) < 0.0001) return "At target";
                                               const abs = Math.abs(p.effectiveDeltaPct);
-                                              const absStr = abs < 1 ? abs.toFixed(1) : String(Math.round(abs));
+                                              const absStr = formatPct(abs).replace("%", "");
                                               return p.effectiveDeltaPct > 0
                                                 ? `${absStr}% above target`
                                                 : `${absStr}% below target`;

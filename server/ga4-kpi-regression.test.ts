@@ -44,4 +44,17 @@ describe("GA4 KPI regression guard", () => {
     expect(ga4MetricsFile).toContain("...getEmptyKpiFormValues(),");
     expect(ga4MetricsFile).not.toContain('kpiForm.reset({ ...kpiForm.getValues(), name: "", metric: "", description: "", unit: "%", currentValue: "", targetValue: "", priority: "medium" });');
   });
+
+  it("keeps GA4 KPI percentage card values precise enough to explain progress math", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+
+    expect(ga4MetricsFile).toContain('const formatKpiCardValue = (value: string, unit: string) => {');
+    expect(ga4MetricsFile).toContain("const rounded = Math.round(numValue * 100) / 100;");
+    expect(ga4MetricsFile).toContain('formatPct(abs).replace("%", "")');
+    expect(ga4MetricsFile).toContain('formatKpiCardValue(getLiveKpiValue(kpi) || "0", kpi.unit)');
+    expect(ga4MetricsFile).toContain('formatKpiCardValue(String(t.effectiveTarget), kpi.unit)');
+  });
 });

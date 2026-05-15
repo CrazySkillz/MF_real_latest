@@ -207,6 +207,7 @@ Instead:
 - scheduled/server-generated reports use saved config plus shared report-generation infrastructure
 - scheduled/server-generated GA4 reports run a best-effort campaign KPI/Benchmark recompute before PDF generation
 - platform report test-send uses the same email-provider compatibility rule as scheduled delivery, including Mailgun HTTP API when `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are configured
+- scheduled/test-send report emails must attach the generated PDF and keep the email body plain and transactional; the PDF is the report artifact
 
 Important meaning:
 
@@ -218,6 +219,7 @@ Important meaning:
 - if a campaign-scoped scheduled report points to a missing campaign, the scheduler should mark that scheduled send as skipped/failed and not send the report
 - scheduled report selection should deduplicate by report ID before due checks so shared legacy storage and platform-specific report queries cannot process the same report twice
 - scheduled report idempotency remains based on `reportId + scheduledKey`, but deduplication should prevent duplicate in-memory processing before the idempotency insert
+- Mailgun/API acceptance is not the same as delivery; report delivery diagnostics should preserve accepted, delivered, failed, and pending states when provider events are available
 
 ## Current-State Notes
 
@@ -236,6 +238,7 @@ What is true today:
 - report outputs are generated from already-refreshed tab inputs, with scheduled GA4 reports also performing a best-effort KPI/Benchmark recompute before PDF generation
 - scheduled/server-generated GA4 reports now have dedicated server-side rendering for `Overview`, `Ad Comparison`, `Insights`, and `Custom`, using saved report config plus existing refreshed GA4 inputs
 - scheduled report processing now fails closed for missing campaign ownership and deduplicates report rows before due checks
+- scheduled/test-send report emails now use a simple `MimoSaaS report attached` transactional payload with the generated PDF attachment, and test-send checks Mailgun delivery events when available
 
 What is not yet fully consolidated:
 

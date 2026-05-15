@@ -589,6 +589,8 @@ Required behavior:
 - report delete/update routes must only mutate reports belonging to the requested campaign/platform context
 - scheduled report delivery must verify campaign existence before creating snapshots, recomputing dependent analytics, sending email, or updating `lastSentAt`
 - scheduled report processing must deduplicate report rows by ID before due checks because legacy and platform-specific storage paths may return overlapping rows
+- report email success must mean the provider delivered the message when delivery events are available; raw provider/API acceptance alone is not enough to tell the user the email was delivered
+- scheduled and test-send report emails should stay plain and transactional, with the generated PDF as the report artifact
 
 ### Campaign Creation Wizard Pattern
 

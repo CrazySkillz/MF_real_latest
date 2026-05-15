@@ -800,7 +800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return `'${escaped}'!`;
   };
 
-  app.get("/api/campaigns/:id/spend-sources", async (req, res) => {
+  app.get("/api/campaigns/:id/spend-sources", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const sources = await storage.getSpendSources(campaignId);
@@ -811,7 +811,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Remove all active spend sources for a campaign (and therefore remove ROAS/ROI/CPA until re-imported).
-  app.delete("/api/campaigns/:id/spend-sources", async (req, res) => {
+  app.delete("/api/campaigns/:id/spend-sources", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const existing = await storage.getSpendSources(campaignId);
@@ -831,7 +831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/campaigns/:id/spend-totals", async (req, res) => {
+  app.get("/api/campaigns/:id/spend-totals", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const dateRange = String(req.query.dateRange || "30days");
@@ -845,7 +845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Spend-to-date (campaign lifetime) — single source of truth for exec financials (ROI/ROAS/etc).
   // This avoids forcing users to map dates for spend imports.
-  app.get("/api/campaigns/:id/spend-to-date", async (req, res) => {
+  app.get("/api/campaigns/:id/spend-to-date", requireCampaignAccessParamId, async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
@@ -886,7 +886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Daily financials (spend + revenue) for time series charts
   // Returns array of {date, spend, revenue, roas, roi, cpa} for Overview tab daily views
-  app.get("/api/campaigns/:id/daily-financials", async (req, res) => {
+  app.get("/api/campaigns/:id/daily-financials", requireCampaignAccessParamId, async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
@@ -1157,12 +1157,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return campaign;
   };
 
-  const requireCampaignAccessParamId = async (req: any, res: any, next: any) => {
+  async function requireCampaignAccessParamId(req: any, res: any, next: any) {
     const campaign = await ensureCampaignAccess(req, res, req.params?.id);
     if (!campaign) return;
     (req as any)._campaign = campaign;
     return next();
-  };
+  }
 
   const requireCampaignAccessCampaignIdParam = async (req: any, res: any, next: any) => {
     const campaign = await ensureCampaignAccess(req, res, req.params?.campaignId);
@@ -3385,7 +3385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/spend/sheets/preview", async (req, res) => {
+  app.post("/api/campaigns/:id/spend/sheets/preview", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const connectionId = String((req.body as any)?.connectionId || "").trim();
@@ -3504,7 +3504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/campaigns/:id/spend/sheets/process", async (req, res) => {
+  app.post("/api/campaigns/:id/spend/sheets/process", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const connectionId = String((req.body as any)?.connectionId || "").trim();
@@ -17994,6 +17994,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/meta/:campaignId/connect-test", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const adAccountId = (req.body as any)?.adAccountId || 'act_test_123456';
       const adAccountName = (req.body as any)?.adAccountName || 'Test Meta Ad Account';
 
@@ -18038,6 +18040,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/meta/:campaignId/connection", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const connection = await storage.getMetaConnection(campaignId);
 
       if (!connection) {
@@ -18120,6 +18124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId } = req.params;
       const { useMock } = req.query;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
 
       console.log(`[Meta Analytics] Fetching analytics for campaign ${campaignId}`);
 
@@ -18314,6 +18320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/meta/:campaignId/summary", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       console.log(`[Meta Summary] Fetching summary for campaign ${campaignId}`);
 
       const connection = await storage.getMetaConnection(campaignId);
@@ -19028,6 +19036,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/google-ads/:campaignId/select-customer", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { customerId, customerName, accessToken, refreshToken, expiresIn, managerAccountId } = req.body;
 
       if (!customerId) return res.status(400).json({ error: "Customer ID is required" });
@@ -19071,6 +19081,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/google-ads/:campaignId/connect-test", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { customerId, customerName } = req.body;
 
       await storage.deleteGoogleAdsConnection(campaignId).catch(() => {});
@@ -19112,6 +19124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/google-ads/:campaignId/connection", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const connection = await storage.getGoogleAdsConnection(campaignId);
       if (!connection) return res.json({ connected: false });
       res.json({
@@ -19147,6 +19161,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/google-ads/:campaignId/daily-metrics", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { startDate, endDate } = req.query;
       const end = (endDate as string) || new Date().toISOString().slice(0, 10);
       const start = (startDate as string) || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
@@ -19163,6 +19179,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/google-ads/:campaignId/refresh", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const connection = await storage.getGoogleAdsConnection(campaignId);
       if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
 
@@ -19182,6 +19200,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/google-ads/:campaignId/campaigns", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const connection: any = await storage.getGoogleAdsConnection(campaignId);
       if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
 
@@ -19213,6 +19233,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/google-ads/:campaignId/selected-campaigns", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { selectedCampaignIds } = req.body as { selectedCampaignIds: string[] };
       if (!Array.isArray(selectedCampaignIds)) return res.status(400).json({ error: 'selectedCampaignIds must be an array' });
 
@@ -19254,6 +19276,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/meta/:campaignId/daily-metrics", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { startDate, endDate } = req.query;
       const end = (endDate as string) || new Date().toISOString().slice(0, 10);
       const start = (startDate as string) || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
@@ -19354,6 +19378,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/linkedin/:campaignId/daily-metrics", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { startDate, endDate } = req.query;
       const end = (endDate as string) || new Date().toISOString().slice(0, 10);
       const start = (startDate as string) || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
@@ -19408,6 +19434,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/meta/:campaignId/selected-campaigns", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const { selectedCampaignIds } = req.body as { selectedCampaignIds: string[] };
       if (!Array.isArray(selectedCampaignIds)) return res.status(400).json({ error: 'selectedCampaignIds must be an array' });
 
@@ -25534,7 +25562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Detect columns from Google Sheets
-  app.get("/api/campaigns/:id/google-sheets/detect-columns", async (req, res) => {
+  app.get("/api/campaigns/:id/google-sheets/detect-columns", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const { spreadsheetId, connectionId, connectionIds, fetchAll, sheetNames } = req.query;
@@ -25751,7 +25779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Fetch unique values for a given column across selected Google Sheets tabs (used for crosswalk dropdown)
-  app.get("/api/campaigns/:id/google-sheets/unique-values", async (req, res) => {
+  app.get("/api/campaigns/:id/google-sheets/unique-values", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const spreadsheetId = String(req.query.spreadsheetId || '').trim();
@@ -25857,7 +25885,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Auto-map columns to platform fields
-  app.post("/api/campaigns/:id/google-sheets/auto-map", async (req, res) => {
+  app.post("/api/campaigns/:id/google-sheets/auto-map", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const { platform, columns } = req.body;
@@ -25897,6 +25925,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const { connectionId, mappings, platform } = req.body;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
       const spreadsheetIdFromBody: string | undefined = req.body.spreadsheetId;
       const sheetNamesFromBody: string[] = Array.isArray(req.body.sheetNames)
         ? req.body.sheetNames.filter((s: any) => typeof s === 'string' && s.trim().length > 0).map((s: string) => s.trim())
@@ -25910,6 +25940,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`[Save Mappings] ✅ Validation passed. Processing ${mappings.length} mappings...`);
+
+      const allConnections = await storage.getGoogleSheetsConnections(campaignId);
+      const targetConnection = allConnections.find(conn => String(conn.id) === String(connectionId));
+      if (!targetConnection) {
+        return res.status(404).json({ error: 'Connection not found' });
+      }
 
       // Get platform fields with dynamic requirements (same logic as /api/platforms/:platform/fields)
       let platformFields = getPlatformFields(platform || 'linkedin');
@@ -25989,14 +26025,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Verify the update was successful by fetching all connections and finding this one
-      const allConnections = await storage.getGoogleSheetsConnections(campaignId);
-      console.log(`[Save Mappings] Total active connections for campaign:`, allConnections.length);
-      const updatedConnection = allConnections.find(conn => conn.id === connectionId);
+      // Verify the update was successful by fetching this campaign's connections after update
+      const updatedConnections = await storage.getGoogleSheetsConnections(campaignId);
+      console.log(`[Save Mappings] Total active connections for campaign:`, updatedConnections.length);
+      const updatedConnection = updatedConnections.find(conn => conn.id === connectionId);
 
       if (!updatedConnection) {
         console.error(`[Save Mappings] ❌ Connection ${connectionId} not found in active connections after update`);
-        console.error(`[Save Mappings] Available connection IDs:`, allConnections.map(c => c.id));
+        console.error(`[Save Mappings] Available connection IDs:`, updatedConnections.map(c => c.id));
         return res.status(404).json({ error: 'Connection not found after update' });
       }
 
@@ -26436,9 +26472,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId, connectionId } = req.params;
       const { platforms } = req.body;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
 
       if (!Array.isArray(platforms)) {
         return res.status(400).json({ error: 'platforms must be an array of platform IDs' });
+      }
+
+      const connections = await storage.getGoogleSheetsConnections(campaignId);
+      const existing = connections.find((c: any) => String(c?.id) === String(connectionId));
+      if (!existing) {
+        return res.status(404).json({ error: 'Connection not found' });
       }
 
       const updated = await storage.updateGoogleSheetsConnection(connectionId, {
@@ -26461,6 +26505,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const { connectionId } = req.query;
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
 
       let connection: any;
       if (connectionId) {

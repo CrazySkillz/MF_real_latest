@@ -199,6 +199,8 @@ For destructive or visibility-related changes:
 - scheduled report jobs must not snapshot, email, recompute, or update send bookkeeping for a campaign-scoped report whose campaign no longer exists
 - scheduler report selection should deduplicate reports by report ID before processing so legacy and platform-specific storage paths cannot process the same report twice
 - report update/delete routes must return accurate success/failure based on the row actually changed or removed
+- report email delivery fixes must distinguish provider/API acceptance from confirmed delivery; do not tell the user an email was delivered unless provider delivery events or actual inbox receipt prove it
+- report emails should remain plain transactional messages with the generated PDF attached unless the user explicitly requests a delivery-safe redesign
 - legacy routes must be traced to a current UI/API caller before giving validation instructions or changing behavior
 
 ## Development Guidelines

@@ -164,6 +164,9 @@ Important meaning:
 - if the campaign is missing, the scheduler must not create a report snapshot, recompute GA4 KPI/Benchmark state, generate/send the email, or update report `lastSentAt`
 - scheduler report selection must deduplicate report rows by report ID before due checks because the shared report table can be reached through legacy and platform-specific storage paths
 - scheduled send events remain the audit/idempotency layer for each `reportId + scheduledKey`
+- scheduled and test-send report emails must include the generated PDF attachment; the email body is delivery scaffolding, not the report content
+- report emails should remain plain transactional messages with simple subject/body text and no marketing banner, dashboard CTA, or styled report body because Gmail deliverability rejected the richer report-email payload
+- Mailgun/API acceptance is not proof of inbox delivery; when provider delivery events are available, test-send and scheduler diagnostics must distinguish accepted, delivered, failed, and pending delivery states
 
 ## Backend Report Model
 
@@ -221,6 +224,8 @@ Aligned:
 - scheduled delivery deduplicates report rows before due checks
 - scheduled report email delivery uses the configured email provider detected at send time; if Mailgun API credentials are present, scheduled reports use the Mailgun HTTP API instead of falling back to unauthenticated SMTP
 - platform report test-send uses the same ownership guard and Mailgun HTTP API-compatible configuration path as scheduled report delivery
+- scheduled/test-send report emails use a plain transactional `MimoSaaS report attached` payload and attach the generated PDF as the primary report artifact
+- platform report test-send verifies Mailgun delivery status when the provider exposes events and returns failure when the provider later rejects the accepted message
 - scheduled send events keep one audit/idempotency row per `reportId + scheduledKey`; successful rows must not display stale errors from earlier failed email audit rows
 - a stale failed scheduled send with no `sentAt` can retry once after the underlying provider issue is fixed; if that retry fails, it is marked as a retry failure and does not loop every scheduler tick
 
@@ -230,6 +235,7 @@ Important caveats:
 - the current `Ad Comparison` report output reflects the current GA4 comparison implementation, which is campaign-row comparison rather than true ad/creative-level reporting
 - the shared scheduler and report-link helper still contain legacy LinkedIn-oriented infrastructure details
 - email delivery timing/provider behavior still depends on scheduler execution and runtime email infrastructure, but the GA4 attachment path is no longer intentionally header-only for standard templates or `Custom`
+- provider acceptance alone must not be shown to users as successful delivery when the provider subsequently reports a failed delivery event
 
 ## Report Library Meaning
 

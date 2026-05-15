@@ -101,6 +101,98 @@ describe("Endpoint auth guard audit", () => {
 
     expect(missing, `Shopify endpoints missing auth:\n${missing.join("\n")}`).toHaveLength(0);
   });
+
+  it("campaign spend and financial routes require campaign access", () => {
+    const content = readRoutes();
+    const protectedRoutes = [
+      "/api/campaigns/:id/spend-sources",
+      "/api/campaigns/:id/spend-totals",
+      "/api/campaigns/:id/spend-to-date",
+      "/api/campaigns/:id/daily-financials",
+    ];
+    const missing = protectedRoutes.filter((route) => {
+      const escaped = route.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return !new RegExp(`app\\.(get|delete)\\(\\s*["'\`]${escaped}["'\`]\\s*,\\s*requireCampaignAccessParamId`).test(content);
+    });
+
+    expect(missing, `Campaign spend/financial routes missing auth:\n${missing.join("\n")}`).toHaveLength(0);
+  });
+
+  it("all Meta :campaignId endpoints have ensureCampaignAccess", () => {
+    const content = readRoutes();
+    const lines = content.split("\n");
+    const missing: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.match(/app\.(get|post|put|patch|delete)\(\s*["'`]\/api\/meta\/:campaignId/)) continue;
+
+      const block = lines.slice(i, i + 30).join("\n");
+      if (!block.includes("ensureCampaignAccess")) {
+        missing.push(`routes-oauth.ts:${i + 1} - ${line.trim().slice(0, 100)}`);
+      }
+    }
+
+    expect(missing, `Meta endpoints missing auth:\n${missing.join("\n")}`).toHaveLength(0);
+  });
+
+  it("all Google Ads :campaignId endpoints have ensureCampaignAccess", () => {
+    const content = readRoutes();
+    const lines = content.split("\n");
+    const missing: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.match(/app\.(get|post|put|patch|delete)\(\s*["'`]\/api\/google-ads\/:campaignId/)) continue;
+
+      const block = lines.slice(i, i + 30).join("\n");
+      if (!block.includes("ensureCampaignAccess")) {
+        missing.push(`routes-oauth.ts:${i + 1} - ${line.trim().slice(0, 100)}`);
+      }
+    }
+
+    expect(missing, `Google Ads endpoints missing auth:\n${missing.join("\n")}`).toHaveLength(0);
+  });
+
+  it("all LinkedIn :campaignId endpoints have ensureCampaignAccess", () => {
+    const content = readRoutes();
+    const lines = content.split("\n");
+    const missing: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.match(/app\.(get|post|put|patch|delete)\(\s*["'`]\/api\/linkedin\/:campaignId/)) continue;
+
+      const block = lines.slice(i, i + 30).join("\n");
+      if (!block.includes("ensureCampaignAccess")) {
+        missing.push(`routes-oauth.ts:${i + 1} - ${line.trim().slice(0, 100)}`);
+      }
+    }
+
+    expect(missing, `LinkedIn endpoints missing auth:\n${missing.join("\n")}`).toHaveLength(0);
+  });
+
+  it("Google Sheets campaign source routes require campaign access", () => {
+    const content = readRoutes();
+    const lines = content.split("\n");
+    const missing: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const isGoogleSheetsRoute =
+        line.match(/app\.(get|post|put|patch|delete)\(\s*["'`]\/api\/google-sheets\/:campaignId/) ||
+        line.match(/app\.(get|post|put|patch|delete)\(\s*["'`]\/api\/campaigns\/:id\/google-sheets\//) ||
+        line.match(/app\.(get|post|put|patch|delete)\(\s*["'`]\/api\/campaigns\/:id\/(revenue|spend)\/sheets\//);
+      if (!isGoogleSheetsRoute) continue;
+
+      const block = lines.slice(i, i + 30).join("\n");
+      if (!block.includes("ensureCampaignAccess") && !block.includes("requireCampaignAccess")) {
+        missing.push(`routes-oauth.ts:${i + 1} - ${line.trim().slice(0, 100)}`);
+      }
+    }
+
+    expect(missing, `Google Sheets source routes missing auth:\n${missing.join("\n")}`).toHaveLength(0);
+  });
 });
 
 // ---------------------------------------------------------------------------

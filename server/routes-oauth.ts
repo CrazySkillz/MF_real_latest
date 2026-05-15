@@ -21872,22 +21872,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Report not found" });
       }
 
-      // Check email configuration first
-      const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
-      const hasEmailConfig =
-        (emailProvider === 'mailgun' && process.env.MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS) ||
-        (emailProvider === 'sendgrid' && process.env.SENDGRID_API_KEY) ||
-        (emailProvider === 'smtp' && process.env.SMTP_USER && process.env.SMTP_PASS);
-
-      if (!hasEmailConfig) {
-        console.error(`[API] Email not configured. Provider: ${emailProvider}`);
-        return res.status(500).json({
-          message: `Email service not configured. Please set up ${emailProvider.toUpperCase()} credentials in environment variables.`,
-          success: false,
-          emailProvider
-        });
-      }
-
       const { sendTestReport } = await import('./report-scheduler.js');
       const sent = await sendTestReport(reportId);
 

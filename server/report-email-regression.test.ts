@@ -32,4 +32,20 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain("attachments: meta?.attachment");
     expect(source).toContain("contentType: 'application/pdf'");
   });
+
+  it("keeps report test-send aligned with Mailgun HTTP API configuration", () => {
+    const schedulerSource = readReportScheduler();
+    const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const testSendRoute = routesSource.slice(
+      routesSource.indexOf('app.post("/api/platforms/:platformType/reports/:reportId/send-test"'),
+      routesSource.indexOf("// Report snapshots (immutable history)")
+    );
+
+    expect(schedulerSource).toContain("process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN");
+    expect(schedulerSource).toContain("For Mailgun API: MAILGUN_API_KEY, MAILGUN_DOMAIN");
+    expect(testSendRoute).toContain("ensurePlatformReportAccess(req as any, res as any, reportId)");
+    expect(testSendRoute).toContain("sendTestReport(reportId)");
+    expect(testSendRoute).not.toContain("hasEmailConfig");
+    expect(testSendRoute).not.toContain("MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS");
+  });
 });

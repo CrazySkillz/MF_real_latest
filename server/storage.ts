@@ -2905,6 +2905,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async recordKPIProgress(progressData: InsertKPIProgress): Promise<KPIProgress> {
+    const [existingKPI] = await db
+      .select({ id: kpis.id })
+      .from(kpis)
+      .where(eq(kpis.id, progressData.kpiId))
+      .limit(1);
+    if (!existingKPI) {
+      throw new Error("KPI not found");
+    }
+
     const [progress] = await db
       .insert(kpiProgress)
       .values(progressData)

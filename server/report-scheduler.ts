@@ -997,14 +997,16 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
     // Check email configuration
     const emailProvider = process.env.EMAIL_PROVIDER || 'smtp';
     const hasEmailConfig =
-      (emailProvider === 'mailgun' && process.env.MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS) ||
-      (emailProvider === 'sendgrid' && process.env.SENDGRID_API_KEY) ||
-      (emailProvider === 'smtp' && process.env.SMTP_USER && process.env.SMTP_PASS);
+      (process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) ||
+      (process.env.MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS) ||
+      (process.env.SENDGRID_API_KEY) ||
+      (process.env.SMTP_USER && process.env.SMTP_PASS);
 
     if (!hasEmailConfig) {
       console.error(`[Report Scheduler] ❌ Email provider configured as "${emailProvider}" but credentials are missing`);
       console.error('[Report Scheduler] Please configure email environment variables on Render:');
-      console.error('  - For Mailgun: MAILGUN_SMTP_USER, MAILGUN_SMTP_PASS');
+      console.error('  - For Mailgun API: MAILGUN_API_KEY, MAILGUN_DOMAIN');
+      console.error('  - For Mailgun SMTP: MAILGUN_SMTP_USER, MAILGUN_SMTP_PASS');
       console.error('  - For SendGrid: SENDGRID_API_KEY');
       console.error('  - For SMTP: SMTP_USER, SMTP_PASS');
       return false;

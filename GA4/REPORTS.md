@@ -220,6 +220,7 @@ Aligned:
 - scheduled delivery skips or fails closed when a campaign-scoped report no longer has a valid campaign
 - scheduled delivery deduplicates report rows before due checks
 - scheduled report email delivery uses the configured email provider detected at send time; if Mailgun API credentials are present, scheduled reports use the Mailgun HTTP API instead of falling back to unauthenticated SMTP
+- platform report test-send uses the same ownership guard and Mailgun HTTP API-compatible configuration path as scheduled report delivery
 - scheduled send events keep one audit/idempotency row per `reportId + scheduledKey`; successful rows must not display stale errors from earlier failed email audit rows
 - a stale failed scheduled send with no `sentAt` can retry once after the underlying provider issue is fixed; if that retry fails, it is marked as a retry failure and does not loop every scheduler tick
 

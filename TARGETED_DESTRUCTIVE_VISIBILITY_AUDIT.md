@@ -8,7 +8,9 @@ This audit covers user-visible data loss, hidden records, scheduler side effects
 
 Rule: do not mark an item complete unless the route/job/storage path has been traced end to end and validated.
 
-Last updated: 2026-05-15 after the notification lifecycle targeted pass, KPI progress scope validation, Benchmark update route scope hardening, campaign Benchmark edit-format regression guard, exact Benchmark history cleanup on Benchmark delete, Benchmark history write fail-closed guard, and Benchmark history/analytics read-route access guards.
+Last updated: 2026-05-15 after the notification lifecycle targeted pass, KPI progress scope validation, KPI analytics/read route access guards, KPI progress write fail-closed guard, Benchmark update route scope hardening, campaign Benchmark edit-format regression guard, exact Benchmark history cleanup on Benchmark delete, Benchmark history write fail-closed guard, Benchmark history/analytics read-route access guards, and report test-send Mailgun HTTP API alignment.
+
+Current reconciliation note: the two previous outstanding-task lists now describe the same audit queue. KPI analytics/read route guards, Benchmark route isolation, Benchmark history cleanup, and Benchmark history/analytics read guards have been completed. The next active subsystem is Report routes and scheduler update/delete/send/test-send visibility.
 
 ## Execution Method
 
@@ -44,6 +46,7 @@ Subsystem order:
 - Scheduled reports deduplicate report rows before processing.
 - Scheduled reports skip/fail closed when the campaign no longer exists.
 - Scheduled report email delivery uses the detected provider at send time, including Mailgun HTTP API when Mailgun API credentials exist.
+- Platform report test-send uses the same report ownership guard and Mailgun HTTP API-compatible configuration path as scheduled report delivery instead of requiring Mailgun SMTP credentials.
 - Stale failed scheduled report sends with no `sentAt` can retry once safely.
 - Sent scheduled report rows do not show stale old failure errors.
 - Shared `deleteNotification(id)` now soft-hides notifications instead of hard-deleting them.
@@ -56,7 +59,8 @@ Subsystem order:
 - Campaign-level KPI/Benchmark alert creation now uses one active unresolved alert per linked KPI/Benchmark, matching GA4 behavior and preventing repeated creation logs for the same active breach.
 - KPI/Benchmark email alert lifecycle now fails closed when the linked campaign is missing and parses formatted numeric values consistently before sending email, updating `lastAlertSent`, or writing alert audit state.
 - Generic platform KPI routes now reject reserved campaign-layer platform values before read/create/update/delete, preventing platform KPI endpoints from mutating campaign-level KPI rows.
-- Generic KPI progress writes now require the caller's expected layer scope and verify it against the persisted KPI row before inserting progress or updating `currentValue`.
+- Generic KPI progress writes now require the caller's expected layer scope, verify it against the persisted KPI row before inserting progress or updating `currentValue`, and storage refuses progress writes for missing KPI rows.
+- Generic KPI latest-period and analytics read routes are guarded by `ensureKpiAccess` before reading period/progress/analytics storage.
 - Benchmark platform routes now reject reserved campaign-layer platform values, and Benchmark update routes keep `campaignId`/`platformType` immutable from the persisted row.
 - Campaign-level Benchmark edit forms now normalize persisted numeric values for display without changing saved values: `count` values remove decimal suffixes and currency values use thousands separators.
 - Individual Benchmark deletion now removes only the selected Benchmark's history rows in the same transaction before deleting that Benchmark, preventing orphaned Benchmark history without broad cleanup.
@@ -66,8 +70,8 @@ Subsystem order:
 ## Current Status By Subsystem
 
 - Notification lifecycle and alert visibility: code audit is complete for the targeted scope. In-app bell visibility, single dismiss, clear-all, mark-read scoping, KPI/Benchmark delete hiding, campaign delete hiding, alert recreation, non-breach hiding, missing-campaign fail-closed behavior, duplicate active alert suppression, non-breaching alert hiding, orphan/cross-campaign hiding, and email-alert missing-campaign/numeric parsing boundaries have been traced and hardened. Ongoing production validation remains listed under Runtime Validation Required.
-- KPI/Benchmark campaign-vs-platform route isolation: partially hardened. Generic platform KPI routes fail closed for campaign-layer values, generic KPI progress writes now verify caller layer scope before mutating `currentValue`, and Benchmark update routes now preserve persisted `campaignId`/`platformType` instead of accepting caller-supplied scope changes. Remaining KPI analytics/read and Benchmark history/analytics/delete-side-effect paths still require the listed route-isolation pass.
-- Report update/delete/scheduler/send visibility: partially hardened; final pass still required.
+- KPI/Benchmark campaign-vs-platform route isolation: code-audited for the targeted scope. Generic platform KPI routes fail closed for campaign-layer values, generic KPI latest-period/analytics reads are access-guarded, generic KPI progress writes verify caller layer scope and fail closed for missing KPI rows, Benchmark update routes preserve persisted `campaignId`/`platformType`, Benchmark deletion cleans exact matching history rows, Benchmark history writes fail closed for missing Benchmark rows, and Benchmark history/analytics reads are access-guarded.
+- Report update/delete/scheduler/send visibility: partially hardened. Platform report update/delete/snapshot/test-send routes are ownership-guarded, scheduled delivery is deduplicated and campaign-existence guarded, and test-send now accepts Mailgun HTTP API configuration. Remaining final pass still required.
 - Source edit/delete and normalized-record cleanup: not started.
 - Campaign/client delete cascades: partially hardened; final table-by-table pass still required.
 - Legacy route/schema/storage cleanup: not started and must remain last.
@@ -75,17 +79,24 @@ Subsystem order:
 ## Reconciled Outstanding Subsystems
 
 - Notification lifecycle: in-app notification creation/read/dismiss/clear/delete, scheduler creation, duplicate suppression, non-breach hiding, orphan/cross-campaign hiding, missing-campaign fail-closed behavior, and email-alert stale-row checks are code-audited for the targeted scope. Remaining work is production runtime observation only.
-- KPI/Benchmark route isolation: still active. KPI platform-route reserved-value guard, generic KPI progress scope validation, Benchmark update scope immutability, Benchmark delete history cleanup, Benchmark history write existence checks, and Benchmark history/analytics read guards are complete; generic KPI analytics/read paths remain outstanding.
-- Report routes and scheduler: still active. Some platform and legacy LinkedIn report ownership guards are complete, but the remaining scheduler/update/delete/test-send pass is outstanding.
+- KPI/Benchmark route isolation: code-audited for the targeted scope. KPI platform-route reserved-value guard, generic KPI analytics/read guards, generic KPI progress scope validation and missing-row guard, Benchmark update scope immutability, Benchmark delete history cleanup, Benchmark history write existence checks, and Benchmark history/analytics read guards are complete.
+- Report routes and scheduler: still active. Platform report update/delete/snapshot/test-send ownership guards, legacy LinkedIn update/delete ownership guards, scheduled-send dedupe, missing-campaign skip, stale failed retry, and Mailgun HTTP API send/test-send alignment are complete. Remaining report pass should focus on stale legacy callers, snapshot/download ownership edge cases, and send bookkeeping consistency.
 - Source delete/edit flows: not started.
 - Campaign/client delete cascades: partially hardened, but final table-by-table destructive-scope pass remains outstanding.
 - Legacy/stale routes and schema cleanup: not started and must remain last.
 
+## Remaining Ordered Queue
+
+1. Finish Report routes and scheduler update/delete/send/test-send pass.
+2. Audit Source edit/delete flows and normalized-record cleanup.
+3. Complete final campaign/client delete cascade table-by-table pass.
+4. Review legacy/stale routes and schema/storage cleanup only after proving reachability and production data dependency.
+
 ## Outstanding
 
-- KPI routes: generic platform KPI route reserved-value guard and generic KPI progress scope validation are complete. Still confirm generic KPI analytics/read paths, route-specific update/delete paths, alert side effects, and any legacy platform KPI callers cannot mutate/delete across campaign-vs-platform boundaries.
+- KPI routes: generic platform KPI route reserved-value guard, generic KPI analytics/read route guards, generic KPI progress scope validation, and missing-row progress write guard are complete. No remaining KPI route-isolation gaps are known from the targeted pass.
 - Benchmark routes: platform Benchmark routes now reject campaign-layer platform values, Benchmark update routes preserve persisted `campaignId`/`platformType`, Benchmark deletion cleans up only exact matching history rows, Benchmark history writes require an existing Benchmark row, and Benchmark history/analytics read routes use `ensureBenchmarkAccess`. No remaining Benchmark route-isolation gaps are known from the targeted pass.
-- Report routes: complete final check of remaining report scheduler/update/delete/test-send paths for stale legacy callers and cross-campaign report IDs.
+- Report routes: platform report test-send now follows the same Mailgun HTTP API-compatible path as scheduled sends. Complete final check of remaining report scheduler/update/delete/test-send paths for stale legacy callers, snapshot/download ownership edge cases, and cross-campaign report IDs.
 - Source delete/edit flows: review CSV, Google Sheets, HubSpot, Salesforce, Shopify, LinkedIn, Meta, Google Ads, and Custom Integration delete/edit routes. Confirm each route only mutates the intended campaign/source/platform records.
 - Client delete cascade: trace all child campaign records, reports, KPIs, benchmarks, notifications, alerts, sources, snapshots, send events, and email audit rows.
 - Campaign delete cascade: complete a final table-by-table scoping pass for all child rows.

@@ -206,6 +206,7 @@ Instead:
 - ad hoc GA4 reports use live refreshed page state at generation time
 - scheduled/server-generated reports use saved config plus shared report-generation infrastructure
 - scheduled/server-generated GA4 reports run a best-effort campaign KPI/Benchmark recompute before PDF generation
+- platform report test-send uses the same email-provider compatibility rule as scheduled delivery, including Mailgun HTTP API when `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are configured
 
 Important meaning:
 

@@ -687,7 +687,7 @@ export function AddRevenueWizardModal(props: {
     return () => {
       mounted = false;
     };
-  }, [open, step, campaignId, sheetsPurpose, isEditing, sheetsConnectionId, sheetsBackToChooser]);
+  }, [open, step, campaignId, sheetsPurpose, isEditing, sheetsBackToChooser]);
 
   const refreshSheetsConnections = async () => {
     try {

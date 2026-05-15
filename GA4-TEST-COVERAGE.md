@@ -10,9 +10,18 @@ These are the current lightweight regression guards added during GA4 stabilizati
 | `server/ga4-auto-refresh-regression.test.ts` | scheduler-triggered external revenue/spend refresh orchestration |
 | `server/ga4-financial-rules.test.ts` | all-source financial formulas and source aggregation rules |
 | `server/ga4-insights-regression.test.ts` | Insights Executive Financials and source-provenance rendering rules |
+| `server/ga4-kpi-regression.test.ts` | GA4 KPI create/edit display guards, including percentage precision that keeps card values consistent with progress math |
 | `server/report-email-regression.test.ts` | scheduled report email copy, removed legacy banner/link/window text, and PDF attachment wiring |
 
-Last validated on 2026-05-10:
+Last targeted GA4 KPI validation on 2026-05-15:
+
+- `npx vitest run server/ga4-kpi-regression.test.ts --pool forks`
+- `npm run check`
+- `npm run build`
+
+Result: all checks passed for the GA4 KPI percentage display/progress regression guard.
+
+Last broad GA4 validation on 2026-05-10:
 
 - `npx vitest run server/ga4-insights-regression.test.ts --pool forks`
 - `npx vitest run server/report-email-regression.test.ts --pool forks`

@@ -64,6 +64,9 @@ Each KPI shows:
 - edit action
 - delete action
 
+Percentage KPI card values should display enough precision to explain the progress math.
+For example, a raw conversion rate of about `4.03%` against a `5%` target should show about `80.6%` progress and about `19.4% below target`; it should not display the current value as only `4%` if that makes the progress appear inconsistent.
+
 The KPI grid is the detailed record of KPI state.
 
 The executive snapshot tracker is a summary derived from the KPI grid, not a separate source of truth.

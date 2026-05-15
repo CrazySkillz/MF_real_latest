@@ -20650,6 +20650,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return !platformType || platformType === "campaign";
   };
 
+  const isCampaignBenchmarkPlatformType = (value: unknown): boolean => {
+    const platformType = String(value || "").trim().toLowerCase();
+    return !platformType || platformType === "campaign";
+  };
+
   app.get("/api/campaigns/:id/kpis", async (req, res) => {
     try {
       const { id } = req.params;
@@ -21315,11 +21320,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/campaigns/:campaignId/benchmarks/:benchmarkId", async (req, res) => {
     try {
-      const { benchmarkId } = req.params;
+      const { campaignId, benchmarkId } = req.params;
       const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
       if (!existing) return;
       const platformType = String((existing as any)?.platformType || "").trim().toLowerCase();
       if (platformType && platformType !== "campaign") {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
+      if (String((existing as any)?.campaignId || "") !== String(campaignId)) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
 
@@ -21335,7 +21343,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cleanedData.currentValue = cleanedData.currentValue !== '' ? String(cleanedData.currentValue) : null;
       }
 
-      const validatedBenchmark = insertBenchmarkSchema.partial().parse(cleanedData);
+      const validatedBenchmark = insertBenchmarkSchema.partial().parse({
+        ...cleanedData,
+        campaignId: (existing as any).campaignId,
+        platformType: (existing as any).platformType,
+      }) as any;
+      delete validatedBenchmark.campaignId;
+      delete validatedBenchmark.platformType;
 
       const benchmark = await storage.updateBenchmark(benchmarkId, validatedBenchmark);
       if (!benchmark) {
@@ -21354,11 +21368,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/campaigns/:campaignId/benchmarks/:benchmarkId", async (req, res) => {
     try {
-      const { benchmarkId } = req.params;
+      const { campaignId, benchmarkId } = req.params;
       const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
       if (!existing) return;
       const platformType = String((existing as any)?.platformType || "").trim().toLowerCase();
       if (platformType && platformType !== "campaign") {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
+      if (String((existing as any)?.campaignId || "") !== String(campaignId)) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
 
@@ -21464,6 +21481,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/platforms/:platformType/benchmarks", async (req, res) => {
     try {
       const { platformType } = req.params;
+      if (isCampaignBenchmarkPlatformType(platformType)) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
       const { campaignId } = req.query;
       if (!campaignId) return res.json([]);
       const ok = await ensureCampaignAccess(req as any, res as any, String(campaignId));
@@ -21480,6 +21500,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/platforms/:platformType/benchmarks", async (req, res) => {
     try {
       const { platformType } = req.params;
+      if (isCampaignBenchmarkPlatformType(platformType)) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
       if (!req.body?.campaignId) {
         return res.status(400).json({ message: "campaignId is required" });
       }
@@ -21524,13 +21547,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/platforms/:platformType/benchmarks/:benchmarkId", async (req, res) => {
     try {
       const { platformType, benchmarkId } = req.params;
+      if (isCampaignBenchmarkPlatformType(platformType)) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
       const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
       if (!existing) return;
       if (String((existing as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
 
-      const validatedData = insertBenchmarkSchema.partial().parse(req.body);
+      const validatedData = insertBenchmarkSchema.partial().parse({
+        ...req.body,
+        campaignId: (existing as any).campaignId,
+        platformType: (existing as any).platformType,
+      }) as any;
+      delete validatedData.campaignId;
+      delete validatedData.platformType;
 
       // Calculate variance if both values are provided
       if (validatedData.currentValue && validatedData.benchmarkValue) {
@@ -21567,6 +21599,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/platforms/:platformType/benchmarks/:benchmarkId", async (req, res) => {
     try {
       const { platformType, benchmarkId } = req.params;
+      if (isCampaignBenchmarkPlatformType(platformType)) {
+        return res.status(404).json({ message: "Benchmark not found" });
+      }
       const existing = await ensureBenchmarkAccess(req as any, res as any, benchmarkId);
       if (!existing) return;
       if (String((existing as any)?.platformType || "").trim().toLowerCase() !== String(platformType || "").trim().toLowerCase()) {
@@ -22097,7 +22132,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updateData.variance = variance.toString();
       }
 
-      const benchmark = await storage.updateBenchmark(id, updateData);
+      const validated = insertBenchmarkSchema.partial().parse({
+        ...updateData,
+        campaignId: (existing as any).campaignId,
+        platformType: (existing as any).platformType,
+      }) as any;
+      delete validated.campaignId;
+      delete validated.platformType;
+
+      const benchmark = await storage.updateBenchmark(id, validated);
 
       if (!benchmark) {
         return res.status(404).json({ message: "Benchmark not found" });

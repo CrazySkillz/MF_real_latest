@@ -2400,15 +2400,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .filter((c: any) => c && String(c.id) !== String(conn.id) && c.accessToken)
           .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime())[0];
         if (fallback?.accessToken) {
-          const fallbackResp = await fetchWithTimeout(
+          let fallbackAccessToken = fallback.accessToken;
+          let fallbackResp = await fetchWithTimeout(
             `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
-            { headers: { "Authorization": `Bearer ${fallback.accessToken}` } }
+            { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
           );
+          if (!fallbackResp.ok && fallbackResp.status === 401 && fallback.refreshToken) {
+            try {
+              fallbackAccessToken = await refreshGoogleSheetsToken(fallback);
+              fallbackResp = await fetchWithTimeout(
+                `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+                { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
+              );
+            } catch {
+              // fall through to original error response
+            }
+          }
           if (fallbackResp.ok) {
             resp = fallbackResp;
-            accessToken = fallback.accessToken;
+            accessToken = fallbackAccessToken;
             await storage.updateGoogleSheetsConnection(String(conn.id), {
-              accessToken: fallback.accessToken,
+              accessToken: fallbackAccessToken,
               refreshToken: fallback.refreshToken || conn.refreshToken || null,
               clientId: fallback.clientId || conn.clientId,
               clientSecret: fallback.clientSecret || conn.clientSecret,
@@ -2424,7 +2436,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? "Access denied. Reconnect Google Sheets or make sure the connected Google account still has access to this spreadsheet."
           : resp.status === 404
             ? "Spreadsheet not found. It may have been deleted or moved. Choose a different sheet/tab."
-            : `Failed to fetch sheet: ${txt}`;
+            : resp.status === 401
+              ? "Google Sheets needs to be reconnected. Please reconnect and try again."
+              : `Failed to fetch sheet: ${txt}`;
         return res.status(resp.status === 401 ? 401 : 400).json({
           success: false,
           error: message,
@@ -2550,15 +2564,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .filter((c: any) => c && String(c.id) !== String(conn.id) && c.accessToken)
           .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime())[0];
         if (fallback?.accessToken) {
-          const fallbackResp = await fetchWithTimeout(
+          let fallbackAccessToken = fallback.accessToken;
+          let fallbackResp = await fetchWithTimeout(
             `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
-            { headers: { "Authorization": `Bearer ${fallback.accessToken}` } }
+            { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
           );
+          if (!fallbackResp.ok && fallbackResp.status === 401 && fallback.refreshToken) {
+            try {
+              fallbackAccessToken = await refreshGoogleSheetsToken(fallback);
+              fallbackResp = await fetchWithTimeout(
+                `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+                { headers: { "Authorization": `Bearer ${fallbackAccessToken}` } }
+              );
+            } catch {
+              // fall through to original error response
+            }
+          }
           if (fallbackResp.ok) {
             resp = fallbackResp;
-            accessToken = fallback.accessToken;
+            accessToken = fallbackAccessToken;
             await storage.updateGoogleSheetsConnection(String(conn.id), {
-              accessToken: fallback.accessToken,
+              accessToken: fallbackAccessToken,
               refreshToken: fallback.refreshToken || conn.refreshToken || null,
               clientId: fallback.clientId || conn.clientId,
               clientSecret: fallback.clientSecret || conn.clientSecret,
@@ -2574,7 +2600,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? "Access denied. Reconnect Google Sheets or make sure the connected Google account still has access to this spreadsheet."
           : resp.status === 404
             ? "Spreadsheet not found. It may have been deleted or moved. Choose a different sheet/tab."
-            : `Failed to fetch sheet: ${txt}`;
+            : resp.status === 401
+              ? "Google Sheets needs to be reconnected. Please reconnect and try again."
+              : `Failed to fetch sheet: ${txt}`;
         return res.status(resp.status === 401 ? 401 : 400).json({
           success: false,
           error: message,
@@ -11038,7 +11066,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if there's any connection for this campaign matching purpose
         const existingConnections = await storage.getGoogleSheetsConnections(campaignId, sheetsPurpose);
         if (existingConnections.length > 0) {
-          dbConnection = existingConnections[0];
+          const newestFirst = existingConnections
+            .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime());
+          dbConnection = newestFirst.find((c: any) => c.accessToken) || newestFirst[0];
         }
       }
 
@@ -11046,7 +11076,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Fall back: search ANY connection for this campaign (regardless of purpose).
         // The fast-path (reusing existing tokens) may skip OAuth, so no 'pending' connection
         // exists for this purpose. Tokens are shared across purposes — only tab selection differs.
-        const anyConnections = await storage.getGoogleSheetsConnections(campaignId);
+        const anyConnections = (await storage.getGoogleSheetsConnections(campaignId))
+          .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime());
         if (anyConnections.length > 0) {
           dbConnection = anyConnections.find((c: any) => c.accessToken) || anyConnections[0];
           devLog('[Select Multiple Spreadsheets] Using connection from different purpose (token reuse)');

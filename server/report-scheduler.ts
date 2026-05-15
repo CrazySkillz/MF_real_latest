@@ -48,6 +48,63 @@ async function getLatestReportEmailError(reportId: string): Promise<string> {
   return error ? `${provider ? `${provider}: ` : ""}${error}` : "";
 }
 
+async function getLatestReportEmailAudit(reportId: string, success: boolean): Promise<{ provider: string; error: string; providerResponseId: string }> {
+  const rows = await db
+    .select({ provider: emailAlertEvents.provider, error: emailAlertEvents.error, metadata: emailAlertEvents.metadata })
+    .from(emailAlertEvents)
+    .where(and(
+      eq(emailAlertEvents.kind, "report"),
+      eq(emailAlertEvents.entityType, "report"),
+      eq(emailAlertEvents.entityId, reportId),
+      eq(emailAlertEvents.success, success),
+    ))
+    .orderBy(desc(emailAlertEvents.createdAt))
+    .limit(1)
+    .catch(() => []);
+  const row = rows[0] as any;
+  let providerResponseId = "";
+  try {
+    providerResponseId = String(JSON.parse(String(row?.metadata || "{}"))?.providerResponseId || "").trim();
+  } catch {
+    providerResponseId = "";
+  }
+  return {
+    provider: String(row?.provider || "").trim(),
+    error: String(row?.error || "").trim(),
+    providerResponseId,
+  };
+}
+
+async function waitForMailgunDelivery(providerResponseId: string): Promise<{ status: string; error?: string }> {
+  const domain = process.env.MAILGUN_DOMAIN;
+  const apiKey = process.env.MAILGUN_API_KEY;
+  if (!domain || !apiKey || !providerResponseId) return { status: "not_checked" };
+  const region = process.env.MAILGUN_REGION || "us";
+  const baseUrl = region === "eu" ? "https://api.eu.mailgun.net/v3" : "https://api.mailgun.net/v3";
+  const messageIds = Array.from(new Set([providerResponseId, providerResponseId.replace(/^<|>$/g, "")].filter(Boolean)));
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 2500));
+    for (const messageId of messageIds) {
+      const params = new URLSearchParams();
+      params.set("message-id", messageId);
+      params.set("limit", "10");
+      const response = await fetch(`${baseUrl}/${domain}/events?${params.toString()}`, {
+        headers: { Authorization: `Basic ${Buffer.from(`api:${apiKey}`).toString("base64")}` },
+      });
+      if (!response.ok) return { status: "not_checked", error: await response.text().catch(() => "") };
+      const data = await response.json().catch(() => ({}));
+      const items = Array.isArray((data as any)?.items) ? (data as any).items : [];
+      const delivered = items.find((item: any) => String(item?.event || "").toLowerCase() === "delivered");
+      if (delivered) return { status: "delivered" };
+      const failed = items.find((item: any) => ["failed", "rejected"].includes(String(item?.event || "").toLowerCase()));
+      if (failed) return { status: "failed", error: String(failed?.["delivery-status"]?.message || failed?.reason || failed?.event || "Mailgun delivery failed") };
+    }
+  }
+
+  return { status: "pending" };
+}
+
 function coercePdfBufferFromDoc(doc: any): Buffer | null {
   // Try the most reliable forms across Node runtimes and bundlers.
   try {
@@ -1000,7 +1057,7 @@ export function getSchedulerMetrics() {
 /**
  * For testing - manually trigger a report email
  */
-export async function sendTestReport(reportId: string): Promise<boolean> {
+export async function sendTestReport(reportId: string): Promise<{ success: boolean; message?: string; recipients?: string[]; providerResponseId?: string; deliveryStatus?: string }> {
   try {
     console.log(`[Report Scheduler] Sending test report: ${reportId}`);
 
@@ -1019,7 +1076,7 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
       console.error('  - For Mailgun SMTP: MAILGUN_SMTP_USER, MAILGUN_SMTP_PASS');
       console.error('  - For SendGrid: SENDGRID_API_KEY');
       console.error('  - For SMTP: SMTP_USER, SMTP_PASS');
-      return false;
+      return { success: false, message: "Email credentials are missing" };
     }
 
     // Try both storage methods - LinkedIn-specific first, then platform-generic
@@ -1066,7 +1123,7 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
         console.error(`[Report Scheduler] DEBUG - Error listing reports:`, debugError);
       }
 
-      return false;
+      return { success: false, message: "Report not found" };
     }
 
     console.log(`[Report Scheduler] Found report: ${report.name}`);
@@ -1077,7 +1134,7 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
 
     if (recipients.length === 0) {
       console.error(`[Report Scheduler] No recipients configured for report: ${reportId}`);
-      return false;
+      return { success: false, message: "No recipients configured", recipients: [] };
     }
 
     console.log(`[Report Scheduler] Attempting to send test email to: ${recipients.join(', ')}`);
@@ -1119,11 +1176,36 @@ export async function sendTestReport(reportId: string): Promise<boolean> {
     });
     console.log(`[Report Scheduler] Send result: ${result ? 'SUCCESS ✅' : 'FAILED ❌'}`);
 
-    return result;
+    const audit = await getLatestReportEmailAudit(reportId, result);
+    if (!result) {
+      return { success: false, message: audit.error || "Email send failed", recipients };
+    }
+
+    if (audit.provider === "mailgun-api") {
+      const delivery = await waitForMailgunDelivery(audit.providerResponseId);
+      console.log(`[Report Scheduler] Mailgun delivery status for test report "${report.name}": ${delivery.status}${delivery.error ? ` (${delivery.error})` : ""}`);
+      if (delivery.status !== "delivered") {
+        return {
+          success: false,
+          message: delivery.status === "failed" ? `Mailgun delivery failed: ${delivery.error || "unknown error"}` : "Mailgun accepted the email, but delivery was not confirmed yet",
+          recipients,
+          providerResponseId: audit.providerResponseId,
+          deliveryStatus: delivery.status,
+        };
+      }
+    }
+
+    return {
+      success: true,
+      message: "Test report email delivered successfully",
+      recipients,
+      providerResponseId: audit.providerResponseId,
+      deliveryStatus: audit.provider === "mailgun-api" ? "delivered" : "accepted",
+    };
   } catch (error) {
     console.error('[Report Scheduler] Error sending test report:', error);
     console.error('[Report Scheduler] Error details:', error instanceof Error ? error.message : String(error));
-    return false;
+    return { success: false, message: error instanceof Error ? error.message : String(error) };
   }
 }
 

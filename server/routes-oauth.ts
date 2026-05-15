@@ -21873,16 +21873,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { sendTestReport } = await import('./report-scheduler.js');
-      const sent = await sendTestReport(reportId);
+      const result = await sendTestReport(reportId);
 
-      if (sent) {
+      if (result.success) {
         res.json({
-          message: "Test report email sent successfully! Check your inbox.",
-          success: true
+          message: result.message || "Test report email delivered successfully.",
+          success: true,
+          recipients: result.recipients,
+          providerResponseId: result.providerResponseId,
+          deliveryStatus: result.deliveryStatus,
         });
       } else {
-        res.status(500).json({
-          message: "Failed to send test report email. Check server logs for details.",
+        res.status(502).json({
+          message: result.message || "Failed to send test report email. Check server logs for details.",
+          recipients: result.recipients,
+          providerResponseId: result.providerResponseId,
+          deliveryStatus: result.deliveryStatus,
           success: false
         });
       }

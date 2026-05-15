@@ -158,7 +158,12 @@ class EmailService {
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     const from = process.env.EMAIL_FROM_ADDRESS || 'alerts@metricmind.app';
-    const toText = Array.isArray(options.to) ? options.to.join(', ') : options.to;
+    const recipients = this.normalizeRecipients(options.to);
+    const toText = recipients.join(', ');
+    if (recipients.length === 0) {
+      console.error('[Email Service] No valid recipients provided');
+      return false;
+    }
     const attachmentSummary = Array.isArray(options.attachments)
       ? options.attachments.map(a => `${a.filename}(${a.content?.length || 0}b)`).join(", ")
       : "";
@@ -236,17 +241,18 @@ class EmailService {
         ? 'https://api.eu.mailgun.net/v3'
         : 'https://api.mailgun.net/v3';
 
-      const toValue = Array.isArray(options.to) ? options.to.join(',') : options.to;
+      const recipients = this.normalizeRecipients(options.to);
+      const textBody = options.text || this.stripHtml(options.html);
 
       // If attachments exist, use multipart/form-data (Mailgun requires multipart for attachments).
       if (Array.isArray(options.attachments) && options.attachments.length > 0) {
         console.log(`[Email Service] Mailgun API: sending multipart with ${options.attachments.length} attachment(s)`);
         const fd = new FormData();
         fd.append('from', from);
-        fd.append('to', toValue);
+        for (const recipient of recipients) fd.append('to', recipient);
         fd.append('subject', options.subject);
         fd.append('html', options.html);
-        if (options.text) fd.append('text', options.text);
+        fd.append('text', textBody);
 
         for (const att of options.attachments) {
           const type = att.contentType || 'application/octet-stream';
@@ -277,10 +283,10 @@ class EmailService {
       // No attachments: use x-www-form-urlencoded (simple + reliable).
       const formData = new URLSearchParams();
       formData.append('from', from);
-      formData.append('to', toValue);
+      for (const recipient of recipients) formData.append('to', recipient);
       formData.append('subject', options.subject);
       formData.append('html', options.html);
-      if (options.text) formData.append('text', options.text);
+      formData.append('text', textBody);
 
       const response = await fetch(`${baseUrl}/${domain}/messages`, {
         method: 'POST',
@@ -429,6 +435,11 @@ class EmailService {
 
   private stripHtml(html: string): string {
     return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  private normalizeRecipients(to: string | string[]): string[] {
+    const raw = Array.isArray(to) ? to : String(to || '').split(',');
+    return raw.map((item) => String(item || '').trim()).filter(Boolean);
   }
 
   private async logEmailAuditEvent(args: {

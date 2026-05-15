@@ -61,4 +61,13 @@ describe("scheduled report email regression guard", () => {
     expect(testSendRoute).not.toContain("hasEmailConfig");
     expect(testSendRoute).not.toContain("MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS");
   });
+
+  it("keeps Mailgun report delivery using explicit recipients and text fallback", () => {
+    const source = readFileSync(join(process.cwd(), "server", "services", "email-service.ts"), "utf-8");
+
+    expect(source).toContain("normalizeRecipients");
+    expect(source).toContain("for (const recipient of recipients) fd.append('to', recipient)");
+    expect(source).toContain("for (const recipient of recipients) formData.append('to', recipient)");
+    expect(source).toContain("const textBody = options.text || this.stripHtml(options.html)");
+  });
 });

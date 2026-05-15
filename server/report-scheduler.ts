@@ -617,6 +617,25 @@ async function sendReportEmail(
     };
     const scheduleFrequencyKey = String(report.scheduleFrequency || '');
     const frequencyLabel = frequencyLabels[scheduleFrequencyKey] || scheduleFrequencyKey || 'Scheduled';
+    const generatedAt = new Date().toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const text = [
+      'Hello,',
+      '',
+      'Your scheduled MimoSaaS report is attached.',
+      '',
+      `Report: ${report.name}`,
+      meta?.campaignName ? `Campaign: ${meta.campaignName}` : '',
+      `Report Type: ${reportLabel}`,
+      `Frequency: ${frequencyLabel}`,
+      `Generated: ${generatedAt}`,
+    ].filter(Boolean).join('\n');
 
     const html = `
       <!DOCTYPE html>
@@ -643,7 +662,7 @@ async function sendReportEmail(
             }
             .report-info {
               background: #f9fafb;
-              border-left: 4px solid #0077B5;
+              border-left: 4px solid #ff6b00;
               padding: 20px;
               margin: 20px 0;
               border-radius: 4px;
@@ -669,37 +688,13 @@ async function sendReportEmail(
             .info-value {
               color: #111827;
             }
-            .note {
-              background: #fef3c7;
-              border-left: 4px solid #f59e0b;
-              padding: 15px;
-              margin: 20px 0;
-              border-radius: 4px;
-              font-size: 14px;
-            }
-            .footer {
-              background: #f9fafb;
-              padding: 30px;
-              text-align: center;
-              color: #6b7280;
-              font-size: 14px;
-            }
-            .footer a {
-              color: #0077B5;
-              text-decoration: none;
-            }
-            .footer .visible-footer {
-              display: block !important;
-              max-height: none;
-              overflow: visible;
-            }
           </style>
         </head>
         <body>
           <div class="email-container">
             <div class="content">
               <p>Hello,</p>
-              <p>Your scheduled MimoSaaS report is ready.</p>
+              <p>Your scheduled MimoSaaS report is attached.</p>
               
               <div class="report-info">
                 <h2>${report.name}</h2>
@@ -721,47 +716,25 @@ async function sendReportEmail(
                   </div>
                   <div class="info-row">
                     <span class="info-label">Generated:&nbsp;</span>
-                    <span class="info-value">${new Date().toLocaleString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })}</span>
+                    <span class="info-value">${generatedAt}</span>
                   </div>
                 </div>
               </div>
               
-              <div class="note">
-                <strong>💡 Note:</strong> This report contains the latest available data for your selected platform and campaign scope. 
-                For the most up-to-date metrics and interactive visualizations, please view the report in your dashboard.
-              </div>
-              
-              <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
-                This report was automatically generated based on your schedule settings. 
-                You can manage or modify your report schedules in the Reports section of your dashboard.
-              </p>
             </div>
             
-            <div class="footer">
-              <div class="visible-footer"><strong>MimoSaaS</strong> - Executive Marketing Analytics</div>
-              <div class="visible-footer" style="margin-top: 20px; font-size: 12px;">
-                This is an automated email. If you no longer wish to receive these reports,
-                please disable the schedule in your dashboard settings.
-              </div>
-            </div>
           </div>
         </body>
       </html>
     `;
 
-    const subject = `📊 ${frequencyLabel} Report: ${report.name}`;
+    const deliverableSubject = `${frequencyLabel} MimoSaaS Report: ${report.name}`;
 
     const sent = await emailService.sendEmail({
       to: recipients,
-      subject,
+      subject: deliverableSubject,
       html,
+      text,
       attachments: meta?.attachment ? [{ filename: meta.attachment.filename, content: meta.attachment.content, contentType: 'application/pdf' }] : undefined,
       auditContext: {
         kind: 'report',

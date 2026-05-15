@@ -253,6 +253,9 @@ class EmailService {
         fd.append('subject', options.subject);
         fd.append('html', options.html);
         fd.append('text', textBody);
+        fd.append('o:tracking', 'no');
+        fd.append('o:tracking-clicks', 'no');
+        fd.append('o:tracking-opens', 'no');
 
         for (const att of options.attachments) {
           const type = att.contentType || 'application/octet-stream';
@@ -287,6 +290,9 @@ class EmailService {
       formData.append('subject', options.subject);
       formData.append('html', options.html);
       formData.append('text', textBody);
+      formData.append('o:tracking', 'no');
+      formData.append('o:tracking-clicks', 'no');
+      formData.append('o:tracking-opens', 'no');
 
       const response = await fetch(`${baseUrl}/${domain}/messages`, {
         method: 'POST',

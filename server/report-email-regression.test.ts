@@ -13,17 +13,26 @@ describe("scheduled report email regression guard", () => {
   it("keeps the scheduled report email body focused on the attached report", () => {
     const source = readReportScheduler();
 
-    expect(source).toContain("Your scheduled MimoSaaS report is ready.");
+    expect(source).toContain("Your scheduled MimoSaaS report is attached.");
+    expect(source).toContain("deliverableSubject");
+    expect(source).toContain("subject: deliverableSubject");
+    expect(source).toContain("html,");
+    expect(source).toContain("text,");
     expect(source).toContain("Frequency:&nbsp;");
     expect(source).toContain("Report Type:&nbsp;");
     expect(source).toContain("Generated:&nbsp;");
-    expect(source).toContain("<strong>MimoSaaS</strong> - Executive Marketing Analytics");
+    expect(source).toContain("border-left: 4px solid #ff6b00");
+    expect(source).not.toContain("subject,");
     expect(source).not.toContain("View Report in Dashboard");
     expect(source).not.toContain("<span class=\"info-label\">Window:");
     expect(source).not.toContain("<div class=\"header\">");
     expect(source).not.toContain("Overview Report</h1>");
     expect(source).not.toContain("Daily Report Delivery");
     expect(source).not.toContain("Your scheduled MetricMind report is ready.");
+    expect(source).not.toContain("subject: `");
+    expect(source).not.toContain("Executive Marketing Analytics");
+    expect(source).not.toContain("latest available data");
+    expect(source).not.toContain("automated email");
   });
 
   it("keeps scheduled report emails wired to attach generated PDFs", () => {
@@ -69,6 +78,12 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain("for (const recipient of recipients) fd.append('to', recipient)");
     expect(source).toContain("for (const recipient of recipients) formData.append('to', recipient)");
     expect(source).toContain("const textBody = options.text || this.stripHtml(options.html)");
+    expect(source).toContain("fd.append('o:tracking', 'no')");
+    expect(source).toContain("fd.append('o:tracking-clicks', 'no')");
+    expect(source).toContain("fd.append('o:tracking-opens', 'no')");
+    expect(source).toContain("formData.append('o:tracking', 'no')");
+    expect(source).toContain("formData.append('o:tracking-clicks', 'no')");
+    expect(source).toContain("formData.append('o:tracking-opens', 'no')");
   });
 
   it("does not report Mailgun test-send success until delivery is confirmed", () => {

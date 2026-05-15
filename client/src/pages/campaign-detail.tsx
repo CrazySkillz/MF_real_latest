@@ -3313,15 +3313,16 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     setEditingBenchmark(benchmark);
     const metric = String(benchmark.metric || '');
     const matchedTemplate = CAMPAIGN_BENCHMARK_TEMPLATES.find((t) => t.metric === metric) || null;
+    const unit = String(benchmark.unit || '').toLowerCase();
     setSelectedBenchmarkTemplate(matchedTemplate);
     setBenchmarkCalculationConfig(benchmark?.calculationConfig || null);
     setBenchmarkForm({
       metric,
       name: benchmark.name || '',
       category: benchmark.category || 'performance',
-      unit: String(benchmark.unit || '').toLowerCase(),
-      benchmarkValue: String(benchmark.benchmarkValue || ''),
-      currentValue: String(benchmark.currentValue || ''),
+      unit,
+      benchmarkValue: formatBenchmarkFormValue(benchmark.benchmarkValue, unit),
+      currentValue: formatBenchmarkFormValue(benchmark.currentValue, unit),
       benchmarkType: (benchmark.benchmarkType === 'custom' ? 'custom' : 'industry'),
       industry: benchmark.industry || '',
       description: benchmark.description || '',
@@ -3466,6 +3467,16 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     if (u === '%') return `${formatNumber(num)}%`;
     if (u === 'x' || u === 'ratio') return `${formatNumber(num)}x`;
     return formatNumber(num);
+  };
+
+  const formatBenchmarkFormValue = (value: any, unit: any): string => {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+    const normalizedUnit = String(unit || '').trim().toLowerCase();
+    if (normalizedUnit === '$') return formatInputNumber(raw);
+    if (normalizedUnit !== 'count') return raw;
+    const num = parseFloat(raw.replace(/,/g, ''));
+    return Number.isFinite(num) ? formatNumber(Math.round(num)) : raw;
   };
 
   if (isLoading) {

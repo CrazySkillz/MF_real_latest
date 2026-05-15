@@ -1153,7 +1153,19 @@ export function AddRevenueWizardModal(props: {
         body: JSON.stringify({ connectionId: cid, platformContext }),
       });
       const json = await resp.json().catch(() => ({}));
-      if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to preview sheet");
+      if (!resp.ok || !json?.success) {
+        if (json?.requiresReauthorization) {
+          setShowSheetsConnect(true);
+          setSheetsBackToChooser(false);
+          setSheetsPreview(null);
+          toast({
+            title: "Reconnect Google Sheets",
+            description: json?.message || json?.error || "Reconnect Google Sheets, then choose the sheet tab again.",
+          });
+          return false;
+        }
+        throw new Error(json?.error || "Failed to preview sheet");
+      }
       setSheetsPreview({ headers: json.headers || [], sampleRows: json.sampleRows || [], rowCount: json.rowCount || 0 });
       const headers: string[] = Array.isArray(json.headers) ? json.headers : [];
       const guess = headers.find((h) => /revenue|amount|sales|total/i.test(h)) || "";

@@ -342,14 +342,14 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
               <div className="flex items-center justify-between">
                 <Label>{isRevenueConnector ? "Select Sheet/Tab (Revenue/Conversion Value)" : "Select Sheet/Tab(s)"}</Label>
               </div>
-              {isLoadingSheets ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Loading sheets...
-                </div>
-              ) : availableSheets.length > 0 ? (
-                <>
-                  <div className="space-y-2 max-h-64 overflow-y-auto border border-border rounded-md p-3">
+              <div className="space-y-2 max-h-64 min-h-24 overflow-y-auto border border-border rounded-md p-3">
+                {isLoadingSheets ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Loading sheets...
+                  </div>
+                ) : availableSheets.length > 0 ? (
+                  <>
                     {isRevenueConnector ? (
                       <RadioGroup
                         value={selectedSheetNames[0] || ""}
@@ -385,17 +385,17 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
                         </div>
                       ))
                     )}
-                  </div>
-                </>
-              ) : selectedSpreadsheet ? (
-                <p className="text-sm text-muted-foreground">
-                  No tabs found for this spreadsheet. Choose a different spreadsheet or reconnect Google Sheets.
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Select a spreadsheet to load its tabs.
-                </p>
-              )}
+                  </>
+                ) : selectedSpreadsheet ? (
+                  <p className="text-sm text-muted-foreground">
+                    No tabs found for this spreadsheet. Choose a different spreadsheet or reconnect Google Sheets.
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Select a spreadsheet to load its tabs.
+                  </p>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground/70">
                 {availableSheets.length > 0 
                   ? (isRevenueConnector

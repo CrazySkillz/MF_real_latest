@@ -125,15 +125,19 @@ async function buildPdfAttachmentForReport(args: {
     if (String((report as any)?.platformType || "") === "google_analytics") {
       const ga4ReportType = String((report as any)?.reportType || "").toLowerCase();
       if (ga4ReportType === "overview" || ga4ReportType === "kpis" || ga4ReportType === "benchmarks" || ga4ReportType === "ads" || ga4ReportType === "insights" || ga4ReportType === "custom") {
-        const { buildGA4ScheduledPdfAttachment } = await import("./ga4-scheduled-report-pdf.js");
-        const ga4Pdf = await buildGA4ScheduledPdfAttachment({
-          report,
-          reportName: String((report as any)?.name || "GA4 Report"),
-          windowStart,
-          windowEnd,
-          campaignName,
-        });
-        if (ga4Pdf) return ga4Pdf;
+        try {
+          const { buildGA4ScheduledPdfAttachment } = await import("./ga4-scheduled-report-pdf.js");
+          const ga4Pdf = await buildGA4ScheduledPdfAttachment({
+            report,
+            reportName: String((report as any)?.name || "GA4 Report"),
+            windowStart,
+            windowEnd,
+            campaignName,
+          });
+          if (ga4Pdf) return ga4Pdf;
+        } catch (e) {
+          console.warn("[Report Scheduler] GA4 PDF builder failed; using generic PDF fallback:", e);
+        }
       }
     }
 
@@ -525,6 +529,10 @@ async function sendReportEmail(
 ): Promise<boolean> {
   try {
     console.log(`[Report Scheduler] Preparing to send report: ${report.name} to ${recipients.length} recipients`);
+    if (!meta?.attachment?.content || meta.attachment.content.length <= 100) {
+      console.error(`[Report Scheduler] Refusing to send report "${report.name}" without a valid PDF attachment`);
+      return false;
+    }
 
     // Get report configuration (optional)
     const config = typeof report.configuration === 'string'

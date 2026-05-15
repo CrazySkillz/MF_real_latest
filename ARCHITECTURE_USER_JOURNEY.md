@@ -377,6 +377,7 @@ Implementation note:
 The current codebase keeps Benchmarks aligned with the same normalized campaign totals used for campaign KPIs so those two tabs do not drift conceptually.
 Campaign-level Benchmark current values must follow the same connected-platform input rule as KPIs so benchmark status does not drift from the visible campaign/platform cards.
 Campaign-level Benchmark current values MUST be fed by the connected-platform metrics for the campaign. Do not add a separate selectable source model or fallback calculation that can drift from the connected platform values.
+Campaign-level Benchmark create/edit forms must follow the same unit-display conventions as platform Benchmark forms. Count values display as whole numbers without decimal suffixes, currency values display with thousands separators, percent values display as clean percentages, and ratio/ROAS values display with ratio-style formatting.
 
 ### Freestyle Chat
 

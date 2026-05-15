@@ -31,4 +31,41 @@ describe("Benchmark route isolation regression guard", () => {
     expect((routesFile.match(/delete validatedData\.campaignId/g) || []).length).toBeGreaterThanOrEqual(1);
     expect((routesFile.match(/delete validated\.campaignId/g) || []).length).toBeGreaterThanOrEqual(1);
   });
+
+  it("deletes only the selected Benchmark history before deleting that Benchmark", () => {
+    const storageFile = readFileSync(
+      join(process.cwd(), "server", "storage.ts"),
+      "utf-8"
+    );
+
+    expect(storageFile).toContain("async deleteBenchmark(id: string): Promise<boolean> {");
+    expect(storageFile).toContain("const [existing] = await tx.select({ id: benchmarks.id }).from(benchmarks).where(eq(benchmarks.id, id)).limit(1);");
+    expect(storageFile).toContain("await tx.delete(benchmarkHistory).where(eq(benchmarkHistory.benchmarkId, id));");
+    expect(storageFile).toContain("const result = await tx.delete(benchmarks).where(eq(benchmarks.id, id));");
+  });
+
+  it("refuses to record Benchmark history for missing Benchmark rows", () => {
+    const storageFile = readFileSync(
+      join(process.cwd(), "server", "storage.ts"),
+      "utf-8"
+    );
+
+    expect(storageFile).toContain("async recordBenchmarkHistory(historyData: InsertBenchmarkHistory): Promise<BenchmarkHistory> {");
+    expect(storageFile).toContain("const benchmarkId = String((historyData as any)?.benchmarkId || \"\").trim();");
+    expect(storageFile).toContain("const [existing] = await db.select({ id: benchmarks.id }).from(benchmarks).where(eq(benchmarks.id, benchmarkId)).limit(1);");
+    expect(storageFile).toContain("throw new Error(\"Benchmark not found\");");
+  });
+
+  it("protects Benchmark history and analytics read routes with Benchmark access checks", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    expect(routesFile).toContain('app.get("/api/benchmarks/:id/history", async (req, res) => {');
+    expect(routesFile).toContain('app.get("/api/benchmarks/:id/analytics", async (req, res) => {');
+    expect(routesFile).toContain("const existing = await ensureBenchmarkAccess(req as any, res as any, id);");
+    expect(routesFile).toContain("const history = await storage.getBenchmarkHistory(id);");
+    expect(routesFile).toContain("const analytics = await storage.getBenchmarkAnalytics(id);");
+  });
 });

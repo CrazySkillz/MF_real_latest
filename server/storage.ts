@@ -3066,10 +3066,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteBenchmark(id: string): Promise<boolean> {
-    const result = await db
-      .delete(benchmarks)
-      .where(eq(benchmarks.id, id));
-    return (result.rowCount || 0) > 0;
+    return await db.transaction(async (tx: any) => {
+      const [existing] = await tx.select({ id: benchmarks.id }).from(benchmarks).where(eq(benchmarks.id, id)).limit(1);
+      if (!existing) return false;
+      await tx.delete(benchmarkHistory).where(eq(benchmarkHistory.benchmarkId, id));
+      const result = await tx.delete(benchmarks).where(eq(benchmarks.id, id));
+      return (result.rowCount || 0) > 0;
+    });
   }
 
   async getBenchmarkHistory(benchmarkId: string): Promise<BenchmarkHistory[]> {
@@ -3079,6 +3082,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async recordBenchmarkHistory(historyData: InsertBenchmarkHistory): Promise<BenchmarkHistory> {
+    const benchmarkId = String((historyData as any)?.benchmarkId || "").trim();
+    const [existing] = await db.select({ id: benchmarks.id }).from(benchmarks).where(eq(benchmarks.id, benchmarkId)).limit(1);
+    if (!existing) {
+      throw new Error("Benchmark not found");
+    }
     const [history] = await db
       .insert(benchmarkHistory)
       .values(historyData)

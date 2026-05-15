@@ -68,6 +68,8 @@ When editing an existing benchmark:
 
 - the edit modal should show the same live current value the benchmark card is using
 - it should not prefill from a stale stored snapshot if the current GA4 or financial inputs have changed
+- count-unit current and benchmark values should display as whole numbers without `.00` suffixes
+- currency-unit current and benchmark values should display with thousands separators while preserving cents, for example `450,000.00`
 
 ## Benchmark Progress And Status
 

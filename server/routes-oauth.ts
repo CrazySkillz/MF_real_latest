@@ -2395,6 +2395,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // fall through to error response below
         }
       }
+      if (!resp.ok && resp.status === 401) {
+        const fallback = (await storage.getGoogleSheetsConnections(campaignId))
+          .filter((c: any) => c && String(c.id) !== String(conn.id) && c.accessToken)
+          .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime())[0];
+        if (fallback?.accessToken) {
+          const fallbackResp = await fetchWithTimeout(
+            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+            { headers: { "Authorization": `Bearer ${fallback.accessToken}` } }
+          );
+          if (fallbackResp.ok) {
+            resp = fallbackResp;
+            accessToken = fallback.accessToken;
+            await storage.updateGoogleSheetsConnection(String(conn.id), {
+              accessToken: fallback.accessToken,
+              refreshToken: fallback.refreshToken || conn.refreshToken || null,
+              clientId: fallback.clientId || conn.clientId,
+              clientSecret: fallback.clientSecret || conn.clientSecret,
+              expiresAt: fallback.expiresAt || conn.expiresAt,
+              isActive: true as any,
+            } as any);
+          }
+        }
+      }
       if (!resp.ok) {
         const txt = await resp.text();
         const message = resp.status === 403
@@ -2520,6 +2543,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
         } catch {
           // fall through to error response below
+        }
+      }
+      if (!resp.ok && resp.status === 401) {
+        const fallback = (await storage.getGoogleSheetsConnections(campaignId))
+          .filter((c: any) => c && String(c.id) !== String(conn.id) && c.accessToken)
+          .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime())[0];
+        if (fallback?.accessToken) {
+          const fallbackResp = await fetchWithTimeout(
+            `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(conn.spreadsheetId)}/values/${encodeURIComponent(range)}`,
+            { headers: { "Authorization": `Bearer ${fallback.accessToken}` } }
+          );
+          if (fallbackResp.ok) {
+            resp = fallbackResp;
+            accessToken = fallback.accessToken;
+            await storage.updateGoogleSheetsConnection(String(conn.id), {
+              accessToken: fallback.accessToken,
+              refreshToken: fallback.refreshToken || conn.refreshToken || null,
+              clientId: fallback.clientId || conn.clientId,
+              clientSecret: fallback.clientSecret || conn.clientSecret,
+              expiresAt: fallback.expiresAt || conn.expiresAt,
+              isActive: true as any,
+            } as any);
+          }
         }
       }
       if (!resp.ok) {

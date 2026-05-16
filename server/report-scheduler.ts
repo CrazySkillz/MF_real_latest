@@ -762,6 +762,13 @@ export async function checkScheduledReports(): Promise<void> {
           && !String(existingError || "").startsWith("Retry failed after previous failure:")
           && (!existingCreatedAt || now.getTime() - existingCreatedAt.getTime() > 10 * 60 * 1000);
         if (!stalePending && !staleFailed) {
+          if (existingStatus === "skipped" && displayError.includes("Campaign not found")) {
+            await db
+              .update(linkedinReports)
+              .set({ scheduleEnabled: false, updatedAt: new Date() } as any)
+              .where(eq(linkedinReports.id, existingReportId))
+              .catch(() => { });
+          }
           console.log(`[Report Scheduler] Report "${report.name}" already processed for ${due.scheduledKey} (status=${existingStatus || "unknown"}${displayError ? `, error=${displayError}` : ""})`);
           continue; // already processed
         }

@@ -375,7 +375,7 @@ export async function refreshKPIsForCampaign(campaignId: string): Promise<{ upda
           if (campaignMetrics) {
             metrics = campaignMetrics;
           } else {
-            console.log(`[KPI Refresh] Using aggregate metrics for campaign-specific KPI ${kpi.name} (campaign not found)`);
+            continue;
           }
         }
 

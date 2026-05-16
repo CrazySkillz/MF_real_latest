@@ -1271,10 +1271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
 
-      const startDate =
-        toISODateUTC((campaign as any)?.startDate) ||
-        toISODateUTC((campaign as any)?.createdAt) ||
-        "2020-01-01";
+      const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
       const endDate = new Date().toISOString().slice(0, 10);
 
       const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext as "ga4" | "linkedin");
@@ -1294,7 +1291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
 
-      const startDate = toISODateUTC((campaign as any)?.startDate) || toISODateUTC((campaign as any)?.createdAt) || "2020-01-01";
+      const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
       const endDate = new Date().toISOString().slice(0, 10);
 
       const sources = await storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, platformContext as any);
@@ -2712,20 +2709,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastSyncedAt: new Date().toISOString(),
       });
 
-      // Idempotent upsert: if the active revenue source is already this same Google Sheets connection,
-      // keep the same sourceId (stable provenance) and just update values.
+      // Add mode must create a new additive source. Edit/refresh mode passes sourceId and updates only that source.
       const existingSources = await storage.getRevenueSources(campaignId, platformContext).catch(() => [] as any[]);
-      const existingSheetsSource = (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
-        if (!s || (s as any).isActive === false) return false;
-        if (String((s as any).sourceType || "") !== "google_sheets") return false;
-        if (existingSourceId && String((s as any).id || "") === existingSourceId) return true;
-        try {
-          const cfg = (s as any).mappingConfig ? JSON.parse(String((s as any).mappingConfig)) : null;
-          return String(cfg?.connectionId || "") === String(connectionId);
-        } catch {
-          return false;
-        }
-      });
+      const existingSheetsSource = existingSourceId
+        ? (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
+            if (!s || (s as any).isActive === false) return false;
+            if (String((s as any).sourceType || "") !== "google_sheets") return false;
+            return String((s as any).id || "") === existingSourceId;
+          })
+        : null;
 
       let source: any = existingSheetsSource || null;
       if (!source) {

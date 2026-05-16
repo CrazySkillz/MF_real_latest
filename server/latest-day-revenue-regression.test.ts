@@ -115,10 +115,10 @@ describe("Latest Day Revenue regression guard", () => {
     );
 
     expect(clientFile).toContain("const shownIds = new Set(rows.map((s: any) => String(s.sourceId || \"\")));");
-    expect(clientFile).toContain("rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: 0, mappingConfig: d.mappingConfig });");
+    expect(clientFile).toContain("rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig });");
   });
 
-  it("Total Revenue to-date endpoints include today's imported revenue records", () => {
+  it("Total Revenue to-date endpoints use the same imported source record window as Revenue Sources", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),
       "utf-8"
@@ -133,6 +133,10 @@ describe("Latest Day Revenue regression guard", () => {
 
     const revenueToDateRoute = routesFile.slice(revenueToDateStart, revenueBreakdownStart);
     const revenueBreakdownRoute = routesFile.slice(revenueBreakdownStart, spendBreakdownStart);
+    expect(revenueToDateRoute).toContain('const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";');
+    expect(revenueBreakdownRoute).toContain('const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";');
+    expect(revenueToDateRoute).not.toContain("toISODateUTC((campaign as any)?.createdAt)");
+    expect(revenueBreakdownRoute).not.toContain("toISODateUTC((campaign as any)?.createdAt)");
     expect(revenueToDateRoute).toContain('const endDate = new Date().toISOString().slice(0, 10);');
     expect(revenueBreakdownRoute).toContain('const endDate = new Date().toISOString().slice(0, 10);');
   });

@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { formatPct } from "../shared/metric-math";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 /**
  * Revenue Additivity Tests
@@ -102,6 +104,26 @@ describe("Revenue Additivity", () => {
       // KPI ROAS (getLiveKpiValue for "ROAS")
       const kpiROAS = spend > 0 ? revenue / spend : 0;
       expect(overviewROAS).toBe(kpiROAS); // must be identical
+    });
+  });
+
+  describe("source creation", () => {
+    it("Google Sheets revenue add mode creates a new additive source instead of replacing by connection", () => {
+      const routesFile = readFileSync(
+        join(process.cwd(), "server", "routes-oauth.ts"),
+        "utf-8"
+      );
+
+      const routeStart = routesFile.indexOf('app.post("/api/campaigns/:id/revenue/sheets/process"');
+      const nextRouteStart = routesFile.indexOf("const deactivateSpendSourcesForCampaign", routeStart);
+      expect(routeStart).toBeGreaterThan(-1);
+      expect(nextRouteStart).toBeGreaterThan(routeStart);
+      const route = routesFile.slice(routeStart, nextRouteStart);
+
+      expect(route).toContain("Add mode must create a new additive source. Edit/refresh mode passes sourceId and updates only that source.");
+      expect(route).toContain("const existingSheetsSource = existingSourceId");
+      expect(route).toContain("return String((s as any).id || \"\") === existingSourceId;");
+      expect(route).not.toContain("String(cfg?.connectionId || \"\") === String(connectionId)");
     });
   });
 });

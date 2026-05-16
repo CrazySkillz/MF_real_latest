@@ -39,6 +39,20 @@ describe("GA4 UI regression guard", () => {
     expect(revenueModal).not.toContain("This is a one-time import and does not auto-sync");
   });
 
+  it("keeps Google Sheets revenue chooser stable without visible connection-check text", () => {
+    const revenueModal = readClient("components/AddRevenueWizardModal.tsx");
+    const googleSheetsAuth = readClient("components/SimpleGoogleSheetsAuth.tsx");
+    const chooseStart = revenueModal.indexOf('{step === "sheets_choose" && (');
+    const mapStart = revenueModal.indexOf('{step === "sheets_map" && (', chooseStart);
+    expect(chooseStart).toBeGreaterThan(-1);
+    expect(mapStart).toBeGreaterThan(chooseStart);
+
+    const chooseSection = revenueModal.slice(chooseStart, mapStart);
+    expect(chooseSection).not.toContain("sheetsConnectionsLoading");
+    expect(revenueModal).not.toContain("Checking connected Google Sheets");
+    expect(googleSheetsAuth).not.toContain("Checking connection...");
+  });
+
   it("keeps Add Spend source picker copy explicit about sync behavior", () => {
     const spendModal = readClient("components/AddSpendWizardModal.tsx");
 
@@ -59,7 +73,8 @@ describe("GA4 UI regression guard", () => {
 
     const chooseSection = spendModal.slice(chooseStart, mapStart);
     const mapSection = spendModal.slice(mapSectionStart, footerStart);
-    expect(chooseSection).toContain("sheetsConnectionsLoading && sheetsConnections.length === 0");
+    expect(chooseSection).not.toContain("sheetsConnectionsLoading");
+    expect(spendModal).not.toContain("Checking connected Google Sheets");
     expect(chooseSection).not.toContain("Loading your connected Google Sheets");
     expect(chooseSection).not.toContain("Loading...");
     expect(mapSection).not.toContain("Loading spreadsheet data");

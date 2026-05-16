@@ -147,6 +147,13 @@ For revenue, spend, scheduler, source-preview, or source-provenance bugs, comple
 6. add a targeted regression guard for that boundary
 7. validate with real persisted source records and the relevant API endpoint before trusting the card as proof
 
+For Google Sheets revenue/spend source-modal bugs, also trace the visible transition path:
+
+- source picker click -> chooser render -> connection refresh -> Back navigation -> dropdown selection -> preview/mapping render
+- keep cached/stable content visible during background connection refresh
+- do not introduce visible intermediate text such as `Checking Google connection`, `Checking connection...`, `Checking connected Google Sheets...`, or `Loading...` when it makes the modal body jump
+- add or update a UI regression guard when removing a content-jumping placeholder
+
 Recent lesson:
 
 - the Salesforce `Revenue Breakdown` campaign row took too long because fixes chased UI symptoms before proving where `campaignValueRevenueTotals` disappeared

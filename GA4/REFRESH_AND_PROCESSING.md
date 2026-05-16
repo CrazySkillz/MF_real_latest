@@ -106,13 +106,20 @@ Ad-platform spend auto-refresh rule:
 
 Google Sheets spend auto-refresh rule:
 
+- creating a new Google Sheets spend source is additive and must not reuse an existing source just because the same Google Sheets connection or tab is selected
 - Google Sheets spend is refreshed by the external value auto-refresh scheduler, not by `GA4_DAILY_REFRESH_INTERVAL_HOURS`
 - `GA4_DAILY_REFRESH_INTERVAL_HOURS` controls the GA4 daily metrics pipeline and is not a valid fast test for Google Sheets spend
 - to validate Google Sheets spend auto-refresh quickly in a deployed environment, temporarily set `AUTO_REFRESH_RUN_ON_STARTUP=true`, redeploy/restart, wait for the auto-refresh run to complete, then remove that flag after the test
 - production should not keep `AUTO_REFRESH_RUN_ON_STARTUP=true`; the normal scheduler runs on its daily schedule
 - on refresh, the saved Google Sheets spend source is reprocessed from the current sheet rows and replaces the previous stored amount for that source
+- refresh must update by stable spend `sourceId`; it must not create a duplicate source, update another source that shares the same connection, or append duplicate rows on repeated scheduler runs
 - if a `Date` column is mapped, daily spend records are materialized from the dated rows; adding a new matching dated row should increase `Total Spend` by that row's spend amount after refresh
 - if a campaign identifier/value filter is mapped, only rows matching the saved campaign value set should be included
+
+Google Sheets source-modal UI rule:
+
+- Google Sheets revenue/spend setup should prefetch or silently refresh connections while preserving stable content
+- do not show transient text such as `Checking Google connection`, `Checking connection...`, `Checking connected Google Sheets...`, or `Loading...` in the modal body if it causes content jumps during entry, Back navigation, or sheet dropdown changes
 
 Google Sheets revenue refresh rule:
 

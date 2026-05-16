@@ -99,6 +99,14 @@ Important clarification:
 
 Spend is not imported from the GA4 API by default.
 
+Imported `Total Spend`, `Spend Breakdown`, and the `Spend Sources` modal must use the same active source-backed spend record window so the card total and source provenance cannot drift.
+
+Unless the user explicitly configured a campaign `startDate`, imported spend totals must not silently exclude valid source records because of the campaign creation timestamp.
+
+Google Sheets spend add mode is additive. Creating a new Google Sheets spend source must not reuse or overwrite an existing source just because the same Google Sheets connection or tab is selected. Edit/refresh mode may update an existing source only when the stable spend `sourceId` is explicitly passed.
+
+Google Sheets revenue and spend setup must keep the modal visually stable. Do not show transient placeholder text such as `Checking Google connection`, `Checking connection...`, `Checking connected Google Sheets...`, or `Loading...` while switching into the Google Sheets chooser, going Back, or changing sheet selections.
+
 ### Latest Day Spend
 
 Intended behavior:

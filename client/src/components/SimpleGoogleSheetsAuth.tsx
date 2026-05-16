@@ -435,17 +435,10 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
     );
   }
 
-  // Show loading while checking for existing auth tokens
+  // Keep the auth check silent so parent source modals do not visibly jump.
   if (isCheckingExistingAuth) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 gap-3">
-        <div className="flex gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
-          <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
-          <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
-        </div>
-        <p className="text-sm text-muted-foreground">Checking connection...</p>
-      </div>
+      <div className="min-h-[96px]" aria-busy="true" />
     );
   }
 

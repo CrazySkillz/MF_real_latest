@@ -101,8 +101,8 @@ export function AddSpendWizardModal(props: {
   const [selectedSheetConnectionId, setSelectedSheetConnectionId] = useState<string>("");
   const [sheetsPreview, setSheetsPreview] = useState<any>(null);
   const [isSheetsLoading, setIsSheetsLoading] = useState(false);
-  const [sheetsConnectionsLoading, setSheetsConnectionsLoading] = useState(false);
   const [isRemovingSheet, setIsRemovingSheet] = useState(false);
+  const sheetsConnectionsCampaignRef = useRef<string>("");
   const getSheetConnectionLabel = (connection: any) => {
     const spreadsheetId = String(connection?.spreadsheetId || "").trim();
     const spreadsheetName = String(connection?.spreadsheetName || "").trim();
@@ -181,7 +181,6 @@ export function AddSpendWizardModal(props: {
       setManualAmount("");
       setPasteText("");
       setShowSheetsConnect(false);
-      setSheetsConnections([]);
       setSelectedSheetConnectionId("");
       setSheetsPreview(null);
       setIsSheetsLoading(false);
@@ -357,10 +356,12 @@ export function AddSpendWizardModal(props: {
 
   useEffect(() => {
     if (!props.open) return;
-    if (step !== "sheets_choose" && step !== "sheets_map") return;
+    if (sheetsConnectionsCampaignRef.current !== props.campaignId) {
+      sheetsConnectionsCampaignRef.current = props.campaignId;
+      setSheetsConnections([]);
+    }
     let mounted = true;
     (async () => {
-      setSheetsConnectionsLoading(true);
       try {
         // Only load Spend-purpose connections for this modal (avoid pre-filling from Revenue connections).
         const resp = await fetch(`/api/campaigns/${props.campaignId}/google-sheets-connections?purpose=spend`, { credentials: "include" });
@@ -370,13 +371,11 @@ export function AddSpendWizardModal(props: {
         if (!mounted) return;
         setSheetsConnections(conns.filter((c: any) => c && c.isActive !== false));
       } catch {
-        // ignore
-      } finally {
-        if (mounted) setSheetsConnectionsLoading(false);
+        // Keep existing content stable; connection refresh is intentionally silent.
       }
     })();
     return () => { mounted = false; };
-  }, [props.open, props.campaignId, step]);
+  }, [props.open, props.campaignId]);
 
   const savedSheetHeaders = useMemo(() => {
     if (!isEditing || step !== "sheets_map") return [];
@@ -1955,11 +1954,7 @@ export function AddSpendWizardModal(props: {
                     <CardDescription>Choose the Google Sheet tab that contains your spend data.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {sheetsConnectionsLoading && sheetsConnections.length === 0 ? (
-                      <div className="rounded-lg border border-border bg-muted/40 p-4">
-                        <div className="text-sm text-muted-foreground">Checking connected Google Sheets...</div>
-                      </div>
-                    ) : sheetsConnections.length === 0 ? (
+                    {sheetsConnections.length === 0 ? (
                       <SimpleGoogleSheetsAuth
                         campaignId={props.campaignId}
                         selectionMode="append"

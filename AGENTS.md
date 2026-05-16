@@ -162,6 +162,13 @@ Platform-scoping rule:
 - Do not change behavior in adjacent features unless the fix cannot be made safely otherwise.
 - If a bug touches a risky area, make the smallest correction possible.
 
+## UI Stability Rules
+
+- Do not show transient loading text that replaces source-modal content when cached or stable content can remain visible.
+- In source setup flows, especially Google Sheets revenue/spend flows, avoid intermediate messages such as `Loading...`, `Checking Google connection`, `Checking connection...`, or `Checking connected Google Sheets...` if they cause layout jumps.
+- Prefer silent background refresh, cached connection lists, disabled buttons, or stable empty/connect states over content-swapping placeholders.
+- If a loading state is necessary, it must not make the modal body jump or briefly show misleading content before the real source controls render.
+
 ## Sensitive Areas
 
 Treat these areas as high risk and change them only with extreme care:

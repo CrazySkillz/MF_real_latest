@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -205,10 +205,10 @@ export function AddRevenueWizardModal(props: {
 
   // Sheets
   const [sheetsConnections, setSheetsConnections] = useState<any[]>([]);
-  const [sheetsConnectionsLoading, setSheetsConnectionsLoading] = useState(false);
   const [sheetsConnectionId, setSheetsConnectionId] = useState<string>("");
   const [showSheetsConnect, setShowSheetsConnect] = useState(false);
   const [sheetsRemoving, setSheetsRemoving] = useState(false);
+  const sheetsConnectionsCampaignRef = useRef<string>("");
   const [sheetsPreview, setSheetsPreview] = useState<Preview | null>(null);
   const [sheetsBackToChooser, setSheetsBackToChooser] = useState(false);
   const [sheetsRevenueCol, setSheetsRevenueCol] = useState<string>("");
@@ -409,7 +409,6 @@ export function AddRevenueWizardModal(props: {
     setCsvPrefill(null);
     setCsvValueSource('revenue');
     setSheetsConnectionId("");
-    setSheetsConnectionsLoading(false);
     setShowSheetsConnect(false);
     setSheetsRemoving(false);
     setSheetsPreview(null);
@@ -656,9 +655,11 @@ export function AddRevenueWizardModal(props: {
   useEffect(() => {
     let mounted = true;
     if (!open) return;
-    if (step !== "sheets_choose" && step !== "sheets_map") return;
+    if (sheetsConnectionsCampaignRef.current !== campaignId) {
+      sheetsConnectionsCampaignRef.current = campaignId;
+      setSheetsConnections([]);
+    }
     (async () => {
-      setSheetsConnectionsLoading(true);
       try {
         const resp = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?purpose=${encodeURIComponent(sheetsPurpose)}`, { credentials: "include" });
         const json = await resp.json().catch(() => ({}));
@@ -679,15 +680,12 @@ export function AddRevenueWizardModal(props: {
       } catch {
         if (!mounted) return;
         setSheetsConnections([]);
-      } finally {
-        if (!mounted) return;
-        setSheetsConnectionsLoading(false);
       }
     })();
     return () => {
       mounted = false;
     };
-  }, [open, step, campaignId, sheetsPurpose, isEditing, sheetsBackToChooser]);
+  }, [open, campaignId, sheetsPurpose, isEditing, sheetsBackToChooser]);
 
   const refreshSheetsConnections = async () => {
     try {
@@ -1982,9 +1980,7 @@ export function AddRevenueWizardModal(props: {
                         </div>
                       </div>
                     )}
-                    {sheetsConnections.length === 0 && sheetsConnectionsLoading ? (
-                      <div className="min-h-[96px] rounded-lg border border-border bg-muted/20" aria-busy="true" />
-                    ) : sheetsConnections.length === 0 ? (
+                    {sheetsConnections.length === 0 ? (
                       <div className="space-y-3">
                         <div className="text-sm font-medium">Connect Google Sheets</div>
                         <p className="text-xs text-muted-foreground/70">

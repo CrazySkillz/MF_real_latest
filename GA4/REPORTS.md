@@ -162,8 +162,11 @@ Important meaning:
 - scheduled reports are production-visible outputs and must be guarded by campaign/platform ownership checks
 - before sending a campaign-scoped scheduled report, the scheduler must verify that the campaign still exists
 - if the campaign is missing, the scheduler must not create a report snapshot, recompute GA4 KPI/Benchmark state, generate/send the email, or update report `lastSentAt`
+- report test-send must also fail closed when the resolved report has no valid campaign so stale helper-level callers cannot send orphaned reports
+- direct report snapshot JSON/PDF routes must verify both report access and snapshot/report campaign-platform consistency before returning snapshot data or a generated PDF
 - scheduler report selection must deduplicate report rows by report ID before due checks because the shared report table can be reached through legacy and platform-specific storage paths
 - scheduled send events remain the audit/idempotency layer for each `reportId + scheduledKey`
+- scheduled report snapshots represent successfully sent artifacts; failed scheduled sends should update `report_send_events` only and must not create a misleading sent/downloadable snapshot
 - scheduled and test-send report emails must include the generated PDF attachment; the email body is delivery scaffolding, not the report content
 - report emails should remain plain transactional messages with simple subject/body text and no marketing banner, dashboard CTA, or styled report body because Gmail deliverability rejected the richer report-email payload
 - Mailgun/API acceptance is not proof of inbox delivery; when provider delivery events are available, test-send and scheduler diagnostics must distinguish accepted, delivered, failed, and pending delivery states

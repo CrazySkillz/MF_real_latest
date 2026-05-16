@@ -837,21 +837,6 @@ export async function checkScheduledReports(): Promise<void> {
         scheduledKey: due.scheduledKey,
       };
 
-      const [snap] = await db
-        .insert(reportSnapshots)
-        .values({
-          reportId: snapshotPayload.reportId,
-          campaignId: snapshotPayload.campaignId,
-          platformType: snapshotPayload.platformType,
-          reportType: snapshotPayload.reportType,
-          windowStart,
-          windowEnd,
-          snapshotJson: JSON.stringify(snapshotPayload),
-          hasEstimated: false,
-        } as any)
-        .returning()
-        .catch(() => []);
-
       if (snapshotPayload.platformType === "google_analytics" && snapshotPayload.campaignId) {
         try {
           await runGA4DailyKPIAndBenchmarkJobs({ campaignId: String(snapshotPayload.campaignId), date: windowEnd });
@@ -874,9 +859,25 @@ export async function checkScheduledReports(): Promise<void> {
         windowStart,
         windowEnd,
         campaignName,
-        snapshotId: (snap as any)?.id ? String((snap as any).id) : undefined,
         attachment: pdfBuffer ? { filename: `${snapshotPayload.reportName.replace(/\s+/g, "_")}_${windowEnd}.pdf`, content: pdfBuffer } : null,
       });
+
+      const [snap] = sent
+        ? await db
+          .insert(reportSnapshots)
+          .values({
+            reportId: snapshotPayload.reportId,
+            campaignId: snapshotPayload.campaignId,
+            platformType: snapshotPayload.platformType,
+            reportType: snapshotPayload.reportType,
+            windowStart,
+            windowEnd,
+            snapshotJson: JSON.stringify(snapshotPayload),
+            hasEstimated: false,
+          } as any)
+          .returning()
+          .catch(() => [])
+        : [];
 
       // Update metrics
       const emailError = sent ? "" : await getLatestReportEmailError(snapshotPayload.reportId);
@@ -1013,6 +1014,11 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
     console.log(`[Report Scheduler] Report type: ${report.reportType}`);
     console.log(`[Report Scheduler] Schedule recipients:`, report.scheduleRecipients);
 
+    const reportCampaignId = String((report as any)?.campaignId || "").trim();
+    if (!reportCampaignId) {
+      return { success: false, message: "Report campaign is missing" };
+    }
+
     const recipients = report.scheduleRecipients || [];
 
     if (recipients.length === 0) {
@@ -1033,12 +1039,13 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
     // Snapshot meta (optional, best-effort campaign name)
     let campaignName: string | null = null;
     try {
-      if ((report as any)?.campaignId) {
-        const [c] = await db.select().from(campaigns).where(eq(campaigns.id, String((report as any).campaignId)));
-        campaignName = (c as any)?.name || null;
+      const [c] = await db.select().from(campaigns).where(eq(campaigns.id, reportCampaignId));
+      if (!c) {
+        return { success: false, message: "Campaign not found; test report skipped", recipients };
       }
+      campaignName = (c as any)?.name || null;
     } catch {
-      campaignName = null;
+      return { success: false, message: "Campaign lookup failed; test report skipped", recipients };
     }
 
     const pdfBuffer = await buildPdfAttachmentForReport({

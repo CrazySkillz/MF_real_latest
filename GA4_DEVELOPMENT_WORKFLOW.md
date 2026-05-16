@@ -204,6 +204,7 @@ For Reports-specific fixes, also verify:
 - custom-report subsection selection is respected
 - custom report picker layout changes do not silently change saved config meaning
 - scheduled/server-generated GA4 attachments and ad hoc downloads still use the same report configuration semantics
+- direct report snapshot/download routes verify both report access and snapshot/report campaign-platform consistency before returning JSON or PDF output
 
 ## Step 5B: Add Automated Regression Coverage For High-Risk Bugs
 

@@ -19705,7 +19705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/meta/reports/:reportId", async (req, res) => {
     try {
       const { reportId } = req.params;
-      const updates = req.body;
+      const updates = { ...req.body };
 
       // Verify report exists and get campaignId for access check
       const existingReport = await storage.getMetaReportById(reportId);
@@ -19715,6 +19715,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const ok = await ensureCampaignAccess(req as any, res as any, existingReport.campaignId);
       if (!ok) return;
+
+      delete updates.id;
+      delete updates.campaignId;
+      delete updates.platformType;
+      delete updates.createdAt;
+      delete updates.updatedAt;
 
       const updatedReport = await storage.updateMetaReport(reportId, updates);
       res.json({ report: updatedReport });
@@ -22092,6 +22098,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!row) return res.status(404).json({ success: false, error: "Snapshot not found" });
       const okReport = await ensurePlatformReportAccess(req as any, res as any, String((row as any).reportId || ""));
       if (!okReport) return;
+      const snapshotCampaignId = String((row as any).campaignId || (row as any).campaign_id || "").trim();
+      const reportCampaignId = String((okReport as any).campaignId || "").trim();
+      const snapshotPlatform = String((row as any).platformType || (row as any).platform_type || "").trim().toLowerCase();
+      const reportPlatform = String((okReport as any).platformType || "").trim().toLowerCase();
+      if (snapshotCampaignId !== reportCampaignId || snapshotPlatform !== reportPlatform) {
+        return res.status(404).json({ success: false, error: "Snapshot not found" });
+      }
       res.json({ success: true, snapshot: row });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch snapshot" });
@@ -22114,6 +22127,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!row) return res.status(404).json({ success: false, error: "Snapshot not found" });
       const okReport = await ensurePlatformReportAccess(req as any, res as any, String((row as any).reportId || ""));
       if (!okReport) return;
+      const snapshotCampaignId = String((row as any).campaignId || (row as any).campaign_id || "").trim();
+      const reportCampaignId = String((okReport as any).campaignId || "").trim();
+      const snapshotPlatform = String((row as any).platformType || (row as any).platform_type || "").trim().toLowerCase();
+      const reportPlatform = String((okReport as any).platformType || "").trim().toLowerCase();
+      if (snapshotCampaignId !== reportCampaignId || snapshotPlatform !== reportPlatform) {
+        return res.status(404).json({ success: false, error: "Snapshot not found" });
+      }
 
       let payload: any = {};
       try {

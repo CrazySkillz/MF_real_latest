@@ -204,7 +204,10 @@ For destructive or visibility-related changes:
 - campaign/client deletion may hide or remove campaign-scoped child rows only for that campaign/client; it must not affect unrelated campaigns, platform-level rows, or other clients
 - scheduled jobs must fail closed when campaign/platform ownership cannot be verified
 - scheduled report jobs must not snapshot, email, recompute, or update send bookkeeping for a campaign-scoped report whose campaign no longer exists
+- report test-send paths must fail closed when the resolved report has no valid campaign, even if a stale or helper-level caller bypasses the normal route guard
 - scheduler report selection should deduplicate reports by report ID before processing so legacy and platform-specific storage paths cannot process the same report twice
+- scheduled report snapshots must represent successfully sent artifacts; failed scheduled sends should update send-event audit state only and must not create misleading sent/downloadable snapshots
+- direct report snapshot JSON/PDF routes must verify both report access and snapshot/report campaign-platform consistency before returning output
 - report update/delete routes must return accurate success/failure based on the row actually changed or removed
 - report email delivery fixes must distinguish provider/API acceptance from confirmed delivery; do not tell the user an email was delivered unless provider delivery events or actual inbox receipt prove it
 - report emails should remain plain transactional messages with the generated PDF attached unless the user explicitly requests a delivery-safe redesign

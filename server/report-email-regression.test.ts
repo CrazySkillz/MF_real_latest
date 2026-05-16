@@ -48,6 +48,18 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain("Refusing to send report");
   });
 
+  it("creates scheduled report snapshots only after a successful send", () => {
+    const source = readReportScheduler();
+    const sendIndex = source.indexOf("const sent = await sendReportEmailWithRetry");
+    const snapshotInsertIndex = source.indexOf(".insert(reportSnapshots)", sendIndex);
+    const sendEventUpdateIndex = source.indexOf(".update(reportSendEvents)", snapshotInsertIndex);
+
+    expect(sendIndex).toBeGreaterThan(-1);
+    expect(snapshotInsertIndex).toBeGreaterThan(sendIndex);
+    expect(sendEventUpdateIndex).toBeGreaterThan(snapshotInsertIndex);
+    expect(source).toContain("const [snap] = sent");
+  });
+
   it("keeps GA4 scheduled PDFs resilient to optional section query failures", () => {
     const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
 
@@ -71,6 +83,40 @@ describe("scheduled report email regression guard", () => {
     expect(testSendRoute).toContain("sendTestReport(reportId)");
     expect(testSendRoute).not.toContain("hasEmailConfig");
     expect(testSendRoute).not.toContain("MAILGUN_SMTP_USER && process.env.MAILGUN_SMTP_PASS");
+  });
+
+  it("keeps direct report snapshot reads scoped to the owning report campaign and platform", () => {
+    const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const snapshotReadRoute = routesSource.slice(
+      routesSource.indexOf('app.get("/api/report-snapshots/:snapshotId"'),
+      routesSource.indexOf("// Download a snapshot PDF")
+    );
+    const snapshotPdfRoute = routesSource.slice(
+      routesSource.indexOf('app.get("/api/report-snapshots/:snapshotId/pdf"'),
+      routesSource.indexOf("// Get single benchmark")
+    );
+
+    for (const route of [snapshotReadRoute, snapshotPdfRoute]) {
+      expect(route).toContain("ensurePlatformReportAccess");
+      expect(route).toContain("snapshotCampaignId !== reportCampaignId");
+      expect(route).toContain("snapshotPlatform !== reportPlatform");
+      expect(route).toContain('error: "Snapshot not found"');
+    }
+  });
+
+  it("keeps legacy Meta/Google Ads report updates from changing report ownership", () => {
+    const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const metaUpdateRoute = routesSource.slice(
+      routesSource.indexOf('app.patch("/api/meta/reports/:reportId"'),
+      routesSource.indexOf("/**\n   * Delete Meta report")
+    );
+
+    expect(metaUpdateRoute).toContain("ensureCampaignAccess");
+    expect(metaUpdateRoute).toContain("existingReport.campaignId");
+    expect(metaUpdateRoute).toContain("delete updates.campaignId");
+    expect(metaUpdateRoute).toContain("delete updates.platformType");
+    expect(metaUpdateRoute).toContain("delete updates.createdAt");
+    expect(metaUpdateRoute).toContain("delete updates.updatedAt");
   });
 
   it("keeps Mailgun report delivery using explicit recipients and text fallback", () => {
@@ -97,5 +143,14 @@ describe("scheduled report email regression guard", () => {
     expect(schedulerSource).toContain("Mailgun accepted the email, but delivery was not confirmed yet");
     expect(routesSource).toContain("deliveryStatus: result.deliveryStatus");
     expect(routesSource).not.toContain("Test report email sent successfully! Check your inbox.");
+  });
+
+  it("keeps report test-send fail-closed for missing campaign ownership", () => {
+    const source = readReportScheduler();
+
+    expect(source).toContain("const reportCampaignId = String((report as any)?.campaignId || \"\").trim()");
+    expect(source).toContain("Report campaign is missing");
+    expect(source).toContain("Campaign not found; test report skipped");
+    expect(source).toContain("Campaign lookup failed; test report skipped");
   });
 });

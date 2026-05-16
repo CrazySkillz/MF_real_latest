@@ -588,7 +588,10 @@ Required behavior:
 - alert checks may recreate a notification only when the underlying KPI or Benchmark is still breached and the recreated row is scoped to the correct campaign/item
 - report delete/update routes must only mutate reports belonging to the requested campaign/platform context
 - scheduled report delivery must verify campaign existence before creating snapshots, recomputing dependent analytics, sending email, or updating `lastSentAt`
+- report test-send must verify the resolved report still belongs to a valid campaign before sending
 - scheduled report processing must deduplicate report rows by ID before due checks because legacy and platform-specific storage paths may return overlapping rows
+- scheduled report snapshots represent successful sent artifacts only; failed scheduled sends should update send-event audit state without creating downloadable/sent snapshot rows
+- direct report snapshot JSON/PDF routes must verify both report access and snapshot/report campaign-platform consistency
 - report email success must mean the provider delivered the message when delivery events are available; raw provider/API acceptance alone is not enough to tell the user the email was delivered
 - scheduled and test-send report emails should stay plain and transactional, with the generated PDF as the report artifact
 

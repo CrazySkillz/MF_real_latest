@@ -1539,7 +1539,7 @@ export function AddRevenueWizardModal(props: {
                         </div>
                         {manualPlatform !== 'ga4' && (
                           <div className="space-y-1">
-                            <Label>Campaign {platformCampaignsLoading ? '(loading...)' : '(optional)'}</Label>
+                            <Label>Campaign (optional)</Label>
                             <Select value={manualSubCampaign || "__all__"} onValueChange={(v) => setManualSubCampaign(v === "__all__" ? "" : v)} disabled={platformCampaignsLoading || platformCampaigns.length === 0}>
                               <SelectTrigger><SelectValue placeholder={platformCampaigns.length === 0 && !platformCampaignsLoading ? "No campaigns found" : "All campaigns"} /></SelectTrigger>
                               <SelectContent>
@@ -1982,10 +1982,8 @@ export function AddRevenueWizardModal(props: {
                         </div>
                       </div>
                     )}
-                    {sheetsConnectionsLoading ? (
-                      <div className="rounded-lg border border-border bg-muted/40 p-4">
-                        <div className="text-sm text-foreground/80/60">Loading your connected Google Sheets…</div>
-                      </div>
+                    {sheetsConnections.length === 0 && sheetsConnectionsLoading ? (
+                      <div className="min-h-[96px] rounded-lg border border-border bg-muted/20" aria-busy="true" />
                     ) : sheetsConnections.length === 0 ? (
                       <div className="space-y-3">
                         <div className="text-sm font-medium">Connect Google Sheets</div>
@@ -2080,6 +2078,9 @@ export function AddRevenueWizardModal(props: {
                           <Label>Choose Google Sheet tab</Label>
                           <div className="flex items-center gap-2">
                             <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
+                              Reconnect
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => setShowSheetsConnect(true)}>
                               Change sheet/tab
                             </Button>
                             <Button
@@ -2135,7 +2136,7 @@ export function AddRevenueWizardModal(props: {
                           }}
                           disabled={!sheetsConnectionId || sheetsProcessing}
                         >
-                          {sheetsProcessing ? "Loading..." : "Next"}
+                          Next
                         </Button>
                       )}
                     </div>

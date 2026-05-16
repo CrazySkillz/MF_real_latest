@@ -2065,6 +2065,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!existingSource) {
             return res.status(404).json({ success: false, error: "Revenue source not found" });
           }
+          if (String((existingSource as any)?.sourceType || "").trim().toLowerCase() !== "csv") {
+            return res.status(404).json({ success: false, error: "Revenue source not found" });
+          }
           if (String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== platformContext) {
             return res.status(404).json({ success: false, error: "Revenue source not found" });
           }
@@ -2224,6 +2227,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingSourceIdOrNull) {
         const existingSource = existingSourceForEdit || await storage.getRevenueSource(campaignId, existingSourceIdOrNull);
         if (!existingSource) return res.status(404).json({ success: false, error: "Revenue source not found" });
+        if (String((existingSource as any)?.sourceType || "").trim().toLowerCase() !== "csv") {
+          return res.status(404).json({ success: false, error: "Revenue source not found" });
+        }
         if (String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== platformContext) {
           return res.status(404).json({ success: false, error: "Revenue source not found" });
         }
@@ -3269,6 +3275,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!existingSource) {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
+        if (String((existingSource as any)?.sourceType || "").trim().toLowerCase() !== "csv") {
+          return res.status(404).json({ success: false, error: "Spend source not found" });
+        }
         let existingMapping: any = null;
         try {
           existingMapping = (existingSource as any)?.mappingConfig ? JSON.parse(String((existingSource as any).mappingConfig)) : null;
@@ -3388,6 +3397,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingSourceId) {
         const existingSource = await storage.getSpendSource(campaignId, existingSourceId);
         if (!existingSource) return res.status(404).json({ success: false, error: "Spend source not found" });
+        if (String((existingSource as any)?.sourceType || "").trim().toLowerCase() !== "csv") {
+          return res.status(404).json({ success: false, error: "Spend source not found" });
+        }
         source = await storage.updateSpendSource(existingSourceId, {
           displayName: mapping.displayName || "CSV",
           currency,

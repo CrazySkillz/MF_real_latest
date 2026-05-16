@@ -433,6 +433,7 @@ Important meaning:
 - when a replacement CSV is selected in edit mode, stale saved prefill, campaign search, and selected campaign values from the previous CSV must be cleared before the new preview/mapping is shown
 - `Update revenue` should remain disabled until a meaningful edit is made
 - CSV revenue preview and process endpoints must enforce normal campaign access checks before reading, previewing, processing, updating, or materializing uploaded data
+- CSV revenue process/edit must verify that any provided existing `sourceId` is an active CSV revenue source for the requested campaign and platform context before updating records
 
 ## Revenue Source 6: Existing Stored Manual Revenue
 
@@ -633,6 +634,7 @@ Important meaning:
 - once a CSV spend source has been imported with the persisted edit payload, edit mode can recalculate from the stored imported dataset when the user changes only campaign-value selection
 - if the user changes mapped columns, including the date column, or the original stored dataset is not available, re-upload is still required
 - CSV spend preview and process endpoints must enforce normal campaign access checks before reading, previewing, processing, updating, or materializing uploaded data
+- CSV spend process/edit must verify that any provided existing `sourceId` is an active CSV spend source for the requested campaign before updating records
 
 ## Spend Source 6: Existing Stored Manual Spend
 

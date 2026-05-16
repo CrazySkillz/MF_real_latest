@@ -1955,9 +1955,9 @@ export function AddSpendWizardModal(props: {
                     <CardDescription>Choose the Google Sheet tab that contains your spend data.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {sheetsConnectionsLoading ? (
+                    {sheetsConnectionsLoading && sheetsConnections.length === 0 ? (
                       <div className="rounded-lg border border-border bg-muted/40 p-4">
-                        <div className="text-sm text-muted-foreground">Loading your connected Google Sheets...</div>
+                        <div className="text-sm text-muted-foreground">Checking connected Google Sheets...</div>
                       </div>
                     ) : sheetsConnections.length === 0 ? (
                       <SimpleGoogleSheetsAuth
@@ -2098,7 +2098,7 @@ export function AddSpendWizardModal(props: {
                       <Button variant="outline" onClick={() => setStep("select")}>Cancel</Button>
                       {!showSheetsConnect && sheetsConnections.length > 0 && (
                         <Button onClick={() => previewSheet()} disabled={!selectedSheetConnectionId || isSheetsLoading}>
-                          {isSheetsLoading ? "Loading..." : "Next"}
+                          Next
                         </Button>
                       )}
                     </div>
@@ -2257,17 +2257,6 @@ export function AddSpendWizardModal(props: {
 
             {(step === "csv_map" || step === "sheets_map") && (
               <div className="space-y-4">
-                {/* Loading indicator while sheet data is being fetched */}
-                {step === "sheets_map" && isSheetsLoading ? (
-                  <div className="flex flex-col items-center justify-center py-16 gap-3">
-                    <div className="flex gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="w-2.5 h-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Loading spreadsheet data...</p>
-                  </div>
-                ) : (
                 <Card className="fade-in">
                   <CardContent className="space-y-4 pt-6">
                     {step === "csv_map" && !csvPreview?.success ? (
@@ -2485,7 +2474,6 @@ export function AddSpendWizardModal(props: {
                     )}
                   </CardContent>
                 </Card>
-                )}
               </div>
             )}
 

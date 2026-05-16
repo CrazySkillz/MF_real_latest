@@ -46,6 +46,25 @@ describe("GA4 UI regression guard", () => {
     expect(spendModal).toContain("Import spend from a CSV. Requires manual re-upload to update.");
   });
 
+  it("keeps Google Sheets spend chooser stable without visible loading text during back/dropdown transitions", () => {
+    const spendModal = readClient("components/AddSpendWizardModal.tsx");
+    const chooseStart = spendModal.indexOf('{step === "sheets_choose" && (');
+    const mapStart = spendModal.indexOf('{step === "csv" && (', chooseStart);
+    const mapSectionStart = spendModal.indexOf('{(step === "csv_map" || step === "sheets_map") && (');
+    const footerStart = spendModal.indexOf('onClick={step === "csv_map" ? processCsv : processSheets}', mapSectionStart);
+    expect(chooseStart).toBeGreaterThan(-1);
+    expect(mapStart).toBeGreaterThan(chooseStart);
+    expect(mapSectionStart).toBeGreaterThan(mapStart);
+    expect(footerStart).toBeGreaterThan(mapSectionStart);
+
+    const chooseSection = spendModal.slice(chooseStart, mapStart);
+    const mapSection = spendModal.slice(mapSectionStart, footerStart);
+    expect(chooseSection).toContain("sheetsConnectionsLoading && sheetsConnections.length === 0");
+    expect(chooseSection).not.toContain("Loading your connected Google Sheets");
+    expect(chooseSection).not.toContain("Loading...");
+    expect(mapSection).not.toContain("Loading spreadsheet data");
+  });
+
   it("keeps revenue and spend add-source modals vertically scrollable inside the viewport", () => {
     const revenueModal = readClient("components/AddRevenueWizardModal.tsx");
     const spendModal = readClient("components/AddSpendWizardModal.tsx");

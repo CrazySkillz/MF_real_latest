@@ -58,6 +58,8 @@ Important clarification:
 - the GA4 revenue metric is optional to the overall campaign revenue model; external revenue import is a valid primary path
 - when GA4 native revenue exists, refresh should update the GA4-native aggregated revenue amount for the campaign's selected GA4 scope
 - imported `Total Revenue` is a to-date total and includes source-backed revenue records through the current UTC day; `Latest Day Revenue` remains previous-complete-day only
+- imported `Total Revenue`, `Revenue Breakdown`, and the `Revenue Sources` modal must use the same active source-backed revenue record window so the card total and source provenance cannot drift
+- unless the user explicitly configured a campaign `startDate`, imported revenue totals must not silently exclude valid source records because of the campaign creation timestamp
 - the `GA4 Revenue` source entry in the `Total Revenue` source modal should show that full aggregated GA4 amount, not a partial or single-day figure
 - for GA4 `Ad Comparison`, external revenue may be added into campaign rows only when the source saves real campaign-identifying values that match GA4 campaign rows exactly
 - for GA4 `Overview -> Campaign Breakdown`, the same exact campaign-matched rule applies, so that table's column label should be `Revenue`, not `GA4 Revenue`
@@ -380,6 +382,8 @@ Important meaning:
 - the date column supports daily-history behavior; it does not itself create automatic daily syncing
 - Google Sheets refreshability comes from the connected sheet source, while the date column controls date granularity
 - if a campaign column is selected and matching values are available, at least one campaign value must be selected before import
+- creating a new Google Sheets revenue source from `Total Revenue -> + -> Google Sheets` must create a new additive revenue source even if it uses the same Google Sheets connection or tab as an existing source
+- edit mode and scheduler refresh are the only Google Sheets revenue paths that should update an existing source, and they must do so by stable `sourceId`
 - Google Sheets revenue edit should keep `Update revenue` disabled until a meaningful edit is made
 - Google Sheets revenue edit chooser should not show the outer header `Back` button; users either continue with `Next`, use `Change sheet/tab`, cancel, or close
 - in Google Sheets revenue edit mode, changing the selected sheet/tab must update the existing revenue source by stable `sourceId`; it must not create a second additive Google Sheets revenue source
@@ -649,6 +653,7 @@ Important meaning:
 - executive-facing provenance should be consolidated in a source modal / `Sources used` areas rather than repeated as per-card microcopy under every financial card
 - revenue provenance should enumerate the full active revenue source set, including GA4 native revenue when present, instead of only the first imported/manual revenue source
 - revenue provenance should keep active source definitions visible even when another source has breakdown rows and the active source currently contributes `$0.00`
+- revenue provenance and Total Revenue must stay additive: adding a new source should increase Total Revenue by that source's persisted records rather than replacing another source with the same connection metadata
 - the Revenue Sources and Spend Sources modal bodies should scroll vertically when many source entries are present so edit/delete actions remain accessible inside the dialog
 
 ## Edit And Delete Pattern

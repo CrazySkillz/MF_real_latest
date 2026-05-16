@@ -114,6 +114,14 @@ Google Sheets spend auto-refresh rule:
 - if a `Date` column is mapped, daily spend records are materialized from the dated rows; adding a new matching dated row should increase `Total Spend` by that row's spend amount after refresh
 - if a campaign identifier/value filter is mapped, only rows matching the saved campaign value set should be included
 
+Google Sheets revenue refresh rule:
+
+- creating a new Google Sheets revenue source is additive and must not reuse an existing source just because the same Google Sheets connection or tab is selected
+- scheduled Google Sheets revenue refresh must reprocess the saved source itself and update by stable revenue `sourceId`
+- refresh must replace that source's own materialized revenue records before inserting refreshed rows
+- refresh must not create a duplicate source, update another source that shares the same connection, or append duplicate rows on repeated scheduler runs
+- if a `Date` column is mapped, daily revenue records are materialized from the dated rows; if no date column is mapped, the source remains revenue-to-date snapshot style
+
 CRM auto-reprocess rule:
 
 - saved HubSpot and Salesforce mappings should be reprocessed by the daily auto-refresh scheduler without requiring a user to manually reopen and save the wizard

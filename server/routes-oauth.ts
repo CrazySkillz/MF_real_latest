@@ -1311,7 +1311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
 
-      const startDate = toISODateUTC((campaign as any)?.startDate) || toISODateUTC((campaign as any)?.createdAt) || "2020-01-01";
+      const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
       const endDate = new Date().toISOString().slice(0, 10); // include today's records
 
       const sources = await storage.getSpendBreakdownBySource(campaignId, startDate, endDate);
@@ -2850,7 +2850,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Unified campaign.spend recalculation — sums spend_records (via breakdown) + mappingConfig.amount for sources without records
   const recalcCampaignSpend = async (campaignId: string) => {
     const campaign = await storage.getCampaign(campaignId);
-    const startDate = toISODateUTC((campaign as any)?.startDate) || toISODateUTC((campaign as any)?.createdAt) || "2020-01-01";
+    const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
     const endDate = new Date().toISOString().slice(0, 10);
     const breakdown = await storage.getSpendBreakdownBySource(campaignId, startDate, endDate);
     const recordsTotal = breakdown.reduce((sum: number, s: any) => sum + s.spend, 0);
@@ -3732,18 +3732,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete (mappingForStorage as any).sourceId;
       const nextSpendMappingConfig = JSON.stringify(mappingForStorage);
 
+      // Add mode creates a new additive source. Edit/refresh mode passes sourceId and updates only that source.
       const existingSpendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
-      const existingSheetsSpendSource = (Array.isArray(existingSpendSources) ? existingSpendSources : []).find((s: any) => {
-        if (!s || (s as any).isActive === false) return false;
-        if (String((s as any).sourceType || "") !== "google_sheets") return false;
-        if (existingSourceId && String((s as any).id || "") === existingSourceId) return true;
-        try {
-          const cfg = (s as any).mappingConfig ? JSON.parse(String((s as any).mappingConfig)) : null;
-          return String(cfg?.connectionId || "") === String(connectionId);
-        } catch {
-          return false;
-        }
-      });
+      const existingSheetsSpendSource = existingSourceId
+        ? (Array.isArray(existingSpendSources) ? existingSpendSources : []).find((s: any) => {
+            if (!s || (s as any).isActive === false) return false;
+            if (String((s as any).sourceType || "") !== "google_sheets") return false;
+            return String((s as any).id || "") === existingSourceId;
+          })
+        : null;
 
       let source: any = existingSheetsSpendSource || null;
       if (!source) {

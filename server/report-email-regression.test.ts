@@ -153,4 +153,17 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain("Campaign not found; test report skipped");
     expect(source).toContain("Campaign lookup failed; test report skipped");
   });
+
+  it("disables orphaned scheduled reports after campaign-missing proof", () => {
+    const source = readReportScheduler();
+    const missingCampaignBlock = source.slice(
+      source.indexOf('const error = "Campaign not found; skipped scheduled report"'),
+      source.indexOf("continue;", source.indexOf('const error = "Campaign not found; skipped scheduled report"'))
+    );
+
+    expect(missingCampaignBlock).toContain(".update(linkedinReports)");
+    expect(missingCampaignBlock).toContain("scheduleEnabled: false");
+    expect(missingCampaignBlock).toContain(".update(reportSendEvents)");
+    expect(missingCampaignBlock).toContain('status: "skipped"');
+  });
 });

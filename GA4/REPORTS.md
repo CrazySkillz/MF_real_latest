@@ -162,6 +162,7 @@ Important meaning:
 - scheduled reports are production-visible outputs and must be guarded by campaign/platform ownership checks
 - before sending a campaign-scoped scheduled report, the scheduler must verify that the campaign still exists
 - if the campaign is missing, the scheduler must not create a report snapshot, recompute GA4 KPI/Benchmark state, generate/send the email, or update report `lastSentAt`
+- if the campaign is proven missing, the scheduler should disable only that orphaned report's schedule so it does not keep retrying on future ticks
 - report test-send must also fail closed when the resolved report has no valid campaign so stale helper-level callers cannot send orphaned reports
 - direct report snapshot JSON/PDF routes must verify both report access and snapshot/report campaign-platform consistency before returning snapshot data or a generated PDF
 - scheduler report selection must deduplicate report rows by report ID before due checks because the shared report table can be reached through legacy and platform-specific storage paths

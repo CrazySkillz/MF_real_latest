@@ -2038,6 +2038,12 @@ export default function GA4Metrics() {
   // Revenue display sources — merges breakdown (per-source amounts) with source definitions (fallback)
   const revenueDisplaySources = useMemo(() => {
     const defs = Array.isArray(revenueSourcesResp?.sources) ? revenueSourcesResp.sources : Array.isArray(revenueSourcesResp) ? revenueSourcesResp : [];
+    const getDefinitionRevenue = (source: any) => {
+      const cfg = typeof source?.mappingConfig === "string"
+        ? (() => { try { return JSON.parse(source.mappingConfig); } catch { return null; } })()
+        : source?.mappingConfig;
+      return Number(source?.lastTotalRevenue || source?.lastRevenue || cfg?.lastTotalRevenue || 0);
+    };
     const defsMap = new Map<string, any>();
     for (const d of defs) if (d) defsMap.set(String(d.id), d);
     const defsByType = new Map<string, any>();
@@ -2066,7 +2072,7 @@ export default function GA4Metrics() {
       const shownIds = new Set(rows.map((s: any) => String(s.sourceId || "")));
       for (const d of defs.filter((d: any) => d?.isActive !== false)) {
         if (!shownIds.has(String(d.id))) {
-          rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: 0, mappingConfig: d.mappingConfig });
+          rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig });
         }
       }
       return rows;
@@ -2075,7 +2081,7 @@ export default function GA4Metrics() {
       sourceId: d.id,
       sourceType: d.sourceType,
       displayName: d.displayName,
-      revenue: null,
+      revenue: getDefinitionRevenue(d),
       mappingConfig: d.mappingConfig,
     }));
   }, [revenueSourcesResp, revenueBreakdownResp]);
@@ -5609,7 +5615,7 @@ export default function GA4Metrics() {
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="font-medium tabular-nums text-foreground">
-                                  {s.revenue != null ? formatMoney(s.revenue) : formatMoney(Number(financialRevenue || 0))}
+                                  {formatMoney(Number(s.revenue || 0))}
                                 </span>
                                 <button
                                   onClick={() => {

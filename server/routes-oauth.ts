@@ -17737,7 +17737,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
       console.log(`[LinkedIn] Deleting connection for campaign ${campaignId}`);
 
-      await storage.deleteLinkedInConnection(campaignId);
+      const deleted = await storage.deleteLinkedInConnection(campaignId);
+      if (!deleted) {
+        return res.status(404).json({ success: false, error: "LinkedIn connection not found" });
+      }
 
       console.log(`[LinkedIn] Connection deleted successfully`);
       res.json({ success: true, message: 'Connection deleted' });

@@ -118,6 +118,31 @@ describe("source safety regression guards", () => {
     }
   });
 
+  it("LinkedIn disconnect routes are campaign-scoped and fail closed when no row is deleted", () => {
+    const routesSource = readRoutesSource();
+    const centralizedStart = routesSource.indexOf('app.delete("/api/linkedin/:campaignId/connection"');
+    const centralizedEnd = routesSource.indexOf("// ============================================================================\n  // END CENTRALIZED LINKEDIN OAUTH", centralizedStart);
+    const currentStart = routesSource.indexOf('app.delete("/api/linkedin/disconnect/:campaignId"');
+    const currentEnd = routesSource.indexOf("// PATCH /api/linkedin/update/:campaignId", currentStart);
+    const routes = [
+      routesSource.slice(centralizedStart, centralizedEnd),
+      routesSource.slice(currentStart, currentEnd),
+    ];
+
+    for (const route of routes) {
+      expect(route).toContain("ensureCampaignAccess");
+      expect(route.indexOf("ensureCampaignAccess")).toBeLessThan(route.indexOf("storage.deleteLinkedInConnection(campaignId)"));
+      expect(route).toContain("LinkedIn connection not found");
+    }
+
+    const storageSource = readStorageSource();
+    const methodStart = storageSource.indexOf("async deleteLinkedInConnection(campaignId: string)");
+    const methodEnd = storageSource.indexOf("// Meta Connection methods", methodStart);
+    const method = storageSource.slice(methodStart, methodEnd);
+
+    expect(method).toContain("eq(linkedinConnections.campaignId, campaignId)");
+  });
+
   it("LinkedIn spend refresh and edit mode preserve the existing source ID", () => {
     const routesSource = readRoutesSource();
     const routeStart = routesSource.indexOf('app.post("/api/campaigns/:id/spend/linkedin/process"');

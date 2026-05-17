@@ -55,4 +55,20 @@ describe("Spend source additivity", () => {
     expect(route).toContain('await storage.deleteSpendSource(String(source.id));');
     expect(route).toContain('await recalcCampaignSpend(campaignId);');
   });
+
+  it("Google Sheets inactive duplicate purge requires confirmation and only hard-deletes inactive zero-record matches", () => {
+    const routesFile = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routesFile.indexOf('app.post("/api/campaigns/:id/spend-sources/google-sheets-duplicates/purge-inactive"');
+    const nextRouteStart = routesFile.indexOf('// Remove all active spend sources for a campaign', routeStart);
+    expect(routeStart).toBeGreaterThan(-1);
+    expect(nextRouteStart).toBeGreaterThan(routeStart);
+    const route = routesFile.slice(routeStart, nextRouteStart);
+
+    expect(route).toContain('if ((req.body as any)?.confirm !== true)');
+    expect(route).toContain('await storage.getInactiveSpendSources(campaignId)');
+    expect(route).toContain('const recordCount = await storage.countSpendRecordsBySource(id);');
+    expect(route).toContain('if (!activeKeys.has(key) || recordCount !== 0)');
+    expect(route).toContain('await storage.hardDeleteInactiveSpendSource(campaignId, id)');
+    expect(route).not.toContain('recalcCampaignSpend(campaignId)');
+  });
 });

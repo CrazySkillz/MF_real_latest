@@ -66,11 +66,14 @@ export interface IStorage {
 
   // Spend (generic)
   getSpendSources(campaignId: string): Promise<SpendSource[]>;
+  getInactiveSpendSources(campaignId: string): Promise<SpendSource[]>;
   getSpendSource(campaignId: string, sourceId: string): Promise<SpendSource | undefined>;
   createSpendSource(source: InsertSpendSource): Promise<SpendSource>;
   updateSpendSource(sourceId: string, source: Partial<InsertSpendSource>): Promise<SpendSource | undefined>;
   deleteSpendSource(sourceId: string): Promise<boolean>;
+  hardDeleteInactiveSpendSource(campaignId: string, sourceId: string): Promise<boolean>;
   deleteSpendRecordsBySource(sourceId: string): Promise<boolean>;
+  countSpendRecordsBySource(sourceId: string): Promise<number>;
   createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]>;
   getSpendTotalForRange(campaignId: string, startDate: string, endDate: string): Promise<{ totalSpend: number; currency?: string; sourceIds: string[] }>;
   getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; spend: number; currency?: string }>>;
@@ -901,6 +904,12 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(spendSources.connectedAt));
   }
 
+  async getInactiveSpendSources(campaignId: string): Promise<SpendSource[]> {
+    return db.select().from(spendSources)
+      .where(and(eq(spendSources.campaignId, campaignId), eq(spendSources.isActive, false)))
+      .orderBy(desc(spendSources.connectedAt));
+  }
+
   async getSpendSource(campaignId: string, sourceId: string): Promise<SpendSource | undefined> {
     const [s] = await db.select().from(spendSources)
       // Some DBs have spend_sources.id as UUID while our API passes string IDs.
@@ -937,11 +946,26 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
+  async hardDeleteInactiveSpendSource(campaignId: string, sourceId: string): Promise<boolean> {
+    const result = await db
+      .delete(spendSources)
+      .where(and(sql`${spendSources.id}::text = ${sourceId}`, eq(spendSources.campaignId, campaignId), eq(spendSources.isActive, false)));
+    return (result.rowCount || 0) > 0;
+  }
+
   async deleteSpendRecordsBySource(sourceId: string): Promise<boolean> {
     const result = await db
       .delete(spendRecords)
       .where(eq(spendRecords.spendSourceId, sourceId));
     return (result.rowCount || 0) >= 0;
+  }
+
+  async countSpendRecordsBySource(sourceId: string): Promise<number> {
+    const rows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(spendRecords)
+      .where(eq(spendRecords.spendSourceId, sourceId));
+    return Number((rows[0] as any)?.count || 0);
   }
 
   async createSpendRecords(records: InsertSpendRecord[]): Promise<SpendRecord[]> {

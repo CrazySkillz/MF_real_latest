@@ -815,11 +815,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const normalizeList = (value: any) => Array.isArray(value)
         ? value.map((v: any) => String(v ?? "").trim()).filter(Boolean).sort()
         : (value ? [String(value).trim()] : []);
-      const groups = new Map<string, any>();
-      for (const source of sources as any[]) {
+      const buildSignature = (source: any) => {
         let cfg: any = {};
         try { cfg = source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : {}; } catch { cfg = {}; }
-        const signature = {
+        return {
           connectionId: String(cfg?.connectionId || ""),
           spreadsheetId: String(cfg?.spreadsheetId || ""),
           sheetName: String(cfg?.sheetName || ""),
@@ -828,6 +827,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           campaignColumn: String(cfg?.campaignColumn || ""),
           campaignValues: normalizeList(cfg?.campaignValues || cfg?.campaignValue),
         };
+      };
+      const groups = new Map<string, any>();
+      for (const source of sources as any[]) {
+        const signature = buildSignature(source);
         const key = JSON.stringify(signature);
         if (!groups.has(key)) groups.set(key, { signature, sources: [] });
         groups.get(key).sources.push({
@@ -844,7 +847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
       const duplicateGroups = Array.from(groups.values()).filter((g: any) => g.sources.length > 1);
-      return { sources, duplicateGroups };
+      return { sources, duplicateGroups, buildSignature };
   };
 
   app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates", requireCampaignAccessParamId, async (req, res) => {
@@ -889,6 +892,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, deactivatedSourceIds, deactivatedCount: deactivatedSourceIds.length, skippedGroups });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to cleanup Google Sheets spend duplicates" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/spend-sources/google-sheets-duplicates/purge-inactive", requireCampaignAccessParamId, async (req, res) => {
+    try {
+      if ((req.body as any)?.confirm !== true) {
+        return res.status(400).json({ success: false, error: "Purge confirmation is required" });
+      }
+      const campaignId = req.params.id;
+      const { sources, buildSignature } = await getGoogleSheetsSpendDuplicateGroups(campaignId);
+      const activeKeys = new Set((sources as any[]).map((source: any) => JSON.stringify(buildSignature(source))));
+      const inactive = (await storage.getInactiveSpendSources(campaignId)).filter((s: any) => String(s?.sourceType || "") === "google_sheets");
+      const purgedSourceIds: string[] = [];
+      const skipped: any[] = [];
+      for (const source of inactive as any[]) {
+        const id = String(source.id);
+        const key = JSON.stringify(buildSignature(source));
+        const recordCount = await storage.countSpendRecordsBySource(id);
+        if (!activeKeys.has(key) || recordCount !== 0) {
+          skipped.push({ id, reason: !activeKeys.has(key) ? "no active matching signature" : "source still has spend records" });
+          continue;
+        }
+        if (await storage.hardDeleteInactiveSpendSource(campaignId, id)) purgedSourceIds.push(id);
+      }
+      res.json({ success: true, purgedSourceIds, purgedCount: purgedSourceIds.length, skippedCount: skipped.length, skipped });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to purge inactive Google Sheets spend duplicates" });
     }
   });
 

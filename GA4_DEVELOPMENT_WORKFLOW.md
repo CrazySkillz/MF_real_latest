@@ -147,6 +147,14 @@ For revenue, spend, scheduler, source-preview, or source-provenance bugs, comple
 6. add a targeted regression guard for that boundary
 7. validate with real persisted source records and the relevant API endpoint before trusting the card as proof
 
+Lifecycle completeness rule:
+
+- do not mark a GA4 source family complete after checking only the user add/edit flow
+- for each source family, separately trace add, edit, delete, scheduler/refresh, source modal display, total recompute, and existing-data cleanup
+- scheduler refresh must preserve stable source identity; if it calls a process/save endpoint, confirm it passes the same `sourceId` that edit mode uses
+- if a previous bug created duplicate or damaged persisted records, document the forward fix separately from the cleanup fix
+- never claim Google Sheets, CSV, CRM, ecommerce, or ad-platform source safety is complete until both UI and scheduler paths are checked
+
 For Google Sheets revenue/spend source-modal bugs, also trace the visible transition path:
 
 - source picker click -> chooser render -> connection refresh -> Back navigation -> dropdown selection -> preview/mapping render

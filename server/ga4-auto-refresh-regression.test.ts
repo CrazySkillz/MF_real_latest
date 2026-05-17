@@ -24,10 +24,11 @@ describe("GA4 external value auto-refresh regression guard", () => {
   it("refreshes Google Sheets revenue and spend sources, but does not auto-refresh CSV snapshots", () => {
     const content = schedulerFile();
 
-    expect(content).toContain("async function reprocessGoogleSheetsSpend(campaignId: string, mappingConfig: AnyRecord): Promise<boolean>");
+    expect(content).toContain("async function reprocessGoogleSheetsSpend(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean>");
     expect(content).toContain("async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean>");
     expect(content).toContain('String((s as any).sourceType || "") === "google_sheets"');
-    expect(content).toContain("reprocessGoogleSheetsSpend(campaignId, spendCfg)");
+    expect(content).toContain("reprocessGoogleSheetsSpend(campaignId, sheetSpend, spendCfg)");
+    expect(content).toContain('mapping: { ...(mappingConfig || {}), sourceId: String(source?.id || "") },');
     expect(content).toContain("reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg)");
     expect(content).toContain("await storage.deleteRevenueRecordsBySource(sourceId);");
     expect(content).toContain("await storage.deleteSpendRecordsBySource(String((src as any).id));");

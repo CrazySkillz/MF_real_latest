@@ -164,13 +164,17 @@ async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, so
   return true;
 }
 
-async function reprocessGoogleSheetsSpend(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
+async function reprocessGoogleSheetsSpend(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean> {
   const connectionId = String(mappingConfig?.connectionId || "").trim();
   if (!connectionId) return false;
+  if (isSourceOutsideCampaign(source, campaignId)) {
+    console.error(`[Auto Refresh] Refusing Google Sheets spend reprocess for source outside campaign ${campaignId}: source=${String(source?.id || "")}`);
+    return false;
+  }
   const body = {
     connectionId,
     // The process endpoint tolerates extra keys; we keep the exact mapping that the user configured.
-    mapping: { ...(mappingConfig || {}) },
+    mapping: { ...(mappingConfig || {}), sourceId: String(source?.id || "") },
   };
   const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/spend/sheets/process`, body);
   if (!result.ok) {
@@ -525,7 +529,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
             const spendCfg = safeJsonParse(sheetSpend?.mappingConfig);
             if (spendCfg?.connectionId && spendCfg?.spendColumn) {
               attempted++;
-              if (await reprocessGoogleSheetsSpend(campaignId, spendCfg)) { succeeded++; anyUpdated = true; }
+              if (await reprocessGoogleSheetsSpend(campaignId, sheetSpend, spendCfg)) { succeeded++; anyUpdated = true; }
             } else {
               skipped++;
             }

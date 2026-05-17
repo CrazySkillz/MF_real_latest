@@ -3753,6 +3753,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return String((s as any).id || "") === existingSourceId;
           })
         : null;
+      if (existingSourceId && !existingSheetsSpendSource) {
+        return res.status(404).json({ success: false, error: "Spend source not found" });
+      }
 
       let source: any = existingSheetsSpendSource || null;
       if (!source) {

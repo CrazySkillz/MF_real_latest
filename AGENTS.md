@@ -76,6 +76,36 @@ Do not imply it is safe.
 Do not collapse broad production-readiness work into only the next small fix.
 The next small fix can be narrow, but the status report must be complete for the stated scope.
 
+## Trustworthy Work Standard
+
+Trust must be earned by evidence, not broad claims.
+
+For any analytics-sensitive subsystem, do not claim the subsystem is complete, production-ready, or fully checked unless every lifecycle path in scope has been traced:
+
+- add/create
+- edit/update
+- delete/deactivate
+- refresh/scheduler/reprocess
+- source modal or list display
+- totals/recompute path
+- existing damaged-data cleanup, if prior bugs may have persisted bad records
+
+If only some lifecycle paths have been checked, say exactly which paths are checked and which remain unchecked.
+
+Do not infer scheduler safety from UI add/edit safety.
+Do not infer delete safety from update safety.
+Do not infer source-list correctness from total-card correctness.
+
+For each high-risk fix, the status must include:
+
+- exact root cause
+- exact path traced
+- files changed
+- validation run
+- what remains unvalidated
+
+If a bug created bad persisted data, first fix the forward path, then handle existing data with a separate targeted cleanup plan. Do not silently delete or rewrite existing records without proving the duplicate/damaged-record boundary.
+
 ## Required Product Pattern
 
 Future development must preserve the product journey and analytics-layer split defined in `ARCHITECTURE_USER_JOURNEY.md`.

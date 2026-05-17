@@ -15,6 +15,8 @@ describe("Spend source additivity", () => {
     expect(route).toContain("Add mode creates a new additive source. Edit/refresh mode passes sourceId and updates only that source.");
     expect(route).toContain("const existingSheetsSpendSource = existingSourceId");
     expect(route).toContain("return String((s as any).id || \"\") === existingSourceId;");
+    expect(route).toContain('if (existingSourceId && !existingSheetsSpendSource) {');
+    expect(route).toContain('return res.status(404).json({ success: false, error: "Spend source not found" });');
     expect(route).not.toContain("String(cfg?.connectionId || \"\") === String(connectionId)");
   });
 

@@ -578,6 +578,8 @@ Important current-state note:
 - Google Sheets spend can materialize daily records when a date column is mapped; if no date column is selected, it remains a spend-to-date snapshot-style source
 - when the sheet preview contains a date-like header such as `Date`, the spend mapping screen should prefill the date column with that header instead of defaulting to `None`
 - Google Sheets spend auto-refresh re-reads the saved sheet/tab and replaces the stored Google Sheets spend source amount from the latest matching sheet rows; it must not create a duplicate source or add the refreshed value on top of the old value
+- Google Sheets spend auto-refresh must pass the existing spend source `sourceId` into the process route so refresh updates that exact source instead of running add mode
+- Google Sheets spend process must fail closed when a supplied edit/refresh `sourceId` does not resolve to an active Google Sheets spend source; it must not fall back to creating a new source
 - if a campaign identifier and campaign values are mapped, auto-refresh includes only rows matching those selected campaign values
 - the date column controls daily spend history; auto-refresh still sums all matching rows for `Total Spend`, while latest-day style views use dated records
 - Google Sheets spend is eligible for scheduled auto-refresh after setup

@@ -104,6 +104,20 @@ describe("scheduled report email regression guard", () => {
     }
   });
 
+  it("keeps direct snapshot PDF downloads on the shared report PDF builder", () => {
+    const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const snapshotPdfRoute = routesSource.slice(
+      routesSource.indexOf('app.get("/api/report-snapshots/:snapshotId/pdf"'),
+      routesSource.indexOf("// Get single benchmark")
+    );
+
+    expect(snapshotPdfRoute).toContain("buildPdfAttachmentForReport");
+    expect(snapshotPdfRoute).toContain('filename="mimosaas_report_${snapshotId}.pdf"');
+    expect(snapshotPdfRoute).not.toContain("MetricMind Report Snapshot");
+    expect(snapshotPdfRoute).not.toContain("metricmind_report_");
+    expect(snapshotPdfRoute).not.toContain("This PDF is generated from an immutable snapshot.");
+  });
+
   it("keeps legacy Meta/Google Ads report updates from changing report ownership", () => {
     const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const metaUpdateRoute = routesSource.slice(

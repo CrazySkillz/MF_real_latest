@@ -22366,24 +22366,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payload = {};
       }
 
-      const { jsPDF } = await import("jspdf");
-      const doc = new jsPDF();
-      doc.setFontSize(16);
-      doc.text("MetricMind Report Snapshot", 14, 18);
-      doc.setFontSize(12);
-      doc.text(String(payload?.reportName || "Report"), 14, 28);
-      doc.setFontSize(10);
-      if (payload?.campaignName) doc.text(`Campaign: ${payload.campaignName}`, 14, 36);
-      doc.text(`Type: ${String(payload?.reportType || (row as any)?.reportType || "")}`, 14, 42);
-      doc.text(`Window: ${String((row as any).windowStart || "")} → ${String((row as any).windowEnd || "")} (UTC)`, 14, 48);
-      doc.text(`Generated: ${new Date((row as any).generatedAt || (row as any).generated_at || Date.now()).toUTCString()}`, 14, 54);
-      doc.setFontSize(9);
-      doc.text("This PDF is generated from an immutable snapshot.", 14, 64);
-      const ab = doc.output("arraybuffer");
-      const buf = Buffer.from(ab as any);
-
+      const windowStart = String((row as any).windowStart || (row as any).window_start || payload?.windowStart || "");
+      const windowEnd = String((row as any).windowEnd || (row as any).window_end || payload?.windowEnd || "");
+      const { buildPdfAttachmentForReport } = await import("./report-scheduler.js");
+      const buf = await buildPdfAttachmentForReport({
+        report: okReport,
+        windowStart,
+        windowEnd,
+        campaignName: payload?.campaignName || null,
+      });
+      if (!buf) return res.status(500).json({ success: false, error: "Failed to generate snapshot PDF" });
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="metricmind_report_${snapshotId}.pdf"`);
+      res.setHeader("Content-Disposition", `attachment; filename="mimosaas_report_${snapshotId}.pdf"`);
       res.send(buf);
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to generate snapshot PDF" });

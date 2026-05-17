@@ -225,6 +225,7 @@ Aligned:
 - `Custom` server-side rendering reuses those same section renderers and respects the saved selected sections/subsections
 - standard-template and custom-report PDFs should now be evaluated for section parity against the live tab, not against older lightweight cover-page output
 - report delete status now reflects whether a row was actually deleted
+- direct snapshot PDF downloads reuse the same report PDF builder as scheduled/test-send delivery and must not use legacy `MetricMind Report Snapshot` branding or a separate basic fallback layout
 - scheduled delivery skips or fails closed when a campaign-scoped report no longer has a valid campaign
 - scheduled delivery deduplicates report rows before due checks
 - scheduled report email delivery uses the configured email provider detected at send time; if Mailgun API credentials are present, scheduled reports use the Mailgun HTTP API instead of falling back to unauthenticated SMTP

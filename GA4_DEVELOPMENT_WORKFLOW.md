@@ -236,6 +236,7 @@ For Reports-specific fixes, also verify:
 - scheduled reports cannot be saved with `scheduleEnabled=true` unless at least one non-empty recipient is configured
 - scheduled/server-generated GA4 attachments and ad hoc downloads still use the same report configuration semantics
 - direct report snapshot/download routes verify both report access and snapshot/report campaign-platform consistency before returning JSON or PDF output
+- direct report snapshot PDFs use the shared report PDF builder and must not reintroduce legacy `MetricMind Report Snapshot` branding
 - legacy report/source routes must not be removed until current frontend callers, scheduler callers, storage dependencies, and schema support are inventoried; if a route is shared by two platform pages, do not split it without a schema-backed discriminator
 
 ## Step 5B: Add Automated Regression Coverage For High-Risk Bugs

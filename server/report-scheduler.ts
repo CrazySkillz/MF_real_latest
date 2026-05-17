@@ -170,7 +170,7 @@ function formatWithUnit(value: any, unit: any): string {
   return `${v}${u}`;
 }
 
-async function buildPdfAttachmentForReport(args: {
+export async function buildPdfAttachmentForReport(args: {
   report: any;
   windowStart: string;
   windowEnd: string;

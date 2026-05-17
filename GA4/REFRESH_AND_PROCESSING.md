@@ -140,6 +140,8 @@ CRM auto-reprocess rule:
 - internal scheduler self-calls should use same-process loopback so the internal auto-refresh token is accepted by campaign access checks
 - public HubSpot and Salesforce save-mapping endpoints must still require normal user authentication and campaign access
 - refreshed CRM revenue should update materialized revenue records and recomputed campaign financial state
+- if an auto-reprocess self-call returns `404 revenue source not found` for a stable HubSpot, Salesforce, or Shopify source ID, the scheduler should skip that stale source and log it as a stale-source skip; it must not create a replacement source, retry as add mode, or report the skip as a successful refresh
+- ad-platform spend auto-refresh must reprocess by stable spend source ID when a source already exists; for LinkedIn spend this means the scheduler passes the active `linkedin_api` source ID and the process endpoint updates only that source instead of creating a replacement row
 - refreshed Pipeline Proxy values remain separate early-signal values and must not be added into confirmed Total Revenue
 - Overview Pipeline Proxy visibility should be anchored to the active saved CRM revenue source config; refreshed endpoint data may update the amount/provenance, but a stale endpoint response must not hide an otherwise configured active Pipeline Proxy card
 - if both HubSpot and Salesforce have active Pipeline Proxy configuration, the Overview card should aggregate both providers' exact proxy totals while keeping provider-specific provenance in the read-only Pipeline Proxy sources modal

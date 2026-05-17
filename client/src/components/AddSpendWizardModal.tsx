@@ -1000,6 +1000,7 @@ export function AddSpendWizardModal(props: {
         body: JSON.stringify({
           campaignIds: selectedLinkedInCampaignIds,
           currency: props.currency || "USD",
+          ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
         }),
       });
       const json = await resp.json().catch(() => null);

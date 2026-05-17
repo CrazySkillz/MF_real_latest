@@ -3192,6 +3192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? (req.body as any).campaignIds.map((v: any) => String(v))
         : [];
       const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
+      const existingSourceId = String((req.body as any)?.sourceId || "").trim();
 
       const connection = await storage.getLinkedInConnection(campaignId);
       if (!connection?.accessToken || !connection?.adAccountId) {
@@ -3244,32 +3245,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaign = await storage.getCampaign(campaignId);
       const cur = currency || (campaign as any)?.currency || "USD";
+      const mappingConfig = JSON.stringify({
+        platform: "linkedin",
+        adAccountId: connection.adAccountId,
+        adAccountName: connection.adAccountName,
+        selectedCampaignIds: selectedCampaignIds.length > 0 ? selectedCampaignIds : null,
+        breakdown,
+        dateRange: `${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]}`,
+        fetchedAt: new Date().toISOString(),
+      });
+      let source: any;
 
-      // Deactivate existing LinkedIn spend sources for this campaign (single active connection)
-      const existingSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
-      for (const s of (Array.isArray(existingSources) ? existingSources : [])) {
-        if ((s as any).isActive !== false && String((s as any).sourceType || "") === "linkedin_api") {
-          await storage.deleteSpendRecordsBySource(String((s as any).id));
-          await storage.updateSpendSource(String((s as any).id), { isActive: false } as any);
+      if (existingSourceId) {
+        const existingSource = await storage.getSpendSource(campaignId, existingSourceId);
+        if (!existingSource || String((existingSource as any).sourceType || "").trim() !== "linkedin_api") {
+          return res.status(404).json({ success: false, error: "LinkedIn spend source not found" });
         }
-      }
+        await storage.deleteSpendRecordsBySource(existingSourceId);
+        source = await storage.updateSpendSource(existingSourceId, {
+          displayName: "LinkedIn Ads",
+          currency: cur,
+          mappingConfig,
+          isActive: true,
+        } as any);
+      } else {
 
-      const source = await storage.createSpendSource({
-        campaignId,
-        sourceType: "linkedin_api",
-        displayName: "LinkedIn Ads",
-        currency: cur,
-        mappingConfig: JSON.stringify({
-          platform: "linkedin",
-          adAccountId: connection.adAccountId,
-          adAccountName: connection.adAccountName,
-          selectedCampaignIds: selectedCampaignIds.length > 0 ? selectedCampaignIds : null,
-          breakdown,
-          dateRange: `${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]}`,
-          fetchedAt: new Date().toISOString(),
-        }),
-        isActive: true,
-      } as any);
+        // Deactivate existing LinkedIn spend sources for this campaign (single active connection)
+        const existingSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
+        for (const s of (Array.isArray(existingSources) ? existingSources : [])) {
+          if ((s as any).isActive !== false && String((s as any).sourceType || "") === "linkedin_api") {
+            await storage.deleteSpendRecordsBySource(String((s as any).id));
+            await storage.updateSpendSource(String((s as any).id), { isActive: false } as any);
+          }
+        }
+
+        source = await storage.createSpendSource({
+          campaignId,
+          sourceType: "linkedin_api",
+          displayName: "LinkedIn Ads",
+          currency: cur,
+          mappingConfig,
+          isActive: true,
+        } as any);
+      }
 
       // Create spend_record so spend-breakdown returns correct amounts
       const today = new Date().toISOString().split("T")[0];

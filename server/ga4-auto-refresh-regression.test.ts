@@ -9,6 +9,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
   it("uses saved CRM and Shopify revenue source mappings with stable source IDs", () => {
     const content = schedulerFile();
 
+    expect(content).toContain("function isStaleRevenueSourceReprocess");
     expect(content).toContain("async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>");
     expect(content).toContain("async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>");
     expect(content).toContain("async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, sourceId?: string): Promise<boolean>");
@@ -19,6 +20,7 @@ describe("GA4 external value auto-refresh regression guard", () => {
     expect(content).toContain("reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))");
     expect(content).toContain("reprocessSalesforce(campaignId, sfCfg, String(salesforceSource.id))");
     expect(content).toContain("reprocessShopify(campaignId, shopCfg, String(shopifySource.id))");
+    expect(content).toContain("Skipping stale Salesforce revenue source");
   });
 
   it("refreshes Google Sheets revenue and spend sources, but does not auto-refresh CSV snapshots", () => {

@@ -47,6 +47,11 @@ async function postJson(path: string, body: AnyRecord): Promise<{ ok: boolean; s
   return { ok: resp.ok, status: resp.status, json, text };
 }
 
+function isStaleRevenueSourceReprocess(result: { status: number; json?: any; text?: string }): boolean {
+  const message = String(result.json?.error || result.text || "").toLowerCase();
+  return result.status === 404 && message.includes("revenue source not found");
+}
+
 function safeJsonParse<T = any>(raw: any): T | null {
   if (!raw) return null;
   if (typeof raw === "object") return raw as T;
@@ -97,6 +102,10 @@ async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, so
   };
   const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/hubspot/save-mappings`, body);
   if (!result.ok) {
+    if (isStaleRevenueSourceReprocess(result)) {
+      console.warn(`[Auto Refresh] Skipping stale HubSpot revenue source for campaign ${campaignId}`);
+      return false;
+    }
     console.error(`[Auto Refresh] HubSpot reprocess failed for campaign ${campaignId}:`, result.status, result.json?.error || result.text);
     return false;
   }
@@ -123,6 +132,10 @@ async function reprocessSalesforce(campaignId: string, mappingConfig: AnyRecord,
   };
   const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/salesforce/save-mappings`, body);
   if (!result.ok) {
+    if (isStaleRevenueSourceReprocess(result)) {
+      console.warn(`[Auto Refresh] Skipping stale Salesforce revenue source for campaign ${campaignId}`);
+      return false;
+    }
     console.error(`[Auto Refresh] Salesforce reprocess failed for campaign ${campaignId}:`, result.status, result.json?.error || result.text);
     return false;
   }
@@ -158,6 +171,10 @@ async function reprocessShopify(campaignId: string, mappingConfig: AnyRecord, so
   };
   const result = await postJson(`/api/campaigns/${encodeURIComponent(campaignId)}/shopify/save-mappings`, body);
   if (!result.ok) {
+    if (isStaleRevenueSourceReprocess(result)) {
+      console.warn(`[Auto Refresh] Skipping stale Shopify revenue source for campaign ${campaignId}`);
+      return false;
+    }
     console.error(`[Auto Refresh] Shopify reprocess failed for campaign ${campaignId}:`, result.status, result.json?.error || result.text);
     return false;
   }
@@ -322,9 +339,14 @@ async function reprocessGoogleSheetsRevenue(campaignId: string, source: any, map
   }
 }
 
-async function reprocessLinkedInSpend(campaignId: string, mappingConfig: AnyRecord): Promise<boolean> {
+async function reprocessLinkedInSpend(campaignId: string, source: any, mappingConfig: AnyRecord): Promise<boolean> {
+  if (isSourceOutsideCampaign(source, campaignId)) {
+    console.error(`[Auto Refresh] Refusing LinkedIn spend reprocess for source outside campaign ${campaignId}: source=${String(source?.id || "")}`);
+    return false;
+  }
   const body: AnyRecord = {
     currency: mappingConfig?.currency || "USD",
+    sourceId: String(source?.id || ""),
   };
   // If specific campaigns were selected during initial import, re-use them
   if (Array.isArray(mappingConfig?.selectedCampaignIds) && mappingConfig.selectedCampaignIds.length > 0) {
@@ -548,7 +570,7 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
           const liCfg = safeJsonParse(linkedInSpend?.mappingConfig);
           if (linkedInSpend && liCfg?.platform === "linkedin") {
             attempted++;
-            if (await reprocessLinkedInSpend(campaignId, liCfg)) { succeeded++; anyUpdated = true; }
+            if (await reprocessLinkedInSpend(campaignId, linkedInSpend, liCfg)) { succeeded++; anyUpdated = true; }
           } else {
             skipped++;
           }

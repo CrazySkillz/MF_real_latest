@@ -155,6 +155,8 @@ Lifecycle completeness rule:
 - CRM and ecommerce revenue save endpoints must fail closed when edit or scheduler mode supplies a `sourceId` that is not an active source for the same campaign, platform context, and source type
 - CRM and ecommerce connection delete endpoints must fail closed when a supplied `connectionId` is not an active connection for the requested campaign; never deactivate a HubSpot, Salesforce, or Shopify connection by ID until campaign membership is proven
 - Revenue source delete endpoints must prove the source belongs to the requested campaign before deactivating the source or deleting normalized source records
+- scheduler stale-source responses should remain fail-closed but be classified accurately; a CRM/ecommerce `404 revenue source not found` from a stable `sourceId` reprocess is a skipped stale-source event, not a successful refresh and not a source-creation fallback
+- ad-platform spend refresh/edit paths must preserve stable source identity; if a LinkedIn/Meta/Google Ads refresh is reprocessing an existing source, the scheduler or edit flow must pass the source `id`, the process route must verify campaign/source-type ownership, and stale IDs must fail closed instead of entering add mode
 - if a previous bug created duplicate or damaged persisted records, document the forward fix separately from the cleanup fix
 - never claim Google Sheets, CSV, CRM, ecommerce, or ad-platform source safety is complete until both UI and scheduler paths are checked
 

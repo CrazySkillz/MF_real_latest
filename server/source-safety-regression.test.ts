@@ -101,4 +101,21 @@ describe("source safety regression guards", () => {
     expect(method).toContain("eq(revenueSources.campaignId, campaignId)");
     expect(method).toContain("eq(revenueSources.isActive, true)");
   });
+
+  it("LinkedIn spend refresh and edit mode preserve the existing source ID", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.post("/api/campaigns/:id/spend/linkedin/process"');
+    const routeEnd = routesSource.indexOf("// ============================================================================", routeStart + 1);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(route).toContain("const existingSourceId");
+    expect(route).toContain("storage.getSpendSource(campaignId, existingSourceId)");
+    expect(route).toContain('sourceType || "").trim() !== "linkedin_api"');
+    expect(route).toContain("LinkedIn spend source not found");
+    expect(route.indexOf("storage.updateSpendSource(existingSourceId")).toBeGreaterThan(route.indexOf("storage.getSpendSource(campaignId, existingSourceId)"));
+
+    const schedulerSource = fs.readFileSync(path.join(process.cwd(), "server", "auto-refresh-scheduler.ts"), "utf8");
+    expect(schedulerSource).toContain("sourceId: String(source?.id || \"\")");
+    expect(schedulerSource).toContain("reprocessLinkedInSpend(campaignId, linkedInSpend, liCfg)");
+  });
 });

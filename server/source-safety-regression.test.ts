@@ -247,4 +247,31 @@ describe("source safety regression guards", () => {
 
     expect(method).toContain("eq(googleAdsConnections.campaignId, campaignId)");
   });
+
+  it("Custom Integration UI routes require campaign access before read or mutation", () => {
+    const routesSource = readRoutesSource();
+    const bodyConnectStart = routesSource.indexOf('app.post("/api/custom-integration/connect"');
+    const bodyConnectEnd = routesSource.indexOf('app.get("/api/custom-integration/:campaignId"', bodyConnectStart);
+    const readStart = bodyConnectEnd;
+    const readEnd = routesSource.indexOf('app.post("/api/webhook/custom-integration/:token"', readStart);
+    const paramConnectStart = routesSource.indexOf('app.post("/api/custom-integration/:campaignId/connect"', readEnd);
+    const paramConnectEnd = routesSource.indexOf('/**\n   * Disconnect (delete) custom integration', paramConnectStart);
+    const transferStart = routesSource.indexOf('app.post("/api/custom-integration/transfer"', paramConnectEnd);
+    const transferEnd = routesSource.indexOf('// Conversion Value Webhook', transferStart);
+
+    const bodyConnectRoute = routesSource.slice(bodyConnectStart, bodyConnectEnd);
+    const readRoutes = routesSource.slice(readStart, readEnd);
+    const paramConnectRoute = routesSource.slice(paramConnectStart, paramConnectEnd);
+    const transferRoute = routesSource.slice(transferStart, transferEnd);
+
+    expect(bodyConnectRoute.indexOf("ensureCampaignAccess")).toBeGreaterThan(-1);
+    expect(bodyConnectRoute.indexOf("ensureCampaignAccess")).toBeLessThan(bodyConnectRoute.indexOf("storage.createCustomIntegration"));
+    expect(readRoutes).toContain("ensureCampaignAccess");
+    expect(readRoutes.indexOf("requireCampaignAccessCampaignIdParam")).toBeLessThan(readRoutes.indexOf("upload.single('pdf')"));
+    expect(paramConnectRoute.indexOf("ensureCampaignAccess")).toBeGreaterThan(-1);
+    expect(paramConnectRoute.indexOf("ensureCampaignAccess")).toBeLessThan(paramConnectRoute.indexOf("storage.createCustomIntegration"));
+    expect(transferRoute).toContain("fromCampaignId !== 'temp-campaign-setup'");
+    expect(transferRoute.indexOf("ensureCampaignAccess")).toBeLessThan(transferRoute.indexOf("storage.getCustomIntegration(fromCampaignId)"));
+    expect(transferRoute.indexOf("storage.createCustomIntegration")).toBeGreaterThan(transferRoute.indexOf("ensureCampaignAccess"));
+  });
 });

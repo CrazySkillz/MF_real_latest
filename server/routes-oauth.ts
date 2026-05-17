@@ -20225,6 +20225,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: "Invalid email format"
         });
       }
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
 
       // Validate allowed email addresses if provided
       let validatedEmailAddresses: string[] = [];
@@ -20277,6 +20279,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/custom-integration/:campaignId", async (req, res) => {
     try {
+      const campaign = await ensureCampaignAccess(req as any, res as any, req.params.campaignId);
+      if (!campaign) return;
       const customIntegration = await storage.getCustomIntegration(req.params.campaignId);
       if (!customIntegration) {
         return res.status(404).json({ message: "Custom integration not found" });
@@ -20297,6 +20301,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get real-time metric changes for custom integration
   app.get("/api/custom-integration/:campaignId/changes", async (req, res) => {
     try {
+      const campaign = await ensureCampaignAccess(req as any, res as any, req.params.campaignId);
+      if (!campaign) return;
       const current = await storage.getLatestCustomIntegrationMetrics(req.params.campaignId);
       if (!current) {
         return res.status(404).json({ message: "No metrics found" });
@@ -20353,6 +20359,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/custom-integration/:campaignId/metrics", async (req, res) => {
     try {
       const { campaignId } = req.params;
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const metrics = await storage.getLatestCustomIntegrationMetrics(campaignId);
 
       if (!metrics) {
@@ -20367,7 +20375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload and parse PDF for custom integration
-  app.post("/api/custom-integration/:campaignId/upload-pdf", upload.single('pdf'), async (req, res) => {
+  app.post("/api/custom-integration/:campaignId/upload-pdf", requireCampaignAccessCampaignIdParam, upload.single('pdf'), async (req, res) => {
     try {
       const { campaignId } = req.params;
 
@@ -25175,9 +25183,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[Custom Integration] Using temporary campaign name: ${nameForEmail}`);
       } else {
         // Get campaign details to generate email from name
-        const campaign = await storage.getCampaign(campaignId);
+        const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
         if (!campaign) {
-          return res.status(404).json({ error: 'Campaign not found' });
+          return;
         }
         nameForEmail = campaign.name;
       }
@@ -25238,7 +25246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Upload PDF for custom integration
    * Uses multer middleware for file handling (imported at top of file)
    */
-  app.post("/api/custom-integration/:campaignId/upload-pdf", upload.single('pdf'), async (req, res) => {
+  app.post("/api/custom-integration/:campaignId/upload-pdf", requireCampaignAccessCampaignIdParam, upload.single('pdf'), async (req, res) => {
     try {
       const { campaignId } = req.params;
       console.log(`[Custom Integration] PDF upload for campaign ${campaignId}`);
@@ -25554,6 +25562,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { fromCampaignId, toCampaignId } = req.body;
       console.log(`[Custom Integration Transfer] Transferring from ${fromCampaignId} to ${toCampaignId}`);
+      if (fromCampaignId !== 'temp-campaign-setup') {
+        const fromCampaign = await ensureCampaignAccess(req as any, res as any, fromCampaignId);
+        if (!fromCampaign) return;
+      }
+      const toCampaign = await ensureCampaignAccess(req as any, res as any, toCampaignId);
+      if (!toCampaign) return;
 
       const existingIntegration = await storage.getCustomIntegration(fromCampaignId);
 

@@ -720,6 +720,7 @@ The required pattern is:
 - every source-import process/save endpoint must verify that same campaign access before creating or updating source definitions and before materializing revenue or spend records
 - this applies to CSV, Google Sheets, and future connector-style import previews such as LinkedIn, Meta, Google Ads, or other integrations that use the GA4 source pattern as a template
 - access checks are required even when the endpoint only previews uploaded data, because preview output can expose campaign-scoped source configuration and can lead into source mutation
+- Custom Integration UI connect/read/upload/transfer routes follow the same rule: verify campaign access before reading source state or mutating integration/metric rows; public token/email inbound routes must derive campaign identity from the persisted integration token/email instead of trusting a posted campaign id
 
 ### Refreshable Vs Snapshot Behavior
 

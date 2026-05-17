@@ -102,6 +102,22 @@ describe("source safety regression guards", () => {
     expect(method).toContain("eq(revenueSources.isActive, true)");
   });
 
+  it("LinkedIn revenue cleanup only clears HubSpot pipeline config for LinkedIn-scoped HubSpot mappings", () => {
+    const routesSource = readRoutesSource();
+    const bulkStart = routesSource.indexOf("// 2b) If HubSpot pipeline proxy was configured for LinkedIn");
+    const bulkEnd = routesSource.indexOf("// 3) Clear LinkedIn conversion value", bulkStart);
+    const bulkCleanup = routesSource.slice(bulkStart, bulkEnd);
+    const individualStart = routesSource.indexOf("// Clear HubSpot pipeline proxy if configured for LinkedIn");
+    const individualEnd = routesSource.indexOf("} catch { /* ignore */ }", individualStart);
+    const individualCleanup = routesSource.slice(individualStart, individualEnd);
+
+    for (const cleanup of [bulkCleanup, individualCleanup]) {
+      expect(cleanup).toContain('String(cfg?.platformContext || "").trim().toLowerCase()');
+      expect(cleanup).toContain('hubspotContext === "linkedin"');
+      expect(cleanup.indexOf('hubspotContext === "linkedin"')).toBeLessThan(cleanup.indexOf("storage.updateHubspotConnection"));
+    }
+  });
+
   it("LinkedIn spend refresh and edit mode preserve the existing source ID", () => {
     const routesSource = readRoutesSource();
     const routeStart = routesSource.indexOf('app.post("/api/campaigns/:id/spend/linkedin/process"');

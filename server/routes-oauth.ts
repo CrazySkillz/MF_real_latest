@@ -1626,17 +1626,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch {
             cfg = {};
           }
-          const nextCfg = {
-            ...cfg,
-            pipelineEnabled: false,
-            pipelineStageId: null,
-            pipelineStageLabel: null,
-            pipelineTotalToDate: 0,
-            pipelineCurrency: null,
-            pipelineLastUpdatedAt: null,
-            pipelineWarning: null,
-          };
-          await storage.updateHubspotConnection(String(hubspotConn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+          const hubspotContext = String(cfg?.platformContext || "").trim().toLowerCase();
+          if (hubspotContext === "linkedin") {
+            const nextCfg = {
+              ...cfg,
+              pipelineEnabled: false,
+              pipelineStageId: null,
+              pipelineStageLabel: null,
+              pipelineTotalToDate: 0,
+              pipelineCurrency: null,
+              pipelineLastUpdatedAt: null,
+              pipelineWarning: null,
+            };
+            await storage.updateHubspotConnection(String(hubspotConn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+          }
         }
       } catch {
         // ignore (best-effort cleanup)
@@ -1800,8 +1803,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (hubspotConn?.id) {
               let cfg: any = {};
               try { cfg = hubspotConn?.mappingConfig ? JSON.parse(String(hubspotConn.mappingConfig)) : {}; } catch { cfg = {}; }
-              const nextCfg = { ...cfg, pipelineEnabled: false, pipelineStageId: null, pipelineStageLabel: null, pipelineTotalToDate: 0, pipelineCurrency: null, pipelineLastUpdatedAt: null, pipelineWarning: null };
-              await storage.updateHubspotConnection(String(hubspotConn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+              const hubspotContext = String(cfg?.platformContext || "").trim().toLowerCase();
+              if (hubspotContext === "linkedin") {
+                const nextCfg = { ...cfg, pipelineEnabled: false, pipelineStageId: null, pipelineStageLabel: null, pipelineTotalToDate: 0, pipelineCurrency: null, pipelineLastUpdatedAt: null, pipelineWarning: null };
+                await storage.updateHubspotConnection(String(hubspotConn.id), { mappingConfig: JSON.stringify(nextCfg) } as any);
+              }
             }
           } catch { /* ignore */ }
         }

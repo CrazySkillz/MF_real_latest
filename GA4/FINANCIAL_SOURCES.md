@@ -206,6 +206,7 @@ Important meaning:
 - `Google Sheets` and `CSV` are preview + mapping + import workflows
 - disconnecting HubSpot, Salesforce, or Shopify must only deactivate the connection that belongs to the current campaign; a supplied connection ID from another campaign must fail closed and must not affect that other campaign
 - deleting a revenue source from `Total Revenue -> Sources` must first verify that the source belongs to the current campaign; normalized revenue records may be deleted only for that verified source ID
+- deleting a spend source from `Total Spend -> Sources` must first verify that the source belongs to the current campaign; normalized spend records may be deleted only for that verified source ID
 
 Production direction note:
 
@@ -436,6 +437,7 @@ Important meaning:
 - `Update revenue` should remain disabled until a meaningful edit is made
 - CSV revenue preview and process endpoints must enforce normal campaign access checks before reading, previewing, processing, updating, or materializing uploaded data
 - CSV revenue process/edit must verify that any provided existing `sourceId` is an active CSV revenue source for the requested campaign and platform context before updating records
+- deleting a CSV revenue source must follow the shared source-delete rule: prove campaign/source ownership first, then delete only normalized revenue records tied to that verified source ID
 
 ## Revenue Source 6: Existing Stored Manual Revenue
 
@@ -642,6 +644,7 @@ Important meaning:
 - if the user changes mapped columns, including the date column, or the original stored dataset is not available, re-upload is still required
 - CSV spend preview and process endpoints must enforce normal campaign access checks before reading, previewing, processing, updating, or materializing uploaded data
 - CSV spend process/edit must verify that any provided existing `sourceId` is an active CSV spend source for the requested campaign before updating records
+- deleting a CSV spend source must follow the shared source-delete rule: prove campaign/source ownership first, then delete only normalized spend records tied to that verified source ID
 
 ## Spend Source 6: Existing Stored Manual Spend
 

@@ -929,7 +929,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existing = await storage.getSpendSources(campaignId);
       for (const s of existing || []) {
         if (!s) continue;
-        await storage.deleteSpendSource(String((s as any).id));
+        const sid = String((s as any).id);
+        await storage.deleteSpendSource(sid);
+        await storage.deleteSpendRecordsBySource(sid);
       }
       // If spend sources are removed, clear spend-to-date so ROAS/ROI/CPA don't keep using stale values.
       try {
@@ -1840,6 +1842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       await storage.deleteSpendSource(sourceId);
+      await storage.deleteSpendRecordsBySource(sourceId);
       await recalcCampaignSpend(campaignId);
       if (deletingSheetsConnectionId) {
         const remainingSpendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
@@ -19407,7 +19410,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId } = req.params;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
-      await storage.deleteGoogleAdsConnection(campaignId);
+      const deleted = await storage.deleteGoogleAdsConnection(campaignId);
+      if (!deleted) {
+        return res.status(404).json({ error: "Google Ads connection not found" });
+      }
       res.json({ success: true, message: 'Google Ads connection deleted' });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to delete connection' });

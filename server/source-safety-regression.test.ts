@@ -102,6 +102,41 @@ describe("source safety regression guards", () => {
     expect(method).toContain("eq(revenueSources.isActive, true)");
   });
 
+  it("individual spend source delete proves campaign ownership before deleting source records", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.delete("/api/campaigns/:id/spend-sources/:sourceId"');
+    const routeEnd = routesSource.indexOf('app.get("/api/campaigns/:id/revenue-totals"', routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(route).toContain("storage.getSpendSources(campaignId)");
+    expect(route.indexOf("storage.deleteSpendSource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getSpendSources(campaignId)"));
+    expect(route.indexOf("storage.deleteSpendRecordsBySource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getSpendSources(campaignId)"));
+    expect(route).toContain("Spend source not found");
+
+    const storageSource = readStorageSource();
+    const methodStart = storageSource.indexOf("async getSpendSource(campaignId: string, sourceId: string)");
+    const methodEnd = storageSource.indexOf("async createSpendSource", methodStart);
+    const method = storageSource.slice(methodStart, methodEnd);
+
+    expect(method).toContain("eq(spendSources.campaignId, campaignId)");
+    expect(method).toContain("eq(spendSources.isActive, true)");
+  });
+
+  it("CSV preview routes require campaign access before parsing uploaded files", () => {
+    const routesSource = readRoutesSource();
+    const revenueStart = routesSource.indexOf('"/api/campaigns/:id/revenue/csv/preview"');
+    const revenueEnd = routesSource.indexOf('"/api/campaigns/:id/revenue/csv/process"', revenueStart);
+    const spendStart = routesSource.indexOf('app.post("/api/campaigns/:id/spend/csv/preview"');
+    const spendEnd = routesSource.indexOf('app.post("/api/campaigns/:id/spend/csv/process"', spendStart);
+    const routes = [routesSource.slice(revenueStart, revenueEnd), routesSource.slice(spendStart, spendEnd)];
+
+    for (const route of routes) {
+      expect(route).toContain("requireCampaignAccessParamId");
+      expect(route).toContain('uploadCsv.single("file")');
+      expect(route.indexOf("requireCampaignAccessParamId")).toBeLessThan(route.indexOf('uploadCsv.single("file")'));
+    }
+  });
+
   it("LinkedIn revenue cleanup only clears HubSpot pipeline config for LinkedIn-scoped HubSpot mappings", () => {
     const routesSource = readRoutesSource();
     const bulkStart = routesSource.indexOf("// 2b) If HubSpot pipeline proxy was configured for LinkedIn");
@@ -193,5 +228,23 @@ describe("source safety regression guards", () => {
     expect(importRoute).toContain("const requestedSourceId");
     expect(importRoute).toContain("`${platformLabel} spend source not found`");
     expect(importRoute.indexOf("storage.deleteSpendRecordsBySource")).toBeGreaterThan(importRoute.indexOf("requestedSourceId"));
+  });
+
+  it("Google Ads disconnect route is campaign-scoped and fails closed when no row is deleted", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.delete("/api/google-ads/:campaignId/connection"');
+    const routeEnd = routesSource.indexOf("/**\n   * Get Google Ads daily metrics", routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(route).toContain("ensureCampaignAccess");
+    expect(route.indexOf("ensureCampaignAccess")).toBeLessThan(route.indexOf("storage.deleteGoogleAdsConnection(campaignId)"));
+    expect(route).toContain("Google Ads connection not found");
+
+    const storageSource = readStorageSource();
+    const methodStart = storageSource.indexOf("async deleteGoogleAdsConnection(campaignId: string)");
+    const methodEnd = storageSource.indexOf("async getGoogleAdsDailyMetrics", methodStart);
+    const method = storageSource.slice(methodStart, methodEnd);
+
+    expect(method).toContain("eq(googleAdsConnections.campaignId, campaignId)");
   });
 });

@@ -98,6 +98,7 @@ Ad-platform spend auto-refresh rule:
 
 - Meta and Google Ads spend refresh must reuse the campaign IDs saved in the Spend source mapping
 - refresh must replace that source's previously materialized spend records before inserting refreshed daily rows
+- edit or refresh mode must validate the stable spend source ID before updating records; a stale or wrong-platform source ID must fail closed instead of creating a new source
 - scheduler refresh must not broaden spend to all campaigns available in the connected account
 - scheduler refresh must not append duplicate rows on repeated runs
 - scheduler failures should log source-specific phrases: `LinkedIn spend reprocess failed`, `Meta spend reprocess failed`, `Google Ads spend reprocess failed`, and `Google Sheets spend reprocess failed`

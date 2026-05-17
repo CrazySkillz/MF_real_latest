@@ -3010,7 +3010,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!(amount > 0)) {
         return res.status(400).json({ success: false, error: "Amount must be > 0" });
       }
-      const campaign = await storage.getCampaign(campaignId);
+      const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!campaign) return;
       const cur = currency || (campaign as any)?.currency || "USD";
 
       const effectiveSourceType = overrideSourceType || "manual";
@@ -3025,6 +3026,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingSourceId) {
         const existingSource = await storage.getSpendSource(campaignId, existingSourceId);
         if (!existingSource) return res.status(404).json({ success: false, error: "Spend source not found" });
+        if (overrideSourceType && String((existingSource as any)?.sourceType || "").trim() !== effectiveSourceType) {
+          return res.status(404).json({ success: false, error: "Spend source not found" });
+        }
+        if (effectiveSourceType === "ad_platforms" && overrideDisplayName && String((existingSource as any)?.displayName || "").trim() !== effectiveDisplayName) {
+          return res.status(404).json({ success: false, error: `${effectiveDisplayName} spend source not found` });
+        }
         // Update existing source instead of creating a new one
         source = await storage.updateSpendSource(existingSourceId, {
           sourceType: effectiveSourceType,
@@ -18200,7 +18207,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
       if (!ok) return;
 
-      await storage.deleteMetaConnection(parsedId.data);
+      const deleted = await storage.deleteMetaConnection(parsedId.data);
+      if (!deleted) {
+        return res.status(404).json({ error: "Meta connection not found" });
+      }
 
       console.log(`[Meta] Connection deleted successfully for campaign ${campaignId}`);
       res.json({ success: true, message: 'Connection deleted' });
@@ -18316,7 +18326,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
       console.log(`[Meta] Deleting connection for campaign ${campaignId}`);
 
-      await storage.deleteMetaConnection(campaignId);
+      const deleted = await storage.deleteMetaConnection(campaignId);
+      if (!deleted) {
+        return res.status(404).json({ error: "Meta connection not found" });
+      }
 
       console.log(`[Meta] Connection deleted successfully`);
       res.json({ success: true, message: 'Connection deleted' });
@@ -19542,6 +19555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) return;
 
       const { platform, startDate, endDate } = req.body;
+      const requestedSourceId = (req.body as any)?.sourceId ? String((req.body as any).sourceId) : "";
       if (!platform || !startDate || !endDate) {
         return res.status(400).json({ success: false, error: "Missing platform, startDate, or endDate" });
       }
@@ -19579,7 +19593,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create or find existing spend source for this platform
       const existingSources = await storage.getSpendSources(campaignId);
-      let source = existingSources.find((s: any) => s.sourceType === 'ad_platforms' && (s.displayName || '').includes(platformLabel));
+      let source = requestedSourceId
+        ? existingSources.find((s: any) => String(s?.id || "") === requestedSourceId && s?.isActive !== false)
+        : existingSources.find((s: any) => s.sourceType === 'ad_platforms' && s?.isActive !== false && (s.displayName || '').includes(platformLabel));
+      if (requestedSourceId && (!source || String((source as any).sourceType || "") !== "ad_platforms" || !String((source as any).displayName || "").includes(platformLabel))) {
+        return res.status(404).json({ success: false, error: `${platformLabel} spend source not found` });
+      }
       if (!source) {
         source = await storage.createSpendSource({
           campaignId,
@@ -19599,6 +19618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currency: 'USD',
       }));
 
+      await storage.deleteSpendRecordsBySource(String((source as any).id));
       await storage.createSpendRecords(records);
 
       // Update campaign spend total

@@ -159,4 +159,39 @@ describe("source safety regression guards", () => {
     expect(schedulerSource).toContain("sourceId: String(source?.id || \"\")");
     expect(schedulerSource).toContain("reprocessLinkedInSpend(campaignId, linkedInSpend, liCfg)");
   });
+
+  it("Meta disconnect routes are campaign-scoped and fail closed when no row is deleted", () => {
+    const routesSource = readRoutesSource();
+    const centralizedStart = routesSource.indexOf('app.delete("/api/campaigns/:campaignId/meta/connection"');
+    const centralizedEnd = routesSource.indexOf("// ============================================================================\n  // END CENTRALIZED META/FACEBOOK OAUTH", centralizedStart);
+    const currentStart = routesSource.indexOf('app.delete("/api/meta/:campaignId/connection"');
+    const currentEnd = routesSource.indexOf("/**\n   * Transfer Meta connection", currentStart);
+    const routes = [
+      routesSource.slice(centralizedStart, centralizedEnd),
+      routesSource.slice(currentStart, currentEnd),
+    ];
+
+    for (const route of routes) {
+      expect(route).toContain("ensureCampaignAccess");
+      expect(route.indexOf("ensureCampaignAccess")).toBeLessThan(route.indexOf("storage.deleteMetaConnection"));
+      expect(route).toContain("Meta connection not found");
+    }
+  });
+
+  it("ad-platform spend routes preserve source identity for Meta and Google Ads edits", () => {
+    const routesSource = readRoutesSource();
+    const manualStart = routesSource.indexOf('app.post("/api/campaigns/:id/spend/process/manual"');
+    const manualEnd = routesSource.indexOf("const processConnectorDerivedSpend", manualStart);
+    const manualRoute = routesSource.slice(manualStart, manualEnd);
+    const importStart = routesSource.indexOf('app.post("/api/campaigns/:id/spend/ad-platform/import"');
+    const importEnd = routesSource.indexOf("/**\n   * Get LinkedIn daily metrics", importStart);
+    const importRoute = routesSource.slice(importStart, importEnd);
+
+    expect(manualRoute).toContain("ensureCampaignAccess");
+    expect(manualRoute).toContain('sourceType || "").trim() !== effectiveSourceType');
+    expect(manualRoute).toContain('displayName || "").trim() !== effectiveDisplayName');
+    expect(importRoute).toContain("const requestedSourceId");
+    expect(importRoute).toContain("`${platformLabel} spend source not found`");
+    expect(importRoute.indexOf("storage.deleteSpendRecordsBySource")).toBeGreaterThan(importRoute.indexOf("requestedSourceId"));
+  });
 });

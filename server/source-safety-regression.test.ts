@@ -176,6 +176,34 @@ describe("source safety regression guards", () => {
     expect(method.indexOf("if (!targetConnection) return false")).toBeLessThan(method.indexOf(".set({ isPrimary: false })"));
   });
 
+  it("legacy platform transfer routes require access to both campaigns", () => {
+    const routesSource = readRoutesSource();
+    const metaStart = routesSource.indexOf('app.post("/api/meta/transfer-connection"');
+    const metaEnd = routesSource.indexOf("/**\n   * Get Meta analytics data", metaStart);
+    const sheetsStart = routesSource.indexOf('app.post("/api/google-sheets/transfer-connection"');
+    const sheetsEnd = routesSource.indexOf("// Transfer LinkedIn connection", sheetsStart);
+    const linkedInStart = routesSource.indexOf('app.post("/api/linkedin/transfer-connection"');
+    const linkedInEnd = routesSource.indexOf("// ============================================================================\n  // CUSTOM INTEGRATION", linkedInStart);
+    const routes = [routesSource.slice(metaStart, metaEnd), routesSource.slice(sheetsStart, sheetsEnd), routesSource.slice(linkedInStart, linkedInEnd)];
+
+    for (const route of routes) {
+      expect(route).toContain("ensureCampaignAccess(req as any, res as any, fromCampaignId)");
+      expect(route).toContain("ensureCampaignAccess(req as any, res as any, toCampaignId)");
+      expect(route.indexOf("ensureCampaignAccess(req as any, res as any, fromCampaignId)")).toBeLessThan(route.indexOf("storage.create"));
+      expect(route.indexOf("ensureCampaignAccess(req as any, res as any, toCampaignId)")).toBeLessThan(route.indexOf("storage.create"));
+    }
+  });
+
+  it("legacy Google Sheets transfer deletes the source connection by connection ID, not campaign ID", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.post("/api/google-sheets/transfer-connection"');
+    const routeEnd = routesSource.indexOf("// Transfer LinkedIn connection", routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(route).toContain("storage.deleteGoogleSheetsConnection(existingConnection.id)");
+    expect(route).not.toContain("storage.deleteGoogleSheetsConnection(fromCampaignId)");
+  });
+
   it("LinkedIn revenue cleanup only clears HubSpot pipeline config for LinkedIn-scoped HubSpot mappings", () => {
     const routesSource = readRoutesSource();
     const bulkStart = routesSource.indexOf("// 2b) If HubSpot pipeline proxy was configured for LinkedIn");

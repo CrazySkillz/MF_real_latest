@@ -18350,6 +18350,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { fromCampaignId, toCampaignId } = req.body;
       console.log(`[Meta Transfer] Transferring connection from ${fromCampaignId} to ${toCampaignId}`);
 
+      const okFrom = await ensureCampaignAccess(req as any, res as any, fromCampaignId);
+      if (!okFrom) return;
+      const okTo = await ensureCampaignAccess(req as any, res as any, toCampaignId);
+      if (!okTo) return;
+
       const tempConnection = await storage.getMetaConnection(fromCampaignId);
 
       if (!tempConnection) {
@@ -25099,7 +25104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt: existingConnection.expiresAt
       });
 
-      await storage.deleteGoogleSheetsConnection(fromCampaignId);
+      await storage.deleteGoogleSheetsConnection(existingConnection.id);
       console.log(`[Sheets Transfer] Transfer complete`);
 
       res.json({ success: true, message: 'Google Sheets connection transferred' });
@@ -25114,6 +25119,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { fromCampaignId, toCampaignId } = req.body;
       console.log(`[LinkedIn Transfer] Transferring from ${fromCampaignId} to ${toCampaignId}`);
+
+      const okFrom = await ensureCampaignAccess(req as any, res as any, fromCampaignId);
+      if (!okFrom) return;
+      const okTo = await ensureCampaignAccess(req as any, res as any, toCampaignId);
+      if (!okTo) return;
 
       const existingConnection = await storage.getLinkedInConnection(fromCampaignId);
 

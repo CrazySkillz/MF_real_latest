@@ -159,6 +159,7 @@ The UI uses the user's time zone.
 Important meaning:
 
 - scheduled delivery timing should be interpreted in the user's saved time zone, not raw server time
+- scheduled reports must have at least one non-empty recipient when saved; unscheduled reports can still be saved without recipients
 - scheduled reports are production-visible outputs and must be guarded by campaign/platform ownership checks
 - before sending a campaign-scoped scheduled report, the scheduler must verify that the campaign still exists
 - if the campaign is missing, the scheduler must not create a report snapshot, recompute GA4 KPI/Benchmark state, generate/send the email, or update report `lastSentAt`

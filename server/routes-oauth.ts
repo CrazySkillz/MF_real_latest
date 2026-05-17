@@ -22024,7 +22024,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!freq) return res.status(400).json({ success: false, message: "scheduleFrequency is required when scheduleEnabled=true" });
         if (!tz) return res.status(400).json({ success: false, message: "scheduleTimeZone is required when scheduleEnabled=true" });
         if (!/^\d{1,2}:\d{2}$/.test(time)) return res.status(400).json({ success: false, message: "scheduleTime must be HH:MM (24h) when scheduleEnabled=true" });
-        // Email recipients are optional — reports save to library regardless
+        if (!recipients?.some((recipient: unknown) => String(recipient || "").trim())) {
+          return res.status(400).json({ success: false, message: "scheduleRecipients must include at least one recipient when scheduleEnabled=true" });
+        }
 
         if (freq === "weekly") {
           const dow = Number(body?.scheduleDayOfWeek);
@@ -22101,16 +22103,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate schedule fields (finance-grade correctness)
-      if (body?.scheduleEnabled) {
-        const freq = String(body?.scheduleFrequency || "").toLowerCase();
-        const tz = String(body?.scheduleTimeZone || "").trim();
-        const time = String(body?.scheduleTime || "").trim();
-        const recipients = Array.isArray(body?.scheduleRecipients) ? body.scheduleRecipients : null;
+      const nextScheduleEnabled = typeof body?.scheduleEnabled === "undefined" ? !!(existing as any)?.scheduleEnabled : !!body.scheduleEnabled;
+      if (nextScheduleEnabled) {
+        const freq = String(body?.scheduleFrequency ?? (existing as any)?.scheduleFrequency ?? "").toLowerCase();
+        const tz = String(body?.scheduleTimeZone ?? (existing as any)?.scheduleTimeZone ?? "").trim();
+        const time = String(body?.scheduleTime ?? (existing as any)?.scheduleTime ?? "").trim();
+        const recipients = Array.isArray(body?.scheduleRecipients) ? body.scheduleRecipients : (Array.isArray((existing as any)?.scheduleRecipients) ? (existing as any).scheduleRecipients : null);
 
         if (!freq) return res.status(400).json({ success: false, message: "scheduleFrequency is required when scheduleEnabled=true" });
         if (!tz) return res.status(400).json({ success: false, message: "scheduleTimeZone is required when scheduleEnabled=true" });
         if (!/^\d{1,2}:\d{2}$/.test(time)) return res.status(400).json({ success: false, message: "scheduleTime must be HH:MM (24h) when scheduleEnabled=true" });
-        // Email recipients are optional — reports save to library regardless
+        if (!recipients?.some((recipient: unknown) => String(recipient || "").trim())) {
+          return res.status(400).json({ success: false, message: "scheduleRecipients must include at least one recipient when scheduleEnabled=true" });
+        }
       }
 
       const allowedReportTypes = new Set(["overview", "kpis", "benchmarks", "ads", "insights", "custom"]);

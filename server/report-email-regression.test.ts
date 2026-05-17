@@ -154,6 +154,15 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain("Campaign lookup failed; test report skipped");
   });
 
+  it("requires recipients when saving scheduled platform reports", () => {
+    const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+
+    expect(routesSource).toContain("scheduleRecipients must include at least one recipient when scheduleEnabled=true");
+    expect(routesSource).toContain("nextScheduleEnabled");
+    expect(routesSource).toContain('String(body?.scheduleFrequency ?? (existing as any)?.scheduleFrequency ?? "")');
+    expect(routesSource).not.toContain("Email recipients are optional");
+  });
+
   it("disables orphaned scheduled reports after campaign-missing proof", () => {
     const source = readReportScheduler();
     const missingCampaignBlock = source.slice(

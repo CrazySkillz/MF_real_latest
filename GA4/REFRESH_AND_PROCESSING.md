@@ -235,6 +235,7 @@ Important meaning:
 - reports should render from refreshed GA4 tab inputs
 - reports must not become a competing source of truth for campaign metrics
 - report delivery continues even if the best-effort pre-send recompute logs a warning
+- scheduled reports must be saved with at least one non-empty recipient before the scheduler can process them
 - scheduled report delivery must verify the campaign still exists before snapshot creation, GA4 recompute, PDF generation, email sending, or report send-bookkeeping updates
 - if a campaign-scoped scheduled report points to a missing campaign, the scheduler should mark that scheduled send as skipped/failed and not send the report
 - scheduled report selection should deduplicate by report ID before due checks so shared legacy storage and platform-specific report queries cannot process the same report twice

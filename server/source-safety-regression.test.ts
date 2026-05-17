@@ -137,6 +137,20 @@ describe("source safety regression guards", () => {
     }
   });
 
+  it("connected data source list and preview routes require campaign access", () => {
+    const routesSource = readRoutesSource();
+    const listStart = routesSource.indexOf('app.get("/api/campaigns/:id/connected-data-sources"');
+    const listEnd = routesSource.indexOf('app.get("/api/campaigns/:id/connected-data-sources/:sourceId/preview"', listStart);
+    const previewStart = listEnd;
+    const previewEnd = routesSource.indexOf('// Set primary Google Sheets connection', previewStart);
+    const routes = [routesSource.slice(listStart, listEnd), routesSource.slice(previewStart, previewEnd)];
+
+    for (const route of routes) {
+      expect(route).toContain("requireCampaignAccessParamId");
+      expect(route.indexOf("requireCampaignAccessParamId")).toBeLessThan(route.indexOf("async (req, res)"));
+    }
+  });
+
   it("LinkedIn revenue cleanup only clears HubSpot pipeline config for LinkedIn-scoped HubSpot mappings", () => {
     const routesSource = readRoutesSource();
     const bulkStart = routesSource.indexOf("// 2b) If HubSpot pipeline proxy was configured for LinkedIn");

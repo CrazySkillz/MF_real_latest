@@ -11547,7 +11547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Connected Data Sources (LinkedIn tab)
    * - Unifies sources (Google Sheets now; CRMs later) into a consistent shape for the UI.
    */
-  app.get("/api/campaigns/:id/connected-data-sources", async (req, res) => {
+  app.get("/api/campaigns/:id/connected-data-sources", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const campaign = await storage.getCampaign(campaignId);
@@ -11816,7 +11816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Preview raw data for a connected data source (Google Sheets first; CRMs later)
-  app.get("/api/campaigns/:id/connected-data-sources/:sourceId/preview", async (req, res) => {
+  app.get("/api/campaigns/:id/connected-data-sources/:sourceId/preview", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const sourceId = req.params.sourceId;

@@ -151,6 +151,31 @@ describe("source safety regression guards", () => {
     }
   });
 
+  it("Google Sheets connection list and primary-selection routes require campaign access", () => {
+    const routesSource = readRoutesSource();
+    const listStart = routesSource.indexOf('app.get("/api/campaigns/:id/google-sheets-connections"');
+    const listEnd = routesSource.indexOf('app.get("/api/campaigns/:id/connected-data-sources"', listStart);
+    const primaryStart = routesSource.indexOf('app.post("/api/campaigns/:id/google-sheets-connections/:connectionId/set-primary"');
+    const primaryEnd = routesSource.indexOf('app.get("/api/google-sheets/check-connection/:campaignId"', primaryStart);
+    const routes = [routesSource.slice(listStart, listEnd), routesSource.slice(primaryStart, primaryEnd)];
+
+    for (const route of routes) {
+      expect(route).toContain("requireCampaignAccessParamId");
+      expect(route.indexOf("requireCampaignAccessParamId")).toBeLessThan(route.indexOf("async (req, res)"));
+    }
+  });
+
+  it("Google Sheets primary selection proves the target connection before clearing existing primary flags", () => {
+    const storageSource = readStorageSource();
+    const methodStart = storageSource.indexOf("async setPrimaryGoogleSheetsConnection(campaignId: string, connectionId: string)");
+    const methodEnd = storageSource.indexOf("async deleteGoogleSheetsConnection", methodStart);
+    const method = storageSource.slice(methodStart, methodEnd);
+
+    expect(method).toContain("const [targetConnection]");
+    expect(method).toContain("if (!targetConnection) return false");
+    expect(method.indexOf("if (!targetConnection) return false")).toBeLessThan(method.indexOf(".set({ isPrimary: false })"));
+  });
+
   it("LinkedIn revenue cleanup only clears HubSpot pipeline config for LinkedIn-scoped HubSpot mappings", () => {
     const routesSource = readRoutesSource();
     const bulkStart = routesSource.indexOf("// 2b) If HubSpot pipeline proxy was configured for LinkedIn");

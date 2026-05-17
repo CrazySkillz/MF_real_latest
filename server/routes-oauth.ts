@@ -11454,7 +11454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Check Google Sheets connection status
   // List all Google Sheets connections for a campaign
-  app.get("/api/campaigns/:id/google-sheets-connections", async (req, res) => {
+  app.get("/api/campaigns/:id/google-sheets-connections", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = req.params.id;
       const purpose = (req.query as any)?.purpose ? String((req.query as any).purpose) : undefined;
@@ -12083,7 +12083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Set primary Google Sheets connection
-  app.post("/api/campaigns/:id/google-sheets-connections/:connectionId/set-primary", async (req, res) => {
+  app.post("/api/campaigns/:id/google-sheets-connections/:connectionId/set-primary", requireCampaignAccessParamId, async (req, res) => {
     try {
       const { id: campaignId, connectionId } = req.params;
       const success = await storage.setPrimaryGoogleSheetsConnection(campaignId, connectionId);

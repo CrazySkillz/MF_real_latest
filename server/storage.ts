@@ -1700,6 +1700,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async setPrimaryGoogleSheetsConnection(campaignId: string, connectionId: string): Promise<boolean> {
+    const [targetConnection] = await db
+      .select({ id: googleSheetsConnections.id })
+      .from(googleSheetsConnections)
+      .where(and(
+        eq(googleSheetsConnections.id, connectionId),
+        eq(googleSheetsConnections.campaignId, campaignId),
+        eq(googleSheetsConnections.isActive, true)
+      ))
+      .limit(1);
+
+    if (!targetConnection) return false;
+
     // First, set all connections for this campaign to non-primary
     await db
       .update(googleSheetsConnections)

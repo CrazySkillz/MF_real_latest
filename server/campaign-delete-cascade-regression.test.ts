@@ -10,6 +10,10 @@ function readStorageSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "server", "storage.ts"), "utf8");
 }
 
+function readSchemaSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "shared", "schema.ts"), "utf8");
+}
+
 describe("campaign/client delete cascade regression guards", () => {
   it("requires campaign access before campaign cascade deletion", () => {
     const source = readRoutesSource();
@@ -32,6 +36,28 @@ describe("campaign/client delete cascade regression guards", () => {
     expect(method).toContain("COALESCE(linkedin_reports.campaign_id, '') <> ${campaignId}");
     expect(method).toContain("kpi_reports.campaign_id <> ${campaignId}");
     expect(method.indexOf("DELETE FROM report_send_events")).toBeLessThan(method.indexOf("await tx.delete(reportSnapshots).where(eq(reportSnapshots.campaignId, campaignId))"));
+  });
+
+  it("covers every direct campaign-scoped schema table in campaign child cleanup", () => {
+    const schema = readSchemaSource();
+    const storage = readStorageSource();
+    const methodStart = storage.indexOf("private async deleteCampaignChildren");
+    const methodEnd = storage.indexOf("async deleteCampaignCascade", methodStart);
+    const method = storage.slice(methodStart, methodEnd);
+    const campaignScopedTables = Array.from(schema.matchAll(/export const (\w+) = pgTable\("([^"]+)", \{([\s\S]*?)\n\}\);/g))
+      .filter(([, symbol, , body]) => symbol !== "campaigns" && body.includes("campaignId:"))
+      .map(([, symbol, tableName]) => ({ symbol, tableName }));
+
+    expect(campaignScopedTables.length).toBeGreaterThan(20);
+    for (const { symbol, tableName } of campaignScopedTables) {
+      if (symbol === "notifications") {
+        expect(method).toContain("tx.update(notifications)");
+      } else if (["metaKpis", "metaBenchmarks", "metaReports"].includes(symbol)) {
+        expect(method).toContain(`deleteOptionalCampaignTable("${tableName}")`);
+      } else {
+        expect(method).toContain(`tx.delete(${symbol}).where(eq(${symbol}.campaignId, campaignId))`);
+      }
+    }
   });
 
   it("keeps client deletion transactional and reuses the campaign child cleanup", () => {

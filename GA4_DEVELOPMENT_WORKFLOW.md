@@ -313,6 +313,7 @@ For future changes touching delete behavior:
 - fail closed if a client delete finds campaigns outside the caller's owner scope
 - verify optional platform tables exist before deleting from them because some deployed databases may not contain every schema-declared table
 - remove report send-event audit rows only when they are tied to report rows or snapshots proven to belong to the deleted campaign
+- keep the schema-derived campaign delete cascade regression guard current when adding any `campaignId` table
 - validate with a disposable client/campaign, or with an explicit rollback simulation when checking production-like data
 - confirm deleted campaigns disappear from Campaigns, Notifications, KPI/Benchmark lists, Reports, connected source lists, and platform analytics entry points
 - do not broaden delete behavior to unrelated clients or campaigns

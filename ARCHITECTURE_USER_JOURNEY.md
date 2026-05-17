@@ -98,6 +98,7 @@ Client deletion is allowed from the Home page and is intentionally destructive.
 Deleting a client must also delete that client's campaigns and their campaign-scoped analytics children, including source connections, normalized spend/revenue records, KPIs, benchmarks, notifications, report records, snapshots, and related platform analytics rows.
 This delete path must remain transactional: if any required child cleanup fails, the client/campaign delete should fail rather than leave a partially deleted analytics state.
 Client deletion must also fail closed if the client contains a campaign outside the caller's owner scope; it must not delete the client and leave another owner's campaign orphaned.
+Any new direct campaign-scoped table must be covered by the schema-derived campaign delete cascade regression guard before campaign/client delete behavior is considered complete.
 
 ### Left Sidebar Pattern
 
@@ -569,6 +570,7 @@ This includes connected source rows, materialized revenue/spend records, platfor
 Optional platform tables that may not exist in every deployed database must be existence-checked before deletion; missing optional tables must not block deletion of real campaign data.
 Report send-event audit rows tied to campaign-owned report snapshots must be cleaned up with the deleted campaign, but a delete cascade must not touch send events for report IDs that still belong to another campaign.
 Delete behavior must remain campaign-scoped. A campaign delete must not delete or hide notifications, reports, KPIs, Benchmarks, sources, or platform metrics belonging to a different campaign or client.
+The cascade coverage guard must remain aligned with `shared/schema.ts` so new direct `campaignId` tables are not accidentally omitted from campaign/client deletion.
 
 ### Destructive And Visibility Safety Pattern
 

@@ -452,6 +452,20 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(reportSendEvents).where(inArray(reportSendEvents.reportId, reportIds));
       await tx.delete(reportSnapshots).where(inArray(reportSnapshots.reportId, reportIds));
     }
+    await tx.execute(sql`
+      DELETE FROM report_send_events
+      WHERE report_id IN (SELECT report_id FROM report_snapshots WHERE campaign_id = ${campaignId})
+        AND NOT EXISTS (
+          SELECT 1 FROM linkedin_reports
+          WHERE linkedin_reports.id = report_send_events.report_id
+            AND COALESCE(linkedin_reports.campaign_id, '') <> ${campaignId}
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM kpi_reports
+          WHERE kpi_reports.id = report_send_events.report_id
+            AND kpi_reports.campaign_id <> ${campaignId}
+        )
+    `);
 
     const abTestRows = await tx.select({ id: abTests.id }).from(abTests).where(eq(abTests.campaignId, campaignId));
     const abTestIds = abTestRows.map((row: any) => String(row.id));
@@ -3368,6 +3382,18 @@ export class DatabaseStorage implements IStorage {
       .from(clients)
       .where(and(eq(clients.id, clientId), eq(clients.ownerId, ownerId)));
     if (!client) return false;
+
+    const foreignCampaigns = await db
+      .select({ id: campaigns.id })
+      .from(campaigns)
+      .where(and(
+        eq(campaigns.clientId, clientId),
+        sql`COALESCE(${campaigns.ownerId}, '') NOT IN (${ownerId}, '')`,
+      ));
+    if (foreignCampaigns.length > 0) {
+      console.warn(`[Client Delete] Refusing to delete client ${clientId}: contains campaigns outside owner scope`);
+      return false;
+    }
 
     const clientCampaigns = await db
       .select({ id: campaigns.id })

@@ -310,7 +310,9 @@ For future changes touching delete behavior:
 - keep the endpoint in `server/routes-oauth.ts` and persistence cleanup in `server/storage.ts`
 - delete campaign-scoped children before deleting the campaign row
 - keep client deletion transactional across all campaigns owned by that client
+- fail closed if a client delete finds campaigns outside the caller's owner scope
 - verify optional platform tables exist before deleting from them because some deployed databases may not contain every schema-declared table
+- remove report send-event audit rows only when they are tied to report rows or snapshots proven to belong to the deleted campaign
 - validate with a disposable client/campaign, or with an explicit rollback simulation when checking production-like data
 - confirm deleted campaigns disappear from Campaigns, Notifications, KPI/Benchmark lists, Reports, connected source lists, and platform analytics entry points
 - do not broaden delete behavior to unrelated clients or campaigns

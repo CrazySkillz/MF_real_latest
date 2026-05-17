@@ -810,9 +810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates", requireCampaignAccessParamId, async (req, res) => {
-    try {
-      const campaignId = req.params.id;
+  const getGoogleSheetsSpendDuplicateGroups = async (campaignId: string) => {
       const sources = (await storage.getSpendSources(campaignId)).filter((s: any) => String(s?.sourceType || "") === "google_sheets");
       const normalizeList = (value: any) => Array.isArray(value)
         ? value.map((v: any) => String(v ?? "").trim()).filter(Boolean).sort()
@@ -840,7 +838,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdAt: source.createdAt || null,
         });
       }
+      for (const group of Array.from(groups.values())) {
+        group.sources.sort((a: any, b: any) =>
+          new Date(a.createdAt || a.connectedAt || 0).getTime() - new Date(b.createdAt || b.connectedAt || 0).getTime()
+        );
+      }
       const duplicateGroups = Array.from(groups.values()).filter((g: any) => g.sources.length > 1);
+      return { sources, duplicateGroups };
+  };
+
+  app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates", requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const { sources, duplicateGroups } = await getGoogleSheetsSpendDuplicateGroups(campaignId);
       res.json({
         success: true,
         totalGoogleSheetsSpendSources: sources.length,
@@ -850,6 +860,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to inspect Google Sheets spend duplicates" });
+    }
+  });
+
+  app.post("/api/campaigns/:id/spend-sources/google-sheets-duplicates/cleanup", requireCampaignAccessParamId, async (req, res) => {
+    try {
+      if ((req.body as any)?.confirm !== true) {
+        return res.status(400).json({ success: false, error: "Cleanup confirmation is required" });
+      }
+      const campaignId = req.params.id;
+      const { duplicateGroups } = await getGoogleSheetsSpendDuplicateGroups(campaignId);
+      const deactivatedSourceIds: string[] = [];
+      const skippedGroups: any[] = [];
+      for (const group of duplicateGroups as any[]) {
+        const sig = group.signature || {};
+        if (!sig.connectionId || !sig.spreadsheetId || !sig.spendColumn) {
+          skippedGroups.push({ signature: sig, reason: "missing required duplicate signature fields" });
+          continue;
+        }
+        const duplicates = group.sources.slice(1);
+        for (const source of duplicates) {
+          await storage.deleteSpendRecordsBySource(String(source.id));
+          await storage.deleteSpendSource(String(source.id));
+          deactivatedSourceIds.push(String(source.id));
+        }
+      }
+      await recalcCampaignSpend(campaignId);
+      res.json({ success: true, deactivatedSourceIds, deactivatedCount: deactivatedSourceIds.length, skippedGroups });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to cleanup Google Sheets spend duplicates" });
     }
   });
 

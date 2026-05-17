@@ -29,7 +29,7 @@ describe("Spend source additivity", () => {
   it("Google Sheets spend duplicate inspection is read-only", () => {
     const routesFile = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routesFile.indexOf('app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates"');
-    const nextRouteStart = routesFile.indexOf('// Remove all active spend sources for a campaign', routeStart);
+    const nextRouteStart = routesFile.indexOf('app.post("/api/campaigns/:id/spend-sources/google-sheets-duplicates/cleanup"', routeStart);
     expect(routeStart).toBeGreaterThan(-1);
     expect(nextRouteStart).toBeGreaterThan(routeStart);
     const route = routesFile.slice(routeStart, nextRouteStart);
@@ -39,5 +39,20 @@ describe("Spend source additivity", () => {
     expect(route).not.toContain('deleteSpendSource');
     expect(route).not.toContain('deleteSpendRecordsBySource');
     expect(route).not.toContain('updateSpendSource');
+  });
+
+  it("Google Sheets spend duplicate cleanup requires confirmation and only deactivates confirmed duplicate groups", () => {
+    const routesFile = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routesFile.indexOf('app.post("/api/campaigns/:id/spend-sources/google-sheets-duplicates/cleanup"');
+    const nextRouteStart = routesFile.indexOf('// Remove all active spend sources for a campaign', routeStart);
+    expect(routeStart).toBeGreaterThan(-1);
+    expect(nextRouteStart).toBeGreaterThan(routeStart);
+    const route = routesFile.slice(routeStart, nextRouteStart);
+
+    expect(route).toContain('if ((req.body as any)?.confirm !== true)');
+    expect(route).toContain('const duplicates = group.sources.slice(1);');
+    expect(route).toContain('await storage.deleteSpendRecordsBySource(String(source.id));');
+    expect(route).toContain('await storage.deleteSpendSource(String(source.id));');
+    expect(route).toContain('await recalcCampaignSpend(campaignId);');
   });
 });

@@ -581,6 +581,7 @@ Important current-state note:
 - Google Sheets spend auto-refresh must pass the existing spend source `sourceId` into the process route so refresh updates that exact source instead of running add mode
 - Google Sheets spend process must fail closed when a supplied edit/refresh `sourceId` does not resolve to an active Google Sheets spend source; it must not fall back to creating a new source
 - Google Sheets spend duplicate cleanup must start with the read-only duplicate inspector; do not deactivate/delete duplicate sources until the exact sheet/mapping duplicate groups and affected source IDs are proven
+- confirmed duplicate cleanup may soft-deactivate only duplicate Google Sheets spend sources from exact duplicate groups, delete only records tied to those duplicate source IDs, and then recalculate campaign spend
 - if a campaign identifier and campaign values are mapped, auto-refresh includes only rows matching those selected campaign values
 - the date column controls daily spend history; auto-refresh still sums all matching rows for `Total Spend`, while latest-day style views use dated records
 - Google Sheets spend is eligible for scheduled auto-refresh after setup

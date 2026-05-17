@@ -260,6 +260,7 @@ What is true today:
 - scheduled/server-generated GA4 reports now have dedicated server-side rendering for `Overview`, `Ad Comparison`, `Insights`, and `Custom`, using saved report config plus existing refreshed GA4 inputs
 - scheduled report processing now fails closed for missing campaign ownership and deduplicates report rows before due checks
 - scheduled/test-send report emails now use a simple `MimoSaaS report attached` transactional payload with the generated PDF attachment, and test-send checks Mailgun delivery events when available
+- GA4 report final validation passed for the report scheduler/output scope: targeted report regression tests, TypeScript check, production build, GA4 report test-send/PDF delivery, direct snapshot PDF output, and scheduled-report log-cycle behavior
 
 What is not yet fully consolidated:
 

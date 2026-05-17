@@ -152,6 +152,7 @@ Lifecycle completeness rule:
 - do not mark a GA4 source family complete after checking only the user add/edit flow
 - for each source family, separately trace add, edit, delete, scheduler/refresh, source modal display, total recompute, and existing-data cleanup
 - scheduler refresh must preserve stable source identity; if it calls a process/save endpoint, confirm it passes the same `sourceId` that edit mode uses
+- CRM and ecommerce revenue save endpoints must fail closed when edit or scheduler mode supplies a `sourceId` that is not an active source for the same campaign, platform context, and source type
 - if a previous bug created duplicate or damaged persisted records, document the forward fix separately from the cleanup fix
 - never claim Google Sheets, CSV, CRM, ecommerce, or ad-platform source safety is complete until both UI and scheduler paths are checked
 

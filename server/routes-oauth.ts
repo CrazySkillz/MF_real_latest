@@ -12729,10 +12729,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pipelineStageLabel = String(body.data.pipelineStageLabel || "").trim();
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
       const dateFieldChoice = body.data.dateField || "CloseDate";
+      const platformCtx = String(platformContext || "ga4").trim().toLowerCase() === "linkedin" ? "linkedin" : "ga4";
+      if (existingSourceIdOrNull) {
+        const existingSource = await storage.getRevenueSource(campaignId, existingSourceIdOrNull);
+        const existingCtx = String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase();
+        if (!existingSource || String((existingSource as any).sourceType || "").toLowerCase() !== "salesforce" || existingCtx !== platformCtx) {
+          return res.status(404).json({ error: "Salesforce revenue source not found" });
+        }
+      }
 
       const { accessToken, instanceUrl } = await getSalesforceAccessTokenForCampaign(campaignId);
       const version = process.env.SALESFORCE_API_VERSION || 'v59.0';
-      const platformCtx = String(platformContext || "ga4").trim().toLowerCase() === "linkedin" ? "linkedin" : "ga4";
       const camp = await storage.getCampaign(campaignId);
       const campaignCurrency = String((camp as any)?.currency || "USD").trim().toUpperCase();
 
@@ -14133,10 +14140,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pipelineStageId = String(body.data.pipelineStageId || "").trim();
       const pipelineStageLabel = String(body.data.pipelineStageLabel || "").trim();
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
+      const platformCtx = String(platformContext || "ga4").trim().toLowerCase() === "linkedin" ? "linkedin" : "ga4";
+      const requestedSourceId = String((body.data as any).sourceId || "").trim();
+      if (requestedSourceId) {
+        const existingSource = await storage.getRevenueSource(campaignId, requestedSourceId);
+        const existingCtx = String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase();
+        if (!existingSource || String((existingSource as any).sourceType || "").toLowerCase() !== "hubspot" || existingCtx !== platformCtx) {
+          return res.status(404).json({ error: "HubSpot revenue source not found" });
+        }
+      }
 
       const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
 
-      const platformCtx = String(platformContext || "ga4").trim().toLowerCase() === "linkedin" ? "linkedin" : "ga4";
       // User-selected date field; fall back to platform-specific defaults for backward compatibility
       const dateFieldChoice = body.data.dateField || (platformCtx === "linkedin" ? "hs_lastmodifieddate" : "closedate");
       const effectiveValueSource: 'revenue' | 'conversion_value' = (platformCtx === 'linkedin' ? parsedValueSource : 'revenue');
@@ -14415,7 +14430,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Idempotent: reuse the same HubSpot revenue source id (stable provenance) across daily refreshes.
         const existingSources = await storage.getRevenueSources(campaignId, platformCtx as any).catch(() => [] as any[]);
-        const requestedSourceId = String((body.data as any).sourceId || "").trim();
         const selectedKey = selected.map((v: any) => String(v || "").trim()).sort().join("\n");
         const existingHubspot = (Array.isArray(existingSources) ? existingSources : []).find((s: any) => {
           if (!s || (s as any).isActive === false || String((s as any).sourceType || "") !== "hubspot") return false;
@@ -27444,6 +27458,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isDryRun = Boolean(body.data.dryRun);
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
       const requestedSourceId = String(body.data.sourceId || "").trim();
+      if (requestedSourceId) {
+        const existingSource = await storage.getRevenueSource(campaignId, requestedSourceId);
+        const existingCtx = String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase();
+        if (!existingSource || String((existingSource as any).sourceType || "").toLowerCase() !== "shopify" || existingCtx !== String(platformCtx || "ga4").trim().toLowerCase()) {
+          return res.status(404).json({ error: "Shopify revenue source not found" });
+        }
+      }
 
       const conn = await getShopifyConnectionForCampaign(campaignId);
       const apiVersion = process.env.SHOPIFY_API_VERSION || "2024-01";

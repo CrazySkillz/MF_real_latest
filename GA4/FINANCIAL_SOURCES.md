@@ -204,6 +204,8 @@ Important meaning:
 
 - `Shopify`, `HubSpot`, and `Salesforce` are connection + attribution/mapping workflows, not simple value entry
 - `Google Sheets` and `CSV` are preview + mapping + import workflows
+- disconnecting HubSpot, Salesforce, or Shopify must only deactivate the connection that belongs to the current campaign; a supplied connection ID from another campaign must fail closed and must not affect that other campaign
+- deleting a revenue source from `Total Revenue -> Sources` must first verify that the source belongs to the current campaign; normalized revenue records may be deleted only for that verified source ID
 
 Production direction note:
 

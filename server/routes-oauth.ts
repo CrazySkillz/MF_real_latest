@@ -8047,6 +8047,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const before = await storage.getHubspotConnections(campaignId);
       const target = (before || []).find((c: any) => String(c?.id) === String(targetConnId));
+      if (!target) {
+        return res.status(404).json({ error: 'HubSpot connection not found' });
+      }
       deletedWasRevenueTracking = !!target && (target as any).isActive !== false && isRevenueTrackingHubspotConnection(target);
 
       await storage.deleteHubspotConnection(targetConnId);
@@ -8179,6 +8182,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const before = await storage.getSalesforceConnections(campaignId);
       const target = (before || []).find((c: any) => String(c?.id) === String(targetConnId));
+      if (!target) {
+        return res.status(404).json({ error: 'Salesforce connection not found' });
+      }
       deletedWasRevenueTracking = !!target && (target as any).isActive !== false && isRevenueTrackingSalesforceConnection(target);
 
       await storage.deleteSalesforceConnection(targetConnId);
@@ -8293,6 +8299,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (!targetConnId) {
         return res.status(404).json({ error: 'No Shopify connection found' });
+      }
+
+      const before = await storage.getShopifyConnections(campaignId);
+      const target = (before || []).find((c: any) => String(c?.id) === String(targetConnId));
+      if (!target) {
+        return res.status(404).json({ error: 'Shopify connection not found' });
       }
 
       await storage.deleteShopifyConnection(targetConnId);

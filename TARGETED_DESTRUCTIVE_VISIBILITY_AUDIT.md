@@ -10,9 +10,9 @@ Rule: do not mark an item complete unless the route/job/storage path has been tr
 
 Trust rule: do not mark a source family, scheduler path, or destructive/visibility subsystem complete until add/create, edit/update, delete/deactivate, refresh/scheduler/reprocess, visible list/modal display, totals/recompute, and existing damaged-data cleanup have been traced or explicitly marked out of scope.
 
-Last updated: 2026-05-17 after the notification lifecycle targeted pass, KPI progress scope validation, KPI analytics/read route access guards, KPI progress write fail-closed guard, LinkedIn campaign-specific KPI refresh fallback removal validated in Render logs, Benchmark update route scope hardening, campaign Benchmark edit-format regression guard, exact Benchmark history cleanup on Benchmark delete, Benchmark history write fail-closed guard, Benchmark history/analytics read-route access guards, report test-send Mailgun HTTP API alignment, report test-send missing-campaign fail-closed hardening, orphaned scheduled-report disablement validated in Render logs, direct report snapshot ownership hardening, scheduled report snapshot bookkeeping hardening, legacy Meta/Google Ads report update ownership immutability, production validation of plain transactional report emails with PDF attachments, Google Sheets campaign source route access hardening, CSV revenue/spend source-type edit guards, Google Sheets revenue additivity/source-window/UI-stability hardening, Google Sheets spend additivity/source-window/UI-stability hardening, Google Sheets spend auto-refresh source identity hardening, and CRM/ecommerce revenue source edit/refresh source-ID fail-closed guards for HubSpot, Salesforce, and Shopify.
+Last updated: 2026-05-17 after the notification lifecycle targeted pass, KPI progress scope validation, KPI analytics/read route access guards, KPI progress write fail-closed guard, LinkedIn campaign-specific KPI refresh fallback removal validated in Render logs, Benchmark update route scope hardening, campaign Benchmark edit-format regression guard, exact Benchmark history cleanup on Benchmark delete, Benchmark history write fail-closed guard, Benchmark history/analytics read-route access guards, report test-send Mailgun HTTP API alignment, report test-send missing-campaign fail-closed hardening, orphaned scheduled-report disablement validated in Render logs, direct report snapshot ownership hardening, scheduled report snapshot bookkeeping hardening, legacy Meta/Google Ads report update ownership immutability, production validation of plain transactional report emails with PDF attachments, Google Sheets campaign source route access hardening, CSV revenue/spend source-type edit guards, Google Sheets revenue additivity/source-window/UI-stability hardening, Google Sheets spend additivity/source-window/UI-stability hardening, Google Sheets spend auto-refresh source identity hardening, CRM/ecommerce revenue source edit/refresh source-ID fail-closed guards for HubSpot, Salesforce, and Shopify, post-deploy validation that CRM/ecommerce source updates do not create duplicate source rows, CRM/ecommerce connection delete membership guards, and individual revenue source delete campaign/source ownership regression coverage.
 
-Current reconciliation note: the two previous outstanding-task lists now describe the same audit queue. KPI analytics/read route guards, Benchmark route isolation, Benchmark history cleanup, Benchmark history/analytics read guards, and Report routes/scheduler safety have been completed for the targeted scope. The next active subsystem is Source edit/delete and normalized-record cleanup.
+Current reconciliation note: use the single authoritative outstanding queue in this file. Older partial lists are superseded. KPI analytics/read route guards, Benchmark route isolation, Benchmark history cleanup, Benchmark history/analytics read guards, Report routes/scheduler safety, Google Sheets source safety, CSV source-type edit guards, CRM/ecommerce source edit/refresh `sourceId` guards, and CRM/ecommerce connection-delete membership guards have been completed for the targeted scope. The active subsystem is Source edit/delete and normalized-record cleanup.
 
 Existing damaged-data note: the Google Sheets spend auto-refresh source-identity fix prevents new duplicate Google Sheets spend sources from being created by refresh. The duplicate inspector/cleanup/purge endpoints are intentionally narrow: cleanup soft-deactivates only exact duplicate groups, and purge hard-deletes only inactive zero-record duplicates that match an active source signature. Any skipped inactive rows remain preserved until their record dependencies are proven safe to remove.
 
@@ -28,6 +28,14 @@ For each subsystem:
 - add or update the narrowest regression guard available
 - validate the fixed path and one adjacent same-subsystem path
 - update this tracker immediately after validation
+
+Efficiency rule:
+
+- batch by subsystem for tracing, but commit only coherent targeted fixes
+- do not jump between source families unless the current family is marked done or explicitly blocked
+- every source-family pass must check the same lifecycle shape: add/save, edit/update, delete/disconnect, refresh/scheduler, source-modal display, totals/recompute, and existing damaged-data cleanup
+- if a lifecycle path is not implemented for that source family, mark it explicitly as out of scope rather than leaving it ambiguous
+- avoid adding cleanup endpoints until the forward path is fixed and the damaged-record boundary is proven
 
 Subsystem order:
 
@@ -85,6 +93,8 @@ Subsystem order:
 - Google Sheets spend duplicate cleanup requires explicit confirmation, keeps the oldest source in each exact duplicate group, soft-deactivates only the duplicate source IDs from those groups, deletes only normalized spend records tied to those duplicate source IDs, and recalculates campaign spend.
 - Google Sheets spend hard-delete cleanup requires explicit confirmation and purges only inactive Google Sheets spend sources that match an active source signature and have zero remaining spend records.
 - HubSpot, Salesforce, and Shopify revenue save/refresh endpoints now fail closed when edit or scheduler mode supplies a stale, wrong-campaign, wrong-context, or wrong-source-type `sourceId`, preventing source duplication or cross-source mutation.
+- HubSpot, Salesforce, and Shopify connection delete routes now verify that a supplied `connectionId` belongs to the requested campaign before deactivating it, preventing cross-campaign connection deletion.
+- The direct `Total Revenue -> Sources -> delete` route proves the revenue source belongs to the requested campaign before deactivating the source and deleting normalized records tied to that source ID.
 - Google Sheets GA4 revenue add mode now creates a new additive revenue source instead of replacing an existing source by matching the same Google Sheets connection; edit/refresh mode updates only by stable `sourceId`.
 - Imported GA4 revenue-to-date and revenue-breakdown endpoints now use the same source-backed record window as the Revenue Sources modal unless an explicit campaign `startDate` is configured, preventing card/source provenance drift.
 - Add Revenue Google Sheets setup now silently refreshes connection state and uses the shared Google Sheets auth component without transient `Checking connection...` text that causes modal body jumps.
@@ -98,7 +108,7 @@ Subsystem order:
 - KPI/Benchmark campaign-vs-platform route isolation: code-audited for the targeted scope. Generic platform KPI routes fail closed for campaign-layer values, generic KPI latest-period/analytics reads are access-guarded, generic KPI progress writes verify caller layer scope and fail closed for missing KPI rows, Benchmark update routes preserve persisted `campaignId`/`platformType`, Benchmark deletion cleans exact matching history rows, Benchmark history writes fail closed for missing Benchmark rows, and Benchmark history/analytics reads are access-guarded.
 - KPI refresh scheduler safety: LinkedIn campaign-specific KPI refresh now skips missing selected LinkedIn campaign metrics instead of falling back to aggregate metrics.
 - Report update/delete/scheduler/send visibility: code-audited for the targeted scope. Platform report update/delete/snapshot/test-send routes are ownership-guarded, direct snapshot JSON/PDF routes verify snapshot/report campaign-platform consistency, legacy Meta/Google Ads report updates cannot change report campaign/platform identity, scheduled delivery is deduplicated and campaign-existence guarded, orphaned scheduled reports are disabled after missing-campaign proof even when an existing skipped send event is found, scheduled snapshot creation now occurs only after successful delivery, test-send accepts Mailgun HTTP API configuration, test-send fails closed for missing campaigns, and report email delivery now uses the validated transactional PDF-attachment payload.
-- Source edit/delete and normalized-record cleanup: started. Google Sheets campaign source read/update/helper routes are access-guarded and connection mutations verify campaign membership. CSV revenue/spend process/edit routes now refuse non-CSV `sourceId` updates. Google Sheets GA4 revenue/spend add/edit/refresh identity is hardened so add mode creates an additive source and edit/refresh mode updates only by `sourceId`; spend auto-refresh now passes that `sourceId` instead of creating duplicate sources. Google Sheets spend duplicate cleanup is restricted to exact duplicate groups and hard-delete purge is restricted to inactive zero-record duplicates. HubSpot, Salesforce, and Shopify revenue save/refresh endpoints now validate supplied `sourceId` against campaign, platform context, and source type before mutation. CRM/ecommerce delete/disconnect side effects and ad-platform source families still require review.
+- Source edit/delete and normalized-record cleanup: started. Google Sheets campaign source read/update/helper routes are access-guarded and connection mutations verify campaign membership. CSV revenue/spend process/edit routes now refuse non-CSV `sourceId` updates. Google Sheets GA4 revenue/spend add/edit/refresh identity is hardened so add mode creates an additive source and edit/refresh mode updates only by `sourceId`; spend auto-refresh now passes that `sourceId` instead of creating duplicate sources. Google Sheets spend duplicate cleanup is restricted to exact duplicate groups and hard-delete purge is restricted to inactive zero-record duplicates. HubSpot, Salesforce, and Shopify revenue save/refresh endpoints now validate supplied `sourceId` against campaign, platform context, and source type before mutation, their connection delete routes verify the connection belongs to the requested campaign before deactivation, and the direct source-delete route proves campaign/source ownership before deleting source records. Remaining ad-platform source families and non-GA4 source-delete/disconnect paths still require review.
 - Campaign/client delete cascades: partially hardened; final table-by-table pass still required.
 - Legacy route/schema/storage cleanup: not started and must remain last.
 
@@ -107,36 +117,31 @@ Subsystem order:
 - Notification lifecycle: in-app notification creation/read/dismiss/clear/delete, scheduler creation, duplicate suppression, non-breach hiding, orphan/cross-campaign hiding, missing-campaign fail-closed behavior, and email-alert stale-row checks are code-audited for the targeted scope. Remaining work is production runtime observation only.
 - KPI/Benchmark route isolation: code-audited for the targeted scope. KPI platform-route reserved-value guard, generic KPI analytics/read guards, generic KPI progress scope validation and missing-row guard, Benchmark update scope immutability, Benchmark delete history cleanup, Benchmark history write existence checks, and Benchmark history/analytics read guards are complete.
 - Report routes and scheduler: code-audited for the targeted scope. Platform report update/delete/snapshot/test-send ownership guards, direct snapshot JSON/PDF ownership consistency checks, legacy LinkedIn update/delete ownership guards, legacy Meta/Google Ads update ownership immutability, scheduled-send dedupe, missing-campaign skip, orphaned scheduled-report disablement, test-send missing-campaign fail-closed behavior, stale failed retry, scheduled snapshot-after-send bookkeeping, Mailgun HTTP API send/test-send alignment, delivery-status-aware test-send, and the transactional PDF-attachment email payload are complete. Legacy Meta/Google Ads report routes remain intentionally documented as legacy shared routes because their table has no persisted platform discriminator; do not remove or redesign them until Meta/Google Ads report UX is refined.
-- Source delete/edit flows: started. Google Sheets source route access, connection ownership checks, CSV source-type edit guards, GA4 revenue/spend add/edit/refresh source identity, read-only Google Sheets spend duplicate inspection, confirmed Google Sheets spend duplicate cleanup, inactive zero-record hard-delete purge, and HubSpot/Salesforce/Shopify revenue save/refresh `sourceId` fail-closed guards are complete for the targeted pass. HubSpot/Salesforce/Shopify delete/disconnect side effects, LinkedIn, Meta, Google Ads, Custom Integration, and remaining CSV/source-upload read/delete paths still need the same route-by-route check.
+- Source delete/edit flows: started. Google Sheets source route access, connection ownership checks, CSV source-type edit guards, GA4 revenue/spend add/edit/refresh source identity, read-only Google Sheets spend duplicate inspection, confirmed Google Sheets spend duplicate cleanup, inactive zero-record hard-delete purge, HubSpot/Salesforce/Shopify revenue save/refresh `sourceId` fail-closed guards, HubSpot/Salesforce/Shopify connection delete membership guards, and direct GA4-context revenue source delete campaign/source ownership are complete for the targeted pass. LinkedIn, Meta, Google Ads, Custom Integration, and remaining CSV/source-upload read/delete paths still need the same route-by-route check.
 - Campaign/client delete cascades: partially hardened, but final table-by-table destructive-scope pass remains outstanding.
 - Legacy/stale routes and schema cleanup: not started and must remain last.
 
-## Remaining Ordered Queue
+## Authoritative Outstanding Queue
 
-1. Finish CRM/ecommerce source delete/disconnect side-effect checks for HubSpot, Salesforce, and Shopify.
-2. Audit ad-platform source flows for LinkedIn, Meta, and Google Ads read/edit/delete/refresh scope.
-3. Audit remaining CSV/source-upload and Custom Integration source paths.
-4. Complete final campaign/client delete cascade table-by-table pass.
-5. Review legacy/stale routes and schema/storage cleanup only after proving reachability and production data dependency.
+1. Ad-platform source-flow pass.
+   Scope: LinkedIn, Meta, and Google Ads spend/revenue source read, edit, delete, disconnect, refresh, and scheduler paths.
+   Goal: prove ad-platform source actions cannot mutate unrelated campaign/platform records and cannot create duplicate source rows during refresh.
 
-## Outstanding
+2. Remaining CSV/source-upload and Custom Integration pass.
+   Scope: CSV read/delete/upload preview paths not already covered by source-type edit guards, plus Custom Integration connect/disconnect/source mutation routes.
+   Goal: prove uploads and custom source actions are campaign-scoped and only delete/update their own records.
 
-- KPI routes: generic platform KPI route reserved-value guard, generic KPI analytics/read route guards, generic KPI progress scope validation, and missing-row progress write guard are complete. No remaining KPI route-isolation gaps are known from the targeted pass.
-- Benchmark routes: platform Benchmark routes now reject campaign-layer platform values, Benchmark update routes preserve persisted `campaignId`/`platformType`, Benchmark deletion cleans up only exact matching history rows, Benchmark history writes require an existing Benchmark row, and Benchmark history/analytics read routes use `ensureBenchmarkAccess`. No remaining Benchmark route-isolation gaps are known from the targeted pass.
-- Report routes: code-audited for the targeted scope. Platform report test-send now follows the same Mailgun HTTP API-compatible path as scheduled sends, sends the generated PDF attachment using the validated transactional payload, reports provider delivery-event failures, and fails closed if the resolved report has no valid campaign. Direct report snapshot JSON/PDF routes fail closed when snapshot campaign/platform metadata does not match the owned report. Legacy Meta/Google Ads report updates preserve persisted report ownership. Scheduled sends create snapshot rows only after successful delivery, and orphaned scheduled reports are disabled after missing-campaign proof. No remaining report destructive/visibility gap is known from this targeted pass.
-- Source delete/edit flows: Google Sheets source routes are guarded for campaign access and connection ownership, CSV revenue/spend edit routes refuse non-CSV source IDs, Google Sheets GA4 revenue/spend add/edit/refresh paths now preserve additive source behavior by updating existing records only through `sourceId`, duplicate spend cleanup is guarded by exact duplicate grouping plus explicit confirmation, hard-delete purge is limited to inactive zero-record duplicates, and HubSpot/Salesforce/Shopify revenue save/refresh endpoints fail closed for stale or wrong `sourceId`. Continue review for HubSpot/Salesforce/Shopify delete/disconnect side effects, LinkedIn, Meta, Google Ads, Custom Integration, and remaining CSV/source-upload read/delete routes. Confirm each route only mutates the intended campaign/source/platform records.
-- Client delete cascade: trace all child campaign records, reports, KPIs, benchmarks, notifications, alerts, sources, snapshots, send events, and email audit rows.
-- Campaign delete cascade: complete a final table-by-table scoping pass for all child rows.
-- Platform-specific disconnect/delete routes: review GA4, Google Sheets, HubSpot, Salesforce, Shopify, LinkedIn, Meta, Google Ads, and Custom Integration disconnect routes.
-- Scheduler jobs: review auto-refresh, alert checks, report scheduler, KPI/Benchmark recompute, source refresh, and notification creation jobs for campaign/platform scoping.
-- KPI Refresh orphan logs: observed `[KPI Refresh] ... campaign not found` after report scheduler orphan logs stopped; fixed for the LinkedIn campaign-specific KPI refresh path by skipping missing selected campaign metrics instead of using aggregate fallback. Render validation confirmed the unsafe `Using aggregate metrics for campaign-specific KPI` log no longer appears.
-- Legacy LinkedIn and shared report storage: prove which legacy routes are still reachable before removing or further guarding them.
-- Legacy ownerless data: verify old records without modern owner/campaign metadata cannot be exposed, mutated, or deleted across users/clients.
-- Email/report audit history: decide and enforce whether `email_alert_events`, `report_send_events`, and `report_snapshots` are preserved, soft-hidden, or deleted during campaign/client deletion.
-- Source normalized records: confirm deleting one revenue/spend source deletes only that source's records and cannot clear unrelated totals/latest-day records/platform metrics.
-- Google Sheets spend duplicate cleanup: inspect active `google_sheets` spend sources by campaign, connection, spreadsheet, tab, spend/date/campaign mapping, selected values, and amount history; keep one confirmed valid source per exact duplicate group; deactivate only confirmed duplicates; remove only normalized spend records tied to those duplicate source IDs; then recalculate campaign spend totals.
-- Visibility filters: confirm UI lists exclude soft-hidden records while preserving auditability in storage.
-- Schema/storage cleanup: last step only, after all route/job dependencies are proven.
+3. Campaign/client delete cascade pass.
+   Scope: campaign delete and client delete across child tables.
+   Goal: table-by-table proof that deleting one campaign/client removes or hides only that campaign/client's rows, including sources, normalized records, KPIs, Benchmarks, notifications, reports, snapshots, send events, and email audit rows.
+
+4. Legacy/stale route and schema/storage cleanup.
+   Scope: old report/source/platform routes, ownerless data behavior, and unused schema/storage paths.
+   Goal: remove or guard only code proven unused or unsafe; this stays last because stale-code cleanup has the highest accidental data-risk.
+
+## Next Step
+
+The next safest smallest step is item 1: start the ad-platform source-flow pass with the highest-risk active source route used by the current UI or scheduler, then add the narrowest regression guard for that boundary.
 
 ## Runtime Validation Required
 
@@ -158,5 +163,6 @@ Subsystem order:
 - `server/report-email-regression.test.ts`
 - `server/revenue-additivity.test.ts`
 - `server/spend-source-additivity.test.ts`
+- `server/source-safety-regression.test.ts`
 - `server/latest-day-revenue-regression.test.ts`
 - `server/ga4-ui-regression.test.ts`

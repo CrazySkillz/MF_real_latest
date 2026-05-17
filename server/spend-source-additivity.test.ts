@@ -25,4 +25,19 @@ describe("Spend source additivity", () => {
     expect(routesFile).toContain('const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";');
     expect(routesFile).not.toContain('toISODateUTC((campaign as any)?.createdAt) || "2020-01-01"');
   });
+
+  it("Google Sheets spend duplicate inspection is read-only", () => {
+    const routesFile = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routesFile.indexOf('app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates"');
+    const nextRouteStart = routesFile.indexOf('// Remove all active spend sources for a campaign', routeStart);
+    expect(routeStart).toBeGreaterThan(-1);
+    expect(nextRouteStart).toBeGreaterThan(routeStart);
+    const route = routesFile.slice(routeStart, nextRouteStart);
+
+    expect(route).toContain('duplicateGroups');
+    expect(route).toContain('duplicateSourceCount');
+    expect(route).not.toContain('deleteSpendSource');
+    expect(route).not.toContain('deleteSpendRecordsBySource');
+    expect(route).not.toContain('updateSpendSource');
+  });
 });

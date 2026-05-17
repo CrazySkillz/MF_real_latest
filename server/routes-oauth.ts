@@ -810,6 +810,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/campaigns/:id/spend-sources/google-sheets-duplicates", requireCampaignAccessParamId, async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+      const sources = (await storage.getSpendSources(campaignId)).filter((s: any) => String(s?.sourceType || "") === "google_sheets");
+      const normalizeList = (value: any) => Array.isArray(value)
+        ? value.map((v: any) => String(v ?? "").trim()).filter(Boolean).sort()
+        : (value ? [String(value).trim()] : []);
+      const groups = new Map<string, any>();
+      for (const source of sources as any[]) {
+        let cfg: any = {};
+        try { cfg = source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : {}; } catch { cfg = {}; }
+        const signature = {
+          connectionId: String(cfg?.connectionId || ""),
+          spreadsheetId: String(cfg?.spreadsheetId || ""),
+          sheetName: String(cfg?.sheetName || ""),
+          spendColumn: String(cfg?.spendColumn || ""),
+          dateColumn: String(cfg?.dateColumn || ""),
+          campaignColumn: String(cfg?.campaignColumn || ""),
+          campaignValues: normalizeList(cfg?.campaignValues || cfg?.campaignValue),
+        };
+        const key = JSON.stringify(signature);
+        if (!groups.has(key)) groups.set(key, { signature, sources: [] });
+        groups.get(key).sources.push({
+          id: String(source.id),
+          displayName: source.displayName || "Google Sheets",
+          currency: source.currency || null,
+          connectedAt: source.connectedAt || null,
+          createdAt: source.createdAt || null,
+        });
+      }
+      const duplicateGroups = Array.from(groups.values()).filter((g: any) => g.sources.length > 1);
+      res.json({
+        success: true,
+        totalGoogleSheetsSpendSources: sources.length,
+        duplicateGroupCount: duplicateGroups.length,
+        duplicateSourceCount: duplicateGroups.reduce((sum: number, g: any) => sum + Math.max(0, g.sources.length - 1), 0),
+        duplicateGroups,
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to inspect Google Sheets spend duplicates" });
+    }
+  });
+
   // Remove all active spend sources for a campaign (and therefore remove ROAS/ROI/CPA until re-imported).
   app.delete("/api/campaigns/:id/spend-sources", requireCampaignAccessParamId, async (req, res) => {
     try {

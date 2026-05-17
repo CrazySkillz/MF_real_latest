@@ -244,6 +244,8 @@ For destructive or visibility-related changes:
 - report email delivery fixes must distinguish provider/API acceptance from confirmed delivery; do not tell the user an email was delivered unless provider delivery events or actual inbox receipt prove it
 - report emails should remain plain transactional messages with the generated PDF attached unless the user explicitly requests a delivery-safe redesign
 - legacy routes must be traced to a current UI/API caller before giving validation instructions or changing behavior
+- legacy routes must not be removed during destructive/visibility work unless caller reachability, scheduler dependency, storage dependency, schema support, and production-data dependency have all been checked and documented
+- retained legacy routes that can expose or mutate campaign data must stay campaign-access guarded and regression-covered
 
 ## Development Guidelines
 

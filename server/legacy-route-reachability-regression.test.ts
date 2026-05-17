@@ -61,4 +61,24 @@ describe("legacy route reachability inventory", () => {
     expect(route).toContain("storage.updateCampaign(String(c?.id || \"\"), { ownerId: actorId } as any)");
     expect(route.indexOf("const toClaim")).toBeLessThan(route.indexOf("res.json("));
   });
+
+  it("keeps legacy transfer routes classified as retained compatibility routes with campaign guards", () => {
+    const client = readClientSources();
+    const routes = read("server/routes-oauth.ts");
+    const retainedRoutes = [
+      "/api/ga4/transfer-connection",
+      "/api/google-sheets/transfer-connection",
+      "/api/linkedin/transfer-connection",
+      "/api/meta/transfer-connection",
+      "/api/custom-integration/transfer",
+    ];
+
+    for (const routePath of retainedRoutes) {
+      expect(client).not.toContain(routePath);
+      expect(routes).toContain(routePath);
+    }
+    expect(routes).toContain("ensureCampaignAccess(req as any, res as any, fromCampaignId)");
+    expect(routes).toContain("ensureCampaignAccess(req as any, res as any, toCampaignId)");
+    expect(routes).toContain("fromCampaignId !== 'temp-campaign-setup'");
+  });
 });

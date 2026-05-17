@@ -178,13 +178,20 @@ describe("source safety regression guards", () => {
 
   it("legacy platform transfer routes require access to both campaigns", () => {
     const routesSource = readRoutesSource();
+    const ga4Start = routesSource.indexOf('app.post("/api/ga4/transfer-connection"');
+    const ga4End = routesSource.indexOf("// Transfer Google Sheets connection", ga4Start);
     const metaStart = routesSource.indexOf('app.post("/api/meta/transfer-connection"');
     const metaEnd = routesSource.indexOf("/**\n   * Get Meta analytics data", metaStart);
     const sheetsStart = routesSource.indexOf('app.post("/api/google-sheets/transfer-connection"');
     const sheetsEnd = routesSource.indexOf("// Transfer LinkedIn connection", sheetsStart);
     const linkedInStart = routesSource.indexOf('app.post("/api/linkedin/transfer-connection"');
     const linkedInEnd = routesSource.indexOf("// ============================================================================\n  // CUSTOM INTEGRATION", linkedInStart);
-    const routes = [routesSource.slice(metaStart, metaEnd), routesSource.slice(sheetsStart, sheetsEnd), routesSource.slice(linkedInStart, linkedInEnd)];
+    const routes = [
+      routesSource.slice(ga4Start, ga4End),
+      routesSource.slice(metaStart, metaEnd),
+      routesSource.slice(sheetsStart, sheetsEnd),
+      routesSource.slice(linkedInStart, linkedInEnd),
+    ];
 
     for (const route of routes) {
       expect(route).toContain("ensureCampaignAccess(req as any, res as any, fromCampaignId)");

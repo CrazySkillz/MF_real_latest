@@ -155,6 +155,8 @@ Optional future cleanup, not a blocker for this targeted audit:
 
 The targeted destructive/visibility audit is complete after validation. The next work should return to product-specific feature refinement or a separately scoped stale-code removal project with its own dependency proof.
 
+GA4 production-template readiness is tracked separately in `GA4_PRODUCTION_READY_TRACKER.md`. That tracker is the authoritative list for the final GA4 items before using GA4 as the template for future integrations.
+
 ## Runtime Validation Required
 
 - Notification lifecycle: monitor Render logs after deploy for unexpected repeated `Created alert`, `Alert sent for KPI`, `Alert sent for Benchmark`, `Error checking KPI alerts`, or `Error checking Benchmark alerts` entries.

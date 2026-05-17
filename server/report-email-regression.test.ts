@@ -167,13 +167,15 @@ describe("scheduled report email regression guard", () => {
     expect(missingCampaignBlock).toContain('status: "skipped"');
   });
 
-  it("disables orphaned scheduled reports that already have skipped send events", () => {
+  it("disables already-skipped scheduled reports that cannot be sent", () => {
     const source = readReportScheduler();
     const alreadyProcessedBlock = source.slice(
-      source.indexOf('if (existingStatus === "skipped" && displayError.includes("Campaign not found"))'),
-      source.indexOf('console.log(`[Report Scheduler] Report "${report.name}" already processed', source.indexOf('if (existingStatus === "skipped" && displayError.includes("Campaign not found"))'))
+      source.indexOf('if (existingStatus === "skipped" && ('),
+      source.indexOf('console.log(`[Report Scheduler] Report "${report.name}" already processed', source.indexOf('if (existingStatus === "skipped" && ('))
     );
 
+    expect(alreadyProcessedBlock).toContain('displayError.includes("Campaign not found")');
+    expect(alreadyProcessedBlock).toContain('displayError.includes("No recipients configured")');
     expect(alreadyProcessedBlock).toContain(".update(linkedinReports)");
     expect(alreadyProcessedBlock).toContain("scheduleEnabled: false");
     expect(alreadyProcessedBlock).toContain("existingReportId");

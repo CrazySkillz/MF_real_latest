@@ -787,7 +787,12 @@ export async function checkScheduledReports(): Promise<void> {
       const recipients = report.scheduleRecipients || [];
 
       if (!recipients || recipients.length === 0) {
-        console.warn(`[Report Scheduler] Report "${report.name}" has no recipients, skipping`);
+        console.warn(`[Report Scheduler] Report "${report.name}" has no recipients, disabling schedule: report=${report.id}, campaign=${(report as any).campaignId || "none"}`);
+        await db
+          .update(linkedinReports)
+          .set({ scheduleEnabled: false, updatedAt: new Date() } as any)
+          .where(eq(linkedinReports.id, String((report as any).id)))
+          .catch(() => { });
         await db
           .update(reportSendEvents)
           .set({ status: "skipped", error: "No recipients configured" } as any)

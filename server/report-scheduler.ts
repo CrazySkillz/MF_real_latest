@@ -762,7 +762,7 @@ export async function checkScheduledReports(): Promise<void> {
           && !String(existingError || "").startsWith("Retry failed after previous failure:")
           && (!existingCreatedAt || now.getTime() - existingCreatedAt.getTime() > 10 * 60 * 1000);
         if (!stalePending && !staleFailed) {
-          if (existingStatus === "skipped" && displayError.includes("Campaign not found")) {
+          if (existingStatus === "skipped" && (displayError.includes("Campaign not found") || displayError.includes("No recipients configured"))) {
             await db
               .update(linkedinReports)
               .set({ scheduleEnabled: false, updatedAt: new Date() } as any)

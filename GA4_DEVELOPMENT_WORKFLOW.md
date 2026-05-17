@@ -235,6 +235,7 @@ For Reports-specific fixes, also verify:
 - custom report picker layout changes do not silently change saved config meaning
 - scheduled/server-generated GA4 attachments and ad hoc downloads still use the same report configuration semantics
 - direct report snapshot/download routes verify both report access and snapshot/report campaign-platform consistency before returning JSON or PDF output
+- legacy report/source routes must not be removed until current frontend callers, scheduler callers, storage dependencies, and schema support are inventoried; if a route is shared by two platform pages, do not split it without a schema-backed discriminator
 
 ## Step 5B: Add Automated Regression Coverage For High-Risk Bugs
 

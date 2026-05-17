@@ -1,0 +1,41 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync, readdirSync, statSync } from "fs";
+import { join } from "path";
+
+function read(path: string): string {
+  return readFileSync(join(process.cwd(), path), "utf-8");
+}
+
+function readClientSources(dir = join(process.cwd(), "client", "src")): string {
+  return readdirSync(dir)
+    .map((name) => join(dir, name))
+    .map((path) => statSync(path).isDirectory() ? readClientSources(path) : readFileSync(path, "utf-8"))
+    .join("\n");
+}
+
+describe("legacy route reachability inventory", () => {
+  it("does not treat legacy LinkedIn report routes as removable while scheduler compatibility still references them", () => {
+    const client = readClientSources();
+    const scheduler = read("server/report-scheduler.ts");
+    const routes = read("server/routes-oauth.ts");
+
+    expect(client).not.toContain("/api/linkedin/reports");
+    expect(scheduler).toContain("used by /api/linkedin/reports");
+    expect(routes).toContain('app.get("/api/linkedin/reports"');
+  });
+
+  it("keeps shared Meta report routes classified as active because Meta and Google Ads pages both call them", () => {
+    const metaPage = read("client/src/pages/meta-analytics.tsx");
+    const googleAdsPage = read("client/src/pages/google-ads-analytics.tsx");
+    const schema = read("shared/schema.ts");
+    const metaReportsBlock = schema.slice(
+      schema.indexOf('export const metaReports = pgTable("meta_reports"'),
+      schema.indexOf("// Meta Daily Metrics", schema.indexOf('export const metaReports = pgTable("meta_reports"'))
+    );
+
+    expect(metaPage).toContain("/api/meta/reports");
+    expect(googleAdsPage).toContain("/api/meta/reports");
+    expect(metaReportsBlock).toContain('export const metaReports = pgTable("meta_reports"');
+    expect(metaReportsBlock).not.toContain('platformType: text("platform_type"');
+  });
+});

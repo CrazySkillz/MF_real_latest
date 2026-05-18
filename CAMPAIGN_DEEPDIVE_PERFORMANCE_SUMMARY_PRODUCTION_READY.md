@@ -338,7 +338,7 @@ Do not start a later commit until the current commit has targeted regression cov
 
 ### Commit 1: Aggregate Contract
 
-Status: Implemented locally; not yet pushed.
+Status: Completed and pushed in commits `1d0f63af` and `1b5b604a`.
 
 Goal:
 
@@ -360,7 +360,12 @@ Scope:
 Validation:
 
 - Passed: `npm test -- server/performance-summary-aggregate.test.ts`
+- Passed: `npm test -- server/outcome-totals-ga4-fallback-regression.test.ts server/performance-summary-aggregate.test.ts`
 - Passed: `npm run check`
+
+Validation note:
+
+- A connected GA4 source can still report `TOKEN_EXPIRED` when the saved OAuth token is invalid. That OAuth/reauthorization UX is separate from Performance Summary aggregation correctness and should be fixed in a later GA4 connection task.
 
 Why this is first:
 
@@ -368,7 +373,7 @@ Why this is first:
 
 ### Commit 2: Overview Tab
 
-Status: Not started.
+Status: Implemented locally; not yet pushed.
 
 Goal:
 
@@ -379,7 +384,18 @@ Scope:
 - Wire Overview cards to the aggregate contract.
 - Generate card labels from included source breakdowns.
 - Fix GA4-only behavior so no LinkedIn, Meta, Custom Integration, or spend labels appear unless those inputs exist.
-- Add UI/API regression coverage for Overview cards and source labels.
+- Completed: Added an `outcome-totals` query to `client/src/pages/campaign-performance.tsx`.
+- Completed: Wired only the Overview metric cards to `outcomeTotals.performanceSummary`.
+- Completed: Overview source labels now come from `performanceSummary.sources` and metric `sources`.
+- Completed: Overview unavailable metrics render as unavailable instead of connected-source zero.
+- Completed: Changed the second Overview card from mixed `Total Engagements` to aggregate-contract-backed `Total Sessions`.
+- Completed: Added `server/campaign-performance-overview-regression.test.ts`.
+
+Validation:
+
+- Passed: `npm test -- server/campaign-performance-overview-regression.test.ts server/performance-summary-aggregate.test.ts server/outcome-totals-ga4-fallback-regression.test.ts`
+- Passed: `npm run check`
+- Passed: `npm run build`
 
 Why this is second:
 

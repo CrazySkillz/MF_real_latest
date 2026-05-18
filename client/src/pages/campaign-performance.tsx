@@ -80,6 +80,17 @@ export default function CampaignPerformanceSummary() {
     enabled: !!campaignId,
   });
 
+  const { data: outcomeTotals } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignId, "outcome-totals", "30days", demoMode ? "demo" : "live"],
+    queryFn: async () => {
+      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=30days${demoMode ? "&demo=1" : ""}`;
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!campaignId,
+  });
+
   // Fetch real-time metric changes
   const { data: metricChanges } = useQuery<any>({
     queryKey: [`/api/custom-integration/${campaignId}/changes`],
@@ -366,6 +377,36 @@ export default function CampaignPerformanceSummary() {
     { name: "Custom Integration", connected: !!(effectiveCI), icon: Activity },
   ];
 
+  const performanceSummary = outcomeTotals?.performanceSummary;
+  const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
+  const sourceLabelForId = (sourceId: string) => {
+    if (sourceId === "canonical_spend_sources") return "Campaign spend sources";
+    if (sourceId === "paid_platform_spend") return "Paid platform spend";
+    const match = performanceSources.find((source: any) => source?.id === sourceId);
+    return match?.label || sourceId;
+  };
+  const getOverviewMetric = (metricName: string, fallbackValue: number) => {
+    const metric = performanceSummary?.totals?.[metricName];
+    if (!performanceSummary || !metric) {
+      return { available: true, value: fallbackValue, sources: [], unavailableReasons: [] };
+    }
+    return metric;
+  };
+  const formatOverviewValue = (metric: any, formatter: (value: number) => string) => {
+    if (!metric?.available) return "Unavailable";
+    return formatter(parseNum(metric?.value));
+  };
+  const overviewSourceLabel = (metric: any, fallbackLabel: string) => {
+    if (!performanceSummary) return fallbackLabel;
+    if (!metric?.available) return metric?.unavailableReasons?.[0] || "No connected source provides this metric";
+    const labels = (metric.sources || []).map((sourceId: string) => sourceLabelForId(sourceId));
+    return labels.length > 0 ? `Sources: ${labels.join(", ")}` : "Sources unavailable";
+  };
+  const overviewImpressions = getOverviewMetric("impressions", totalImpressions);
+  const overviewSessions = getOverviewMetric("sessions", webSessions);
+  const overviewConversions = getOverviewMetric("conversions", totalConversions);
+  const overviewSpend = getOverviewMetric("spend", totalSpend);
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -527,22 +568,26 @@ export default function CampaignPerformanceSummary() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{totalImpressions.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">
+                      {formatOverviewValue(overviewImpressions, (value) => value.toLocaleString())}
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      Ad: {advertisingImpressions.toLocaleString()} | Web: {ciPageviews.toLocaleString()}
+                      {overviewSourceLabel(overviewImpressions, `Ad: ${advertisingImpressions.toLocaleString()} | Web: ${webPageviews.toLocaleString()}`)}
                     </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Engagements</CardTitle>
+                    <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
                     <Activity className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{totalEngagements.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">
+                      {formatOverviewValue(overviewSessions, (value) => value.toLocaleString())}
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      Ad: {advertisingEngagements.toLocaleString()} | Web: {ciSessions.toLocaleString()}
+                      {overviewSourceLabel(overviewSessions, `Web: ${webSessions.toLocaleString()}`)}
                     </p>
                   </CardContent>
                 </Card>
@@ -553,9 +598,11 @@ export default function CampaignPerformanceSummary() {
                     <Target className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{totalConversions.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">
+                      {formatOverviewValue(overviewConversions, (value) => value.toLocaleString())}
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      LinkedIn: {linkedinConversions.toLocaleString()} | CI: {ciConversions.toLocaleString()}
+                      {overviewSourceLabel(overviewConversions, `LinkedIn: ${linkedinConversions.toLocaleString()} | CI: ${ciConversions.toLocaleString()}`)}
                     </p>
                   </CardContent>
                 </Card>
@@ -566,9 +613,11 @@ export default function CampaignPerformanceSummary() {
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">${totalSpend.toLocaleString()}</div>
+                    <div className="text-2xl font-bold">
+                      {formatOverviewValue(overviewSpend, (value) => `$${value.toLocaleString()}`)}
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      LinkedIn: ${linkedinSpend.toLocaleString()} | CI: ${ciSpend.toLocaleString()}
+                      {overviewSourceLabel(overviewSpend, `LinkedIn: $${linkedinSpend.toLocaleString()} | CI: $${ciSpend.toLocaleString()}`)}
                     </p>
                   </CardContent>
                 </Card>

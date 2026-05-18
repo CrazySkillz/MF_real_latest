@@ -354,6 +354,8 @@ Scope:
 - Completed: Included canonical spend-source precedence and revenue-derived ROAS/ROI/CPC/CPA/CTR/CVR availability rules.
 - Completed: Added GA4-only, LinkedIn-plus-Meta, and canonical spend/revenue regression tests in `server/performance-summary-aggregate.test.ts`.
 - Completed: Did not refactor or rewire the Performance Summary tab UI.
+- Completed follow-up: When live GA4 in `outcome-totals` returns `TOKEN_EXPIRED` or another live-fetch error, persisted GA4 daily rows now backfill users, sessions, conversions, and revenue instead of only revenue.
+- Completed follow-up: Added `server/outcome-totals-ga4-fallback-regression.test.ts`.
 
 Validation:
 

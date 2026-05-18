@@ -10093,8 +10093,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const primaryGA4 = (ga4Connections || []).find((c: any) => c?.isPrimary) || (ga4Connections || [])[0];
           if (primaryGA4?.propertyId) {
             const rows = await storage.getGA4DailyMetrics(campaignId, String(primaryGA4.propertyId), startDate, endDate);
-            const persistedRevenue = (rows || []).reduce((sum: number, row: any) => sum + parseNum(row?.revenue), 0);
-            if (persistedRevenue > 0) ga4Totals.revenue = Number(persistedRevenue.toFixed(2));
+            const persistedGA4 = (rows || []).reduce((totals: any, row: any) => ({
+              users: totals.users + parseNum(row?.users),
+              sessions: totals.sessions + parseNum(row?.sessions),
+              conversions: totals.conversions + parseNum(row?.conversions),
+              revenue: totals.revenue + parseNum(row?.revenue),
+            }), { users: 0, sessions: 0, conversions: 0, revenue: 0 });
+            let usedPersistedGA4 = false;
+            if (parseNum(ga4Totals.users) <= 0 && persistedGA4.users > 0) {
+              ga4Totals.users = Math.round(persistedGA4.users);
+              usedPersistedGA4 = true;
+            }
+            if (parseNum(ga4Totals.sessions) <= 0 && persistedGA4.sessions > 0) {
+              ga4Totals.sessions = Math.round(persistedGA4.sessions);
+              usedPersistedGA4 = true;
+            }
+            if (parseNum(ga4Totals.conversions) <= 0 && persistedGA4.conversions > 0) {
+              ga4Totals.conversions = Math.round(persistedGA4.conversions);
+              usedPersistedGA4 = true;
+            }
+            if (parseNum(ga4Totals.revenue) <= 0 && persistedGA4.revenue > 0) {
+              ga4Totals.revenue = Number(persistedGA4.revenue.toFixed(2));
+              usedPersistedGA4 = true;
+            }
+            if (usedPersistedGA4) ga4Totals.fallbackSource = "ga4_daily_metrics";
           }
         } catch {
           // Keep live GA4 result if persisted fallback is unavailable.

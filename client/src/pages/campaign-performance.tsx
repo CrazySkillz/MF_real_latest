@@ -338,6 +338,171 @@ export default function CampaignPerformanceSummary() {
   };
   const kpiTrackStatus = getTrackSummaryStatus(kpisOnTrackOrAbove, effectiveKpis.length);
   const benchmarkTrackStatus = getTrackSummaryStatus(benchmarksOnTrack, effectiveBenchmarks.length);
+  const aggregateMetric = (metricName: string) => performanceSummary?.totals?.[metricName];
+  const aggregateMetricAvailable = (metricName: string) => {
+    const metric = aggregateMetric(metricName);
+    return metric?.available && metric?.value !== null;
+  };
+  const aggregateMetricValue = (metricName: string) => {
+    const metric = aggregateMetric(metricName);
+    return metric?.available && metric?.value !== null ? parseNum(metric.value) : 0;
+  };
+  const sourceHasMetric = (source: any, metricName: string) =>
+    Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
+  const sourceMetricValue = (source: any, metricName: string) => parseNum(source?.metrics?.[metricName]);
+  const formatCurrencyValue = (value: number) =>
+    `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatNumberValue = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const buildPerformanceInsights = () => {
+    const insights: { type: string; title: string; message: string }[] = [];
+
+    if (!performanceSummary) {
+      insights.push({
+        type: 'info',
+        title: 'Campaign Summary',
+        message: `Tracking ${totalImpressions.toLocaleString()} total impressions, ${totalEngagements.toLocaleString()} engagements, and ${totalConversions.toLocaleString()} conversions from $${totalSpend.toLocaleString()} spend across connected platforms.`
+      });
+      return insights;
+    }
+
+    const paidSources = performanceSources
+      .filter((source: any) => source?.category === 'paid_media' || source?.category === 'custom')
+      .filter((source: any) => ['impressions', 'clicks', 'spend', 'conversions', 'leads'].some((metric) => sourceHasMetric(source, metric)))
+      .map((source: any) => {
+        const spend = sourceMetricValue(source, 'spend');
+        const clicks = sourceMetricValue(source, 'clicks');
+        const impressions = sourceMetricValue(source, 'impressions');
+        const conversions = sourceMetricValue(source, 'conversions');
+        return {
+          id: source.id,
+          label: source.label || source.id || 'Paid source',
+          spend,
+          clicks,
+          impressions,
+          conversions,
+          cpa: spend > 0 && conversions > 0 ? spend / conversions : null,
+          cvr: clicks > 0 && conversions > 0 ? (conversions / clicks) * 100 : null,
+          ctr: impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : null,
+        };
+      });
+
+    const webSources = performanceSources.filter((source: any) =>
+      source?.category === 'web_analytics' || sourceHasMetric(source, 'sessions') || sourceHasMetric(source, 'users')
+    );
+
+    const efficiencySources = paidSources.filter((source: any) => source.cpa !== null);
+    if (efficiencySources.length >= 2) {
+      const ranked = [...efficiencySources].sort((a: any, b: any) => (a.cpa || 0) - (b.cpa || 0));
+      const best = ranked[0];
+      const worst = ranked[ranked.length - 1];
+      insights.push({
+        type: best.cpa! < worst.cpa! * 0.85 ? 'success' : 'info',
+        title: best.cpa! < worst.cpa! * 0.85 ? 'Paid Source Efficiency Gap' : 'Paid Sources Performing Similarly',
+        message: `${best.label} has the lowest CPA at ${formatCurrencyValue(best.cpa!)}. Compared sources: ${ranked.map((source: any) => `${source.label} ${formatCurrencyValue(source.cpa!)}`).join(', ')}.`
+      });
+    } else if (efficiencySources.length === 1) {
+      const source = efficiencySources[0];
+      insights.push({
+        type: 'info',
+        title: `${source.label} Paid Performance`,
+        message: `${source.label} generated ${formatNumberValue(source.conversions)} conversions from ${formatCurrencyValue(source.spend)} spend at ${formatCurrencyValue(source.cpa!)} CPA.`
+      });
+    }
+
+    if (aggregateMetricAvailable('ctr')) {
+      const ctr = aggregateMetricValue('ctr');
+      insights.push({
+        type: ctr >= 2 ? 'success' : ctr < 1 ? 'warning' : 'info',
+        title: ctr >= 2 ? 'Strong Click-Through Rate' : ctr < 1 ? 'Low Click-Through Rate' : 'Click-Through Rate',
+        message: `Aggregate CTR is ${formatPct(ctr)} from ${formatNumberValue(aggregateMetricValue('clicks'))} clicks and ${formatNumberValue(aggregateMetricValue('impressions'))} impressions across eligible paid sources.`
+      });
+    }
+
+    if (aggregateMetricAvailable('cvr')) {
+      const cvr = aggregateMetricValue('cvr');
+      insights.push({
+        type: cvr >= 5 ? 'success' : cvr < 2 ? 'warning' : 'info',
+        title: cvr >= 5 ? 'Excellent Conversion Rate' : cvr < 2 ? 'Conversion Rate Opportunity' : 'Conversion Rate',
+        message: `Aggregate CVR is ${formatPct(cvr)} from ${formatNumberValue(aggregateMetricValue('clicks'))} clicks and ${formatNumberValue(aggregateMetricValue('conversions'))} conversions.`
+      });
+    }
+
+    if (aggregateMetricAvailable('cpa')) {
+      insights.push({
+        type: 'info',
+        title: 'Cost Per Acquisition',
+        message: `Aggregate CPA is ${formatCurrencyValue(aggregateMetricValue('cpa'))} from ${formatCurrencyValue(aggregateMetricValue('spend'))} spend and ${formatNumberValue(aggregateMetricValue('conversions'))} conversions.`
+      });
+    }
+
+    if (aggregateMetricAvailable('roas') || aggregateMetricAvailable('roi')) {
+      const parts = [];
+      if (aggregateMetricAvailable('roas')) parts.push(`ROAS ${aggregateMetricValue('roas').toLocaleString('en-US', { maximumFractionDigits: 2 })}x`);
+      if (aggregateMetricAvailable('roi')) parts.push(`ROI ${formatPct(aggregateMetricValue('roi'))}`);
+      insights.push({
+        type: 'info',
+        title: 'Revenue Efficiency',
+        message: `${parts.join(' and ')} based on available revenue and spend inputs.`
+      });
+    } else if (aggregateMetricAvailable('revenue')) {
+      insights.push({
+        type: 'info',
+        title: 'Revenue Tracked',
+        message: `${formatCurrencyValue(aggregateMetricValue('revenue'))} revenue is available. ROAS and ROI are not shown unless both revenue and spend are available.`
+      });
+    }
+
+    const paidSpendSources = paidSources.filter((source: any) => source.spend > 0);
+    if (paidSpendSources.length > 0 && aggregateMetricAvailable('spend')) {
+      const spend = aggregateMetricValue('spend');
+      insights.push({
+        type: 'info',
+        title: 'Budget Allocation',
+        message: `${paidSpendSources.map((source: any) => `${source.label}: ${formatCurrencyValue(source.spend)} (${spend > 0 ? ((source.spend / spend) * 100).toFixed(1) : '0.0'}%)`).join(', ')}. Total spend: ${formatCurrencyValue(spend)}.`
+      });
+    }
+
+    if (webSources.length > 0 && aggregateMetricAvailable('sessions')) {
+      const sourceLabels = webSources.map((source: any) => source?.label || source?.id).filter(Boolean).join(', ');
+      const sessionText = `${formatNumberValue(aggregateMetricValue('sessions'))} sessions`;
+      const userText = aggregateMetricAvailable('users') ? ` and ${formatNumberValue(aggregateMetricValue('users'))} users` : '';
+      const conversionText = aggregateMetricAvailable('conversions') ? ` with ${formatNumberValue(aggregateMetricValue('conversions'))} conversions` : '';
+      insights.push({
+        type: 'info',
+        title: 'Web Analytics Outcomes',
+        message: `${sourceLabels} contributed ${sessionText}${userText}${conversionText}.`
+      });
+    }
+
+    if (healthScore >= 80) {
+      insights.push({
+        type: 'success',
+        title: 'Campaign Health Excellent',
+        message: `${healthScore}% health score with ${totalOnTrackMetrics} of ${totalMetrics} metrics on track. Campaign performing above expectations.`
+      });
+    } else if (healthScore < 60) {
+      insights.push({
+        type: 'warning',
+        title: 'Campaign Requires Attention',
+        message: `${healthScore}% health score - only ${totalOnTrackMetrics} of ${totalMetrics} metrics on track. Focus on underperforming KPIs to improve results.`
+      });
+    }
+
+    if (insights.length === 0) {
+      const availableMetrics = ['impressions', 'sessions', 'conversions', 'spend', 'revenue']
+        .filter(aggregateMetricAvailable)
+        .map((metricName) => `${metricName}: ${formatNumberValue(aggregateMetricValue(metricName))}`);
+      insights.push({
+        type: 'info',
+        title: 'Campaign Summary',
+        message: availableMetrics.length > 0
+          ? `Available aggregate metrics: ${availableMetrics.join(', ')}.`
+          : 'No eligible connected-source metrics are available for insight generation yet.'
+      });
+    }
+
+    return insights;
+  };
 
   // Get top priority action
   const getPriorityAction = () => {
@@ -1119,187 +1284,7 @@ export default function CampaignPerformanceSummary() {
                     
                     {/* Performance Analysis */}
                     {(() => {
-                      const insights = [];
-                      
-                      // Calculate actual metrics for insights
-                      const ctr = totalClicks > 0 && advertisingImpressions > 0 
-                        ? (totalClicks / advertisingImpressions * 100) 
-                        : 0;
-                      const cvr = totalConversions > 0 && totalClicks > 0 
-                        ? (totalConversions / totalClicks * 100) 
-                        : 0;
-                      const cpc = totalSpend > 0 && totalClicks > 0 
-                        ? totalSpend / totalClicks 
-                        : 0;
-                      const cpa = totalSpend > 0 && totalConversions > 0 
-                        ? totalSpend / totalConversions 
-                        : 0;
-                      
-                      // Platform comparison insights - always analyze all connected sources
-                      const linkedinCVR = linkedinConversions > 0 && linkedinClicks > 0 
-                        ? (linkedinConversions / linkedinClicks * 100) 
-                        : 0;
-                      const ciCVR = ciConversions > 0 && ciClicks > 0 
-                        ? (ciConversions / ciClicks * 100) 
-                        : 0;
-                      const linkedinCPA = linkedinSpend > 0 && linkedinConversions > 0
-                        ? linkedinSpend / linkedinConversions
-                        : 0;
-                      const ciCPA = ciSpend > 0 && ciConversions > 0
-                        ? ciSpend / ciConversions
-                        : 0;
-                      
-                      // Both platforms active - compare performance
-                      if (linkedinSpend > 0 && ciSpend > 0) {
-                        if (linkedinCVR > ciCVR * 1.5 && linkedinCVR > 0) {
-                          insights.push({
-                            type: 'success',
-                            title: 'LinkedIn Outperforming',
-                            message: `LinkedIn: ${formatPct(linkedinCVR)} CVR, $${linkedinCPA.toFixed(2)} CPA vs Custom Integration: ${formatPct(ciCVR)} CVR, $${ciCPA > 0 ? ciCPA.toFixed(2) : '0.00'} CPA. LinkedIn showing superior efficiency.`
-                          });
-                        } else if (ciCVR > linkedinCVR * 1.5 && ciCVR > 0) {
-                          insights.push({
-                            type: 'success',
-                            title: 'Custom Integration Outperforming',
-                            message: `Custom Integration: ${formatPct(ciCVR)} CVR, $${ciCPA.toFixed(2)} CPA vs LinkedIn: ${formatPct(linkedinCVR)} CVR, $${linkedinCPA > 0 ? linkedinCPA.toFixed(2) : '0.00'} CPA. Custom channels driving superior results.`
-                          });
-                        } else {
-                          // Similar performance
-                          insights.push({
-                            type: 'info',
-                            title: 'Balanced Platform Performance',
-                            message: `LinkedIn: ${formatPct(linkedinCVR)} CVR from ${linkedinClicks.toLocaleString()} clicks. Custom Integration: ${formatPct(ciCVR)} CVR from ${ciClicks.toLocaleString()} clicks. Both platforms contributing effectively.`
-                          });
-                        }
-                      } 
-                      // Only LinkedIn active
-                      else if (linkedinSpend > 0) {
-                        insights.push({
-                          type: 'info',
-                          title: 'LinkedIn Performance',
-                          message: `LinkedIn driving ${linkedinConversions.toLocaleString()} conversions from ${linkedinClicks.toLocaleString()} clicks (${formatPct(linkedinCVR)} CVR). $${linkedinSpend.toLocaleString()} spent${linkedinCPA > 0 ? ` at $${linkedinCPA.toFixed(2)} CPA` : ''}.`
-                        });
-                      }
-                      // Only Custom Integration active
-                      else if (ciSpend > 0) {
-                        insights.push({
-                          type: 'info',
-                          title: 'Custom Integration Performance',
-                          message: `Custom Integration driving ${ciConversions.toLocaleString()} conversions from ${ciClicks.toLocaleString()} clicks (${formatPct(ciCVR)} CVR). $${ciSpend.toLocaleString()} spent${ciCPA > 0 ? ` at $${ciCPA.toFixed(2)} CPA` : ''}.`
-                        });
-                      }
-                      
-                      // CTR analysis
-                      if (ctr > 0) {
-                        if (ctr < 1) {
-                          insights.push({
-                            type: 'warning',
-                            title: 'Low Click-Through Rate',
-                            message: `Current CTR is ${formatPct(ctr)}. Consider testing new ad creative, headlines, or targeting to improve engagement. Industry benchmarks typically range from 1-3%.`
-                          });
-                        } else if (ctr >= 2) {
-                          insights.push({
-                            type: 'success',
-                            title: 'Strong Click-Through Rate',
-                            message: `Achieving ${formatPct(ctr)} CTR from ${advertisingImpressions.toLocaleString()} impressions. Your ads are resonating well with the target audience.`
-                          });
-                        }
-                      }
-                      
-                      // Conversion efficiency
-                      if (cvr > 0) {
-                        if (cvr >= 5) {
-                          insights.push({
-                            type: 'success',
-                            title: 'Excellent Conversion Rate',
-                            message: `${formatPct(cvr)} of clicks convert. This indicates strong ad-to-landing page alignment and quality traffic from ${totalClicks.toLocaleString()} total clicks.`
-                          });
-                        } else if (cvr < 2) {
-                          insights.push({
-                            type: 'warning',
-                            title: 'Conversion Rate Opportunity',
-                            message: `${formatPct(cvr)} conversion rate suggests landing page optimization needed. Review user journey from ${totalClicks.toLocaleString()} clicks to improve ${totalConversions.toLocaleString()} conversions.`
-                          });
-                        }
-                      }
-                      
-                      // Cost efficiency
-                      if (cpa > 0 && totalConversions > 0) {
-                        insights.push({
-                          type: 'info',
-                          title: 'Cost Per Acquisition',
-                          message: `Spending $${cpa.toFixed(2)} per conversion from $${totalSpend.toLocaleString()} total spend. ${totalConversions.toLocaleString()} conversions achieved across all platforms.`
-                        });
-                      }
-                      
-                      // Budget utilization - always show breakdown of all sources
-                      if (totalSpend > 0) {
-                        const linkedinPct = totalSpend > 0 ? (linkedinSpend / totalSpend * 100) : 0;
-                        const ciPct = totalSpend > 0 ? (ciSpend / totalSpend * 100) : 0;
-                        
-                        const sources = [];
-                        if (linkedinSpend > 0) sources.push(`LinkedIn: $${linkedinSpend.toLocaleString()} (${linkedinPct.toFixed(1)}%)`);
-                        if (ciSpend > 0) sources.push(`Custom Integration: $${ciSpend.toLocaleString()} (${ciPct.toFixed(1)}%)`);
-                        
-                        if (sources.length > 0) {
-                          insights.push({
-                            type: 'info',
-                            title: 'Budget Allocation',
-                            message: `${sources.join(', ')}. Total spend across all platforms: $${totalSpend.toLocaleString()}.`
-                          });
-                        }
-                      }
-                      
-                      // Engagement analysis - account for all sources
-                      if (totalEngagements > 0) {
-                        if (ciSessions > 0 && advertisingEngagements > 0) {
-                          // Both ad and web engagement
-                          const webContribution = totalEngagements > 0 ? (ciSessions / totalEngagements * 100) : 0;
-                          insights.push({
-                            type: 'info',
-                            title: 'Multi-Channel Engagement',
-                            message: `Total engagements: ${totalEngagements.toLocaleString()} from ${advertisingEngagements.toLocaleString()} ad engagements (LinkedIn + CI) and ${ciSessions.toLocaleString()} website sessions (${webContribution.toFixed(1)}% from website traffic).`
-                          });
-                        } else if (advertisingEngagements > 0 && ciSessions === 0) {
-                          // Only ad engagement
-                          insights.push({
-                            type: 'info',
-                            title: 'Advertising Engagement',
-                            message: `${advertisingEngagements.toLocaleString()} total ad engagements from LinkedIn and Custom Integration advertising campaigns.`
-                          });
-                        } else if (ciSessions > 0 && advertisingEngagements === 0) {
-                          // Only web sessions
-                          insights.push({
-                            type: 'info',
-                            title: 'Website Traffic',
-                            message: `${ciSessions.toLocaleString()} website sessions tracked through Custom Integration analytics (no advertising engagement data available).`
-                          });
-                        }
-                      }
-                      
-                      // Health score context
-                      if (healthScore >= 80) {
-                        insights.push({
-                          type: 'success',
-                          title: 'Campaign Health Excellent',
-                          message: `${healthScore}% health score with ${totalOnTrackMetrics} of ${totalMetrics} metrics on track. Campaign performing above expectations.`
-                        });
-                      } else if (healthScore < 60) {
-                        insights.push({
-                          type: 'warning',
-                          title: 'Campaign Requires Attention',
-                          message: `${healthScore}% health score - only ${totalOnTrackMetrics} of ${totalMetrics} metrics on track. Focus on underperforming KPIs to improve results.`
-                        });
-                      }
-                      
-                      // If no insights generated, show data summary
-                      if (insights.length === 0) {
-                        insights.push({
-                          type: 'info',
-                          title: 'Campaign Summary',
-                          message: `Tracking ${totalImpressions.toLocaleString()} total impressions, ${totalEngagements.toLocaleString()} engagements, and ${totalConversions.toLocaleString()} conversions from $${totalSpend.toLocaleString()} spend across connected platforms.`
-                        });
-                      }
+                      const insights = buildPerformanceInsights();
                       
                       return insights.map((insight, idx) => {
                         const bgColors: Record<string, string> = {

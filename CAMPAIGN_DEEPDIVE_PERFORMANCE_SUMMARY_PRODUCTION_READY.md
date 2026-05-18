@@ -35,7 +35,7 @@ That implementation is not driven by the same connected-source registry used by 
 - source inclusion is hard-coded instead of capability-driven
 - some totals include Meta and GA4 while labels still mention only LinkedIn or Custom Integration
 - the Data Sources block only lists LinkedIn Ads and Custom Integration
-- Insights compare mostly LinkedIn vs Custom Integration instead of all connected eligible sources
+- Before Commit 5, Insights compared mostly LinkedIn vs Custom Integration instead of all connected eligible sources
 - snapshot/history comparisons can drift because frontend aggregation, scheduler aggregation, legacy snapshot routes, Executive Summary, and `outcome-totals` are separate aggregation paths
 
 The issue is an aggregation contract problem, not a single-card display bug.
@@ -458,7 +458,7 @@ Why this is separate:
 
 ### Commit 4: Scheduler And What's Changed
 
-Status: Completed locally; not yet pushed.
+Status: Completed and pushed through commit `b165ed52`.
 
 Goal:
 
@@ -487,6 +487,7 @@ Validation:
 - Passed: `npm test -- server/performance-summary-scheduler-regression.test.ts server/campaign-performance-overview-regression.test.ts`
 - Passed: `npm run check`
 - Passed: `npm run build`
+- Passed user validation: Performance Summary Overview and Campaign Health still show correct values after Render deploy.
 
 Why this is separate:
 
@@ -494,7 +495,7 @@ Why this is separate:
 
 ### Commit 5: Insights Tab
 
-Status: Not started.
+Status: Completed locally; not yet pushed.
 
 Goal:
 
@@ -508,6 +509,18 @@ Scope:
 - Add GA4 web/outcome insights when GA4 is connected.
 - Suppress ROAS, ROI, CPA, CPC, CTR, and CVR claims when required inputs are unavailable.
 - Add regression coverage for GA4-only, paid multi-source, spend-without-revenue, and revenue-without-spend cases.
+- Completed: Insights now read `performanceSummary.sources`, `includedMetrics`, source categories, and aggregate metric availability instead of hard-coded LinkedIn-vs-Custom Integration comparisons.
+- Completed: Paid efficiency insights now compare all eligible paid/custom sources with valid spend and conversion inputs.
+- Completed: GA4 and other web analytics sources now produce web/outcome insights from available sessions, users, conversions, and source labels.
+- Completed: CTR, CVR, CPA, ROAS, and ROI insights are emitted only when the aggregate contract marks the required inputs available.
+- Completed: Budget allocation insights use paid/custom source spend breakdowns and do not generate paid-media allocation claims for GA4-only campaigns.
+- Completed: Added `server/performance-summary-insights-regression.test.ts`.
+
+Validation:
+
+- Passed: `npm test -- server/performance-summary-insights-regression.test.ts server/campaign-performance-overview-regression.test.ts server/performance-summary-scheduler-regression.test.ts`
+- Passed: `npm run check`
+- Passed: `npm run build`
 
 Why this is fifth:
 
@@ -556,7 +569,7 @@ Not production ready.
 Proven:
 
 - Documentation intends Campaign DeepDive to be campaign-wide and cross-platform.
-- Current Performance Summary uses local hard-coded aggregation.
+- Overview, Campaign Health, Scheduler/What's Changed snapshot data, and Insights have been wired to the aggregate contract. Some remaining Performance Summary areas may still contain local fallback calculations until final validation.
 - `outcome-totals` is a stronger existing candidate contract for source-aware campaign totals.
 - Platform Comparison already uses `outcome-totals` as its primary cross-platform source.
 

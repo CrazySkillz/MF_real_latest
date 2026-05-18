@@ -28,14 +28,39 @@ describe("campaign Performance Summary Overview regression guard", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
     expect(page).toContain('filter((source: any) => source?.category !== "financial")');
-    expect(page).toContain('return sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}`');
+    expect(page).toContain('const reason = metric?.unavailableReasons?.[0] || "No connected source provides this metric";');
+    expect(page).toContain('return sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}; ${reason}` : reason;');
   });
 
-  it("selects the campaign KPI with the largest under-target gap as the top priority", () => {
+  it("selects top priority from lagging campaign KPI and Benchmark status bands", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
-    expect(page).toContain("const gapA = parseNum(a.targetValue) - parseNum(a.currentValue);");
-    expect(page).toContain("const gapB = parseNum(b.targetValue) - parseNum(b.currentValue);");
-    expect(page).toContain("return gapB - gapA;");
+    expect(page).toContain("const laggingKPIs = effectiveKpis.map((kpi: any) => {");
+    expect(page).toContain("}).filter((entry: any) => entry.deltaPct < -5);");
+    expect(page).toContain("const laggingBenchmarks = effectiveBenchmarks.map((benchmark: any) => {");
+    expect(page).toContain("}).filter((entry: any) => entry.progressPct < 90);");
+    expect(page).toContain("const priorityCandidate = [...laggingKPIs, ...laggingBenchmarks].sort((a: any, b: any) => {");
+    expect(page).toContain("return b.severity - a.severity;");
+    expect(page).not.toContain("const gapA = parseNum(a.targetValue) - parseNum(a.currentValue);");
+  });
+
+  it("formats Top Priority Action currency values with thousands separators and two decimals", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+
+    expect(page).toContain("parseNum(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })");
+    expect(page).not.toContain("parseNum(value).toFixed(2)");
+  });
+
+  it("counts campaign health from on-track KPI and Benchmark status bands", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+
+    expect(page).toContain("const getKpiDeltaPct = (kpi: any) => {");
+    expect(page).toContain("const kpisOnTrackOrAbove = effectiveKpis.filter((kpi: any) => getKpiDeltaPct(kpi) >= -5).length;");
+    expect(page).toContain("const benchmarksOnTrack = effectiveBenchmarks.filter((benchmark: any) => getBenchmarkProgressPct(benchmark) >= 90).length;");
+    expect(page).toContain("const totalOnTrackMetrics = kpisOnTrackOrAbove + benchmarksOnTrack;");
+    expect(page).toContain("{totalOnTrackMetrics} of {totalMetrics} metrics on track");
+    expect(page).toContain("KPIs On Track or Above");
+    expect(page).toContain("Benchmarks On Track");
+    expect(page).not.toContain("metrics above target");
   });
 });

@@ -10099,16 +10099,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Persisted spend totals (manual/CSV/Sheets imports)
       const { startDate, endDate } = getDateRangeBounds(dateRange);
-      if (activeGA4 && (
-        parseNum(ga4Totals.revenue) <= 0
+      const persistedPrimaryGA4 = (ga4Connections || []).find((c: any) => c?.isPrimary) || (ga4Connections || [])[0];
+      const persistedPropertyId = String(persistedPrimaryGA4?.propertyId || "");
+      if (activeGA4 && persistedPropertyId && (
+        isYesopMockProperty(persistedPropertyId)
+        || parseNum(ga4Totals.revenue) <= 0
         || parseNum(ga4Totals.users) <= 0
         || parseNum(ga4Totals.sessions) <= 0
         || parseNum(ga4Totals.conversions) <= 0
       )) {
         try {
-          const primaryGA4 = (ga4Connections || []).find((c: any) => c?.isPrimary) || (ga4Connections || [])[0];
-          if (primaryGA4?.propertyId) {
-            const rows = await storage.getGA4DailyMetrics(campaignId, String(primaryGA4.propertyId), startDate, endDate);
+          if (persistedPropertyId) {
+            const rows = await storage.getGA4DailyMetrics(campaignId, persistedPropertyId, startDate, endDate);
             const persistedGA4 = (rows || []).reduce((totals: any, row: any) => ({
               users: totals.users + parseNum(row?.users),
               sessions: totals.sessions + parseNum(row?.sessions),
@@ -10116,7 +10118,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               revenue: totals.revenue + parseNum(row?.revenue),
             }), { users: 0, sessions: 0, conversions: 0, revenue: 0 });
             let usedPersistedGA4 = false;
-            if (parseNum(ga4Totals.users) <= 0 && persistedGA4.users > 0) {
+            if (isYesopMockProperty(persistedPropertyId) && (persistedGA4.users > 0 || persistedGA4.sessions > 0 || persistedGA4.conversions > 0 || persistedGA4.revenue > 0)) {
+              ga4Totals.users = Math.round(parseNum(ga4Totals.users) + persistedGA4.users);
+              ga4Totals.sessions = Math.round(parseNum(ga4Totals.sessions) + persistedGA4.sessions);
+              ga4Totals.conversions = Math.round(parseNum(ga4Totals.conversions) + persistedGA4.conversions);
+              ga4Totals.revenue = Number((parseNum(ga4Totals.revenue) + persistedGA4.revenue).toFixed(2));
+              ga4Totals.mergedSource = "ga4_daily_metrics";
+              usedPersistedGA4 = true;
+            } else if (parseNum(ga4Totals.users) <= 0 && persistedGA4.users > 0) {
               ga4Totals.users = Math.round(persistedGA4.users);
               usedPersistedGA4 = true;
             }

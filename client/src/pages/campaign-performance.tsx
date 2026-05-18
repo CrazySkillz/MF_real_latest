@@ -250,22 +250,35 @@ export default function CampaignPerformanceSummary() {
   const totalLeads = linkedinLeads + ciLeads;
   const totalSpend = linkedinSpend + ciSpend + metaSpend;
 
-  // Calculate campaign health score (including both KPIs and Benchmarks)
-  const kpisAboveTarget = effectiveKpis.filter((kpi: any) => {
+  const isLowerBetterMetric = (metricKey: string) => {
+    const m = String(metricKey || '').toLowerCase();
+    return m === 'cpa' || m === 'cpl';
+  };
+
+  const getKpiDeltaPct = (kpi: any) => {
     const current = parseNum(kpi.currentValue);
     const target = parseNum(kpi.targetValue);
-    return current >= target;
-  }).length;
+    if (!(target > 0)) return -Infinity;
+    const lowerBetter = isLowerBetterMetric(String(kpi?.metric || ''));
+    return lowerBetter ? ((target - current) / target) * 100 : ((current - target) / target) * 100;
+  };
 
-  const benchmarksAboveTarget = effectiveBenchmarks.filter((benchmark: any) => {
+  const getBenchmarkProgressPct = (benchmark: any) => {
     const current = parseNum(benchmark.currentValue);
-    const industry = parseNum(benchmark.industryAverage || benchmark.benchmarkValue);
-    return current >= industry;
-  }).length;
+    const industry = parseNum(benchmark.benchmarkValue ?? benchmark.industryAverage);
+    if (!(industry > 0)) return 0;
+    const lowerBetter = isLowerBetterMetric(String(benchmark?.metric || benchmark?.metricName || ''));
+    if (lowerBetter) return current > 0 ? (industry / current) * 100 : 100;
+    return (current / industry) * 100;
+  };
+
+  // Calculate campaign health score using the same campaign-level status bands as the KPI/Benchmark tabs.
+  const kpisOnTrackOrAbove = effectiveKpis.filter((kpi: any) => getKpiDeltaPct(kpi) >= -5).length;
+  const benchmarksOnTrack = effectiveBenchmarks.filter((benchmark: any) => getBenchmarkProgressPct(benchmark) >= 90).length;
 
   const totalMetrics = effectiveKpis.length + effectiveBenchmarks.length;
-  const totalAboveTarget = kpisAboveTarget + benchmarksAboveTarget;
-  const healthScore = totalMetrics > 0 ? Math.round((totalAboveTarget / totalMetrics) * 100) : 0;
+  const totalOnTrackMetrics = kpisOnTrackOrAbove + benchmarksOnTrack;
+  const healthScore = totalMetrics > 0 ? Math.round((totalOnTrackMetrics / totalMetrics) * 100) : 0;
 
   const getHealthStatus = () => {
     if (healthScore >= 80) return { label: "Excellent", color: "bg-green-500", icon: CheckCircle2 };
@@ -279,20 +292,25 @@ export default function CampaignPerformanceSummary() {
 
   // Get top priority action
   const getPriorityAction = () => {
-    const underperformingKPIs = effectiveKpis.filter((kpi: any) => {
-      const current = parseNum(kpi.currentValue);
-      const target = parseNum(kpi.targetValue);
-      return current < target;
-    }).sort((a, b) => {
-      const gapA = parseNum(a.targetValue) - parseNum(a.currentValue);
-      const gapB = parseNum(b.targetValue) - parseNum(b.currentValue);
-      return gapB - gapA;
-    });
+    const laggingKPIs = effectiveKpis.map((kpi: any) => {
+      const deltaPct = getKpiDeltaPct(kpi);
+      return { type: 'kpi', item: kpi, severity: Math.abs(deltaPct), deltaPct };
+    }).filter((entry: any) => entry.deltaPct < -5);
 
-    if (underperformingKPIs.length > 0) {
-      const topKPI = underperformingKPIs[0];
+    const laggingBenchmarks = effectiveBenchmarks.map((benchmark: any) => {
+      const progressPct = getBenchmarkProgressPct(benchmark);
+      return { type: 'benchmark', item: benchmark, severity: 90 - progressPct, progressPct };
+    }).filter((entry: any) => entry.progressPct < 90);
+
+    const priorityCandidate = [...laggingKPIs, ...laggingBenchmarks].sort((a: any, b: any) => {
+      return b.severity - a.severity;
+    });
+    const topCandidate: any = priorityCandidate[0];
+
+    if (topCandidate?.type === 'kpi') {
+      const topKPI = topCandidate.item;
       const formatValue = (value: any, unit: string) => {
-        if (unit === '$') return `$${parseNum(value).toFixed(2)}`;
+        if (unit === '$') return `$${parseNum(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         if (unit === '%') return `${formatPct(parseNum(value))}`;
         return `${value}${unit}`;
       };
@@ -307,18 +325,13 @@ export default function CampaignPerformanceSummary() {
       };
     }
 
-    const underperformingBenchmarks = effectiveBenchmarks.filter((b: any) => {
-      const current = parseNum(b.currentValue);
-      const industry = parseNum(b.industryAverage);
-      return current < industry;
-    });
-
-    if (underperformingBenchmarks.length > 0) {
+    if (topCandidate?.type === 'benchmark') {
+      const topBenchmark = topCandidate.item;
       return {
         type: 'benchmark',
-        name: underperformingBenchmarks[0].metricName,
+        name: topBenchmark.metricName || topBenchmark.name,
         action: 'Address',
-        message: 'below industry average'
+        message: topCandidate.progressPct < 70 ? 'behind benchmark' : 'needs attention'
       };
     }
 
@@ -399,11 +412,12 @@ export default function CampaignPerformanceSummary() {
   const overviewSourceLabel = (metric: any, fallbackLabel: string) => {
     if (!performanceSummary) return fallbackLabel;
     if (!metric?.available) {
+      const reason = metric?.unavailableReasons?.[0] || "No connected source provides this metric";
       const sourceLabels = performanceSources
         .filter((source: any) => source?.category !== "financial")
         .map((source: any) => source?.label)
         .filter(Boolean);
-      return sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}` : (metric?.unavailableReasons?.[0] || "No connected source provides this metric");
+      return sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}; ${reason}` : reason;
     }
     const labels = (metric.sources || []).map((sourceId: string) => sourceLabelForId(sourceId));
     return labels.length > 0 ? `Sources: ${labels.join(", ")}` : "Sources unavailable";
@@ -494,10 +508,10 @@ export default function CampaignPerformanceSummary() {
                       <div>
                         <div className="text-2xl font-bold text-foreground">{healthStatus.label}</div>
                         <div className="text-sm text-muted-foreground/70">
-                          {totalAboveTarget} of {totalMetrics} metrics above target
+                          {totalOnTrackMetrics} of {totalMetrics} metrics on track
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {kpisAboveTarget}/{effectiveKpis.length} KPIs • {benchmarksAboveTarget}/{effectiveBenchmarks.length} Benchmarks
+                          {kpisOnTrackOrAbove}/{effectiveKpis.length} KPIs • {benchmarksOnTrack}/{effectiveBenchmarks.length} Benchmarks
                         </div>
                       </div>
                     </div>
@@ -661,29 +675,29 @@ export default function CampaignPerformanceSummary() {
                       </div>
 
                       {effectiveKpis.length > 0 && (
-                        <div className="border-l-4 pl-4 py-2" style={{ borderColor: kpisAboveTarget >= effectiveKpis.length / 2 ? '#22c55e' : '#ef4444' }}>
+                        <div className="border-l-4 pl-4 py-2" style={{ borderColor: kpisOnTrackOrAbove >= effectiveKpis.length / 2 ? '#22c55e' : '#ef4444' }}>
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-3">
-                              <span className="font-semibold text-foreground">KPIs Above Target</span>
-                              <Badge variant={kpisAboveTarget >= effectiveKpis.length / 2 ? "default" : "destructive"}>
-                                {kpisAboveTarget >= effectiveKpis.length / 2 ? "Majority On Track" : "Needs Attention"}
+                              <span className="font-semibold text-foreground">KPIs On Track or Above</span>
+                              <Badge variant={kpisOnTrackOrAbove >= effectiveKpis.length / 2 ? "default" : "destructive"}>
+                                {kpisOnTrackOrAbove >= effectiveKpis.length / 2 ? "Majority On Track" : "Needs Attention"}
                               </Badge>
                             </div>
-                            <span className="text-sm text-muted-foreground/70">{kpisAboveTarget} of {effectiveKpis.length}</span>
+                            <span className="text-sm text-muted-foreground/70">{kpisOnTrackOrAbove} of {effectiveKpis.length}</span>
                           </div>
                         </div>
                       )}
 
                       {effectiveBenchmarks.length > 0 && (
-                        <div className="border-l-4 pl-4 py-2" style={{ borderColor: benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? '#22c55e' : '#ef4444' }}>
+                        <div className="border-l-4 pl-4 py-2" style={{ borderColor: benchmarksOnTrack >= effectiveBenchmarks.length / 2 ? '#22c55e' : '#ef4444' }}>
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-3">
-                              <span className="font-semibold text-foreground">Benchmarks Above Industry Average</span>
-                              <Badge variant={benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? "default" : "destructive"}>
-                                {benchmarksAboveTarget >= effectiveBenchmarks.length / 2 ? "Above Average" : "Below Average"}
+                              <span className="font-semibold text-foreground">Benchmarks On Track</span>
+                              <Badge variant={benchmarksOnTrack >= effectiveBenchmarks.length / 2 ? "default" : "destructive"}>
+                                {benchmarksOnTrack >= effectiveBenchmarks.length / 2 ? "Majority On Track" : "Needs Attention"}
                               </Badge>
                             </div>
-                            <span className="text-sm text-muted-foreground/70">{benchmarksAboveTarget} of {effectiveBenchmarks.length}</span>
+                            <span className="text-sm text-muted-foreground/70">{benchmarksOnTrack} of {effectiveBenchmarks.length}</span>
                           </div>
                         </div>
                       )}
@@ -1200,13 +1214,13 @@ export default function CampaignPerformanceSummary() {
                         insights.push({
                           type: 'success',
                           title: 'Campaign Health Excellent',
-                          message: `${healthScore}% health score with ${totalAboveTarget} of ${totalMetrics} metrics meeting targets. Campaign performing above expectations.`
+                          message: `${healthScore}% health score with ${totalOnTrackMetrics} of ${totalMetrics} metrics on track. Campaign performing above expectations.`
                         });
                       } else if (healthScore < 60) {
                         insights.push({
                           type: 'warning',
                           title: 'Campaign Requires Attention',
-                          message: `${healthScore}% health score - only ${totalAboveTarget} of ${totalMetrics} metrics meeting targets. Focus on underperforming KPIs to improve results.`
+                          message: `${healthScore}% health score - only ${totalOnTrackMetrics} of ${totalMetrics} metrics on track. Focus on underperforming KPIs to improve results.`
                         });
                       }
                       

@@ -396,10 +396,13 @@ Scope:
 - Completed follow-up: `outcome-totals` now uses system-generated GA4 test data for mock/test GA4 properties and passes spend-to-date into `performanceSummary` while preserving the existing top-level `spend` response shape.
 - Completed follow-up: Overview now requests the 90-day `outcome-totals` window to match the GA4 detail Summary window.
 - Completed follow-up: Unavailable Overview metrics now show connected non-financial source labels, so GA4-only Total Impressions can show `Sources: Google Analytics` while the value remains unavailable.
+- Completed follow-up: Unavailable Overview metrics now also show the aggregate unavailable reason, so GA4-only Total Impressions explains that GA4 engagement rate is not an impressions metric.
+- Completed follow-up: For mock/test GA4 properties, `outcome-totals` now adds stored GA4 daily rows to the simulated GA4 baseline so Performance Summary matches the GA4 detail Summary totals for sessions, conversions, users, and revenue.
 
 Validation:
 
 - Passed: `npm test -- server/campaign-performance-overview-regression.test.ts server/performance-summary-aggregate.test.ts server/outcome-totals-ga4-fallback-regression.test.ts`
+- Passed: `npm test -- server/outcome-totals-ga4-fallback-regression.test.ts server/performance-summary-aggregate.test.ts server/campaign-performance-overview-regression.test.ts`
 - Passed: `npm run check`
 - Passed: `npm run build`
 
@@ -409,7 +412,7 @@ Why this is second:
 
 ### Commit 3: Campaign Health Tab
 
-Status: Not started.
+Status: Started.
 
 Goal:
 
@@ -421,6 +424,11 @@ Scope:
 - Preserve KPI and Benchmark behavior.
 - Show all connected/included sources and relevant unavailable-metric reasons.
 - Add regression coverage for GA4-only and multi-source Data Sources display.
+- Completed partial fix: Campaign Health score now counts campaign KPIs that are Above Target or On Track using the campaign KPI ±5% status band.
+- Completed partial fix: Campaign Health score now counts campaign Benchmarks that are On Track using the campaign Benchmark 90% progress threshold.
+- Completed partial fix: Campaign Health copy now says metrics are `on track` instead of `above target`, matching the KPI and Benchmark summary cards.
+- Completed partial fix: Top Priority Action now selects from lagging campaign-level KPI and Benchmark status bands instead of raw numeric KPI gaps.
+- Completed partial fix: Added a regression guard in `server/campaign-performance-overview-regression.test.ts`.
 
 Why this is separate:
 

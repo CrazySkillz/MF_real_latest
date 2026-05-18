@@ -383,14 +383,18 @@ export default function CampaignPerformanceSummary() {
 
   const changeData = getChanges();
 
-  // Data source status
-  const dataSources = [
-    { name: "LinkedIn Ads", connected: !!(effectiveLinkedin), icon: SiLinkedin },
-    { name: "Custom Integration", connected: !!(effectiveCI), icon: Activity },
-  ];
-
   const performanceSummary = outcomeTotals?.performanceSummary;
   const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
+  const dataSources = performanceSources.length > 0
+    ? performanceSources.map((source: any) => ({
+        name: source?.label || source?.id || "Connected source",
+        connected: source?.connected === true,
+        icon: source?.id === "linkedin" ? SiLinkedin : source?.category === "financial" ? DollarSign : Activity,
+      }))
+    : [
+        { name: "LinkedIn Ads", connected: !!(effectiveLinkedin), icon: SiLinkedin },
+        { name: "Custom Integration", connected: !!(effectiveCI), icon: Activity },
+      ];
   const sourceLabelForId = (sourceId: string) => {
     if (sourceId === "canonical_spend_sources") return "Campaign spend sources";
     if (sourceId === "paid_platform_spend") return "Paid platform spend";
@@ -809,7 +813,7 @@ export default function CampaignPerformanceSummary() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
-                    {dataSources.map((source) => {
+                    {dataSources.map((source: any) => {
                       const Icon = source.icon;
                       return (
                         <div key={source.name} className="flex items-center space-x-3">

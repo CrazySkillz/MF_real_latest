@@ -67,4 +67,14 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(page).toContain("Benchmarks On Track");
     expect(page).not.toContain("metrics above target");
   });
+
+  it("wires Campaign Health data source status to the aggregate contract", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+
+    expect(page).toContain("const dataSources = performanceSources.length > 0");
+    expect(page).toContain("name: source?.label || source?.id || \"Connected source\"");
+    expect(page).toContain("connected: source?.connected === true");
+    expect(page).toContain("source?.category === \"financial\" ? DollarSign : Activity");
+    expect(page).toContain("{dataSources.map((source: any) => {");
+  });
 });

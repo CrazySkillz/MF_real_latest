@@ -220,13 +220,14 @@ Important:
 
 ### Overview
 
-Outstanding fixes:
+Current behavior:
 
-- Replace page-local hard-coded totals with the unified aggregate contract.
-- Show cards only for metrics available from connected sources, or clearly mark unavailable metrics.
-- Source labels under cards must be generated from included source breakdowns.
-- If only GA4 is connected, Overview should show GA4 web/outcome metrics and no LinkedIn, Meta, CI, or spend labels.
-- Include revenue and spend only when the connected source contract provides them.
+- `Campaign Health` summarizes campaign-level KPIs and Benchmarks that are above target or on track.
+- `Top Priority Action` flags the least-performing campaign-level KPI first; if no KPI is below target, it falls back to the least-performing Benchmark.
+- `Top Priority Action` metric values must be formatted for display, for example `$450,000.00` and `80,000`.
+- `Total Impressions`, `Total Sessions`, `Total Conversions`, and `Total Spend` are populated from the campaign's connected sources in `Connected Platforms`.
+- Each card only uses metrics that the connected source actually provides. GA4 can provide sessions and conversions, but not impressions.
+- If a connected source does not provide a metric, the card must clearly show that the metric is unavailable instead of inventing a value.
 
 Required regression coverage:
 
@@ -373,7 +374,7 @@ Why this is first:
 
 ### Commit 2: Overview Tab
 
-Status: Implemented locally; not yet pushed.
+Status: Completed and pushed through commit `b8fbba72`.
 
 Goal:
 
@@ -384,6 +385,10 @@ Scope:
 - Wire Overview cards to the aggregate contract.
 - Generate card labels from included source breakdowns.
 - Fix GA4-only behavior so no LinkedIn, Meta, Custom Integration, or spend labels appear unless those inputs exist.
+- Completed: `Campaign Health` summarizes campaign-level KPIs and Benchmarks that are above target or on track.
+- Completed: `Top Priority Action` flags the least-performing below-target campaign-level KPI first, with Benchmark fallback only when no KPI is below target.
+- Completed: `Top Priority Action` formats metric values for display, including currency and count values.
+- Completed: `Total Impressions`, `Total Sessions`, `Total Conversions`, and `Total Spend` use aggregate values from connected sources in `Connected Platforms`.
 - Completed: Added an `outcome-totals` query to `client/src/pages/campaign-performance.tsx`.
 - Completed: Wired only the Overview metric cards to `outcomeTotals.performanceSummary`.
 - Completed: Overview source labels now come from `performanceSummary.sources` and metric `sources`.
@@ -391,7 +396,6 @@ Scope:
 - Completed: Changed the second Overview card from mixed `Total Engagements` to aggregate-contract-backed `Total Sessions`.
 - Completed: Added `server/campaign-performance-overview-regression.test.ts`.
 - Completed follow-up: Confirmed Campaign Health and Top Priority use campaign-level KPI/Benchmark records, not platform-level routes.
-- Completed follow-up: Fixed Top Priority sorting so the largest under-target campaign KPI gap is selected first.
 - Completed follow-up: Kept Total Impressions unavailable for GA4-only campaigns because GA4 engagement rate is not interchangeable with impressions.
 - Completed follow-up: `outcome-totals` now uses system-generated GA4 test data for mock/test GA4 properties and passes spend-to-date into `performanceSummary` while preserving the existing top-level `spend` response shape.
 - Completed follow-up: Overview now requests the 90-day `outcome-totals` window to match the GA4 detail Summary window.
@@ -413,7 +417,7 @@ Why this is second:
 
 ### Commit 3: Campaign Health Tab
 
-Status: Started.
+Status: Implemented locally; not yet pushed.
 
 Goal:
 
@@ -430,7 +434,15 @@ Scope:
 - Completed partial fix: Campaign Health copy now says metrics are `on track` instead of `above target`, matching the KPI and Benchmark summary cards.
 - Completed partial fix: Top Priority Action now selects the lowest lagging campaign-level KPI first using KPI status bands, with Benchmark fallback only when no KPI is below target.
 - Completed partial fix: Top Priority Action now formats count KPI values as comma-separated whole numbers without a `count` suffix.
+- Completed: Campaign Health `Data Sources` now reads connected source status from `performanceSummary.sources` instead of the old LinkedIn/Custom Integration hard-coded list.
+- Completed: KPI and Benchmark scoring behavior was preserved while wiring source status to the aggregate contract.
 - Completed partial fix: Added a regression guard in `server/campaign-performance-overview-regression.test.ts`.
+
+Validation:
+
+- Passed: `npm test -- server/campaign-performance-overview-regression.test.ts`
+- Passed: `npm run check`
+- Passed: `npm run build`
 
 Why this is separate:
 

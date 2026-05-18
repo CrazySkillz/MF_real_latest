@@ -429,6 +429,7 @@ Scope:
 - Completed partial fix: Campaign Health score now counts campaign Benchmarks that are On Track using the campaign Benchmark 90% progress threshold.
 - Completed partial fix: Campaign Health copy now says metrics are `on track` instead of `above target`, matching the KPI and Benchmark summary cards.
 - Completed partial fix: Top Priority Action now selects the lowest lagging campaign-level KPI first using KPI status bands, with Benchmark fallback only when no KPI is below target.
+- Completed partial fix: Top Priority Action now formats count KPI values as comma-separated whole numbers without a `count` suffix.
 - Completed partial fix: Added a regression guard in `server/campaign-performance-overview-regression.test.ts`.
 
 Why this is separate:

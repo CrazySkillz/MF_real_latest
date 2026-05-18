@@ -50,7 +50,9 @@ describe("campaign Performance Summary Overview regression guard", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
     expect(page).toContain("parseNum(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })");
+    expect(page).toContain("if (String(unit || '').toLowerCase() === 'count' || !unit) return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 0 });");
     expect(page).not.toContain("parseNum(value).toFixed(2)");
+    expect(page).not.toContain("return `${value}${unit}`;");
   });
 
   it("counts campaign health from on-track KPI and Benchmark status bands", () => {

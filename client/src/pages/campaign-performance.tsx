@@ -309,7 +309,8 @@ export default function CampaignPerformanceSummary() {
       const formatValue = (value: any, unit: string) => {
         if (unit === '$') return `$${parseNum(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         if (unit === '%') return `${formatPct(parseNum(value))}`;
-        return `${value}${unit}`;
+        if (String(unit || '').toLowerCase() === 'count' || !unit) return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 0 });
+        return `${parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 2 })}${unit}`;
       };
       
       return {

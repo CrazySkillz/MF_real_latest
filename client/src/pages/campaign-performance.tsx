@@ -196,12 +196,22 @@ export default function CampaignPerformanceSummary() {
   const effectiveGA4 = demoGA4 || ga4Metrics;
   const effectiveKpis = demoKpis || kpis;
   const effectiveBenchmarks = demoBenchmarks || benchmarks;
+  const performanceSummary = outcomeTotals?.performanceSummary;
+  const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
 
   // Helper function to safely parse numbers
   const parseNum = (val: any): number => {
     if (val === null || val === undefined || val === '') return 0;
     const num = typeof val === 'string' ? parseFloat(val) : Number(val);
     return isNaN(num) || !isFinite(num) ? 0 : num;
+  };
+  const formatMetricValue = (value: any, unit: string) => {
+    const normalizedUnit = String(unit || '').toLowerCase();
+    if (unit === '$') return `$${parseNum(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (unit === '%') return `${formatPct(parseNum(value))}`;
+    if (!unit || normalizedUnit === 'count') return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 0 });
+    if (normalizedUnit === 'ratio') return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 2 });
+    return `${parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 2 })}${unit}`;
   };
 
   // Calculate aggregated metrics
@@ -256,20 +266,46 @@ export default function CampaignPerformanceSummary() {
   };
 
   const getKpiDeltaPct = (kpi: any) => {
-    const current = parseNum(kpi.currentValue);
+    const current = getKpiCurrentValue(kpi);
     const target = parseNum(kpi.targetValue);
     if (!(target > 0)) return -Infinity;
     const lowerBetter = isLowerBetterMetric(String(kpi?.metric || ''));
     return lowerBetter ? ((target - current) / target) * 100 : ((current - target) / target) * 100;
   };
+  const getKpiCurrentValue = (kpi: any) => {
+    const metricKey = String(kpi?.metric || '').toLowerCase();
+    const aggregateMetric = performanceSummary?.totals?.[metricKey];
+    return aggregateMetric?.available && aggregateMetric?.value !== null
+      ? parseNum(aggregateMetric.value)
+      : parseNum(kpi.currentValue);
+  };
 
   const getBenchmarkProgressPct = (benchmark: any) => {
-    const current = parseNum(benchmark.currentValue);
+    const current = getBenchmarkCurrentValue(benchmark);
     const industry = parseNum(benchmark.benchmarkValue ?? benchmark.industryAverage);
     if (!(industry > 0)) return 0;
-    const lowerBetter = isLowerBetterMetric(String(benchmark?.metric || benchmark?.metricName || ''));
+    const lowerBetter = isLowerBetterMetric(getBenchmarkMetricKey(benchmark));
     if (lowerBetter) return current > 0 ? (industry / current) * 100 : 100;
     return (current / industry) * 100;
+  };
+  const getBenchmarkMetricKey = (benchmark: any) => {
+    const metric = String(benchmark?.metric || benchmark?.metricName || benchmark?.name || '').toLowerCase();
+    if (metric.includes('session')) return 'sessions';
+    if (metric.includes('conversion')) return 'conversions';
+    if (metric.includes('revenue')) return 'revenue';
+    if (metric.includes('user')) return 'users';
+    if (metric.includes('roas')) return 'roas';
+    if (metric.includes('roi')) return 'roi';
+    if (metric.includes('cpa')) return 'cpa';
+    if (metric.includes('cpl')) return 'cpl';
+    return metric;
+  };
+  const getBenchmarkCurrentValue = (benchmark: any) => {
+    const metricKey = getBenchmarkMetricKey(benchmark);
+    const aggregateMetric = performanceSummary?.totals?.[metricKey];
+    return aggregateMetric?.available && aggregateMetric?.value !== null
+      ? parseNum(aggregateMetric.value)
+      : parseNum(benchmark.currentValue);
   };
 
   // Calculate campaign health score using the same campaign-level status bands as the KPI/Benchmark tabs.
@@ -313,19 +349,13 @@ export default function CampaignPerformanceSummary() {
 
     if (topLaggingKPI) {
       const topKPI = topLaggingKPI.item;
-      const formatValue = (value: any, unit: string) => {
-        if (unit === '$') return `$${parseNum(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        if (unit === '%') return `${formatPct(parseNum(value))}`;
-        if (String(unit || '').toLowerCase() === 'count' || !unit) return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 0 });
-        return `${parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 2 })}${unit}`;
-      };
       
       return {
         type: 'kpi',
         name: topKPI.name,
         metric: topKPI.metric || topKPI.name,
-        currentValue: formatValue(topKPI.currentValue, topKPI.unit),
-        targetValue: formatValue(topKPI.targetValue, topKPI.unit),
+        currentValue: formatMetricValue(getKpiCurrentValue(topKPI), topKPI.unit),
+        targetValue: formatMetricValue(topKPI.targetValue, topKPI.unit),
         action: 'Improve'
       };
     }
@@ -390,8 +420,6 @@ export default function CampaignPerformanceSummary() {
 
   const changeData = getChanges();
 
-  const performanceSummary = outcomeTotals?.performanceSummary;
-  const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
   const connectedPlatformSources = performanceSources.filter((source: any) => source?.category !== "financial");
   const dataSources = connectedPlatformSources.length > 0
     ? connectedPlatformSources.map((source: any) => ({
@@ -727,18 +755,24 @@ export default function CampaignPerformanceSummary() {
                   <CardContent>
                     <div className="space-y-4">
                       {effectiveKpis.map((kpi: any, idx: number) => {
-                        const current = parseNum(kpi.currentValue);
+                        const current = getKpiCurrentValue(kpi);
                         const target = parseNum(kpi.targetValue);
-                        const isAboveTarget = current >= target;
-                        const percentage = target > 0 ? Math.round((current / target) * 100) : 0;
+                        const deltaPct = getKpiDeltaPct(kpi);
+                        const lowerBetter = isLowerBetterMetric(String(kpi?.metric || ''));
+                        const percentage = target > 0 ? Math.round((lowerBetter ? (current > 0 ? target / current : 0) : current / target) * 100) : 0;
+                        const status = deltaPct > 5
+                          ? { label: "Above Target", color: "#22c55e", badgeClass: "bg-green-500 text-white hover:bg-green-500" }
+                          : deltaPct >= -5
+                            ? { label: "On Track", color: "#2563eb", badgeClass: "bg-blue-500 text-white hover:bg-blue-500" }
+                            : { label: "Below Target", color: "#ef4444", badgeClass: "bg-red-500 text-white hover:bg-red-500" };
                         
                         return (
-                          <div key={idx} className="border-l-4 pl-4 py-2" style={{ borderColor: isAboveTarget ? '#22c55e' : '#ef4444' }}>
+                          <div key={idx} className="border-l-4 pl-4 py-2" style={{ borderColor: status.color }}>
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center space-x-3">
                                 <span className="font-semibold text-foreground">{kpi.name}</span>
-                                <Badge variant={isAboveTarget ? "default" : "destructive"}>
-                                  {isAboveTarget ? "On Track" : "Below Target"}
+                                <Badge variant="default" className={status.badgeClass}>
+                                  {status.label}
                                 </Badge>
                               </div>
                               <span className="text-sm text-muted-foreground/70">{percentage}% of target</span>
@@ -747,13 +781,13 @@ export default function CampaignPerformanceSummary() {
                               <div>
                                 <span className="text-muted-foreground/70">Current: </span>
                                 <span className="font-semibold text-foreground">
-                                  {kpi.unit === '$' ? `$${current.toFixed(2)}` : kpi.unit === '%' ? `${formatPct(current)}` : `${kpi.currentValue}${kpi.unit}`}
+                                  {formatMetricValue(current, kpi.unit)}
                                 </span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground/70">Target: </span>
                                 <span className="font-semibold text-foreground">
-                                  {kpi.unit === '$' ? `$${target.toFixed(2)}` : kpi.unit === '%' ? `${formatPct(target)}` : `${kpi.targetValue}${kpi.unit}`}
+                                  {formatMetricValue(target, kpi.unit)}
                                 </span>
                               </div>
                             </div>
@@ -775,33 +809,37 @@ export default function CampaignPerformanceSummary() {
                   <CardContent>
                     <div className="space-y-4">
                       {effectiveBenchmarks.map((benchmark: any, idx: number) => {
-                        const current = parseNum(benchmark.currentValue);
+                        const current = getBenchmarkCurrentValue(benchmark);
                         const target = parseNum(benchmark.benchmarkValue);
-                        const isAboveTarget = current >= target;
-                        const percentage = target > 0 ? Math.round((current / target) * 100) : 0;
+                        const progressPct = getBenchmarkProgressPct(benchmark);
+                        const status = progressPct >= 90
+                          ? { label: "On Track", color: "#22c55e", badgeClass: "bg-green-500 text-white hover:bg-green-500" }
+                          : progressPct >= 70
+                            ? { label: "Needs Attention", color: "#f97316", badgeClass: "bg-orange-500 text-white hover:bg-orange-500" }
+                            : { label: "Below Target", color: "#ef4444", badgeClass: "bg-red-500 text-white hover:bg-red-500" };
                         
                         return (
-                          <div key={idx} className="border-l-4 pl-4 py-2" style={{ borderColor: isAboveTarget ? '#22c55e' : '#ef4444' }}>
+                          <div key={idx} className="border-l-4 pl-4 py-2" style={{ borderColor: status.color }}>
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center space-x-3">
                                 <span className="font-semibold text-foreground">{benchmark.name}</span>
-                                <Badge variant={isAboveTarget ? "default" : "destructive"}>
-                                  {isAboveTarget ? "Above Benchmark" : "Below Benchmark"}
+                                <Badge variant="default" className={status.badgeClass}>
+                                  {status.label}
                                 </Badge>
                               </div>
-                              <span className="text-sm text-muted-foreground/70">{percentage}% of target</span>
+                              <span className="text-sm text-muted-foreground/70">{Math.round(progressPct)}% of benchmark</span>
                             </div>
                             <div className="flex items-center space-x-6 text-sm">
                               <div>
                                 <span className="text-muted-foreground/70">Current: </span>
                                 <span className="font-semibold text-foreground">
-                                  {benchmark.unit === '$' ? `$${current.toFixed(2)}` : benchmark.unit === '%' ? `${formatPct(current)}` : `${benchmark.currentValue}${benchmark.unit}`}
+                                  {formatMetricValue(current, benchmark.unit)}
                                 </span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground/70">Target: </span>
                                 <span className="font-semibold text-foreground">
-                                  {benchmark.unit === '$' ? `$${target.toFixed(2)}` : benchmark.unit === '%' ? `${formatPct(target)}` : `${benchmark.benchmarkValue}${benchmark.unit}`}
+                                  {formatMetricValue(target, benchmark.unit)}
                                 </span>
                               </div>
                             </div>

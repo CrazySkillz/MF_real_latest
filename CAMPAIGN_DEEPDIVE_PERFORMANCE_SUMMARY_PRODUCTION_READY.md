@@ -433,7 +433,9 @@ Scope:
 - Show all connected/included sources and relevant unavailable-metric reasons.
 - Add regression coverage for GA4-only and multi-source Data Sources display.
 - Completed partial fix: Campaign Health score now counts campaign KPIs that are Above Target or On Track using the campaign KPI ±5% status band.
+- Completed follow-up: Campaign Health KPI rows now use aggregate current values when available, use the same KPI `Above Target` / `On Track` / `Below Target` ±5% status bands, and format currency, count, and ratio values without raw unit suffixes.
 - Completed partial fix: Campaign Health score now counts campaign Benchmarks that are On Track using the campaign Benchmark 90% progress threshold.
+- Completed follow-up: Campaign Health Benchmark rows now use aggregate current values when available, use `On Track` / `Needs Attention` / `Below Target` benchmark progress bands, and format currency, count, and ratio values without raw unit suffixes.
 - Completed partial fix: Campaign Health copy now says metrics are `on track` instead of `above target`, matching the KPI and Benchmark summary cards.
 - Completed follow-up: Campaign Health KPI/Benchmark summary rows now label `>50%` as `Majority On Track`, exactly `50%` as `Half On Track`, and `<50%` as `Needs Attention`, with matching green, orange, and red side-line colors.
 - Completed partial fix: Top Priority Action now selects the lowest lagging campaign-level KPI first using KPI status bands, with Benchmark fallback only when no KPI is below target.

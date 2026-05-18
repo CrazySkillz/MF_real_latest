@@ -50,7 +50,8 @@ describe("campaign Performance Summary Overview regression guard", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
     expect(page).toContain("parseNum(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })");
-    expect(page).toContain("if (String(unit || '').toLowerCase() === 'count' || !unit) return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 0 });");
+    expect(page).toContain("if (!unit || normalizedUnit === 'count') return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 0 });");
+    expect(page).toContain("if (normalizedUnit === 'ratio') return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 2 });");
     expect(page).not.toContain("parseNum(value).toFixed(2)");
     expect(page).not.toContain("return `${value}${unit}`;");
   });
@@ -59,8 +60,12 @@ describe("campaign Performance Summary Overview regression guard", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
     expect(page).toContain("const getKpiDeltaPct = (kpi: any) => {");
+    expect(page).toContain("const getKpiCurrentValue = (kpi: any) => {");
+    expect(page).toContain("const aggregateMetric = performanceSummary?.totals?.[metricKey];");
     expect(page).toContain("const kpisOnTrackOrAbove = effectiveKpis.filter((kpi: any) => getKpiDeltaPct(kpi) >= -5).length;");
     expect(page).toContain("const benchmarksOnTrack = effectiveBenchmarks.filter((benchmark: any) => getBenchmarkProgressPct(benchmark) >= 90).length;");
+    expect(page).toContain("const getBenchmarkCurrentValue = (benchmark: any) => {");
+    expect(page).toContain("const getBenchmarkMetricKey = (benchmark: any) => {");
     expect(page).toContain("const totalOnTrackMetrics = kpisOnTrackOrAbove + benchmarksOnTrack;");
     expect(page).toContain("{totalOnTrackMetrics} of {totalMetrics} metrics on track");
     expect(page).toContain("const getTrackSummaryStatus = (onTrack: number, total: number) => {");
@@ -71,8 +76,17 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(page).toContain("style={{ borderColor: benchmarkTrackStatus.color }}");
     expect(page).toContain("KPIs On Track or Above");
     expect(page).toContain("Benchmarks On Track");
+    expect(page).toContain('label: "Above Target", color: "#22c55e"');
+    expect(page).toContain('label: "On Track", color: "#2563eb"');
+    expect(page).toContain('label: "Below Target", color: "#ef4444"');
+    expect(page).toContain('label: "Needs Attention", color: "#f97316"');
+    expect(page).toContain("Math.round(progressPct)}% of benchmark");
+    expect(page).toContain("formatMetricValue(current, kpi.unit)");
+    expect(page).toContain("formatMetricValue(current, benchmark.unit)");
     expect(page).not.toContain("metrics above target");
     expect(page).not.toContain(">= effectiveKpis.length / 2 ? \"Majority On Track\"");
+    expect(page).not.toContain("`${kpi.currentValue}${kpi.unit}`");
+    expect(page).not.toContain("`${benchmark.currentValue}${benchmark.unit}`");
   });
 
   it("wires Campaign Health data source status to the aggregate contract", () => {

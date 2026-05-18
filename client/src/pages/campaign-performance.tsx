@@ -81,9 +81,9 @@ export default function CampaignPerformanceSummary() {
   });
 
   const { data: outcomeTotals } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "outcome-totals", "30days", demoMode ? "demo" : "live"],
+    queryKey: ["/api/campaigns", campaignId, "outcome-totals", "90days", demoMode ? "demo" : "live"],
     queryFn: async () => {
-      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=30days${demoMode ? "&demo=1" : ""}`;
+      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=90days${demoMode ? "&demo=1" : ""}`;
       const response = await fetch(url, { credentials: "include" });
       if (!response.ok) return null;
       return response.json();
@@ -398,7 +398,13 @@ export default function CampaignPerformanceSummary() {
   };
   const overviewSourceLabel = (metric: any, fallbackLabel: string) => {
     if (!performanceSummary) return fallbackLabel;
-    if (!metric?.available) return metric?.unavailableReasons?.[0] || "No connected source provides this metric";
+    if (!metric?.available) {
+      const sourceLabels = performanceSources
+        .filter((source: any) => source?.category !== "financial")
+        .map((source: any) => source?.label)
+        .filter(Boolean);
+      return sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}` : (metric?.unavailableReasons?.[0] || "No connected source provides this metric");
+    }
     const labels = (metric.sources || []).map((sourceId: string) => sourceLabelForId(sourceId));
     return labels.length > 0 ? `Sources: ${labels.join(", ")}` : "Sources unavailable";
   };

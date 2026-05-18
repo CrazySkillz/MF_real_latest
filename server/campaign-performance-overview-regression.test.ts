@@ -10,6 +10,8 @@ describe("campaign Performance Summary Overview regression guard", () => {
     const overview = page.slice(overviewStart, overviewEnd);
 
     expect(page).toContain('const performanceSummary = outcomeTotals?.performanceSummary;');
+    expect(page).toContain('queryKey: ["/api/campaigns", campaignId, "outcome-totals", "90days"');
+    expect(page).toContain("outcome-totals?dateRange=90days");
     expect(page).toContain('const overviewImpressions = getOverviewMetric("impressions", totalImpressions);');
     expect(page).toContain('const overviewSessions = getOverviewMetric("sessions", webSessions);');
     expect(page).toContain('const overviewConversions = getOverviewMetric("conversions", totalConversions);');
@@ -20,6 +22,13 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(overview).toContain("formatOverviewValue(overviewSpend");
     expect(overview).toContain("overviewSourceLabel(overviewConversions");
     expect(overview).not.toContain("LinkedIn: {linkedinConversions.toLocaleString()} | CI: {ciConversions.toLocaleString()}");
+  });
+
+  it("shows connected non-financial sources for unavailable Overview metrics", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+
+    expect(page).toContain('filter((source: any) => source?.category !== "financial")');
+    expect(page).toContain('return sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}`');
   });
 
   it("selects the campaign KPI with the largest under-target gap as the top priority", () => {

@@ -394,6 +394,8 @@ Scope:
 - Completed follow-up: Fixed Top Priority sorting so the largest under-target campaign KPI gap is selected first.
 - Completed follow-up: Kept Total Impressions unavailable for GA4-only campaigns because GA4 engagement rate is not interchangeable with impressions.
 - Completed follow-up: `outcome-totals` now uses system-generated GA4 test data for mock/test GA4 properties and passes spend-to-date into `performanceSummary` while preserving the existing top-level `spend` response shape.
+- Completed follow-up: Overview now requests the 90-day `outcome-totals` window to match the GA4 detail Summary window.
+- Completed follow-up: Unavailable Overview metrics now show connected non-financial source labels, so GA4-only Total Impressions can show `Sources: Google Analytics` while the value remains unavailable.
 
 Validation:
 

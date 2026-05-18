@@ -1,6 +1,7 @@
 import { storage } from "./storage";
 import { ga4Service } from "./analytics";
 import { computeCpa, computeConversionRatePercent, computeRoiPercent, computeRoasPercent, normalizeRateToPercent } from "../shared/metric-math";
+import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 
 const isoDateUTC = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -420,6 +421,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         } as any);
         benchmarksRecorded += 1;
       }
+
+      await refreshCampaignCurrentValuesForCampaign(campaignId);
 
       processed += 1;
     } catch (e: any) {

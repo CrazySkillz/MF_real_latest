@@ -238,3 +238,40 @@ export async function resolveCampaignCurrentValueForAlert<T extends { campaignId
   if (currentValue === null || !Number.isFinite(currentValue)) return row;
   return { ...row, currentValue: String(currentValue) };
 }
+
+export async function refreshCampaignCurrentValuesForCampaign(campaignId: string): Promise<{ kpisUpdated: number; benchmarksUpdated: number }> {
+  const id = String(campaignId || "").trim();
+  if (!id) return { kpisUpdated: 0, benchmarksUpdated: 0 };
+
+  const totals = await getCampaignMetricTotals(id);
+  if (!totals) return { kpisUpdated: 0, benchmarksUpdated: 0 };
+
+  const [kpis, benchmarks] = await Promise.all([
+    storage.getCampaignKPIs(id).catch(() => [] as any[]),
+    storage.getCampaignBenchmarks(id).catch(() => [] as any[]),
+  ]);
+
+  let kpisUpdated = 0;
+  for (const kpi of Array.isArray(kpis) ? kpis : []) {
+    if (!isCampaignLevel(kpi) || !(kpi as any)?.calculationConfig) continue;
+    const currentValue = computeCampaignCurrentValueFromConfig((kpi as any).calculationConfig, totals);
+    if (currentValue === null || !Number.isFinite(currentValue)) continue;
+    const previous = (kpi as any)?.currentValue === null || typeof (kpi as any)?.currentValue === "undefined" ? null : round2(parseNum((kpi as any).currentValue));
+    if (previous !== null && previous === round2(currentValue)) continue;
+    await storage.updateKPI(String((kpi as any).id), { currentValue: String(round2(currentValue)) } as any);
+    kpisUpdated += 1;
+  }
+
+  let benchmarksUpdated = 0;
+  for (const benchmark of Array.isArray(benchmarks) ? benchmarks : []) {
+    if (!isCampaignLevel(benchmark) || !(benchmark as any)?.calculationConfig) continue;
+    const currentValue = computeCampaignCurrentValueFromConfig((benchmark as any).calculationConfig, totals);
+    if (currentValue === null || !Number.isFinite(currentValue)) continue;
+    const previous = (benchmark as any)?.currentValue === null || typeof (benchmark as any)?.currentValue === "undefined" ? null : round2(parseNum((benchmark as any).currentValue));
+    if (previous !== null && previous === round2(currentValue)) continue;
+    await storage.updateBenchmark(String((benchmark as any).id), { currentValue: String(round2(currentValue)) } as any);
+    benchmarksUpdated += 1;
+  }
+
+  return { kpisUpdated, benchmarksUpdated };
+}

@@ -63,18 +63,26 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(page).toContain("const benchmarksOnTrack = effectiveBenchmarks.filter((benchmark: any) => getBenchmarkProgressPct(benchmark) >= 90).length;");
     expect(page).toContain("const totalOnTrackMetrics = kpisOnTrackOrAbove + benchmarksOnTrack;");
     expect(page).toContain("{totalOnTrackMetrics} of {totalMetrics} metrics on track");
+    expect(page).toContain("const getTrackSummaryStatus = (onTrack: number, total: number) => {");
+    expect(page).toContain('if (onTrack * 2 > total) return { label: "Majority On Track", color: "#22c55e"');
+    expect(page).toContain('if (onTrack * 2 === total) return { label: "Half On Track", color: "#f97316"');
+    expect(page).toContain('return { label: "Needs Attention", color: "#ef4444"');
+    expect(page).toContain("style={{ borderColor: kpiTrackStatus.color }}");
+    expect(page).toContain("style={{ borderColor: benchmarkTrackStatus.color }}");
     expect(page).toContain("KPIs On Track or Above");
     expect(page).toContain("Benchmarks On Track");
     expect(page).not.toContain("metrics above target");
+    expect(page).not.toContain(">= effectiveKpis.length / 2 ? \"Majority On Track\"");
   });
 
   it("wires Campaign Health data source status to the aggregate contract", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
-    expect(page).toContain("const dataSources = performanceSources.length > 0");
+    expect(page).toContain('const connectedPlatformSources = performanceSources.filter((source: any) => source?.category !== "financial");');
+    expect(page).toContain("const dataSources = connectedPlatformSources.length > 0");
+    expect(page).toContain("connectedPlatformSources.map((source: any) => ({");
     expect(page).toContain("name: source?.label || source?.id || \"Connected source\"");
     expect(page).toContain("connected: source?.connected === true");
-    expect(page).toContain("source?.category === \"financial\" ? DollarSign : Activity");
     expect(page).toContain("{dataSources.map((source: any) => {");
   });
 });

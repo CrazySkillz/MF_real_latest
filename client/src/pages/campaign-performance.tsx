@@ -289,6 +289,13 @@ export default function CampaignPerformanceSummary() {
 
   const healthStatus = getHealthStatus();
   const HealthIcon = healthStatus.icon;
+  const getTrackSummaryStatus = (onTrack: number, total: number) => {
+    if (onTrack * 2 > total) return { label: "Majority On Track", color: "#22c55e", badgeClass: "bg-green-500 text-white hover:bg-green-500" };
+    if (onTrack * 2 === total) return { label: "Half On Track", color: "#f97316", badgeClass: "bg-orange-500 text-white hover:bg-orange-500" };
+    return { label: "Needs Attention", color: "#ef4444", badgeClass: "bg-red-500 text-white hover:bg-red-500" };
+  };
+  const kpiTrackStatus = getTrackSummaryStatus(kpisOnTrackOrAbove, effectiveKpis.length);
+  const benchmarkTrackStatus = getTrackSummaryStatus(benchmarksOnTrack, effectiveBenchmarks.length);
 
   // Get top priority action
   const getPriorityAction = () => {
@@ -385,11 +392,12 @@ export default function CampaignPerformanceSummary() {
 
   const performanceSummary = outcomeTotals?.performanceSummary;
   const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
-  const dataSources = performanceSources.length > 0
-    ? performanceSources.map((source: any) => ({
+  const connectedPlatformSources = performanceSources.filter((source: any) => source?.category !== "financial");
+  const dataSources = connectedPlatformSources.length > 0
+    ? connectedPlatformSources.map((source: any) => ({
         name: source?.label || source?.id || "Connected source",
         connected: source?.connected === true,
-        icon: source?.id === "linkedin" ? SiLinkedin : source?.category === "financial" ? DollarSign : Activity,
+        icon: source?.id === "linkedin" ? SiLinkedin : Activity,
       }))
     : [
         { name: "LinkedIn Ads", connected: !!(effectiveLinkedin), icon: SiLinkedin },
@@ -678,12 +686,12 @@ export default function CampaignPerformanceSummary() {
                       </div>
 
                       {effectiveKpis.length > 0 && (
-                        <div className="border-l-4 pl-4 py-2" style={{ borderColor: kpisOnTrackOrAbove >= effectiveKpis.length / 2 ? '#22c55e' : '#ef4444' }}>
+                        <div className="border-l-4 pl-4 py-2" style={{ borderColor: kpiTrackStatus.color }}>
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-3">
                               <span className="font-semibold text-foreground">KPIs On Track or Above</span>
-                              <Badge variant={kpisOnTrackOrAbove >= effectiveKpis.length / 2 ? "default" : "destructive"}>
-                                {kpisOnTrackOrAbove >= effectiveKpis.length / 2 ? "Majority On Track" : "Needs Attention"}
+                              <Badge variant="default" className={kpiTrackStatus.badgeClass}>
+                                {kpiTrackStatus.label}
                               </Badge>
                             </div>
                             <span className="text-sm text-muted-foreground/70">{kpisOnTrackOrAbove} of {effectiveKpis.length}</span>
@@ -692,12 +700,12 @@ export default function CampaignPerformanceSummary() {
                       )}
 
                       {effectiveBenchmarks.length > 0 && (
-                        <div className="border-l-4 pl-4 py-2" style={{ borderColor: benchmarksOnTrack >= effectiveBenchmarks.length / 2 ? '#22c55e' : '#ef4444' }}>
+                        <div className="border-l-4 pl-4 py-2" style={{ borderColor: benchmarkTrackStatus.color }}>
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-3">
                               <span className="font-semibold text-foreground">Benchmarks On Track</span>
-                              <Badge variant={benchmarksOnTrack >= effectiveBenchmarks.length / 2 ? "default" : "destructive"}>
-                                {benchmarksOnTrack >= effectiveBenchmarks.length / 2 ? "Majority On Track" : "Needs Attention"}
+                              <Badge variant="default" className={benchmarkTrackStatus.badgeClass}>
+                                {benchmarkTrackStatus.label}
                               </Badge>
                             </div>
                             <span className="text-sm text-muted-foreground/70">{benchmarksOnTrack} of {effectiveBenchmarks.length}</span>

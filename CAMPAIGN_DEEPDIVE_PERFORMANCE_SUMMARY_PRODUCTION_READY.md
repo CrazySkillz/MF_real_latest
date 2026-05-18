@@ -9,6 +9,7 @@ The intended product behavior is:
 - `Connected Platforms` shows which campaign-scoped data sources are attached.
 - `Performance Summary` aggregates only the metrics currently available from those connected sources.
 - If only GA4 is connected, Performance Summary uses only GA4-capable metrics.
+- Revenue and spend sources connected inside GA4, such as Salesforce, HubSpot, Shopify, CSV, or Google Sheets imports, are financial child inputs for GA4 totals. They are not separate main Connected Platforms unless the campaign has connected them as standalone platforms.
 - As LinkedIn, Meta, Google Ads, Google Sheets, Custom Integration, revenue sources, and spend sources are added, their available metrics are added to the campaign-level aggregate without double-counting.
 - The section should provide a marketing-executive-ready campaign-wide view, not a platform-specific drilldown.
 
@@ -241,12 +242,14 @@ Outstanding fixes:
 
 - Keep KPI and Benchmark health from campaign-level KPI/Benchmark records.
 - Replace hard-coded Data Sources block with connected source list from the aggregate contract.
+- Data Sources must list only main Connected Platforms from the implemented aggregate source registry. Today that includes Google Analytics, LinkedIn, Meta, and Custom Integration when connected. Future standalone platforms such as Google Ads or Google Sheets should be added only after their campaign-scoped aggregate paths are traced and implemented. GA4 revenue/spend child imports such as Salesforce, HubSpot, Shopify, CSV, and Google Sheets financial imports can feed totals but must not appear as separate main platforms in this block.
 - Show source freshness and unavailable-metric reasons where relevant.
 - Ensure KPI/Benchmark current values remain sourced from their existing campaign-level source-aware paths and do not regress.
 
 Required regression coverage:
 
-- Data Sources lists GA4, LinkedIn, Meta, Custom Integration, and financial sources when connected.
+- Data Sources lists GA4, LinkedIn, Meta, and Custom Integration when they are connected as main Connected Platforms in the current aggregate contract.
+- Data Sources does not list GA4 financial child imports such as Salesforce, HubSpot, Shopify, CSV, or Google Sheets revenue/spend imports as separate main platforms.
 - GA4-only campaign does not show LinkedIn or Custom Integration as data sources.
 - KPI/Benchmark status still renders when no platform ad metrics are available.
 
@@ -432,9 +435,11 @@ Scope:
 - Completed partial fix: Campaign Health score now counts campaign KPIs that are Above Target or On Track using the campaign KPI ±5% status band.
 - Completed partial fix: Campaign Health score now counts campaign Benchmarks that are On Track using the campaign Benchmark 90% progress threshold.
 - Completed partial fix: Campaign Health copy now says metrics are `on track` instead of `above target`, matching the KPI and Benchmark summary cards.
+- Completed follow-up: Campaign Health KPI/Benchmark summary rows now label `>50%` as `Majority On Track`, exactly `50%` as `Half On Track`, and `<50%` as `Needs Attention`, with matching green, orange, and red side-line colors.
 - Completed partial fix: Top Priority Action now selects the lowest lagging campaign-level KPI first using KPI status bands, with Benchmark fallback only when no KPI is below target.
 - Completed partial fix: Top Priority Action now formats count KPI values as comma-separated whole numbers without a `count` suffix.
 - Completed: Campaign Health `Data Sources` now reads connected source status from `performanceSummary.sources` instead of the old LinkedIn/Custom Integration hard-coded list.
+- Completed follow-up: Campaign Health `Data Sources` filters out `financial` child inputs from `performanceSummary.sources` so GA4 revenue/spend imports can feed totals without appearing as separate main Connected Platforms.
 - Completed: KPI and Benchmark scoring behavior was preserved while wiring source status to the aggregate contract.
 - Completed partial fix: Added a regression guard in `server/campaign-performance-overview-regression.test.ts`.
 

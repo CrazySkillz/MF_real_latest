@@ -35,4 +35,14 @@ describe("campaign Benchmark UI regression guard", () => {
     expect(campaignDetail).toContain("const current = getBenchmarkCurrent(benchmark);");
     expect(campaignDetail).toContain("const current = getBenchmarkCurrent(b).value;");
   });
+
+  it("uses ratio as the campaign Benchmark ROAS unit to match platform Benchmarks", () => {
+    const campaignDetail = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"),
+      "utf-8"
+    );
+
+    expect(campaignDetail).toContain("{ name: 'ROAS', metric: 'roas', unit: 'ratio'");
+    expect(campaignDetail).toContain("return { value: roas, unit: 'ratio' };");
+  });
 });

@@ -41,6 +41,7 @@ When connected-platform values change, campaign-level KPI and Benchmark current 
 - [x] Regression coverage proves changed connected-platform totals change campaign-level KPI and Benchmark current-value calculations.
 - [x] Campaign-level KPI/Benchmark CRUD routes are separated from platform-level KPI/Benchmark routes.
 - [x] Campaign-level KPI/Benchmark modals follow the connected-platform current-value pattern in create/edit flows.
+- [x] Campaign-level Benchmark ROAS modal unit uses `ratio`, matching platform-level Benchmark unit conventions while still displaying ratio values with an `x` suffix.
 
 ## Alert Correctness Root Cause
 

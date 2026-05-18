@@ -28,6 +28,7 @@ import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign } from "./auto-refresh-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
+import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 
 // Helper functions for column type detection
 function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency' | 'percentage' | 'boolean' | 'unknown' {
@@ -10011,6 +10012,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             { type: "shopify", connected: true, revenueClassification: "offsite_not_in_ga4", lastTotalRevenue: 6400, offsite: true },
             { type: "hubspot", connected: true, revenueClassification: "offsite_not_in_ga4", lastTotalRevenue: 3200, offsite: true },
           ],
+          performanceSummary: buildPerformanceSummaryAggregate({
+            campaignId,
+            dateRange,
+            ga4: { connected: true, revenue: 11800, conversions: 107, sessions: 3200, users: 2100 },
+            webAnalytics: { connected: true, provider: "ga4", revenue: 11800, conversions: 107, sessions: 3200, users: 2100 },
+            spend: { persistedSpend: 9150, unifiedSpend: 9150, spendSource: "demo" },
+            platforms: {
+              linkedin: { connected: true, spend: 4250, clicks: 890, impressions: 12500, conversions: 45, leads: 18, attributedRevenue: 8200 },
+              meta: { connected: true, spend: 3100, clicks: 1450, impressions: 28000, conversions: 62, attributedRevenue: 7440 },
+              customIntegration: { connected: true, spend: 1800, clicks: 420, impressions: 8500, conversions: 28, revenue: 4500 },
+            },
+            revenue: { onsiteRevenue: 11800, offsiteRevenue: 9600, totalRevenue: 21400 },
+            revenueSources: [
+              { type: "shopify", connected: true, revenueClassification: "offsite_not_in_ga4", lastTotalRevenue: 6400, offsite: true },
+              { type: "hubspot", connected: true, revenueClassification: "offsite_not_in_ga4", lastTotalRevenue: 3200, offsite: true },
+            ],
+          }),
         });
       }
 
@@ -10330,6 +10348,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const onsiteRevenue = parseNum(webAnalytics.revenue);
       const totalRevenueUnified = parseFloat((onsiteRevenue + offsiteRevenueTotal).toFixed(2));
+      const performanceSummary = buildPerformanceSummaryAggregate({
+        campaignId,
+        dateRange,
+        ga4: ga4Totals,
+        webAnalytics,
+        spend: {
+          persistedSpend,
+          unifiedSpend,
+          spendSource,
+          startDate,
+          endDate,
+          ...(spendTotals || {}),
+        },
+        platforms: {
+          linkedin: linkedIn,
+          meta,
+          customIntegration: custom,
+        },
+        revenue: {
+          onsiteRevenue,
+          offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
+          totalRevenue: totalRevenueUnified,
+        },
+        revenueSources,
+      });
 
       res.json({
         success: true,
@@ -10356,6 +10399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalRevenue: totalRevenueUnified,
         },
         revenueSources,
+        performanceSummary,
       });
     } catch (error: any) {
       console.error("[Outcome Totals] Error:", error);

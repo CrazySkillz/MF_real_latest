@@ -2750,7 +2750,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
       const spend = sumSelected('spend', cfg.inputs?.spend || []);
       const roas = spend > 0 ? revenue / spend : 0;
-      return { value: roas, unit: 'x' };
+      return { value: roas, unit: 'ratio' };
     }
     if (metric === 'roi') {
       const revenue = sumSelected('revenue', cfg.inputs?.revenue || []);
@@ -2961,7 +2961,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
   const CAMPAIGN_BENCHMARK_TEMPLATES: CampaignBenchmarkTemplate[] = useMemo(
     () => [
       { name: 'Revenue', metric: 'revenue', unit: '$', description: 'Total revenue for the selected period', category: 'Revenue', industryMetric: 'revenue', requires: ['revenue'] },
-      { name: 'ROAS', metric: 'roas', unit: 'x', description: 'Revenue ÷ Spend', category: 'Performance', industryMetric: 'roas', requires: ['revenue', 'spend'] },
+      { name: 'ROAS', metric: 'roas', unit: 'ratio', description: 'Revenue ÷ Spend', category: 'Performance', industryMetric: 'roas', requires: ['revenue', 'spend'] },
       { name: 'ROI', metric: 'roi', unit: '%', description: '(Revenue − Spend) ÷ Spend × 100', category: 'Performance', industryMetric: 'roi', requires: ['revenue', 'spend'] },
       { name: 'Spend', metric: 'spend', unit: '$', description: 'Total marketing spend for the selected period', category: 'Cost', industryMetric: 'spend', requires: ['spend'] },
       { name: 'Conversions', metric: 'conversions', unit: 'count', description: 'Total conversions for the selected period', category: 'Performance', industryMetric: 'conversions', requires: ['conversions'] },
@@ -3047,7 +3047,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       }
       case 'roas': {
         const roas = unifiedSpend > 0 ? totalRevenue / unifiedSpend : 0;
-        return { value: roas, unit: 'x' };
+        return { value: roas, unit: 'ratio' };
       }
       case 'roi': {
         const roi = unifiedSpend > 0 ? ((totalRevenue - unifiedSpend) / unifiedSpend) * 100 : 0;

@@ -284,8 +284,8 @@ export default function CampaignPerformanceSummary() {
       const target = parseNum(kpi.targetValue);
       return current < target;
     }).sort((a, b) => {
-      const gapA = parseNum(b.targetValue) - parseNum(b.currentValue);
-      const gapB = parseNum(a.targetValue) - parseNum(a.currentValue);
+      const gapA = parseNum(a.targetValue) - parseNum(a.currentValue);
+      const gapB = parseNum(b.targetValue) - parseNum(b.currentValue);
       return gapB - gapA;
     });
 

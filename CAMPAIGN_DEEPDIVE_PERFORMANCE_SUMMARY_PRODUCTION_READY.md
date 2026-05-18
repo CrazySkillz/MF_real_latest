@@ -390,6 +390,10 @@ Scope:
 - Completed: Overview unavailable metrics render as unavailable instead of connected-source zero.
 - Completed: Changed the second Overview card from mixed `Total Engagements` to aggregate-contract-backed `Total Sessions`.
 - Completed: Added `server/campaign-performance-overview-regression.test.ts`.
+- Completed follow-up: Confirmed Campaign Health and Top Priority use campaign-level KPI/Benchmark records, not platform-level routes.
+- Completed follow-up: Fixed Top Priority sorting so the largest under-target campaign KPI gap is selected first.
+- Completed follow-up: Kept Total Impressions unavailable for GA4-only campaigns because GA4 engagement rate is not interchangeable with impressions.
+- Completed follow-up: `outcome-totals` now uses system-generated GA4 test data for mock/test GA4 properties and passes spend-to-date into `performanceSummary` while preserving the existing top-level `spend` response shape.
 
 Validation:
 

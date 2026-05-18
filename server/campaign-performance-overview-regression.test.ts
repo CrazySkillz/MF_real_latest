@@ -21,4 +21,12 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(overview).toContain("overviewSourceLabel(overviewConversions");
     expect(overview).not.toContain("LinkedIn: {linkedinConversions.toLocaleString()} | CI: {ciConversions.toLocaleString()}");
   });
+
+  it("selects the campaign KPI with the largest under-target gap as the top priority", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+
+    expect(page).toContain("const gapA = parseNum(a.targetValue) - parseNum(a.currentValue);");
+    expect(page).toContain("const gapB = parseNum(b.targetValue) - parseNum(b.currentValue);");
+    expect(page).toContain("return gapB - gapA;");
+  });
 });

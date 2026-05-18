@@ -16,4 +16,18 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("revenue: totals.revenue + parseNum(row?.revenue)");
     expect(route).toContain('if (usedPersistedGA4) ga4Totals.fallbackSource = "ga4_daily_metrics";');
   });
+
+  it("keeps outcome-totals aligned with system-generated GA4 test data and spend-to-date", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
+    const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"', routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(route).toContain("isYesopMockProperty(primaryPropertyId)");
+    expect(route).toContain("simulateGA4({");
+    expect(route).toContain("isSimulated: true");
+    expect(route).toContain("const spendBreakdown = await storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate);");
+    expect(route).toContain("performanceSummarySpendTotals");
+    expect(route).toContain("unifiedSpend: performanceSummarySpend > 0 ? performanceSummarySpend : unifiedSpend");
+  });
 });

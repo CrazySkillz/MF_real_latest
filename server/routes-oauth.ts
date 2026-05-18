@@ -10072,13 +10072,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (activeGA4) {
           const ga4DateRange = toGa4DateRange(dateRange);
           const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
-          const result = await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, undefined, 2000, campaignFilter);
+          const primaryGA4 = (ga4Connections || []).find((c: any) => c?.isPrimary) || (ga4Connections || [])[0];
+          const primaryPropertyId = String(primaryGA4?.propertyId || "");
+          const result = isYesopMockProperty(primaryPropertyId)
+            ? simulateGA4({
+                campaignId,
+                propertyId: primaryPropertyId,
+                dateRange,
+                noRevenue: isNoRevenueFilter((campaign as any)?.ga4CampaignFilter),
+                ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter,
+              })
+            : await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, primaryPropertyId || undefined, 2000, campaignFilter);
           ga4Totals = {
             connected: true,
             revenue: parseNum(result?.totals?.revenue),
             conversions: parseNum(result?.totals?.conversions),
             sessions: parseNum(result?.totals?.sessions),
             users: parseNum(result?.totals?.users),
+            ...(isYesopMockProperty(primaryPropertyId) ? { isSimulated: true } : {}),
           };
         }
       } catch (e: any) {
@@ -10088,7 +10099,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Persisted spend totals (manual/CSV/Sheets imports)
       const { startDate, endDate } = getDateRangeBounds(dateRange);
-      if (activeGA4 && parseNum(ga4Totals.revenue) <= 0) {
+      if (activeGA4 && (
+        parseNum(ga4Totals.revenue) <= 0
+        || parseNum(ga4Totals.users) <= 0
+        || parseNum(ga4Totals.sessions) <= 0
+        || parseNum(ga4Totals.conversions) <= 0
+      )) {
         try {
           const primaryGA4 = (ga4Connections || []).find((c: any) => c?.isPrimary) || (ga4Connections || [])[0];
           if (primaryGA4?.propertyId) {
@@ -10124,6 +10140,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const spendTotals = await storage.getSpendTotalForRange(campaignId, startDate, endDate);
       const persistedSpend = parseNum((spendTotals as any)?.totalSpend);
+      let performanceSummarySpendTotals = spendTotals;
+      let performanceSummarySpend = persistedSpend;
+      try {
+        const spendStartDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
+        const spendEndDate = new Date().toISOString().slice(0, 10);
+        const spendBreakdown = await storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate);
+        const spendToDate = spendBreakdown.reduce((sum: number, source: any) => sum + parseNum(source?.spend), 0);
+        if (spendToDate > persistedSpend) {
+          performanceSummarySpend = Number(spendToDate.toFixed(2));
+          performanceSummarySpendTotals = {
+            totalSpend: performanceSummarySpend,
+            currency: spendBreakdown.find((source: any) => source?.currency)?.currency || (spendTotals as any)?.currency,
+            sourceIds: spendBreakdown.map((source: any) => String(source?.sourceId)).filter(Boolean),
+          };
+        }
+      } catch {
+        // Keep the date-range spend total if spend-to-date cannot be resolved.
+      }
 
       // LinkedIn aggregated platform inputs (from latest import session)
       let linkedIn: any = { connected: false };
@@ -10376,12 +10410,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ga4: ga4Totals,
         webAnalytics,
         spend: {
-          persistedSpend,
-          unifiedSpend,
+          persistedSpend: performanceSummarySpend,
+          unifiedSpend: performanceSummarySpend > 0 ? performanceSummarySpend : unifiedSpend,
           spendSource,
           startDate,
           endDate,
-          ...(spendTotals || {}),
+          ...(performanceSummarySpendTotals || {}),
         },
         platforms: {
           linkedin: linkedIn,

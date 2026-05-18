@@ -238,7 +238,7 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
     version: "performance_summary_aggregate_v1",
     sources: sourceBreakdown,
     totals: {
-      impressions: metric(totalImpressions, impressionsSources, ["No connected paid-media source provides impressions"]),
+      impressions: metric(totalImpressions, impressionsSources, ["No connected paid-media source provides impressions; GA4 engagement rate is not an impressions metric"]),
       clicks: metric(totalClicks, clicksSources, ["No connected paid-media source provides clicks"]),
       conversions: metric(totalConversions, conversionSources, ["No connected source provides conversions"]),
       leads: metric(totalLeads, leadsSources, ["No connected source provides leads"]),

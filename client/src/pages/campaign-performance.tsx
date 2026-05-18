@@ -302,13 +302,10 @@ export default function CampaignPerformanceSummary() {
       return { type: 'benchmark', item: benchmark, severity: 90 - progressPct, progressPct };
     }).filter((entry: any) => entry.progressPct < 90);
 
-    const priorityCandidate = [...laggingKPIs, ...laggingBenchmarks].sort((a: any, b: any) => {
-      return b.severity - a.severity;
-    });
-    const topCandidate: any = priorityCandidate[0];
+    const topLaggingKPI = laggingKPIs.sort((a: any, b: any) => b.severity - a.severity)[0];
 
-    if (topCandidate?.type === 'kpi') {
-      const topKPI = topCandidate.item;
+    if (topLaggingKPI) {
+      const topKPI = topLaggingKPI.item;
       const formatValue = (value: any, unit: string) => {
         if (unit === '$') return `$${parseNum(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         if (unit === '%') return `${formatPct(parseNum(value))}`;
@@ -325,7 +322,8 @@ export default function CampaignPerformanceSummary() {
       };
     }
 
-    if (topCandidate?.type === 'benchmark') {
+    const topCandidate: any = laggingBenchmarks.sort((a: any, b: any) => b.severity - a.severity)[0];
+    if (topCandidate) {
       const topBenchmark = topCandidate.item;
       return {
         type: 'benchmark',
@@ -417,7 +415,7 @@ export default function CampaignPerformanceSummary() {
         .filter((source: any) => source?.category !== "financial")
         .map((source: any) => source?.label)
         .filter(Boolean);
-      return sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}; ${reason}` : reason;
+      return sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")} - Impressions not available` : reason;
     }
     const labels = (metric.sources || []).map((sourceId: string) => sourceLabelForId(sourceId));
     return labels.length > 0 ? `Sources: ${labels.join(", ")}` : "Sources unavailable";

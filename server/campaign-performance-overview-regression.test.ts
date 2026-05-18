@@ -29,18 +29,20 @@ describe("campaign Performance Summary Overview regression guard", () => {
 
     expect(page).toContain('filter((source: any) => source?.category !== "financial")');
     expect(page).toContain('const reason = metric?.unavailableReasons?.[0] || "No connected source provides this metric";');
-    expect(page).toContain('return sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}; ${reason}` : reason;');
+    expect(page).toContain('return sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")} - Impressions not available` : reason;');
   });
 
-  it("selects top priority from lagging campaign KPI and Benchmark status bands", () => {
+  it("selects top priority from lagging campaign KPIs before Benchmark fallback", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
     expect(page).toContain("const laggingKPIs = effectiveKpis.map((kpi: any) => {");
     expect(page).toContain("}).filter((entry: any) => entry.deltaPct < -5);");
     expect(page).toContain("const laggingBenchmarks = effectiveBenchmarks.map((benchmark: any) => {");
     expect(page).toContain("}).filter((entry: any) => entry.progressPct < 90);");
-    expect(page).toContain("const priorityCandidate = [...laggingKPIs, ...laggingBenchmarks].sort((a: any, b: any) => {");
-    expect(page).toContain("return b.severity - a.severity;");
+    expect(page).toContain("const topLaggingKPI = laggingKPIs.sort((a: any, b: any) => b.severity - a.severity)[0];");
+    expect(page).toContain("if (topLaggingKPI) {");
+    expect(page).toContain("const topCandidate: any = laggingBenchmarks.sort((a: any, b: any) => b.severity - a.severity)[0];");
+    expect(page).not.toContain("const priorityCandidate = [...laggingKPIs, ...laggingBenchmarks]");
     expect(page).not.toContain("const gapA = parseNum(a.targetValue) - parseNum(a.currentValue);");
   });
 

@@ -397,6 +397,7 @@ Scope:
 - Completed follow-up: Overview now requests the 90-day `outcome-totals` window to match the GA4 detail Summary window.
 - Completed follow-up: Unavailable Overview metrics now show connected non-financial source labels, so GA4-only Total Impressions can show `Sources: Google Analytics` while the value remains unavailable.
 - Completed follow-up: Unavailable Overview metrics now also show the aggregate unavailable reason, so GA4-only Total Impressions explains that GA4 engagement rate is not an impressions metric.
+- Completed follow-up: Shortened GA4-only Total Impressions card copy to `Sources: Google Analytics - Impressions not available` while preserving the aggregate unavailable reason in the API.
 - Completed follow-up: For mock/test GA4 properties, `outcome-totals` now adds stored GA4 daily rows to the simulated GA4 baseline so Performance Summary matches the GA4 detail Summary totals for sessions, conversions, users, and revenue.
 
 Validation:
@@ -427,7 +428,7 @@ Scope:
 - Completed partial fix: Campaign Health score now counts campaign KPIs that are Above Target or On Track using the campaign KPI ±5% status band.
 - Completed partial fix: Campaign Health score now counts campaign Benchmarks that are On Track using the campaign Benchmark 90% progress threshold.
 - Completed partial fix: Campaign Health copy now says metrics are `on track` instead of `above target`, matching the KPI and Benchmark summary cards.
-- Completed partial fix: Top Priority Action now selects from lagging campaign-level KPI and Benchmark status bands instead of raw numeric KPI gaps.
+- Completed partial fix: Top Priority Action now selects the lowest lagging campaign-level KPI first using KPI status bands, with Benchmark fallback only when no KPI is below target.
 - Completed partial fix: Added a regression guard in `server/campaign-performance-overview-regression.test.ts`.
 
 Why this is separate:

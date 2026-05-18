@@ -1,4 +1,5 @@
 import { storage } from './storage';
+import { buildPerformanceSummaryAggregate } from './utils/performance-summary-aggregate';
 
 interface SnapshotMetrics {
   totalImpressions: number;
@@ -15,12 +16,33 @@ const parseNum = (val: any): number => {
   return isNaN(num) || !isFinite(num) ? 0 : num;
 };
 
+const hasSnapshotMetricValue = (metrics: SnapshotMetrics & { detailedMetrics: any }) => {
+  const totals = metrics.detailedMetrics?.performanceSummary?.totals || {};
+  return metrics.totalImpressions > 0
+    || metrics.totalClicks > 0
+    || metrics.totalConversions > 0
+    || metrics.totalLeads > 0
+    || metrics.totalSpend > 0
+    || parseNum(totals.sessions?.value) > 0
+    || parseNum(totals.users?.value) > 0
+    || parseNum(totals.revenue?.value) > 0;
+};
+
 export async function aggregateCampaignMetrics(campaignId: string): Promise<SnapshotMetrics & { detailedMetrics: any }> {
+  const endDate = new Date().toISOString().slice(0, 10);
+  const startDateObj = new Date();
+  startDateObj.setDate(startDateObj.getDate() - 90);
+  const startDate = startDateObj.toISOString().slice(0, 10);
+
   // Fetch LinkedIn metrics
   let linkedinMetrics: any = {};
+  let linkedinConnected = false;
+  let linkedinLastImportedAt: any = null;
   try {
     const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
     if (latestSession) {
+      linkedinConnected = true;
+      linkedinLastImportedAt = (latestSession as any).uploadedAt || (latestSession as any).createdAt || null;
       const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
       
       metrics.forEach((m: any) => {
@@ -35,9 +57,11 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
   
   // Fetch Custom Integration metrics
   let customIntegrationData: any = {};
+  let customIntegrationConnected = false;
   try {
     const customIntegration = await storage.getLatestCustomIntegrationMetrics(campaignId);
     if (customIntegration) {
+      customIntegrationConnected = true;
       customIntegrationData = customIntegration;
     }
   } catch (err) {
@@ -46,10 +70,12 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
 
   // Fetch Meta metrics (sum daily metrics across all dates)
   let metaData = { impressions: 0, clicks: 0, spend: 0, conversions: 0 };
+  let metaConnected = false;
   try {
     const metaConnection = await storage.getMetaConnection(campaignId);
     if (metaConnection) {
-      const dailyMetrics = await storage.getMetaDailyMetrics(campaignId, '2000-01-01', '2099-12-31');
+      metaConnected = true;
+      const dailyMetrics = await storage.getMetaDailyMetrics(campaignId, startDate, endDate);
       metaData = {
         impressions: dailyMetrics.reduce((s: number, m: any) => s + (m.impressions || 0), 0),
         clicks: dailyMetrics.reduce((s: number, m: any) => s + (m.clicks || 0), 0),
@@ -68,7 +94,7 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
     const ga4Conn = await storage.getPrimaryGA4Connection(campaignId);
     if (ga4Conn) {
       ga4Connected = true;
-      const daily = await storage.getGA4DailyMetrics(campaignId, String(ga4Conn.propertyId), '2000-01-01', '2099-12-31');
+      const daily = await storage.getGA4DailyMetrics(campaignId, String(ga4Conn.propertyId), startDate, endDate);
       ga4Data = {
         sessions: daily.reduce((s: number, m: any) => s + (m.sessions || 0), 0),
         users: daily.reduce((s: number, m: any) => s + (m.users || 0), 0),
@@ -81,8 +107,7 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
     console.log(`No GA4 metrics found for campaign ${campaignId}`);
   }
 
-  // Aggregate metrics from ALL connected sources
-  // MUST match Performance Summary (campaign-performance.tsx) calculation exactly
+  // Aggregate legacy engagement only for the existing snapshot schema column.
   const linkedinClicks = parseNum(linkedinMetrics.clicks);
   const ciClicks = parseNum(customIntegrationData.clicks);
   const metaClicks = metaData.clicks;
@@ -93,18 +118,78 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
 
   // Double-counting prevention: GA4 and CI both track website analytics.
   // When GA4 is connected, prefer GA4 for web metrics; otherwise use CI.
-  const webPageviews = ga4Connected ? ga4Data.pageviews : parseNum(customIntegrationData.pageviews);
   const webSessions = ga4Connected ? ga4Data.sessions : ciSessions;
 
   // Advertising metrics: LinkedIn + CI(ads) + Meta — no overlap
-  const advertisingImpressions = parseNum(linkedinMetrics.impressions) + parseNum(customIntegrationData.impressions) + metaData.impressions;
-  const totalImpressions = advertisingImpressions + webPageviews;
   const advertisingEngagements = linkedinClicks + linkedinEngagement + ciClicks + ciEngagements + metaClicks;
   const totalEngagements = advertisingEngagements + webSessions;
-  const totalClicks = linkedinClicks + ciClicks + metaClicks;
-  const totalConversions = parseNum(linkedinMetrics.conversions) + parseNum(customIntegrationData.conversions) + metaData.conversions;
-  const totalLeads = parseNum(linkedinMetrics.leads) + parseNum(customIntegrationData.leads);
   const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend) + metaData.spend;
+
+  let persistedSpend = 0;
+  let spendSourceIds: string[] = [];
+  try {
+    const spendTotals = await storage.getSpendTotalForRange(campaignId, startDate, endDate);
+    persistedSpend = parseNum((spendTotals as any)?.totalSpend);
+    spendSourceIds = Array.isArray((spendTotals as any)?.sourceIds) ? (spendTotals as any).sourceIds : [];
+  } catch {
+    // Keep platform spend fallback if persisted spend cannot be resolved.
+  }
+
+  const revenueSources: any[] = [];
+  let offsiteRevenueTotal = 0;
+  try {
+    const sources = await storage.getRevenueSources(campaignId, "ga4");
+    const breakdown = await storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, "ga4");
+    for (const source of sources as any[]) {
+      const match = (breakdown as any[]).find((row: any) => String(row?.sourceId) === String(source?.id));
+      const lastTotalRevenue = parseNum(match?.revenue);
+      revenueSources.push({
+        type: String(source?.sourceType || "source"),
+        connected: true,
+        lastTotalRevenue,
+        platformContext: (source as any)?.platformContext || "ga4",
+      });
+      offsiteRevenueTotal += lastTotalRevenue;
+    }
+  } catch {
+    // Keep GA4 onsite revenue only if external revenue cannot be resolved.
+  }
+
+  const performanceSummary = buildPerformanceSummaryAggregate({
+    campaignId,
+    dateRange: "90days",
+    ga4: { connected: ga4Connected, ...ga4Data },
+    webAnalytics: {
+      connected: ga4Connected || customIntegrationConnected,
+      provider: ga4Connected ? "ga4" : customIntegrationConnected ? "custom_integration" : null,
+      revenue: ga4Connected ? ga4Data.revenue : parseNum(customIntegrationData.revenue),
+      conversions: ga4Connected ? ga4Data.conversions : parseNum(customIntegrationData.conversions),
+      sessions: ga4Connected ? ga4Data.sessions : parseNum(customIntegrationData.sessions),
+      users: ga4Connected ? ga4Data.users : parseNum(customIntegrationData.users),
+    },
+    spend: {
+      persistedSpend,
+      unifiedSpend: persistedSpend > 0 ? persistedSpend : totalSpend,
+      spendSource: spendSourceIds.length > 0 ? "persisted_spend_sources" : "platform_spend_fallback",
+      sourceIds: spendSourceIds,
+    },
+    platforms: {
+      linkedin: { connected: linkedinConnected, ...linkedinMetrics, lastImportedAt: linkedinLastImportedAt },
+      meta: { connected: metaConnected, ...metaData },
+      customIntegration: { connected: customIntegrationConnected, ...customIntegrationData },
+    },
+    revenue: {
+      onsiteRevenue: ga4Data.revenue,
+      offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
+      totalRevenue: parseFloat((ga4Data.revenue + offsiteRevenueTotal).toFixed(2)),
+    },
+    revenueSources,
+  });
+
+  const aggregateValue = (metricName: string) => {
+    const metric = (performanceSummary as any)?.totals?.[metricName];
+    return metric?.available && metric?.value !== null ? parseNum(metric.value) : 0;
+  };
 
   // Store detailed metrics from all sources for historical tracking
   const detailedMetrics = {
@@ -141,15 +226,16 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
       revenue: ga4Data.revenue,
     },
     webAnalyticsProvider: ga4Connected ? 'ga4' : 'custom_integration',
+    performanceSummary,
   };
   
   return {
-    totalImpressions: Math.round(totalImpressions),
+    totalImpressions: Math.round(aggregateValue("impressions")),
     totalEngagements: Math.round(totalEngagements),
-    totalClicks: Math.round(totalClicks),
-    totalConversions: Math.round(totalConversions),
-    totalLeads: Math.round(totalLeads),
-    totalSpend: parseFloat(totalSpend.toFixed(2)),
+    totalClicks: Math.round(aggregateValue("clicks")),
+    totalConversions: Math.round(aggregateValue("conversions")),
+    totalLeads: Math.round(aggregateValue("leads")),
+    totalSpend: parseFloat(aggregateValue("spend").toFixed(2)),
     detailedMetrics
   };
 }
@@ -160,7 +246,7 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
 export async function recordCampaignMetrics(campaignId: string): Promise<void> {
   try {
     const metrics = await aggregateCampaignMetrics(campaignId);
-    if (metrics.totalImpressions > 0 || metrics.totalClicks > 0 || metrics.totalSpend > 0) {
+    if (hasSnapshotMetricValue(metrics)) {
       await storage.createMetricSnapshot({
         campaignId,
         totalImpressions: metrics.totalImpressions,
@@ -191,8 +277,8 @@ async function createSnapshotsForAllCampaigns() {
       try {
         const metrics = await aggregateCampaignMetrics(campaign.id);
         
-        // Only create snapshot if there's actual data
-        if (metrics.totalImpressions > 0 || metrics.totalClicks > 0 || metrics.totalSpend > 0) {
+        // Only create snapshot if there's actual aggregate data
+        if (hasSnapshotMetricValue(metrics)) {
           const snapshot = await storage.createMetricSnapshot({
             campaignId: campaign.id,
             totalImpressions: metrics.totalImpressions,

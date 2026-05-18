@@ -23905,62 +23905,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Metric Snapshot routes
-  app.post("/api/campaigns/:id/snapshots", async (req, res) => {
+  app.post("/api/campaigns/:id/snapshots", requireCampaignAccessParamId, async (req, res) => {
     console.log('=== CREATE SNAPSHOT ROUTE HIT ===');
     console.log('Campaign ID:', req.params.id);
     try {
       const { id } = req.params;
+      const { aggregateCampaignMetrics } = await import("./scheduler.js");
+      const metrics = await aggregateCampaignMetrics(id);
 
-      const parseNum = (val: any): number => {
-        if (val === null || val === undefined || val === '') return 0;
-        const num = typeof val === 'string' ? parseFloat(val) : Number(val);
-        return isNaN(num) || !isFinite(num) ? 0 : num;
-      };
-
-      // Fetch LinkedIn metrics
-      let linkedinMetrics: any = {};
-      try {
-        const latestSession = await storage.getLatestLinkedInImportSession(id);
-        if (latestSession) {
-          const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
-
-          metrics.forEach((m: any) => {
-            const value = parseFloat(m.metricValue || '0');
-            const key = m.metricKey.toLowerCase();
-            linkedinMetrics[key] = (linkedinMetrics[key] || 0) + value;
-          });
-        }
-      } catch (err) {
-        console.log('No LinkedIn metrics found');
-      }
-
-      // Fetch Custom Integration metrics
-      let customIntegrationData: any = {};
-      try {
-        const customIntegration = await storage.getLatestCustomIntegrationMetrics(id);
-        if (customIntegration) {
-          customIntegrationData = customIntegration;
-        }
-      } catch (err) {
-        console.log('No custom integration metrics found');
-      }
-
-      // Aggregate metrics from all sources
-      const totalImpressions = parseNum(linkedinMetrics.impressions) + parseNum(customIntegrationData.impressions);
-      const totalEngagements = parseNum(linkedinMetrics.engagements) + parseNum(customIntegrationData.engagements);
-      const totalClicks = parseNum(linkedinMetrics.clicks) + parseNum(customIntegrationData.clicks);
-      const totalConversions = parseNum(linkedinMetrics.conversions) + parseNum(customIntegrationData.conversions);
-      const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend);
-
-      devLog('Snapshot metrics:', { totalImpressions, totalEngagements, totalClicks, totalConversions, totalSpend });
+      devLog('Snapshot metrics:', metrics);
 
       const snapshot = await storage.createMetricSnapshot({
         campaignId: id,
-        totalImpressions: Math.round(totalImpressions),
-        totalEngagements: Math.round(totalEngagements),
-        totalClicks: Math.round(totalClicks),
-        totalConversions: Math.round(totalConversions),
-        totalSpend: totalSpend.toFixed(2)
+        totalImpressions: metrics.totalImpressions,
+        totalEngagements: metrics.totalEngagements,
+        totalClicks: metrics.totalClicks,
+        totalConversions: metrics.totalConversions,
+        totalLeads: metrics.totalLeads,
+        totalSpend: metrics.totalSpend.toFixed(2),
+        metrics: metrics.detailedMetrics,
+        snapshotType: 'manual'
       });
 
       devLog(`Snapshot created for campaign ${id}:`, snapshot);

@@ -420,7 +420,7 @@ Why this is second:
 
 ### Commit 3: Campaign Health Tab
 
-Status: Implemented locally; not yet pushed.
+Status: Completed and pushed through commit `4f132b20`.
 
 Goal:
 
@@ -458,7 +458,7 @@ Why this is separate:
 
 ### Commit 4: Scheduler And What's Changed
 
-Status: Not started.
+Status: Completed locally; not yet pushed.
 
 Goal:
 
@@ -472,6 +472,21 @@ Scope:
 - Align current-vs-history comparison with the same source model.
 - Prevent comparisons between incompatible aggregate versions where source inclusion changed.
 - Add scheduler snapshot regression coverage.
+- Completed: `server/scheduler.ts` now builds snapshot totals from `buildPerformanceSummaryAggregate` and stores the aggregate contract under `metrics.performanceSummary`.
+- Completed: Source-refresh callers of `recordCampaignMetrics` were traced in `server/routes-oauth.ts`; because those callers all enter `recordCampaignMetrics`, they now use the aggregate-backed snapshot path.
+- Completed: Scheduler snapshot creation now treats GA4-only aggregate values such as sessions, users, revenue, and conversions as valid snapshot data instead of requiring impressions, clicks, or spend.
+- Completed: The retained manual `POST /api/campaigns/:id/snapshots` route now reuses `aggregateCampaignMetrics` instead of maintaining a separate LinkedIn/Custom Integration-only aggregation path.
+- Completed: No current frontend caller for the retained manual snapshot creation route was found; because the route mutates campaign snapshot data, it now uses the existing campaign access guard before creating a snapshot.
+- Completed: `What's Changed` now compares current values only against historical snapshots with the same `performance_summary_aggregate_v1` version and reads historical values from `metrics.performanceSummary.totals`.
+- Completed: `What's Changed` no longer compares aggregate current values against legacy snapshot columns when the historical snapshot lacks compatible aggregate metadata.
+- Completed: The old `Engagements` comparison was replaced with `Sessions` because the aggregate contract does not define an `engagements` total.
+- Completed: Added `server/performance-summary-scheduler-regression.test.ts`.
+
+Validation:
+
+- Passed: `npm test -- server/performance-summary-scheduler-regression.test.ts server/campaign-performance-overview-regression.test.ts`
+- Passed: `npm run check`
+- Passed: `npm run build`
 
 Why this is separate:
 

@@ -391,6 +391,19 @@ export default function CampaignPerformanceSummary() {
     if (!baseline) {
       return { changes: [], baselineTimestamp: null };
     }
+    const baselineAggregate = baseline?.metrics?.performanceSummary;
+    if (performanceSummary?.version && baselineAggregate?.version !== performanceSummary.version) {
+      return { changes: [], baselineTimestamp: baseline.recordedAt };
+    }
+
+    const currentMetricValue = (metricName: string, fallbackValue: number) => {
+      const metric = performanceSummary?.totals?.[metricName];
+      return metric?.available && metric?.value !== null ? parseNum(metric.value) : fallbackValue;
+    };
+    const baselineMetricValue = (metricName: string, fallbackValue: number) => {
+      const metric = baselineAggregate?.totals?.[metricName];
+      return metric?.available && metric?.value !== null ? parseNum(metric.value) : fallbackValue;
+    };
 
     const changes: { metric: string; current: number; previous: number; change: number; pctChange: number; direction: string; isCurrency?: boolean }[] = [];
 
@@ -410,13 +423,13 @@ export default function CampaignPerformanceSummary() {
       }
     };
 
-    // Compare live aggregated metrics against the historical snapshot
-    addChange("Impressions", totalImpressions, parseNum(baseline.totalImpressions));
-    addChange("Clicks", totalClicks, parseNum(baseline.totalClicks));
-    addChange("Engagements", totalEngagements, parseNum(baseline.totalEngagements));
-    addChange("Conversions", totalConversions, parseNum(baseline.totalConversions));
-    addChange("Leads", totalLeads, parseNum(baseline.totalLeads));
-    addChange("Spend", totalSpend, parseNum(baseline.totalSpend), true);
+    // Compare aggregate-contract metrics against compatible historical snapshots.
+    addChange("Impressions", currentMetricValue("impressions", totalImpressions), baselineMetricValue("impressions", parseNum(baseline.totalImpressions)));
+    addChange("Clicks", currentMetricValue("clicks", totalClicks), baselineMetricValue("clicks", parseNum(baseline.totalClicks)));
+    addChange("Sessions", currentMetricValue("sessions", webSessions), baselineMetricValue("sessions", 0));
+    addChange("Conversions", currentMetricValue("conversions", totalConversions), baselineMetricValue("conversions", parseNum(baseline.totalConversions)));
+    addChange("Leads", currentMetricValue("leads", totalLeads), baselineMetricValue("leads", parseNum(baseline.totalLeads)));
+    addChange("Spend", currentMetricValue("spend", totalSpend), baselineMetricValue("spend", parseNum(baseline.totalSpend)), true);
 
     return {
       changes,

@@ -50,6 +50,7 @@ describe("campaign Performance Summary Overview regression guard", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
     expect(page).toContain("parseNum(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })");
+    expect(page).toContain("rounded.toLocaleString('en-US', {");
     expect(page).toContain("if (!unit || normalizedUnit === 'count') return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 0 });");
     expect(page).toContain("if (normalizedUnit === 'ratio') return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 2 });");
     expect(page).not.toContain("parseNum(value).toFixed(2)");
@@ -76,6 +77,8 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(page).toContain("style={{ borderColor: benchmarkTrackStatus.color }}");
     expect(page).toContain("KPIs On Track or Above");
     expect(page).toContain("Benchmarks On Track");
+    expect(page).toContain("<CardTitle>Benchmarks</CardTitle>");
+    expect(page).not.toContain("<CardTitle>Industry Benchmarks</CardTitle>");
     expect(page).toContain('label: "Above Target", color: "#22c55e"');
     expect(page).toContain('label: "On Track", color: "#2563eb"');
     expect(page).toContain('label: "Below Target", color: "#ef4444"');

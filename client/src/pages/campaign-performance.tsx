@@ -208,7 +208,13 @@ export default function CampaignPerformanceSummary() {
   const formatMetricValue = (value: any, unit: string) => {
     const normalizedUnit = String(unit || '').toLowerCase();
     if (unit === '$') return `$${parseNum(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (unit === '%') return `${formatPct(parseNum(value))}`;
+    if (unit === '%') {
+      const rounded = Math.round(parseNum(value) * 10) / 10;
+      return `${rounded.toLocaleString('en-US', {
+        minimumFractionDigits: rounded === Math.floor(rounded) ? 0 : 1,
+        maximumFractionDigits: 1,
+      })}%`;
+    }
     if (!unit || normalizedUnit === 'count') return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 0 });
     if (normalizedUnit === 'ratio') return parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 2 });
     return `${parseNum(value).toLocaleString('en-US', { maximumFractionDigits: 2 })}${unit}`;
@@ -803,7 +809,7 @@ export default function CampaignPerformanceSummary() {
               {effectiveBenchmarks.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Industry Benchmarks</CardTitle>
+                    <CardTitle>Benchmarks</CardTitle>
                     <CardDescription>Performance vs industry averages</CardDescription>
                   </CardHeader>
                   <CardContent>

@@ -495,7 +495,7 @@ Why this is separate:
 
 ### Commit 5: Insights Tab
 
-Status: Completed locally; not yet pushed.
+Status: Completed and pushed through commit `bf40da0a`.
 
 Goal:
 
@@ -525,6 +525,38 @@ Validation:
 Why this is fifth:
 
 - Insights contain the most conditional business logic and should be changed only after the aggregate, Overview, Health, and history paths are stable.
+
+### Commit 5.1: Refine Performance Summary Insights Prioritization
+
+Status: Completed locally; not yet pushed.
+
+Goal:
+
+- Make the already source-correct Insights tab sharper without turning it into the Executive Summary narrative engine.
+
+Scope:
+
+- Keep Insights driven by `performanceSummary.sources`, `includedMetrics`, source categories, and aggregate metric availability.
+- Add a small priority/category model so higher-risk or higher-opportunity insights render before context-only insights.
+- Deduplicate by insight category so the tab does not show multiple cards saying the same thing.
+- Cap visible insight cards to a small executive-friendly set.
+- Improve copy so each insight states the source/data used, why it matters, and the bounded action.
+- Keep the tab rule-based and concise; do not add broad narrative synthesis that belongs in Executive Summary.
+- Add regression coverage proving Insights are prioritized, deduplicated, capped, and still avoid paid-media claims when inputs are unavailable.
+- Completed: Insights now carry priority and category metadata internally while preserving the existing rendered card shape.
+- Completed: Insights are deduplicated by category, sorted by priority, and capped to five cards.
+- Completed: Copy now includes clearer bounded actions for paid engagement, conversion efficiency, revenue efficiency, budget allocation, and web outcomes.
+- Completed: Regression coverage now guards priority/category metadata, dedupe, sorting, capping, and bounded action copy.
+
+Validation:
+
+- Passed: `npm test -- server/performance-summary-insights-regression.test.ts server/campaign-performance-overview-regression.test.ts server/performance-summary-scheduler-regression.test.ts`
+- Passed: `npm run check`
+- Passed: `npm run build`
+
+Why this is separate:
+
+- Commit 5 fixed source correctness. Commit 5.1 improves presentation quality while preserving the same aggregate data contract.
 
 ### Commit 6: Docs And Final Validation
 

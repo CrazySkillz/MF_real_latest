@@ -22,6 +22,14 @@ interface Campaign {
   status: string;
 }
 
+type PerformanceInsight = {
+  type: string;
+  priority: number;
+  category: string;
+  title: string;
+  message: string;
+};
+
 export default function CampaignPerformanceSummary() {
   const [, params] = useRoute("/campaigns/:id/performance");
   const campaignId = params?.id;
@@ -354,15 +362,30 @@ export default function CampaignPerformanceSummary() {
     `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatNumberValue = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 0 });
   const buildPerformanceInsights = () => {
-    const insights: { type: string; title: string; message: string }[] = [];
+    const insights: PerformanceInsight[] = [];
+    const pushInsight = (insight: PerformanceInsight) => insights.push(insight);
+    const finalizeInsights = () => {
+      const byCategory = new Map<string, PerformanceInsight>();
+      for (const insight of insights) {
+        const existing = byCategory.get(insight.category);
+        if (!existing || insight.priority < existing.priority) {
+          byCategory.set(insight.category, insight);
+        }
+      }
+      return Array.from(byCategory.values())
+        .sort((a, b) => a.priority - b.priority)
+        .slice(0, 5);
+    };
 
     if (!performanceSummary) {
-      insights.push({
+      pushInsight({
         type: 'info',
+        priority: 5,
+        category: 'summary',
         title: 'Campaign Summary',
         message: `Tracking ${totalImpressions.toLocaleString()} total impressions, ${totalEngagements.toLocaleString()} engagements, and ${totalConversions.toLocaleString()} conversions from $${totalSpend.toLocaleString()} spend across connected platforms.`
       });
-      return insights;
+      return finalizeInsights();
     }
 
     const paidSources = performanceSources
@@ -395,43 +418,53 @@ export default function CampaignPerformanceSummary() {
       const ranked = [...efficiencySources].sort((a: any, b: any) => (a.cpa || 0) - (b.cpa || 0));
       const best = ranked[0];
       const worst = ranked[ranked.length - 1];
-      insights.push({
+      pushInsight({
         type: best.cpa! < worst.cpa! * 0.85 ? 'success' : 'info',
+        priority: best.cpa! < worst.cpa! * 0.85 ? 2 : 4,
+        category: 'paid-efficiency',
         title: best.cpa! < worst.cpa! * 0.85 ? 'Paid Source Efficiency Gap' : 'Paid Sources Performing Similarly',
-        message: `${best.label} has the lowest CPA at ${formatCurrencyValue(best.cpa!)}. Compared sources: ${ranked.map((source: any) => `${source.label} ${formatCurrencyValue(source.cpa!)}`).join(', ')}.`
+        message: `${best.label} has the lowest CPA at ${formatCurrencyValue(best.cpa!)}. Compare spend efficiency before shifting budget: ${ranked.map((source: any) => `${source.label} ${formatCurrencyValue(source.cpa!)}`).join(', ')}.`
       });
     } else if (efficiencySources.length === 1) {
       const source = efficiencySources[0];
-      insights.push({
+      pushInsight({
         type: 'info',
+        priority: 4,
+        category: 'paid-efficiency',
         title: `${source.label} Paid Performance`,
-        message: `${source.label} generated ${formatNumberValue(source.conversions)} conversions from ${formatCurrencyValue(source.spend)} spend at ${formatCurrencyValue(source.cpa!)} CPA.`
+        message: `${source.label} generated ${formatNumberValue(source.conversions)} conversions from ${formatCurrencyValue(source.spend)} spend at ${formatCurrencyValue(source.cpa!)} CPA. Use this as the current paid-source efficiency baseline.`
       });
     }
 
     if (aggregateMetricAvailable('ctr')) {
       const ctr = aggregateMetricValue('ctr');
-      insights.push({
+      pushInsight({
         type: ctr >= 2 ? 'success' : ctr < 1 ? 'warning' : 'info',
+        priority: ctr < 1 ? 1 : ctr >= 2 ? 4 : 3,
+        category: 'paid-engagement',
         title: ctr >= 2 ? 'Strong Click-Through Rate' : ctr < 1 ? 'Low Click-Through Rate' : 'Click-Through Rate',
-        message: `Aggregate CTR is ${formatPct(ctr)} from ${formatNumberValue(aggregateMetricValue('clicks'))} clicks and ${formatNumberValue(aggregateMetricValue('impressions'))} impressions across eligible paid sources.`
+        message: `Aggregate CTR is ${formatPct(ctr)} from ${formatNumberValue(aggregateMetricValue('clicks'))} clicks and ${formatNumberValue(aggregateMetricValue('impressions'))} impressions across eligible paid sources. ${ctr < 1 ? 'Review creative, targeting, and offer clarity first.' : 'Use this as paid engagement context.'}`
       });
     }
 
     if (aggregateMetricAvailable('cvr')) {
       const cvr = aggregateMetricValue('cvr');
-      insights.push({
+      pushInsight({
         type: cvr >= 5 ? 'success' : cvr < 2 ? 'warning' : 'info',
+        priority: cvr < 2 ? 1 : cvr >= 5 ? 3 : 2,
+        category: 'conversion-efficiency',
         title: cvr >= 5 ? 'Excellent Conversion Rate' : cvr < 2 ? 'Conversion Rate Opportunity' : 'Conversion Rate',
-        message: `Aggregate CVR is ${formatPct(cvr)} from ${formatNumberValue(aggregateMetricValue('clicks'))} clicks and ${formatNumberValue(aggregateMetricValue('conversions'))} conversions.`
+        message: `Aggregate CVR is ${formatPct(cvr)} from ${formatNumberValue(aggregateMetricValue('clicks'))} clicks and ${formatNumberValue(aggregateMetricValue('conversions'))} conversions. ${cvr < 2 ? 'Prioritize landing-page and funnel review before increasing spend.' : 'Use this to judge traffic quality from connected sources.'}`
       });
     }
 
     if (aggregateMetricAvailable('cpa')) {
-      insights.push({
+      pushInsight({
         type: 'info',
+        priority: 3,
+        category: 'conversion-efficiency',
         title: 'Cost Per Acquisition',
-        message: `Aggregate CPA is ${formatCurrencyValue(aggregateMetricValue('cpa'))} from ${formatCurrencyValue(aggregateMetricValue('spend'))} spend and ${formatNumberValue(aggregateMetricValue('conversions'))} conversions.`
+        message: `Aggregate CPA is ${formatCurrencyValue(aggregateMetricValue('cpa'))} from ${formatCurrencyValue(aggregateMetricValue('spend'))} spend and ${formatNumberValue(aggregateMetricValue('conversions'))} conversions. Track this against your campaign KPI or benchmark before scaling spend.`
       });
     }
 
@@ -439,26 +472,32 @@ export default function CampaignPerformanceSummary() {
       const parts = [];
       if (aggregateMetricAvailable('roas')) parts.push(`ROAS ${aggregateMetricValue('roas').toLocaleString('en-US', { maximumFractionDigits: 2 })}x`);
       if (aggregateMetricAvailable('roi')) parts.push(`ROI ${formatPct(aggregateMetricValue('roi'))}`);
-      insights.push({
+      pushInsight({
         type: 'info',
+        priority: 2,
+        category: 'revenue-efficiency',
         title: 'Revenue Efficiency',
-        message: `${parts.join(' and ')} based on available revenue and spend inputs.`
+        message: `${parts.join(' and ')} based on available revenue and spend inputs. Use this to evaluate whether current spend is producing enough revenue return.`
       });
     } else if (aggregateMetricAvailable('revenue')) {
-      insights.push({
+      pushInsight({
         type: 'info',
+        priority: 3,
+        category: 'revenue-efficiency',
         title: 'Revenue Tracked',
-        message: `${formatCurrencyValue(aggregateMetricValue('revenue'))} revenue is available. ROAS and ROI are not shown unless both revenue and spend are available.`
+        message: `${formatCurrencyValue(aggregateMetricValue('revenue'))} revenue is available. ROAS and ROI are not shown unless both revenue and spend are available, so connect spend before judging revenue efficiency.`
       });
     }
 
     const paidSpendSources = paidSources.filter((source: any) => source.spend > 0);
     if (paidSpendSources.length > 0 && aggregateMetricAvailable('spend')) {
       const spend = aggregateMetricValue('spend');
-      insights.push({
+      pushInsight({
         type: 'info',
+        priority: 4,
+        category: 'budget-allocation',
         title: 'Budget Allocation',
-        message: `${paidSpendSources.map((source: any) => `${source.label}: ${formatCurrencyValue(source.spend)} (${spend > 0 ? ((source.spend / spend) * 100).toFixed(1) : '0.0'}%)`).join(', ')}. Total spend: ${formatCurrencyValue(spend)}.`
+        message: `${paidSpendSources.map((source: any) => `${source.label}: ${formatCurrencyValue(source.spend)} (${spend > 0 ? ((source.spend / spend) * 100).toFixed(1) : '0.0'}%)`).join(', ')}. Total spend: ${formatCurrencyValue(spend)}. Use this to confirm budget concentration across connected paid sources.`
       });
     }
 
@@ -467,22 +506,28 @@ export default function CampaignPerformanceSummary() {
       const sessionText = `${formatNumberValue(aggregateMetricValue('sessions'))} sessions`;
       const userText = aggregateMetricAvailable('users') ? ` and ${formatNumberValue(aggregateMetricValue('users'))} users` : '';
       const conversionText = aggregateMetricAvailable('conversions') ? ` with ${formatNumberValue(aggregateMetricValue('conversions'))} conversions` : '';
-      insights.push({
+      pushInsight({
         type: 'info',
+        priority: 3,
+        category: 'web-outcomes',
         title: 'Web Analytics Outcomes',
-        message: `${sourceLabels} contributed ${sessionText}${userText}${conversionText}.`
+        message: `${sourceLabels} contributed ${sessionText}${userText}${conversionText}. Use this as the campaign outcome context from connected web analytics.`
       });
     }
 
     if (healthScore >= 80) {
-      insights.push({
+      pushInsight({
         type: 'success',
+        priority: 4,
+        category: 'campaign-health',
         title: 'Campaign Health Excellent',
         message: `${healthScore}% health score with ${totalOnTrackMetrics} of ${totalMetrics} metrics on track. Campaign performing above expectations.`
       });
     } else if (healthScore < 60) {
-      insights.push({
+      pushInsight({
         type: 'warning',
+        priority: 1,
+        category: 'campaign-health',
         title: 'Campaign Requires Attention',
         message: `${healthScore}% health score - only ${totalOnTrackMetrics} of ${totalMetrics} metrics on track. Focus on underperforming KPIs to improve results.`
       });
@@ -492,8 +537,10 @@ export default function CampaignPerformanceSummary() {
       const availableMetrics = ['impressions', 'sessions', 'conversions', 'spend', 'revenue']
         .filter(aggregateMetricAvailable)
         .map((metricName) => `${metricName}: ${formatNumberValue(aggregateMetricValue(metricName))}`);
-      insights.push({
+      pushInsight({
         type: 'info',
+        priority: 5,
+        category: 'summary',
         title: 'Campaign Summary',
         message: availableMetrics.length > 0
           ? `Available aggregate metrics: ${availableMetrics.join(', ')}.`
@@ -501,7 +548,7 @@ export default function CampaignPerformanceSummary() {
       });
     }
 
-    return insights;
+    return finalizeInsights();
   };
 
   // Get top priority action

@@ -3,6 +3,7 @@ import { benchmarks, linkedinDailyMetrics, notifications } from "../shared/schem
 import { and, desc, eq } from "drizzle-orm";
 import type { InsertNotification } from "../shared/schema";
 import { storage } from "./storage";
+import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";
 
 function parseLooseNumber(input: unknown): number {
   // Accept formatted inputs like "370,000", "$1,234.50", "  1000  ".
@@ -124,8 +125,10 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
 
   let created = 0;
   const windowKeyByCampaign = new Map<string, string>();
+  const campaignMetricCache = new Map<string, Promise<any>>();
 
-  for (const b of items as any[]) {
+  for (const rawBenchmark of items as any[]) {
+    const b = await resolveCampaignCurrentValueForAlert(rawBenchmark, campaignMetricCache);
     const thresholdRaw = b.alertThreshold;
     const currentRaw = b.currentValue;
     if (thresholdRaw === null || typeof thresholdRaw === "undefined") continue;

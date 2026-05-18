@@ -25,8 +25,8 @@ When connected-platform values change, campaign-level KPI and Benchmark current 
 ## Outstanding Production-Ready Tasks
 
 - [x] Commit 1: Visible Benchmark correctness. Campaign-level Benchmark cards and summary must compute current values from connected-platform totals, not stale saved `currentValue`.
-- [ ] Commit 2: Alert correctness. Campaign-level KPI alerts must use the same fresh connected-platform-derived current value shown in KPI cards.
-- [ ] Commit 2: Alert correctness. Campaign-level Benchmark alerts must use the same fresh connected-platform-derived current value shown in Benchmark cards.
+- [x] Commit 2: Alert correctness. Campaign-level KPI alerts must use the same fresh connected-platform-derived current value shown in KPI cards.
+- [x] Commit 2: Alert correctness. Campaign-level Benchmark alerts must use the same fresh connected-platform-derived current value shown in Benchmark cards.
 - [ ] Commit 3: Scheduler alignment. Scheduler/source-refresh jobs must refresh or reconcile campaign-level KPI and Benchmark current values after GA4, revenue, or spend data changes.
 - [ ] Commit 3: Scheduler alignment. Add regression coverage proving scheduler refresh does not leave campaign-level KPI/Benchmark current values stale.
 - [ ] Commit 4: Regression and final validation. Add tests proving connected-platform totals feed campaign-level KPI and Benchmark current values after source updates.
@@ -36,8 +36,15 @@ When connected-platform values change, campaign-level KPI and Benchmark current 
 
 - [x] Campaign-level KPI visible cards compute current values from calculation config and connected-platform totals.
 - [x] Campaign-level Benchmark visible cards and summary compute current values from calculation config and connected-platform totals.
+- [x] Campaign-level KPI and Benchmark alert checks resolve current values from connected-platform totals before evaluating thresholds.
 - [x] Campaign-level KPI/Benchmark CRUD routes are separated from platform-level KPI/Benchmark routes.
 - [x] Campaign-level KPI/Benchmark modals follow the connected-platform current-value pattern in create/edit flows.
+
+## Alert Correctness Root Cause
+
+Campaign-level cards calculate current values from `calculationConfig` and connected-platform totals, but alert jobs previously evaluated the persisted `currentValue` field directly. That could make an alert fire, suppress, or display a value that did not match the campaign KPI/Benchmark card after connected GA4, revenue, or spend data changed.
+
+Campaign-level KPI and Benchmark alert jobs must resolve the fresh connected-platform-derived current value before threshold evaluation. Platform-level KPI/Benchmark alerts must keep their existing platform-specific value path.
 
 ## Validation Standard
 

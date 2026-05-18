@@ -11,6 +11,7 @@ import {
   shouldTriggerAlert
 } from "./kpi-notifications";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
+import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";
 
 /**
  * KPI Scheduler - Daily Jobs
@@ -268,7 +269,9 @@ export async function checkPerformanceAlerts(): Promise<void> {
 
     console.log(`[KPI Scheduler] Found ${activeKPIs.length} active KPIs with alerts enabled`);
 
-    for (const kpi of activeKPIs) {
+    const campaignMetricCache = new Map<string, Promise<any>>();
+    for (const rawKpi of activeKPIs) {
+      const kpi = await resolveCampaignCurrentValueForAlert(rawKpi, campaignMetricCache);
       // NOTE: KPI numeric values may be stored as formatted strings (e.g. "370,000").
       // Use shouldTriggerAlert/createKPIAlert for truth; these logs are best-effort.
       const currentValue = parseFloat(String(kpi.currentValue || "").replace(/,/g, ""));

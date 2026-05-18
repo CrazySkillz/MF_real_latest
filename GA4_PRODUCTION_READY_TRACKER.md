@@ -6,6 +6,8 @@ Track the final GA4-specific items required before using GA4 as the implementati
 
 Rule: do not add new items here unless the root cause is confirmed in code or production validation. Operational configuration issues, such as an expired OAuth token or a report missing recipients, are not template blockers unless the code mishandles them.
 
+Campaign-level KPI/Benchmark production-readiness is tracked separately in `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md` because those rules apply to every connected platform, not only GA4.
+
 ## Final Known Blockers
 
 - [x] Update the stale report regression test so it covers the current scheduler behavior for already-skipped scheduled reports with `Campaign not found` or `No recipients configured`.
@@ -24,4 +26,15 @@ Rule: do not add new items here unless the root cause is confirmed in code or pr
 
 ## Current Status
 
-The tracked GA4 report template blockers are complete. Future GA4 production-readiness items should be added only when root cause is confirmed in code or deployed validation.
+The tracked GA4 report template blockers are complete. GA4 can be used as the implementation template for the next integration work, provided future integrations copy the proven GA4 patterns rather than introducing parallel report, scheduler, source, or visibility paths.
+
+Future GA4 production-readiness items should be added only when root cause is confirmed in code or deployed validation.
+
+Template rules for future integrations:
+
+- preserve campaign/platform ownership guards before read, update, delete, snapshot, send, or scheduler mutation
+- preserve fail-closed scheduler behavior for missing campaigns, stale sources, missing recipients, and wrong platform/source identity
+- preserve stable source identity for edit/refresh paths; add mode and refresh mode must not be confused
+- preserve shared report PDF generation for scheduled, test-send, download, and direct snapshot output
+- preserve transactional/plain report email delivery with the generated PDF as the report artifact
+- add targeted regression coverage before calling a copied integration path production-ready

@@ -151,6 +151,12 @@ Optional future cleanup, not a blocker for this targeted audit:
 - Do not remove legacy Meta/Google Ads report routes until a schema-backed platform discriminator exists.
 - Do not remove ownerless campaign claim compatibility until a migration has assigned explicit ownership to legacy rows.
 
+Timing decision:
+
+- This optional cleanup can wait until after the LinkedIn integration work.
+- Do not start stale-route/schema cleanup before LinkedIn unless a concrete LinkedIn implementation blocker is traced to that cleanup item.
+- If cleanup is started later, treat it as a separate scoped project with its own dependency proof, regression tests, and rollback-safe plan.
+
 ## Next Step
 
 The targeted destructive/visibility audit is complete after validation. The next work should return to product-specific feature refinement or a separately scoped stale-code removal project with its own dependency proof.

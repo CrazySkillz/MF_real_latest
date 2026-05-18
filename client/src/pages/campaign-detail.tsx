@@ -3425,10 +3425,25 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     return 'behind';
   };
 
+  const getBenchmarkCurrent = (benchmark: any): { value: number; unit: string } => {
+    const cfg = normalizeBenchCalcConfig(benchmark?.calculationConfig);
+    if (cfg) {
+      const computed = computeCurrentFromBenchConfig(cfg);
+      if (typeof computed.value === 'number' && Number.isFinite(computed.value)) {
+        return { value: computed.value, unit: computed.unit || benchmark?.unit || '' };
+      }
+    }
+    if (isTemplateMetric(String(benchmark?.metric || ''))) {
+      const live = getLiveBenchmarkCurrentValue(String(benchmark.metric || ''));
+      if (Number.isFinite(live.value)) return { value: live.value, unit: live.unit || benchmark?.unit || '' };
+    }
+    return { value: parseNumSafe(benchmark?.currentValue), unit: benchmark?.unit || '' };
+  };
+
   // Calculate summary stats
   const onTrackCount = benchmarks.filter((b) => {
     const metricKey = String(b.metric || '');
-    const current = parseFloat(String((b.currentValue as any) ?? '0').replace(/,/g, '') || '0');
+    const current = getBenchmarkCurrent(b).value;
     const benchmark = parseFloat(String((b.benchmarkValue as any) ?? '0').replace(/,/g, '') || '0');
     const progress = getBenchmarkProgressPct(metricKey, current, benchmark);
     return getBenchmarkPerformanceBucket(progress) === 'on_track';
@@ -3436,7 +3451,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 
   const needsAttentionCount = benchmarks.filter((b) => {
     const metricKey = String(b.metric || '');
-    const current = parseFloat(String((b.currentValue as any) ?? '0').replace(/,/g, '') || '0');
+    const current = getBenchmarkCurrent(b).value;
     const benchmark = parseFloat(String((b.benchmarkValue as any) ?? '0').replace(/,/g, '') || '0');
     const progress = getBenchmarkProgressPct(metricKey, current, benchmark);
     return getBenchmarkPerformanceBucket(progress) === 'needs_attention';
@@ -3444,7 +3459,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 
   const behindCount = benchmarks.filter((b) => {
     const metricKey = String(b.metric || '');
-    const current = parseFloat(String((b.currentValue as any) ?? '0').replace(/,/g, '') || '0');
+    const current = getBenchmarkCurrent(b).value;
     const benchmark = parseFloat(String((b.benchmarkValue as any) ?? '0').replace(/,/g, '') || '0');
     const progress = getBenchmarkProgressPct(metricKey, current, benchmark);
     return getBenchmarkPerformanceBucket(progress) === 'behind';
@@ -3454,7 +3469,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     benchmarks.length > 0
       ? benchmarks.reduce((sum, b) => {
           const metricKey = String(b.metric || '');
-          const current = parseFloat(String((b.currentValue as any) ?? '0').replace(/,/g, '') || '0');
+          const current = getBenchmarkCurrent(b).value;
           const benchmark = parseFloat(String((b.benchmarkValue as any) ?? '0').replace(/,/g, '') || '0');
           return sum + getBenchmarkProgressPct(metricKey, current, benchmark);
         }, 0) / benchmarks.length
@@ -3658,7 +3673,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
                     Current Value
                   </div>
                   <div className="text-lg font-bold text-foreground" data-testid={`text-current-${benchmark.id}`}>
-                    {formatBenchmarkDisplayValue(benchmark.currentValue, benchmark.unit)}
+                    {(() => {
+                      const current = getBenchmarkCurrent(benchmark);
+                      return formatBenchmarkDisplayValue(current.value, current.unit || benchmark.unit);
+                    })()}
                   </div>
                 </div>
 
@@ -3673,9 +3691,9 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               </div>
               
               {/* Progress Tracker - Benchmark Comparison */}
-              {benchmark.currentValue && benchmark.benchmarkValue && (() => {
+              {benchmark.benchmarkValue && (() => {
                 // Calculate accurate progress and comparison
-                const current = parseFloat(String(benchmark.currentValue).replace(/,/g, ''));
+                const current = getBenchmarkCurrent(benchmark).value;
                 const benchmarkVal = parseFloat(String(benchmark.benchmarkValue).replace(/,/g, ''));
                 const metricKey = String(benchmark.metric || '');
                 const progressTowardBenchmark = getBenchmarkProgressPct(metricKey, current, benchmarkVal);

@@ -381,6 +381,8 @@ Campaign-level Benchmark current values must follow the same connected-platform 
 Campaign-level Benchmark current values MUST be fed by the connected-platform metrics for the campaign. Do not add a separate selectable source model or fallback calculation that can drift from the connected platform values.
 Campaign-level Benchmark create/edit forms must follow the same unit-display conventions as platform Benchmark forms. Count values display as whole numbers without decimal suffixes, currency values display with thousands separators, percent values display as clean percentages, and ratio/ROAS values display with ratio-style formatting.
 
+Production-readiness tracking for campaign-level KPI and Benchmark correctness lives in `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md`.
+
 ### Freestyle Chat
 
 Freestyle Chat is campaign-level.

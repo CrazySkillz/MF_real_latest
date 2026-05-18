@@ -8,6 +8,8 @@ Use it for all GA4-related development, reviews, testing, and bug fixes.
 
 This is the GA4-specific companion to `ARCHITECTURE_USER_JOURNEY.md`.
 
+Campaign-level KPI/Benchmark production-readiness tracking lives in `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md`. GA4 is the first connected platform being validated against that campaign-level standard.
+
 ## How To Use This Folder
 
 Use these files in this order:
@@ -75,6 +77,22 @@ The required GA4 platform pattern is:
 6. refresh `Ad Comparison`
 7. refresh `Insights`
 8. let `Reports` render from refreshed tab state when generated or sent
+
+## Template Readiness Status
+
+GA4 is ready to use as the implementation template for the next integration work.
+
+This means future integrations should copy the validated GA4 patterns for:
+
+- campaign and platform scoping
+- source add/edit/delete/refresh identity
+- scheduler fail-closed behavior
+- KPI/Benchmark recompute ordering
+- alert/notification visibility behavior
+- report create/update/delete/snapshot/test-send/scheduled-send safety
+- shared PDF generation and transactional report email delivery
+
+Do not copy old legacy shortcuts or create parallel paths. If a new integration needs different provider-specific behavior, keep that behavior inside the existing platform-specific layer while preserving the same campaign-scoped architecture.
 
 ## Reference Rule
 

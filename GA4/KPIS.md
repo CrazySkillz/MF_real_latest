@@ -104,6 +104,7 @@ Campaign-level KPI source previews:
 
 - campaign-level KPI current values must be populated from connected-platform values, not from a separate generic fallback when a connected-platform value exists
 - connected-platform metrics are the upstream source of truth for campaign-level KPI current values; when a connected platform value changes in GA4, the matching campaign-level KPI current value must update from that connected-platform value
+- campaign-level KPI/Benchmark production-readiness tracking lives in `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md`
 - campaign-level `Revenue` must use the connected GA4 `Total Revenue` value directly and must not show a separate revenue-source picker in the create flow
 - campaign-level `Conversions` must use the connected GA4 `Total Conversions` value directly and must not show a separate conversion-source picker in the create flow
 - campaign-level `Users` must use the connected GA4 `Total Users` value directly and must not show a separate user-source picker in the create flow

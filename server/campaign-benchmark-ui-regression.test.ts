@@ -23,4 +23,16 @@ describe("campaign Benchmark UI regression guard", () => {
 
     expect(campaignDetail).toContain("if (normalizedUnit === '$') return formatInputNumber(raw);");
   });
+
+  it("renders campaign benchmark current values from connected-platform calculations", () => {
+    const campaignDetail = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"),
+      "utf-8"
+    );
+
+    expect(campaignDetail).toContain("const getBenchmarkCurrent = (benchmark: any): { value: number; unit: string } => {");
+    expect(campaignDetail).toContain("const computed = computeCurrentFromBenchConfig(cfg);");
+    expect(campaignDetail).toContain("const current = getBenchmarkCurrent(benchmark);");
+    expect(campaignDetail).toContain("const current = getBenchmarkCurrent(b).value;");
+  });
 });

@@ -570,13 +570,14 @@ Scope:
 
 - Keep Overview metric cards driven by `performanceSummary.totals`.
 - Preserve existing legacy fallback behavior only after the aggregate request has finished without returning `performanceSummary`.
-- Show neutral stable placeholders while the aggregate request is still loading.
+- Render no Overview body content while the aggregate request is still loading.
 - Do not change KPI, Benchmark, Insights, scheduler, or aggregate API logic.
-- Completed: Overview metric cards now detect when the aggregate request is still pending and render neutral placeholders instead of legacy fallback values/source labels.
+- Completed: Overview metric cards and Overview body content no longer render legacy fallback values/source labels while the aggregate request is still pending.
 - Completed: Existing fallback behavior remains available only after the aggregate request finishes without returning `performanceSummary`.
 - Completed: Added regression coverage to prevent reintroducing page-refresh fallback flashes.
 - Follow-up root cause: the metric-card placeholder fix did not cover the whole Overview tab. Campaign Health and Top Priority Action still computed from KPI/Benchmark fallback values while `performanceSummary` was pending, so a full page refresh could still briefly show wrong Overview content.
-- Completed follow-up: the entire Overview tab body is now gated behind a neutral aggregate-loading state while `performanceSummary` is pending, then renders the existing Overview content only after the aggregate is ready or the request has completed without an aggregate.
+- Completed follow-up: the entire Overview tab body is now gated off while `performanceSummary` is pending, then renders the existing Overview content only after the aggregate is ready or the request has completed without an aggregate.
+- Completed second follow-up: removed the visible `Preparing Overview` / `Preparing aggregate metrics` placeholder because it was still intermediate content during refresh.
 
 Validation:
 

@@ -32,17 +32,54 @@ describe("Performance Summary scheduler snapshot alignment", () => {
     expect(route).not.toContain("customIntegrationData");
   });
 
+  it("keeps snapshot read routes campaign-access guarded", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+
+    expect(routes).toContain('app.get("/api/campaigns/:id/snapshots/comparison", requireCampaignAccessParamId');
+    expect(routes).toContain('app.get("/api/campaigns/:id/snapshots", requireCampaignAccessParamId');
+  });
+
   it("compares What's Changed only against compatible aggregate snapshots", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
     const start = page.indexOf("const getChanges = () => {");
     const end = page.indexOf("const changeData = getChanges();", start);
     const getChanges = page.slice(start, end);
 
+    expect(page).toContain('const changeMetricConfigs = [');
+    expect(page).toContain('{ key: "sessions", label: "Sessions" }');
+    expect(page).toContain('{ key: "users", label: "Users" }');
+    expect(page).toContain('{ key: "revenue", label: "Revenue", isCurrency: true }');
+    expect(getChanges).toContain("const baseline = comparisonData?.previous;");
+    expect(getChanges).not.toContain("comparisonData?.previous || comparisonData?.current");
+    expect(getChanges).toContain('return { changes: [], baselineTimestamp: null, emptyReason: "not_enough_history" };');
     expect(getChanges).toContain("const baselineAggregate = baseline?.metrics?.performanceSummary;");
     expect(getChanges).toContain("baselineAggregate?.version !== performanceSummary.version");
-    expect(getChanges).toContain("const currentMetricValue = (metricName: string, fallbackValue: number) => {");
-    expect(getChanges).toContain("const baselineMetricValue = (metricName: string, fallbackValue: number) => {");
-    expect(getChanges).toContain('addChange("Sessions"');
+    expect(getChanges).toContain("aggregateSnapshotMetricAvailable(performanceSummary, config.key)");
+    expect(getChanges).toContain("aggregateSnapshotMetricAvailable(baselineAggregate, config.key)");
+    expect(getChanges).toContain("sourceLabel: sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(\", \")}` : \"Sources unavailable\"");
+    expect(getChanges).toContain("changeMetricConfigs.forEach(addChange);");
     expect(getChanges).not.toContain('addChange("Engagements"');
+    expect(getChanges).not.toContain("parseNum(baseline.totalImpressions)");
+    expect(getChanges).not.toContain("parseNum(baseline.totalSpend)");
+  });
+
+  it("renders Metric Trends from compatible aggregate snapshot totals", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
+    const start = page.indexOf("{/* Trend Charts");
+    const end = page.indexOf("{/* Insights Tab */}", start);
+    const trends = page.slice(start, end);
+
+    expect(trends).toContain("snapshot?.metrics?.performanceSummary?.version === performanceSummary.version");
+    expect(trends).toContain("const trendMetrics = changeMetricConfigs.filter((config: any) => aggregateSnapshotMetricAvailable(performanceSummary, config.key));");
+    expect(trends).toContain("const aggregate = snapshot?.metrics?.performanceSummary;");
+    expect(trends).toContain("aggregateSnapshotMetricAvailable(aggregate, config.key) ? aggregateSnapshotMetricValue(aggregate, config.key) : null");
+    expect(trends).toContain("const chartMetrics = trendMetrics.filter");
+    expect(trends).toContain("Not enough compatible trend data yet");
+    expect(trends).toContain("dataKey={config.key}");
+    expect(trends).toContain("Sources: ${sourceLabels.join");
+    expect(trends).not.toContain("snapshot.totalImpressions");
+    expect(trends).not.toContain("snapshot.totalClicks");
+    expect(trends).not.toContain("snapshot.totalConversions");
+    expect(trends).not.toContain("snapshot.totalSpend");
   });
 });

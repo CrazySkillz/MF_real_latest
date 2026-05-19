@@ -596,57 +596,72 @@ export default function CampaignPerformanceSummary() {
     };
   };
 
-  // Calculate what's changed: current connected-source metrics vs historical data
-  // "Current" = real-time aggregated data from connected sources (updates when LinkedIn/CI data changes)
-  // "Previous" = recorded data from the selected comparison period (yesterday/last week/last month)
+  const sourceLabelForId = (sourceId: string) => {
+    if (sourceId === "canonical_spend_sources") return "Campaign spend sources";
+    if (sourceId === "paid_platform_spend") return "Paid platform spend";
+    const match = performanceSources.find((source: any) => source?.id === sourceId);
+    return match?.label || sourceId;
+  };
+  const changeMetricConfigs = [
+    { key: "impressions", label: "Impressions" },
+    { key: "clicks", label: "Clicks" },
+    { key: "sessions", label: "Sessions" },
+    { key: "users", label: "Users" },
+    { key: "conversions", label: "Conversions" },
+    { key: "leads", label: "Leads" },
+    { key: "revenue", label: "Revenue", isCurrency: true },
+    { key: "spend", label: "Spend", isCurrency: true, isCostMetric: true },
+  ];
+  const aggregateSnapshotMetricAvailable = (aggregate: any, metricName: string) => {
+    const metric = aggregate?.totals?.[metricName];
+    return metric?.available === true && metric?.value !== null && typeof metric?.value !== "undefined";
+  };
+  const aggregateSnapshotMetricValue = (aggregate: any, metricName: string) => parseNum(aggregate?.totals?.[metricName]?.value);
+  const aggregateMetricSources = (aggregate: any, metricName: string) => {
+    const sources = aggregate?.totals?.[metricName]?.sources;
+    return Array.isArray(sources) ? sources.map((sourceId: string) => sourceLabelForId(sourceId)) : [];
+  };
+
+  // Calculate what's changed from compatible aggregate snapshots only.
   const getChanges = () => {
-    const baseline = comparisonData?.previous || comparisonData?.current;
-    if (!baseline) {
-      return { changes: [], baselineTimestamp: null };
+    const baseline = comparisonData?.previous;
+    if (!performanceSummary?.version || !baseline) {
+      return { changes: [], baselineTimestamp: null, emptyReason: "not_enough_history" };
     }
     const baselineAggregate = baseline?.metrics?.performanceSummary;
-    if (performanceSummary?.version && baselineAggregate?.version !== performanceSummary.version) {
-      return { changes: [], baselineTimestamp: baseline.recordedAt };
+    if (baselineAggregate?.version !== performanceSummary.version) {
+      return { changes: [], baselineTimestamp: baseline.recordedAt, emptyReason: "incompatible_history" };
     }
 
-    const currentMetricValue = (metricName: string, fallbackValue: number) => {
-      const metric = performanceSummary?.totals?.[metricName];
-      return metric?.available && metric?.value !== null ? parseNum(metric.value) : fallbackValue;
-    };
-    const baselineMetricValue = (metricName: string, fallbackValue: number) => {
-      const metric = baselineAggregate?.totals?.[metricName];
-      return metric?.available && metric?.value !== null ? parseNum(metric.value) : fallbackValue;
-    };
-
-    const changes: { metric: string; current: number; previous: number; change: number; pctChange: number; direction: string; isCurrency?: boolean }[] = [];
-
-    const addChange = (metric: string, currVal: number, prevVal: number, isCurrency = false) => {
+    const changes: { metric: string; current: number; previous: number; change: number; pctChange: number; direction: string; isCurrency?: boolean; isCostMetric?: boolean; sourceLabel: string }[] = [];
+    const addChange = (config: any) => {
+      if (!aggregateSnapshotMetricAvailable(performanceSummary, config.key) || !aggregateSnapshotMetricAvailable(baselineAggregate, config.key)) return;
+      const currVal = aggregateSnapshotMetricValue(performanceSummary, config.key);
+      const prevVal = aggregateSnapshotMetricValue(baselineAggregate, config.key);
       const change = currVal - prevVal;
       const pctChange = prevVal > 0 ? ((change / prevVal) * 100) : (currVal > 0 ? 100 : 0);
       if (Math.abs(change) > 0 || currVal > 0 || prevVal > 0) {
+        const sourceLabels = aggregateMetricSources(performanceSummary, config.key);
         changes.push({
-          metric,
+          metric: config.label,
           current: currVal,
           previous: prevVal,
           change,
           pctChange,
           direction: change > 0 ? "up" : change < 0 ? "down" : "flat",
-          isCurrency,
+          isCurrency: config.isCurrency === true,
+          isCostMetric: config.isCostMetric === true,
+          sourceLabel: sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}` : "Sources unavailable",
         });
       }
     };
 
-    // Compare aggregate-contract metrics against compatible historical snapshots.
-    addChange("Impressions", currentMetricValue("impressions", totalImpressions), baselineMetricValue("impressions", parseNum(baseline.totalImpressions)));
-    addChange("Clicks", currentMetricValue("clicks", totalClicks), baselineMetricValue("clicks", parseNum(baseline.totalClicks)));
-    addChange("Sessions", currentMetricValue("sessions", webSessions), baselineMetricValue("sessions", 0));
-    addChange("Conversions", currentMetricValue("conversions", totalConversions), baselineMetricValue("conversions", parseNum(baseline.totalConversions)));
-    addChange("Leads", currentMetricValue("leads", totalLeads), baselineMetricValue("leads", parseNum(baseline.totalLeads)));
-    addChange("Spend", currentMetricValue("spend", totalSpend), baselineMetricValue("spend", parseNum(baseline.totalSpend)), true);
+    changeMetricConfigs.forEach(addChange);
 
     return {
       changes,
       baselineTimestamp: baseline.recordedAt,
+      emptyReason: changes.length > 0 ? null : "no_metric_changes",
     };
   };
 
@@ -663,12 +678,6 @@ export default function CampaignPerformanceSummary() {
         { name: "LinkedIn Ads", connected: !!(effectiveLinkedin), icon: SiLinkedin },
         { name: "Custom Integration", connected: !!(effectiveCI), icon: Activity },
       ];
-  const sourceLabelForId = (sourceId: string) => {
-    if (sourceId === "canonical_spend_sources") return "Campaign spend sources";
-    if (sourceId === "paid_platform_spend") return "Paid platform spend";
-    const match = performanceSources.find((source: any) => source?.id === sourceId);
-    return match?.label || sourceId;
-  };
   const getOverviewMetric = (metricName: string, fallbackValue: number) => {
     const metric = performanceSummary?.totals?.[metricName];
     if (performanceSummaryPending) {
@@ -1148,10 +1157,12 @@ export default function CampaignPerformanceSummary() {
                   {changeData.changes.length === 0 ? (
                     <div className="text-center py-8">
                       <Clock className="w-8 h-8 text-muted-foreground/70 mx-auto mb-3" />
-                      <p className="text-muted-foreground/70 font-medium">No historical data available yet</p>
+                      <p className="text-muted-foreground/70 font-medium">
+                        {changeData.emptyReason === "incompatible_history" ? "No compatible historical data yet" : "Not enough historical data yet"}
+                      </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Data is recorded automatically as your connected platforms sync.
-                        Changes will appear here once enough data has been collected to compare.
+                        Compatible aggregate snapshots are recorded as your connected platforms sync.
+                        Changes will appear here once a previous aggregate snapshot is available to compare.
                       </p>
                     </div>
                   ) : (
@@ -1166,9 +1177,10 @@ export default function CampaignPerformanceSummary() {
                           const isUp = item.direction === "up";
                           const isDown = item.direction === "down";
                           const isFlat = item.direction === "flat";
-                          // For spend, down is good (green). For everything else, up is good.
-                          const isPositive = item.isCurrency ? isDown : isUp;
-                          const isNegative = item.isCurrency ? isUp : isDown;
+                          // Spend movement is contextual; do not mark higher spend as bad without ROI/ROAS context.
+                          const isPositive = !item.isCostMetric && isUp;
+                          const isNegative = !item.isCostMetric && isDown;
+                          const movementColor = isPositive ? 'text-green-600 dark:text-green-400' : isNegative ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground/70';
 
                           return (
                             <div key={idx} className={`p-4 rounded-lg border transition-all duration-300 ease-in-out ${
@@ -1183,8 +1195,8 @@ export default function CampaignPerformanceSummary() {
                                 </span>
                               </div>
                               <div className="flex items-center mt-2 space-x-2">
-                                {isUp && <TrendingUp className={`w-4 h-4 ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} />}
-                                {isDown && <TrendingDown className={`w-4 h-4 ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} />}
+                                {isUp && <TrendingUp className={`w-4 h-4 ${movementColor}`} />}
+                                {isDown && <TrendingDown className={`w-4 h-4 ${movementColor}`} />}
                                 <span className={`text-sm font-semibold ${
                                   isPositive ? 'text-green-700 dark:text-green-400' :
                                   isNegative ? 'text-red-700 dark:text-red-400' :
@@ -1198,6 +1210,9 @@ export default function CampaignPerformanceSummary() {
                               <div className="text-xs text-muted-foreground mt-1">
                                 Previous: {item.isCurrency ? `$${item.previous.toLocaleString()}` : item.previous.toLocaleString()}
                               </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {item.sourceLabel}
+                              </div>
                             </div>
                           );
                         })}
@@ -1207,27 +1222,30 @@ export default function CampaignPerformanceSummary() {
                 </CardContent>
               </Card>
 
-              {/* Trend Charts — only show when metrics actually changed between data points */}
+              {/* Trend Charts — only show compatible aggregate snapshots */}
               {(() => {
-                const allPoints = trendSnapshots.map((snapshot: any) => {
+                const compatibleSnapshots = performanceSummary?.version
+                  ? trendSnapshots.filter((snapshot: any) => snapshot?.metrics?.performanceSummary?.version === performanceSummary.version)
+                  : [];
+                const trendMetrics = changeMetricConfigs.filter((config: any) => aggregateSnapshotMetricAvailable(performanceSummary, config.key));
+                const allPoints = compatibleSnapshots.map((snapshot: any) => {
                   const d = new Date(snapshot.recordedAt);
-                  return {
+                  const aggregate = snapshot?.metrics?.performanceSummary;
+                  const point: any = {
                     date: d.toLocaleString('en-US', { month: 'short', day: 'numeric', ...(trendPeriod === 'daily' ? { hour: 'numeric', minute: '2-digit' } : {}) }),
-                    totalImpressions: parseNum(snapshot.totalImpressions),
-                    totalClicks: parseNum(snapshot.totalClicks),
-                    totalConversions: parseNum(snapshot.totalConversions),
-                    totalSpend: parseNum(snapshot.totalSpend),
                   };
+                  trendMetrics.forEach((config: any) => {
+                    point[config.key] = aggregateSnapshotMetricAvailable(aggregate, config.key) ? aggregateSnapshotMetricValue(aggregate, config.key) : null;
+                  });
+                  return point;
                 });
                 const chartData = allPoints.filter((pt, i) => {
                   if (i === 0) return true;
                   const prev = allPoints[i - 1];
-                  return pt.totalImpressions !== prev.totalImpressions
-                    || pt.totalClicks !== prev.totalClicks
-                    || pt.totalConversions !== prev.totalConversions
-                    || pt.totalSpend !== prev.totalSpend;
+                  return trendMetrics.some((config: any) => pt[config.key] !== null && prev[config.key] !== null && pt[config.key] !== prev[config.key]);
                 });
-                if (chartData.length < 2) return null;
+                const chartMetrics = trendMetrics.filter((config: any) => chartData.filter((pt: any) => pt[config.key] !== null).length >= 2);
+                const hasChartData = chartData.length >= 2 && chartMetrics.length > 0;
                 const xAxisInterval = chartData.length <= 8 ? 0 : Math.ceil(chartData.length / 8) - 1;
                 return (
               <Card>
@@ -1236,65 +1254,38 @@ export default function CampaignPerformanceSummary() {
                     <CardDescription className="mt-1.5">How your metrics have changed over time</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {(() => {
-
-                      return (
-                        <div className="space-y-6">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <h4 className="text-sm font-semibold text-foreground/80/60 mb-3">Impressions</h4>
+                    {!hasChartData ? (
+                      <div className="text-center py-8">
+                        <Clock className="w-8 h-8 text-muted-foreground/70 mx-auto mb-3" />
+                        <p className="text-muted-foreground/70 font-medium">Not enough compatible trend data yet</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Metric trends will appear after at least two compatible aggregate snapshots are available.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-6 md:grid-cols-2">
+                        {chartMetrics.map((config: any) => {
+                          const sourceLabels = aggregateMetricSources(performanceSummary, config.key);
+                          return (
+                            <div key={config.key}>
+                              <h4 className="text-sm font-semibold text-foreground/80/60">{config.label}</h4>
+                              <p className="text-xs text-muted-foreground mb-3">
+                                {sourceLabels.length > 0 ? `Sources: ${sourceLabels.join(", ")}` : "Sources unavailable"}
+                              </p>
                               <ResponsiveContainer width="100%" height={220}>
                                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                   <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
                                   <XAxis dataKey="date" className="text-xs" interval={xAxisInterval} angle={-30} textAnchor="end" height={50} tick={{ fontSize: 11 }} />
-                                  <YAxis className="text-xs" tickFormatter={(v) => v.toLocaleString()} />
-                                  <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0' }} formatter={(v: any) => v.toLocaleString()} />
-                                  <Line type="monotone" dataKey="totalImpressions" name="Total" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+                                  <YAxis className="text-xs" tickFormatter={(v) => config.isCurrency ? `$${Number(v).toLocaleString()}` : Number(v).toLocaleString()} />
+                                  <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0' }} formatter={(v: any) => config.isCurrency ? `$${parseFloat(v).toLocaleString()}` : parseFloat(v).toLocaleString()} />
+                                  <Line type="monotone" dataKey={config.key} name={config.label} stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
                                 </LineChart>
                               </ResponsiveContainer>
                             </div>
-                            <div>
-                              <h4 className="text-sm font-semibold text-foreground/80/60 mb-3">Clicks</h4>
-                              <ResponsiveContainer width="100%" height={220}>
-                                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                  <XAxis dataKey="date" className="text-xs" interval={xAxisInterval} angle={-30} textAnchor="end" height={50} tick={{ fontSize: 11 }} />
-                                  <YAxis className="text-xs" />
-                                  <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0' }} formatter={(v: any) => v.toLocaleString()} />
-                                  <Line type="monotone" dataKey="totalClicks" name="Total" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
-                                </LineChart>
-                              </ResponsiveContainer>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <h4 className="text-sm font-semibold text-foreground/80/60 mb-3">Conversions</h4>
-                              <ResponsiveContainer width="100%" height={220}>
-                                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                  <XAxis dataKey="date" className="text-xs" interval={xAxisInterval} angle={-30} textAnchor="end" height={50} tick={{ fontSize: 11 }} />
-                                  <YAxis className="text-xs" />
-                                  <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0' }} formatter={(v: any) => v.toLocaleString()} />
-                                  <Line type="monotone" dataKey="totalConversions" name="Total" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
-                                </LineChart>
-                              </ResponsiveContainer>
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-semibold text-foreground/80/60 mb-3">Spend</h4>
-                              <ResponsiveContainer width="100%" height={220}>
-                                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                                  <XAxis dataKey="date" className="text-xs" interval={xAxisInterval} angle={-30} textAnchor="end" height={50} tick={{ fontSize: 11 }} />
-                                  <YAxis className="text-xs" tickFormatter={(v) => `$${v.toLocaleString()}`} />
-                                  <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0' }} formatter={(v: any) => `$${parseFloat(v).toLocaleString()}`} />
-                                  <Line type="monotone" dataKey="totalSpend" name="Total" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
-                                </LineChart>
-                              </ResponsiveContainer>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()}
+                          );
+                        })}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
                 );

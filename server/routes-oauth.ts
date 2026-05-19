@@ -23935,7 +23935,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/campaigns/:id/snapshots/comparison", async (req, res) => {
+  app.get("/api/campaigns/:id/snapshots/comparison", requireCampaignAccessParamId, async (req, res) => {
     try {
       const { id } = req.params;
       const { type } = req.query;
@@ -23953,7 +23953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get campaign snapshots by time period for trend analysis
-  app.get("/api/campaigns/:id/snapshots", async (req, res) => {
+  app.get("/api/campaigns/:id/snapshots", requireCampaignAccessParamId, async (req, res) => {
     try {
       const { id } = req.params;
       const { period } = req.query;

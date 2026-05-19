@@ -262,6 +262,29 @@ Outstanding fixes:
 - Trace legacy/manual snapshot route reachability before changing or removing it.
 - Prevent comparisons between incompatible aggregate versions where source inclusion changed.
 
+Reviewed current behavior:
+
+- Delta cards are populated by `client/src/pages/campaign-performance.tsx` from `/api/campaigns/:id/snapshots/comparison?type=...`.
+- The selected range maps to comparison types: `24h -> yesterday`, `7d -> last_week`, and `30d -> last_month`.
+- Current delta-card values prefer live `outcomeTotals.performanceSummary.totals` and fall back to local page totals only when no aggregate metric is available.
+- Previous delta-card values prefer `previous.metrics.performanceSummary.totals`; if the historical snapshot does not have the same `performance_summary_aggregate_v1` version as the current aggregate, the UI shows no historical comparison instead of comparing incompatible data.
+- Snapshot creation through scheduler/platform-sync/manual snapshot routes uses `aggregateCampaignMetrics`, which embeds `metrics.performanceSummary` in new snapshots.
+- Trend charts are still populated from `/api/campaigns/:id/snapshots?period=...` using legacy snapshot columns only: impressions, clicks, conversions, and spend. They do not yet render sessions, users, revenue, or aggregate source capability metadata.
+- Current logic is safe for avoiding incompatible delta-card comparisons, but the tab is not fully aggregate-model complete until trend charts and snapshot read routes are aligned with the same aggregate display model and access-guard expectations.
+
+Production-ready task bundle:
+
+- Update the `What's Changed` delta cards to compare current aggregate values only against a real previous compatible aggregate snapshot.
+- Remove the fallback that compares against the latest current snapshot when no previous snapshot exists; show a clear not-enough-history state instead.
+- Show only metrics that are available from the connected-source aggregate contract.
+- Add source-aware context to delta cards, such as `Source: Google Analytics` or `Source: Campaign spend sources`.
+- Keep spend direction neutral or contextual unless ROI/ROAS proves higher spend is negative.
+- Update `Metric Trends` to read from `snapshot.metrics.performanceSummary.totals` instead of legacy snapshot columns.
+- Filter trend snapshots to compatible `performance_summary_aggregate_v1` snapshots only.
+- Render trend charts only for available connected-source metrics; for GA4-only campaigns this should prioritize sessions, users, conversions, revenue, and spend when available, not impressions/clicks when unavailable.
+- Add clear empty states for no compatible historical aggregate snapshots.
+- Add regression coverage proving legacy snapshots are ignored, incompatible snapshot versions are not compared, and GA4-only charts do not show unavailable paid-media metrics.
+
 Required regression coverage:
 
 - Scheduler refresh snapshot for GA4-only campaign contains GA4-derived fields only.
@@ -560,7 +583,7 @@ Why this is separate:
 
 ### Commit 5.2: Overview Refresh Stability
 
-Status: Completed and pushed through commit `4a091083`; follow-up completed locally, not yet pushed.
+Status: Completed and pushed through commit `4a091083`; follow-up completed and pushed through commit `e5442622`.
 
 Goal:
 
@@ -590,6 +613,47 @@ Follow-up validation:
 - Passed: `npm test -- server/campaign-performance-overview-regression.test.ts server/performance-summary-insights-regression.test.ts server/performance-summary-scheduler-regression.test.ts`
 - Passed: `npm run check`
 - Passed: `npm run build`
+- Passed user validation: Performance Summary Overview no longer flashes `Preparing Overview` or other intermediate content on refresh.
+
+### Commit 5.3: What's Changed Production Readiness
+
+Status: Completed locally, not yet pushed.
+
+Goal:
+
+- Make both `What's Changed` sections executive-useful, aggregate-source accurate, and reliable against historical snapshot drift.
+
+Scope:
+
+- Refine `What's Changed` delta cards so current values compare only against real previous compatible aggregate snapshots.
+- Replace unclear no-history behavior with a not-enough-history state.
+- Limit displayed deltas to metrics available from connected sources in the aggregate contract.
+- Add concise source context to each delta card.
+- Avoid treating higher spend as automatically negative unless paired with ROI/ROAS context.
+- Refactor `Metric Trends` to use `snapshot.metrics.performanceSummary.totals`.
+- Filter trend chart snapshots by compatible aggregate version.
+- Render only connected-source available trend metrics.
+- Preserve existing tab layout and visual design.
+- Do not change scheduler snapshot creation logic unless a read-side incompatibility requires the smallest safe adjustment.
+- Completed: `What's Changed` delta cards now use only real previous compatible aggregate snapshots and no longer fall back to `comparisonData.current`.
+- Completed: Delta cards now skip unavailable aggregate metrics, include source labels, include users and revenue when available, and keep spend movement contextual instead of automatically negative.
+- Completed: `Metric Trends` now reads from `snapshot.metrics.performanceSummary.totals`, filters snapshots by the current aggregate version, renders only connected-source available metrics, and shows a compatible-history empty state when fewer than two valid points exist.
+- Completed: Snapshot comparison and trend read routes are now campaign-access guarded.
+
+Required regression coverage:
+
+- Delta cards do not compare against `comparisonData.current` when no previous snapshot exists.
+- Delta cards ignore historical snapshots without matching `performance_summary_aggregate_v1`.
+- Metric Trends ignore legacy snapshot columns when aggregate totals are present.
+- Metric Trends filter incompatible snapshots and show an empty state when fewer than two compatible points exist.
+- GA4-only Metric Trends do not render unavailable impressions/clicks charts.
+- Snapshot comparison and trend read routes remain campaign-access guarded.
+
+Validation:
+
+- Passed: `npm test -- server/performance-summary-scheduler-regression.test.ts server/campaign-performance-overview-regression.test.ts server/performance-summary-insights-regression.test.ts`
+- Passed: `npm run check`.
+- Passed: `npm run build`.
 
 ### Commit 6: Docs And Final Validation
 

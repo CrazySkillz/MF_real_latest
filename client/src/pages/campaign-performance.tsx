@@ -88,7 +88,7 @@ export default function CampaignPerformanceSummary() {
     enabled: !!campaignId,
   });
 
-  const { data: outcomeTotals } = useQuery<any>({
+  const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignId, "outcome-totals", "90days", demoMode ? "demo" : "live"],
     queryFn: async () => {
       const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=90days${demoMode ? "&demo=1" : ""}`;
@@ -205,6 +205,7 @@ export default function CampaignPerformanceSummary() {
   const effectiveKpis = demoKpis || kpis;
   const effectiveBenchmarks = demoBenchmarks || benchmarks;
   const performanceSummary = outcomeTotals?.performanceSummary;
+  const performanceSummaryPending = !!campaignId && !performanceSummary && outcomeTotalsLoading;
   const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
 
   // Helper function to safely parse numbers
@@ -670,16 +671,21 @@ export default function CampaignPerformanceSummary() {
   };
   const getOverviewMetric = (metricName: string, fallbackValue: number) => {
     const metric = performanceSummary?.totals?.[metricName];
+    if (performanceSummaryPending) {
+      return { available: true, value: null, sources: [], unavailableReasons: [], pending: true };
+    }
     if (!performanceSummary || !metric) {
       return { available: true, value: fallbackValue, sources: [], unavailableReasons: [] };
     }
     return metric;
   };
   const formatOverviewValue = (metric: any, formatter: (value: number) => string) => {
+    if (metric?.pending) return "—";
     if (!metric?.available) return "Unavailable";
     return formatter(parseNum(metric?.value));
   };
   const overviewSourceLabel = (metric: any, fallbackLabel: string) => {
+    if (metric?.pending) return "Preparing aggregate metrics";
     if (!performanceSummary) return fallbackLabel;
     if (!metric?.available) {
       const reason = metric?.unavailableReasons?.[0] || "No connected source provides this metric";

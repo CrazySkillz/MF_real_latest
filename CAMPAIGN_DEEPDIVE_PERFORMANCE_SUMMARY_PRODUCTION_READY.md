@@ -528,7 +528,7 @@ Why this is fifth:
 
 ### Commit 5.1: Refine Performance Summary Insights Prioritization
 
-Status: Completed locally; not yet pushed.
+Status: Completed and pushed through commit `2577a828`.
 
 Goal:
 
@@ -557,6 +557,30 @@ Validation:
 Why this is separate:
 
 - Commit 5 fixed source correctness. Commit 5.1 improves presentation quality while preserving the same aggregate data contract.
+
+### Commit 5.2: Overview Refresh Stability
+
+Status: Completed locally; not yet pushed.
+
+Goal:
+
+- Prevent the Performance Summary Overview tab from flashing legacy fallback metric content before the aggregate contract loads on page refresh.
+
+Scope:
+
+- Keep Overview metric cards driven by `performanceSummary.totals`.
+- Preserve existing legacy fallback behavior only after the aggregate request has finished without returning `performanceSummary`.
+- Show neutral stable placeholders while the aggregate request is still loading.
+- Do not change KPI, Benchmark, Insights, scheduler, or aggregate API logic.
+- Completed: Overview metric cards now detect when the aggregate request is still pending and render neutral placeholders instead of legacy fallback values/source labels.
+- Completed: Existing fallback behavior remains available only after the aggregate request finishes without returning `performanceSummary`.
+- Completed: Added regression coverage to prevent reintroducing page-refresh fallback flashes.
+
+Validation:
+
+- Passed: `npm test -- server/campaign-performance-overview-regression.test.ts server/performance-summary-insights-regression.test.ts server/performance-summary-scheduler-regression.test.ts`
+- Passed: `npm run check`
+- Passed: `npm run build`
 
 ### Commit 6: Docs And Final Validation
 

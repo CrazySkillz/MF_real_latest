@@ -16,8 +16,11 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(page).toContain("outcome-totals?dateRange=90days");
     expect(page).toContain("if (performanceSummaryPending) {");
     expect(page).toContain("return { available: true, value: null, sources: [], unavailableReasons: [], pending: true };");
-    expect(page).toContain('if (metric?.pending) return "—";');
+    expect(page).toContain('if (metric?.pending) return "...";');
     expect(page).toContain('if (metric?.pending) return "Preparing aggregate metrics";');
+    expect(overview).toContain("{performanceSummaryPending ? (");
+    expect(overview).toContain("<span>Preparing Overview</span>");
+    expect(overview).toContain("[\"Total Impressions\", \"Total Sessions\", \"Total Conversions\", \"Total Spend\"].map((label)");
     expect(page).toContain('const overviewImpressions = getOverviewMetric("impressions", totalImpressions);');
     expect(page).toContain('const overviewSessions = getOverviewMetric("sessions", webSessions);');
     expect(page).toContain('const overviewConversions = getOverviewMetric("conversions", totalConversions);');

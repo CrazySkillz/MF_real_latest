@@ -560,7 +560,7 @@ Why this is separate:
 
 ### Commit 5.2: Overview Refresh Stability
 
-Status: Completed locally; not yet pushed.
+Status: Completed and pushed through commit `4a091083`; follow-up completed locally, not yet pushed.
 
 Goal:
 
@@ -575,8 +575,16 @@ Scope:
 - Completed: Overview metric cards now detect when the aggregate request is still pending and render neutral placeholders instead of legacy fallback values/source labels.
 - Completed: Existing fallback behavior remains available only after the aggregate request finishes without returning `performanceSummary`.
 - Completed: Added regression coverage to prevent reintroducing page-refresh fallback flashes.
+- Follow-up root cause: the metric-card placeholder fix did not cover the whole Overview tab. Campaign Health and Top Priority Action still computed from KPI/Benchmark fallback values while `performanceSummary` was pending, so a full page refresh could still briefly show wrong Overview content.
+- Completed follow-up: the entire Overview tab body is now gated behind a neutral aggregate-loading state while `performanceSummary` is pending, then renders the existing Overview content only after the aggregate is ready or the request has completed without an aggregate.
 
 Validation:
+
+- Passed: `npm test -- server/campaign-performance-overview-regression.test.ts server/performance-summary-insights-regression.test.ts server/performance-summary-scheduler-regression.test.ts`
+- Passed: `npm run check`
+- Passed: `npm run build`
+
+Follow-up validation:
 
 - Passed: `npm test -- server/campaign-performance-overview-regression.test.ts server/performance-summary-insights-regression.test.ts server/performance-summary-scheduler-regression.test.ts`
 - Passed: `npm run check`

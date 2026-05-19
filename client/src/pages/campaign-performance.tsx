@@ -680,7 +680,7 @@ export default function CampaignPerformanceSummary() {
     return metric;
   };
   const formatOverviewValue = (metric: any, formatter: (value: number) => string) => {
-    if (metric?.pending) return "—";
+    if (metric?.pending) return "...";
     if (!metric?.available) return "Unavailable";
     return formatter(parseNum(metric?.value));
   };
@@ -763,6 +763,39 @@ export default function CampaignPerformanceSummary() {
 
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
+              {performanceSummaryPending ? (
+                <>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Activity className="w-5 h-5" />
+                        <span>Preparing Overview</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">
+                        Preparing aggregate metrics
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {["Total Impressions", "Total Sessions", "Total Conversions", "Total Spend"].map((label) => (
+                      <Card key={label}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">{label}</CardTitle>
+                          <Activity className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">...</div>
+                          <p className="text-xs text-muted-foreground">Preparing aggregate metrics</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
               {/* Campaign Health Status */}
               <Card>
                 <CardHeader>
@@ -918,6 +951,8 @@ export default function CampaignPerformanceSummary() {
                   </CardContent>
                 </Card>
               </div>
+                </>
+              )}
             </TabsContent>
 
             {/* Campaign Health Tab */}

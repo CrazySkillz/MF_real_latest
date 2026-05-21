@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Calculator, PieChart, BarChart3, AlertTriangle, Target, Zap, Activity, Eye, Info, FlaskConical } from "lucide-react";
+import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Calculator, PieChart, BarChart3, AlertTriangle, Target, Zap, Activity, Eye, Info } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,7 @@ export default function FinancialAnalysis() {
   const [, params] = useRoute("/campaigns/:id/financial-analysis");
   const campaignId = params?.id;
   const [comparisonPeriod, setComparisonPeriod] = useState<string>("7d");
-  const [demoMode, setDemoMode] = useState(false);
+  const [demoMode] = useState(false);
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -454,6 +454,17 @@ export default function FinancialAnalysis() {
       spend: parseInputValue(source),
     }))
     .filter((source: FinancialSpendInputBreakdown) => source.spend > 0);
+  const costAnalysisSourceLabels: string[] = Array.from(new Set<string>(
+    performanceSources
+      .filter((source: any) =>
+        source?.connected === true &&
+        source?.category !== "financial" &&
+        Array.isArray(source?.includedMetrics) &&
+        source.includedMetrics.some((metric: string) => ["clicks", "impressions", "conversions", "sessions", "spend"].includes(metric))
+      )
+      .map((source: any) => String(source?.label || source?.id || "").trim())
+      .filter(Boolean)
+  ));
 
   // Calculate comparison metrics
   const calculateChange = (current: number, previous: number) => {
@@ -506,25 +517,8 @@ export default function FinancialAnalysis() {
                   </p>
                 </div>
               </div>
-              <Button
-                variant={demoMode ? "default" : "outline"}
-                size="sm"
-                onClick={() => setDemoMode(!demoMode)}
-              >
-                <FlaskConical className="w-4 h-4 mr-1" />
-                {demoMode ? "Demo On" : "Demo Data"}
-              </Button>
             </div>
           </div>
-
-          {demoMode && (
-            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                <FlaskConical className="w-4 h-4 inline mr-1" />
-                Showing demo data for testing. Toggle off to see real campaign data.
-              </p>
-            </div>
-          )}
 
           <Tabs defaultValue="overview" className="space-y-6">
             <TabsList className="grid w-full grid-cols-5">
@@ -1343,8 +1337,21 @@ export default function FinancialAnalysis() {
                       </div>
                     </div>
                   </div>
-                  
-                  
+
+                  <div className="mt-6 pt-4 border-t">
+                    <h4 className="font-semibold mb-2">Sources</h4>
+                    {costAnalysisSourceLabels.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {costAnalysisSourceLabels.map((source) => (
+                          <Badge key={source} variant="outline">{source}</Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No connected source provides cost-analysis metrics yet.
+                      </p>
+                    )}
+                  </div>
                 </CardContent>
               </Card>}
             </TabsContent>

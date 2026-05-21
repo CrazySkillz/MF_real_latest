@@ -17,6 +17,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const aggregateMetricSources = (metricName: string): string[] => {");
     expect(page).toContain("const aggregateMetricUnavailableReasons = (metricName: string): string[] => {");
     expect(page).toContain("void budgetFinancialAggregate;");
+    expect(page).not.toContain("Demo Data");
+    expect(page).not.toContain("Showing demo data");
   });
 
   it("wires the Overview tab to aggregate financial metrics with unavailable states", () => {
@@ -104,6 +106,10 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(costTab).toContain("overviewMetricUnavailableText(overviewCpmMetric");
     expect(costTab).toContain("overviewMetricUnavailableText(overviewCtrMetric");
     expect(costTab).toContain("overviewMetricUnavailableText(overviewCvrMetric");
+    expect(page).toContain("const costAnalysisSourceLabels: string[] = Array.from(new Set<string>(");
+    expect(costTab).toContain('<h4 className="font-semibold mb-2">Sources</h4>');
+    expect(costTab).toContain("costAnalysisSourceLabels.map");
+    expect(costTab).toContain("No connected source provides cost-analysis metrics yet.");
     expect(costTab).not.toContain("{formatCurrency(cpc)}");
     expect(costTab).not.toContain("clickThroughCPA");
     expect(costTab).not.toContain("clickThroughCVR");

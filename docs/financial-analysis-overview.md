@@ -58,7 +58,7 @@ A composite score from 4 equally-weighted sub-scores, each worth 0-25 points:
 | **ROI** | >= 100% | >= 50% | >= 0% | Negative ROI |
 | **ROAS** | >= 3.0x | >= 1.5x | >= 1.0x | < 1.0x |
 
-Budget Utilization and Pacing require both available spend and a configured campaign budget. If the campaign has no budget, those sub-scores are unavailable and contribute 0 points instead of being treated as 0% utilization or 100% on-track pacing.
+Budget Utilization requires both available spend and a configured campaign budget. Pacing requires available spend, a configured campaign budget, and a campaign end date. If the campaign has no budget or no end date, the related sub-scores are unavailable and contribute 0 points instead of being treated as 0% utilization or 100% on-track pacing.
 
 ROI and ROAS require available aggregate revenue and spend. If either metric is unavailable, the sub-score is unavailable and contributes 0 points instead of being labeled critical.
 
@@ -96,6 +96,8 @@ Requires the campaign to have a `budget` field set. Displays a progress bar capp
 | Daily Burn Rate | `totalSpend / daysElapsed` |
 | Target Daily Spend | `campaignBudget / totalCampaignDays` |
 | Pacing % | `(dailyBurnRate / targetDailySpend) * 100` |
+
+Target Daily Spend and Pacing Status require a campaign end date. Without an end date, the card still shows current daily burn and projected budget exhaustion when spend/budget are available, but target daily spend and pacing are unavailable.
 
 **Pacing status:**
 - **On Track:** 85-115% of target daily spend
@@ -268,6 +270,7 @@ Changes smaller than 0.01% are hidden.
 | Edge Case | Behavior |
 |---|---|
 | No budget set | Campaign Health budget and pacing sub-scores show `Unavailable` and contribute 0 points |
+| No campaign end date | Pacing sub-score, Target Daily Spend, and Pacing Status show `Unavailable` |
 | No start/end date | Uses today as start date, projects from burn rate |
 | Over-budget | Shows "Budget exceeded by $X" warning, no days-remaining projection |
 | Missing aggregate metric | Shows `Unavailable` plus the aggregate unavailable reason |

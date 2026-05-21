@@ -351,6 +351,7 @@ Evidence:
 - Follow-up logic fix: Overview Campaign Health ROI and ROAS sub-scores now show unavailable when aggregate ROI/ROAS are unavailable instead of labeling missing data as critical.
 - Follow-up logic fix: Overview Campaign Health overall header now shows unavailable/no score when every health input is unavailable instead of labeling missing data as Needs Attention.
 - Follow-up logic fix: Overview Campaign Health overall score now normalizes across available health inputs and displays the input count, so partial missing data is not treated as failed performance.
+- Follow-up logic fix: Overview pacing now requires a campaign end date; without an end date, Target Daily Spend and Pacing Status are unavailable instead of being derived from current burn rate and incorrectly shown as On Track.
 - Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
 
 ### Commit 7: Scheduler, History, Docs, Final Validation

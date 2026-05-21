@@ -39,10 +39,13 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('const overviewRoiMetric = getOverviewMetric("roi", roi);');
     expect(page).toContain('const overviewRoasMetric = getOverviewMetric("roas", roas);');
     expect(page).toContain("const hasCampaignBudget = campaignBudget > 0;");
+    expect(page).toContain("const hasCampaignEndDate = Boolean(campaign.endDate);");
     expect(overview).toContain("const hasBudgetHealthInputs = hasCampaignBudget && overviewSpendMetric.available;");
+    expect(overview).toContain("const hasPacingHealthInputs = hasBudgetHealthInputs && hasCampaignEndDate;");
     expect(overview).toContain("const budgetScore = hasBudgetHealthInputs ?");
-    expect(overview).toContain("const pacingScore = hasBudgetHealthInputs ?");
+    expect(overview).toContain("const pacingScore = hasPacingHealthInputs ?");
     expect(overview).toContain("status: hasBudgetHealthInputs ?");
+    expect(overview).toContain("status: hasPacingHealthInputs ?");
     expect(overview).toContain("status: overviewRoiMetric.available ?");
     expect(overview).toContain("status: overviewRoasMetric.available ?");
     expect(overview).toContain("const availableHealthMetricCount = [");
@@ -54,6 +57,10 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(overview).toContain("const formatHealthStatus = (status: string) => status === 'unavailable' ? 'Unavailable' : status;");
     expect(overview).toContain("Campaign budget is required for budget health");
     expect(overview).toContain("Campaign budget is required for pacing");
+    expect(overview).toContain("Campaign end date is required for pacing");
+    expect(overview).toContain("const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && Boolean(campaignEndDate);");
+    expect(overview).toContain('{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}');
+    expect(overview).toContain("Campaign end date is required to calculate target daily spend and pacing.");
 
     expect(overview).toContain("formatOverviewCurrency(overviewSpendMetric)");
     expect(overview).toContain("formatOverviewNumber(overviewConversionsMetric)");

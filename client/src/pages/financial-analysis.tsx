@@ -285,6 +285,7 @@ export default function FinancialAnalysis() {
   // Get campaign budget and currency
   const campaignBudget = campaign.budget ? (parseFloat(campaign.budget) || 0) : 0;
   const hasCampaignBudget = campaignBudget > 0;
+  const hasCampaignEndDate = Boolean(campaign.endDate);
   const campaignCurrency = (campaign as any).currency || 'USD';
   
   // Format currency with campaign's currency
@@ -605,6 +606,7 @@ export default function FinancialAnalysis() {
                 <CardContent>
                   {(() => {
                     const hasBudgetHealthInputs = hasCampaignBudget && overviewSpendMetric.available;
+                    const hasPacingHealthInputs = hasBudgetHealthInputs && hasCampaignEndDate;
                     const calculateHealthScore = () => {
                       let score = 0;
                       
@@ -615,11 +617,11 @@ export default function FinancialAnalysis() {
                       const daysElapsed = Math.max(1, Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24)));
                       const dailyBurnRate = overviewSpend / daysElapsed;
                       const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
-                      const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : daysElapsed + (dailyBurnRate > 0 ? overviewRemainingBudget / dailyBurnRate : 0);
-                      const targetDailySpend = campaignBudget / targetDaysTotal;
+                      const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+                      const targetDailySpend = targetDaysTotal > 0 ? campaignBudget / targetDaysTotal : 0;
                       const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
                       const pacingDeviation = Math.abs(pacingPercentage - 100);
-                      const pacingScore = hasBudgetHealthInputs ? (pacingDeviation <= 15 ? 25 : pacingDeviation <= 30 ? 15 : pacingDeviation <= 50 ? 10 : 0) : 0;
+                      const pacingScore = hasPacingHealthInputs ? (pacingDeviation <= 15 ? 25 : pacingDeviation <= 30 ? 15 : pacingDeviation <= 50 ? 10 : 0) : 0;
 
                       const overviewRoi = overviewRoiMetric.available ? overviewRoiMetric.value : -Infinity;
                       const roiScore = overviewRoi >= 100 ? 25 : overviewRoi >= 50 ? 15 : overviewRoi >= 0 ? 10 : 0;
@@ -632,7 +634,7 @@ export default function FinancialAnalysis() {
                       return {
                         total: score,
                         budget: { score: budgetScore, status: hasBudgetHealthInputs ? (overviewBudgetUtilization <= 80 ? 'excellent' : overviewBudgetUtilization <= 95 ? 'good' : overviewBudgetUtilization <= 100 ? 'warning' : 'critical') : 'unavailable' },
-                        pacing: { score: pacingScore, status: hasBudgetHealthInputs ? (pacingDeviation <= 15 ? 'excellent' : pacingDeviation <= 30 ? 'good' : pacingDeviation <= 50 ? 'warning' : 'critical') : 'unavailable' },
+                        pacing: { score: pacingScore, status: hasPacingHealthInputs ? (pacingDeviation <= 15 ? 'excellent' : pacingDeviation <= 30 ? 'good' : pacingDeviation <= 50 ? 'warning' : 'critical') : 'unavailable' },
                         roi: { score: roiScore, status: overviewRoiMetric.available ? (overviewRoi >= 100 ? 'excellent' : overviewRoi >= 50 ? 'good' : overviewRoi >= 0 ? 'warning' : 'critical') : 'unavailable' },
                         roas: { score: roasScore, status: overviewRoasMetric.available ? (overviewRoas >= 3 ? 'excellent' : overviewRoas >= 1.5 ? 'good' : overviewRoas >= 1 ? 'warning' : 'critical') : 'unavailable' }
                       };
@@ -641,7 +643,7 @@ export default function FinancialAnalysis() {
                     const healthData = calculateHealthScore();
                     const availableHealthMetricCount = [
                       hasBudgetHealthInputs,
-                      hasBudgetHealthInputs,
+                      hasPacingHealthInputs,
                       overviewRoiMetric.available,
                       overviewRoasMetric.available,
                     ].filter(Boolean).length;
@@ -721,14 +723,14 @@ export default function FinancialAnalysis() {
                               const daysElapsed = Math.max(1, Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24)));
                               const dailyBurnRate = overviewSpend / daysElapsed;
                               const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
-                              const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : daysElapsed + (dailyBurnRate > 0 ? overviewRemainingBudget / dailyBurnRate : 0);
-                              const targetDailySpend = campaignBudget / targetDaysTotal;
+                              const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+                              const targetDailySpend = targetDaysTotal > 0 ? campaignBudget / targetDaysTotal : 0;
                               const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
-                              return hasBudgetHealthInputs ? formatPercentage(pacingPercentage) : "Unavailable";
+                              return hasPacingHealthInputs ? formatPercentage(pacingPercentage) : "Unavailable";
                             })()}</div>
-                            {!hasBudgetHealthInputs && (
+                            {!hasPacingHealthInputs && (
                               <p className="text-xs text-muted-foreground mt-1">
-                                {hasCampaignBudget ? overviewMetricUnavailableText(overviewSpendMetric, "Pacing requires available spend") : "Campaign budget is required for pacing"}
+                                {!hasCampaignBudget ? "Campaign budget is required for pacing" : hasCampaignEndDate ? overviewMetricUnavailableText(overviewSpendMetric, "Pacing requires available spend") : "Campaign end date is required for pacing"}
                               </p>
                             )}
                             <Badge className={`mt-2 ${getStatusBadgeColor(healthData.pacing.status)}`}>
@@ -876,11 +878,12 @@ export default function FinancialAnalysis() {
                         const projectedEndDate = (!isOverBudget && dailyBurnRate > 0) ? new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000) : null;
                         
                         const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
-                        const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : daysElapsed + daysRemaining;
-                        const targetDailySpend = campaignBudget / targetDaysTotal;
+                        const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && Boolean(campaignEndDate);
+                        const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+                        const targetDailySpend = targetDaysTotal > 0 ? campaignBudget / targetDaysTotal : 0;
                         
                         const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
-                        const pacingStatus = !overviewSpendMetric.available ? 'unavailable' : pacingPercentage > 115 ? 'ahead' : pacingPercentage < 85 ? 'behind' : 'on-track';
+                        const pacingStatus = !hasPacingInputs ? 'unavailable' : pacingPercentage > 115 ? 'ahead' : pacingPercentage < 85 ? 'behind' : 'on-track';
                         
                         return (
                           <>
@@ -890,7 +893,7 @@ export default function FinancialAnalysis() {
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium">Target Daily Spend</span>
-                              <span className="text-sm text-muted-foreground">{formatCurrency(targetDailySpend)}</span>
+                              <span className="text-sm text-muted-foreground">{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}</span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium">Pacing Status</span>
@@ -910,6 +913,13 @@ export default function FinancialAnalysis() {
                               <div className="pt-3 border-t">
                                 <p className="text-xs text-red-600 dark:text-red-400 font-medium">
                                   Budget exceeded by {formatCurrency(Math.abs(overviewRemainingBudget))}
+                                </p>
+                              </div>
+                            )}
+                            {!hasPacingInputs && (
+                              <div className="pt-3 border-t">
+                                <p className="text-xs text-muted-foreground">
+                                  {!hasCampaignBudget ? "Campaign budget is required to calculate pacing." : !campaignEndDate ? "Campaign end date is required to calculate target daily spend and pacing." : overviewMetricUnavailableText(overviewSpendMetric, "Spend is required to calculate pacing.")}
                                 </p>
                               </div>
                             )}

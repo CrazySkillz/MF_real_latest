@@ -61,8 +61,12 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('const financialRevenueMetric = getOverviewMetric("revenue", estimatedRevenue);');
     expect(page).toContain('const financialRoiMetric = getOverviewMetric("roi", roi);');
     expect(page).toContain('const financialRoasMetric = getOverviewMetric("roas", roas);');
-    expect(page).toContain("const financialSourceBreakdowns: FinancialSourceBreakdown[] = performanceSources");
+    expect(page).toContain("const financialMainSources = performanceSources");
+    expect(page).toContain("const useAggregateSourceTotals = financialMainSources.length === 1;");
+    expect(page).toContain("const financialSourceBreakdowns: FinancialSourceBreakdown[] = financialMainSources");
     expect(page).toContain("const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = performanceSources");
+    expect(page).toContain("const revenue = useAggregateSourceTotals && financialRevenueMetric.available ? financialRevenueMetric.value : sourceRevenue;");
+    expect(page).toContain("const spend = useAggregateSourceTotals && financialSpendMetric.available ? financialSpendMetric.value : sourceSpend;");
 
     expect(roiTab).toContain("financialRoasMetric.available ? `${financialRoasMetric.value.toFixed(2)}x` : \"Unavailable\"");
     expect(roiTab).toContain("formatOverviewCurrency(financialSpendMetric)");

@@ -388,13 +388,17 @@ export default function FinancialAnalysis() {
   };
   const sourceIncludesMetric = (source: any, metricName: string) =>
     Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
-  const financialSourceBreakdowns: FinancialSourceBreakdown[] = performanceSources
-    .filter((source: any) => source?.connected === true && source?.category !== "financial")
+  const financialMainSources = performanceSources
+    .filter((source: any) => source?.connected === true && source?.category !== "financial");
+  const useAggregateSourceTotals = financialMainSources.length === 1;
+  const financialSourceBreakdowns: FinancialSourceBreakdown[] = financialMainSources
     .map((source: any) => {
-      const revenue = sourceIncludesMetric(source, "attributedRevenue")
+      const sourceRevenue = sourceIncludesMetric(source, "attributedRevenue")
         ? parseSourceMetric(source, "attributedRevenue")
         : parseSourceMetric(source, "revenue");
-      const spend = sourceIncludesMetric(source, "spend") ? parseSourceMetric(source, "spend") : 0;
+      const sourceSpend = sourceIncludesMetric(source, "spend") ? parseSourceMetric(source, "spend") : 0;
+      const revenue = useAggregateSourceTotals && financialRevenueMetric.available ? financialRevenueMetric.value : sourceRevenue;
+      const spend = useAggregateSourceTotals && financialSpendMetric.available ? financialSpendMetric.value : sourceSpend;
       const conversions = sourceIncludesMetric(source, "conversions") ? parseSourceMetric(source, "conversions") : 0;
       return {
         id: String(source.id || source.label || "source"),

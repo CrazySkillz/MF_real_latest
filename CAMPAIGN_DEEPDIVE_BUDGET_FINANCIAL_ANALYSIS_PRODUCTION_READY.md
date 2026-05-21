@@ -279,6 +279,7 @@ Evidence:
 - Source ROAS/ROI breakdowns render from `performanceSummary.sources` for main connected sources instead of hardcoded LinkedIn/Custom/Meta blocks when the aggregate contract is available.
 - GA4 financial child revenue inputs remain separate from main Connected Platform source rows; they are shown only as financial revenue inputs and feed totals through the aggregate revenue path.
 - Totals are not recomputed from the visible source rows in the tab, preventing child-source display from double-counting aggregate revenue.
+- Follow-up fix: when there is exactly one main connected source, the source ROAS/ROI rows use aggregate revenue and spend so a GA4-only campaign includes GA4 child financial inputs and canonical spend instead of showing GA4-native revenue with `$0` spend.
 - Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
 
 ### Commit 4: Cost Analysis Tab

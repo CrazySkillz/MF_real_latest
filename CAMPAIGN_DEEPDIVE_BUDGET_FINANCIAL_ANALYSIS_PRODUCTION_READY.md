@@ -304,6 +304,7 @@ Evidence:
 - Missing cost-efficiency inputs render `Unavailable` plus aggregate unavailable reasons instead of zero-valued paid-media metrics.
 - Cost Analysis includes a `Sources` section that lists the connected main sources contributing available cost-analysis inputs, such as Google Analytics for GA4-backed conversion/session metrics.
 - The visible `Demo Data` control was removed from the Budget & Financial Analysis page so the production page does not invite switching away from real campaign data.
+- Render validation passed after deploy: Cost Analysis displayed the expected source provenance and the visible `Demo Data` page control/banner were no longer present.
 - GA4-only campaigns no longer show CPC, CPM, or CTR as zero when no connected paid-media source provides clicks or impressions.
 - Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts` and `server/performance-summary-aggregate.test.ts`.
 
@@ -312,6 +313,17 @@ Evidence:
 - Build allocation from spend-capable connected sources only.
 - Avoid allocation recommendations when only one or zero spend-capable sources exist.
 - Add regression coverage for one-source, multi-source, and child-source cases.
+
+Status: completed.
+
+Evidence:
+
+- Budget Allocation now derives allocation rows from `performanceSummary.sources` main connected sources that explicitly include `spend`.
+- Platform child spend inputs can still feed aggregate total spend and budget utilization, but they are not treated as standalone allocation sources.
+- GA4-only campaigns with no spend-capable main source show that no spend-capable connected source is available for budget allocation.
+- Campaigns with one spend-capable source show the source but do not show reallocation guidance.
+- Reallocation guidance appears only when more than one spend-capable connected source is available.
+- Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
 
 ### Commit 6: Insights Tab
 

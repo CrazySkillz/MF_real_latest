@@ -115,4 +115,25 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(costTab).not.toContain("clickThroughCVR");
     expect(costTab).not.toContain("totalImpressions > 0 ? formatCurrency");
   });
+
+  it("wires the Budget Allocation tab to spend-capable aggregate sources", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
+    const budgetStart = page.indexOf('<TabsContent value="budget"');
+    const budgetEnd = page.indexOf('<TabsContent value="insights"', budgetStart);
+    const budgetTab = page.slice(budgetStart, budgetEnd);
+
+    expect(page).toContain("const budgetAllocationSources: FinancialSourceBreakdown[] = financialMainSources");
+    expect(page).toContain('.filter((source: any) => sourceIncludesMetric(source, "spend"))');
+    expect(budgetTab).toContain("const allocationSpend = budgetAllocationSources.reduce");
+    expect(budgetTab).toContain("budgetAllocationSources.length === 0");
+    expect(budgetTab).toContain("No spend-capable connected source is available for budget allocation yet.");
+    expect(budgetTab).toContain("budgetAllocationSources.length === 1");
+    expect(budgetTab).toContain("Budget reallocation recommendations require at least two spend-capable sources.");
+    expect(budgetTab).toContain("budgetAllocationSources.length > 1");
+    expect(budgetTab).toContain("Allocation Guidance");
+    expect(budgetTab).not.toContain("platformMetrics.linkedIn.spend");
+    expect(budgetTab).not.toContain("platformMetrics.meta.spend");
+    expect(budgetTab).not.toContain("platformMetrics.customIntegration.spend");
+    expect(budgetTab).not.toContain("const platforms = [");
+  });
 });

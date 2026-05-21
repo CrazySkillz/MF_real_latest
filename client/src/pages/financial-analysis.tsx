@@ -454,6 +454,27 @@ export default function FinancialAnalysis() {
       spend: parseInputValue(source),
     }))
     .filter((source: FinancialSpendInputBreakdown) => source.spend > 0);
+  const budgetAllocationSources: FinancialSourceBreakdown[] = financialMainSources
+    .filter((source: any) => sourceIncludesMetric(source, "spend"))
+    .map((source: any) => {
+      const revenue = sourceIncludesMetric(source, "attributedRevenue")
+        ? parseSourceMetric(source, "attributedRevenue")
+        : sourceIncludesMetric(source, "revenue")
+          ? parseSourceMetric(source, "revenue")
+          : 0;
+      const spend = parseSourceMetric(source, "spend");
+      const conversions = sourceIncludesMetric(source, "conversions") ? parseSourceMetric(source, "conversions") : 0;
+      return {
+        id: String(source.id || source.label || "source"),
+        label: String(source.label || source.id || "Connected Source"),
+        revenue,
+        spend,
+        conversions,
+        roas: spend > 0 && revenue > 0 ? revenue / spend : null,
+        roi: spend > 0 && revenue > 0 ? ((revenue - spend) / spend) * 100 : null,
+      };
+    })
+    .filter((source: FinancialSourceBreakdown) => source.spend > 0);
   const costAnalysisSourceLabels: string[] = Array.from(new Set<string>(
     performanceSources
       .filter((source: any) =>
@@ -1368,39 +1389,15 @@ export default function FinancialAnalysis() {
                     <span>Performance-Based Budget Allocation</span>
                   </CardTitle>
                   <CardDescription>
-                    Platform spend distribution and performance tiers
+                    Spend-capable connected source distribution and performance tiers
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {(() => {
-                    // Calculate performance tiers based on real ROAS
-                    const platforms = [
-                      {
-                        name: 'LinkedIn Ads',
-                        spend: platformMetrics.linkedIn.spend,
-                        roas: linkedInROAS,
-                        conversions: platformMetrics.linkedIn.conversions,
-                        revenue: linkedInRevenue
-                      },
-                      {
-                        name: 'Meta Ads',
-                        spend: platformMetrics.meta.spend,
-                        roas: metaROAS,
-                        conversions: platformMetrics.meta.conversions,
-                        revenue: metaRevenue
-                      },
-                      {
-                        name: 'Custom Integration',
-                        spend: platformMetrics.customIntegration.spend,
-                        roas: customIntegrationROAS,
-                        conversions: platformMetrics.customIntegration.conversions,
-                        revenue: platformMetrics.customIntegration.conversions * fallbackAOV
-                      }
-                    ].filter(p => p.spend > 0 || p.conversions > 0);
-                    
-                    const highPerformance = platforms.filter(p => p.roas >= 3 && p.spend > 0);
-                    const mediumPerformance = platforms.filter(p => p.roas >= 1 && p.roas < 3 && p.spend > 0);
-                    const lowPerformance = platforms.filter(p => p.roas < 1 && p.spend > 0);
+                    const allocationSpend = budgetAllocationSources.reduce((sum, source) => sum + source.spend, 0);
+                    const highPerformance = budgetAllocationSources.filter(source => source.roas !== null && source.roas >= 3);
+                    const mediumPerformance = budgetAllocationSources.filter(source => source.roas !== null && source.roas >= 1 && source.roas < 3);
+                    const lowPerformance = budgetAllocationSources.filter(source => source.roas !== null && source.roas < 1);
                     
                     const highSpend = highPerformance.reduce((sum, p) => sum + p.spend, 0);
                     const mediumSpend = mediumPerformance.reduce((sum, p) => sum + p.spend, 0);
@@ -1414,85 +1411,104 @@ export default function FinancialAnalysis() {
                             <h4 className="font-semibold text-green-600 mb-2">High Performance</h4>
                             <p className="text-2xl font-bold">{formatCurrency(highSpend)}</p>
                             <p className="text-sm text-muted-foreground">
-                              {totalSpend > 0 ? ((highSpend / totalSpend) * 100).toFixed(0) : 0}% of current spend
+                              {allocationSpend > 0 ? ((highSpend / allocationSpend) * 100).toFixed(0) : 0}% of spend-capable source spend
                             </p>
-                            <p className="text-xs mt-2">Platforms with ROAS ≥ 3.0x</p>
+                            <p className="text-xs mt-2">Sources with ROAS &ge; 3.0x</p>
                           </div>
                           <div className="p-4 border rounded-lg">
                             <h4 className="font-semibold text-yellow-600 mb-2">Medium Performance</h4>
                             <p className="text-2xl font-bold">{formatCurrency(mediumSpend)}</p>
                             <p className="text-sm text-muted-foreground">
-                              {totalSpend > 0 ? ((mediumSpend / totalSpend) * 100).toFixed(0) : 0}% of current spend
+                              {allocationSpend > 0 ? ((mediumSpend / allocationSpend) * 100).toFixed(0) : 0}% of spend-capable source spend
                             </p>
-                            <p className="text-xs mt-2">Platforms with ROAS 1.0-3.0x</p>
+                            <p className="text-xs mt-2">Sources with ROAS 1.0-3.0x</p>
                           </div>
                           <div className="p-4 border rounded-lg">
                             <h4 className="font-semibold text-red-600 mb-2">Low Performance</h4>
                             <p className="text-2xl font-bold">{formatCurrency(lowSpend)}</p>
                             <p className="text-sm text-muted-foreground">
-                              {totalSpend > 0 ? ((lowSpend / totalSpend) * 100).toFixed(0) : 0}% of current spend
+                              {allocationSpend > 0 ? ((lowSpend / allocationSpend) * 100).toFixed(0) : 0}% of spend-capable source spend
                             </p>
-                            <p className="text-xs mt-2">Platforms with ROAS &lt; 1.0x</p>
+                            <p className="text-xs mt-2">Sources with ROAS &lt; 1.0x</p>
                           </div>
                         </div>
                         
-                        {/* Platform Budget Breakdown */}
+                        {/* Source Budget Breakdown */}
                         <div className="mt-6">
-                          <h4 className="font-semibold mb-4">Platform Budget Analysis</h4>
+                          <h4 className="font-semibold mb-4">Source Budget Analysis</h4>
                           <div className="space-y-4">
-                            {platforms.map((platform, index) => {
-                              const hasNoData = platform.spend === 0 && platform.conversions === 0;
-                              const currentPercent = totalSpend > 0 ? (platform.spend / totalSpend) * 100 : 0;
-                              const performanceColor = platform.roas >= 3 ? 'green' : platform.roas >= 1 ? 'yellow' : 'red';
-                              
+                            {budgetAllocationSources.length === 0 && (
+                              <div className="p-4 bg-muted rounded-lg text-center">
+                                <p className="text-sm text-muted-foreground">
+                                  No spend-capable connected source is available for budget allocation yet.
+                                </p>
+                              </div>
+                            )}
+                            {budgetAllocationSources.length === 1 && (
+                              <div className="p-4 bg-muted rounded-lg">
+                                <p className="text-sm text-muted-foreground">
+                                  One spend-capable connected source is available. Budget reallocation recommendations require at least two spend-capable sources.
+                                </p>
+                              </div>
+                            )}
+                            {budgetAllocationSources.map((platform) => {
+                              const currentPercent = allocationSpend > 0 ? (platform.spend / allocationSpend) * 100 : 0;
+                              const performanceColor = platform.roas === null ? 'muted' : platform.roas >= 3 ? 'green' : platform.roas >= 1 ? 'yellow' : 'red';
+
                               return (
-                                <div key={index} className="p-4 border rounded-lg">
+                                <div key={platform.id} className="p-4 border rounded-lg">
                                   <div className="flex justify-between items-center mb-3">
-                                    <span className="font-medium">{platform.name}</span>
+                                    <span className="font-medium">{platform.label}</span>
                                     <div className="flex items-center space-x-2">
-                                      {hasNoData ? (
-                                        <Badge className="bg-muted text-foreground/80">No Data Available</Badge>
-                                      ) : (
-                                        <Badge className={
-                                          performanceColor === 'green' ? "bg-green-100 text-green-700" : 
-                                          performanceColor === 'yellow' ? "bg-yellow-100 text-yellow-700" : 
-                                          "bg-red-100 text-red-700"
-                                        }>
-                                          {platform.roas.toFixed(2)}x ROAS
-                                        </Badge>
-                                      )}
+                                      <Badge className={
+                                        performanceColor === 'green' ? "bg-green-100 text-green-700" :
+                                        performanceColor === 'yellow' ? "bg-yellow-100 text-yellow-700" :
+                                        performanceColor === 'red' ? "bg-red-100 text-red-700" :
+                                        "bg-muted text-muted-foreground"
+                                      }>
+                                        {platform.roas === null ? "ROAS unavailable" : `${platform.roas.toFixed(2)}x ROAS`}
+                                      </Badge>
                                     </div>
                                   </div>
-                                  {hasNoData ? (
-                                    <p className="text-sm text-muted-foreground">No financial metrics available</p>
-                                  ) : (
-                                    <>
-                                      <div className="grid grid-cols-3 gap-4 text-sm mb-3">
-                                        <div>
-                                          <span className="text-muted-foreground">Spend:</span>
-                                          <p className="font-medium">{formatCurrency(platform.spend)}</p>
-                                        </div>
-                                        <div>
-                                          <span className="text-muted-foreground">Conversions:</span>
-                                          <p className="font-medium">{formatNumber(platform.conversions)}</p>
-                                        </div>
-                                        <div>
-                                          <span className="text-muted-foreground">Revenue:</span>
-                                          <p className="font-medium">{formatCurrency(platform.revenue)}</p>
-                                        </div>
-                                      </div>
-                                      <div className="flex justify-between text-sm mb-2">
-                                        <span>Budget Share:</span>
-                                        <span>{currentPercent.toFixed(1)}%</span>
-                                      </div>
-                                      <Progress value={currentPercent} className="h-2" />
-                                    </>
-                                  )}
+                                  <div className="grid grid-cols-3 gap-4 text-sm mb-3">
+                                    <div>
+                                      <span className="text-muted-foreground">Spend:</span>
+                                      <p className="font-medium">{formatCurrency(platform.spend)}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Conversions:</span>
+                                      <p className="font-medium">{formatNumber(platform.conversions)}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Revenue:</span>
+                                      <p className="font-medium">{formatCurrency(platform.revenue)}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-between text-sm mb-2">
+                                    <span>Budget Share:</span>
+                                    <span>{currentPercent.toFixed(1)}%</span>
+                                  </div>
+                                  <Progress value={currentPercent} className="h-2" />
                                 </div>
                               );
                             })}
                           </div>
                         </div>
+
+                        {budgetAllocationSources.length > 1 && (
+                          <div className="mt-6 p-4 border rounded-lg">
+                            <h4 className="font-semibold mb-2">Allocation Guidance</h4>
+                            {lowPerformance.length > 0 && highPerformance.length > 0 ? (
+                              <p className="text-sm text-muted-foreground">
+                                Review spend from lower-performing sources for possible reallocation to higher-performing spend-capable sources.
+                              </p>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">
+                                Spend-capable source performance is available. Reallocation guidance will become stronger as multiple sources show clear ROAS differences.
+                              </p>
+                            )}
+                          </div>
+                        )}
                         
                       </div>
                     );

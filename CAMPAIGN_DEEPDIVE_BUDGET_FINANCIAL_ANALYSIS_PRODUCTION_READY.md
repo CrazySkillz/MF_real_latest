@@ -334,6 +334,16 @@ Evidence:
 - Prevent paid-media optimization recommendations for analytics-only sources.
 - Add regression coverage for GA4-only, multi-paid-source, and missing-input cases.
 
+Status: completed.
+
+Evidence:
+
+- Insights now builds source-performance insight rows from the same spend-capable aggregate sources used by Budget Allocation.
+- ROAS, ROI, CPA, CTR, CVR, CPC, CPM, spend, and budget utilization insight copy now use aggregate metric wrappers and unavailable states instead of local zero-fallback calculations.
+- GA4-only campaigns with no spend-capable connected ad platform show an explicit message that paid-media optimization insights require a connected ad platform.
+- Budget reallocation recommendations remain blocked unless more than one spend-capable connected source exists.
+- Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
+
 ### Commit 7: Scheduler, History, Docs, Final Validation
 
 - Align any historical Budget & Financial comparison logic with compatible aggregate snapshots.

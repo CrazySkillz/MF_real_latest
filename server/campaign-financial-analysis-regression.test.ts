@@ -139,4 +139,27 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(budgetTab).not.toContain("platformMetrics.customIntegration.spend");
     expect(budgetTab).not.toContain("const platforms = [");
   });
+
+  it("wires the Insights tab to aggregate metrics and spend-capable sources", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
+    const insightsStart = page.indexOf('<TabsContent value="insights"');
+    const insightsTab = page.slice(insightsStart);
+
+    expect(insightsTab).toContain("const platforms = budgetAllocationSources.map");
+    expect(insightsTab).toContain("const platformsWithRoas = platformsWithSpend.filter");
+    expect(insightsTab).toContain("financialRoasMetric.available && financialRoiMetric.available");
+    expect(insightsTab).toContain("overviewCpaMetric.available");
+    expect(insightsTab).toContain("overviewSpendMetric.available");
+    expect(insightsTab).toContain("overviewCtrMetric.available");
+    expect(insightsTab).toContain("overviewCvrMetric.available");
+    expect(insightsTab).toContain("No spend-capable connected ad platform is available.");
+    expect(insightsTab).not.toContain("platformMetrics.linkedIn.spend");
+    expect(insightsTab).not.toContain("platformMetrics.meta.spend");
+    expect(insightsTab).not.toContain("platformMetrics.customIntegration.spend");
+    expect(insightsTab).not.toContain("const platforms = [");
+    expect(insightsTab).not.toContain("formatCurrency(cpa)");
+    expect(insightsTab).not.toContain("formatPercentage(conversionRate)");
+    expect(insightsTab).not.toContain("formatPercentage(budgetUtilization)");
+    expect(insightsTab).not.toContain("roas.toFixed(2)");
+  });
 });

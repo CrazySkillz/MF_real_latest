@@ -1537,41 +1537,20 @@ export default function FinancialAnalysis() {
                 </CardHeader>
                 <CardContent>
                   {(() => {
-                    const platforms = [
-                      { 
-                        name: 'LinkedIn Ads', 
-                        spend: platformMetrics.linkedIn.spend, 
-                        roas: linkedInROAS,
-                        conversions: platformMetrics.linkedIn.conversions,
-                        revenue: linkedInRevenue,
-                        cpc: platformMetrics.linkedIn.clicks > 0 ? platformMetrics.linkedIn.spend / platformMetrics.linkedIn.clicks : 0,
-                        cvr: platformMetrics.linkedIn.clicks > 0 ? (platformMetrics.linkedIn.conversions / platformMetrics.linkedIn.clicks) * 100 : 0
-                      },
-                      {
-                        name: 'Meta Ads',
-                        spend: platformMetrics.meta.spend,
-                        roas: metaROAS,
-                        conversions: platformMetrics.meta.conversions,
-                        revenue: metaRevenue,
-                        cpc: platformMetrics.meta.clicks > 0 ? platformMetrics.meta.spend / platformMetrics.meta.clicks : 0,
-                        cvr: platformMetrics.meta.clicks > 0 ? (platformMetrics.meta.conversions / platformMetrics.meta.clicks) * 100 : 0
-                      },
-                      {
-                        name: 'Custom Integration',
-                        spend: platformMetrics.customIntegration.spend,
-                        roas: customIntegrationROAS,
-                        conversions: platformMetrics.customIntegration.conversions,
-                        revenue: platformMetrics.customIntegration.conversions * fallbackAOV,
-                        cpc: platformMetrics.customIntegration.clicks > 0 ? platformMetrics.customIntegration.spend / platformMetrics.customIntegration.clicks : 0,
-                        cvr: platformMetrics.customIntegration.clicks > 0 ? (platformMetrics.customIntegration.conversions / platformMetrics.customIntegration.clicks) * 100 : 0
-                      }
-                    ];
+                    const platforms = budgetAllocationSources.map((source) => ({
+                      name: source.label,
+                      spend: source.spend,
+                      roas: source.roas,
+                      conversions: source.conversions,
+                      revenue: source.revenue,
+                    }));
 
                     const platformsWithSpend = platforms.filter(p => p.spend > 0);
-                    const topPerformer = platformsWithSpend.length > 0 ? platformsWithSpend.reduce((a, b) => a.roas > b.roas ? a : b) : null;
-                    const bottomPerformer = platformsWithSpend.length > 1 ? platformsWithSpend.reduce((a, b) => a.roas < b.roas ? a : b) : null;
-                    const highPerformance = platformsWithSpend.filter(p => p.roas >= 3);
-                    const lowPerformance = platformsWithSpend.filter(p => p.roas < 1);
+                    const platformsWithRoas = platformsWithSpend.filter(p => p.roas !== null);
+                    const topPerformer = platformsWithRoas.length > 0 ? platformsWithRoas.reduce((a, b) => (a.roas ?? 0) > (b.roas ?? 0) ? a : b) : null;
+                    const bottomPerformer = platformsWithRoas.length > 1 ? platformsWithRoas.reduce((a, b) => (a.roas ?? 0) < (b.roas ?? 0) ? a : b) : null;
+                    const highPerformance = platformsWithRoas.filter(p => (p.roas ?? 0) >= 3);
+                    const lowPerformance = platformsWithRoas.filter(p => (p.roas ?? 0) < 1);
                     const hasMultiplePlatforms = platformsWithSpend.length > 1;
                     
                     return (
@@ -1581,32 +1560,35 @@ export default function FinancialAnalysis() {
                           <div className="p-4 border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/20">
                             <h4 className="font-semibold text-blue-700 dark:text-blue-300">Performance Summary</h4>
                             <p className="text-sm mt-1">
-                              Your campaign is generating a {roas.toFixed(2)}x ROAS with {formatPercentage(roi)} ROI. 
-                              {roi >= 20 ? " Excellent performance!" : roi >= 0 ? " Positive returns achieved." : " Consider optimization to improve profitability."}
+                              {financialRoasMetric.available && financialRoiMetric.available
+                                ? `Your campaign is generating a ${financialRoasMetric.value.toFixed(2)}x ROAS with ${formatPercentage(financialRoiMetric.value)} ROI.`
+                                : overviewMetricUnavailableText(financialRoasMetric.available ? financialRoiMetric : financialRoasMetric, "ROAS and ROI require available revenue and spend.")}
                             </p>
                           </div>
                           
                           <div className="p-4 border-l-4 border-l-green-500 bg-green-50 dark:bg-green-900/20">
                             <h4 className="font-semibold text-green-700 dark:text-green-300">Cost Efficiency</h4>
                             <p className="text-sm mt-1">
-                              Your CPA of {formatCurrency(cpa)} is {cpa < 25 ? "excellent" : cpa < 50 ? "competitive" : "above average"}. 
-                              {cpa < 25 ? " Continue current targeting strategy." : " Consider optimizing targeting to reduce acquisition costs."}
+                              {overviewCpaMetric.available
+                                ? `Your CPA is ${formatCurrency(overviewCpaMetric.value)}. ${overviewCpaMetric.value < 25 ? "Acquisition costs are well controlled." : "Review conversion efficiency before increasing spend."}`
+                                : overviewMetricUnavailableText(overviewCpaMetric, "CPA requires available spend and conversions.")}
                             </p>
                           </div>
                           
                           <div className="p-4 border-l-4 border-l-orange-500 bg-orange-50 dark:bg-orange-900/20">
                             <h4 className="font-semibold text-orange-700 dark:text-orange-300">Budget Management</h4>
                             <p className="text-sm mt-1">
-                              You've utilized {formatPercentage(budgetUtilization)} of your budget. 
-                              {budgetUtilization > 80 ? " Consider increasing budget for high-performing campaigns." : " Pace is healthy with room for optimization."}
+                              {overviewSpendMetric.available
+                                ? `You have utilized ${formatPercentage(overviewBudgetUtilization)} of your budget. ${overviewBudgetUtilization > 100 ? "Campaign spend is over budget." : overviewBudgetUtilization > 85 ? "Monitor remaining budget closely." : "Budget usage is currently within range."}`
+                                : overviewMetricUnavailableText(overviewSpendMetric, "Budget management requires available spend.")}
                             </p>
                           </div>
                         </div>
                         
-                        {/* Platform Performance Insights */}
+                        {/* Source Performance Insights */}
                         {platformsWithSpend.length > 0 && (
                           <div className="mt-6">
-                            <h4 className="font-semibold mb-4">Platform Performance Insights</h4>
+                            <h4 className="font-semibold mb-4">Source Performance Insights</h4>
                             <div className="space-y-3">
                               {topPerformer && (
                                 <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
@@ -1615,51 +1597,48 @@ export default function FinancialAnalysis() {
                                     <h5 className="font-medium text-green-800 dark:text-green-300">Top Performer: {topPerformer.name}</h5>
                                   </div>
                                   <div className="text-sm space-y-1">
-                                    <p>Generating {topPerformer.roas.toFixed(2)}x ROAS with {formatCurrency(topPerformer.spend)} spend</p>
-                                    {topPerformer.roas >= 3 && (
+                                    <p>Generating {topPerformer.roas?.toFixed(2)}x ROAS with {formatCurrency(topPerformer.spend)} spend</p>
+                                    {(topPerformer.roas ?? 0) >= 3 && (
                                       <p className="text-green-700 dark:text-green-200 font-medium">
-                                        ✓ Exceptional performance - consider scaling budget allocation
+                                        Strong performance. Consider scaling only if budget and capacity allow.
                                       </p>
-                                    )}
-                                    {topPerformer.cvr > 0 && (
-                                      <p>Conversion rate: {formatPct(topPerformer.cvr)} | CPC: {formatCurrency(topPerformer.cpc)}</p>
                                     )}
                                   </div>
                                 </div>
                               )}
                               
                               {bottomPerformer && bottomPerformer !== topPerformer && (
-                                <div className={`p-4 rounded-lg ${bottomPerformer.roas < 1 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-yellow-50 dark:bg-yellow-900/20'}`}>
+                                <div className={`p-4 rounded-lg ${(bottomPerformer.roas ?? 0) < 1 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-yellow-50 dark:bg-yellow-900/20'}`}>
                                   <div className="flex items-center space-x-2 mb-2">
-                                    <AlertTriangle className={`w-5 h-5 ${bottomPerformer.roas < 1 ? 'text-red-600' : 'text-yellow-600'}`} />
-                                    <h5 className={`font-medium ${bottomPerformer.roas < 1 ? 'text-red-800 dark:text-red-300' : 'text-yellow-800 dark:text-yellow-300'}`}>
+                                    <AlertTriangle className={`w-5 h-5 ${(bottomPerformer.roas ?? 0) < 1 ? 'text-red-600' : 'text-yellow-600'}`} />
+                                    <h5 className={`font-medium ${(bottomPerformer.roas ?? 0) < 1 ? 'text-red-800 dark:text-red-300' : 'text-yellow-800 dark:text-yellow-300'}`}>
                                       Needs Attention: {bottomPerformer.name}
                                     </h5>
                                   </div>
                                   <div className="text-sm space-y-1">
-                                    <p>Generating {bottomPerformer.roas.toFixed(2)}x ROAS with {formatCurrency(bottomPerformer.spend)} spend</p>
-                                    {bottomPerformer.roas < 1 && (
+                                    <p>Generating {bottomPerformer.roas?.toFixed(2)}x ROAS with {formatCurrency(bottomPerformer.spend)} spend</p>
+                                    {(bottomPerformer.roas ?? 0) < 1 && (
                                       <p className="text-red-700 dark:text-red-200 font-medium">
-                                        ⚠ Below break-even - review targeting and creative or pause campaigns
+                                        Below break-even. Review this source before increasing budget.
                                       </p>
                                     )}
-                                    {bottomPerformer.roas >= 1 && bottomPerformer.roas < 3 && (
+                                    {(bottomPerformer.roas ?? 0) >= 1 && (bottomPerformer.roas ?? 0) < 3 && (
                                       <p className="text-yellow-700 dark:text-yellow-200 font-medium">
-                                        → Moderate performance - test optimizations to improve efficiency
+                                        Moderate performance. Test optimizations before shifting more spend here.
                                       </p>
                                     )}
                                   </div>
                                 </div>
                               )}
                               
-                              {platformsWithSpend.length === 1 && platforms.length > 1 && (
+                              {platformsWithSpend.length === 1 && (
                                 <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                                   <div className="flex items-center space-x-2 mb-2">
                                     <Target className="w-5 h-5 text-blue-600" />
-                                    <h5 className="font-medium text-blue-800 dark:text-blue-300">Platform Data Status</h5>
+                                    <h5 className="font-medium text-blue-800 dark:text-blue-300">Source Data Status</h5>
                                   </div>
                                   <p className="text-sm">
-                                    {platformsWithSpend[0].name} generating financial metrics. {platforms.find(p => p.spend === 0 && p.conversions === 0)?.name} connected but no financial data available yet.
+                                    {platformsWithSpend[0].name} is the only spend-capable connected source. Reallocation insights require at least two spend-capable sources.
                                   </p>
                                 </div>
                               )}
@@ -1671,49 +1650,49 @@ export default function FinancialAnalysis() {
                         <div className="mt-6">
                           <h4 className="font-semibold mb-4">Key Opportunities</h4>
                           <div className="space-y-3">
-                            {roas > 5 && (
+                            {financialRoasMetric.available && financialRoasMetric.value > 5 && (
                               <div className="flex items-start space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded">
                                 <DollarSign className="w-5 h-5 text-green-600 mt-0.5" />
                                 <div>
                                   <p className="font-medium">Scale High-Performing Campaigns</p>
                                   <p className="text-sm text-muted-foreground">
-                                    With {roas.toFixed(2)}x ROAS, consider increasing budget to maximize returns while maintaining performance
+                                    With {financialRoasMetric.value.toFixed(2)}x ROAS, consider increasing budget only if source capacity and campaign goals support it.
                                   </p>
                                 </div>
                               </div>
                             )}
 
-                            {conversionRate < 5 && totalConversions > 10 && (
+                            {overviewCvrMetric.available && overviewCvrMetric.value < 5 && overviewConversionsMetric.available && overviewConversionsMetric.value > 10 && (
                               <div className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
                                 <Target className="w-5 h-5 text-blue-600 mt-0.5" />
                                 <div>
                                   <p className="font-medium">Conversion Rate Optimization</p>
                                   <p className="text-sm text-muted-foreground">
-                                    Current CVR of {formatPercentage(conversionRate)} has room for improvement - test landing page variations and CTAs
+                                    Current CVR of {formatPercentage(overviewCvrMetric.value)} has room for improvement. Review landing page experience and offer relevance.
                                   </p>
                                 </div>
                               </div>
                             )}
 
-                            {ctr < 2 && totalClicks > 100 && (
+                            {overviewCtrMetric.available && overviewCtrMetric.value < 2 && (
                               <div className="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
                                 <Eye className="w-5 h-5 text-yellow-600 mt-0.5" />
                                 <div>
                                   <p className="font-medium">Improve Ad Engagement</p>
                                   <p className="text-sm text-muted-foreground">
-                                    CTR of {formatPercentage(ctr)} below industry average - test new ad creative and messaging
+                                    CTR of {formatPercentage(overviewCtrMetric.value)} is low. Test new ad creative and messaging on connected paid-media sources.
                                   </p>
                                 </div>
                               </div>
                             )}
 
-                            {budgetUtilization > 85 && roas > 2 && (
+                            {overviewSpendMetric.available && financialRoasMetric.available && overviewBudgetUtilization > 85 && financialRoasMetric.value > 2 && (
                               <div className="flex items-start space-x-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded">
                                 <TrendingUp className="w-5 h-5 text-purple-600 mt-0.5" />
                                 <div>
                                   <p className="font-medium">Budget Capacity</p>
                                   <p className="text-sm text-muted-foreground">
-                                    {formatPercentage(budgetUtilization)} budget utilized with positive ROAS - consider increasing budget allocation
+                                    {formatPercentage(overviewBudgetUtilization)} budget utilized with positive ROAS. Check remaining budget before increasing allocation.
                                   </p>
                                 </div>
                               </div>
@@ -1722,7 +1701,7 @@ export default function FinancialAnalysis() {
                             {platformsWithSpend.length === 0 && (
                               <div className="p-4 bg-muted rounded-lg text-center">
                                 <p className="text-sm text-muted-foreground">
-                                  No platform spending data available. Insights will appear when campaign data is collected.
+                                  No spend-capable connected ad platform is available. Financial totals can still use GA4 child spend inputs, but paid-media optimization insights require a connected ad platform.
                                 </p>
                               </div>
                             )}
@@ -1738,9 +1717,9 @@ export default function FinancialAnalysis() {
                                 <div className="flex items-start space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded">
                                   <TrendingUp className="w-5 h-5 text-green-600 mt-0.5" />
                                   <div>
-                                    <p className="font-medium">Scale High-Performing Platforms</p>
+                                    <p className="font-medium">Scale High-Performing Sources</p>
                                     <p className="text-sm text-muted-foreground">
-                                      {highPerformance.map(p => p.name).join(', ')} {highPerformance.length === 1 ? 'is' : 'are'} generating exceptional ROAS &ge; 3.0x - consider increasing budget allocation
+                                      {highPerformance.map(p => p.name).join(', ')} {highPerformance.length === 1 ? 'is' : 'are'} generating ROAS &ge; 3.0x. Consider increasing allocation only if budget and capacity allow.
                                     </p>
                                   </div>
                                 </div>
@@ -1749,9 +1728,9 @@ export default function FinancialAnalysis() {
                                 <div className="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded">
                                   <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
                                   <div>
-                                    <p className="font-medium">Optimize Underperforming Platforms</p>
+                                    <p className="font-medium">Optimize Underperforming Sources</p>
                                     <p className="text-sm text-muted-foreground">
-                                      {lowPerformance.map(p => p.name).join(', ')} showing ROAS below 1.0x - review targeting and creative or pause campaigns
+                                      {lowPerformance.map(p => p.name).join(', ')} showing ROAS below 1.0x. Review targeting, creative, and source setup before adding spend.
                                     </p>
                                   </div>
                                 </div>
@@ -1762,7 +1741,7 @@ export default function FinancialAnalysis() {
                                   <div>
                                     <p className="font-medium">Budget Reallocation Opportunity</p>
                                     <p className="text-sm text-muted-foreground">
-                                      Reallocating budget from low to high-performing platforms could significantly improve overall campaign ROAS
+                                      Reallocating budget from lower-performing to higher-performing spend-capable sources could improve campaign ROAS.
                                     </p>
                                   </div>
                                 </div>
@@ -1775,34 +1754,34 @@ export default function FinancialAnalysis() {
                         {(() => {
                           const costInsights: string[] = [];
 
-                          if (ctr < 1 && totalImpressions > 0) {
-                            costInsights.push(`Click-through rate below 1% - test new ad creative and messaging to improve engagement`);
-                          } else if (ctr >= 3) {
-                            costInsights.push(`Strong click-through rate of ${formatPercentage(ctr)} - ads resonating well with target audience`);
+                          if (overviewCtrMetric.available && overviewCtrMetric.value < 1) {
+                            costInsights.push(`Click-through rate below 1% - test new ad creative and messaging on connected paid-media sources`);
+                          } else if (overviewCtrMetric.available && overviewCtrMetric.value >= 3) {
+                            costInsights.push(`Strong click-through rate of ${formatPercentage(overviewCtrMetric.value)} - paid-media engagement is performing well`);
                           }
 
-                          if (conversionRate < 2 && totalClicks > 0) {
+                          if (overviewCvrMetric.available && overviewCvrMetric.value < 2) {
                             costInsights.push(`Conversion rate below 2% - review landing page experience and offer relevance`);
-                          } else if (conversionRate >= 10) {
-                            costInsights.push(`Excellent conversion rate of ${formatPercentage(conversionRate)} - landing page highly effective`);
+                          } else if (overviewCvrMetric.available && overviewCvrMetric.value >= 10) {
+                            costInsights.push(`Excellent conversion rate of ${formatPercentage(overviewCvrMetric.value)} - landing page appears effective`);
                           }
 
-                          if (cpc > 10) {
-                            costInsights.push(`CPC of ${formatCurrency(cpc)} above average - refine audience targeting to reduce costs`);
-                          } else if (cpc > 0 && cpc < 2) {
-                            costInsights.push(`Low CPC of ${formatCurrency(cpc)} indicates efficient targeting - maintain current approach`);
+                          if (overviewCpcMetric.available && overviewCpcMetric.value > 10) {
+                            costInsights.push(`CPC of ${formatCurrency(overviewCpcMetric.value)} above average - refine audience targeting to reduce costs`);
+                          } else if (overviewCpcMetric.available && overviewCpcMetric.value < 2) {
+                            costInsights.push(`Low CPC of ${formatCurrency(overviewCpcMetric.value)} indicates efficient paid-media targeting`);
                           }
 
-                          if (cpm > 0 && cpm < 5) {
-                            costInsights.push(`CPM of ${formatCurrency(cpm)} is cost-efficient - strong reach per dollar spent`);
-                          } else if (cpm > 30) {
-                            costInsights.push(`CPM of ${formatCurrency(cpm)} above average - consider broadening audience to improve reach efficiency`);
+                          if (overviewCpmMetric.available && overviewCpmMetric.value < 5) {
+                            costInsights.push(`CPM of ${formatCurrency(overviewCpmMetric.value)} is cost-efficient - strong reach per dollar spent`);
+                          } else if (overviewCpmMetric.available && overviewCpmMetric.value > 30) {
+                            costInsights.push(`CPM of ${formatCurrency(overviewCpmMetric.value)} above average - consider broadening paid-media audiences`);
                           }
 
-                          if (cpa > 100 && totalConversions > 0) {
-                            costInsights.push(`CPA of ${formatCurrency(cpa)} is high - review conversion funnel for drop-off points`);
-                          } else if (cpa > 0 && cpa < 15) {
-                            costInsights.push(`CPA of ${formatCurrency(cpa)} is excellent - acquisition costs well-controlled`);
+                          if (overviewCpaMetric.available && overviewCpaMetric.value > 100) {
+                            costInsights.push(`CPA of ${formatCurrency(overviewCpaMetric.value)} is high - review conversion funnel for drop-off points`);
+                          } else if (overviewCpaMetric.available && overviewCpaMetric.value < 15) {
+                            costInsights.push(`CPA of ${formatCurrency(overviewCpaMetric.value)} is excellent - acquisition costs are well controlled`);
                           }
 
                           return costInsights.length > 0 ? (

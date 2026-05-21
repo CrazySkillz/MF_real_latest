@@ -94,6 +94,17 @@ export default function FinancialAnalysis() {
     },
   });
 
+  const { data: outcomeTotals } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live"],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=90days${demoMode ? "&demo=1" : ""}`;
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) return null;
+      return response.json();
+    },
+  });
+
   // Demo mode mock data
   const demoLinkedIn = demoMode ? {
     spend: 4250, impressions: 12500, engagements: 1240, clicks: 890,
@@ -176,6 +187,34 @@ export default function FinancialAnalysis() {
 
   // Data loading state — prevent flash of stale/zero metrics on refresh
   const dataLoading = !demoMode && (linkedInLoading || ciLoading || metaLoading || ga4Loading);
+  const performanceSummary = outcomeTotals?.performanceSummary;
+  const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
+  const aggregateMetric = (metricName: string) => performanceSummary?.totals?.[metricName];
+  const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;
+  const aggregateMetricValue = (metricName: string): number | null => {
+    const value = aggregateMetric(metricName)?.value;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const aggregateMetricSources = (metricName: string): string[] => {
+    const sources = aggregateMetric(metricName)?.sources;
+    if (!Array.isArray(sources)) return [];
+    return sources.map((source: any) => String(source)).filter(Boolean);
+  };
+  const aggregateMetricUnavailableReasons = (metricName: string): string[] => {
+    const reasons = aggregateMetric(metricName)?.unavailableReasons;
+    if (!Array.isArray(reasons)) return [];
+    return reasons.map((reason: any) => String(reason)).filter(Boolean);
+  };
+  const budgetFinancialAggregate = {
+    performanceSummary,
+    performanceSources,
+    aggregateMetricAvailable,
+    aggregateMetricValue,
+    aggregateMetricSources,
+    aggregateMetricUnavailableReasons,
+  };
+  void budgetFinancialAggregate;
 
   // Aggregate metrics from all platforms
   // Custom Integration: Map pageviews→impressions, sessions→engagements (consistent with Performance Summary)

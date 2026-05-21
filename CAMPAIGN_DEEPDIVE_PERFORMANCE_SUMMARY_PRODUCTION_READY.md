@@ -9,8 +9,10 @@ The intended product behavior is:
 - `Connected Platforms` shows which campaign-scoped data sources are attached.
 - `Performance Summary` aggregates only the metrics currently available from those connected sources.
 - If only GA4 is connected, Performance Summary uses only GA4-capable metrics.
-- Revenue and spend sources connected inside GA4, such as Salesforce, HubSpot, Shopify, CSV, or Google Sheets imports, are financial child inputs for GA4 totals. They are not separate main Connected Platforms unless the campaign has connected them as standalone platforms.
-- As LinkedIn, Meta, Google Ads, Google Sheets, Custom Integration, revenue sources, and spend sources are added, their available metrics are added to the campaign-level aggregate without double-counting.
+- Revenue and spend sources connected inside a platform, such as Salesforce, HubSpot, Shopify, CSV, or Google Sheets imports inside GA4, are platform child inputs. Users do not connect these as separate main `Connected Platforms`; they can only feed financial totals through the parent platform/campaign financial path.
+- As main Connected Platforms such as GA4, LinkedIn, Meta, Google Ads, Google Sheets, Custom Integration, and future integrations are connected, their available metrics must be automatically included in the campaign-level aggregate without double-counting.
+- Automatic inclusion means every main Connected Platform must provide its campaign-scoped source identity, capabilities, included metrics, excluded metric reasons, freshness, current totals, and snapshot inputs through the shared Performance Summary aggregate contract. The aggregate contract accepts generic main-platform source breakdowns so future sources such as Google Ads, TikTok, Instagram, and other standalone platforms can be aggregated without tab-specific rewiring.
+- Campaign DeepDive subsections should fetch and aggregate main metrics from all main sources shown in the campaign `Connected Platforms` section. They should not require users to create duplicate revenue/spend inputs inside Campaign DeepDive for child systems already configured within a parent platform.
 - The section should provide a marketing-executive-ready campaign-wide view, not a platform-specific drilldown.
 
 ## Required Architecture
@@ -30,7 +32,7 @@ Do not invent unavailable metrics for sources that do not provide them.
 
 `client/src/pages/campaign-performance.tsx` currently performs page-local aggregation from separate source queries.
 
-That implementation is not driven by the same connected-source registry used by the campaign `Connected Platforms` section. As a result:
+That implementation was not driven by the same connected-source registry required by the campaign `Connected Platforms` section. As a result:
 
 - source inclusion is hard-coded instead of capability-driven
 - some totals include Meta and GA4 while labels still mention only LinkedIn or Custom Integration
@@ -147,7 +149,7 @@ Not available:
 
 ### Google Ads
 
-Outstanding verification required before implementation.
+Deferred until the Google Ads platform is refined.
 
 Expected available metrics when connected and synced:
 
@@ -156,7 +158,7 @@ Expected available metrics when connected and synced:
 - spend
 - conversions
 
-Do not include Google Ads in Performance Summary until the exact campaign-scoped storage and refresh path is traced.
+Google Ads does not block the current GA4-focused Performance Summary work. When Google Ads is refined, its definition of done must include automatic participation in the Performance Summary aggregate contract, scheduler snapshots, source capabilities, and regression coverage. Do not claim full all-platform Performance Summary readiness until that path is traced and implemented.
 
 ### Google Sheets Spend Sources
 
@@ -242,7 +244,7 @@ Outstanding fixes:
 
 - Keep KPI and Benchmark health from campaign-level KPI/Benchmark records.
 - Replace hard-coded Data Sources block with connected source list from the aggregate contract.
-- Data Sources must list only main Connected Platforms from the implemented aggregate source registry. Today that includes Google Analytics, LinkedIn, Meta, and Custom Integration when connected. Future standalone platforms such as Google Ads or Google Sheets should be added only after their campaign-scoped aggregate paths are traced and implemented. GA4 revenue/spend child imports such as Salesforce, HubSpot, Shopify, CSV, and Google Sheets financial imports can feed totals but must not appear as separate main platforms in this block.
+- Data Sources must list only main Connected Platforms from the implemented aggregate source registry. Today that includes Google Analytics, LinkedIn, Meta, and Custom Integration when connected. Future standalone platforms such as Google Ads or Google Sheets should be added only after their campaign-scoped aggregate paths are traced and implemented. GA4 revenue/spend child imports such as Salesforce, HubSpot, Shopify, CSV, and Google Sheets financial imports can feed financial totals through their parent platform/campaign financial path but must not appear as separate main platforms in this block.
 - Show source freshness and unavailable-metric reasons where relevant.
 - Ensure KPI/Benchmark current values remain sourced from their existing campaign-level source-aware paths and do not regress.
 
@@ -317,7 +319,9 @@ Required regression coverage:
 - Include source capabilities and included/excluded reasons in the response.
 - Include source freshness metadata.
 - Include canonical spend and revenue source provenance.
-- Add Google Ads only after tracing connection, storage, refresh, and campaign scoping paths end to end.
+- Completed for current registered main platforms: replace direct aggregate source construction with a source-adapter registry for GA4, LinkedIn, Meta, and Custom Integration.
+- Completed: The aggregate contract now accepts generic `platformSources` for future main Connected Platforms such as Google Ads, TikTok, Instagram, and other standalone platforms after their campaign-scoped resolvers provide source identity, capabilities, metric totals, freshness, and included/excluded metric reasons.
+- Add each future platform resolver, including Google Ads when refinement begins, after tracing connection, storage, refresh, and campaign scoping paths end to end.
 
 ## Scheduler And Snapshot Tasks
 
@@ -365,7 +369,7 @@ Do not start a later commit until the current commit has targeted regression cov
 
 ### Commit 1: Aggregate Contract
 
-Status: Completed and pushed in commits `1d0f63af` and `1b5b604a`.
+Status: Completed and pushed in commits `1d0f63af` and `1b5b604a`. Latest `platformSources` aggregate-contract follow-up completed locally, not yet pushed.
 
 Goal:
 
@@ -377,9 +381,13 @@ Scope:
 - Completed: Added `server/utils/performance-summary-aggregate.ts`.
 - Completed: Added additive `performanceSummary` response data to `outcome-totals` without removing or renaming existing fields.
 - Completed: Included connected source status, capabilities, included metrics, excluded metrics, unavailable reasons, and freshness where available.
+- Completed follow-up: Main Connected Platform source construction now goes through a registered adapter list in `server/utils/performance-summary-aggregate.ts` for GA4, LinkedIn, Meta, and Custom Integration. This preserves the current response shape while making the aggregate contract the single place where implemented main platforms register their source identity, capabilities, included metrics, excluded metric reasons, freshness, and current totals.
+- Completed follow-up: Added generic `platformSources` support so future standalone Connected Platforms such as Google Ads, TikTok, Instagram, and other sources can contribute aggregate metrics through the same contract without changing Performance Summary tabs.
 - Completed: Preserved unavailable values as unavailable instead of converting them to available zero values.
 - Completed: Included canonical spend-source precedence and revenue-derived ROAS/ROI/CPC/CPA/CTR/CVR availability rules.
 - Completed: Added GA4-only, LinkedIn-plus-Meta, and canonical spend/revenue regression tests in `server/performance-summary-aggregate.test.ts`.
+- Completed follow-up: Added regression coverage proving current main Connected Platform aggregate sources are defined through the adapter registry.
+- Completed follow-up: Added regression coverage proving future generic main Connected Platform sources aggregate impressions, clicks, conversions, and spend through the shared contract.
 - Completed: Did not refactor or rewire the Performance Summary tab UI.
 - Completed follow-up: When live GA4 in `outcome-totals` returns `TOKEN_EXPIRED` or another live-fetch error, persisted GA4 daily rows now backfill users, sessions, conversions, and revenue instead of only revenue.
 - Completed follow-up: Added `server/outcome-totals-ga4-fallback-regression.test.ts`.
@@ -388,7 +396,10 @@ Validation:
 
 - Passed: `npm test -- server/performance-summary-aggregate.test.ts`
 - Passed: `npm test -- server/outcome-totals-ga4-fallback-regression.test.ts server/performance-summary-aggregate.test.ts`
+- Passed after `platformSources` follow-up: `npm test -- server/performance-summary-aggregate.test.ts` with 6 tests.
 - Passed: `npm run check`
+- Passed after `platformSources` follow-up: `npm run check`
+- Passed after `platformSources` follow-up: `git diff --check`
 
 Validation note:
 
@@ -617,7 +628,7 @@ Follow-up validation:
 
 ### Commit 5.3: What's Changed Production Readiness
 
-Status: Completed locally, not yet pushed.
+Status: Completed and pushed through commit `40ea4629`.
 
 Goal:
 
@@ -655,6 +666,22 @@ Validation:
 - Passed: `npm run check`.
 - Passed: `npm run build`.
 
+Live GA4 end-to-end validation setup for later:
+
+- Purpose: validate the full production data path with a real GA4 property: injected GA4 events -> GA4 reporting -> Market Forensics GA4 refresh -> persisted `ga4_daily_metrics` -> campaign metric snapshot -> Performance Summary `What's Changed` and `Metric Trends`.
+- This validates live GA4 API connectivity, token refresh behavior, GA4 metric ingestion, daily metric persistence, snapshot creation, aggregate snapshot compatibility, source-aware cards, source-aware trend charts, and the UI's historical comparison behavior.
+- This does not validate paid-media impressions/clicks for GA4-only campaigns, because GA4 is not a paid-media impression/click source.
+- Create a dedicated GA4 test property and Web stream, then create a Measurement Protocol API secret for that stream.
+- Connect the dedicated GA4 test property to a test Market Forensics campaign through the normal `Connected Platforms -> Google Analytics` flow.
+- Each day for at least 7 days, send synthetic GA4 Measurement Protocol events to the GA4 stream with distinct `client_id`, `session_id`, `page_view`, and `purchase` events.
+- Mark or configure the relevant GA4 event as a conversion/key event if the test needs `conversions` to move.
+- Wait for GA4 processing, then trigger the app GA4 refresh for the campaign with `POST /api/campaigns/:id/ga4/refresh` while authenticated.
+- After refresh succeeds, create a campaign snapshot with `POST /api/campaigns/:id/snapshots` while authenticated.
+- Repeat daily. After two compatible snapshots, `Metric Trends` should render. After seven or more days of compatible snapshots, `Last 7 Days` should have a real previous aggregate snapshot. After thirty or more days, `Last 30 Days` should have a real previous aggregate snapshot.
+- Validate `Previous` values by opening `/api/campaigns/:id/snapshots/comparison?type=yesterday`, `/api/campaigns/:id/snapshots/comparison?type=last_week`, or `/api/campaigns/:id/snapshots/comparison?type=last_month` and confirming `previous.metrics.performanceSummary.totals.<metric>.value` matches the UI.
+- Validate `Metric Trends` by opening `/api/campaigns/:id/snapshots?period=daily`, `/api/campaigns/:id/snapshots?period=weekly`, or `/api/campaigns/:id/snapshots?period=monthly` and confirming visible chart points come only from snapshots whose `metrics.performanceSummary.version` is `performance_summary_aggregate_v1`.
+- Expected GA4-only UI behavior: sessions, users, conversions, revenue, and campaign spend can appear when available; impressions and clicks should not appear unless a connected paid-media source provides them.
+
 ### Commit 6: Docs And Final Validation
 
 Status: Not started.
@@ -677,11 +704,47 @@ Why this is last:
 
 - Documentation should match the implemented behavior, and final validation should cover all previously changed paths together.
 
+## Comprehensive Source Readiness Review
+
+Last reviewed after the main-source adapter registry follow-up.
+
+Root cause:
+
+- The original Performance Summary implementation mixed tab-local calculations with source-specific queries. That made some UI values correct only for the sources each tab happened to know about.
+- The current source of truth is now `/api/campaigns/:id/outcome-totals`, which returns `performanceSummary`.
+- `performanceSummary` is built by `server/utils/performance-summary-aggregate.ts`.
+- Current main Connected Platform aggregate sources are registered through the adapter list for GA4, LinkedIn, Meta, and Custom Integration.
+- GA4 child revenue/spend inputs such as Salesforce, HubSpot, Shopify, CSV, and Google Sheets imports can feed campaign financial totals through the parent platform or campaign financial-source path. They are not main Connected Platforms, users do not connect them from the campaign `Connected Platforms` section, and they must not appear as main source rows.
+
+Tab-by-tab source status:
+
+- Overview: uses `performanceSummary.totals` for impressions, sessions, conversions, and spend. Source labels come from `performanceSummary.sources`. This is aligned for current registered sources.
+- Campaign Health: uses campaign-level KPIs and Benchmarks, and resolves current metric values from `performanceSummary.totals` when the KPI/Benchmark metric exists in the aggregate. It preserves KPI/Benchmark behavior for targets, thresholds, health score, and top-priority action. Data Sources filters out financial child inputs and lists only main Connected Platform sources from `performanceSummary.sources`.
+- What's Changed: compares current `performanceSummary.totals` against historical snapshots only when the snapshot contains a compatible `metrics.performanceSummary.version`. Metric Trends also filters to compatible aggregate snapshots and aggregate-available metrics only.
+- Insights: builds recommendations from `performanceSummary.totals` and `performanceSummary.sources`, including source capabilities and source breakdowns. It avoids paid-media recommendations for analytics-only sources such as GA4.
+
+Automatic aggregation status:
+
+- Implemented for current registered main sources: GA4, LinkedIn, Meta, and Custom Integration.
+- Implemented child-source behavior: GA4/platform child revenue and spend inputs can feed financial totals only through the parent platform/campaign financial path, without appearing as main Connected Platforms and without requiring duplicate Campaign DeepDive inputs.
+- Future main Connected Platforms are supported by the generic `platformSources` contract. Each platform still needs its own campaign-scoped resolver, but once that resolver supplies a valid source breakdown, Performance Summary tabs consume the new source automatically through the existing aggregate contract.
+- Google Ads, TikTok, Instagram, and other future standalone platforms do not require tab rewiring. Their remaining work is platform-specific connection, storage, refresh, campaign scoping, and resolver implementation.
+
+Production-readiness conclusion:
+
+- Production-ready for the current registered main Connected Platform aggregate path covering GA4, LinkedIn, Meta, and Custom Integration, with campaign financial totals able to include parent-platform child revenue/spend inputs when those inputs are configured inside the relevant platform flow.
+- Production-ready at the Performance Summary aggregate layer for future standalone platforms that supply valid `platformSources`.
+- Platform-specific production readiness for Google Ads, TikTok, Instagram, and other future sources still depends on each platform's own connection, storage, refresh, campaign scoping, and resolver validation.
+- Live GA4 7-day and 30-day time-based validation remains a later production validation task using the documented live GA4 test-property setup.
+
 ## Production Readiness Definition
 
 Performance Summary is production ready only when:
 
 - each tab uses the same connected-source-aware aggregate contract
+- every main Connected Platform that is implemented/refined participates automatically in the aggregate contract
+- every future main Connected Platform provides source identity, capabilities, metric totals, source labels, freshness, scheduler snapshot inputs, and tests through the generic `platformSources` contract
+- platform child sources such as GA4 Salesforce/HubSpot/Shopify/CSV/Google Sheets revenue or spend imports feed their parent platform/campaign financial totals without appearing as separate main Connected Platforms
 - GA4-only campaigns show only GA4-available metrics
 - multi-source campaigns aggregate all connected eligible source metrics
 - unavailable metrics are not silently treated as zero
@@ -693,23 +756,28 @@ Performance Summary is production ready only when:
 
 ## Current Status
 
-Not production ready.
+Production-ready for the current registered Performance Summary aggregate path and for future main Connected Platforms at the aggregate-contract layer via `platformSources`.
+
+Platform-specific readiness for Google Ads, TikTok, Instagram, and other future standalone platforms remains part of each platform's own connection, storage, refresh, campaign scoping, and resolver implementation.
 
 Proven:
 
 - Documentation intends Campaign DeepDive to be campaign-wide and cross-platform.
-- Overview, Campaign Health, Scheduler/What's Changed snapshot data, and Insights have been wired to the aggregate contract. Some remaining Performance Summary areas may still contain local fallback calculations until final validation.
+- Overview, Campaign Health, Scheduler/What's Changed snapshot data, and Insights have been wired to the aggregate contract. Fallback calculations remain only as defensive behavior when the aggregate response is unavailable; the normal loaded path uses `performanceSummary`.
 - `outcome-totals` is a stronger existing candidate contract for source-aware campaign totals.
 - Platform Comparison already uses `outcome-totals` as its primary cross-platform source.
+- GA4 child revenue/spend inputs such as Salesforce, HubSpot, Shopify, CSV, and Google Sheets imports are documented as child inputs inside the parent platform flow, not main Connected Platforms.
+- Current main Connected Platform aggregate sources are now registered through the aggregate adapter list for GA4, LinkedIn, Meta, and Custom Integration instead of being added directly inside tab-specific UI logic.
+- Future main Connected Platforms can be aggregated without Performance Summary tab rewiring by supplying validated `platformSources`.
 
 Partially reviewed:
 
 - GA4, LinkedIn, Meta, Custom Integration, revenue source, spend source paths.
 - Scheduler aggregation.
-- Executive Summary aggregation.
 
 Unverified:
 
-- Google Ads campaign-scoped Performance Summary path.
+- Google Ads, TikTok, Instagram, and other future platform-specific connection/storage/refresh/resolver paths. The Performance Summary aggregate contract is ready to consume them through `platformSources`, but each platform path still needs its own implementation and validation.
 - All legacy snapshot route callers.
 - Complete frontend test coverage for every Performance Summary tab.
+- Live GA4 7-day and 30-day time-based validation. This will be validated later with the documented live GA4 test-property setup after enough compatible snapshots exist.

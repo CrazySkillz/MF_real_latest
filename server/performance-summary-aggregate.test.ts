@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
+import {
+  buildPerformanceSummaryAggregate,
+  getPerformanceSummaryMainSourceAdapterIds,
+} from "./utils/performance-summary-aggregate";
 
 describe("Performance Summary aggregate contract", () => {
+  it("defines main Connected Platform sources through the aggregate adapter registry", () => {
+    expect(getPerformanceSummaryMainSourceAdapterIds()).toEqual(["ga4", "linkedin", "meta", "custom_integration"]);
+  });
+
   it("uses only GA4-capable metrics for a GA4-only campaign", () => {
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "campaign-1",
@@ -49,6 +56,47 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.spend).toMatchObject({ available: true, value: 150, sources: ["linkedin", "meta"] });
     expect(aggregate.totals.sessions.available).toBe(false);
     expect(aggregate.totals.roas.available).toBe(false);
+  });
+
+  it("aggregates future main Connected Platform sources through the generic source contract", () => {
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-future",
+      dateRange: "30days",
+      ga4: { connected: false },
+      webAnalytics: { connected: false, provider: null },
+      spend: { unifiedSpend: 300, spendSource: "platform_spend_fallback" },
+      platforms: {},
+      platformSources: [
+        {
+          id: "google_ads",
+          label: "Google Ads",
+          category: "paid_media",
+          connected: true,
+          capabilities: ["impressions", "clicks", "spend", "conversions"],
+          includedMetrics: ["impressions", "clicks", "spend", "conversions"],
+          excludedMetrics: [{ metric: "sessions", reason: "Sessions are web analytics metrics" }],
+          metrics: { impressions: 4000, clicks: 120, spend: 200, conversions: 10 },
+        },
+        {
+          id: "tiktok",
+          label: "TikTok Ads",
+          category: "paid_media",
+          connected: true,
+          capabilities: ["impressions", "clicks", "spend", "conversions"],
+          includedMetrics: ["impressions", "clicks", "spend", "conversions"],
+          excludedMetrics: [{ metric: "sessions", reason: "Sessions are web analytics metrics" }],
+          metrics: { impressions: 6000, clicks: 180, spend: 100, conversions: 15 },
+        },
+      ],
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [],
+    });
+
+    expect(aggregate.sources.map((source) => source.id)).toEqual(["google_ads", "tiktok"]);
+    expect(aggregate.totals.impressions).toMatchObject({ available: true, value: 10000, sources: ["google_ads", "tiktok"] });
+    expect(aggregate.totals.clicks).toMatchObject({ available: true, value: 300, sources: ["google_ads", "tiktok"] });
+    expect(aggregate.totals.conversions).toMatchObject({ available: true, value: 25, sources: ["google_ads", "tiktok"] });
+    expect(aggregate.totals.spend).toMatchObject({ available: true, value: 300, sources: ["google_ads", "tiktok"] });
   });
 
   it("marks canonical spend and revenue-derived ratios available only when required inputs exist", () => {

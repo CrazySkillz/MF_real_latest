@@ -251,6 +251,7 @@ They answer questions like:
 Important scoping rule:
 
 - platform analytics should be scoped to the data the user selected when connecting that platform
+- source workflows opened inside a platform, such as GA4 revenue or spend imports from Salesforce, HubSpot, Shopify, CSV, or Google Sheets, are child inputs of that platform/campaign financial model; users do not connect them as separate main Connected Platforms unless the product explicitly exposes them as standalone campaign platforms
 - example:
   - if a user connects a GA4 property and selects specific GA4 campaigns, the GA4 analytics should be scoped to those selected GA4 campaigns
   - if a user connects LinkedIn and selects specific LinkedIn campaigns, the LinkedIn analytics should be scoped to those selected LinkedIn campaigns
@@ -506,6 +507,10 @@ This means:
 - campaign-level analysis is downstream of connected-platform data
 - connected-platform pages are supporting detail views
 - the campaign remains the primary object
+- Campaign DeepDive sections, including Performance Summary, must automatically aggregate all implemented main Connected Platforms through a shared source-capability contract instead of relying on one-off tab-specific platform lists
+- any future main Connected Platform is not complete until it supplies campaign-scoped source identity, available metrics, unavailable metric reasons, source labels, freshness, scheduler snapshot inputs, and tests for campaign-level aggregation through the shared generic source contract
+- future standalone platforms such as Google Ads, TikTok, Instagram, and other sources should plug into Campaign DeepDive by supplying generic source breakdowns, not by adding tab-specific aggregation logic
+- platform child sources can contribute to the parent platform or campaign financial totals, but should not be displayed as separate main Connected Platforms in campaign-level source lists and should not require duplicate Campaign DeepDive setup
 
 ## Consistency Review Of The Current Codebase
 
@@ -651,6 +656,8 @@ Inside that hub, the `Connected Platforms` section should:
 - show a blue `Connected` badge for platforms that are successfully connected to that campaign
 - provide `View Detailed Analytics` entry points for connected sources
 - have each `View Detailed Analytics` link route to that specific platform's analytics section for the current campaign
+- list main campaign platforms, not platform child revenue/spend imports that are configured inside a platform-specific analytics flow
+- Campaign DeepDive subsections should aggregate metrics from the main platforms listed here; child revenue/spend systems configured inside a platform only affect the relevant financial totals through that parent platform/campaign financial path
 
 This is the correct bridge from campaign setup into analytics.
 

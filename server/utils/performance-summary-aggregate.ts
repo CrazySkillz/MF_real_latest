@@ -34,6 +34,12 @@ type PerformanceSummaryAggregateInput = {
   };
   revenue?: any;
   revenueSources?: any[];
+  platformSources?: any[];
+};
+
+type SourceAdapter = {
+  id: string;
+  build: (input: PerformanceSummaryAggregateInput) => SourceBreakdown;
 };
 
 const parseNum = (value: any): number => {
@@ -58,112 +64,171 @@ const addSource = (
   if (source.connected) sources.push(source);
 };
 
+const addMainSource = (
+  sources: SourceBreakdown[],
+  source: SourceBreakdown,
+) => {
+  if (!source.connected || sources.some((existing) => existing.id === source.id)) return;
+  sources.push(source);
+};
+
+const normalizeMainPlatformSource = (source: any): SourceBreakdown | null => {
+  const id = String(source?.id || "").trim();
+  if (!id || source?.connected !== true || source?.category === "financial") return null;
+  const metrics = source?.metrics && typeof source.metrics === "object" ? source.metrics : {};
+  return {
+    id,
+    label: String(source?.label || id),
+    category: ["web_analytics", "paid_media", "custom"].includes(String(source?.category))
+      ? source.category
+      : "custom",
+    connected: true,
+    capabilities: Array.isArray(source?.capabilities) ? source.capabilities.map(String) : [],
+    includedMetrics: Array.isArray(source?.includedMetrics) ? source.includedMetrics.map(String) : [],
+    excludedMetrics: Array.isArray(source?.excludedMetrics) ? source.excludedMetrics : [],
+    metrics: Object.fromEntries(
+      Object.entries(metrics).map(([key, value]) => [key, value === null ? null : parseNum(value)]),
+    ),
+    freshness: source?.freshness && typeof source.freshness === "object" ? source.freshness : undefined,
+  };
+};
+
+const mainSourceAdapters: SourceAdapter[] = [
+  {
+    id: "ga4",
+    build: (input) => {
+      const ga4Connected = input.ga4?.connected === true;
+      return {
+        id: "ga4",
+        label: "Google Analytics",
+        category: "web_analytics",
+        connected: ga4Connected,
+        capabilities: ["users", "sessions", "conversions", "revenue"],
+        includedMetrics: ga4Connected ? ["users", "sessions", "conversions", "revenue"] : [],
+        excludedMetrics: [
+          { metric: "impressions", reason: "GA4 is not an ad-impression source" },
+          { metric: "clicks", reason: "GA4 is not an ad-click source" },
+          { metric: "spend", reason: "Spend is not a GA4 metric" },
+          { metric: "leads", reason: "Leads are not available from GA4 unless mapped as conversions" },
+        ],
+        metrics: {
+          users: parseNum(input.ga4?.users),
+          sessions: parseNum(input.ga4?.sessions),
+          conversions: parseNum(input.ga4?.conversions),
+          revenue: parseNum(input.ga4?.revenue),
+        },
+      };
+    },
+  },
+  {
+    id: "linkedin",
+    build: (input) => {
+      const linkedin = input.platforms?.linkedin || {};
+      const linkedinConnected = linkedin.connected === true;
+      return {
+        id: "linkedin",
+        label: "LinkedIn Ads",
+        category: "paid_media",
+        connected: linkedinConnected,
+        capabilities: ["impressions", "clicks", "spend", "conversions", "leads", "attributedRevenue"],
+        includedMetrics: linkedinConnected ? ["impressions", "clicks", "spend", "conversions", "leads", "attributedRevenue"] : [],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+          { metric: "pageviews", reason: "Pageviews are web analytics metrics" },
+        ],
+        metrics: {
+          impressions: parseNum(linkedin.impressions),
+          clicks: parseNum(linkedin.clicks),
+          spend: parseNum(linkedin.spend),
+          conversions: parseNum(linkedin.conversions),
+          leads: parseNum(linkedin.leads),
+          attributedRevenue: parseNum(linkedin.attributedRevenue),
+        },
+        freshness: linkedin.lastImportedAt ? { lastImportedAt: linkedin.lastImportedAt } : undefined,
+      };
+    },
+  },
+  {
+    id: "meta",
+    build: (input) => {
+      const meta = input.platforms?.meta || {};
+      const metaConnected = meta.connected === true;
+      return {
+        id: "meta",
+        label: "Meta Ads",
+        category: "paid_media",
+        connected: metaConnected,
+        capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        includedMetrics: metaConnected ? ["impressions", "clicks", "spend", "conversions", "attributedRevenue"] : [],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+          { metric: "pageviews", reason: "Pageviews are web analytics metrics" },
+          { metric: "leads", reason: "Leads are not available in the current Meta aggregate" },
+        ],
+        metrics: {
+          impressions: parseNum(meta.impressions),
+          clicks: parseNum(meta.clicks),
+          spend: parseNum(meta.spend),
+          conversions: parseNum(meta.conversions),
+          attributedRevenue: parseNum(meta.attributedRevenue),
+        },
+      };
+    },
+  },
+  {
+    id: "custom_integration",
+    build: (input) => {
+      const custom = input.platforms?.customIntegration || {};
+      const customConnected = custom.connected === true;
+      const customIsWebProvider = input.webAnalytics?.provider === "custom_integration";
+      return {
+        id: "custom_integration",
+        label: "Custom Integration",
+        category: "custom",
+        connected: customConnected,
+        capabilities: ["impressions", "clicks", "spend", "conversions", "users", "sessions", "pageviews", "revenue"],
+        includedMetrics: customConnected
+          ? ["impressions", "clicks", "spend", "conversions", ...(customIsWebProvider ? ["users", "sessions", "pageviews", "revenue"] : [])]
+          : [],
+        excludedMetrics: customConnected && !customIsWebProvider
+          ? [
+              { metric: "users", reason: "GA4 is the primary web analytics source" },
+              { metric: "sessions", reason: "GA4 is the primary web analytics source" },
+              { metric: "pageviews", reason: "GA4 is the primary web analytics source" },
+            ]
+          : [],
+        metrics: {
+          impressions: parseNum(custom.impressions),
+          clicks: parseNum(custom.clicks),
+          spend: parseNum(custom.spend),
+          conversions: parseNum(custom.conversions),
+          users: parseNum(custom.users),
+          sessions: parseNum(custom.sessions),
+          pageviews: parseNum(custom.pageviews),
+          revenue: parseNum(custom.revenue),
+        },
+        freshness: custom.lastUploadedAt ? { lastUploadedAt: custom.lastUploadedAt } : undefined,
+      };
+    },
+  },
+];
+
+export const getPerformanceSummaryMainSourceAdapterIds = () => mainSourceAdapters.map((adapter) => adapter.id);
+
 export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggregateInput) {
-  const platforms = input.platforms || {};
   const sourceBreakdown: SourceBreakdown[] = [];
 
-  const ga4Connected = input.ga4?.connected === true;
-  addSource(sourceBreakdown, {
-    id: "ga4",
-    label: "Google Analytics",
-    category: "web_analytics",
-    connected: ga4Connected,
-    capabilities: ["users", "sessions", "conversions", "revenue"],
-    includedMetrics: ga4Connected ? ["users", "sessions", "conversions", "revenue"] : [],
-    excludedMetrics: [
-      { metric: "impressions", reason: "GA4 is not an ad-impression source" },
-      { metric: "clicks", reason: "GA4 is not an ad-click source" },
-      { metric: "spend", reason: "Spend is not a GA4 metric" },
-      { metric: "leads", reason: "Leads are not available from GA4 unless mapped as conversions" },
-    ],
-    metrics: {
-      users: parseNum(input.ga4?.users),
-      sessions: parseNum(input.ga4?.sessions),
-      conversions: parseNum(input.ga4?.conversions),
-      revenue: parseNum(input.ga4?.revenue),
-    },
-  });
+  for (const adapter of mainSourceAdapters) {
+    addMainSource(sourceBreakdown, adapter.build(input));
+  }
 
-  const linkedin = platforms.linkedin || {};
-  const linkedinConnected = linkedin.connected === true;
-  addSource(sourceBreakdown, {
-    id: "linkedin",
-    label: "LinkedIn Ads",
-    category: "paid_media",
-    connected: linkedinConnected,
-    capabilities: ["impressions", "clicks", "spend", "conversions", "leads", "attributedRevenue"],
-    includedMetrics: linkedinConnected ? ["impressions", "clicks", "spend", "conversions", "leads", "attributedRevenue"] : [],
-    excludedMetrics: [
-      { metric: "sessions", reason: "Sessions are web analytics metrics" },
-      { metric: "users", reason: "Users are web analytics metrics" },
-      { metric: "pageviews", reason: "Pageviews are web analytics metrics" },
-    ],
-    metrics: {
-      impressions: parseNum(linkedin.impressions),
-      clicks: parseNum(linkedin.clicks),
-      spend: parseNum(linkedin.spend),
-      conversions: parseNum(linkedin.conversions),
-      leads: parseNum(linkedin.leads),
-      attributedRevenue: parseNum(linkedin.attributedRevenue),
-    },
-    freshness: linkedin.lastImportedAt ? { lastImportedAt: linkedin.lastImportedAt } : undefined,
-  });
-
-  const meta = platforms.meta || {};
-  const metaConnected = meta.connected === true;
-  addSource(sourceBreakdown, {
-    id: "meta",
-    label: "Meta Ads",
-    category: "paid_media",
-    connected: metaConnected,
-    capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
-    includedMetrics: metaConnected ? ["impressions", "clicks", "spend", "conversions", "attributedRevenue"] : [],
-    excludedMetrics: [
-      { metric: "sessions", reason: "Sessions are web analytics metrics" },
-      { metric: "users", reason: "Users are web analytics metrics" },
-      { metric: "pageviews", reason: "Pageviews are web analytics metrics" },
-      { metric: "leads", reason: "Leads are not available in the current Meta aggregate" },
-    ],
-    metrics: {
-      impressions: parseNum(meta.impressions),
-      clicks: parseNum(meta.clicks),
-      spend: parseNum(meta.spend),
-      conversions: parseNum(meta.conversions),
-      attributedRevenue: parseNum(meta.attributedRevenue),
-    },
-  });
-
-  const custom = platforms.customIntegration || {};
-  const customConnected = custom.connected === true;
-  const customIsWebProvider = input.webAnalytics?.provider === "custom_integration";
-  addSource(sourceBreakdown, {
-    id: "custom_integration",
-    label: "Custom Integration",
-    category: "custom",
-    connected: customConnected,
-    capabilities: ["impressions", "clicks", "spend", "conversions", "users", "sessions", "pageviews", "revenue"],
-    includedMetrics: customConnected
-      ? ["impressions", "clicks", "spend", "conversions", ...(customIsWebProvider ? ["users", "sessions", "pageviews", "revenue"] : [])]
-      : [],
-    excludedMetrics: customConnected && !customIsWebProvider
-      ? [
-          { metric: "users", reason: "GA4 is the primary web analytics source" },
-          { metric: "sessions", reason: "GA4 is the primary web analytics source" },
-          { metric: "pageviews", reason: "GA4 is the primary web analytics source" },
-        ]
-      : [],
-    metrics: {
-      impressions: parseNum(custom.impressions),
-      clicks: parseNum(custom.clicks),
-      spend: parseNum(custom.spend),
-      conversions: parseNum(custom.conversions),
-      users: parseNum(custom.users),
-      sessions: parseNum(custom.sessions),
-      pageviews: parseNum(custom.pageviews),
-      revenue: parseNum(custom.revenue),
-    },
-    freshness: custom.lastUploadedAt ? { lastUploadedAt: custom.lastUploadedAt } : undefined,
-  });
+  const platformSources = Array.isArray(input.platformSources) ? input.platformSources : [];
+  for (const source of platformSources) {
+    const normalized = normalizeMainPlatformSource(source);
+    if (normalized) addMainSource(sourceBreakdown, normalized);
+  }
 
   const revenueSources = Array.isArray(input.revenueSources) ? input.revenueSources : [];
   for (const source of revenueSources) {

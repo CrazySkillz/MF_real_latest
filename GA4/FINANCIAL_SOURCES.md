@@ -49,6 +49,7 @@ Campaign DeepDive financial provenance rule:
 - this keeps Campaign DeepDive aligned with the GA4 `Total Revenue -> Sources` and `Total Spend -> Sources` modal provenance while still avoiding duplicate setup or showing child inputs as main Connected Platforms
 - imported spend labels inside GA4, such as Google Sheets or LinkedIn spend imports, are not connected ad platforms; they can feed total spend, ROI, and ROAS, but Budget Allocation should only show allocation sources after a spend-capable ad platform is connected in `Connected Platforms`
 - Budget & Financial Insights should use aggregate financial metrics for ROAS, ROI, CPA, spend, budget utilization, CTR, CVR, CPC, and CPM; source-performance and reallocation insights should use only spend-capable main connected sources, not GA4 child spend labels
+- Budget & Financial trend indicators should compare current aggregate values only against compatible snapshot `metrics.performanceSummary` data with the same aggregate version; legacy top-level snapshot totals must not be mixed into current aggregate comparisons
 
 ## Revenue Computation
 

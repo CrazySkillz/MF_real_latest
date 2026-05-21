@@ -9,6 +9,12 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery<any>({");
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days"');
     expect(page).toContain("outcome-totals?dateRange=90days");
+    expect(page).toContain("const FINANCIAL_ANALYSIS_REFRESH_MS = 30000;");
+    expect(page).toContain("refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS");
+    expect(page).toContain("refetchIntervalInBackground: false");
+    expect(page).toContain("refetchOnWindowFocus: true");
+    expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}`]');
+    expect(page).not.toContain("snapshots?date=");
     expect(page).toContain("const performanceSummary = outcomeTotals?.performanceSummary;");
     expect(page).toContain("const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];");
     expect(page).toContain("const aggregateMetric = (metricName: string) => performanceSummary?.totals?.[metricName];");
@@ -16,6 +22,9 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const aggregateMetricValue = (metricName: string): number | null => {");
     expect(page).toContain("const aggregateMetricSources = (metricName: string): string[] => {");
     expect(page).toContain("const aggregateMetricUnavailableReasons = (metricName: string): string[] => {");
+    expect(page).toContain("const compatibleHistoricalSummary = performanceSummary?.version && snapshotPerformanceSummary?.version === performanceSummary.version");
+    expect(page).toContain('aggregateSnapshotMetricValue(compatibleHistoricalSummary, "spend")');
+    expect(page).toContain('aggregateSnapshotMetricValue(compatibleHistoricalSummary, "conversions")');
     expect(page).toContain("void budgetFinancialAggregate;");
     expect(page).not.toContain("Demo Data");
     expect(page).not.toContain("Showing demo data");

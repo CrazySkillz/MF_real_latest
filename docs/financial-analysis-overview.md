@@ -20,7 +20,9 @@ The current production path is the shared campaign aggregate:
 The page may still load legacy platform endpoints for older fallback paths, but completed production tabs should use the aggregate contract when `performanceSummary` is present.
 
 A historical snapshot endpoint is also queried for trend indicators:
-- `/api/campaigns/{campaignId}/snapshots?date={targetDate}` - returns the closest snapshot to the comparison date.
+- `/api/campaigns/{campaignId}/snapshots/comparison?type={comparisonType}` - returns current and previous metric snapshots.
+
+The page refetches the aggregate and comparison snapshots every 30 seconds while visible and also refetches on window focus, so source refreshes become visible without requiring users to leave the page.
 
 ---
 
@@ -102,6 +104,8 @@ Daily Burn Rate requires available spend and a valid campaign start date. Target
 When Target Daily Spend and Pacing Status are unavailable because the campaign has no end date, the UI tells users to set a campaign end date to enable those values.
 
 Daily Burn Rate can be tested with a controlled GA4/mock-live campaign after spend is present in the aggregate: confirm `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` returns the expected `performanceSummary.totals.spend.value`, confirm the campaign start date, then verify the UI value equals `spend / daysElapsed`. A mock-live GA4 setup is useful for end-to-end source refresh validation, but the burn-rate formula itself depends on aggregate spend and campaign start date, not on users entering a burn-rate value.
+
+Latest validation for this logic is covered by commit `7878a2df Validate budget pacing date inputs`: `npm run check`, `npm test -- server/campaign-financial-analysis-regression.test.ts`, and targeted `git diff --check` passed.
 
 **Pacing status:**
 - **On Track:** 85-115% of target daily spend
@@ -259,13 +263,15 @@ Dynamically generated recommendations based on available aggregate cost-metric t
 
 ## Trend Indicators
 
-Each metric card can show a green/red trend arrow comparing current values to a historical snapshot. The comparison period is configurable (1 day, 7 days, 30 days) and defaults to 7 days.
+Each metric card can show a green/red trend arrow comparing current aggregate values to a compatible historical aggregate snapshot. The comparison period is configurable (1 day, 7 days, 30 days) and defaults to 7 days.
 
 ```
 change % = ((current - previous) / previous) * 100
 ```
 
 Changes smaller than 0.01% are hidden.
+
+Trend indicators use `metrics.performanceSummary` from snapshots only when the snapshot aggregate version matches the current `performanceSummary.version`. Legacy or incompatible snapshots are ignored rather than mixed with the current aggregate model.
 
 ---
 

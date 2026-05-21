@@ -101,7 +101,7 @@ For future main Connected Platforms, the integration is not complete until it al
 
 Performance Summary GA4 validation should use the live/mock GA4 test-property setup documented in `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md`. That setup validates GA4 data changes over time, app refresh, updated Performance Summary current values, compatible snapshot creation, `What's Changed`, and `Metric Trends`. It requires at least two compatible snapshots for trends, two comparable periods for `What's Changed`, seven or more days for `Last 7 Days`, and thirty or more days for `Last 30 Days`.
 
-Budget & Financial Analysis GA4 financial behavior is tracked in `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md` and `GA4/FINANCIAL_SOURCES.md`. GA4 child revenue/spend inputs can feed aggregate financial totals, but Budget Allocation and Financial Performance Insights should treat spend-capable main Connected Platforms as the source set for allocation and paid-media optimization guidance.
+Budget & Financial Analysis GA4 financial behavior is tracked in `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md` and `GA4/FINANCIAL_SOURCES.md`. GA4 child revenue/spend inputs can feed aggregate financial totals, but Budget Allocation and Financial Performance Insights should treat spend-capable main Connected Platforms as the source set for allocation and paid-media optimization guidance. Budget & Financial current values refetch through the same aggregate contract while visible and on window focus, and trend comparisons must use compatible aggregate snapshots rather than legacy top-level snapshot totals.
 
 ## Reference Rule
 

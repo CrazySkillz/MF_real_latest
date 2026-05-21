@@ -238,6 +238,8 @@ It should prioritize:
 
 Status: completed.
 
+Latest follow-up commit: `7878a2df Validate budget pacing date inputs`.
+
 Evidence:
 
 - `client/src/pages/financial-analysis.tsx` now fetches `/api/campaigns/:id/outcome-totals?dateRange=90days`.
@@ -354,6 +356,7 @@ Evidence:
 - Follow-up logic fix: Overview pacing now requires a campaign end date; without an end date, Target Daily Spend and Pacing Status are unavailable instead of being derived from current burn rate and incorrectly shown as On Track.
 - Follow-up copy fix: Budget Pacing & Burn Rate now explicitly tells users to set a campaign end date to enable Target Daily Spend and Pacing Status.
 - Follow-up logic fix: Budget Pacing & Burn Rate now also requires a valid campaign start date for Daily Burn Rate and a valid start/end date range for Target Daily Spend and Pacing Status, instead of silently using today as a fallback start date.
+- Validation passed for the pacing/date-input follow-up: `npm run check`, `npm test -- server/campaign-financial-analysis-regression.test.ts`, and targeted `git diff --check`.
 - Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
 
 ### Commit 7: Scheduler, History, Docs, Final Validation
@@ -362,6 +365,16 @@ Evidence:
 - Ensure the page refetches aggregate values while visible and on window focus, matching the Performance Summary synchronization behavior.
 - Update `ARCHITECTURE_USER_JOURNEY.md`, `GA4/README.md`, `GA4/FINANCIAL_SOURCES.md`, and this tracker.
 - Run targeted tests, `npm run check`, and `npm run build`.
+
+Status: completed.
+
+Evidence:
+
+- Budget & Financial Analysis now uses `/api/campaigns/:id/snapshots/comparison?type=...` for historical comparison instead of the unsupported `/snapshots?date=...` query.
+- Trend indicators use snapshot `metrics.performanceSummary` only when the snapshot aggregate `version` matches the current `performanceSummary.version`; incompatible legacy snapshots are ignored.
+- Current aggregate and comparison snapshot queries refetch every 30 seconds while visible and on window focus.
+- Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
+- Final validation passed: `npm run check`, `npm test -- server/campaign-financial-analysis-regression.test.ts server/performance-summary-scheduler-regression.test.ts`, targeted `git diff --check`, and `npm run build`.
 
 ## Validation Requirements
 
@@ -380,20 +393,19 @@ Before marking this subsection production ready:
 
 ## Current Status
 
-Partially production ready through Commit 6.
+Production ready for the currently implemented Budget & Financial Analysis scope through Commit 7, with live/source-refresh validation still expected as integrations are exercised in deployed environments.
 
 Proven:
 
 - Documentation requires Campaign DeepDive subsections to aggregate main Connected Platform metrics at the campaign level.
 - Performance Summary already has a source-aware aggregate contract through `/api/campaigns/:id/outcome-totals`.
 - Budget & Financial Analysis completed tabs now use the shared aggregate contract for current financial totals, source capability checks, unavailable states, financial input provenance, budget allocation, and financial insights.
+- Budget Pacing & Burn Rate now fails closed when required campaign dates are missing or invalid: Daily Burn Rate requires a valid campaign start date, and Target Daily Spend/Pacing Status require a valid start/end date range.
 - Financial Performance Insights are logical within the current aggregate contract: summary tones are value-based, source insights are sourced from spend-capable connected sources, scaling language is gated by budget/source conditions, and GA4-only campaigns do not receive paid-media optimization recommendations without a connected spend-capable ad platform.
+- Scheduler-created snapshots include `metrics.performanceSummary`, and Budget & Financial trend indicators compare only compatible aggregate snapshots.
+- The Budget & Financial page refetches current aggregate values while visible and on window focus so source updates are pulled into the UI through the same aggregate contract.
 
 Outstanding:
 
-- Complete Commit 7 scheduler/history/docs/final validation.
-- Align any remaining historical comparison logic with compatible aggregate snapshots.
-- Verify open-page refetch behavior for Budget & Financial current values after source updates.
-- Run final targeted tests, `npm run check`, and `npm run build`.
-- Add any remaining scheduler/history regression coverage required by Commit 7.
-- Keep documentation updated as each remaining fix is completed.
+- Complete deployed live/source-refresh validation after Render deploy.
+- Keep documentation updated if future source integrations add new aggregate capabilities.

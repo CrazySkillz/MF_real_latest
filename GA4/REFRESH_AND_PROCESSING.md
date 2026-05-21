@@ -257,6 +257,7 @@ What is true today:
 - when a GA4 KPI/Benchmark recompute runs for a campaign, breached GA4 KPIs and Benchmarks should restore exactly one active in-app alert row if the row is missing
 - Ad Comparison refreshes indirectly from refreshed inputs
 - Insights refreshes indirectly from refreshed inputs
+- Campaign DeepDive Budget & Financial Analysis refreshes current aggregate financial values while visible and on window focus, and historical trend indicators use compatible `metrics.performanceSummary` snapshots created by the snapshot scheduler
 - report outputs are generated from already-refreshed tab inputs, with scheduled GA4 reports also performing a best-effort KPI/Benchmark recompute before PDF generation
 - scheduled/server-generated GA4 reports now have dedicated server-side rendering for `Overview`, `Ad Comparison`, `Insights`, and `Custom`, using saved report config plus existing refreshed GA4 inputs
 - scheduled report processing now fails closed for missing campaign ownership and deduplicates report rows before due checks

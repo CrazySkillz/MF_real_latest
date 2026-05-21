@@ -47,6 +47,8 @@ type FinancialSpendInputBreakdown = {
 
 type InsightTone = "success" | "warning" | "info";
 
+const FINANCIAL_ANALYSIS_REFRESH_MS = 30000;
+
 export default function FinancialAnalysis() {
   const [, params] = useRoute("/campaigns/:id/financial-analysis");
   const campaignId = params?.id;
@@ -58,21 +60,16 @@ export default function FinancialAnalysis() {
     enabled: !!campaignId,
   });
 
-  // Get historical snapshot for comparison
-  const { data: historicalSnapshot } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "snapshots", "historical", comparisonPeriod],
+  const comparisonType = comparisonPeriod === "1d" ? "yesterday" : comparisonPeriod === "7d" ? "last_week" : "last_month";
+
+  // Get compatible historical snapshots for comparison
+  const { data: comparisonData } = useQuery<{ current: any | null; previous: any | null }>({
+    queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}`],
     enabled: !!campaignId,
-    queryFn: async () => {
-      const daysAgo = comparisonPeriod === "1d" ? 1 : comparisonPeriod === "7d" ? 7 : 30;
-      const targetDate = new Date();
-      targetDate.setDate(targetDate.getDate() - daysAgo);
-      
-      const response = await fetch(`/api/campaigns/${campaignId}/snapshots?date=${targetDate.toISOString()}`);
-      if (!response.ok) return null;
-      const snapshots = await response.json();
-      
-      return snapshots.length > 0 ? snapshots[0] : null;
-    },
+    placeholderData: (previousData) => previousData,
+    refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   // Get LinkedIn metrics
@@ -129,6 +126,9 @@ export default function FinancialAnalysis() {
       if (!response.ok) return null;
       return response.json();
     },
+    refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   // Demo mode mock data
@@ -158,7 +158,7 @@ export default function FinancialAnalysis() {
   const effectiveSheets: any = demoSheets || sheetsData;
   const effectiveGA4: any = demoGA4 || ga4Data;
   const effectiveMeta: any = demoMeta || metaData;
-  const effectiveSnapshot: any = demoMode ? demoSnapshot : historicalSnapshot;
+  const effectiveSnapshot: any = demoMode ? demoSnapshot : comparisonData?.previous;
 
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('en-US').format(value);
@@ -241,6 +241,16 @@ export default function FinancialAnalysis() {
     aggregateMetricUnavailableReasons,
   };
   void budgetFinancialAggregate;
+
+  const snapshotPerformanceSummary = effectiveSnapshot?.metrics?.performanceSummary;
+  const compatibleHistoricalSummary = performanceSummary?.version && snapshotPerformanceSummary?.version === performanceSummary.version
+    ? snapshotPerformanceSummary
+    : null;
+  const aggregateSnapshotMetricValue = (summary: any, metricName: string): number | null => {
+    const metric = summary?.totals?.[metricName];
+    const value = Number(metric?.value);
+    return metric?.available === true && Number.isFinite(value) ? value : null;
+  };
 
   // Aggregate metrics from all platforms
   // Custom Integration: Map pageviews→impressions, sessions→engagements (consistent with Performance Summary)
@@ -512,11 +522,18 @@ export default function FinancialAnalysis() {
     );
   };
 
-  const historicalMetrics = effectiveSnapshot ? {
+  const historicalMetrics = demoMode && effectiveSnapshot ? {
     spend: effectiveSnapshot.totalSpend || 0,
+    conversions: effectiveSnapshot.totalConversions || 0,
     revenue: (effectiveSnapshot.totalConversions || 0) * estimatedAOV,
     roas: effectiveSnapshot.totalSpend > 0 ? ((effectiveSnapshot.totalConversions || 0) * estimatedAOV) / effectiveSnapshot.totalSpend : 0,
     roi: effectiveSnapshot.totalSpend > 0 ? (((effectiveSnapshot.totalConversions || 0) * estimatedAOV - effectiveSnapshot.totalSpend) / effectiveSnapshot.totalSpend) * 100 : 0,
+  } : compatibleHistoricalSummary ? {
+    spend: aggregateSnapshotMetricValue(compatibleHistoricalSummary, "spend"),
+    conversions: aggregateSnapshotMetricValue(compatibleHistoricalSummary, "conversions"),
+    revenue: aggregateSnapshotMetricValue(compatibleHistoricalSummary, "revenue"),
+    roas: aggregateSnapshotMetricValue(compatibleHistoricalSummary, "roas"),
+    roi: aggregateSnapshotMetricValue(compatibleHistoricalSummary, "roi"),
   } : null;
 
   return (
@@ -787,7 +804,7 @@ export default function FinancialAnalysis() {
                           <p className="text-2xl font-bold text-foreground">
                             {formatOverviewCurrency(overviewSpendMetric)}
                           </p>
-                          {overviewSpendMetric.available && historicalMetrics && renderTrendIndicator(calculateChange(overviewSpend, historicalMetrics.spend))}
+                          {overviewSpendMetric.available && historicalMetrics?.spend !== null && historicalMetrics?.spend !== undefined && renderTrendIndicator(calculateChange(overviewSpend, historicalMetrics.spend))}
                           {!overviewSpendMetric.available && (
                             <p className="text-xs text-muted-foreground mt-1">
                               {overviewMetricUnavailableText(overviewSpendMetric, "No connected spend source is available")}
@@ -809,7 +826,7 @@ export default function FinancialAnalysis() {
                           <p className="text-2xl font-bold text-foreground">
                             {formatOverviewNumber(overviewConversionsMetric)}
                           </p>
-                          {overviewConversionsMetric.available && historicalMetrics && effectiveSnapshot && renderTrendIndicator(calculateChange(overviewConversionsMetric.value, effectiveSnapshot.totalConversions || 0))}
+                          {overviewConversionsMetric.available && historicalMetrics?.conversions !== null && historicalMetrics?.conversions !== undefined && renderTrendIndicator(calculateChange(overviewConversionsMetric.value, historicalMetrics.conversions))}
                           {!overviewConversionsMetric.available && (
                             <p className="text-xs text-muted-foreground mt-1">
                               {overviewMetricUnavailableText(overviewConversionsMetric, "No connected source provides conversions")}

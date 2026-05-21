@@ -80,6 +80,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(roiTab).toContain('className="text-sm font-semibold">Revenue</h5>');
     expect(roiTab).toContain('className="text-sm font-semibold">Spend</h5>');
     expect(roiTab).toContain("are not separate main Connected Platforms");
+    expect(roiTab).not.toContain("formatSourceType(source.sourceType)");
     expect(roiTab).not.toContain("{roas.toFixed(2)}x");
     expect(roiTab).not.toContain("{formatPercentage(roi)}");
     expect(roiTab).not.toContain("{formatCurrency(estimatedRevenue)}");

@@ -398,12 +398,6 @@ export default function FinancialAnalysis() {
     const parsed = Number(source?.value);
     return Number.isFinite(parsed) ? parsed : 0;
   };
-  const formatSourceType = (sourceType?: string) => {
-    if (!sourceType) return "";
-    if (sourceType === "csv") return "CSV";
-    if (sourceType === "google_sheets") return "Google Sheets";
-    return sourceType.replace(/_/g, " ");
-  };
   const sourceIncludesMetric = (source: any, metricName: string) =>
     Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
   const financialMainSources = performanceSources
@@ -1227,9 +1221,6 @@ export default function FinancialAnalysis() {
                               <div className="flex justify-between items-center gap-4">
                                 <div>
                                   <span className="font-medium">{source.label}</span>
-                                  {formatSourceType(source.sourceType) && (
-                                    <span className="text-sm text-muted-foreground ml-2">{formatSourceType(source.sourceType)}</span>
-                                  )}
                                 </div>
                                 <span className="text-sm font-medium">{formatCurrency(source.revenue)}</span>
                               </div>
@@ -1245,9 +1236,6 @@ export default function FinancialAnalysis() {
                               <div className="flex justify-between items-center gap-4">
                                 <div>
                                   <span className="font-medium">{source.label}</span>
-                                  {formatSourceType(source.sourceType) && (
-                                    <span className="text-sm text-muted-foreground ml-2">{formatSourceType(source.sourceType)}</span>
-                                  )}
                                 </div>
                                 <span className="text-sm font-medium">{formatCurrency(source.spend)}</span>
                               </div>

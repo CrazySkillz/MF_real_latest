@@ -285,6 +285,8 @@ Evidence:
 - Follow-up fix: when there is exactly one main connected source, the source ROAS/ROI rows use aggregate revenue and spend so a GA4-only campaign includes GA4 child financial inputs and canonical spend instead of showing GA4-native revenue with `$0` spend.
 - Follow-up fix: the financial input provenance list now comes from `/outcome-totals.financialInputs`, which is built from the same GA4 native revenue, revenue breakdown, and spend breakdown paths used by the GA4 financial source modals.
 - Follow-up UI fix: financial input provenance is displayed under separate `Revenue` and `Spend` subsections.
+- Follow-up UI fix: financial input rows display source labels only; source-type metadata remains in the payload but is not duplicated beside each row label.
+- Render validation passed after deploy: Financial Inputs rows displayed the expected source labels without duplicated source-type copy.
 - Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
 
 ### Commit 4: Cost Analysis Tab

@@ -21,6 +21,22 @@ interface Campaign {
   endDate?: string | Date | null;
 }
 
+type FinancialSourceBreakdown = {
+  id: string;
+  label: string;
+  revenue: number;
+  spend: number;
+  conversions: number;
+  roas: number | null;
+  roi: number | null;
+};
+
+type FinancialChildSourceBreakdown = {
+  id: string;
+  label: string;
+  revenue: number;
+};
+
 export default function FinancialAnalysis() {
   const [, params] = useRoute("/campaigns/:id/financial-analysis");
   const campaignId = params?.id;
@@ -362,6 +378,43 @@ export default function FinancialAnalysis() {
     metric.available ? formatNumber(metric.value) : "Unavailable";
   const formatOverviewPercentage = (metric: { available: boolean; value: number; unavailableReasons: string[] }) =>
     metric.available ? formatPercentage(metric.value) : "Unavailable";
+  const financialSpendMetric = getOverviewMetric("spend", totalSpend);
+  const financialRevenueMetric = getOverviewMetric("revenue", estimatedRevenue);
+  const financialRoiMetric = getOverviewMetric("roi", roi);
+  const financialRoasMetric = getOverviewMetric("roas", roas);
+  const parseSourceMetric = (source: any, metricName: string) => {
+    const parsed = Number(source?.metrics?.[metricName]);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const sourceIncludesMetric = (source: any, metricName: string) =>
+    Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
+  const financialSourceBreakdowns: FinancialSourceBreakdown[] = performanceSources
+    .filter((source: any) => source?.connected === true && source?.category !== "financial")
+    .map((source: any) => {
+      const revenue = sourceIncludesMetric(source, "attributedRevenue")
+        ? parseSourceMetric(source, "attributedRevenue")
+        : parseSourceMetric(source, "revenue");
+      const spend = sourceIncludesMetric(source, "spend") ? parseSourceMetric(source, "spend") : 0;
+      const conversions = sourceIncludesMetric(source, "conversions") ? parseSourceMetric(source, "conversions") : 0;
+      return {
+        id: String(source.id || source.label || "source"),
+        label: String(source.label || source.id || "Connected Source"),
+        revenue,
+        spend,
+        conversions,
+        roas: spend > 0 && revenue > 0 ? revenue / spend : null,
+        roi: spend > 0 && revenue > 0 ? ((revenue - spend) / spend) * 100 : null,
+      };
+    })
+    .filter((source: FinancialSourceBreakdown) => source.revenue > 0 || source.spend > 0 || source.conversions > 0);
+  const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = performanceSources
+    .filter((source: any) => source?.connected === true && source?.category === "financial")
+    .map((source: any, index: number) => ({
+      id: `${String(source.id || source.label || "financial")}-${index}`,
+      label: String(source.label || source.id || "Financial input"),
+      revenue: parseSourceMetric(source, "revenue"),
+    }))
+    .filter((source: FinancialChildSourceBreakdown) => source.revenue > 0);
 
   // Calculate comparison metrics
   const calculateChange = (current: number, previous: number) => {
@@ -891,49 +944,72 @@ export default function FinancialAnalysis() {
                   <div className="grid gap-6 md:grid-cols-2">
                     <div className="space-y-4">
                       <h4 className="font-semibold">Return on Ad Spend (ROAS)</h4>
-                      <div className="text-3xl font-bold text-blue-600">{roas.toFixed(2)}x</div>
+                      <div className="text-3xl font-bold text-blue-600">
+                        {financialRoasMetric.available ? `${financialRoasMetric.value.toFixed(2)}x` : "Unavailable"}
+                      </div>
                       <p className="text-sm text-muted-foreground">
-                        For every $1 spent on advertising, you generated ${roas.toFixed(2)} in revenue.
+                        {financialRoasMetric.available
+                          ? `For every $1 spent on advertising, you generated $${financialRoasMetric.value.toFixed(2)} in revenue.`
+                          : overviewMetricUnavailableText(financialRoasMetric, "ROAS requires available revenue and spend")}
                       </p>
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span>Total Ad Spend:</span>
-                          <span className="font-medium">{formatCurrency(totalSpend)}</span>
+                          <span className="font-medium">{formatOverviewCurrency(financialSpendMetric)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Estimated Revenue:</span>
-                          <span className="font-medium">{formatCurrency(estimatedRevenue)}</span>
+                          <span>Total Revenue:</span>
+                          <span className="font-medium">{formatOverviewCurrency(financialRevenueMetric)}</span>
                         </div>
                       </div>
                     </div>
                     
                     <div className="space-y-4">
                       <h4 className="font-semibold">Return on Investment (ROI)</h4>
-                      <div className={`text-3xl font-bold ${roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatPercentage(roi)}
+                      <div className={`text-3xl font-bold ${financialRoiMetric.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatOverviewPercentage(financialRoiMetric)}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {roi >= 0 ? 'Positive' : 'Negative'} return on your advertising investment.
+                        {financialRoiMetric.available
+                          ? `${financialRoiMetric.value >= 0 ? 'Positive' : 'Negative'} return on your advertising investment.`
+                          : overviewMetricUnavailableText(financialRoiMetric, "ROI requires available revenue and spend")}
                       </p>
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span>Net Profit:</span>
-                          <span className={`font-medium ${estimatedRevenue - totalSpend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatCurrency(estimatedRevenue - totalSpend)}
+                          <span className={`font-medium ${financialRevenueMetric.value - financialSpendMetric.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {financialRevenueMetric.available && financialSpendMetric.available
+                              ? formatCurrency(financialRevenueMetric.value - financialSpendMetric.value)
+                              : "Unavailable"}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span>Investment:</span>
-                          <span className="font-medium">{formatCurrency(totalSpend)}</span>
+                          <span className="font-medium">{formatOverviewCurrency(financialSpendMetric)}</span>
                         </div>
                       </div>
                     </div>
                   </div>
                   
-                  {/* Platform-Specific ROAS Breakdown */}
+                  {/* Source-Specific ROAS Breakdown */}
                   <div className="mt-6">
-                    <h4 className="font-semibold mb-4">Platform ROAS Performance</h4>
+                    <h4 className="font-semibold mb-4">Source ROAS Performance</h4>
                     <div className="space-y-3">
+                      {performanceSummary && financialSourceBreakdowns.map((source) => (
+                        <div key={`${source.id}-roas`} className="p-3 border rounded-lg">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="font-medium">{source.label}</span>
+                            <Badge className={source.roas === null ? "bg-muted text-muted-foreground" : source.roas >= 3 ? "bg-green-100 text-green-700" : source.roas >= 1.5 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
+                              {source.roas === null ? "ROAS unavailable" : `${source.roas.toFixed(2)}x ROAS`}
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Spend: {formatCurrency(source.spend)} | Conversions: {formatNumber(source.conversions)} | Revenue: {formatCurrency(source.revenue)}
+                          </div>
+                        </div>
+                      ))}
+                      {!performanceSummary && (
+                      <>
                       {/* LinkedIn Ads */}
                       {platformMetrics.linkedIn.spend > 0 && (
                         <div className="p-3 border rounded-lg">
@@ -978,22 +1054,42 @@ export default function FinancialAnalysis() {
                           </div>
                         </div>
                       )}
+                      </>
+                      )}
 
                       {/* No data message */}
-                      {totalSpend === 0 && (
+                      {((performanceSummary && financialSourceBreakdowns.length === 0) || (!performanceSummary && totalSpend === 0)) && (
                         <div className="p-4 bg-muted rounded-lg text-center">
                           <p className="text-sm text-muted-foreground">
-                            No platform data available yet. Connect platforms or upload data to see performance breakdown.
+                            No connected source has revenue, spend, or conversion data available yet.
                           </p>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Platform-Specific ROI Breakdown */}
+                  {/* Source-Specific ROI Breakdown */}
                   <div className="mt-6">
-                    <h4 className="font-semibold mb-4">Platform ROI Performance</h4>
+                    <h4 className="font-semibold mb-4">Source ROI Performance</h4>
                     <div className="space-y-3">
+                      {performanceSummary && financialSourceBreakdowns.map((source) => {
+                        const netProfit = source.revenue - source.spend;
+                        return (
+                          <div key={`${source.id}-roi`} className="p-3 border rounded-lg">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="font-medium">{source.label}</span>
+                              <Badge className={source.roi === null ? "bg-muted text-muted-foreground" : source.roi >= 100 ? "bg-green-100 text-green-700" : source.roi >= 0 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}>
+                                {source.roi === null ? "ROI unavailable" : `${formatPercentage(source.roi)} ROI`}
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Spend: {formatCurrency(source.spend)} | Net Profit: <span className={netProfit >= 0 ? "text-green-600" : "text-red-600"}>{formatCurrency(netProfit)}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {!performanceSummary && (
+                      <>
                       {/* LinkedIn Ads */}
                       {platformMetrics.linkedIn.spend > 0 && (() => {
                         const linkedInROI = platformMetrics.linkedIn.spend > 0
@@ -1060,17 +1156,38 @@ export default function FinancialAnalysis() {
                           </div>
                         );
                       })()}
+                      </>
+                      )}
 
                       {/* No data message */}
-                      {totalSpend === 0 && (
+                      {((performanceSummary && financialSourceBreakdowns.length === 0) || (!performanceSummary && totalSpend === 0)) && (
                         <div className="p-4 bg-muted rounded-lg text-center">
                           <p className="text-sm text-muted-foreground">
-                            No platform data available yet. Connect platforms or upload data to see performance breakdown.
+                            No connected source has revenue, spend, or conversion data available yet.
                           </p>
                         </div>
                       )}
                     </div>
                   </div>
+
+                  {financialChildSourceBreakdowns.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className="font-semibold mb-2">Financial Revenue Inputs</h4>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        These child inputs feed aggregate revenue through their parent connected platform and are not separate main Connected Platforms.
+                      </p>
+                      <div className="space-y-3">
+                        {financialChildSourceBreakdowns.map((source) => (
+                          <div key={source.id} className="p-3 border rounded-lg">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">{source.label}</span>
+                              <span className="text-sm font-medium">{formatCurrency(source.revenue)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>}
             </TabsContent>

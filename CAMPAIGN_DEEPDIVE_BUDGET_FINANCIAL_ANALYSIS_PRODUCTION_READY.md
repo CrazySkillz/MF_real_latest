@@ -259,6 +259,7 @@ Evidence:
 - Missing required aggregate inputs render `Unavailable` plus the aggregate unavailable reason instead of silently showing zero.
 - Follow-up fix: `/api/campaigns/:id/outcome-totals` revenue now aligns with the GA4 financial card rule by adding imported revenue-to-date records from the GA4/campaign financial path to GA4 revenue before deriving ROAS and ROI.
 - Follow-up fix: aggregate `cvr` now uses paid-media `conversions / clicks` when clicks exist, and falls back to GA4/web `conversions / sessions` when the connected web source provides sessions.
+- Render validation passed after deploy: `performanceSummary.totals.cvr.value` populated from GA4 conversions and sessions for the current GA4-backed test campaign.
 - Other Budget & Financial tabs still use the previous calculations and are intentionally deferred to later commits.
 - Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
 
@@ -268,6 +269,17 @@ Evidence:
 - Replace hardcoded platform breakdowns with source breakdowns from the aggregate.
 - Preserve child-source distinction for GA4 financial inputs.
 - Add regression coverage for revenue/spend availability and no double-counting.
+
+Status: completed.
+
+Evidence:
+
+- ROI & ROAS headline values now read `spend`, `revenue`, `roi`, and `roas` through `performanceSummary.totals`.
+- The tab waits for the same aggregate response already used by Overview, so it does not render local hardcoded totals before aggregate values arrive.
+- Source ROAS/ROI breakdowns render from `performanceSummary.sources` for main connected sources instead of hardcoded LinkedIn/Custom/Meta blocks when the aggregate contract is available.
+- GA4 financial child revenue inputs remain separate from main Connected Platform source rows; they are shown only as financial revenue inputs and feed totals through the aggregate revenue path.
+- Totals are not recomputed from the visible source rows in the tab, preventing child-source display from double-counting aggregate revenue.
+- Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
 
 ### Commit 4: Cost Analysis Tab
 

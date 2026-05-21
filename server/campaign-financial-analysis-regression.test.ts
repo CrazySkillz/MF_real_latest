@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 describe("campaign Budget & Financial Analysis regression guard", () => {
-  it("adds the shared performanceSummary aggregate contract without changing tab calculations yet", () => {
+  it("adds the shared performanceSummary aggregate contract for Budget & Financial tabs", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
 
     expect(page).toContain("const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery<any>({");
@@ -17,8 +17,6 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const aggregateMetricSources = (metricName: string): string[] => {");
     expect(page).toContain("const aggregateMetricUnavailableReasons = (metricName: string): string[] => {");
     expect(page).toContain("void budgetFinancialAggregate;");
-
-    expect(page).toContain("const totalSpend = platformMetrics.linkedIn.spend + platformMetrics.customIntegration.spend + platformMetrics.sheets.spend + platformMetrics.meta.spend;");
   });
 
   it("wires the Overview tab to aggregate financial metrics with unavailable states", () => {
@@ -51,5 +49,30 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(overview).not.toContain("{formatCurrency(cpc)}");
     expect(overview).not.toContain("{formatCurrency(cpa)}");
     expect(overview).not.toContain("{formatPercentage(conversionRate)}");
+  });
+
+  it("wires the ROI & ROAS tab to aggregate totals and source breakdowns", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
+    const roiStart = page.indexOf('<TabsContent value="roi-roas"');
+    const roiEnd = page.indexOf('<TabsContent value="costs"', roiStart);
+    const roiTab = page.slice(roiStart, roiEnd);
+
+    expect(page).toContain('const financialSpendMetric = getOverviewMetric("spend", totalSpend);');
+    expect(page).toContain('const financialRevenueMetric = getOverviewMetric("revenue", estimatedRevenue);');
+    expect(page).toContain('const financialRoiMetric = getOverviewMetric("roi", roi);');
+    expect(page).toContain('const financialRoasMetric = getOverviewMetric("roas", roas);');
+    expect(page).toContain("const financialSourceBreakdowns: FinancialSourceBreakdown[] = performanceSources");
+    expect(page).toContain("const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = performanceSources");
+
+    expect(roiTab).toContain("financialRoasMetric.available ? `${financialRoasMetric.value.toFixed(2)}x` : \"Unavailable\"");
+    expect(roiTab).toContain("formatOverviewCurrency(financialSpendMetric)");
+    expect(roiTab).toContain("formatOverviewCurrency(financialRevenueMetric)");
+    expect(roiTab).toContain("formatOverviewPercentage(financialRoiMetric)");
+    expect(roiTab).toContain("performanceSummary && financialSourceBreakdowns.map");
+    expect(roiTab).toContain("Financial Revenue Inputs");
+    expect(roiTab).toContain("are not separate main Connected Platforms");
+    expect(roiTab).not.toContain("{roas.toFixed(2)}x");
+    expect(roiTab).not.toContain("{formatPercentage(roi)}");
+    expect(roiTab).not.toContain("{formatCurrency(estimatedRevenue)}");
   });
 });

@@ -285,7 +285,11 @@ export default function FinancialAnalysis() {
   // Get campaign budget and currency
   const campaignBudget = campaign.budget ? (parseFloat(campaign.budget) || 0) : 0;
   const hasCampaignBudget = campaignBudget > 0;
-  const hasCampaignEndDate = Boolean(campaign.endDate);
+  const campaignStartDate = campaign.startDate ? new Date(campaign.startDate) : null;
+  const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
+  const hasCampaignStartDate = Boolean(campaignStartDate && !Number.isNaN(campaignStartDate.getTime()));
+  const hasCampaignEndDate = Boolean(campaignEndDate && !Number.isNaN(campaignEndDate.getTime()));
+  const hasCampaignDateRange = Boolean(hasCampaignStartDate && hasCampaignEndDate && campaignEndDate!.getTime() >= campaignStartDate!.getTime());
   const campaignCurrency = (campaign as any).currency || 'USD';
   
   // Format currency with campaign's currency
@@ -606,18 +610,16 @@ export default function FinancialAnalysis() {
                 <CardContent>
                   {(() => {
                     const hasBudgetHealthInputs = hasCampaignBudget && overviewSpendMetric.available;
-                    const hasPacingHealthInputs = hasBudgetHealthInputs && hasCampaignEndDate;
+                    const hasPacingHealthInputs = hasBudgetHealthInputs && hasCampaignDateRange;
                     const calculateHealthScore = () => {
                       let score = 0;
                       
                       const budgetScore = hasBudgetHealthInputs ? (overviewBudgetUtilization <= 80 ? 25 : overviewBudgetUtilization <= 95 ? 15 : overviewBudgetUtilization <= 100 ? 10 : 0) : 0;
                       
-                      const campaignStartDate = campaign.startDate ? new Date(campaign.startDate) : new Date();
                       const today = new Date();
-                      const daysElapsed = Math.max(1, Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24)));
-                      const dailyBurnRate = overviewSpend / daysElapsed;
-                      const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
-                      const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+                      const daysElapsed = hasCampaignStartDate ? Math.max(1, Math.ceil((today.getTime() - campaignStartDate!.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+                      const dailyBurnRate = daysElapsed > 0 ? overviewSpend / daysElapsed : 0;
+                      const targetDaysTotal = hasCampaignDateRange ? Math.max(1, Math.ceil((campaignEndDate!.getTime() - campaignStartDate!.getTime()) / (1000 * 60 * 60 * 24))) : 0;
                       const targetDailySpend = targetDaysTotal > 0 ? campaignBudget / targetDaysTotal : 0;
                       const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
                       const pacingDeviation = Math.abs(pacingPercentage - 100);
@@ -718,19 +720,17 @@ export default function FinancialAnalysis() {
                               <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.pacing.status)}`} />
                             </div>
                             <div className="text-2xl font-bold">{(() => {
-                              const campaignStartDate = campaign.startDate ? new Date(campaign.startDate) : new Date();
                               const today = new Date();
-                              const daysElapsed = Math.max(1, Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24)));
-                              const dailyBurnRate = overviewSpend / daysElapsed;
-                              const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
-                              const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+                              const daysElapsed = hasCampaignStartDate ? Math.max(1, Math.ceil((today.getTime() - campaignStartDate!.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+                              const dailyBurnRate = daysElapsed > 0 ? overviewSpend / daysElapsed : 0;
+                              const targetDaysTotal = hasCampaignDateRange ? Math.max(1, Math.ceil((campaignEndDate!.getTime() - campaignStartDate!.getTime()) / (1000 * 60 * 60 * 24))) : 0;
                               const targetDailySpend = targetDaysTotal > 0 ? campaignBudget / targetDaysTotal : 0;
                               const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
                               return hasPacingHealthInputs ? formatPercentage(pacingPercentage) : "Unavailable";
                             })()}</div>
                             {!hasPacingHealthInputs && (
                               <p className="text-xs text-muted-foreground mt-1">
-                                {!hasCampaignBudget ? "Campaign budget is required for pacing" : hasCampaignEndDate ? overviewMetricUnavailableText(overviewSpendMetric, "Pacing requires available spend") : "Campaign end date is required for pacing"}
+                                {!hasCampaignBudget ? "Campaign budget is required for pacing" : !hasCampaignStartDate ? "Campaign start date is required for pacing" : !hasCampaignEndDate ? "Campaign end date is required for pacing" : !hasCampaignDateRange ? "Campaign end date must be on or after the start date for pacing" : overviewMetricUnavailableText(overviewSpendMetric, "Pacing requires available spend")}
                               </p>
                             )}
                             <Badge className={`mt-2 ${getStatusBadgeColor(healthData.pacing.status)}`}>
@@ -869,17 +869,15 @@ export default function FinancialAnalysis() {
                   <CardContent>
                     <div className="space-y-4">
                       {(() => {
-                        const campaignStartDate = campaign.startDate ? new Date(campaign.startDate) : new Date();
                         const today = new Date();
-                        const daysElapsed = Math.max(1, Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24)));
-                        const dailyBurnRate = overviewSpend / daysElapsed;
+                        const daysElapsed = hasCampaignStartDate ? Math.max(1, Math.ceil((today.getTime() - campaignStartDate!.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+                        const dailyBurnRate = daysElapsed > 0 ? overviewSpend / daysElapsed : 0;
                         const isOverBudget = overviewSpendMetric.available && overviewRemainingBudget < 0;
                         const daysRemaining = (!isOverBudget && dailyBurnRate > 0) ? overviewRemainingBudget / dailyBurnRate : 0;
                         const projectedEndDate = (!isOverBudget && dailyBurnRate > 0) ? new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000) : null;
                         
-                        const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
-                        const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && Boolean(campaignEndDate);
-                        const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+                        const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange;
+                        const targetDaysTotal = hasCampaignDateRange ? Math.max(1, Math.ceil((campaignEndDate!.getTime() - campaignStartDate!.getTime()) / (1000 * 60 * 60 * 24))) : 0;
                         const targetDailySpend = targetDaysTotal > 0 ? campaignBudget / targetDaysTotal : 0;
                         
                         const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
@@ -889,7 +887,7 @@ export default function FinancialAnalysis() {
                           <>
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium">Daily Burn Rate</span>
-                              <span className="text-sm font-bold">{overviewSpendMetric.available ? formatCurrency(dailyBurnRate) : "Unavailable"}</span>
+                              <span className="text-sm font-bold">{overviewSpendMetric.available && hasCampaignStartDate ? formatCurrency(dailyBurnRate) : "Unavailable"}</span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium">Target Daily Spend</span>
@@ -919,8 +917,13 @@ export default function FinancialAnalysis() {
                             {!hasPacingInputs && (
                               <div className="pt-3 border-t">
                                 <p className="text-xs text-muted-foreground">
-                                  {!hasCampaignBudget ? "Campaign budget is required to calculate pacing." : !campaignEndDate ? "Campaign end date is required to calculate target daily spend and pacing." : overviewMetricUnavailableText(overviewSpendMetric, "Spend is required to calculate pacing.")}
+                                  {!hasCampaignBudget ? "Campaign budget is required to calculate pacing." : !hasCampaignStartDate ? "Campaign start date is required to calculate daily burn rate and pacing." : !hasCampaignEndDate ? "Campaign end date is required to calculate target daily spend and pacing." : !hasCampaignDateRange ? "Campaign end date must be on or after the start date to calculate pacing." : overviewMetricUnavailableText(overviewSpendMetric, "Spend is required to calculate pacing.")}
                                 </p>
+                                {!hasCampaignEndDate && hasCampaignStartDate && hasCampaignBudget && overviewSpendMetric.available && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Set a campaign end date to enable Target Daily Spend and Pacing Status.
+                                  </p>
+                                )}
                               </div>
                             )}
                             {overviewSpendMetric.available && !isOverBudget && projectedEndDate && daysRemaining > 0 && (

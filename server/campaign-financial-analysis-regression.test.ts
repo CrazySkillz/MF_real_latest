@@ -39,9 +39,11 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('const overviewRoiMetric = getOverviewMetric("roi", roi);');
     expect(page).toContain('const overviewRoasMetric = getOverviewMetric("roas", roas);');
     expect(page).toContain("const hasCampaignBudget = campaignBudget > 0;");
-    expect(page).toContain("const hasCampaignEndDate = Boolean(campaign.endDate);");
+    expect(page).toContain("const hasCampaignStartDate = Boolean(campaignStartDate && !Number.isNaN(campaignStartDate.getTime()));");
+    expect(page).toContain("const hasCampaignEndDate = Boolean(campaignEndDate && !Number.isNaN(campaignEndDate.getTime()));");
+    expect(page).toContain("const hasCampaignDateRange = Boolean(hasCampaignStartDate && hasCampaignEndDate && campaignEndDate!.getTime() >= campaignStartDate!.getTime());");
     expect(overview).toContain("const hasBudgetHealthInputs = hasCampaignBudget && overviewSpendMetric.available;");
-    expect(overview).toContain("const hasPacingHealthInputs = hasBudgetHealthInputs && hasCampaignEndDate;");
+    expect(overview).toContain("const hasPacingHealthInputs = hasBudgetHealthInputs && hasCampaignDateRange;");
     expect(overview).toContain("const budgetScore = hasBudgetHealthInputs ?");
     expect(overview).toContain("const pacingScore = hasPacingHealthInputs ?");
     expect(overview).toContain("status: hasBudgetHealthInputs ?");
@@ -58,9 +60,12 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(overview).toContain("Campaign budget is required for budget health");
     expect(overview).toContain("Campaign budget is required for pacing");
     expect(overview).toContain("Campaign end date is required for pacing");
-    expect(overview).toContain("const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && Boolean(campaignEndDate);");
+    expect(overview).toContain("const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange;");
     expect(overview).toContain('{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}');
+    expect(overview).toContain('{overviewSpendMetric.available && hasCampaignStartDate ? formatCurrency(dailyBurnRate) : "Unavailable"}');
+    expect(overview).toContain("Campaign start date is required to calculate daily burn rate and pacing.");
     expect(overview).toContain("Campaign end date is required to calculate target daily spend and pacing.");
+    expect(overview).toContain("Set a campaign end date to enable Target Daily Spend and Pacing Status.");
 
     expect(overview).toContain("formatOverviewCurrency(overviewSpendMetric)");
     expect(overview).toContain("formatOverviewNumber(overviewConversionsMetric)");

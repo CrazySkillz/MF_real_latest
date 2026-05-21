@@ -58,7 +58,7 @@ A composite score from 4 equally-weighted sub-scores, each worth 0-25 points:
 | **ROI** | >= 100% | >= 50% | >= 0% | Negative ROI |
 | **ROAS** | >= 3.0x | >= 1.5x | >= 1.0x | < 1.0x |
 
-Budget Utilization requires both available spend and a configured campaign budget. Pacing requires available spend, a configured campaign budget, and a campaign end date. If the campaign has no budget or no end date, the related sub-scores are unavailable and contribute 0 points instead of being treated as 0% utilization or 100% on-track pacing.
+Budget Utilization requires both available spend and a configured campaign budget. Pacing requires available spend, a configured campaign budget, a valid campaign start date, and a valid campaign end date. If any required input is missing, the related sub-scores are unavailable and contribute 0 points instead of being treated as 0% utilization or 100% on-track pacing.
 
 ROI and ROAS require available aggregate revenue and spend. If either metric is unavailable, the sub-score is unavailable and contributes 0 points instead of being labeled critical.
 
@@ -97,7 +97,11 @@ Requires the campaign to have a `budget` field set. Displays a progress bar capp
 | Target Daily Spend | `campaignBudget / totalCampaignDays` |
 | Pacing % | `(dailyBurnRate / targetDailySpend) * 100` |
 
-Target Daily Spend and Pacing Status require a campaign end date. Without an end date, the card still shows current daily burn and projected budget exhaustion when spend/budget are available, but target daily spend and pacing are unavailable.
+Daily Burn Rate requires available spend and a valid campaign start date. Target Daily Spend and Pacing Status require available spend, campaign budget, a valid campaign start date, and a valid campaign end date. Without an end date, the card still shows current daily burn and projected budget exhaustion when spend/budget/start date are available, but target daily spend and pacing are unavailable.
+
+When Target Daily Spend and Pacing Status are unavailable because the campaign has no end date, the UI tells users to set a campaign end date to enable those values.
+
+Daily Burn Rate can be tested with a controlled GA4/mock-live campaign after spend is present in the aggregate: confirm `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` returns the expected `performanceSummary.totals.spend.value`, confirm the campaign start date, then verify the UI value equals `spend / daysElapsed`. A mock-live GA4 setup is useful for end-to-end source refresh validation, but the burn-rate formula itself depends on aggregate spend and campaign start date, not on users entering a burn-rate value.
 
 **Pacing status:**
 - **On Track:** 85-115% of target daily spend
@@ -270,8 +274,9 @@ Changes smaller than 0.01% are hidden.
 | Edge Case | Behavior |
 |---|---|
 | No budget set | Campaign Health budget and pacing sub-scores show `Unavailable` and contribute 0 points |
+| No campaign start date | Daily Burn Rate, pacing sub-score, Target Daily Spend, and Pacing Status show `Unavailable` |
 | No campaign end date | Pacing sub-score, Target Daily Spend, and Pacing Status show `Unavailable` |
-| No start/end date | Uses today as start date, projects from burn rate |
+| End date before start date | Pacing sub-score, Target Daily Spend, and Pacing Status show `Unavailable` |
 | Over-budget | Shows "Budget exceeded by $X" warning, no days-remaining projection |
 | Missing aggregate metric | Shows `Unavailable` plus the aggregate unavailable reason |
 | No available health inputs | Campaign Health header shows `Unavailable` / `No score` |

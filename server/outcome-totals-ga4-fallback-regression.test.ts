@@ -33,5 +33,9 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("const spendBreakdown = await storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate);");
     expect(route).toContain("performanceSummarySpendTotals");
     expect(route).toContain("unifiedSpend: performanceSummarySpend > 0 ? performanceSummarySpend : unifiedSpend");
+    expect(route).toContain("const revenueBreakdown = await storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, \"ga4\");");
+    expect(route).toContain("importedRevenueToDateTotal");
+    expect(route).toContain("let offsiteRevenueTotal = importedRevenueToDateTotal;");
+    expect(route).toContain("const totalRevenueUnified = parseFloat((onsiteRevenue + offsiteRevenueTotal).toFixed(2));");
   });
 });

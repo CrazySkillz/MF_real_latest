@@ -10167,6 +10167,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch {
         // Keep the date-range spend total if spend-to-date cannot be resolved.
       }
+      let importedRevenueToDateTotal = 0;
+      let importedRevenueSources: any[] = [];
+      try {
+        const revenueStartDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
+        const revenueEndDate = new Date().toISOString().slice(0, 10);
+        const revenueBreakdown = await storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4");
+        importedRevenueToDateTotal = Number(revenueBreakdown.reduce((sum: number, source: any) => sum + parseNum(source?.revenue), 0).toFixed(2));
+        importedRevenueSources = revenueBreakdown
+          .filter((source: any) => parseNum(source?.revenue) > 0)
+          .map((source: any) => ({
+            type: String(source?.displayName || source?.sourceType || "Revenue Source"),
+            connected: true,
+            revenueClassification: "imported_revenue_to_date",
+            lastTotalRevenue: parseNum(source?.revenue),
+            offsite: true,
+            platformContext: "ga4",
+          }));
+      } catch {
+        // Keep mapped-source fallback if revenue records cannot be resolved.
+      }
 
       // LinkedIn aggregated platform inputs (from latest import session)
       let linkedIn: any = { connected: false };
@@ -10377,35 +10397,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      const revenueSources: any[] = [];
-      let offsiteRevenueTotal = 0;
+      const revenueSources: any[] = [...importedRevenueSources];
+      let offsiteRevenueTotal = importedRevenueToDateTotal;
       try {
-        const [hubspotConn, sfConn, shopifyConn] = await Promise.all([
-          storage.getHubspotConnection(campaignId),
-          storage.getSalesforceConnection(campaignId),
-          storage.getShopifyConnection(campaignId),
-        ]);
-        const hubs = [
-          { type: "hubspot", conn: hubspotConn },
-          { type: "salesforce", conn: sfConn },
-          { type: "shopify", conn: shopifyConn },
-        ];
-        for (const s of hubs) {
-          const cfg = parseMappingConfig((s.conn as any)?.mappingConfig);
-          if (!cfg) continue;
-          const revenueClassification = String(cfg.revenueClassification || "");
-          const lastTotalRevenue = parseNum(cfg.lastTotalRevenue);
-          const offsite = revenueClassification === "offsite_not_in_ga4";
-          const platformContext = String(cfg.platformContext || "").trim() || null;
-          revenueSources.push({
-            type: s.type,
-            connected: true,
-            revenueClassification: revenueClassification || null,
-            lastTotalRevenue: lastTotalRevenue || 0,
-            offsite,
-            platformContext,
-          });
-          if (offsite && lastTotalRevenue > 0) offsiteRevenueTotal += lastTotalRevenue;
+        if (revenueSources.length === 0) {
+          const [hubspotConn, sfConn, shopifyConn] = await Promise.all([
+            storage.getHubspotConnection(campaignId),
+            storage.getSalesforceConnection(campaignId),
+            storage.getShopifyConnection(campaignId),
+          ]);
+          const hubs = [
+            { type: "hubspot", conn: hubspotConn },
+            { type: "salesforce", conn: sfConn },
+            { type: "shopify", conn: shopifyConn },
+          ];
+          for (const s of hubs) {
+            const cfg = parseMappingConfig((s.conn as any)?.mappingConfig);
+            if (!cfg) continue;
+            const revenueClassification = String(cfg.revenueClassification || "");
+            const lastTotalRevenue = parseNum(cfg.lastTotalRevenue);
+            const offsite = revenueClassification === "offsite_not_in_ga4";
+            const platformContext = String(cfg.platformContext || "").trim() || null;
+            revenueSources.push({
+              type: s.type,
+              connected: true,
+              revenueClassification: revenueClassification || null,
+              lastTotalRevenue: lastTotalRevenue || 0,
+              offsite,
+              platformContext,
+            });
+            if (offsite && lastTotalRevenue > 0) offsiteRevenueTotal += lastTotalRevenue;
+          }
         }
       } catch {
         // ignore

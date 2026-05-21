@@ -257,6 +257,7 @@ Evidence:
 - Overview loading now waits for the aggregate response to avoid briefly rendering local hardcoded financial values before aggregate data arrives.
 - Budget utilization, pacing, ROI, ROAS, total spend, conversions, CPC, CPA, and conversion-rate displays use Overview-specific aggregate metric wrappers.
 - Missing required aggregate inputs render `Unavailable` plus the aggregate unavailable reason instead of silently showing zero.
+- Follow-up fix: `/api/campaigns/:id/outcome-totals` revenue now aligns with the GA4 financial card rule by adding imported revenue-to-date records from the GA4/campaign financial path to GA4 revenue before deriving ROAS and ROI.
 - Other Budget & Financial tabs still use the previous calculations and are intentionally deferred to later commits.
 - Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
 

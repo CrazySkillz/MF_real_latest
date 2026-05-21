@@ -64,16 +64,21 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const financialMainSources = performanceSources");
     expect(page).toContain("const useAggregateSourceTotals = financialMainSources.length === 1;");
     expect(page).toContain("const financialSourceBreakdowns: FinancialSourceBreakdown[] = financialMainSources");
-    expect(page).toContain("const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = performanceSources");
+    expect(page).toContain("const aggregateRevenueInputBreakdowns: FinancialChildSourceBreakdown[] = performanceSources");
+    expect(page).toContain("const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputs.length > 0");
     expect(page).toContain("const revenue = useAggregateSourceTotals && financialRevenueMetric.available ? financialRevenueMetric.value : sourceRevenue;");
     expect(page).toContain("const spend = useAggregateSourceTotals && financialSpendMetric.available ? financialSpendMetric.value : sourceSpend;");
+    expect(page).toContain("const financialRevenueInputs = Array.isArray(outcomeTotals?.financialInputs?.revenue) ? outcomeTotals.financialInputs.revenue : [];");
+    expect(page).toContain("const financialSpendInputs = Array.isArray(outcomeTotals?.financialInputs?.spend) ? outcomeTotals.financialInputs.spend : [];");
 
     expect(roiTab).toContain("financialRoasMetric.available ? `${financialRoasMetric.value.toFixed(2)}x` : \"Unavailable\"");
     expect(roiTab).toContain("formatOverviewCurrency(financialSpendMetric)");
     expect(roiTab).toContain("formatOverviewCurrency(financialRevenueMetric)");
     expect(roiTab).toContain("formatOverviewPercentage(financialRoiMetric)");
     expect(roiTab).toContain("performanceSummary && financialSourceBreakdowns.map");
-    expect(roiTab).toContain("Financial Revenue Inputs");
+    expect(roiTab).toContain("Financial Inputs");
+    expect(roiTab).toContain('className="text-sm font-semibold">Revenue</h5>');
+    expect(roiTab).toContain('className="text-sm font-semibold">Spend</h5>');
     expect(roiTab).toContain("are not separate main Connected Platforms");
     expect(roiTab).not.toContain("{roas.toFixed(2)}x");
     expect(roiTab).not.toContain("{formatPercentage(roi)}");

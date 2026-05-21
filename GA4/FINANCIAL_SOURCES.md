@@ -40,6 +40,14 @@ Visible Overview layout:
 
 This layout is presentation-only. It must not change financial source-of-truth, source modal provenance, edit/delete behavior, or calculations.
 
+Campaign DeepDive financial provenance rule:
+
+- Budget & Financial Analysis may use the shared campaign aggregate for totals such as revenue, spend, ROAS, ROI, CPA, and CVR
+- detailed financial input rows must come from explicit GA4 financial provenance, not from the high-level `performanceSummary.sources` list
+- `/api/campaigns/:id/outcome-totals.financialInputs.revenue` should include native GA4 revenue plus active GA4-context revenue breakdown rows
+- `/api/campaigns/:id/outcome-totals.financialInputs.spend` should include active spend breakdown rows
+- this keeps Campaign DeepDive aligned with the GA4 `Total Revenue -> Sources` and `Total Spend -> Sources` modal provenance while still avoiding duplicate setup or showing child inputs as main Connected Platforms
+
 ## Revenue Computation
 
 ### Total Revenue

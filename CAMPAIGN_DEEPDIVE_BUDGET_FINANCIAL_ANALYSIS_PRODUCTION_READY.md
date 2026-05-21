@@ -89,6 +89,7 @@ The contract should provide:
 Preferred approach:
 
 - Reuse `/api/campaigns/:id/outcome-totals` and `outcomeTotals.performanceSummary` wherever the required financial metrics already exist.
+- Use `/api/campaigns/:id/outcome-totals.financialInputs` for detailed revenue/spend input provenance. `performanceSummary.sources` is a connected-source aggregate breakdown and must not be treated as the complete GA4 financial source-modal provenance list.
 - Extend the aggregate helper only if a Budget & Financial tab needs a financial field that is not yet represented.
 - Keep persistence reads in `server/storage.ts`.
 - Keep API composition in `server/routes-oauth.ts`.
@@ -129,6 +130,8 @@ Rules:
 - must not appear as separate main Connected Platforms
 - must not require duplicate Budget & Financial setup
 - must preserve source provenance and avoid double-counting
+- detailed Budget & Financial input rows must use the same native GA4 revenue, revenue breakdown, and spend breakdown paths as the GA4 financial source modals
+- `performanceSummary.sources` may show high-level connected source and child-revenue aggregate contributors, but it is not sufficient for detailed financial input provenance because it does not represent native GA4 revenue and spend breakdown rows
 
 ### Paid Media Sources
 
@@ -280,6 +283,8 @@ Evidence:
 - GA4 financial child revenue inputs remain separate from main Connected Platform source rows; they are shown only as financial revenue inputs and feed totals through the aggregate revenue path.
 - Totals are not recomputed from the visible source rows in the tab, preventing child-source display from double-counting aggregate revenue.
 - Follow-up fix: when there is exactly one main connected source, the source ROAS/ROI rows use aggregate revenue and spend so a GA4-only campaign includes GA4 child financial inputs and canonical spend instead of showing GA4-native revenue with `$0` spend.
+- Follow-up fix: the financial input provenance list now comes from `/outcome-totals.financialInputs`, which is built from the same GA4 native revenue, revenue breakdown, and spend breakdown paths used by the GA4 financial source modals.
+- Follow-up UI fix: financial input provenance is displayed under separate `Revenue` and `Spend` subsections.
 - Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
 
 ### Commit 4: Cost Analysis Tab

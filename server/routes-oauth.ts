@@ -10151,10 +10151,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const persistedSpend = parseNum((spendTotals as any)?.totalSpend);
       let performanceSummarySpendTotals = spendTotals;
       let performanceSummarySpend = persistedSpend;
+      let financialSpendInputs: any[] = [];
       try {
         const spendStartDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
         const spendEndDate = new Date().toISOString().slice(0, 10);
         const spendBreakdown = await storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate);
+        financialSpendInputs = spendBreakdown
+          .filter((source: any) => parseNum(source?.spend) > 0)
+          .map((source: any) => ({
+            id: String(source?.sourceId || source?.displayName || "spend_source"),
+            label: String(source?.displayName || source?.sourceType || "Spend Source"),
+            sourceType: String(source?.sourceType || "spend_source"),
+            value: parseNum(source?.spend),
+            currency: source?.currency || null,
+          }));
         const spendToDate = spendBreakdown.reduce((sum: number, source: any) => sum + parseNum(source?.spend), 0);
         if (spendToDate > persistedSpend) {
           performanceSummarySpend = Number(spendToDate.toFixed(2));
@@ -10169,11 +10179,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       let importedRevenueToDateTotal = 0;
       let importedRevenueSources: any[] = [];
+      let financialRevenueInputs: any[] = [];
       try {
         const revenueStartDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
         const revenueEndDate = new Date().toISOString().slice(0, 10);
         const revenueBreakdown = await storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4");
         importedRevenueToDateTotal = Number(revenueBreakdown.reduce((sum: number, source: any) => sum + parseNum(source?.revenue), 0).toFixed(2));
+        financialRevenueInputs = revenueBreakdown
+          .filter((source: any) => parseNum(source?.revenue) > 0)
+          .map((source: any) => ({
+            id: String(source?.sourceId || source?.displayName || "revenue_source"),
+            label: String(source?.displayName || source?.sourceType || "Revenue Source"),
+            sourceType: String(source?.sourceType || "revenue_source"),
+            value: parseNum(source?.revenue),
+            currency: source?.currency || null,
+          }));
         importedRevenueSources = revenueBreakdown
           .filter((source: any) => parseNum(source?.revenue) > 0)
           .map((source: any) => ({
@@ -10435,6 +10455,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const onsiteRevenue = parseNum(webAnalytics.revenue);
       const totalRevenueUnified = parseFloat((onsiteRevenue + offsiteRevenueTotal).toFixed(2));
+      const financialInputs = {
+        revenue: [
+          ...(webAnalyticsProvider === "ga4" && onsiteRevenue > 0
+            ? [{
+                id: "ga4_native_revenue",
+                label: "GA4 Revenue",
+                sourceType: "Native GA4 revenue",
+                value: onsiteRevenue,
+                currency: null,
+              }]
+            : []),
+          ...financialRevenueInputs,
+        ],
+        spend: financialSpendInputs,
+      };
       const performanceSummary = buildPerformanceSummaryAggregate({
         campaignId,
         dateRange,
@@ -10486,6 +10521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalRevenue: totalRevenueUnified,
         },
         revenueSources,
+        financialInputs,
         performanceSummary,
       });
     } catch (error: any) {

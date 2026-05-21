@@ -34,7 +34,15 @@ type FinancialSourceBreakdown = {
 type FinancialChildSourceBreakdown = {
   id: string;
   label: string;
+  sourceType?: string;
   revenue: number;
+};
+
+type FinancialSpendInputBreakdown = {
+  id: string;
+  label: string;
+  sourceType?: string;
+  spend: number;
 };
 
 export default function FinancialAnalysis() {
@@ -386,6 +394,16 @@ export default function FinancialAnalysis() {
     const parsed = Number(source?.metrics?.[metricName]);
     return Number.isFinite(parsed) ? parsed : 0;
   };
+  const parseInputValue = (source: any) => {
+    const parsed = Number(source?.value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const formatSourceType = (sourceType?: string) => {
+    if (!sourceType) return "";
+    if (sourceType === "csv") return "CSV";
+    if (sourceType === "google_sheets") return "Google Sheets";
+    return sourceType.replace(/_/g, " ");
+  };
   const sourceIncludesMetric = (source: any, metricName: string) =>
     Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
   const financialMainSources = performanceSources
@@ -411,14 +429,35 @@ export default function FinancialAnalysis() {
       };
     })
     .filter((source: FinancialSourceBreakdown) => source.revenue > 0 || source.spend > 0 || source.conversions > 0);
-  const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = performanceSources
+  const financialRevenueInputs = Array.isArray(outcomeTotals?.financialInputs?.revenue) ? outcomeTotals.financialInputs.revenue : [];
+  const financialSpendInputs = Array.isArray(outcomeTotals?.financialInputs?.spend) ? outcomeTotals.financialInputs.spend : [];
+  const aggregateRevenueInputBreakdowns: FinancialChildSourceBreakdown[] = performanceSources
     .filter((source: any) => source?.connected === true && source?.category === "financial")
     .map((source: any, index: number) => ({
       id: `${String(source.id || source.label || "financial")}-${index}`,
       label: String(source.label || source.id || "Financial input"),
+      sourceType: String(source.sourceType || ""),
       revenue: parseSourceMetric(source, "revenue"),
     }))
     .filter((source: FinancialChildSourceBreakdown) => source.revenue > 0);
+  const financialChildSourceBreakdowns: FinancialChildSourceBreakdown[] = financialRevenueInputs.length > 0
+    ? financialRevenueInputs
+        .map((source: any) => ({
+          id: String(source?.id || source?.label || "revenue_input"),
+          label: String(source?.label || "Revenue input"),
+          sourceType: String(source?.sourceType || ""),
+          revenue: parseInputValue(source),
+        }))
+        .filter((source: FinancialChildSourceBreakdown) => source.revenue > 0)
+    : aggregateRevenueInputBreakdowns;
+  const financialSpendInputBreakdowns: FinancialSpendInputBreakdown[] = financialSpendInputs
+    .map((source: any) => ({
+      id: String(source?.id || source?.label || "spend_input"),
+      label: String(source?.label || "Spend input"),
+      sourceType: String(source?.sourceType || ""),
+      spend: parseInputValue(source),
+    }))
+    .filter((source: FinancialSpendInputBreakdown) => source.spend > 0);
 
   // Calculate comparison metrics
   const calculateChange = (current: number, previous: number) => {
@@ -1174,22 +1213,48 @@ export default function FinancialAnalysis() {
                     </div>
                   </div>
 
-                  {financialChildSourceBreakdowns.length > 0 && (
+                  {(financialChildSourceBreakdowns.length > 0 || financialSpendInputBreakdowns.length > 0) && (
                     <div className="mt-6">
-                      <h4 className="font-semibold mb-2">Financial Revenue Inputs</h4>
+                      <h4 className="font-semibold mb-2">Financial Inputs</h4>
                       <p className="text-sm text-muted-foreground mb-4">
-                        These child inputs feed aggregate revenue through their parent connected platform and are not separate main Connected Platforms.
+                        These child inputs feed aggregate revenue and spend through their parent connected platform and are not separate main Connected Platforms.
                       </p>
-                      <div className="space-y-3">
-                        {financialChildSourceBreakdowns.map((source) => (
-                          <div key={source.id} className="p-3 border rounded-lg">
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium">{source.label}</span>
-                              <span className="text-sm font-medium">{formatCurrency(source.revenue)}</span>
+                      {financialChildSourceBreakdowns.length > 0 && (
+                        <div className="space-y-3">
+                          <h5 className="text-sm font-semibold">Revenue</h5>
+                          {financialChildSourceBreakdowns.map((source) => (
+                            <div key={source.id} className="p-3 border rounded-lg">
+                              <div className="flex justify-between items-center gap-4">
+                                <div>
+                                  <span className="font-medium">{source.label}</span>
+                                  {formatSourceType(source.sourceType) && (
+                                    <span className="text-sm text-muted-foreground ml-2">{formatSourceType(source.sourceType)}</span>
+                                  )}
+                                </div>
+                                <span className="text-sm font-medium">{formatCurrency(source.revenue)}</span>
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
+                      {financialSpendInputBreakdowns.length > 0 && (
+                        <div className="space-y-3 mt-4">
+                          <h5 className="text-sm font-semibold">Spend</h5>
+                          {financialSpendInputBreakdowns.map((source) => (
+                            <div key={source.id} className="p-3 border rounded-lg">
+                              <div className="flex justify-between items-center gap-4">
+                                <div>
+                                  <span className="font-medium">{source.label}</span>
+                                  {formatSourceType(source.sourceType) && (
+                                    <span className="text-sm text-muted-foreground ml-2">{formatSourceType(source.sourceType)}</span>
+                                  )}
+                                </div>
+                                <span className="text-sm font-medium">{formatCurrency(source.spend)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>

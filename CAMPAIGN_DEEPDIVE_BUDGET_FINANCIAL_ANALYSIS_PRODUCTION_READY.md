@@ -295,6 +295,16 @@ Evidence:
 - Show unavailable states when clicks, impressions, conversions, or spend are missing.
 - Add regression coverage proving GA4-only campaigns do not render paid-media cost metrics as zero.
 
+Status: completed.
+
+Evidence:
+
+- Cost Analysis now renders CPC, CPA, CPM, CTR, and CVR from aggregate metric wrappers.
+- CPM was added to the aggregate contract as `spend / impressions * 1000` and is available only when spend and impressions are available.
+- Missing cost-efficiency inputs render `Unavailable` plus aggregate unavailable reasons instead of zero-valued paid-media metrics.
+- GA4-only campaigns no longer show CPC, CPM, or CTR as zero when no connected paid-media source provides clicks or impressions.
+- Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts` and `server/performance-summary-aggregate.test.ts`.
+
 ### Commit 5: Budget Allocation Tab
 
 - Build allocation from spend-capable connected sources only.

@@ -292,6 +292,7 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const totalUsers = webSource ? parseNum(input.webAnalytics?.users) : 0;
   const cpc = spendValue > 0 && totalClicks > 0 ? round2(spendValue / totalClicks) : null;
   const cpa = spendValue > 0 && totalConversions > 0 ? round2(spendValue / totalConversions) : null;
+  const cpm = spendValue > 0 && totalImpressions > 0 ? round2((spendValue / totalImpressions) * 1000) : null;
   const roas = spendValue > 0 && revenueValue > 0 ? round2(revenueValue / spendValue) : null;
   const roi = spendValue > 0 && revenueValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;
   const ctr = totalImpressions > 0 && totalClicks > 0 ? round2((totalClicks / totalImpressions) * 100) : null;
@@ -324,6 +325,7 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
       roi: metric(roi, roi === null ? [] : ["revenue", "spend"], ["ROI requires available revenue and spend"]),
       cpc: metric(cpc, cpc === null ? [] : ["spend", "clicks"], ["CPC requires available spend and clicks"]),
       cpa: metric(cpa, cpa === null ? [] : ["spend", "conversions"], ["CPA requires available spend and conversions"]),
+      cpm: metric(cpm, cpm === null ? [] : ["spend", "impressions"], ["CPM requires available spend and impressions"]),
       ctr: metric(ctr, ctr === null ? [] : ["clicks", "impressions"], ["CTR requires available clicks and impressions"]),
       cvr: metric(cvr, cvrSources, ["CVR requires available conversions and clicks or web sessions"]),
     },

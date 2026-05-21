@@ -372,6 +372,8 @@ export default function FinancialAnalysis() {
   const overviewConversionsMetric = getOverviewMetric("conversions", totalConversions);
   const overviewCpcMetric = getOverviewMetric("cpc", cpc);
   const overviewCpaMetric = getOverviewMetric("cpa", cpa);
+  const overviewCpmMetric = getOverviewMetric("cpm", cpm);
+  const overviewCtrMetric = getOverviewMetric("ctr", ctr);
   const overviewCvrMetric = getOverviewMetric("cvr", conversionRate);
   const overviewRoiMetric = getOverviewMetric("roi", roi);
   const overviewRoasMetric = getOverviewMetric("roas", roas);
@@ -1268,43 +1270,33 @@ export default function FinancialAnalysis() {
                       <div className="space-y-3">
                         <div className="flex items-center justify-between p-3 border rounded">
                           <span>Cost Per Click (CPC)</span>
-                          <span className="font-medium">{formatCurrency(cpc)}</span>
+                          <span className="font-medium">{formatOverviewCurrency(overviewCpcMetric)}</span>
                         </div>
+                        {!overviewCpcMetric.available && (
+                          <p className="text-xs text-muted-foreground">
+                            {overviewMetricUnavailableText(overviewCpcMetric, "CPC requires available spend and clicks")}
+                          </p>
+                        )}
                         
-                        {/* CPA - Handle view-through conversions */}
-                        {(() => {
-                          const clickThroughConversions = Math.min(totalConversions, totalClicks);
-                          const clickThroughCPA = clickThroughConversions > 0 ? totalSpend / clickThroughConversions : 0;
-                          const totalCPA = totalConversions > 0 ? totalSpend / totalConversions : 0;
-                          const hasViewThroughConversions = totalConversions > totalClicks;
-                          
-                          return (
-                            <div className="p-3 border rounded">
-                              <div className="flex items-center justify-between">
-                                <span>Cost Per Acquisition (CPA)</span>
-                                <span className="font-medium">{formatCurrency(clickThroughCPA)}</span>
-                              </div>
-                              {hasViewThroughConversions && (
-                                <>
-                                  <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
-                                    <span>Total CPA (incl. view-through):</span>
-                                    <span>{formatCurrency(totalCPA)}</span>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mt-2">
-                                    Includes conversions from users who viewed ads without clicking
-                                  </p>
-                                </>
-                              )}
-                            </div>
-                          );
-                        })()}
+                        <div className="flex items-center justify-between p-3 border rounded">
+                          <span>Cost Per Acquisition (CPA)</span>
+                          <span className="font-medium">{formatOverviewCurrency(overviewCpaMetric)}</span>
+                        </div>
+                        {!overviewCpaMetric.available && (
+                          <p className="text-xs text-muted-foreground">
+                            {overviewMetricUnavailableText(overviewCpaMetric, "CPA requires available spend and conversions")}
+                          </p>
+                        )}
                         
                         <div className="flex items-center justify-between p-3 border rounded">
                           <span>Cost Per Thousand Impressions (CPM)</span>
-                          <span className="font-medium">
-                            {totalImpressions > 0 ? formatCurrency((totalSpend / totalImpressions) * 1000) : '$0.00'}
-                          </span>
+                          <span className="font-medium">{formatOverviewCurrency(overviewCpmMetric)}</span>
                         </div>
+                        {!overviewCpmMetric.available && (
+                          <p className="text-xs text-muted-foreground">
+                            {overviewMetricUnavailableText(overviewCpmMetric, "CPM requires available spend and impressions")}
+                          </p>
+                        )}
                       </div>
                     </div>
                     
@@ -1314,49 +1306,40 @@ export default function FinancialAnalysis() {
                         <div className="p-3 border rounded">
                           <div className="flex items-center justify-between mb-2">
                             <span>Click-through Rate (CTR)</span>
-                            <span className="font-medium">{formatPercentage(ctr)}</span>
+                            <span className="font-medium">{formatOverviewPercentage(overviewCtrMetric)}</span>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
-                              style={{ width: `${Math.min(ctr / 15 * 100, 100)}%` }}
-                            ></div>
-                          </div>
+                          {overviewCtrMetric.available ? (
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
+                                style={{ width: `${Math.min(overviewCtrMetric.value / 15 * 100, 100)}%` }}
+                              ></div>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              {overviewMetricUnavailableText(overviewCtrMetric, "CTR requires available clicks and impressions")}
+                            </p>
+                          )}
                         </div>
                         
-                        {/* CVR - Handle view-through conversions */}
-                        {(() => {
-                          const clickThroughConversions = Math.min(totalConversions, totalClicks);
-                          const clickThroughCVR = totalClicks > 0 ? (clickThroughConversions / totalClicks) * 100 : 0;
-                          const totalCVR = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
-                          const hasViewThroughConversions = totalConversions > totalClicks;
-                          
-                          return (
-                            <div className="p-3 border rounded">
-                              <div className="flex items-center justify-between mb-2">
-                                <span>Conversion Rate (CVR)</span>
-                                <span className="font-medium">{formatPercentage(clickThroughCVR)}</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                                <div 
-                                  className="bg-green-600 h-2 rounded-full" 
-                                  style={{ width: `${Math.min(clickThroughCVR / 20 * 100, 100)}%` }}
-                                ></div>
-                              </div>
-                              {hasViewThroughConversions && (
-                                <>
-                                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                                    <span>Total CVR (incl. view-through):</span>
-                                    <span>{formatPercentage(totalCVR)}</span>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Total includes view-through conversions from ad impressions
-                                  </p>
-                                </>
-                              )}
+                        <div className="p-3 border rounded">
+                          <div className="flex items-center justify-between mb-2">
+                            <span>Conversion Rate (CVR)</span>
+                            <span className="font-medium">{formatOverviewPercentage(overviewCvrMetric)}</span>
+                          </div>
+                          {overviewCvrMetric.available ? (
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-green-600 h-2 rounded-full"
+                                style={{ width: `${Math.min(overviewCvrMetric.value / 20 * 100, 100)}%` }}
+                              ></div>
                             </div>
-                          );
-                        })()}
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              {overviewMetricUnavailableText(overviewCvrMetric, "CVR requires available conversions and clicks or web sessions")}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -98,6 +98,7 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.clicks).toMatchObject({ available: true, value: 300, sources: ["google_ads", "tiktok"] });
     expect(aggregate.totals.conversions).toMatchObject({ available: true, value: 25, sources: ["google_ads", "tiktok"] });
     expect(aggregate.totals.spend).toMatchObject({ available: true, value: 300, sources: ["google_ads", "tiktok"] });
+    expect(aggregate.totals.cpm).toMatchObject({ available: true, value: 30, sources: ["spend", "impressions"] });
   });
 
   it("marks canonical spend and revenue-derived ratios available only when required inputs exist", () => {
@@ -118,6 +119,7 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.roas).toMatchObject({ available: true, value: 4, sources: ["revenue", "spend"] });
     expect(aggregate.totals.roi).toMatchObject({ available: true, value: 300, sources: ["revenue", "spend"] });
     expect(aggregate.totals.cpa).toMatchObject({ available: true, value: 12.5, sources: ["spend", "conversions"] });
+    expect(aggregate.totals.cpm).toMatchObject({ available: true, value: 250, sources: ["spend", "impressions"] });
   });
 
   it("keeps supported zero-valued metrics available instead of treating them as missing", () => {

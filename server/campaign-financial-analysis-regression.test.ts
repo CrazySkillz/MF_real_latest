@@ -31,6 +31,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('const overviewConversionsMetric = getOverviewMetric("conversions", totalConversions);');
     expect(page).toContain('const overviewCpcMetric = getOverviewMetric("cpc", cpc);');
     expect(page).toContain('const overviewCpaMetric = getOverviewMetric("cpa", cpa);');
+    expect(page).toContain('const overviewCpmMetric = getOverviewMetric("cpm", cpm);');
+    expect(page).toContain('const overviewCtrMetric = getOverviewMetric("ctr", ctr);');
     expect(page).toContain('const overviewCvrMetric = getOverviewMetric("cvr", conversionRate);');
     expect(page).toContain('const overviewRoiMetric = getOverviewMetric("roi", roi);');
     expect(page).toContain('const overviewRoasMetric = getOverviewMetric("roas", roas);');
@@ -84,5 +86,27 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(roiTab).not.toContain("{roas.toFixed(2)}x");
     expect(roiTab).not.toContain("{formatPercentage(roi)}");
     expect(roiTab).not.toContain("{formatCurrency(estimatedRevenue)}");
+  });
+
+  it("wires the Cost Analysis tab to aggregate metrics with unavailable states", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
+    const costStart = page.indexOf('<TabsContent value="costs"');
+    const costEnd = page.indexOf('<TabsContent value="budget"', costStart);
+    const costTab = page.slice(costStart, costEnd);
+
+    expect(costTab).toContain("formatOverviewCurrency(overviewCpcMetric)");
+    expect(costTab).toContain("formatOverviewCurrency(overviewCpaMetric)");
+    expect(costTab).toContain("formatOverviewCurrency(overviewCpmMetric)");
+    expect(costTab).toContain("formatOverviewPercentage(overviewCtrMetric)");
+    expect(costTab).toContain("formatOverviewPercentage(overviewCvrMetric)");
+    expect(costTab).toContain("overviewMetricUnavailableText(overviewCpcMetric");
+    expect(costTab).toContain("overviewMetricUnavailableText(overviewCpaMetric");
+    expect(costTab).toContain("overviewMetricUnavailableText(overviewCpmMetric");
+    expect(costTab).toContain("overviewMetricUnavailableText(overviewCtrMetric");
+    expect(costTab).toContain("overviewMetricUnavailableText(overviewCvrMetric");
+    expect(costTab).not.toContain("{formatCurrency(cpc)}");
+    expect(costTab).not.toContain("clickThroughCPA");
+    expect(costTab).not.toContain("clickThroughCVR");
+    expect(costTab).not.toContain("totalImpressions > 0 ? formatCurrency");
   });
 });

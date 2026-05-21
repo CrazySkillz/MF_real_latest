@@ -1405,6 +1405,12 @@ export default function FinancialAnalysis() {
                     
                     return (
                       <div className="space-y-6">
+                        <div className="p-4 bg-muted rounded-lg">
+                          <p className="text-sm text-muted-foreground">
+                            Imported spend labels inside GA4, such as Google Sheets or LinkedIn spend imports, feed total spend, ROI, and ROAS but are not connected ad platforms. Budget Allocation only shows sources after a spend-capable ad platform is connected in Connected Platforms.
+                          </p>
+                        </div>
+
                         {/* Performance Tiers */}
                         <div className="grid gap-4 md:grid-cols-3">
                           <div className="p-4 border rounded-lg">

@@ -210,6 +210,8 @@ If only GA4 is connected and no valid spend source exists, the tab should show t
 
 If campaign spend sources exist through the parent financial path, they can feed total spend and budget utilization, but should not be treated as standalone main platforms.
 
+Imported spend labels inside GA4, such as Google Sheets or LinkedIn spend imports, are not connected ad platforms. They can feed total spend, ROI, ROAS, and Budget Utilization through the GA4/campaign financial path, but Budget Allocation should only show allocation sources after a spend-capable ad platform such as LinkedIn Ads, Meta Ads, or Google Ads is connected in `Connected Platforms`.
+
 ### Insights
 
 Should generate recommendations from aggregate financial metrics and source capabilities.
@@ -320,6 +322,7 @@ Evidence:
 
 - Budget Allocation now derives allocation rows from `performanceSummary.sources` main connected sources that explicitly include `spend`.
 - Platform child spend inputs can still feed aggregate total spend and budget utilization, but they are not treated as standalone allocation sources.
+- The tab now includes explanatory copy that imported spend labels inside GA4, such as Google Sheets or LinkedIn spend imports, are not connected ad platforms and only feed financial totals until a spend-capable ad platform is connected in `Connected Platforms`.
 - GA4-only campaigns with no spend-capable main source show that no spend-capable connected source is available for budget allocation.
 - Campaigns with one spend-capable source show the source but do not show reallocation guidance.
 - Reallocation guidance appears only when more than one spend-capable connected source is available.

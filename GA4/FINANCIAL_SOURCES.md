@@ -47,6 +47,7 @@ Campaign DeepDive financial provenance rule:
 - `/api/campaigns/:id/outcome-totals.financialInputs.revenue` should include native GA4 revenue plus active GA4-context revenue breakdown rows
 - `/api/campaigns/:id/outcome-totals.financialInputs.spend` should include active spend breakdown rows
 - this keeps Campaign DeepDive aligned with the GA4 `Total Revenue -> Sources` and `Total Spend -> Sources` modal provenance while still avoiding duplicate setup or showing child inputs as main Connected Platforms
+- imported spend labels inside GA4, such as Google Sheets or LinkedIn spend imports, are not connected ad platforms; they can feed total spend, ROI, and ROAS, but Budget Allocation should only show allocation sources after a spend-capable ad platform is connected in `Connected Platforms`
 
 ## Revenue Computation
 

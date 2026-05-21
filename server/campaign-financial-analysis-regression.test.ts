@@ -125,6 +125,9 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const budgetAllocationSources: FinancialSourceBreakdown[] = financialMainSources");
     expect(page).toContain('.filter((source: any) => sourceIncludesMetric(source, "spend"))');
     expect(budgetTab).toContain("const allocationSpend = budgetAllocationSources.reduce");
+    expect(budgetTab).toContain("Imported spend labels inside GA4");
+    expect(budgetTab).toContain("are not connected ad platforms");
+    expect(budgetTab).toContain("Budget Allocation only shows sources after a spend-capable ad platform is connected in Connected Platforms.");
     expect(budgetTab).toContain("budgetAllocationSources.length === 0");
     expect(budgetTab).toContain("No spend-capable connected source is available for budget allocation yet.");
     expect(budgetTab).toContain("budgetAllocationSources.length === 1");

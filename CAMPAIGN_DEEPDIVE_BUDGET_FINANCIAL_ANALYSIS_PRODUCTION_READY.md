@@ -240,6 +240,7 @@ Evidence:
 - Defensive helpers now exist for aggregate metric availability, values, source IDs, and unavailable reasons.
 - Existing tab calculations remain unchanged for this commit; tab migration starts with Commit 2.
 - Regression coverage added in `server/campaign-financial-analysis-regression.test.ts`.
+- Render validation passed after deploy: direct `outcome-totals?dateRange=90days` response included `performanceSummary` with aggregate data.
 
 ### Commit 2: Overview Tab
 
@@ -247,6 +248,17 @@ Evidence:
 - Preserve campaign budget, start date, and end date behavior.
 - Show unavailable states when required aggregate inputs are missing.
 - Add regression coverage for GA4-only and spend-source scenarios.
+
+Status: completed.
+
+Evidence:
+
+- Overview tab now reads spend, revenue, conversions, CPC, CPA, CVR, ROI, and ROAS through `performanceSummary.totals`.
+- Overview loading now waits for the aggregate response to avoid briefly rendering local hardcoded financial values before aggregate data arrives.
+- Budget utilization, pacing, ROI, ROAS, total spend, conversions, CPC, CPA, and conversion-rate displays use Overview-specific aggregate metric wrappers.
+- Missing required aggregate inputs render `Unavailable` plus the aggregate unavailable reason instead of silently showing zero.
+- Other Budget & Financial tabs still use the previous calculations and are intentionally deferred to later commits.
+- Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
 
 ### Commit 3: ROI & ROAS Tab
 

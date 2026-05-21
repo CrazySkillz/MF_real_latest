@@ -94,7 +94,7 @@ export default function FinancialAnalysis() {
     },
   });
 
-  const { data: outcomeTotals } = useQuery<any>({
+  const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live"],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -186,7 +186,7 @@ export default function FinancialAnalysis() {
   }
 
   // Data loading state — prevent flash of stale/zero metrics on refresh
-  const dataLoading = !demoMode && (linkedInLoading || ciLoading || metaLoading || ga4Loading);
+  const dataLoading = !demoMode && (linkedInLoading || ciLoading || metaLoading || ga4Loading || outcomeTotalsLoading);
   const performanceSummary = outcomeTotals?.performanceSummary;
   const performanceSources = Array.isArray(performanceSummary?.sources) ? performanceSummary.sources : [];
   const aggregateMetric = (metricName: string) => performanceSummary?.totals?.[metricName];
@@ -331,6 +331,38 @@ export default function FinancialAnalysis() {
       ? linkedInROIFromBackend
       : (totalSpend > 0 ? ((estimatedRevenue - totalSpend) / totalSpend) * 100 : 0);
 
+  const getOverviewMetric = (metricName: string, fallbackValue: number) => {
+    const metric = aggregateMetric(metricName);
+    if (performanceSummary && metric) {
+      const value = aggregateMetricValue(metricName);
+      return {
+        available: metric.available === true && value !== null,
+        value: value ?? 0,
+        unavailableReasons: aggregateMetricUnavailableReasons(metricName),
+      };
+    }
+    return { available: true, value: fallbackValue, unavailableReasons: [] };
+  };
+  const overviewSpendMetric = getOverviewMetric("spend", totalSpend);
+  const overviewRevenueMetric = getOverviewMetric("revenue", estimatedRevenue);
+  const overviewConversionsMetric = getOverviewMetric("conversions", totalConversions);
+  const overviewCpcMetric = getOverviewMetric("cpc", cpc);
+  const overviewCpaMetric = getOverviewMetric("cpa", cpa);
+  const overviewCvrMetric = getOverviewMetric("cvr", conversionRate);
+  const overviewRoiMetric = getOverviewMetric("roi", roi);
+  const overviewRoasMetric = getOverviewMetric("roas", roas);
+  const overviewSpend = overviewSpendMetric.available ? overviewSpendMetric.value : 0;
+  const overviewBudgetUtilization = campaignBudget > 0 && overviewSpendMetric.available ? (overviewSpend / campaignBudget) * 100 : 0;
+  const overviewRemainingBudget = campaignBudget - overviewSpend;
+  const overviewMetricUnavailableText = (metric: { unavailableReasons: string[] }, fallback: string) =>
+    metric.unavailableReasons[0] || fallback;
+  const formatOverviewCurrency = (metric: { available: boolean; value: number; unavailableReasons: string[] }) =>
+    metric.available ? formatCurrency(metric.value) : "Unavailable";
+  const formatOverviewNumber = (metric: { available: boolean; value: number; unavailableReasons: string[] }) =>
+    metric.available ? formatNumber(metric.value) : "Unavailable";
+  const formatOverviewPercentage = (metric: { available: boolean; value: number; unavailableReasons: string[] }) =>
+    metric.available ? formatPercentage(metric.value) : "Unavailable";
+
   // Calculate comparison metrics
   const calculateChange = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? 100 : 0;
@@ -431,7 +463,7 @@ export default function FinancialAnalysis() {
                 </div>
               ) : <>
               {/* AOV Warning (only when we have no usable revenue source AND data has loaded) */}
-              {estimatedAOV === 0 && !(linkedInRevenueFromBackend !== null && linkedInRevenueFromBackend > 0) && (
+              {!overviewRevenueMetric.available && estimatedAOV === 0 && !(linkedInRevenueFromBackend !== null && linkedInRevenueFromBackend > 0) && (
                 <Card className="border-l-4 border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-2">
@@ -465,31 +497,33 @@ export default function FinancialAnalysis() {
                     const calculateHealthScore = () => {
                       let score = 0;
                       
-                      const budgetScore = budgetUtilization <= 80 ? 25 : budgetUtilization <= 95 ? 15 : budgetUtilization <= 100 ? 10 : 0;
+                      const budgetScore = overviewSpendMetric.available ? (overviewBudgetUtilization <= 80 ? 25 : overviewBudgetUtilization <= 95 ? 15 : overviewBudgetUtilization <= 100 ? 10 : 0) : 0;
                       
                       const campaignStartDate = campaign.startDate ? new Date(campaign.startDate) : new Date();
                       const today = new Date();
                       const daysElapsed = Math.max(1, Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24)));
-                      const dailyBurnRate = totalSpend / daysElapsed;
+                      const dailyBurnRate = overviewSpend / daysElapsed;
                       const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
-                      const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : daysElapsed + (dailyBurnRate > 0 ? remainingBudget / dailyBurnRate : 0);
+                      const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : daysElapsed + (dailyBurnRate > 0 ? overviewRemainingBudget / dailyBurnRate : 0);
                       const targetDailySpend = campaignBudget / targetDaysTotal;
                       const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
                       const pacingDeviation = Math.abs(pacingPercentage - 100);
-                      const pacingScore = pacingDeviation <= 15 ? 25 : pacingDeviation <= 30 ? 15 : pacingDeviation <= 50 ? 10 : 0;
+                      const pacingScore = overviewSpendMetric.available ? (pacingDeviation <= 15 ? 25 : pacingDeviation <= 30 ? 15 : pacingDeviation <= 50 ? 10 : 0) : 0;
 
-                      const roiScore = roi >= 100 ? 25 : roi >= 50 ? 15 : roi >= 0 ? 10 : 0;
+                      const overviewRoi = overviewRoiMetric.available ? overviewRoiMetric.value : -Infinity;
+                      const roiScore = overviewRoi >= 100 ? 25 : overviewRoi >= 50 ? 15 : overviewRoi >= 0 ? 10 : 0;
 
-                      const roasScore = roas >= 3 ? 25 : roas >= 1.5 ? 15 : roas >= 1 ? 10 : 0;
+                      const overviewRoas = overviewRoasMetric.available ? overviewRoasMetric.value : -Infinity;
+                      const roasScore = overviewRoas >= 3 ? 25 : overviewRoas >= 1.5 ? 15 : overviewRoas >= 1 ? 10 : 0;
                       
                       score = budgetScore + pacingScore + roiScore + roasScore;
                       
                       return {
                         total: score,
-                        budget: { score: budgetScore, status: budgetUtilization <= 80 ? 'excellent' : budgetUtilization <= 95 ? 'good' : budgetUtilization <= 100 ? 'warning' : 'critical' },
-                        pacing: { score: pacingScore, status: pacingDeviation <= 15 ? 'excellent' : pacingDeviation <= 30 ? 'good' : pacingDeviation <= 50 ? 'warning' : 'critical' },
-                        roi: { score: roiScore, status: roi >= 100 ? 'excellent' : roi >= 50 ? 'good' : roi >= 0 ? 'warning' : 'critical' },
-                        roas: { score: roasScore, status: roas >= 3 ? 'excellent' : roas >= 1.5 ? 'good' : roas >= 1 ? 'warning' : 'critical' }
+                        budget: { score: budgetScore, status: overviewSpendMetric.available ? (overviewBudgetUtilization <= 80 ? 'excellent' : overviewBudgetUtilization <= 95 ? 'good' : overviewBudgetUtilization <= 100 ? 'warning' : 'critical') : 'critical' },
+                        pacing: { score: pacingScore, status: overviewSpendMetric.available ? (pacingDeviation <= 15 ? 'excellent' : pacingDeviation <= 30 ? 'good' : pacingDeviation <= 50 ? 'warning' : 'critical') : 'critical' },
+                        roi: { score: roiScore, status: overviewRoi >= 100 ? 'excellent' : overviewRoi >= 50 ? 'good' : overviewRoi >= 0 ? 'warning' : 'critical' },
+                        roas: { score: roasScore, status: overviewRoas >= 3 ? 'excellent' : overviewRoas >= 1.5 ? 'good' : overviewRoas >= 1 ? 'warning' : 'critical' }
                       };
                     };
                     
@@ -541,7 +575,12 @@ export default function FinancialAnalysis() {
                               <span className="text-sm font-medium">Budget Utilization</span>
                               <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.budget.status)}`} />
                             </div>
-                            <div className="text-2xl font-bold">{formatPercentage(budgetUtilization)}</div>
+                            <div className="text-2xl font-bold">{overviewSpendMetric.available ? formatPercentage(overviewBudgetUtilization) : "Unavailable"}</div>
+                            {!overviewSpendMetric.available && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {overviewMetricUnavailableText(overviewSpendMetric, "Budget utilization requires available spend")}
+                              </p>
+                            )}
                             <Badge className={`mt-2 ${getStatusBadgeColor(healthData.budget.status)}`}>
                               {healthData.budget.status}
                             </Badge>
@@ -556,13 +595,18 @@ export default function FinancialAnalysis() {
                               const campaignStartDate = campaign.startDate ? new Date(campaign.startDate) : new Date();
                               const today = new Date();
                               const daysElapsed = Math.max(1, Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24)));
-                              const dailyBurnRate = totalSpend / daysElapsed;
+                              const dailyBurnRate = overviewSpend / daysElapsed;
                               const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
-                              const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : daysElapsed + (dailyBurnRate > 0 ? remainingBudget / dailyBurnRate : 0);
+                              const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : daysElapsed + (dailyBurnRate > 0 ? overviewRemainingBudget / dailyBurnRate : 0);
                               const targetDailySpend = campaignBudget / targetDaysTotal;
                               const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
-                              return formatPercentage(pacingPercentage);
+                              return overviewSpendMetric.available ? formatPercentage(pacingPercentage) : "Unavailable";
                             })()}</div>
+                            {!overviewSpendMetric.available && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {overviewMetricUnavailableText(overviewSpendMetric, "Pacing requires available spend")}
+                              </p>
+                            )}
                             <Badge className={`mt-2 ${getStatusBadgeColor(healthData.pacing.status)}`}>
                               {healthData.pacing.status}
                             </Badge>
@@ -573,7 +617,12 @@ export default function FinancialAnalysis() {
                               <span className="text-sm font-medium">ROI Performance</span>
                               <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.roi.status)}`} />
                             </div>
-                            <div className="text-2xl font-bold">{formatPercentage(roi)}</div>
+                            <div className="text-2xl font-bold">{formatOverviewPercentage(overviewRoiMetric)}</div>
+                            {!overviewRoiMetric.available && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {overviewMetricUnavailableText(overviewRoiMetric, "ROI requires available revenue and spend")}
+                              </p>
+                            )}
                             <Badge className={`mt-2 ${getStatusBadgeColor(healthData.roi.status)}`}>
                               {healthData.roi.status}
                             </Badge>
@@ -584,7 +633,12 @@ export default function FinancialAnalysis() {
                               <span className="text-sm font-medium">ROAS Performance</span>
                               <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.roas.status)}`} />
                             </div>
-                            <div className="text-2xl font-bold">{roas.toFixed(2)}x</div>
+                            <div className="text-2xl font-bold">{overviewRoasMetric.available ? `${overviewRoasMetric.value.toFixed(2)}x` : "Unavailable"}</div>
+                            {!overviewRoasMetric.available && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {overviewMetricUnavailableText(overviewRoasMetric, "ROAS requires available revenue and spend")}
+                              </p>
+                            )}
                             <Badge className={`mt-2 ${getStatusBadgeColor(healthData.roas.status)}`}>
                               {healthData.roas.status}
                             </Badge>
@@ -605,9 +659,14 @@ export default function FinancialAnalysis() {
                         <p className="text-sm font-medium text-muted-foreground/70">Total Spend</p>
                         <div className="flex items-center justify-between">
                           <p className="text-2xl font-bold text-foreground">
-                            {formatCurrency(totalSpend)}
+                            {formatOverviewCurrency(overviewSpendMetric)}
                           </p>
-                          {historicalMetrics && renderTrendIndicator(calculateChange(totalSpend, historicalMetrics.spend))}
+                          {overviewSpendMetric.available && historicalMetrics && renderTrendIndicator(calculateChange(overviewSpend, historicalMetrics.spend))}
+                          {!overviewSpendMetric.available && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {overviewMetricUnavailableText(overviewSpendMetric, "No connected spend source is available")}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <DollarSign className="w-8 h-8 text-red-500" />
@@ -622,9 +681,14 @@ export default function FinancialAnalysis() {
                         <p className="text-sm font-medium text-muted-foreground/70">Conversions</p>
                         <div className="flex items-center justify-between">
                           <p className="text-2xl font-bold text-foreground">
-                            {formatNumber(totalConversions)}
+                            {formatOverviewNumber(overviewConversionsMetric)}
                           </p>
-                          {historicalMetrics && effectiveSnapshot && renderTrendIndicator(calculateChange(totalConversions, effectiveSnapshot.totalConversions || 0))}
+                          {overviewConversionsMetric.available && historicalMetrics && effectiveSnapshot && renderTrendIndicator(calculateChange(overviewConversionsMetric.value, effectiveSnapshot.totalConversions || 0))}
+                          {!overviewConversionsMetric.available && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {overviewMetricUnavailableText(overviewConversionsMetric, "No connected source provides conversions")}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <Activity className="w-8 h-8 text-purple-500" />
@@ -650,16 +714,16 @@ export default function FinancialAnalysis() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Budget Used</span>
                         <span className="text-sm text-muted-foreground">
-                          {formatCurrency(totalSpend)} of {formatCurrency(campaignBudget)}
+                          {formatOverviewCurrency(overviewSpendMetric)} of {formatCurrency(campaignBudget)}
                         </span>
                       </div>
-                      <Progress value={Math.min(budgetUtilization, 100)} className="h-2" />
+                      <Progress value={Math.min(overviewBudgetUtilization, 100)} className="h-2" />
                       <div className="flex items-center justify-between text-sm">
-                        <span className={budgetUtilization > 90 ? "text-red-600" : "text-green-600"}>
-                          {formatPercentage(budgetUtilization)} utilized
+                        <span className={overviewBudgetUtilization > 90 ? "text-red-600" : "text-green-600"}>
+                          {overviewSpendMetric.available ? `${formatPercentage(overviewBudgetUtilization)} utilized` : overviewMetricUnavailableText(overviewSpendMetric, "Spend unavailable")}
                         </span>
                         <span className="text-muted-foreground">
-                          {formatCurrency(remainingBudget)} remaining
+                          {overviewSpendMetric.available ? `${formatCurrency(overviewRemainingBudget)} remaining` : "Remaining unavailable"}
                         </span>
                       </div>
                     </div>
@@ -682,9 +746,9 @@ export default function FinancialAnalysis() {
                         const campaignStartDate = campaign.startDate ? new Date(campaign.startDate) : new Date();
                         const today = new Date();
                         const daysElapsed = Math.max(1, Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24)));
-                        const dailyBurnRate = totalSpend / daysElapsed;
-                        const isOverBudget = remainingBudget < 0;
-                        const daysRemaining = (!isOverBudget && dailyBurnRate > 0) ? remainingBudget / dailyBurnRate : 0;
+                        const dailyBurnRate = overviewSpend / daysElapsed;
+                        const isOverBudget = overviewSpendMetric.available && overviewRemainingBudget < 0;
+                        const daysRemaining = (!isOverBudget && dailyBurnRate > 0) ? overviewRemainingBudget / dailyBurnRate : 0;
                         const projectedEndDate = (!isOverBudget && dailyBurnRate > 0) ? new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000) : null;
                         
                         const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
@@ -692,13 +756,13 @@ export default function FinancialAnalysis() {
                         const targetDailySpend = campaignBudget / targetDaysTotal;
                         
                         const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
-                        const pacingStatus = pacingPercentage > 115 ? 'ahead' : pacingPercentage < 85 ? 'behind' : 'on-track';
+                        const pacingStatus = !overviewSpendMetric.available ? 'unavailable' : pacingPercentage > 115 ? 'ahead' : pacingPercentage < 85 ? 'behind' : 'on-track';
                         
                         return (
                           <>
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium">Daily Burn Rate</span>
-                              <span className="text-sm font-bold">{formatCurrency(dailyBurnRate)}</span>
+                              <span className="text-sm font-bold">{overviewSpendMetric.available ? formatCurrency(dailyBurnRate) : "Unavailable"}</span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium">Target Daily Spend</span>
@@ -707,11 +771,13 @@ export default function FinancialAnalysis() {
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium">Pacing Status</span>
                               <Badge className={
+                                pacingStatus === 'unavailable' ? 'bg-gray-100 text-gray-700' :
                                 pacingStatus === 'ahead' ? 'bg-red-100 text-red-700' : 
                                 pacingStatus === 'behind' ? 'bg-yellow-100 text-yellow-700' : 
                                 'bg-green-100 text-green-700'
                               }>
-                                {pacingStatus === 'ahead' ? `${formatPercentage(pacingPercentage - 100)} Over` : 
+                                {pacingStatus === 'unavailable' ? 'Unavailable' :
+                                 pacingStatus === 'ahead' ? `${formatPercentage(pacingPercentage - 100)} Over` :
                                  pacingStatus === 'behind' ? `${formatPercentage(100 - pacingPercentage)} Under` : 
                                  'On Track'}
                               </Badge>
@@ -719,11 +785,11 @@ export default function FinancialAnalysis() {
                             {isOverBudget && (
                               <div className="pt-3 border-t">
                                 <p className="text-xs text-red-600 dark:text-red-400 font-medium">
-                                  Budget exceeded by {formatCurrency(Math.abs(remainingBudget))}
+                                  Budget exceeded by {formatCurrency(Math.abs(overviewRemainingBudget))}
                                 </p>
                               </div>
                             )}
-                            {!isOverBudget && projectedEndDate && daysRemaining > 0 && (
+                            {overviewSpendMetric.available && !isOverBudget && projectedEndDate && daysRemaining > 0 && (
                               <div className="pt-3 border-t">
                                 <p className="text-xs text-muted-foreground">
                                   At current rate, budget will be exhausted in <strong>{Math.ceil(daysRemaining)} days</strong>
@@ -749,8 +815,13 @@ export default function FinancialAnalysis() {
                       <div>
                         <p className="text-sm font-medium text-muted-foreground/70">Cost Per Click</p>
                         <p className="text-xl font-bold text-foreground">
-                          {formatCurrency(cpc)}
+                          {formatOverviewCurrency(overviewCpcMetric)}
                         </p>
+                        {!overviewCpcMetric.available && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {overviewMetricUnavailableText(overviewCpcMetric, "CPC requires available spend and clicks")}
+                          </p>
+                        )}
                       </div>
                       <BarChart3 className="w-6 h-6 text-blue-500" />
                     </div>
@@ -763,8 +834,13 @@ export default function FinancialAnalysis() {
                       <div>
                         <p className="text-sm font-medium text-muted-foreground/70">Cost Per Acquisition</p>
                         <p className="text-xl font-bold text-foreground">
-                          {formatCurrency(cpa)}
+                          {formatOverviewCurrency(overviewCpaMetric)}
                         </p>
+                        {!overviewCpaMetric.available && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {overviewMetricUnavailableText(overviewCpaMetric, "CPA requires available spend and conversions")}
+                          </p>
+                        )}
                       </div>
                       <Target className="w-6 h-6 text-purple-500" />
                     </div>
@@ -777,9 +853,14 @@ export default function FinancialAnalysis() {
                       <div className="flex-1">
                         <p className="text-sm font-medium text-muted-foreground/70">Conversion Rate</p>
                         <p className="text-xl font-bold text-foreground">
-                          {formatPercentage(conversionRate)}
+                          {formatOverviewPercentage(overviewCvrMetric)}
                         </p>
-                        {conversionRate > 100 && (
+                        {!overviewCvrMetric.available && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {overviewMetricUnavailableText(overviewCvrMetric, "Conversion rate requires available conversions and clicks")}
+                          </p>
+                        )}
+                        {overviewCvrMetric.available && overviewCvrMetric.value > 100 && (
                           <p className="text-xs text-muted-foreground/70 mt-1">
                             * Exceeds 100% due to view-through conversions from ad impressions
                           </p>

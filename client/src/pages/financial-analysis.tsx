@@ -45,6 +45,8 @@ type FinancialSpendInputBreakdown = {
   spend: number;
 };
 
+type InsightTone = "success" | "warning" | "info";
+
 export default function FinancialAnalysis() {
   const [, params] = useRoute("/campaigns/:id/financial-analysis");
   const campaignId = params?.id;
@@ -1552,34 +1554,73 @@ export default function FinancialAnalysis() {
                     const highPerformance = platformsWithRoas.filter(p => (p.roas ?? 0) >= 3);
                     const lowPerformance = platformsWithRoas.filter(p => (p.roas ?? 0) < 1);
                     const hasMultiplePlatforms = platformsWithSpend.length > 1;
+                    const insightCardClass: Record<InsightTone, string> = {
+                      success: "p-4 rounded-lg border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
+                      warning: "p-4 rounded-lg border bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800",
+                      info: "p-4 rounded-lg border bg-muted border-border",
+                    };
+                    const insightTitleClass: Record<InsightTone, string> = {
+                      success: "font-semibold mb-2 text-green-900 dark:text-green-100",
+                      warning: "font-semibold mb-2 text-yellow-900 dark:text-yellow-100",
+                      info: "font-semibold mb-2 text-foreground dark:text-slate-100",
+                    };
+                    const insightBodyClass: Record<InsightTone, string> = {
+                      success: "text-sm text-green-800 dark:text-green-200",
+                      warning: "text-sm text-yellow-800 dark:text-yellow-200",
+                      info: "text-sm text-foreground/80",
+                    };
+                    const isBudgetUnderutilized = overviewSpendMetric.available && overviewBudgetUtilization < 50;
+                    const hasStrongRoas = financialRoasMetric.available && financialRoasMetric.value > 2;
+                    const hasBudgetCapacity = overviewSpendMetric.available && overviewBudgetUtilization > 85 && overviewBudgetUtilization <= 100;
+                    const financialPerformanceTone: InsightTone = !financialRoasMetric.available || !financialRoiMetric.available
+                      ? "info"
+                      : financialRoasMetric.value < 1 || financialRoiMetric.value < 0
+                        ? "warning"
+                        : "success";
+                    const topPerformerTone: InsightTone = !topPerformer
+                      ? "info"
+                      : (topPerformer.roas ?? 0) >= 3
+                        ? "success"
+                        : "warning";
+                    const topPerformerLabel = hasMultiplePlatforms ? "Strongest Source" : "Source Performance";
+                    const costEfficiencyTone: InsightTone = !overviewCpaMetric.available
+                      ? "info"
+                      : overviewCpaMetric.value < 25
+                        ? "success"
+                        : "warning";
+                    const budgetManagementTone: InsightTone = !overviewSpendMetric.available
+                      ? "info"
+                      : overviewBudgetUtilization > 100 || isBudgetUnderutilized
+                        ? "warning"
+                        : "info";
                     
                     return (
                       <div className="space-y-6">
                         {/* Quick Summary Cards */}
                         <div className="space-y-4">
-                          <div className="p-4 border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/20">
-                            <h4 className="font-semibold text-blue-700 dark:text-blue-300">Performance Summary</h4>
-                            <p className="text-sm mt-1">
+                          <div className={insightCardClass[financialPerformanceTone]}>
+                            <h4 className={insightTitleClass[financialPerformanceTone]}>Performance Summary</h4>
+                            <p className={insightBodyClass[financialPerformanceTone]}>
                               {financialRoasMetric.available && financialRoiMetric.available
                                 ? `Your campaign is generating a ${financialRoasMetric.value.toFixed(2)}x ROAS with ${formatPercentage(financialRoiMetric.value)} ROI.`
                                 : overviewMetricUnavailableText(financialRoasMetric.available ? financialRoiMetric : financialRoasMetric, "ROAS and ROI require available revenue and spend.")}
                             </p>
                           </div>
                           
-                          <div className="p-4 border-l-4 border-l-green-500 bg-green-50 dark:bg-green-900/20">
-                            <h4 className="font-semibold text-green-700 dark:text-green-300">Cost Efficiency</h4>
-                            <p className="text-sm mt-1">
+                          <div className={insightCardClass[costEfficiencyTone]}>
+                            <h4 className={insightTitleClass[costEfficiencyTone]}>Cost Efficiency</h4>
+                            <p className={insightBodyClass[costEfficiencyTone]}>
                               {overviewCpaMetric.available
                                 ? `Your CPA is ${formatCurrency(overviewCpaMetric.value)}. ${overviewCpaMetric.value < 25 ? "Acquisition costs are well controlled." : "Review conversion efficiency before increasing spend."}`
                                 : overviewMetricUnavailableText(overviewCpaMetric, "CPA requires available spend and conversions.")}
                             </p>
                           </div>
                           
-                          <div className="p-4 border-l-4 border-l-orange-500 bg-orange-50 dark:bg-orange-900/20">
-                            <h4 className="font-semibold text-orange-700 dark:text-orange-300">Budget Management</h4>
-                            <p className="text-sm mt-1">
+                          <div className={insightCardClass[budgetManagementTone]}>
+                            <h4 className={insightTitleClass[budgetManagementTone]}>Budget Management</h4>
+                            <p className={insightBodyClass[budgetManagementTone]}>
                               {overviewSpendMetric.available
-                                ? `You have utilized ${formatPercentage(overviewBudgetUtilization)} of your budget. ${overviewBudgetUtilization > 100 ? "Campaign spend is over budget." : overviewBudgetUtilization > 85 ? "Monitor remaining budget closely." : "Budget usage is currently within range."}`
+                                ? `You have utilized ${formatPercentage(overviewBudgetUtilization)} of your budget. ${overviewBudgetUtilization > 100 ? "Campaign spend is over budget." : isBudgetUnderutilized ? "Budget is underutilized relative to the total campaign budget." : overviewBudgetUtilization > 85 ? "Monitor remaining budget closely." : "Budget usage is currently within range."}`
                                 : overviewMetricUnavailableText(overviewSpendMetric, "Budget management requires available spend.")}
                             </p>
                           </div>
@@ -1591,16 +1632,21 @@ export default function FinancialAnalysis() {
                             <h4 className="font-semibold mb-4">Source Performance Insights</h4>
                             <div className="space-y-3">
                               {topPerformer && (
-                                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                                <div className={insightCardClass[topPerformerTone]}>
                                   <div className="flex items-center space-x-2 mb-2">
-                                    <TrendingUp className="w-5 h-5 text-green-600" />
-                                    <h5 className="font-medium text-green-800 dark:text-green-300">Top Performer: {topPerformer.name}</h5>
+                                    <TrendingUp className={`w-5 h-5 ${topPerformerTone === "success" ? "text-green-600" : "text-yellow-600"}`} />
+                                    <h5 className={insightTitleClass[topPerformerTone]}>{topPerformerLabel}: {topPerformer.name}</h5>
                                   </div>
                                   <div className="text-sm space-y-1">
                                     <p>Generating {topPerformer.roas?.toFixed(2)}x ROAS with {formatCurrency(topPerformer.spend)} spend</p>
                                     {(topPerformer.roas ?? 0) >= 3 && (
                                       <p className="text-green-700 dark:text-green-200 font-medium">
                                         Strong performance. Consider scaling only if budget and capacity allow.
+                                      </p>
+                                    )}
+                                    {(topPerformer.roas ?? 0) < 3 && (
+                                      <p className="text-yellow-700 dark:text-yellow-200 font-medium">
+                                        This is the strongest available source, but performance is not high enough to recommend scaling.
                                       </p>
                                     )}
                                   </div>
@@ -1650,13 +1696,13 @@ export default function FinancialAnalysis() {
                         <div className="mt-6">
                           <h4 className="font-semibold mb-4">Key Opportunities</h4>
                           <div className="space-y-3">
-                            {financialRoasMetric.available && financialRoasMetric.value > 5 && (
-                              <div className="flex items-start space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded">
+                            {isBudgetUnderutilized && hasStrongRoas && (
+                              <div className="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                                 <DollarSign className="w-5 h-5 text-green-600 mt-0.5" />
                                 <div>
-                                  <p className="font-medium">Scale High-Performing Campaigns</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    With {financialRoasMetric.value.toFixed(2)}x ROAS, consider increasing budget only if source capacity and campaign goals support it.
+                                  <p className="font-medium text-yellow-900 dark:text-yellow-100">Budget Underutilized</p>
+                                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                    Only {formatPercentage(overviewBudgetUtilization)} of budget is utilized while ROAS is {financialRoasMetric.value.toFixed(2)}x. Review pacing and consider increasing spend only if campaign goals and source capacity support it.
                                   </p>
                                 </div>
                               </div>
@@ -1686,7 +1732,7 @@ export default function FinancialAnalysis() {
                               </div>
                             )}
 
-                            {overviewSpendMetric.available && financialRoasMetric.available && overviewBudgetUtilization > 85 && financialRoasMetric.value > 2 && (
+                            {hasBudgetCapacity && financialRoasMetric.available && financialRoasMetric.value > 2 && (
                               <div className="flex items-start space-x-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded">
                                 <TrendingUp className="w-5 h-5 text-purple-600 mt-0.5" />
                                 <div>

@@ -342,6 +342,11 @@ Evidence:
 - ROAS, ROI, CPA, CTR, CVR, CPC, CPM, spend, and budget utilization insight copy now use aggregate metric wrappers and unavailable states instead of local zero-fallback calculations.
 - GA4-only campaigns with no spend-capable connected ad platform show an explicit message that paid-media optimization insights require a connected ad platform.
 - Budget reallocation recommendations remain blocked unless more than one spend-capable connected source exists.
+- Follow-up fix: Insights no longer recommends generic scaling from high ROAS alone. When budget utilization is low, Budget Management and Key Opportunities both describe the campaign as budget-underutilized instead of calling usage "within range" while also recommending increased spend.
+- Follow-up UI fix: Financial Performance Insights cards now use the same success/warning/info color treatment as the Performance Summary Insights tab.
+- Follow-up logic fix: the top Performance Summary insight uses warning styling when ROAS is below break-even or ROI is negative, instead of showing success merely because ROAS/ROI values are available.
+- Follow-up logic fix: source-level Top Performer and Budget Capacity insights no longer imply scaling when source ROAS is not strong or when budget utilization is already over 100%.
+- Follow-up copy fix: source-level insight labels now say Source Performance or Strongest Source instead of Top Performer so a merely available or best-relative source is not presented as objectively high-performing.
 - Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
 
 ### Commit 7: Scheduler, History, Docs, Final Validation

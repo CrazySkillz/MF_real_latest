@@ -152,6 +152,19 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(insightsTab).toContain("overviewSpendMetric.available");
     expect(insightsTab).toContain("overviewCtrMetric.available");
     expect(insightsTab).toContain("overviewCvrMetric.available");
+    expect(insightsTab).toContain("const isBudgetUnderutilized = overviewSpendMetric.available && overviewBudgetUtilization < 50;");
+    expect(insightsTab).toContain("const hasBudgetCapacity = overviewSpendMetric.available && overviewBudgetUtilization > 85 && overviewBudgetUtilization <= 100;");
+    expect(insightsTab).toContain("const financialPerformanceTone: InsightTone = !financialRoasMetric.available || !financialRoiMetric.available");
+    expect(insightsTab).toContain("financialRoasMetric.value < 1 || financialRoiMetric.value < 0");
+    expect(insightsTab).toContain("const topPerformerTone: InsightTone = !topPerformer");
+    expect(insightsTab).toContain('const topPerformerLabel = hasMultiplePlatforms ? "Strongest Source" : "Source Performance";');
+    expect(insightsTab).toContain("insightCardClass[financialPerformanceTone]");
+    expect(insightsTab).toContain("insightCardClass[topPerformerTone]");
+    expect(insightsTab).toContain("performance is not high enough to recommend scaling");
+    expect(insightsTab).toContain("Budget is underutilized relative to the total campaign budget.");
+    expect(insightsTab).toContain("Budget Underutilized");
+    expect(insightsTab).toContain("Only {formatPercentage(overviewBudgetUtilization)} of budget is utilized");
+    expect(insightsTab).toContain("bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800");
     expect(insightsTab).toContain("No spend-capable connected ad platform is available.");
     expect(insightsTab).not.toContain("platformMetrics.linkedIn.spend");
     expect(insightsTab).not.toContain("platformMetrics.meta.spend");
@@ -161,5 +174,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(insightsTab).not.toContain("formatPercentage(conversionRate)");
     expect(insightsTab).not.toContain("formatPercentage(budgetUtilization)");
     expect(insightsTab).not.toContain("roas.toFixed(2)");
+    expect(insightsTab).not.toContain("Scale High-Performing Campaigns");
+    expect(insightsTab).not.toContain("With {financialRoasMetric.value.toFixed(2)}x ROAS");
   });
 });

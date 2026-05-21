@@ -345,8 +345,12 @@ Evidence:
 - Follow-up fix: Insights no longer recommends generic scaling from high ROAS alone. When budget utilization is low, Budget Management and Key Opportunities both describe the campaign as budget-underutilized instead of calling usage "within range" while also recommending increased spend.
 - Follow-up UI fix: Financial Performance Insights cards now use the same success/warning/info color treatment as the Performance Summary Insights tab.
 - Follow-up logic fix: the top Performance Summary insight uses warning styling when ROAS is below break-even or ROI is negative, instead of showing success merely because ROAS/ROI values are available.
-- Follow-up logic fix: source-level Top Performer and Budget Capacity insights no longer imply scaling when source ROAS is not strong or when budget utilization is already over 100%.
-- Follow-up copy fix: source-level insight labels now say Source Performance or Strongest Source instead of Top Performer so a merely available or best-relative source is not presented as objectively high-performing.
+- Follow-up logic fix: source-level performance and Budget Capacity insights no longer imply scaling when source ROAS is not strong or when budget utilization is already over 100%.
+- Follow-up copy fix: source-level insight labels now say Source Performance or Strongest Source so a merely available or best-relative source is not presented as objectively high-performing.
+- Follow-up logic fix: Overview Campaign Health budget and pacing sub-scores now require a configured campaign budget and available spend; missing budget no longer grants full budget/pacing health points.
+- Follow-up logic fix: Overview Campaign Health ROI and ROAS sub-scores now show unavailable when aggregate ROI/ROAS are unavailable instead of labeling missing data as critical.
+- Follow-up logic fix: Overview Campaign Health overall header now shows unavailable/no score when every health input is unavailable instead of labeling missing data as Needs Attention.
+- Follow-up logic fix: Overview Campaign Health overall score now normalizes across available health inputs and displays the input count, so partial missing data is not treated as failed performance.
 - Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
 
 ### Commit 7: Scheduler, History, Docs, Final Validation
@@ -373,20 +377,20 @@ Before marking this subsection production ready:
 
 ## Current Status
 
-Not production ready.
+Partially production ready through Commit 6.
 
 Proven:
 
 - Documentation requires Campaign DeepDive subsections to aggregate main Connected Platform metrics at the campaign level.
 - Performance Summary already has a source-aware aggregate contract through `/api/campaigns/:id/outcome-totals`.
-- Budget & Financial Analysis currently uses page-local source-specific aggregation.
+- Budget & Financial Analysis completed tabs now use the shared aggregate contract for current financial totals, source capability checks, unavailable states, financial input provenance, budget allocation, and financial insights.
+- Financial Performance Insights are logical within the current aggregate contract: summary tones are value-based, source insights are sourced from spend-capable connected sources, scaling language is gated by budget/source conditions, and GA4-only campaigns do not receive paid-media optimization recommendations without a connected spend-capable ad platform.
 
 Outstanding:
 
-- Wire Budget & Financial Analysis to the shared aggregate contract.
-- Remove tab-local hardcoded source aggregation from normal loaded paths.
-- Add unavailable metric handling.
-- Add source-capability-driven tab rendering.
-- Add scheduler/history alignment where applicable.
-- Add regression coverage.
-- Update documentation as each fix is completed.
+- Complete Commit 7 scheduler/history/docs/final validation.
+- Align any remaining historical comparison logic with compatible aggregate snapshots.
+- Verify open-page refetch behavior for Budget & Financial current values after source updates.
+- Run final targeted tests, `npm run check`, and `npm run build`.
+- Add any remaining scheduler/history regression coverage required by Commit 7.
+- Keep documentation updated as each remaining fix is completed.

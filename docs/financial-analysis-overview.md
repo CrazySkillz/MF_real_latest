@@ -10,39 +10,38 @@ The Overview tab in the Budget & Financial Analysis section provides a high-leve
 
 ## Data Sources
 
-The Overview tab queries 5 APIs in parallel when the page loads:
+The current production path is the shared campaign aggregate:
 
 | API Endpoint | Data Source | What It Provides |
 |---|---|---|
-| `/api/linkedin/metrics/{campaignId}` | LinkedIn Ads | spend, impressions, engagements, clicks, conversions, conversionValue, revenue, roas, roi |
-| `/api/custom-integration/{campaignId}` | Custom Integration (PDF upload) | spend, impressions, clicks, conversions, leads, sessions, users, pageviews |
-| `/api/meta/{campaignId}/analytics` | Meta Ads (Facebook/Instagram) | totalSpend, totalImpressions, totalClicks, totalConversions |
-| `/api/campaigns/{campaignId}/ga4-metrics` | Google Analytics 4 | averageOrderValue (used as AOV fallback) |
-| `/api/campaigns/{campaignId}/google-sheets-data` | Google Sheets | totalSpend, totalImpressions, totalEngagements, totalClicks, totalConversions |
+| `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` | Campaign aggregate contract | `performanceSummary.totals`, connected source capabilities, source breakdowns, unavailable reasons, and financial input provenance |
+| `/api/campaigns/{campaignId}` | Campaign record | budget, start date, end date |
+
+The page may still load legacy platform endpoints for older fallback paths, but completed production tabs should use the aggregate contract when `performanceSummary` is present.
 
 A historical snapshot endpoint is also queried for trend indicators:
-- `/api/campaigns/{campaignId}/snapshots?date={targetDate}` - returns the closest snapshot to the comparison date (1d, 7d, or 30d ago)
+- `/api/campaigns/{campaignId}/snapshots?date={targetDate}` - returns the closest snapshot to the comparison date.
 
 ---
 
-## Platform Metrics Aggregation
+## Aggregate Metrics
 
-Each platform's raw metrics are extracted into a `platformMetrics` object:
+Current completed tabs read financial values from `performanceSummary.totals` through metric wrappers:
 
-```
-platformMetrics = {
-  linkedIn:           { spend, impressions, engagements, clicks, conversions }
-  customIntegration:  { spend, impressions, engagements, clicks, conversions }
-  sheets:             { spend, impressions, engagements, clicks, conversions }
-  meta:               { spend, impressions, engagements: 0, clicks, conversions }
-}
-```
+- `spend`
+- `revenue`
+- `conversions`
+- `cpc`
+- `cpa`
+- `cpm`
+- `ctr`
+- `cvr`
+- `roi`
+- `roas`
 
-**Totals are summed across all platforms:**
-- `totalSpend = LinkedIn + CI + Sheets + Meta`
-- `totalImpressions = LinkedIn + CI + Sheets + Meta`
-- `totalClicks = LinkedIn + CI + Sheets + Meta`
-- `totalConversions = LinkedIn + CI + Sheets + Meta`
+Each metric is available only when the aggregate contract marks it available and supplies a numeric value. Unavailable metrics show `Unavailable` plus the aggregate unavailable reason instead of misleading zeroes.
+
+Connected child revenue/spend inputs, such as GA4-context HubSpot, Shopify, CSV, or Google Sheets imports, can feed totals through their parent connected platform. They are not displayed as separate main Connected Platforms.
 
 ---
 
@@ -58,6 +57,14 @@ A composite score from 4 equally-weighted sub-scores, each worth 0-25 points:
 | **Pacing** | Within +/-15% of target | Within +/-30% | Within +/-50% | > 50% deviation |
 | **ROI** | >= 100% | >= 50% | >= 0% | Negative ROI |
 | **ROAS** | >= 3.0x | >= 1.5x | >= 1.0x | < 1.0x |
+
+Budget Utilization and Pacing require both available spend and a configured campaign budget. If the campaign has no budget, those sub-scores are unavailable and contribute 0 points instead of being treated as 0% utilization or 100% on-track pacing.
+
+ROI and ROAS require available aggregate revenue and spend. If either metric is unavailable, the sub-score is unavailable and contributes 0 points instead of being labeled critical.
+
+If every Campaign Health input is unavailable, the overall header shows `Unavailable` / `No score` instead of a red `Needs Attention` rating. This keeps missing data separate from actual poor campaign performance.
+
+If only some health inputs are available, the displayed header score is normalized across the available inputs and shows how many of the four inputs were used. This prevents missing inputs from being treated as failed performance.
 
 **Overall rating:**
 - 80-100: Excellent
@@ -111,36 +118,18 @@ Requires the campaign to have a `budget` field set. Displays a progress bar capp
 
 ---
 
-## Revenue & ROI Calculations (Used by Health Score Sub-Scores)
+## Revenue & ROI Calculations
 
-These values are computed for the Health Score's ROI and ROAS sub-scores, but are **not displayed as cards** on the Overview tab. The full breakdown is in the dedicated ROI & ROAS tab.
+Revenue, spend, ROI, and ROAS are read from the aggregate contract when available.
 
-### Average Order Value (AOV) Priority
-
-Revenue estimation requires an AOV. The system uses this priority:
-
-1. **LinkedIn `conversionValue`** - Set during LinkedIn connection setup
-2. **GA4 `averageOrderValue`** - From Google Analytics 4
-3. **CI `averageOrderValue`** - From Custom Integration
-4. **0** - No AOV available (triggers warning banner)
-
-### Revenue Calculation
-
-```
-LinkedIn Revenue = backend revenue field (preferred) OR (LinkedIn conversions * LinkedIn conversionValue)
-Meta Revenue     = Meta conversions * estimatedAOV
-Other Revenue    = (CI conversions + Sheets conversions) * fallbackAOV
-Total Revenue    = LinkedIn Revenue + Meta Revenue + Other Revenue
-```
-
-### ROI and ROAS
+Aggregate formulas:
 
 ```
 ROAS = totalRevenue / totalSpend
 ROI  = ((totalRevenue - totalSpend) / totalSpend) * 100
 ```
 
-**Special case:** When the campaign is LinkedIn-only (no Meta revenue, no other revenue, all spend is LinkedIn), the backend-computed ROI is preferred because it accounts for imported revenue-to-date.
+If revenue or spend is unavailable, ROI and ROAS are unavailable. The UI should not estimate missing revenue from AOV in completed production tabs when the aggregate contract provides an unavailable state.
 
 ---
 
@@ -157,29 +146,17 @@ The dedicated ROI & ROAS tab provides the full return analysis. It is split into
 
 Each shows supporting detail: Total Ad Spend, Estimated Revenue, Net Profit, Investment.
 
-### 2. Platform ROAS Performance
+### 2. Source ROAS Performance
 
-Per-platform ROAS breakdown with color-coded badges:
+Source ROAS rows come from aggregate connected main sources and aggregate financial totals. A single connected source may use aggregate totals so GA4 child revenue/spend inputs are reflected through the parent source.
 
-| Platform | Revenue Source | ROAS Formula |
-|---|---|---|
-| **LinkedIn Ads** | Backend `roas` field (preferred) OR `conversions * conversionValue / spend` | Real or estimated |
-| **Meta Ads** | `conversions * estimatedAOV / spend` | Estimated via AOV |
-| **Custom Integration** | `conversions * fallbackAOV / spend` | Estimated via AOV |
+Badge colors: Green (>= 3.0x), Yellow (>= 1.5x), Red (< 1.5x). Rows show spend, conversions, and revenue when the source has compatible financial data.
 
-Badge colors: Green (>= 3.0x), Yellow (>= 1.5x), Red (< 1.5x). Each row shows spend, conversions, and revenue. Platforms only appear when they have spend > 0 (or conversions > 0 for CI).
+### 3. Source ROI Performance
 
-### 3. Platform ROI Performance
+Source ROI rows use the same aggregate source breakdown and display net profit as `revenue - spend`.
 
-Per-platform ROI breakdown:
-
-| Platform | ROI Formula |
-|---|---|
-| **LinkedIn Ads** | `((linkedInRevenue - linkedInSpend) / linkedInSpend) * 100` |
-| **Meta Ads** | `((metaRevenue - metaSpend) / metaSpend) * 100` |
-| **Custom Integration** | `((ciRevenue - ciSpend) / ciSpend) * 100` |
-
-Badge colors: Green (>= 100%), Yellow (>= 0%), Red (< 0%). Each row shows spend and net profit.
+Badge colors: Green (>= 100%), Yellow (>= 0%), Red (< 0%). Each row shows spend and net profit when source ROI is available.
 
 ---
 
@@ -210,11 +187,13 @@ CVR also has view-through handling — shows click-through CVR as the main numbe
 
 ## Budget Allocation Tab
 
-The Budget Allocation tab provides per-platform budget data (numbers only, no recommendations).
+The Budget Allocation tab provides allocation data for spend-capable main connected sources only.
+
+Imported spend labels inside GA4, such as Google Sheets or LinkedIn spend imports, can feed total spend, ROI, ROAS, and Budget Utilization through the GA4/campaign financial path. They are not connected ad platforms and should not appear as standalone allocation sources.
 
 ### 1. Performance Tiers
 
-Three cards grouping platforms by ROAS performance:
+Three cards grouping spend-capable connected sources by ROAS performance:
 
 | Tier | Criteria | Shows |
 |---|---|---|
@@ -222,38 +201,53 @@ Three cards grouping platforms by ROAS performance:
 | **Medium Performance** (yellow) | ROAS 1.0-3.0x | Total spend in tier, % of total spend |
 | **Low Performance** (red) | ROAS < 1.0x | Total spend in tier, % of total spend |
 
-### 2. Platform Budget Analysis
+### 2. Source Budget Analysis
 
-Per-platform breakdown showing: ROAS badge (color-coded), Spend, Conversions, Revenue, Budget Share % with progress bar. Only platforms with `spend > 0 || conversions > 0` are shown.
+Per-source breakdown showing: ROAS badge, Spend, Conversions, Revenue, and Budget Share % with progress bar.
+
+Budget reallocation guidance appears only when more than one spend-capable connected source exists.
 
 ---
 
 ## Insights Tab
 
-The Insights tab is the executive summary — all recommendations consolidated in one place.
+Current implementation: the Insights tab uses aggregate metrics and spend-capable connected source breakdowns from the shared campaign aggregate contract.
+
+Authoritative rules:
+
+- Performance Summary uses aggregate ROAS and ROI. Unavailable is neutral; ROAS below 1.0x or ROI below 0% is warning; otherwise success.
+- Cost Efficiency uses aggregate CPA. Unavailable is neutral; CPA below $25 is success; otherwise warning.
+- Budget Management uses aggregate spend versus campaign budget. Underutilized or over-budget states are warnings; normal usage is neutral.
+- Source Performance Insights use spend-capable connected source breakdowns. With one source, the row is labeled `Source Performance`; with multiple sources, the best-relative row is labeled `Strongest Source`.
+- Source rows are styled as success only when ROAS is at least 3.0x. Sources below 1.0x ROAS are treated as underperforming.
+- Budget Underutilized appears only when spend is below 50% of budget and ROAS is strong.
+- Budget Capacity appears only when spend is 85-100% of budget and ROAS is strong.
+- GA4-only campaigns with no connected spend-capable ad platform show that paid-media optimization insights require a connected ad platform.
+- Budget reallocation recommendations appear only when multiple spend-capable connected sources exist.
+- Cost Optimization Insights are generated only from available aggregate CTR, CVR, CPC, CPM, and CPA metrics.
 
 ### 1. Quick Summary Cards
 
-Three color-coded cards summarizing: Performance (ROAS/ROI), Cost Efficiency (CPA assessment), Budget Management (utilization %).
+Three color-coded cards summarizing Performance Summary, Cost Efficiency, and Budget Management using the authoritative rules above.
 
-### 2. Platform Performance Insights
+### 2. Source Performance Insights
 
-Highlights the top performer and bottom performer (by ROAS) with actionable recommendations.
+Highlights source performance using spend-capable connected source breakdowns and value-based labels.
 
 ### 3. Key Opportunities
 
-Conditional recommendations based on: high ROAS (scale), low CVR (optimize landing pages), low CTR (improve creative), high budget utilization with positive ROAS (increase budget).
+Conditional recommendations based on aggregate metric availability and thresholds.
 
 ### 4. Budget Optimization Recommendations
 
-Only shown when multiple platforms have active spend:
-- Scale high-performing (ROAS >= 3x) platforms
-- Optimize underperforming (ROAS < 1x) platforms
-- Reallocate budget from low to high performers (when both exist)
+Only shown when multiple spend-capable connected sources have active spend:
+- Scale high-performing (ROAS >= 3x) sources only if budget and source capacity allow
+- Optimize underperforming (ROAS < 1x) sources before adding spend
+- Reallocate budget from low to high performers only when both exist
 
 ### 5. Cost Optimization Insights
 
-Dynamically generated recommendations based on cost-metric thresholds (CTR, CVR, CPC, CPM, CPA).
+Dynamically generated recommendations based on available aggregate cost-metric thresholds (CTR, CVR, CPC, CPM, CPA).
 
 ---
 
@@ -273,9 +267,12 @@ Changes smaller than 0.01% are hidden.
 
 | Edge Case | Behavior |
 |---|---|
-| No budget set | Budget utilization = 0%, pacing shows 100% |
+| No budget set | Campaign Health budget and pacing sub-scores show `Unavailable` and contribute 0 points |
 | No start/end date | Uses today as start date, projects from burn rate |
 | Over-budget | Shows "Budget exceeded by $X" warning, no days-remaining projection |
-| No AOV configured | Yellow warning banner: "Conversion Value Not Configured" |
-| No platform data | Cards show $0 / 0, no errors |
+| Missing aggregate metric | Shows `Unavailable` plus the aggregate unavailable reason |
+| No available health inputs | Campaign Health header shows `Unavailable` / `No score` |
+| Partial health inputs | Header score is normalized across available inputs and shows the input count |
+| No spend-capable connected ad platform | Allocation and paid-media optimization guidance are withheld |
+| GA4 child spend/revenue inputs only | Inputs feed financial totals through GA4 but do not appear as standalone allocation sources |
 | Division by zero | All formulas guard with `> 0` checks, return 0 |

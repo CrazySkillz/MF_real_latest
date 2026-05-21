@@ -434,6 +434,8 @@ They are not individual-source analytics pages.
 
 Performance Summary production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md`.
 
+Budget & Financial Analysis production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md`.
+
 ## Connected Platforms Pattern
 
 Connected Platforms is where the data comes from.
@@ -511,6 +513,7 @@ This means:
 - any future main Connected Platform is not complete until it supplies campaign-scoped source identity, available metrics, unavailable metric reasons, source labels, freshness, scheduler snapshot inputs, and tests for campaign-level aggregation through the shared generic source contract
 - future standalone platforms such as Google Ads, TikTok, Instagram, and other sources should plug into Campaign DeepDive by supplying generic source breakdowns, not by adding tab-specific aggregation logic
 - platform child sources can contribute to the parent platform or campaign financial totals, but should not be displayed as separate main Connected Platforms in campaign-level source lists and should not require duplicate Campaign DeepDive setup
+- Performance Summary should stay synchronized with underlying source updates by refetching the aggregate while the page is visible and on window focus; historical comparison sections still depend on compatible aggregate snapshots being created after source refresh.
 
 ## Consistency Review Of The Current Codebase
 

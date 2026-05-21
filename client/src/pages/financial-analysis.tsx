@@ -284,6 +284,7 @@ export default function FinancialAnalysis() {
   
   // Get campaign budget and currency
   const campaignBudget = campaign.budget ? (parseFloat(campaign.budget) || 0) : 0;
+  const hasCampaignBudget = campaignBudget > 0;
   const campaignCurrency = (campaign as any).currency || 'USD';
   
   // Format currency with campaign's currency
@@ -380,7 +381,7 @@ export default function FinancialAnalysis() {
   const overviewRoiMetric = getOverviewMetric("roi", roi);
   const overviewRoasMetric = getOverviewMetric("roas", roas);
   const overviewSpend = overviewSpendMetric.available ? overviewSpendMetric.value : 0;
-  const overviewBudgetUtilization = campaignBudget > 0 && overviewSpendMetric.available ? (overviewSpend / campaignBudget) * 100 : 0;
+  const overviewBudgetUtilization = hasCampaignBudget && overviewSpendMetric.available ? (overviewSpend / campaignBudget) * 100 : 0;
   const overviewRemainingBudget = campaignBudget - overviewSpend;
   const overviewMetricUnavailableText = (metric: { unavailableReasons: string[] }, fallback: string) =>
     metric.unavailableReasons[0] || fallback;
@@ -603,10 +604,11 @@ export default function FinancialAnalysis() {
                 </CardHeader>
                 <CardContent>
                   {(() => {
+                    const hasBudgetHealthInputs = hasCampaignBudget && overviewSpendMetric.available;
                     const calculateHealthScore = () => {
                       let score = 0;
                       
-                      const budgetScore = overviewSpendMetric.available ? (overviewBudgetUtilization <= 80 ? 25 : overviewBudgetUtilization <= 95 ? 15 : overviewBudgetUtilization <= 100 ? 10 : 0) : 0;
+                      const budgetScore = hasBudgetHealthInputs ? (overviewBudgetUtilization <= 80 ? 25 : overviewBudgetUtilization <= 95 ? 15 : overviewBudgetUtilization <= 100 ? 10 : 0) : 0;
                       
                       const campaignStartDate = campaign.startDate ? new Date(campaign.startDate) : new Date();
                       const today = new Date();
@@ -617,7 +619,7 @@ export default function FinancialAnalysis() {
                       const targetDailySpend = campaignBudget / targetDaysTotal;
                       const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
                       const pacingDeviation = Math.abs(pacingPercentage - 100);
-                      const pacingScore = overviewSpendMetric.available ? (pacingDeviation <= 15 ? 25 : pacingDeviation <= 30 ? 15 : pacingDeviation <= 50 ? 10 : 0) : 0;
+                      const pacingScore = hasBudgetHealthInputs ? (pacingDeviation <= 15 ? 25 : pacingDeviation <= 30 ? 15 : pacingDeviation <= 50 ? 10 : 0) : 0;
 
                       const overviewRoi = overviewRoiMetric.available ? overviewRoiMetric.value : -Infinity;
                       const roiScore = overviewRoi >= 100 ? 25 : overviewRoi >= 50 ? 15 : overviewRoi >= 0 ? 10 : 0;
@@ -629,14 +631,27 @@ export default function FinancialAnalysis() {
                       
                       return {
                         total: score,
-                        budget: { score: budgetScore, status: overviewSpendMetric.available ? (overviewBudgetUtilization <= 80 ? 'excellent' : overviewBudgetUtilization <= 95 ? 'good' : overviewBudgetUtilization <= 100 ? 'warning' : 'critical') : 'critical' },
-                        pacing: { score: pacingScore, status: overviewSpendMetric.available ? (pacingDeviation <= 15 ? 'excellent' : pacingDeviation <= 30 ? 'good' : pacingDeviation <= 50 ? 'warning' : 'critical') : 'critical' },
-                        roi: { score: roiScore, status: overviewRoi >= 100 ? 'excellent' : overviewRoi >= 50 ? 'good' : overviewRoi >= 0 ? 'warning' : 'critical' },
-                        roas: { score: roasScore, status: overviewRoas >= 3 ? 'excellent' : overviewRoas >= 1.5 ? 'good' : overviewRoas >= 1 ? 'warning' : 'critical' }
+                        budget: { score: budgetScore, status: hasBudgetHealthInputs ? (overviewBudgetUtilization <= 80 ? 'excellent' : overviewBudgetUtilization <= 95 ? 'good' : overviewBudgetUtilization <= 100 ? 'warning' : 'critical') : 'unavailable' },
+                        pacing: { score: pacingScore, status: hasBudgetHealthInputs ? (pacingDeviation <= 15 ? 'excellent' : pacingDeviation <= 30 ? 'good' : pacingDeviation <= 50 ? 'warning' : 'critical') : 'unavailable' },
+                        roi: { score: roiScore, status: overviewRoiMetric.available ? (overviewRoi >= 100 ? 'excellent' : overviewRoi >= 50 ? 'good' : overviewRoi >= 0 ? 'warning' : 'critical') : 'unavailable' },
+                        roas: { score: roasScore, status: overviewRoasMetric.available ? (overviewRoas >= 3 ? 'excellent' : overviewRoas >= 1.5 ? 'good' : overviewRoas >= 1 ? 'warning' : 'critical') : 'unavailable' }
                       };
                     };
                     
                     const healthData = calculateHealthScore();
+                    const availableHealthMetricCount = [
+                      hasBudgetHealthInputs,
+                      hasBudgetHealthInputs,
+                      overviewRoiMetric.available,
+                      overviewRoasMetric.available,
+                    ].filter(Boolean).length;
+                    const hasAnyHealthInputs = availableHealthMetricCount > 0;
+                    const displayHealthScore = hasAnyHealthInputs ? Math.round((healthData.total / (availableHealthMetricCount * 25)) * 100) : null;
+                    const healthRating = displayHealthScore === null ? "Unavailable" : displayHealthScore >= 80 ? 'Excellent' : displayHealthScore >= 60 ? 'Good' : displayHealthScore >= 40 ? 'Fair' : 'Needs Attention';
+                    const healthScoreColor = displayHealthScore === null ? 'text-gray-600' : displayHealthScore >= 80 ? 'text-green-600' : displayHealthScore >= 60 ? 'text-yellow-600' : 'text-red-600';
+                    const healthIconBg = displayHealthScore === null ? 'bg-gray-100' : displayHealthScore >= 80 ? 'bg-green-100' : displayHealthScore >= 60 ? 'bg-yellow-100' : 'bg-red-100';
+                    const healthIconColor = displayHealthScore === null ? 'text-gray-600' : displayHealthScore >= 80 ? 'text-green-600' : displayHealthScore >= 60 ? 'text-yellow-600' : 'text-red-600';
+                    const formatHealthStatus = (status: string) => status === 'unavailable' ? 'Unavailable' : status;
                     const getStatusColor = (status: string) => {
                       switch (status) {
                         case 'excellent': return 'bg-green-500';
@@ -662,19 +677,19 @@ export default function FinancialAnalysis() {
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="flex items-center space-x-3">
-                              <div className={`text-5xl font-bold ${healthData.total >= 80 ? 'text-green-600' : healthData.total >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
-                                {healthData.total}
+                              <div className={`text-5xl font-bold ${healthScoreColor}`}>
+                                {displayHealthScore ?? "Unavailable"}
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                <div>out of 100</div>
+                                <div>{displayHealthScore !== null ? `out of 100 (${availableHealthMetricCount}/4 inputs)` : "No score"}</div>
                                 <div className="font-semibold">
-                                  {healthData.total >= 80 ? 'Excellent' : healthData.total >= 60 ? 'Good' : healthData.total >= 40 ? 'Fair' : 'Needs Attention'}
+                                  {healthRating}
                                 </div>
                               </div>
                             </div>
                           </div>
-                          <div className={`w-24 h-24 rounded-full flex items-center justify-center ${healthData.total >= 80 ? 'bg-green-100' : healthData.total >= 60 ? 'bg-yellow-100' : 'bg-red-100'}`}>
-                            <Zap className={`w-12 h-12 ${healthData.total >= 80 ? 'text-green-600' : healthData.total >= 60 ? 'text-yellow-600' : 'text-red-600'}`} />
+                          <div className={`w-24 h-24 rounded-full flex items-center justify-center ${healthIconBg}`}>
+                            <Zap className={`w-12 h-12 ${healthIconColor}`} />
                           </div>
                         </div>
                         
@@ -684,14 +699,14 @@ export default function FinancialAnalysis() {
                               <span className="text-sm font-medium">Budget Utilization</span>
                               <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.budget.status)}`} />
                             </div>
-                            <div className="text-2xl font-bold">{overviewSpendMetric.available ? formatPercentage(overviewBudgetUtilization) : "Unavailable"}</div>
-                            {!overviewSpendMetric.available && (
+                            <div className="text-2xl font-bold">{hasBudgetHealthInputs ? formatPercentage(overviewBudgetUtilization) : "Unavailable"}</div>
+                            {!hasBudgetHealthInputs && (
                               <p className="text-xs text-muted-foreground mt-1">
-                                {overviewMetricUnavailableText(overviewSpendMetric, "Budget utilization requires available spend")}
+                                {hasCampaignBudget ? overviewMetricUnavailableText(overviewSpendMetric, "Budget utilization requires available spend") : "Campaign budget is required for budget health"}
                               </p>
                             )}
                             <Badge className={`mt-2 ${getStatusBadgeColor(healthData.budget.status)}`}>
-                              {healthData.budget.status}
+                              {formatHealthStatus(healthData.budget.status)}
                             </Badge>
                           </div>
                           
@@ -709,15 +724,15 @@ export default function FinancialAnalysis() {
                               const targetDaysTotal = campaignEndDate ? Math.max(1, Math.ceil((campaignEndDate.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24))) : daysElapsed + (dailyBurnRate > 0 ? overviewRemainingBudget / dailyBurnRate : 0);
                               const targetDailySpend = campaignBudget / targetDaysTotal;
                               const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
-                              return overviewSpendMetric.available ? formatPercentage(pacingPercentage) : "Unavailable";
+                              return hasBudgetHealthInputs ? formatPercentage(pacingPercentage) : "Unavailable";
                             })()}</div>
-                            {!overviewSpendMetric.available && (
+                            {!hasBudgetHealthInputs && (
                               <p className="text-xs text-muted-foreground mt-1">
-                                {overviewMetricUnavailableText(overviewSpendMetric, "Pacing requires available spend")}
+                                {hasCampaignBudget ? overviewMetricUnavailableText(overviewSpendMetric, "Pacing requires available spend") : "Campaign budget is required for pacing"}
                               </p>
                             )}
                             <Badge className={`mt-2 ${getStatusBadgeColor(healthData.pacing.status)}`}>
-                              {healthData.pacing.status}
+                              {formatHealthStatus(healthData.pacing.status)}
                             </Badge>
                           </div>
                           
@@ -733,7 +748,7 @@ export default function FinancialAnalysis() {
                               </p>
                             )}
                             <Badge className={`mt-2 ${getStatusBadgeColor(healthData.roi.status)}`}>
-                              {healthData.roi.status}
+                              {formatHealthStatus(healthData.roi.status)}
                             </Badge>
                           </div>
                           
@@ -749,7 +764,7 @@ export default function FinancialAnalysis() {
                               </p>
                             )}
                             <Badge className={`mt-2 ${getStatusBadgeColor(healthData.roas.status)}`}>
-                              {healthData.roas.status}
+                              {formatHealthStatus(healthData.roas.status)}
                             </Badge>
                           </div>
                         </div>

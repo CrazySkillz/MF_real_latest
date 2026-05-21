@@ -38,6 +38,22 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('const overviewCvrMetric = getOverviewMetric("cvr", conversionRate);');
     expect(page).toContain('const overviewRoiMetric = getOverviewMetric("roi", roi);');
     expect(page).toContain('const overviewRoasMetric = getOverviewMetric("roas", roas);');
+    expect(page).toContain("const hasCampaignBudget = campaignBudget > 0;");
+    expect(overview).toContain("const hasBudgetHealthInputs = hasCampaignBudget && overviewSpendMetric.available;");
+    expect(overview).toContain("const budgetScore = hasBudgetHealthInputs ?");
+    expect(overview).toContain("const pacingScore = hasBudgetHealthInputs ?");
+    expect(overview).toContain("status: hasBudgetHealthInputs ?");
+    expect(overview).toContain("status: overviewRoiMetric.available ?");
+    expect(overview).toContain("status: overviewRoasMetric.available ?");
+    expect(overview).toContain("const availableHealthMetricCount = [");
+    expect(overview).toContain("const hasAnyHealthInputs = availableHealthMetricCount > 0;");
+    expect(overview).toContain("const displayHealthScore = hasAnyHealthInputs ? Math.round((healthData.total / (availableHealthMetricCount * 25)) * 100) : null;");
+    expect(overview).toContain('const healthRating = displayHealthScore === null ? "Unavailable"');
+    expect(overview).toContain('{displayHealthScore ?? "Unavailable"}');
+    expect(overview).toContain('`out of 100 (${availableHealthMetricCount}/4 inputs)`');
+    expect(overview).toContain("const formatHealthStatus = (status: string) => status === 'unavailable' ? 'Unavailable' : status;");
+    expect(overview).toContain("Campaign budget is required for budget health");
+    expect(overview).toContain("Campaign budget is required for pacing");
 
     expect(overview).toContain("formatOverviewCurrency(overviewSpendMetric)");
     expect(overview).toContain("formatOverviewNumber(overviewConversionsMetric)");

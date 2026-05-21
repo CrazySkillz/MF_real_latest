@@ -258,6 +258,7 @@ Evidence:
 - Budget utilization, pacing, ROI, ROAS, total spend, conversions, CPC, CPA, and conversion-rate displays use Overview-specific aggregate metric wrappers.
 - Missing required aggregate inputs render `Unavailable` plus the aggregate unavailable reason instead of silently showing zero.
 - Follow-up fix: `/api/campaigns/:id/outcome-totals` revenue now aligns with the GA4 financial card rule by adding imported revenue-to-date records from the GA4/campaign financial path to GA4 revenue before deriving ROAS and ROI.
+- Follow-up fix: aggregate `cvr` now uses paid-media `conversions / clicks` when clicks exist, and falls back to GA4/web `conversions / sessions` when the connected web source provides sessions.
 - Other Budget & Financial tabs still use the previous calculations and are intentionally deferred to later commits.
 - Regression coverage updated in `server/campaign-financial-analysis-regression.test.ts`.
 

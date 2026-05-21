@@ -27,6 +27,7 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.users).toMatchObject({ available: true, value: 180, sources: ["ga4"] });
     expect(aggregate.totals.conversions).toMatchObject({ available: true, value: 12, sources: ["ga4"] });
     expect(aggregate.totals.revenue).toMatchObject({ available: true, value: 1200, sources: ["ga4"] });
+    expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 4, sources: ["conversions", "sessions"] });
     expect(aggregate.totals.impressions.available).toBe(false);
     expect(aggregate.totals.clicks.available).toBe(false);
     expect(aggregate.totals.spend.available).toBe(false);

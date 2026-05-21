@@ -295,7 +295,16 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
   const roas = spendValue > 0 && revenueValue > 0 ? round2(revenueValue / spendValue) : null;
   const roi = spendValue > 0 && revenueValue > 0 ? round2(((revenueValue - spendValue) / spendValue) * 100) : null;
   const ctr = totalImpressions > 0 && totalClicks > 0 ? round2((totalClicks / totalImpressions) * 100) : null;
-  const cvr = totalClicks > 0 && totalConversions > 0 ? round2((totalConversions / totalClicks) * 100) : null;
+  const cvr = totalClicks > 0 && totalConversions > 0
+    ? round2((totalConversions / totalClicks) * 100)
+    : totalSessions > 0 && totalConversions > 0
+      ? round2((totalConversions / totalSessions) * 100)
+      : null;
+  const cvrSources = totalClicks > 0 && totalConversions > 0
+    ? ["conversions", "clicks"]
+    : totalSessions > 0 && totalConversions > 0
+      ? ["conversions", "sessions"]
+      : [];
 
   return {
     campaignId: input.campaignId,
@@ -316,7 +325,7 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
       cpc: metric(cpc, cpc === null ? [] : ["spend", "clicks"], ["CPC requires available spend and clicks"]),
       cpa: metric(cpa, cpa === null ? [] : ["spend", "conversions"], ["CPA requires available spend and conversions"]),
       ctr: metric(ctr, ctr === null ? [] : ["clicks", "impressions"], ["CTR requires available clicks and impressions"]),
-      cvr: metric(cvr, cvr === null ? [] : ["conversions", "clicks"], ["CVR requires available conversions and clicks"]),
+      cvr: metric(cvr, cvrSources, ["CVR requires available conversions and clicks or web sessions"]),
     },
   };
 }

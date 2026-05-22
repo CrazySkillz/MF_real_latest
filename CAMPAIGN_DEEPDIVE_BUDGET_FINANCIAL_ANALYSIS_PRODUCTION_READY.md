@@ -363,6 +363,7 @@ Evidence:
 - Follow-up copy fix: the old card-level missing-start-date warning was removed. Row-level helper text now states the exact inputs required for Daily Burn Rate, Target Daily Spend, and Pacing Status.
 - Follow-up accuracy fix: Budget Pacing & Burn Rate now uses inclusive campaign days. Active campaigns calculate elapsed days through the current date; completed campaigns stop elapsed days at the campaign end date, so Daily Burn Rate is not diluted by days after completion.
 - Follow-up UX fix: users can edit or delete Budget Pacing metadata inputs from the card. Deleting clears the same campaign `budget`, `startDate`, and `endDate` fields and dependent pacing values return to unavailable.
+- Follow-up correctness fix: Budget & Financial Overview aggregate metrics now keep prior aggregate data during outcome-totals refetch and fail closed when `performanceSummary` is unavailable, instead of falling back to stale legacy local spend totals.
 
 ### Commit 7: Scheduler, History, Docs, Final Validation
 
@@ -407,6 +408,7 @@ Proven:
 - Budget & Financial Analysis completed tabs now use the shared aggregate contract for current financial totals, source capability checks, unavailable states, financial input provenance, budget allocation, and financial insights.
 - Budget Pacing & Burn Rate now fails closed when required campaign dates are missing or invalid: Daily Burn Rate requires a valid campaign start date, and Target Daily Spend/Pacing Status require a valid start/end date range.
 - Budget Pacing & Burn Rate allows users to fill, edit, or delete campaign budget/start/end metadata inline through the existing campaign update route, without entering calculated values directly.
+- Budget & Financial Overview spend and pacing values are sourced from the shared aggregate contract; if that aggregate is unavailable, the page must show unavailable or retain prior aggregate data during refetch rather than displaying legacy fallback totals.
 - Financial Performance Insights are logical within the current aggregate contract: summary tones are value-based, source insights are sourced from spend-capable connected sources, scaling language is gated by budget/source conditions, and GA4-only campaigns do not receive paid-media optimization recommendations without a connected spend-capable ad platform.
 - Scheduler-created snapshots include `metrics.performanceSummary`, and Budget & Financial trend indicators compare only compatible aggregate snapshots.
 - The Budget & Financial page refetches current aggregate values while visible and on window focus so source updates are pulled into the UI through the same aggregate contract.

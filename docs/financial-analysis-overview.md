@@ -90,6 +90,8 @@ If only some health inputs are available, the displayed header score is normaliz
 
 Requires the campaign to have a `budget` field set. Displays a progress bar capped at 100%.
 
+Overview financial cards must use `performanceSummary.totals` from `/api/campaigns/:id/outcome-totals?dateRange=90days` when live aggregate data has been requested. If that aggregate response fails or returns without `performanceSummary`, the page must keep prior aggregate data during refetch or show the metric as unavailable. It must not fall back to legacy local platform totals because those can display stale values, such as an old spend total.
+
 ### 4. Budget Pacing & Burn Rate
 
 | Metric | Formula |

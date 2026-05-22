@@ -108,7 +108,7 @@ export default function FinancialAnalysis() {
   const { data: comparisonData } = useQuery<{ current: any | null; previous: any | null }>({
     queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}`],
     enabled: !!campaignId,
-    placeholderData: (previousData) => previousData,
+    placeholderData: (previousData: any) => previousData,
     refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
@@ -165,9 +165,10 @@ export default function FinancialAnalysis() {
     queryFn: async () => {
       const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=90days${demoMode ? "&demo=1" : ""}`;
       const response = await fetch(url, { credentials: "include" });
-      if (!response.ok) return null;
+      if (!response.ok) throw new Error("Failed to load aggregate financial totals");
       return response.json();
     },
+    placeholderData: (previousData: any) => previousData,
     refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
@@ -435,6 +436,13 @@ export default function FinancialAnalysis() {
         available: metric.available === true && value !== null,
         value: value ?? 0,
         unavailableReasons: aggregateMetricUnavailableReasons(metricName),
+      };
+    }
+    if (!demoMode && outcomeTotals !== undefined && !performanceSummary) {
+      return {
+        available: false,
+        value: 0,
+        unavailableReasons: ["Aggregate financial totals are unavailable"],
       };
     }
     return { available: true, value: fallbackValue, unavailableReasons: [] };

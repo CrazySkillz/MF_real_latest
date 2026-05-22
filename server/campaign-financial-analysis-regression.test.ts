@@ -9,6 +9,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery<any>({");
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days"');
     expect(page).toContain("outcome-totals?dateRange=90days");
+    expect(page).toContain('if (!response.ok) throw new Error("Failed to load aggregate financial totals");');
+    expect(page).toContain("placeholderData: (previousData: any) => previousData");
     expect(page).toContain("const FINANCIAL_ANALYSIS_REFRESH_MS = 30000;");
     expect(page).toContain("refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS");
     expect(page).toContain("refetchIntervalInBackground: false");
@@ -47,6 +49,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('const overviewCvrMetric = getOverviewMetric("cvr", conversionRate);');
     expect(page).toContain('const overviewRoiMetric = getOverviewMetric("roi", roi);');
     expect(page).toContain('const overviewRoasMetric = getOverviewMetric("roas", roas);');
+    expect(page).toContain('unavailableReasons: ["Aggregate financial totals are unavailable"]');
     expect(page).toContain("const hasCampaignBudget = campaignBudget > 0;");
     expect(page).toContain("const hasCampaignStartDate = Boolean(campaignStartDate && !Number.isNaN(campaignStartDate.getTime()));");
     expect(page).toContain("const hasCampaignEndDate = Boolean(campaignEndDate && !Number.isNaN(campaignEndDate.getTime()));");

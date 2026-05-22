@@ -99,13 +99,20 @@ Requires the campaign to have a `budget` field set. Displays a progress bar capp
 | Target Daily Spend | `campaignBudget / totalCampaignDays` |
 | Pacing % | `(dailyBurnRate / targetDailySpend) * 100` |
 
-Daily Burn Rate requires available spend and a valid campaign start date. Target Daily Spend and Pacing Status require available spend, campaign budget, a valid campaign start date, and a valid campaign end date. Without an end date, the card still shows current daily burn and projected budget exhaustion when spend/budget/start date are available, but target daily spend and pacing are unavailable.
+Daily Burn Rate requires available spend and a valid campaign start date. Target Daily Spend requires campaign budget, a valid campaign start date, and a valid campaign end date. Pacing Status requires available spend, campaign budget, a valid campaign start date, and a valid campaign end date. Without an end date, the card still shows current daily burn and projected budget exhaustion when spend/budget/start date are available, but target daily spend and pacing are unavailable.
 
-When Target Daily Spend and Pacing Status are unavailable because the campaign has no end date, the UI tells users to set a campaign end date to enable those values.
+When budget, start date, or end date are missing or invalid, the Budget Pacing & Burn Rate card shows inline campaign metadata inputs. Saving those inputs updates the existing campaign `budget`, `startDate`, and `endDate` fields through `PATCH /api/campaigns/:id`, then the card recalculates Daily Burn Rate, Target Daily Spend, and Pacing Status from the saved campaign metadata and aggregate spend. The card does not ask users to enter Daily Burn Rate, Target Daily Spend, or Pacing Status directly.
+
+The visible row helper text is:
+- Daily Burn Rate: `Requires campaign spend and start date`
+- Target Daily Spend: `Requires campaign budget, start date, and end date`
+- Pacing Status: `Requires campaign spend, budget, start date, and end date`
 
 Daily Burn Rate can be tested with a controlled GA4/mock-live campaign after spend is present in the aggregate: confirm `/api/campaigns/{campaignId}/outcome-totals?dateRange=90days` returns the expected `performanceSummary.totals.spend.value`, confirm the campaign start date, then verify the UI value equals `spend / daysElapsed`. A mock-live GA4 setup is useful for end-to-end source refresh validation, but the burn-rate formula itself depends on aggregate spend and campaign start date, not on users entering a burn-rate value.
 
 Latest validation for this logic is covered by commit `7878a2df Validate budget pacing date inputs`: `npm run check`, `npm test -- server/campaign-financial-analysis-regression.test.ts`, and targeted `git diff --check` passed.
+
+Render validation passed after the Commit 7 refresh/history deploy: Overview and Budget & Financial Analysis values remained in sync with the aggregate contract.
 
 **Pacing status:**
 - **On Track:** 85-115% of target daily spend

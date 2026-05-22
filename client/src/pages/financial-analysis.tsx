@@ -1,15 +1,17 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Calculator, PieChart, BarChart3, AlertTriangle, Target, Zap, Activity, Eye, Info } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { apiRequest } from "@/lib/queryClient";
 import { formatPct } from "@shared/metric-math";
 
 interface Campaign {
@@ -52,12 +54,50 @@ const FINANCIAL_ANALYSIS_REFRESH_MS = 30000;
 export default function FinancialAnalysis() {
   const [, params] = useRoute("/campaigns/:id/financial-analysis");
   const campaignId = params?.id;
+  const queryClient = useQueryClient();
   const [comparisonPeriod, setComparisonPeriod] = useState<string>("7d");
   const [demoMode] = useState(false);
+  const [pacingBudgetInput, setPacingBudgetInput] = useState("");
+  const [pacingStartDateInput, setPacingStartDateInput] = useState("");
+  const [pacingEndDateInput, setPacingEndDateInput] = useState("");
+  const [pacingInputError, setPacingInputError] = useState<string | null>(null);
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,
+  });
+
+  const formatDateInputValue = (value?: string | Date | null) => {
+    if (!value) return "";
+    const date = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+  };
+
+  useEffect(() => {
+    if (!campaign) return;
+    setPacingBudgetInput(campaign.budget ? String(campaign.budget) : "");
+    setPacingStartDateInput(formatDateInputValue(campaign.startDate));
+    setPacingEndDateInput(formatDateInputValue(campaign.endDate));
+    setPacingInputError(null);
+  }, [campaign?.budget, campaign?.startDate, campaign?.endDate]);
+
+  const updatePacingInputsMutation = useMutation({
+    mutationFn: async (data: { budget: string; startDate: string; endDate: string }) => {
+      const response = await apiRequest("PATCH", `/api/campaigns/${campaignId}`, {
+        budget: data.budget ? data.budget.replace(/,/g, "") : null,
+        startDate: data.startDate || null,
+        endDate: data.endDate || null,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      setPacingInputError(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
+    },
+    onError: (error: any) => {
+      setPacingInputError(error?.message || "Unable to save pacing inputs.");
+    },
   });
 
   const comparisonType = comparisonPeriod === "1d" ? "yesterday" : comparisonPeriod === "7d" ? "last_week" : "last_month";
@@ -400,6 +440,29 @@ export default function FinancialAnalysis() {
   const overviewRemainingBudget = campaignBudget - overviewSpend;
   const overviewMetricUnavailableText = (metric: { unavailableReasons: string[] }, fallback: string) =>
     metric.unavailableReasons[0] || fallback;
+  const hasPacingInputDraft = Boolean(pacingBudgetInput.trim() || pacingStartDateInput || pacingEndDateInput);
+  const handleSavePacingInputs = () => {
+    const normalizedBudget = pacingBudgetInput.replace(/,/g, "").trim();
+    const budgetValue = Number(normalizedBudget);
+    const startDateValue = pacingStartDateInput;
+    const endDateValue = pacingEndDateInput;
+
+    if (normalizedBudget && (!Number.isFinite(budgetValue) || budgetValue <= 0)) {
+      setPacingInputError("Campaign budget must be greater than 0.");
+      return;
+    }
+
+    if (startDateValue && endDateValue && new Date(endDateValue).getTime() < new Date(startDateValue).getTime()) {
+      setPacingInputError("Campaign end date must be on or after the start date.");
+      return;
+    }
+
+    updatePacingInputsMutation.mutate({
+      budget: normalizedBudget,
+      startDate: startDateValue,
+      endDate: endDateValue,
+    });
+  };
   const formatOverviewCurrency = (metric: { available: boolean; value: number; unavailableReasons: string[] }) =>
     metric.available ? formatCurrency(metric.value) : "Unavailable";
   const formatOverviewNumber = (metric: { available: boolean; value: number; unavailableReasons: string[] }) =>
@@ -899,19 +962,29 @@ export default function FinancialAnalysis() {
                         
                         const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
                         const pacingStatus = !hasPacingInputs ? 'unavailable' : pacingPercentage > 115 ? 'ahead' : pacingPercentage < 85 ? 'behind' : 'on-track';
+                        const shouldShowPacingInputForm = !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;
                         
                         return (
                           <>
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">Daily Burn Rate</span>
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <span className="text-sm font-medium">Daily Burn Rate</span>
+                                <p className="text-xs text-muted-foreground">Requires campaign spend and start date</p>
+                              </div>
                               <span className="text-sm font-bold">{overviewSpendMetric.available && hasCampaignStartDate ? formatCurrency(dailyBurnRate) : "Unavailable"}</span>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">Target Daily Spend</span>
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <span className="text-sm font-medium">Target Daily Spend</span>
+                                <p className="text-xs text-muted-foreground">Requires campaign budget, start date, and end date</p>
+                              </div>
                               <span className="text-sm text-muted-foreground">{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}</span>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">Pacing Status</span>
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <span className="text-sm font-medium">Pacing Status</span>
+                                <p className="text-xs text-muted-foreground">Requires campaign spend, budget, start date, and end date</p>
+                              </div>
                               <Badge className={
                                 pacingStatus === 'unavailable' ? 'bg-gray-100 text-gray-700' :
                                 pacingStatus === 'ahead' ? 'bg-red-100 text-red-700' : 
@@ -931,16 +1004,53 @@ export default function FinancialAnalysis() {
                                 </p>
                               </div>
                             )}
-                            {!hasPacingInputs && (
-                              <div className="pt-3 border-t">
+                            {shouldShowPacingInputForm && (
+                              <div className="pt-3 border-t space-y-3">
                                 <p className="text-xs text-muted-foreground">
-                                  {!hasCampaignBudget ? "Campaign budget is required to calculate pacing." : !hasCampaignStartDate ? "Campaign start date is required to calculate daily burn rate and pacing." : !hasCampaignEndDate ? "Campaign end date is required to calculate target daily spend and pacing." : !hasCampaignDateRange ? "Campaign end date must be on or after the start date to calculate pacing." : overviewMetricUnavailableText(overviewSpendMetric, "Spend is required to calculate pacing.")}
+                                  Add missing campaign pacing inputs here or in campaign settings.
                                 </p>
-                                {!hasCampaignEndDate && hasCampaignStartDate && hasCampaignBudget && overviewSpendMetric.available && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Set a campaign end date to enable Target Daily Spend and Pacing Status.
-                                  </p>
+                                <div className="grid gap-3 md:grid-cols-3">
+                                  <div className="space-y-1">
+                                    <span className="text-xs font-medium">Campaign Budget</span>
+                                    <Input
+                                      type="text"
+                                      inputMode="decimal"
+                                      value={pacingBudgetInput}
+                                      onChange={(event) => setPacingBudgetInput(event.target.value)}
+                                      placeholder="Budget"
+                                      data-testid="input-pacing-budget"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <span className="text-xs font-medium">Start Date</span>
+                                    <Input
+                                      type="date"
+                                      value={pacingStartDateInput}
+                                      onChange={(event) => setPacingStartDateInput(event.target.value)}
+                                      data-testid="input-pacing-start-date"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <span className="text-xs font-medium">End Date</span>
+                                    <Input
+                                      type="date"
+                                      value={pacingEndDateInput}
+                                      onChange={(event) => setPacingEndDateInput(event.target.value)}
+                                      data-testid="input-pacing-end-date"
+                                    />
+                                  </div>
+                                </div>
+                                {pacingInputError && (
+                                  <p className="text-xs text-red-600 dark:text-red-400">{pacingInputError}</p>
                                 )}
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={handleSavePacingInputs}
+                                  disabled={!hasPacingInputDraft || updatePacingInputsMutation.isPending}
+                                >
+                                  {updatePacingInputsMutation.isPending ? "Saving..." : "Save pacing inputs"}
+                                </Button>
                               </div>
                             )}
                             {overviewSpendMetric.available && !isOverBudget && projectedEndDate && daysRemaining > 0 && (

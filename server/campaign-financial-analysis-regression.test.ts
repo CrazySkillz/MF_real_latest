@@ -72,9 +72,19 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(overview).toContain("const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange;");
     expect(overview).toContain('{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}');
     expect(overview).toContain('{overviewSpendMetric.available && hasCampaignStartDate ? formatCurrency(dailyBurnRate) : "Unavailable"}');
-    expect(overview).toContain("Campaign start date is required to calculate daily burn rate and pacing.");
-    expect(overview).toContain("Campaign end date is required to calculate target daily spend and pacing.");
-    expect(overview).toContain("Set a campaign end date to enable Target Daily Spend and Pacing Status.");
+    expect(page).toContain("const updatePacingInputsMutation = useMutation({");
+    expect(page).toContain('apiRequest("PATCH", `/api/campaigns/${campaignId}`');
+    expect(overview).toContain("Requires campaign spend and start date");
+    expect(overview).toContain("Requires campaign budget, start date, and end date");
+    expect(overview).toContain("Requires campaign spend, budget, start date, and end date");
+    expect(overview).toContain("const shouldShowPacingInputForm = !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;");
+    expect(overview).toContain('data-testid="input-pacing-budget"');
+    expect(overview).toContain('data-testid="input-pacing-start-date"');
+    expect(overview).toContain('data-testid="input-pacing-end-date"');
+    expect(overview).toContain("Save pacing inputs");
+    expect(overview).not.toContain("Campaign start date is required to calculate daily burn rate and pacing.");
+    expect(overview).not.toContain("Campaign end date is required to calculate target daily spend and pacing.");
+    expect(overview).not.toContain("Set a campaign end date to enable Target Daily Spend and Pacing Status.");
 
     expect(overview).toContain("formatOverviewCurrency(overviewSpendMetric)");
     expect(overview).toContain("formatOverviewNumber(overviewConversionsMetric)");

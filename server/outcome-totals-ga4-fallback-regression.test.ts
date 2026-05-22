@@ -30,6 +30,8 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("ga4Totals.sessions = Math.round(parseNum(ga4Totals.sessions) + persistedGA4.sessions);");
     expect(route).toContain("ga4Totals.conversions = Math.round(parseNum(ga4Totals.conversions) + persistedGA4.conversions);");
     expect(route).toContain('ga4Totals.mergedSource = "ga4_daily_metrics";');
+    expect(route).toContain('const spendStartDate = "1900-01-01";');
+    expect(route).toContain("Budget pacing dates are campaign metadata and must not narrow imported spend provenance.");
     expect(route).toContain("const spendBreakdown = await storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate);");
     expect(route).toContain("let financialSpendInputs: any[] = [];");
     expect(route).toContain("financialSpendInputs = spendBreakdown");

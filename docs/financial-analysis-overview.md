@@ -92,6 +92,8 @@ Requires the campaign to have a `budget` field set. Displays a progress bar capp
 
 Overview financial cards must use `performanceSummary.totals` from `/api/campaigns/:id/outcome-totals?dateRange=90days` when live aggregate data has been requested. If that aggregate response fails or returns without `performanceSummary`, the page must keep prior aggregate data during refetch or show the metric as unavailable. It must not fall back to legacy local platform totals because those can display stale values, such as an old spend total.
 
+Campaign budget pacing dates must not filter aggregate imported spend. Total Spend in Budget & Financial Overview comes from the full active imported spend-source provenance in the aggregate contract; the campaign start/end dates entered in Budget Pacing & Burn Rate are used only for pacing calculations.
+
 ### 4. Budget Pacing & Burn Rate
 
 | Metric | Formula |

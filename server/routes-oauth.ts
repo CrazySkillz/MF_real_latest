@@ -10153,7 +10153,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let performanceSummarySpend = persistedSpend;
       let financialSpendInputs: any[] = [];
       try {
-        const spendStartDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
+        // Budget pacing dates are campaign metadata and must not narrow imported spend provenance.
+        const spendStartDate = "1900-01-01";
         const spendEndDate = new Date().toISOString().slice(0, 10);
         const spendBreakdown = await storage.getSpendBreakdownBySource(campaignId, spendStartDate, spendEndDate);
         financialSpendInputs = spendBreakdown

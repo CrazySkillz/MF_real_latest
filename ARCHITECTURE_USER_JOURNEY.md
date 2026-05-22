@@ -436,7 +436,7 @@ Performance Summary production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_P
 
 Budget & Financial Analysis production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md`.
 
-Budget & Financial Analysis may let users fill missing campaign pacing metadata, such as budget, start date, and end date, from the analysis page. These controls must update the existing campaign fields through the normal campaign update route and must not create separate pacing-only values.
+Budget & Financial Analysis may let users fill, edit, or delete campaign pacing metadata, such as budget, start date, and end date, from the analysis page. These controls must update the existing campaign fields through the normal campaign update route and must not create separate pacing-only values.
 
 ## Connected Platforms Pattern
 

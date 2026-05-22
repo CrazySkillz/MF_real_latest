@@ -61,6 +61,7 @@ export default function FinancialAnalysis() {
   const [pacingStartDateInput, setPacingStartDateInput] = useState("");
   const [pacingEndDateInput, setPacingEndDateInput] = useState("");
   const [pacingInputError, setPacingInputError] = useState<string | null>(null);
+  const [isEditingPacingInputs, setIsEditingPacingInputs] = useState(false);
 
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
@@ -92,6 +93,7 @@ export default function FinancialAnalysis() {
     },
     onSuccess: () => {
       setPacingInputError(null);
+      setIsEditingPacingInputs(false);
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
     },
@@ -339,7 +341,19 @@ export default function FinancialAnalysis() {
   const campaignEndDate = campaign.endDate ? new Date(campaign.endDate) : null;
   const hasCampaignStartDate = Boolean(campaignStartDate && !Number.isNaN(campaignStartDate.getTime()));
   const hasCampaignEndDate = Boolean(campaignEndDate && !Number.isNaN(campaignEndDate.getTime()));
-  const hasCampaignDateRange = Boolean(hasCampaignStartDate && hasCampaignEndDate && campaignEndDate!.getTime() >= campaignStartDate!.getTime());
+  const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const todayPacingDate = startOfDay(new Date());
+  const campaignStartDay = hasCampaignStartDate ? startOfDay(campaignStartDate!) : null;
+  const campaignEndDay = hasCampaignEndDate ? startOfDay(campaignEndDate!) : null;
+  const hasCampaignDateRange = Boolean(campaignStartDay && campaignEndDay && campaignEndDay.getTime() >= campaignStartDay.getTime());
+  // Active campaigns pace through today; completed campaigns stop elapsed days at the campaign end date.
+  const campaignElapsedEndDay = campaignEndDay && todayPacingDate.getTime() > campaignEndDay.getTime() ? campaignEndDay : todayPacingDate;
+  const campaignElapsedDays = campaignStartDay && campaignElapsedEndDay.getTime() >= campaignStartDay.getTime()
+    ? Math.max(1, Math.floor((campaignElapsedEndDay.getTime() - campaignStartDay.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+    : 0;
+  const campaignTotalDays = hasCampaignDateRange
+    ? Math.max(1, Math.floor((campaignEndDay!.getTime() - campaignStartDay!.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+    : 0;
   const campaignCurrency = (campaign as any).currency || 'USD';
   
   // Format currency with campaign's currency
@@ -440,6 +454,7 @@ export default function FinancialAnalysis() {
   const overviewRemainingBudget = campaignBudget - overviewSpend;
   const overviewMetricUnavailableText = (metric: { unavailableReasons: string[] }, fallback: string) =>
     metric.unavailableReasons[0] || fallback;
+  const hasSavedPacingMetadata = hasCampaignBudget || hasCampaignStartDate || hasCampaignEndDate;
   const hasPacingInputDraft = Boolean(pacingBudgetInput.trim() || pacingStartDateInput || pacingEndDateInput);
   const handleSavePacingInputs = () => {
     const normalizedBudget = pacingBudgetInput.replace(/,/g, "").trim();
@@ -461,6 +476,13 @@ export default function FinancialAnalysis() {
       budget: normalizedBudget,
       startDate: startDateValue,
       endDate: endDateValue,
+    });
+  };
+  const handleDeletePacingInputs = () => {
+    updatePacingInputsMutation.mutate({
+      budget: "",
+      startDate: "",
+      endDate: "",
     });
   };
   const formatOverviewCurrency = (metric: { available: boolean; value: number; unavailableReasons: string[] }) =>
@@ -690,17 +712,14 @@ export default function FinancialAnalysis() {
                 <CardContent>
                   {(() => {
                     const hasBudgetHealthInputs = hasCampaignBudget && overviewSpendMetric.available;
-                    const hasPacingHealthInputs = hasBudgetHealthInputs && hasCampaignDateRange;
+                    const hasPacingHealthInputs = hasBudgetHealthInputs && hasCampaignDateRange && campaignElapsedDays > 0;
                     const calculateHealthScore = () => {
                       let score = 0;
                       
                       const budgetScore = hasBudgetHealthInputs ? (overviewBudgetUtilization <= 80 ? 25 : overviewBudgetUtilization <= 95 ? 15 : overviewBudgetUtilization <= 100 ? 10 : 0) : 0;
                       
-                      const today = new Date();
-                      const daysElapsed = hasCampaignStartDate ? Math.max(1, Math.ceil((today.getTime() - campaignStartDate!.getTime()) / (1000 * 60 * 60 * 24))) : 0;
-                      const dailyBurnRate = daysElapsed > 0 ? overviewSpend / daysElapsed : 0;
-                      const targetDaysTotal = hasCampaignDateRange ? Math.max(1, Math.ceil((campaignEndDate!.getTime() - campaignStartDate!.getTime()) / (1000 * 60 * 60 * 24))) : 0;
-                      const targetDailySpend = targetDaysTotal > 0 ? campaignBudget / targetDaysTotal : 0;
+                      const dailyBurnRate = campaignElapsedDays > 0 ? overviewSpend / campaignElapsedDays : 0;
+                      const targetDailySpend = campaignTotalDays > 0 ? campaignBudget / campaignTotalDays : 0;
                       const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
                       const pacingDeviation = Math.abs(pacingPercentage - 100);
                       const pacingScore = hasPacingHealthInputs ? (pacingDeviation <= 15 ? 25 : pacingDeviation <= 30 ? 15 : pacingDeviation <= 50 ? 10 : 0) : 0;
@@ -800,11 +819,8 @@ export default function FinancialAnalysis() {
                               <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.pacing.status)}`} />
                             </div>
                             <div className="text-2xl font-bold">{(() => {
-                              const today = new Date();
-                              const daysElapsed = hasCampaignStartDate ? Math.max(1, Math.ceil((today.getTime() - campaignStartDate!.getTime()) / (1000 * 60 * 60 * 24))) : 0;
-                              const dailyBurnRate = daysElapsed > 0 ? overviewSpend / daysElapsed : 0;
-                              const targetDaysTotal = hasCampaignDateRange ? Math.max(1, Math.ceil((campaignEndDate!.getTime() - campaignStartDate!.getTime()) / (1000 * 60 * 60 * 24))) : 0;
-                              const targetDailySpend = targetDaysTotal > 0 ? campaignBudget / targetDaysTotal : 0;
+                              const dailyBurnRate = campaignElapsedDays > 0 ? overviewSpend / campaignElapsedDays : 0;
+                              const targetDailySpend = campaignTotalDays > 0 ? campaignBudget / campaignTotalDays : 0;
                               const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
                               return hasPacingHealthInputs ? formatPercentage(pacingPercentage) : "Unavailable";
                             })()}</div>
@@ -950,19 +966,17 @@ export default function FinancialAnalysis() {
                     <div className="space-y-4">
                       {(() => {
                         const today = new Date();
-                        const daysElapsed = hasCampaignStartDate ? Math.max(1, Math.ceil((today.getTime() - campaignStartDate!.getTime()) / (1000 * 60 * 60 * 24))) : 0;
-                        const dailyBurnRate = daysElapsed > 0 ? overviewSpend / daysElapsed : 0;
+                        const dailyBurnRate = campaignElapsedDays > 0 ? overviewSpend / campaignElapsedDays : 0;
                         const isOverBudget = overviewSpendMetric.available && overviewRemainingBudget < 0;
                         const daysRemaining = (!isOverBudget && dailyBurnRate > 0) ? overviewRemainingBudget / dailyBurnRate : 0;
                         const projectedEndDate = (!isOverBudget && dailyBurnRate > 0) ? new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000) : null;
                         
-                        const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange;
-                        const targetDaysTotal = hasCampaignDateRange ? Math.max(1, Math.ceil((campaignEndDate!.getTime() - campaignStartDate!.getTime()) / (1000 * 60 * 60 * 24))) : 0;
-                        const targetDailySpend = targetDaysTotal > 0 ? campaignBudget / targetDaysTotal : 0;
+                        const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;
+                        const targetDailySpend = campaignTotalDays > 0 ? campaignBudget / campaignTotalDays : 0;
                         
                         const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
                         const pacingStatus = !hasPacingInputs ? 'unavailable' : pacingPercentage > 115 ? 'ahead' : pacingPercentage < 85 ? 'behind' : 'on-track';
-                        const shouldShowPacingInputForm = !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;
+                        const shouldShowPacingInputForm = isEditingPacingInputs || !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;
                         
                         return (
                           <>
@@ -971,7 +985,7 @@ export default function FinancialAnalysis() {
                                 <span className="text-sm font-medium">Daily Burn Rate</span>
                                 <p className="text-xs text-muted-foreground">Requires campaign spend and start date</p>
                               </div>
-                              <span className="text-sm font-bold">{overviewSpendMetric.available && hasCampaignStartDate ? formatCurrency(dailyBurnRate) : "Unavailable"}</span>
+                              <span className="text-sm font-bold">{overviewSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}</span>
                             </div>
                             <div className="flex items-start justify-between gap-4">
                               <div>
@@ -1007,7 +1021,7 @@ export default function FinancialAnalysis() {
                             {shouldShowPacingInputForm && (
                               <div className="pt-3 border-t space-y-3">
                                 <p className="text-xs text-muted-foreground">
-                                  Add missing campaign pacing inputs here or in campaign settings.
+                                  Edit campaign pacing inputs here or in campaign settings.
                                 </p>
                                 <div className="grid gap-3 md:grid-cols-3">
                                   <div className="space-y-1">
@@ -1049,7 +1063,30 @@ export default function FinancialAnalysis() {
                                   onClick={handleSavePacingInputs}
                                   disabled={!hasPacingInputDraft || updatePacingInputsMutation.isPending}
                                 >
-                                  {updatePacingInputsMutation.isPending ? "Saving..." : "Save pacing inputs"}
+                                  {updatePacingInputsMutation.isPending ? "Saving..." : "Save"}
+                                </Button>
+                                {hasSavedPacingMetadata && (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleDeletePacingInputs}
+                                    disabled={updatePacingInputsMutation.isPending}
+                                  >
+                                    Delete inputs
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                            {!shouldShowPacingInputForm && (
+                              <div className="pt-3 border-t">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setIsEditingPacingInputs(true)}
+                                >
+                                  Edit inputs
                                 </Button>
                               </div>
                             )}

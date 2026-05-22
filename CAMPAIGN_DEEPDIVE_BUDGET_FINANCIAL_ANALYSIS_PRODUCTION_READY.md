@@ -361,6 +361,8 @@ Evidence:
 - Render validation passed after the Commit 7 refresh/history deploy: Overview and Budget & Financial Analysis values remained correct after deployment.
 - Follow-up UX fix: Budget Pacing & Burn Rate now provides inline campaign metadata inputs when budget, start date, or end date are missing or invalid. The inputs update only the existing campaign `budget`, `startDate`, and `endDate` fields, then the card recalculates Daily Burn Rate, Target Daily Spend, and Pacing Status from saved metadata plus aggregate spend.
 - Follow-up copy fix: the old card-level missing-start-date warning was removed. Row-level helper text now states the exact inputs required for Daily Burn Rate, Target Daily Spend, and Pacing Status.
+- Follow-up accuracy fix: Budget Pacing & Burn Rate now uses inclusive campaign days. Active campaigns calculate elapsed days through the current date; completed campaigns stop elapsed days at the campaign end date, so Daily Burn Rate is not diluted by days after completion.
+- Follow-up UX fix: users can edit or delete Budget Pacing metadata inputs from the card. Deleting clears the same campaign `budget`, `startDate`, and `endDate` fields and dependent pacing values return to unavailable.
 
 ### Commit 7: Scheduler, History, Docs, Final Validation
 
@@ -404,7 +406,7 @@ Proven:
 - Performance Summary already has a source-aware aggregate contract through `/api/campaigns/:id/outcome-totals`.
 - Budget & Financial Analysis completed tabs now use the shared aggregate contract for current financial totals, source capability checks, unavailable states, financial input provenance, budget allocation, and financial insights.
 - Budget Pacing & Burn Rate now fails closed when required campaign dates are missing or invalid: Daily Burn Rate requires a valid campaign start date, and Target Daily Spend/Pacing Status require a valid start/end date range.
-- Budget Pacing & Burn Rate allows users to fill missing campaign budget/start/end metadata inline through the existing campaign update route, without entering calculated values directly.
+- Budget Pacing & Burn Rate allows users to fill, edit, or delete campaign budget/start/end metadata inline through the existing campaign update route, without entering calculated values directly.
 - Financial Performance Insights are logical within the current aggregate contract: summary tones are value-based, source insights are sourced from spend-capable connected sources, scaling language is gated by budget/source conditions, and GA4-only campaigns do not receive paid-media optimization recommendations without a connected spend-capable ad platform.
 - Scheduler-created snapshots include `metrics.performanceSummary`, and Budget & Financial trend indicators compare only compatible aggregate snapshots.
 - The Budget & Financial page refetches current aggregate values while visible and on window focus so source updates are pulled into the UI through the same aggregate contract.

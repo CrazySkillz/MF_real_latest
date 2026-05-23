@@ -855,11 +855,6 @@ export default function FinancialAnalysis() {
                               const pacingPercentage = targetDailySpend > 0 ? (dailyBurnRate / targetDailySpend) * 100 : 100;
                               return hasPacingHealthInputs ? formatPercentage(pacingPercentage) : "Unavailable";
                             })()}</div>
-                            {hasPacingHealthInputs && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                of target pace
-                              </p>
-                            )}
                             {!hasPacingHealthInputs && (
                               <p className="text-xs text-muted-foreground mt-1">
                                 {!hasCampaignBudget ? "Campaign budget is required for pacing" : !hasCampaignStartDate ? "Campaign start date is required for pacing" : !hasCampaignEndDate ? "Campaign end date is required for pacing" : !hasCampaignDateRange ? "Campaign end date must be on or after the start date for pacing" : overviewMetricUnavailableText(overviewSpendMetric, "Pacing requires available spend")}

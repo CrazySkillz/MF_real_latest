@@ -77,7 +77,6 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(overview).toContain("Campaign budget is required for budget health");
     expect(overview).toContain("Campaign budget is required for pacing");
     expect(overview).toContain("Campaign end date is required for pacing");
-    expect(overview).toContain("of target pace");
     expect(overview).toContain("const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;");
     expect(overview).toContain('{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}');
     expect(overview).toContain('{overviewSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}');

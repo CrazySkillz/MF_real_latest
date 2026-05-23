@@ -336,7 +336,7 @@ Proven:
 - Commit 3 follow-up: Volume Comparison now hides unavailable impressions lanes for sources that do not provide impressions and presents available volume metrics such as GA4 sessions.
 - Commit 3 Render validation passed: with only Google Analytics connected, Efficiency Comparison correctly remained unavailable because there is no main spend-capable ad platform, and Volume Comparison correctly showed GA4 sessions. LinkedIn/Meta spend imports inside GA4 remain child financial inputs, not separate Platform Comparison rows.
 - Commit 4: Cost Analysis now includes only spend-capable main connected platform sources. GA4-only campaigns show an unavailable state, and child spend imports inside GA4 remain excluded from Platform Comparison rows.
-- Commit 4 follow-up: The GA4-only Cost Analysis empty state now explains that Google Analytics is connected but no main paid-media platform is connected, so source-level spend, CPA, ROI, and ROAS comparison requires LinkedIn Ads, Meta Ads, Google Ads, or another paid-media platform in Connected Platforms.
+- Commit 4 follow-up: The GA4-only Cost Analysis empty state now uses shorter, clearer copy: Google Analytics is connected, but it does not provide source-level ad spend for Platform Comparison; source-level spend, CPA, ROI, and ROAS comparison requires a main paid-media platform such as LinkedIn Ads, Meta Ads, or Google Ads.
 
 Outstanding:
 

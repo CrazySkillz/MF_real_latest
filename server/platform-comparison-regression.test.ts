@@ -81,8 +81,9 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("const costAnalysisChartData = costAnalysisData.filter(p => p.totalSpend > 0 && p.conversions > 0);");
     expect(cost).toContain("{spendCapableMetrics.length > 0 ? (");
     expect(cost).toContain("{spendCapableMetrics.map((platform, index) => (");
-    expect(cost).toContain("Cost comparison unavailable");
-    expect(cost).toContain("Google Analytics is connected, but no main paid-media platform is connected yet.");
+    expect(cost).toContain("No paid-media platform connected");
+    expect(cost).toContain("Google Analytics is connected, but it does not provide source-level ad spend for Platform Comparison.");
+    expect(cost).toContain("Connect LinkedIn Ads, Meta Ads, or Google Ads to compare spend, CPA, ROI, and ROAS by platform.");
     expect(cost).not.toContain("Connect platforms (LinkedIn, Meta) to see cost analysis.");
   });
 

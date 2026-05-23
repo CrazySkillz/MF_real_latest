@@ -80,11 +80,15 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("const updatePacingInputsMutation = useMutation({");
     expect(page).toContain('apiRequest("PATCH", `/api/campaigns/${campaignId}`');
     expect(page).toContain("const handleDeletePacingInputs = () => {");
+    expect(page).toContain("const formatBudgetInputValue = (value?: string | number | null) => {");
+    expect(page).toContain("setPacingBudgetInput(formatBudgetInputValue(campaign.budget));");
     expect(overview).toContain("Requires campaign spend and start date");
+    expect(overview).toContain('Based on {campaignElapsedDays} elapsed campaign {campaignElapsedDays === 1 ? "day" : "days"}');
     expect(overview).toContain("Requires campaign budget, start date, and end date");
     expect(overview).toContain("Requires campaign spend, budget, start date, and end date");
     expect(overview).toContain("const shouldShowPacingInputForm = isEditingPacingInputs || !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;");
     expect(overview).toContain('data-testid="input-pacing-budget"');
+    expect(overview).toContain("onBlur={() => setPacingBudgetInput(formatBudgetInputValue(pacingBudgetInput))}");
     expect(overview).toContain('data-testid="input-pacing-start-date"');
     expect(overview).toContain('data-testid="input-pacing-end-date"');
     expect(overview).toContain("Save");

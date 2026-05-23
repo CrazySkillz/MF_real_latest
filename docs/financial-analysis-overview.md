@@ -105,7 +105,11 @@ Campaign budget pacing dates must not filter aggregate imported spend. Total Spe
 
 Daily Burn Rate requires available spend and a valid campaign start date. Target Daily Spend requires campaign budget, a valid campaign start date, and a valid campaign end date. Pacing Status requires available spend, campaign budget, a valid campaign start date, and a valid campaign end date. Without an end date, the card still shows current daily burn and projected budget exhaustion when spend/budget/start date are available, but target daily spend and pacing are unavailable.
 
+If the campaign has only one elapsed pacing day, Daily Burn Rate will equal Total Spend because the formula is `total spend / 1 elapsed day`. The card shows the elapsed-day count under Daily Burn Rate so this is visible to users.
+
 When budget, start date, or end date are missing or invalid, the Budget Pacing & Burn Rate card shows inline campaign metadata inputs. When those values are already present, the card exposes an edit action. Saving those inputs updates the existing campaign `budget`, `startDate`, and `endDate` fields through `PATCH /api/campaigns/:id`, then the card recalculates Daily Burn Rate, Target Daily Spend, and Pacing Status from the saved campaign metadata and aggregate spend. Users can also delete the pacing inputs, which clears those same campaign metadata fields and returns dependent pacing values to `Unavailable`. The card does not ask users to enter Daily Burn Rate, Target Daily Spend, or Pacing Status directly.
+
+The Campaign Budget input displays thousands separators, such as `150,000.00`, while saving the numeric value without commas.
 
 The visible row helper text is:
 - Daily Burn Rate: `Requires campaign spend and start date`

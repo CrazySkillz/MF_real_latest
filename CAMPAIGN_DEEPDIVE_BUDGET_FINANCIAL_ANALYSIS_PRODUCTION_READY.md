@@ -365,6 +365,8 @@ Evidence:
 - Follow-up UX fix: users can edit or delete Budget Pacing metadata inputs from the card. Deleting clears the same campaign `budget`, `startDate`, and `endDate` fields and dependent pacing values return to unavailable.
 - Follow-up correctness fix: Budget & Financial Overview aggregate metrics now keep prior aggregate data during outcome-totals refetch and fail closed when `performanceSummary` is unavailable, instead of falling back to stale legacy local spend totals.
 - Follow-up correctness fix: Budget pacing metadata no longer filters aggregate imported spend provenance in `/outcome-totals`; Total Spend remains sourced from the full active spend-source aggregate while start/end dates affect only pacing calculations.
+- Follow-up clarity fix: Budget Pacing & Burn Rate now displays the elapsed campaign day count under Daily Burn Rate, making it clear when Daily Burn Rate equals Total Spend because only one pacing day has elapsed.
+- Follow-up formatting fix: the inline Campaign Budget input displays thousands separators while saving the numeric budget value without commas.
 
 ### Commit 7: Scheduler, History, Docs, Final Validation
 

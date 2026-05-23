@@ -74,9 +74,19 @@ export default function FinancialAnalysis() {
     return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
   };
 
+  const formatBudgetInputValue = (value?: string | number | null) => {
+    const raw = String(value ?? "").replace(/,/g, "").trim();
+    if (!raw) return "";
+    const [integerPart, decimalPart] = raw.split(".");
+    const integerValue = Number(integerPart);
+    if (!Number.isFinite(integerValue)) return String(value ?? "");
+    const formattedInteger = new Intl.NumberFormat("en-US").format(integerValue);
+    return decimalPart !== undefined ? `${formattedInteger}.${decimalPart.slice(0, 2)}` : formattedInteger;
+  };
+
   useEffect(() => {
     if (!campaign) return;
-    setPacingBudgetInput(campaign.budget ? String(campaign.budget) : "");
+    setPacingBudgetInput(formatBudgetInputValue(campaign.budget));
     setPacingStartDateInput(formatDateInputValue(campaign.startDate));
     setPacingEndDateInput(formatDateInputValue(campaign.endDate));
     setPacingInputError(null);
@@ -992,6 +1002,11 @@ export default function FinancialAnalysis() {
                               <div>
                                 <span className="text-sm font-medium">Daily Burn Rate</span>
                                 <p className="text-xs text-muted-foreground">Requires campaign spend and start date</p>
+                                {overviewSpendMetric.available && campaignElapsedDays > 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Based on {campaignElapsedDays} elapsed campaign {campaignElapsedDays === 1 ? "day" : "days"}
+                                  </p>
+                                )}
                               </div>
                               <span className="text-sm font-bold">{overviewSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}</span>
                             </div>
@@ -1039,6 +1054,7 @@ export default function FinancialAnalysis() {
                                       inputMode="decimal"
                                       value={pacingBudgetInput}
                                       onChange={(event) => setPacingBudgetInput(event.target.value)}
+                                      onBlur={() => setPacingBudgetInput(formatBudgetInputValue(pacingBudgetInput))}
                                       placeholder="Budget"
                                       data-testid="input-pacing-budget"
                                     />

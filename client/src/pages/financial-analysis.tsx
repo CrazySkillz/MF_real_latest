@@ -66,6 +66,9 @@ export default function FinancialAnalysis() {
   const { data: campaign, isLoading: campaignLoading } = useQuery<Campaign>({
     queryKey: ["/api/campaigns", campaignId],
     enabled: !!campaignId,
+    refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   const formatDateInputValue = (value?: string | Date | null) => {
@@ -101,11 +104,13 @@ export default function FinancialAnalysis() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedCampaign) => {
       setPacingInputError(null);
       setIsEditingPacingInputs(false);
+      queryClient.setQueryData(["/api/campaigns", campaignId], updatedCampaign);
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`] });
     },
     onError: (error: any) => {
       setPacingInputError(error?.message || "Unable to save pacing inputs.");
@@ -985,7 +990,7 @@ export default function FinancialAnalysis() {
                       {(() => {
                         const today = new Date();
                         const dailyBurnRate = campaignElapsedDays > 0 ? overviewSpend / campaignElapsedDays : 0;
-                        const isOverBudget = overviewSpendMetric.available && overviewRemainingBudget < 0;
+                        const isOverBudget = hasCampaignBudget && overviewSpendMetric.available && overviewRemainingBudget < 0;
                         const daysRemaining = (!isOverBudget && dailyBurnRate > 0) ? overviewRemainingBudget / dailyBurnRate : 0;
                         const projectedEndDate = (!isOverBudget && dailyBurnRate > 0) ? new Date(today.getTime() + daysRemaining * 24 * 60 * 60 * 1000) : null;
                         

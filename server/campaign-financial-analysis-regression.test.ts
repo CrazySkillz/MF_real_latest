@@ -15,6 +15,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain("refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS");
     expect(page).toContain("refetchIntervalInBackground: false");
     expect(page).toContain("refetchOnWindowFocus: true");
+    expect(page).toContain('queryKey: ["/api/campaigns", campaignId]');
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}`]');
     expect(page).not.toContain("snapshots?date=");
     expect(page).toContain("const performanceSummary = outcomeTotals?.performanceSummary;");
@@ -77,8 +78,11 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(overview).toContain("const hasPacingInputs = hasCampaignBudget && overviewSpendMetric.available && hasCampaignDateRange && campaignElapsedDays > 0;");
     expect(overview).toContain('{hasPacingInputs ? formatCurrency(targetDailySpend) : "Unavailable"}');
     expect(overview).toContain('{overviewSpendMetric.available && campaignElapsedDays > 0 ? formatCurrency(dailyBurnRate) : "Unavailable"}');
+    expect(overview).toContain("const isOverBudget = hasCampaignBudget && overviewSpendMetric.available && overviewRemainingBudget < 0;");
     expect(page).toContain("const updatePacingInputsMutation = useMutation({");
     expect(page).toContain('apiRequest("PATCH", `/api/campaigns/${campaignId}`');
+    expect(page).toContain('queryClient.setQueryData(["/api/campaigns", campaignId], updatedCampaign);');
+    expect(page).toContain('queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`] });');
     expect(page).toContain("const handleDeletePacingInputs = () => {");
     expect(page).toContain("const formatBudgetInputValue = (value?: string | number | null) => {");
     expect(page).toContain("setPacingBudgetInput(formatBudgetInputValue(campaign.budget));");

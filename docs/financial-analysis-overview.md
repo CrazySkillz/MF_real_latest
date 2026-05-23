@@ -111,6 +111,8 @@ When budget, start date, or end date are missing or invalid, the Budget Pacing &
 
 The Campaign Budget input displays thousands separators, such as `150,000.00`, while saving the numeric value without commas.
 
+The card keeps its inputs synchronized from both upstream paths. Campaign budget/start/end metadata refetches while the page is visible and on window focus, and aggregate spend refetches from `/api/campaigns/:id/outcome-totals` on the same cadence. Saving or deleting pacing metadata immediately updates the campaign cache from the returned campaign row and invalidates the aggregate totals query so the next calculation uses current budget, dates, and spend.
+
 The visible row helper text is:
 - Daily Burn Rate: `Requires campaign spend and start date`
 - Target Daily Spend: `Requires campaign budget, start date, and end date`
@@ -129,7 +131,7 @@ Render validation passed after the Commit 7 refresh/history deploy: Overview and
 
 **Budget projection:** At the current burn rate, calculates when the budget will be exhausted and whether that's before or after the campaign end date.
 
-**Over-budget guard:** If `totalSpend > campaignBudget`, shows "Budget exceeded by $X" instead of a negative days-remaining projection.
+**Over-budget guard:** If a positive campaign budget exists and `totalSpend > campaignBudget`, shows "Budget exceeded by $X" instead of a negative days-remaining projection. If the campaign budget has been deleted or is missing, the warning is hidden because there is no budget threshold to exceed.
 
 ### 5. Cost Efficiency Metrics
 
@@ -298,7 +300,7 @@ Trend indicators use `metrics.performanceSummary` from snapshots only when the s
 | No campaign start date | Daily Burn Rate, pacing sub-score, Target Daily Spend, and Pacing Status show `Unavailable` |
 | No campaign end date | Pacing sub-score, Target Daily Spend, and Pacing Status show `Unavailable` |
 | End date before start date | Pacing sub-score, Target Daily Spend, and Pacing Status show `Unavailable` |
-| Over-budget | Shows "Budget exceeded by $X" warning, no days-remaining projection |
+| Over-budget | Shows "Budget exceeded by $X" only when a positive campaign budget exists; no days-remaining projection |
 | Missing aggregate metric | Shows `Unavailable` plus the aggregate unavailable reason |
 | No available health inputs | Campaign Health header shows `Unavailable` / `No score` |
 | Partial health inputs | Header score is normalized across available inputs and shows the input count |

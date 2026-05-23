@@ -92,6 +92,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(overview).toContain("Requires campaign spend, budget, start date, and end date");
     expect(overview).toContain("const shouldShowPacingInputForm = isEditingPacingInputs || !hasCampaignBudget || !hasCampaignStartDate || !hasCampaignEndDate || !hasCampaignDateRange;");
     expect(overview).toContain('data-testid="input-pacing-budget"');
+    expect(overview).toContain("onChange={(event) => setPacingBudgetInput(formatBudgetInputValue(event.target.value))}");
     expect(overview).toContain("onBlur={() => setPacingBudgetInput(formatBudgetInputValue(pacingBudgetInput))}");
     expect(overview).toContain('data-testid="input-pacing-start-date"');
     expect(overview).toContain('data-testid="input-pacing-end-date"');

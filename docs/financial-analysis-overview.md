@@ -109,7 +109,7 @@ If the campaign has only one elapsed pacing day, Daily Burn Rate will equal Tota
 
 When budget, start date, or end date are missing or invalid, the Budget Pacing & Burn Rate card shows inline campaign metadata inputs. When those values are already present, the card exposes an edit action. Saving those inputs updates the existing campaign `budget`, `startDate`, and `endDate` fields through `PATCH /api/campaigns/:id`, then the card recalculates Daily Burn Rate, Target Daily Spend, and Pacing Status from the saved campaign metadata and aggregate spend. Users can also delete the pacing inputs, which clears those same campaign metadata fields and returns dependent pacing values to `Unavailable`. The card does not ask users to enter Daily Burn Rate, Target Daily Spend, or Pacing Status directly.
 
-The Campaign Budget input displays thousands separators, such as `150,000.00`, while saving the numeric value without commas.
+The Campaign Budget input auto-formats with thousands separators as values are typed, such as `150,000.00`, while saving the numeric value without commas.
 
 The card keeps its inputs synchronized from both upstream paths. Campaign budget/start/end metadata refetches while the page is visible and on window focus, and aggregate spend refetches from `/api/campaigns/:id/outcome-totals` on the same cadence. Saving or deleting pacing metadata immediately updates the campaign cache from the returned campaign row and invalidates the aggregate totals query so the next calculation uses current budget, dates, and spend.
 

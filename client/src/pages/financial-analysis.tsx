@@ -1058,7 +1058,7 @@ export default function FinancialAnalysis() {
                                       type="text"
                                       inputMode="decimal"
                                       value={pacingBudgetInput}
-                                      onChange={(event) => setPacingBudgetInput(event.target.value)}
+                                      onChange={(event) => setPacingBudgetInput(formatBudgetInputValue(event.target.value))}
                                       onBlur={() => setPacingBudgetInput(formatBudgetInputValue(pacingBudgetInput))}
                                       placeholder="Budget"
                                       data-testid="input-pacing-budget"

@@ -78,6 +78,7 @@ Important meaning:
 
 - on-demand GA4 refresh should not leave KPIs, Benchmarks, or Insights relying on stale daily GA4 facts
 - external revenue/spend source refresh remains handled by the external value auto-refresh scheduler
+- system-generated GA4 test properties such as `yesop` use the deterministic GA4 simulator during on-demand refresh and must not require a live OAuth token
 
 ## Scheduler 2: External Value Auto-Refresh And Auto-Process
 

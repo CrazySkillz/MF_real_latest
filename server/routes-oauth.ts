@@ -4878,13 +4878,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
       try {
-        const metrics = await ga4Service.getMetricsWithAutoRefresh(
-          campaignId,
-          storage,
-          dateStr,
-          primaryConn.propertyId,
-          campaignFilter
-        );
+        const simulated = isYesopMockProperty(String(primaryConn.propertyId || ""));
+        const metrics = simulated
+          ? (() => {
+              const sim = simulateGA4({
+                campaignId,
+                propertyId: primaryConn.propertyId,
+                dateRange: "7days",
+                noRevenue: isNoRevenueFilter((campaign as any)?.ga4CampaignFilter),
+                ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter,
+              });
+              return (sim.timeSeries || []).find((row: any) => row.date === dateStr) || (sim.timeSeries || []).at(-1) || {};
+            })()
+          : await ga4Service.getMetricsWithAutoRefresh(
+              campaignId,
+              storage,
+              dateStr,
+              primaryConn.propertyId,
+              campaignFilter
+            );
 
         const metricsAny = metrics as any;
         const users = Number(metricsAny?.users || 0);
@@ -4910,7 +4922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             revenue: String(metricsAny?.revenue || "0"),
             engagementRate: engagementRate == null ? null : String(engagementRate),
             revenueMetric: metricsAny?.revenueMetric || "totalRevenue",
-            isSimulated: false,
+            isSimulated: simulated,
           }
         ]);
 
@@ -10054,11 +10066,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      const [campaign, ga4Connections, linkedInConn, metaConn, customIntegration] = await Promise.all([
+      const [campaign, ga4Connections, linkedInConn, metaConn, googleAdsConn, customIntegration] = await Promise.all([
         storage.getCampaign(campaignId),
         storage.getGA4Connections(campaignId),
         storage.getLinkedInConnection(campaignId),
         storage.getMetaConnection(campaignId),
+        storage.getGoogleAdsConnection(campaignId).catch(() => undefined),
         storage.getCustomIntegration(campaignId),
       ]);
       const activeGA4 = (ga4Connections || []).some((c: any) => c?.propertyId && c.propertyId !== "");
@@ -10345,6 +10358,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         meta = { connected: !!metaConn, error: e?.message || "Meta unavailable" };
       }
 
+      let googleAds: any = { connected: false };
+      let googleAdsSpend = 0;
+      try {
+        if (googleAdsConn && !(googleAdsConn as any).spendOnly) {
+          const selectedCampaignIds = (() => {
+            try {
+              const parsed = JSON.parse(String((googleAdsConn as any).selectedCampaignIds || "[]"));
+              return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+            } catch {
+              return [];
+            }
+          })();
+          const selectedSet = new Set(selectedCampaignIds);
+          const rows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate))
+            .filter((row: any) => selectedSet.size === 0 || selectedSet.has(String(row?.googleCampaignId)));
+          const totals = rows.reduce((sum: any, row: any) => ({
+            impressions: sum.impressions + parseNum(row?.impressions),
+            clicks: sum.clicks + parseNum(row?.clicks),
+            spend: sum.spend + parseNum(row?.spend),
+            conversions: sum.conversions + parseNum(row?.conversions),
+            attributedRevenue: sum.attributedRevenue + parseNum(row?.ga4Revenue || row?.conversionValue),
+          }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, attributedRevenue: 0 });
+          googleAdsSpend = parseNum(totals.spend);
+          googleAds = {
+            id: "google_ads",
+            label: "Google Ads",
+            category: "paid_media",
+            connected: true,
+            capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+            includedMetrics: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+            excludedMetrics: [
+              { metric: "sessions", reason: "Sessions are web analytics metrics" },
+              { metric: "users", reason: "Users are web analytics metrics" },
+            ],
+            metrics: {
+              impressions: parseNum(totals.impressions),
+              clicks: parseNum(totals.clicks),
+              spend: googleAdsSpend,
+              conversions: parseNum(totals.conversions),
+              attributedRevenue: parseNum(totals.attributedRevenue),
+            },
+            freshness: { selectedCampaignIds },
+          };
+        }
+      } catch (e: any) {
+        googleAds = { connected: !!googleAdsConn, error: e?.message || "Google Ads unavailable" };
+      }
+
       // Custom integration inputs (webhook-fed)
       let custom: any = { connected: false };
       try {
@@ -10407,8 +10468,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Unified spend rule:
       // - If the user imported spend (persistedSpend > 0), use that as campaign marketing spend.
-      // - Otherwise, fall back to sum of connected ad-platform spends (LinkedIn + Meta today; extend as platforms are added).
-      const platformSpendFallback = parseFloat((linkedInSpend + metaSpend).toFixed(2));
+      // - Otherwise, fall back to sum of connected ad-platform spends.
+      const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend).toFixed(2));
       const unifiedSpend = persistedSpend > 0 ? persistedSpend : platformSpendFallback;
       const spendSource = persistedSpend > 0 ? "persisted_spend_sources" : "platform_spend_fallback";
 
@@ -10493,6 +10554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           meta,
           customIntegration: custom,
         },
+        platformSources: [googleAds],
         revenue: {
           onsiteRevenue,
           offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
@@ -10518,6 +10580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platforms: {
           linkedin: linkedIn,
           meta,
+          googleAds,
           customIntegration: custom,
         },
         revenue: {

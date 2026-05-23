@@ -406,6 +406,10 @@ Before marking this subsection production ready:
 
 Production ready for the currently implemented Budget & Financial Analysis scope through Commit 7, with live/source-refresh validation still expected as integrations are exercised in deployed environments.
 
+Source-of-truth rule: main sources connected in the campaign's Connected Platforms section feed the shared campaign aggregate. Budget & Financial Analysis does not calculate platform truth independently and does not send values back into platform analytics.
+
+Future-source rule: as each new main Connected Platform is implemented, its campaign-scoped metrics must be added to the shared aggregate contract. The Budget & Financial tabs then consume that source automatically through `performanceSummary.sources` and `performanceSummary.totals`; the tabs should not need one-off platform-specific rewiring.
+
 Proven:
 
 - Documentation requires Campaign DeepDive subsections to aggregate main Connected Platform metrics at the campaign level.
@@ -426,8 +430,11 @@ Proven:
 - Financial Performance Insights are logical within the current aggregate contract: summary tones are value-based, source insights are sourced from spend-capable connected sources, scaling language is gated by budget/source conditions, and GA4-only campaigns do not receive paid-media optimization recommendations without a connected spend-capable ad platform.
 - Scheduler-created snapshots include `metrics.performanceSummary`, and Budget & Financial trend indicators compare only compatible aggregate snapshots.
 - The Budget & Financial page refetches current aggregate values while visible and on window focus so source updates are pulled into the UI through the same aggregate contract.
+- Current server aggregation feeds registered Connected Platforms and financial inputs into `performanceSummary`; Google Ads is now included as a first-class normalized paid-media source when connected and populated with campaign-scoped daily metrics.
+- GA4 `yesop` test-data refresh uses the deterministic simulator and does not require a live OAuth token, so Render validation can trigger a GA4 refresh for system-generated test data without failing on `TOKEN_EXPIRED`.
 
 Outstanding:
 
 - Complete deployed live/source-refresh validation after Render deploy.
+- Register future main Connected Platforms, including TikTok, Instagram, and other sources, into the shared aggregate contract as part of implementing those integrations.
 - Keep documentation updated if future source integrations add new aggregate capabilities.

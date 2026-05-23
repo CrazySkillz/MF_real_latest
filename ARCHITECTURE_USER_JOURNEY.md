@@ -513,9 +513,10 @@ This means:
 - campaign-level analysis is downstream of connected-platform data
 - connected-platform pages are supporting detail views
 - the campaign remains the primary object
-- Campaign DeepDive sections, including Performance Summary, must automatically aggregate all implemented main Connected Platforms through a shared source-capability contract instead of relying on one-off tab-specific platform lists
+- Campaign DeepDive sections, including Performance Summary and Budget & Financial Analysis, must automatically aggregate all implemented main Connected Platforms through a shared source-capability contract instead of relying on one-off tab-specific platform lists
 - any future main Connected Platform is not complete until it supplies campaign-scoped source identity, available metrics, unavailable metric reasons, source labels, freshness, scheduler snapshot inputs, and tests for campaign-level aggregation through the shared generic source contract
 - future standalone platforms such as Google Ads, TikTok, Instagram, and other sources should plug into Campaign DeepDive by supplying generic source breakdowns, not by adding tab-specific aggregation logic
+- implemented main Connected Platforms are the source of truth for Campaign DeepDive subsections; downstream subsections consume the shared aggregate and must not push values back into platform-level analytics
 - platform child sources can contribute to the parent platform or campaign financial totals, but should not be displayed as separate main Connected Platforms in campaign-level source lists and should not require duplicate Campaign DeepDive setup
 - Performance Summary and Budget & Financial Analysis should stay synchronized with underlying source updates by refetching the aggregate while the page is visible and on window focus; historical comparison sections still depend on compatible aggregate snapshots being created after source refresh.
 

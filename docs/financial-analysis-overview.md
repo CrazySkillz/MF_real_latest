@@ -28,6 +28,8 @@ A historical snapshot endpoint is also queried for trend indicators:
 
 The page refetches the aggregate and comparison snapshots every 30 seconds while visible and also refetches on window focus, so source refreshes become visible without requiring users to leave the page.
 
+Connected Platforms are the source of truth. The Budget & Financial tabs consume the generic campaign aggregate built from those connected sources; they do not calculate platform-level truth independently. New main Connected Platforms should feed `performanceSummary.sources` and `performanceSummary.totals` with campaign-scoped metrics, capabilities, unavailable reasons, and snapshot inputs as part of the integration. Child revenue/spend inputs imported inside a parent platform remain provenance rows, not separate main Connected Platforms.
+
 ---
 
 ## Aggregate Metrics

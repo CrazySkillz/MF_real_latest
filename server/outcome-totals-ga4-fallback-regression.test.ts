@@ -50,4 +50,18 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain('sourceType: "Native GA4 revenue"');
     expect(route).toContain("financialInputs,");
   });
+
+  it("refreshes system-generated yesop GA4 test data without requiring a live OAuth token", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.post("/api/campaigns/:id/ga4/refresh"');
+    const routeEnd = routes.indexOf('app.post("/api/campaigns/:id/linkedin-daily/mock"', routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(route).toContain("const simulated = isYesopMockProperty(String(primaryConn.propertyId || \"\"));");
+    expect(route).toContain("simulated");
+    expect(route).toContain("simulateGA4({");
+    expect(route).toContain('dateRange: "7days"');
+    expect(route).toContain("ga4Service.getMetricsWithAutoRefresh");
+    expect(route).toContain("isSimulated: simulated");
+  });
 });

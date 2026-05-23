@@ -35,6 +35,22 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).not.toContain("Showing demo data");
   });
 
+  it("feeds first-class Connected Platform sources into the shared aggregate contract", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
+    const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"', routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(route).toContain("storage.getGoogleAdsConnection(campaignId).catch(() => undefined)");
+    expect(route).toContain("const rows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate))");
+    expect(route).toContain('id: "google_ads"');
+    expect(route).toContain('label: "Google Ads"');
+    expect(route).toContain('category: "paid_media"');
+    expect(route).toContain('includedMetrics: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"]');
+    expect(route).toContain("const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend).toFixed(2));");
+    expect(route).toContain("platformSources: [googleAds]");
+  });
+
   it("wires the Overview tab to aggregate financial metrics with unavailable states", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "financial-analysis.tsx"), "utf-8");
     const overviewStart = page.indexOf('<TabsContent value="overview"');

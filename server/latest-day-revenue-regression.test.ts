@@ -118,7 +118,7 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain("rows.push({ sourceId: d.id, sourceType: d.sourceType, displayName: d.displayName, revenue: getDefinitionRevenue(d), mappingConfig: d.mappingConfig });");
   });
 
-  it("Total Revenue to-date endpoints use the same imported source record window as Revenue Sources", () => {
+  it("Total Revenue source provenance is not narrowed by campaign pacing metadata", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),
       "utf-8"
@@ -133,12 +133,33 @@ describe("Latest Day Revenue regression guard", () => {
 
     const revenueToDateRoute = routesFile.slice(revenueToDateStart, revenueBreakdownStart);
     const revenueBreakdownRoute = routesFile.slice(revenueBreakdownStart, spendBreakdownStart);
-    expect(revenueToDateRoute).toContain('const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";');
-    expect(revenueBreakdownRoute).toContain('const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";');
+    expect(revenueToDateRoute).toContain("Budget pacing dates are campaign metadata and must not narrow platform revenue provenance.");
+    expect(revenueBreakdownRoute).toContain("Budget pacing dates are campaign metadata and must not narrow platform revenue provenance.");
+    expect(revenueToDateRoute).toContain('const startDate = "1900-01-01";');
+    expect(revenueBreakdownRoute).toContain('const startDate = "1900-01-01";');
+    expect(revenueToDateRoute).not.toContain("toISODateUTC((campaign as any)?.startDate)");
+    expect(revenueBreakdownRoute).not.toContain("toISODateUTC((campaign as any)?.startDate)");
     expect(revenueToDateRoute).not.toContain("toISODateUTC((campaign as any)?.createdAt)");
     expect(revenueBreakdownRoute).not.toContain("toISODateUTC((campaign as any)?.createdAt)");
     expect(revenueToDateRoute).toContain('const endDate = new Date().toISOString().slice(0, 10);');
     expect(revenueBreakdownRoute).toContain('const endDate = new Date().toISOString().slice(0, 10);');
+  });
+
+  it("Total Spend source provenance is not narrowed by campaign pacing metadata", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    const spendBreakdownStart = routesFile.indexOf('app.get("/api/campaigns/:id/spend-breakdown"');
+    const spendDailyStart = routesFile.indexOf('app.get("/api/campaigns/:id/spend-daily"', spendBreakdownStart);
+    expect(spendBreakdownStart).toBeGreaterThan(-1);
+    expect(spendDailyStart).toBeGreaterThan(spendBreakdownStart);
+
+    const spendBreakdownRoute = routesFile.slice(spendBreakdownStart, spendDailyStart);
+    expect(spendBreakdownRoute).toContain("Budget pacing dates are campaign metadata and must not narrow platform spend provenance.");
+    expect(spendBreakdownRoute).toContain('const startDate = "1900-01-01";');
+    expect(spendBreakdownRoute).not.toContain("toISODateUTC((campaign as any)?.startDate)");
   });
 
   it("Auto-refresh scheduler has source-specific spend failure logs", () => {

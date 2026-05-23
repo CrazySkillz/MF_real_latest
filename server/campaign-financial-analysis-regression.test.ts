@@ -65,6 +65,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(overview).toContain("status: hasPacingHealthInputs ?");
     expect(overview).toContain("status: overviewRoiMetric.available ?");
     expect(overview).toContain("status: overviewRoasMetric.available ?");
+    expect(overview).toContain("Campaign ROI Performance");
+    expect(overview).toContain("Campaign ROAS Performance");
     expect(overview).toContain("const availableHealthMetricCount = [");
     expect(overview).toContain("const hasAnyHealthInputs = availableHealthMetricCount > 0;");
     expect(overview).toContain("const displayHealthScore = hasAnyHealthInputs ? Math.round((healthData.total / (availableHealthMetricCount * 25)) * 100) : null;");

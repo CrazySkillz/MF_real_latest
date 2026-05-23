@@ -1386,7 +1386,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
 
-      const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
+      // Budget pacing dates are campaign metadata and must not narrow platform revenue provenance.
+      const startDate = "1900-01-01";
       const endDate = new Date().toISOString().slice(0, 10);
 
       const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext as "ga4" | "linkedin");
@@ -1406,7 +1407,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
 
-      const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
+      // Budget pacing dates are campaign metadata and must not narrow platform revenue provenance.
+      const startDate = "1900-01-01";
       const endDate = new Date().toISOString().slice(0, 10);
 
       const sources = await storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, platformContext as any);
@@ -1426,7 +1428,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
 
-      const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
+      // Budget pacing dates are campaign metadata and must not narrow platform spend provenance.
+      const startDate = "1900-01-01";
       const endDate = new Date().toISOString().slice(0, 10); // include today's records
 
       const sources = await storage.getSpendBreakdownBySource(campaignId, startDate, endDate);

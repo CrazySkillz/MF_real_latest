@@ -860,7 +860,7 @@ export default function FinancialAnalysis() {
                           
                           <div className="p-4 border rounded-lg" data-testid="health-roi">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium">ROI Performance</span>
+                              <span className="text-sm font-medium">Campaign ROI Performance</span>
                               <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.roi.status)}`} />
                             </div>
                             <div className="text-2xl font-bold">{formatOverviewPercentage(overviewRoiMetric)}</div>
@@ -876,7 +876,7 @@ export default function FinancialAnalysis() {
                           
                           <div className="p-4 border rounded-lg" data-testid="health-roas">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium">ROAS Performance</span>
+                              <span className="text-sm font-medium">Campaign ROAS Performance</span>
                               <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.roas.status)}`} />
                             </div>
                             <div className="text-2xl font-bold">{overviewRoasMetric.available ? `${overviewRoasMetric.value.toFixed(2)}x` : "Unavailable"}</div>

@@ -9,6 +9,8 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days"');
     expect(page).toContain('outcome-totals?dateRange=90days');
     expect(page).toContain('fetch(url, { credentials: "include" })');
+    expect(page).toContain("isFetched: outcomeTotalsFetched");
+    expect(page).toContain("if (!outcomeTotalsFetched && !ot) return [];");
     expect(page).toContain("const performanceSummary = outcomeTotals?.performanceSummary;");
     expect(page).toContain("const aggregateSources = Array.isArray(ot?.performanceSummary?.sources) ? ot.performanceSummary.sources : [];");
     expect(page).toContain('.filter((source: any) => source?.connected === true && source?.category !== "financial")');

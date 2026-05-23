@@ -15,6 +15,7 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("const includedMetrics = Array.isArray(source?.includedMetrics) ? source.includedMetrics.map(String) : [];");
     expect(page).toContain("const sessions = includesMetric(\"sessions\") ? num(metrics.sessions) : 0;");
     expect(page).toContain("const users = includesMetric(\"users\") ? num(metrics.users) : 0;");
+    expect(page).toContain('source?.id === "ga4" && num(ot?.revenue?.totalRevenue) > 0');
     expect(page).toContain('source?.id === "ga4" ? "#e37400"');
     expect(page).toContain('source?.id === "google_ads" ? "#34a853"');
   });
@@ -40,5 +41,14 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(overview).toContain('className={platform.isAnalyticsOnly ? "hidden" : "flex items-center justify-between"}');
     expect(overview).toContain("No connected platform data available yet. Connect a platform in Connected Platforms to see comparison data.");
     expect(overview).not.toContain("Connect platforms (LinkedIn, Meta) or revenue sources (Shopify, HubSpot, Salesforce)");
+  });
+
+  it("keeps the GA4 aggregate source aligned with the GA4 platform overview source of truth", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+
+    expect(routes).toContain("let ga4TotalsFromSourceTruth = false;");
+    expect(routes).toContain("ga4TotalsFromSourceTruth = true;");
+    expect(routes).toContain("!ga4TotalsFromSourceTruth && activeGA4");
+    expect(routes).toContain("const rows = [...(Array.isArray(sim?.timeSeries) ? sim.timeSeries : []), ...(Array.isArray(storedRows) ? storedRows : [])];");
   });
 });

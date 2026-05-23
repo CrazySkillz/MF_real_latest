@@ -41,6 +41,7 @@ Current issues:
 - child revenue sources such as HubSpot, Shopify, and Salesforce can appear as separate revenue platforms even though they are configured inside a parent platform flow
 - fallback logic can estimate revenue from conversions and average order value, which can drift from source-of-truth platform/campaign financial totals
 - empty-state and explanatory copy still references only LinkedIn and Meta in some places
+- the GA4 row can drift from the GA4 platform Overview if it uses raw native GA4 source-row values instead of the composed GA4 platform source-of-truth values shown in `View Detailed Analytics`
 
 The issue is an aggregation contract problem, not a single-card display bug.
 
@@ -48,7 +49,7 @@ The issue is an aggregation contract problem, not a single-card display bug.
 
 - `client/src/pages/platform-comparison.tsx`
   - Current Platform Comparison page and tab UI.
-  - Fetches `/api/campaigns/:id/outcome-totals?dateRange=30days`.
+  - Fetches `/api/campaigns/:id/outcome-totals?dateRange=90days`.
   - Still performs tab-local source construction and fallback calculations.
 
 - `client/src/pages/campaign-performance.tsx`
@@ -110,7 +111,7 @@ Available when connected and campaign-scoped:
 - users
 - sessions
 - conversions
-- revenue when GA4 native revenue exists
+- revenue as the GA4 platform total shown in `View Detailed Analytics`, including child revenue inputs configured inside GA4, while those child inputs remain hidden as separate main platforms
 
 Not available:
 
@@ -176,7 +177,7 @@ Rules:
 
 ### Commit 1: Aggregate Contract
 
-- Fetch `/api/campaigns/:id/outcome-totals?dateRange=30days` with the same URL-style query key pattern used by other DeepDive sections.
+- Fetch `/api/campaigns/:id/outcome-totals?dateRange=90days` with the same URL-style query key pattern used by other DeepDive sections.
 - Read `outcomeTotals.performanceSummary`.
 - Add a small page-local normalizer that converts `performanceSummary.sources` into Platform Comparison rows.
 - Exclude financial child sources from main platform rows.
@@ -254,6 +255,7 @@ Proven:
 - Commit 2: Overview cards and the summary table now include GA4 web analytics fields from the aggregate source row (`users`, `sessions`, `conversions`, and `revenue`) and hide paid-media fields (`spend`, `ROAS`, `ROI`) for analytics-only sources instead of presenting them as zero-performance metrics.
 - Commit 2: Overview empty-state copy now references Connected Platforms generally instead of naming only LinkedIn, Meta, or child revenue systems.
 - Commit 2 follow-up: Platform Comparison now requests the shared aggregate with `dateRange=90days`, matching Performance Summary, Budget & Financial Analysis, and the GA4 platform overview source-of-truth window for current campaign values.
+- Commit 2 follow-up: Platform Comparison GA4 revenue now uses the parent GA4 platform total from `outcomeTotals.revenue.totalRevenue`, so child revenue inputs configured inside GA4 are included in the GA4 row without being shown as separate platforms. Yesop/mock GA4 source rows now use the same to-date daily-row calculation pattern as the GA4 platform Overview.
 
 Outstanding:
 

@@ -10084,29 +10084,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessions: 0,
         users: 0,
       };
+      let ga4TotalsFromSourceTruth = false;
       try {
         if (activeGA4) {
           const ga4DateRange = toGa4DateRange(dateRange);
           const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
           const primaryGA4 = (ga4Connections || []).find((c: any) => c?.isPrimary) || (ga4Connections || [])[0];
           const primaryPropertyId = String(primaryGA4?.propertyId || "");
-          const result = isYesopMockProperty(primaryPropertyId)
-            ? simulateGA4({
-                campaignId,
-                propertyId: primaryPropertyId,
-                dateRange,
-                noRevenue: isNoRevenueFilter((campaign as any)?.ga4CampaignFilter),
-                ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter,
-              })
-            : await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, primaryPropertyId || undefined, 2000, campaignFilter);
-          ga4Totals = {
-            connected: true,
-            revenue: parseNum(result?.totals?.revenue),
-            conversions: parseNum(result?.totals?.conversions),
-            sessions: parseNum(result?.totals?.sessions),
-            users: parseNum(result?.totals?.users),
-            ...(isYesopMockProperty(primaryPropertyId) ? { isSimulated: true } : {}),
-          };
+          if (isYesopMockProperty(primaryPropertyId)) {
+            const sim = simulateGA4({
+              campaignId,
+              propertyId: primaryPropertyId,
+              dateRange,
+              noRevenue: isNoRevenueFilter((campaign as any)?.ga4CampaignFilter),
+              ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter,
+            });
+            const startRaw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
+            const startDateUsed = startRaw && !Number.isNaN(new Date(startRaw).getTime())
+              ? new Date(startRaw).toISOString().slice(0, 10)
+              : "2000-01-01";
+            const yesterday = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()) - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+            const storedRows = await storage.getGA4DailyMetrics(campaignId, primaryPropertyId, startDateUsed, yesterday).catch(() => [] as any[]);
+            const rows = [...(Array.isArray(sim?.timeSeries) ? sim.timeSeries : []), ...(Array.isArray(storedRows) ? storedRows : [])];
+            ga4Totals = rows.reduce((totals: any, row: any) => ({
+              connected: true,
+              revenue: Number((totals.revenue + parseNum(row?.revenue)).toFixed(2)),
+              conversions: totals.conversions + parseNum(row?.conversions),
+              sessions: totals.sessions + parseNum(row?.sessions),
+              users: totals.users + parseNum(row?.users),
+              isSimulated: true,
+            }), { connected: true, revenue: 0, conversions: 0, sessions: 0, users: 0, isSimulated: true });
+            ga4TotalsFromSourceTruth = true;
+          } else {
+            const result = await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, primaryPropertyId || undefined, 2000, campaignFilter);
+            ga4Totals = {
+              connected: true,
+              revenue: parseNum(result?.totals?.revenue),
+              conversions: parseNum(result?.totals?.conversions),
+              sessions: parseNum(result?.totals?.sessions),
+              users: parseNum(result?.totals?.users),
+            };
+          }
         }
       } catch (e: any) {
         // Best-effort: allow this endpoint to return even if GA4 is not connected.
@@ -10117,7 +10135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { startDate, endDate } = getDateRangeBounds(dateRange);
       const persistedPrimaryGA4 = (ga4Connections || []).find((c: any) => c?.isPrimary) || (ga4Connections || [])[0];
       const persistedPropertyId = String(persistedPrimaryGA4?.propertyId || "");
-      if (activeGA4 && persistedPropertyId && (
+      if (!ga4TotalsFromSourceTruth && activeGA4 && persistedPropertyId && (
         isYesopMockProperty(persistedPropertyId)
         || parseNum(ga4Totals.revenue) <= 0
         || parseNum(ga4Totals.users) <= 0

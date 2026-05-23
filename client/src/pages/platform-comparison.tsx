@@ -130,9 +130,7 @@ export default function PlatformComparison() {
   }
 
   const formatNumber = (num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toLocaleString();
+    return Math.round(num).toLocaleString();
   };
 
   const campaignCurrency = (campaign as any)?.currency || 'USD';
@@ -165,11 +163,14 @@ export default function PlatformComparison() {
           const impressions = includesMetric("impressions") ? num(metrics.impressions) : 0;
           const clicks = includesMetric("clicks") ? num(metrics.clicks) : 0;
           const conversions = includesMetric("conversions") ? num(metrics.conversions) : 0;
-          const revenue = includesMetric("attributedRevenue")
+          const sourceRevenue = includesMetric("attributedRevenue")
             ? num(metrics.attributedRevenue)
             : includesMetric("revenue")
               ? num(metrics.revenue)
               : 0;
+          const revenue = source?.id === "ga4" && num(ot?.revenue?.totalRevenue) > 0
+            ? num(ot.revenue.totalRevenue)
+            : sourceRevenue;
           const sessions = includesMetric("sessions") ? num(metrics.sessions) : 0;
           const users = includesMetric("users") ? num(metrics.users) : 0;
 

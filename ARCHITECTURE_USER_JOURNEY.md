@@ -438,6 +438,8 @@ Budget & Financial Analysis production-readiness work is tracked in `CAMPAIGN_DE
 
 Budget & Financial Analysis may let users fill, edit, or delete campaign pacing metadata, such as budget, start date, and end date, from the analysis page. These controls must update the existing campaign fields through the normal campaign update route and must not create separate pacing-only values. Because these are shared campaign metadata fields, changes to the pacing budget also update the Budget value shown in Campaign Management after campaign data refreshes.
 
+Budget & Financial Analysis is a downstream consumer of platform-level connected-source financial totals. Platform source records, such as GA4 `Total Revenue` and `Total Spend`, remain the source of truth for revenue and spend. Budget & Financial controls must not write, override, filter, or reinterpret those platform financial totals; pacing metadata only affects pacing formulas.
+
 ## Connected Platforms Pattern
 
 Connected Platforms is where the data comes from.

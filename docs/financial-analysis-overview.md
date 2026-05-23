@@ -19,6 +19,8 @@ The current production path is the shared campaign aggregate:
 
 The page may still load legacy platform endpoints for older fallback paths, but completed production tabs should use the aggregate contract when `performanceSummary` is present.
 
+Financial source-of-truth rule: platform-level connected-source revenue and spend records feed the Budget & Financial aggregate. Budget & Financial Analysis must not write, override, filter, or reinterpret platform revenue/spend totals. Budget Pacing inputs only update campaign metadata used for pacing formulas.
+
 A historical snapshot endpoint is also queried for trend indicators:
 - `/api/campaigns/{campaignId}/snapshots/comparison?type={comparisonType}` - returns current and previous metric snapshots.
 
@@ -94,7 +96,7 @@ Requires the campaign to have a `budget` field set. Displays a progress bar capp
 
 Overview financial cards must use `performanceSummary.totals` from `/api/campaigns/:id/outcome-totals?dateRange=90days` when live aggregate data has been requested. If that aggregate response fails or returns without `performanceSummary`, the page must keep prior aggregate data during refetch or show the metric as unavailable. It must not fall back to legacy local platform totals because those can display stale values, such as an old spend total.
 
-Campaign budget pacing dates must not filter aggregate imported revenue or spend. Total Revenue and Total Spend in Budget & Financial Overview come from the full active source provenance in the aggregate contract; the campaign start/end dates entered in Budget Pacing & Burn Rate are used only for pacing calculations.
+Campaign budget pacing dates must not filter aggregate imported revenue or spend. Total Revenue and Total Spend in Budget & Financial Overview come from the full active platform/source provenance in the aggregate contract; the campaign start/end dates entered in Budget Pacing & Burn Rate are used only for pacing calculations.
 
 ### 4. Budget Pacing & Burn Rate
 

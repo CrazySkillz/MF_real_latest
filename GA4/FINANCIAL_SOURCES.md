@@ -12,6 +12,8 @@ The `+` buttons on `Total Revenue` and `Total Spend` are source-management entry
 
 They are not inline edit controls.
 
+GA4 platform-level `Total Revenue` and `Total Spend` are source-of-truth financial values for downstream campaign financial analysis. Campaign DeepDive Budget & Financial Analysis consumes those source-backed totals through the aggregate contract and must not override or filter them with budget pacing metadata.
+
 Required pattern:
 
 1. user clicks `+`

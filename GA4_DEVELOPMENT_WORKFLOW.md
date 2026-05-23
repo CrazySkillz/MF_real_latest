@@ -143,9 +143,10 @@ For revenue, spend, scheduler, source-preview, or source-provenance bugs, comple
 2. trace the affected field through preview payload, save payload, `mappingConfig`, scheduler payload, materialized records, API response, and card or modal render
 3. compare preview, save, and scheduler payloads for `sourceId`, selected values, value field, date field or date column, `platformContext`, pipeline settings, and connection identifiers
 4. confirm whether the value was never sent, not saved, overwritten, not materialized, filtered out, or hidden by UI
-5. fix only the confirmed broken boundary
-6. add a targeted regression guard for that boundary
-7. validate with real persisted source records and the relevant API endpoint before trusting the card as proof
+5. confirm downstream campaign analysis, including Budget & Financial Analysis, consumes platform financial source totals without writing, overriding, or filtering them with pacing metadata
+6. fix only the confirmed broken boundary
+7. add a targeted regression guard for that boundary
+8. validate with real persisted source records and the relevant API endpoint before trusting the card as proof
 
 Lifecycle completeness rule:
 

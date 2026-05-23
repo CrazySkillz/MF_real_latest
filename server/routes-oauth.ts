@@ -10185,7 +10185,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let importedRevenueSources: any[] = [];
       let financialRevenueInputs: any[] = [];
       try {
-        const revenueStartDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
+        // Budget pacing dates are campaign metadata and must not narrow imported revenue provenance.
+        const revenueStartDate = "1900-01-01";
         const revenueEndDate = new Date().toISOString().slice(0, 10);
         const revenueBreakdown = await storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, "ga4");
         importedRevenueToDateTotal = Number(revenueBreakdown.reduce((sum: number, source: any) => sum + parseNum(source?.revenue), 0).toFixed(2));

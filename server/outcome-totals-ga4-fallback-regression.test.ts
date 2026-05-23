@@ -38,6 +38,8 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("performanceSummarySpendTotals");
     expect(route).toContain("unifiedSpend: performanceSummarySpend > 0 ? performanceSummarySpend : unifiedSpend");
     expect(route).toContain("const revenueBreakdown = await storage.getRevenueBreakdownBySource(campaignId, revenueStartDate, revenueEndDate, \"ga4\");");
+    expect(route).toContain('const revenueStartDate = "1900-01-01";');
+    expect(route).toContain("Budget pacing dates are campaign metadata and must not narrow imported revenue provenance.");
     expect(route).toContain("let financialRevenueInputs: any[] = [];");
     expect(route).toContain("financialRevenueInputs = revenueBreakdown");
     expect(route).toContain("importedRevenueToDateTotal");

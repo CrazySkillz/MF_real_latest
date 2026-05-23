@@ -291,6 +291,7 @@ Evidence:
 
 - Insights now uses the same aggregate-derived `spendCapableMetrics` and metric capability helpers as the other Platform Comparison tabs.
 - GA4-only campaigns show an explicit paid-media comparison unavailable explanation instead of budget reallocation recommendations.
+- GA4-only campaigns now show one concise `No paid-media platform connected` Insights state instead of multiple repeated unavailable/recommendation messages.
 - ROAS/ROI winner and laggard insights require at least two comparable spend-capable sources with source-level spend and revenue.
 - Volume and engagement insights are gated to spend-capable comparable sources instead of treating GA4 analytics metrics as paid-media recommendation inputs.
 - Strategic recommendations require comparable main paid-media sources and no longer use missing CTR, CPC, conversion-rate, ROAS, or ROI values as if they were real metrics.
@@ -351,6 +352,7 @@ Proven:
 - Commit 4 follow-up: The GA4-only Cost Analysis empty state now uses shorter, clearer copy: Google Analytics is connected, but it does not provide source-level ad spend for Platform Comparison; source-level spend, CPA, ROI, and ROAS comparison requires a main paid-media platform such as LinkedIn Ads, Meta Ads, or Google Ads.
 - Commit 4 Render validation passed: with only Google Analytics connected, Cost Analysis showed the `No paid-media platform connected` unavailable state and did not treat GA4 child spend imports as separate Platform Comparison sources.
 - Commit 5: Insights now uses aggregate-derived source capabilities and spend-capable source rows. GA4-only campaigns show a paid-media comparison unavailable explanation, and budget recommendations require comparable main paid-media platforms.
+- Commit 5 follow-up: GA4-only Insights copy was simplified to one `No paid-media platform connected` state so the page does not repeat the same unavailable condition across Data Source Analysis, Paid-media comparison, and Strategic Recommendations cards.
 
 Outstanding:
 

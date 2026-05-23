@@ -1070,18 +1070,35 @@ export default function PlatformComparison() {
                 </Card>
               ) : realPlatformMetrics.length > 0 ? (
                 <div className="grid gap-6">
-                  {/* AI-Powered Platform Insights */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <Brain className="w-5 h-5" />
-                        <span>Platform Performance Insights</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {/* Data Source Notice */}
-                        {(() => {
+                  {spendCapableMetrics.length === 0 ? (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <Brain className="w-5 h-5" />
+                          <span>Platform Performance Insights</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-6 text-center">
+                        <h4 className="font-semibold text-foreground mb-2">No paid-media platform connected</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Google Analytics is connected and contributes analytics metrics, but Platform Comparison insights require a main paid-media platform such as LinkedIn Ads, Meta Ads, or Google Ads.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
+                      {/* AI-Powered Platform Insights */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Brain className="w-5 h-5" />
+                            <span>Platform Performance Insights</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            {/* Data Source Notice */}
+                            {(() => {
                           const platformsWithAdData = spendCapableMetrics;
                           const platformsWithoutAdData = realPlatformMetrics.filter((p: any) => !spendCapableMetrics.includes(p));
                           
@@ -1124,7 +1141,7 @@ export default function PlatformComparison() {
                           return null;
                         })()}
 
-                        {spendCapableMetrics.length < 2 && (
+                        {spendCapableMetrics.length === 1 && (
                           <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg" data-testid="insight-comparison-unavailable">
                             <div className="flex items-start space-x-3">
                               <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
@@ -1220,25 +1237,25 @@ export default function PlatformComparison() {
                             </div>
                           ) : null;
                         })()}
-                      </div>
-                    </CardContent>
-                  </Card>
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                  {/* Strategic Recommendations */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        <Zap className="w-5 h-5" />
-                        <span>Strategic Recommendations</span>
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground/70 mt-2">
-                        <strong>Note:</strong> These recommendations are directional guidance based on platform performance data. 
-                        Budget allocations and optimization strategies should be validated against your specific business objectives, 
-                        profit margins, competitive landscape, and strategic goals before implementation.
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-6">
+                      {/* Strategic Recommendations */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Zap className="w-5 h-5" />
+                            <span>Strategic Recommendations</span>
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground/70 mt-2">
+                            <strong>Note:</strong> These recommendations are directional guidance based on platform performance data. 
+                            Budget allocations and optimization strategies should be validated against your specific business objectives, 
+                            profit margins, competitive landscape, and strategic goals before implementation.
+                          </p>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-6">
                         {/* Budget Reallocation */}
                         {(() => {
                           const platformsWithData = comparableFinancialMetrics;
@@ -1311,9 +1328,11 @@ export default function PlatformComparison() {
                           );
                         })()}
 
-                      </div>
-                    </CardContent>
-                  </Card>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
                 </div>
               ) : (
                 <Card>

@@ -49,8 +49,15 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(routes).toContain("let ga4TotalsFromSourceTruth = false;");
     expect(routes).toContain("ga4TotalsFromSourceTruth = true;");
     expect(routes).toContain("!ga4TotalsFromSourceTruth && activeGA4");
+    expect(routes).toContain("dailyStart.setUTCDate(dailyStart.getUTCDate() - (dateRangeToDays(dateRange) - 1));");
     expect(routes).toContain("const dbByDate = new Map<string, any>();");
     expect(routes).toContain("const simDates = new Set(simRows.map((row: any) => String(row.date)));");
-    expect(routes).toContain("if (!simDates.has(date)) rows.push(dbRow);");
+    expect(routes).toContain("if (!simDates.has(date)) dailyMergedRows.push(dbRow);");
+    expect(routes).toContain("const toDateTotals = sumRows([...simRows, ...(Array.isArray(toDateRows) ? toDateRows : [])]);");
+    expect(routes).toContain("const dailyTotals = sumRows(dailyMergedRows);");
+    expect(routes).toContain("revenue: Math.max(toDateTotals.revenue, dailyTotals.revenue),");
+    expect(routes).toContain("conversions: Math.max(toDateTotals.conversions, dailyTotals.conversions),");
+    expect(routes).toContain("sessions: Math.max(toDateTotals.sessions, dailyTotals.sessions),");
+    expect(routes).toContain("users: toDateTotals.users || dailyTotals.users,");
   });
 });

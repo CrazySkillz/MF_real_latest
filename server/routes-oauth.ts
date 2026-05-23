@@ -10099,19 +10099,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               noRevenue: isNoRevenueFilter((campaign as any)?.ga4CampaignFilter),
               ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter,
             });
+            const simRows = Array.isArray(sim?.timeSeries) ? sim.timeSeries : [];
+            const end = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()) - 24 * 60 * 60 * 1000);
             const startRaw = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
             const startDateUsed = startRaw && !Number.isNaN(new Date(startRaw).getTime())
               ? new Date(startRaw).toISOString().slice(0, 10)
               : "2000-01-01";
-            const yesterday = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()) - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-            const storedRows = await storage.getGA4DailyMetrics(campaignId, primaryPropertyId, startDateUsed, yesterday).catch(() => [] as any[]);
-            const simRows = Array.isArray(sim?.timeSeries) ? sim.timeSeries : [];
+            const toDateRows = await storage.getGA4DailyMetrics(campaignId, primaryPropertyId, startDateUsed, formatISODateUTC(end)).catch(() => [] as any[]);
+            const dailyStart = new Date(end);
+            dailyStart.setUTCDate(dailyStart.getUTCDate() - (dateRangeToDays(dateRange) - 1));
+            const dailyRows = await storage.getGA4DailyMetrics(campaignId, primaryPropertyId, formatISODateUTC(dailyStart), formatISODateUTC(end)).catch(() => [] as any[]);
             const dbByDate = new Map<string, any>();
-            for (const row of (Array.isArray(storedRows) ? storedRows : [])) {
+            for (const row of (Array.isArray(dailyRows) ? dailyRows : [])) {
               if (row?.date) dbByDate.set(String(row.date), row);
             }
             const simDates = new Set(simRows.map((row: any) => String(row.date)));
-            const rows = simRows.map((row: any) => {
+            const dailyMergedRows = simRows.map((row: any) => {
               const dbRow = dbByDate.get(String(row.date));
               if (!dbRow) return row;
               return {
@@ -10123,16 +10126,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
               };
             });
             for (const [date, dbRow] of Array.from(dbByDate)) {
-              if (!simDates.has(date)) rows.push(dbRow);
+              if (!simDates.has(date)) dailyMergedRows.push(dbRow);
             }
-            ga4Totals = rows.reduce((totals: any, row: any) => ({
-              connected: true,
+            const sumRows = (rows: any[]) => rows.reduce((totals: any, row: any) => ({
               revenue: Number((totals.revenue + parseNum(row?.revenue)).toFixed(2)),
               conversions: totals.conversions + parseNum(row?.conversions),
               sessions: totals.sessions + parseNum(row?.sessions),
               users: totals.users + parseNum(row?.users),
+            }), { revenue: 0, conversions: 0, sessions: 0, users: 0 });
+            const toDateTotals = sumRows([...simRows, ...(Array.isArray(toDateRows) ? toDateRows : [])]);
+            const dailyTotals = sumRows(dailyMergedRows);
+            ga4Totals = {
+              connected: true,
+              revenue: Math.max(toDateTotals.revenue, dailyTotals.revenue),
+              conversions: Math.max(toDateTotals.conversions, dailyTotals.conversions),
+              sessions: Math.max(toDateTotals.sessions, dailyTotals.sessions),
+              users: toDateTotals.users || dailyTotals.users,
               isSimulated: true,
-            }), { connected: true, revenue: 0, conversions: 0, sessions: 0, users: 0, isSimulated: true });
+            };
             ga4TotalsFromSourceTruth = true;
           } else {
             const result = await ga4Service.getAcquisitionBreakdown(campaignId, storage, ga4DateRange, primaryPropertyId || undefined, 2000, campaignFilter);

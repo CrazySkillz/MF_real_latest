@@ -257,6 +257,7 @@ Proven:
 - Commit 2: Overview empty-state copy now references Connected Platforms generally instead of naming only LinkedIn, Meta, or child revenue systems.
 - Commit 2 follow-up: Platform Comparison now requests the shared aggregate with `dateRange=90days`, matching Performance Summary, Budget & Financial Analysis, and the GA4 platform overview source-of-truth window for current campaign values.
 - Commit 2 follow-up: Platform Comparison GA4 revenue now uses the parent GA4 platform total from `outcomeTotals.revenue.totalRevenue`, so child revenue inputs configured inside GA4 are included in the GA4 row without being shown as separate platforms. Yesop/mock GA4 source rows now use the same date-overlay daily-row merge pattern as the GA4 platform Overview before summing sessions, users, conversions, and revenue.
+- Commit 2 follow-up: The GA4 mock/test aggregate now mirrors the GA4 Overview Summary formula exactly: sessions, conversions, and native GA4 revenue use the larger of GA4 to-date totals and merged daily lookback totals, while users use to-date totals when present because users are not safely additive across daily rows.
 
 Outstanding:
 

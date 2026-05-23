@@ -56,10 +56,10 @@ export default function PlatformComparison() {
 
   // Unified outcome-totals for Meta, GA4, revenue sources, and real revenue data
   const { data: outcomeTotals } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "30days", demoMode ? "demo" : "live"],
+    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live"],
     enabled: !!campaignId,
     queryFn: async () => {
-      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=30days${demoMode ? "&demo=1" : ""}`;
+      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=90days${demoMode ? "&demo=1" : ""}`;
       const resp = await fetch(url, { credentials: "include" });
       if (!resp.ok) return null;
       return resp.json().catch(() => null);

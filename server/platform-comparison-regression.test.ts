@@ -6,7 +6,8 @@ describe("campaign Platform Comparison regression guard", () => {
   it("uses the shared aggregate contract for connected-source platform rows", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "platform-comparison.tsx"), "utf-8");
 
-    expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "30days"');
+    expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days"');
+    expect(page).toContain('outcome-totals?dateRange=90days');
     expect(page).toContain('fetch(url, { credentials: "include" })');
     expect(page).toContain("const performanceSummary = outcomeTotals?.performanceSummary;");
     expect(page).toContain("const aggregateSources = Array.isArray(ot?.performanceSummary?.sources) ? ot.performanceSummary.sources : [];");

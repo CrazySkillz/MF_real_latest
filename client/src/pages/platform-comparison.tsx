@@ -1084,7 +1084,7 @@ export default function PlatformComparison() {
                         </h4>
                         <p className="text-sm text-muted-foreground">
                           {spendCapableMetrics.length === 0
-                            ? "Google Analytics is connected and contributes analytics metrics, but Platform Comparison insights require a main paid-media platform such as LinkedIn Ads, Meta Ads, or Google Ads."
+                            ? "Google Analytics is connected and contributes analytics metrics, but it does not provide source-level ad spend for paid-media comparison. Connect LinkedIn Ads, Meta Ads, or Google Ads in Connected Platforms to compare paid-media performance and recommendations."
                             : "Connect at least one more main paid-media platform with source-level spend to generate comparison-based insights and recommendations."}
                         </p>
                       </CardContent>

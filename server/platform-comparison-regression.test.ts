@@ -97,7 +97,8 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("if (metric === 'roas' || metric === 'roi') return canShowFinancialEfficiency(p) && p.spend > 0;");
     expect(insights).toContain("{spendCapableMetrics.length < 2 ? (");
     expect(insights).toContain("No paid-media platform connected");
-    expect(insights).toContain("Google Analytics is connected and contributes analytics metrics, but Platform Comparison insights require a main paid-media platform such as LinkedIn Ads, Meta Ads, or Google Ads.");
+    expect(insights).toContain("Google Analytics is connected and contributes analytics metrics, but it does not provide source-level ad spend for paid-media comparison.");
+    expect(insights).toContain("Connect LinkedIn Ads, Meta Ads, or Google Ads in Connected Platforms to compare paid-media performance and recommendations.");
     expect(insights).toContain("Connect at least one more main paid-media platform with source-level spend to generate comparison-based insights and recommendations.");
     expect(insights).toContain("Insights and recommendations use only main Connected Platforms that provide source-level ad spend:");
     expect(insights).toContain("{comparableFinancialMetrics.length > 1 && bestROAS && (");

@@ -355,6 +355,7 @@ Proven:
 - Commit 5 follow-up: Insights copy was simplified to one unavailable state when fewer than two spend-capable paid-media platforms are connected, so the page does not repeat the same unavailable condition across Data Source Analysis, Paid-media comparison, and Strategic Recommendations cards.
 - Commit 5 follow-up: The GA4-only Insights message now explicitly says GA4 contributes analytics metrics but does not provide source-level ad spend for paid-media comparison.
 - Commit 5 follow-up: GA4-only Insights now show a source-capability-safe analytics summary using GA4 sessions, users, conversions, and revenue when available, while still blocking paid-media comparison and budget recommendations until a main paid-media platform is connected.
+- Commit 5 follow-up: Platform Comparison Insights now uses the same stacked insight-card presentation pattern as Performance Summary and Budget & Financial Analysis instead of a standalone centered metric grid.
 
 Outstanding:
 

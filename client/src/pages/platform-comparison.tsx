@@ -1074,29 +1074,35 @@ export default function PlatformComparison() {
                   {spendCapableMetrics.length === 0 && analyticsOnlyMetrics.length > 0 ? (
                     <Card>
                       <CardHeader>
-                        <CardTitle className="flex items-center space-x-2">
-                          <Brain className="w-5 h-5" />
-                          <span>Platform Performance Insights</span>
-                        </CardTitle>
+                        <CardTitle>Platform Performance Insights</CardTitle>
+                        <CardDescription>Source-capability analysis based on connected platform metrics</CardDescription>
                       </CardHeader>
-                      <CardContent className="p-6">
+                      <CardContent>
                         {analyticsOnlyMetrics.map((platform: any) => (
                           <div key={platform.platform} className="space-y-4">
-                            <div className="text-center">
-                              <h4 className="font-semibold text-foreground mb-2">{platform.platform} analytics summary</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {platform.platform} is the only connected source, so insights are limited to the web analytics metrics it provides.
+                            <div className="p-4 bg-muted rounded-lg border border-border">
+                              <h4 className="font-semibold mb-2 text-foreground">{platform.platform} Analytics Summary</h4>
+                              <p className="text-sm text-foreground/80">
+                                {platform.platform} is the only connected source, so Platform Comparison is currently limited to the web analytics metrics this source provides.
                               </p>
                             </div>
-                            <div className="grid gap-3 md:grid-cols-4">
-                              {hasMetric(platform, "sessions") && <div className="rounded-lg border p-3 text-center"><p className="text-xs text-muted-foreground">Sessions</p><p className="font-semibold">{formatNumber(platform.sessions)}</p></div>}
-                              {hasMetric(platform, "users") && <div className="rounded-lg border p-3 text-center"><p className="text-xs text-muted-foreground">Users</p><p className="font-semibold">{formatNumber(platform.users)}</p></div>}
-                              {hasMetric(platform, "conversions") && <div className="rounded-lg border p-3 text-center"><p className="text-xs text-muted-foreground">Conversions</p><p className="font-semibold">{formatNumber(platform.conversions)}</p></div>}
-                              {hasMetric(platform, "revenue") && <div className="rounded-lg border p-3 text-center"><p className="text-xs text-muted-foreground">Revenue</p><p className="font-semibold">{formatCurrency(platform.revenue)}</p></div>}
+                            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                              <h4 className="font-semibold mb-2 text-blue-900 dark:text-blue-100">Available Analytics Metrics</h4>
+                              <p className="text-sm text-blue-800 dark:text-blue-200">
+                                {[
+                                  hasMetric(platform, "sessions") ? `Sessions: ${formatNumber(platform.sessions)}` : null,
+                                  hasMetric(platform, "users") ? `Users: ${formatNumber(platform.users)}` : null,
+                                  hasMetric(platform, "conversions") ? `Conversions: ${formatNumber(platform.conversions)}` : null,
+                                  hasMetric(platform, "revenue") ? `Revenue: ${formatCurrency(platform.revenue)}` : null,
+                                ].filter(Boolean).join(" • ")}
+                              </p>
                             </div>
-                            <p className="text-center text-sm text-muted-foreground">
-                              Paid-media comparison and budget recommendations require a main paid-media platform with source-level ad spend, such as LinkedIn Ads, Meta Ads, or Google Ads.
-                            </p>
+                            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                              <h4 className="font-semibold mb-2 text-yellow-900 dark:text-yellow-100">Paid-Media Comparison Unavailable</h4>
+                              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                Paid-media comparison and budget recommendations require a main paid-media platform with source-level ad spend, such as LinkedIn Ads, Meta Ads, or Google Ads.
+                              </p>
+                            </div>
                           </div>
                         ))}
                       </CardContent>

@@ -432,9 +432,10 @@ Proven:
 - The Budget & Financial page refetches current aggregate values while visible and on window focus so source updates are pulled into the UI through the same aggregate contract.
 - Current server aggregation feeds registered Connected Platforms and financial inputs into `performanceSummary`; Google Ads is now included as a first-class normalized paid-media source when connected and populated with campaign-scoped daily metrics.
 - GA4 `yesop` test-data refresh uses the deterministic simulator and does not require a live OAuth token, so Render validation can trigger a GA4 refresh for system-generated test data without failing on `TOKEN_EXPIRED`.
+- Render validation passed for the GA4 `yesop` source-refresh path: manual refresh returned `success: true` with refreshed metrics, and the Budget & Financial current-value validation passed after refresh.
 
 Outstanding:
 
-- Complete deployed live/source-refresh validation after Render deploy.
+- Complete deployed live OAuth/source-refresh validation as real non-test integrations are exercised.
 - Register future main Connected Platforms, including TikTok, Instagram, and other sources, into the shared aggregate contract as part of implementing those integrations.
 - Keep documentation updated if future source integrations add new aggregate capabilities.

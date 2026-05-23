@@ -27,6 +27,26 @@ Do not turn Budget & Financial Analysis into another platform-specific page.
 Do not duplicate aggregation logic across tabs.
 Do not invent unavailable financial or cost metrics for sources that do not provide the required inputs.
 
+## Boundary With Platform Comparison
+
+Budget & Financial Analysis and Platform Comparison intentionally consume the same connected-source aggregate contract, but they should stay distinct.
+
+Budget & Financial Analysis should focus on campaign-level financial decisioning:
+
+- aggregate spend, revenue, ROI, ROAS, and profit
+- cost-efficiency metrics such as CPA, CPC, CPM, CTR, and CVR when inputs exist
+- budget utilization, pacing, allocation, and financial risks
+- executive financial insights and recommended actions
+
+Platform Comparison should focus on source-level comparison:
+
+- one row or card per main Connected Platform
+- available metrics by source capability
+- side-by-side comparison of connected sources
+- source leaders, laggards, and unavailable metric explanations
+
+Do not streamline these two sections until Platform Comparison is source-capability correct across its remaining tabs. Completing the Platform Comparison implementation plan first prevents financial analysis behavior from being mixed into source-comparison behavior.
+
 ## Current Root Cause
 
 `client/src/pages/financial-analysis.tsx` currently performs page-local aggregation from separate source queries.

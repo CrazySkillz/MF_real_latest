@@ -29,6 +29,26 @@ Do not invent unavailable metrics for sources that do not provide them.
 Do not display platform child revenue/spend inputs as separate main platforms.
 Do not guess when Platform Comparison values differ from the connected platform source-of-truth page. Trace the exact source field, merge rule, date window, and rendered value before editing.
 
+## Boundary With Budget & Financial Analysis
+
+Platform Comparison and Budget & Financial Analysis intentionally share the same connected-source aggregate contract, but they should not duplicate the same product job.
+
+Platform Comparison should answer:
+
+- which main Connected Platforms are contributing data
+- which metrics each connected source can and cannot provide
+- how sources compare side by side for available metrics
+- which source leads or lags for comparable metrics
+
+Budget & Financial Analysis should answer:
+
+- what the campaign's aggregate financial position is
+- how spend, revenue, ROI, ROAS, CPA, CPC, and CVR are performing
+- whether budget pacing, utilization, and allocation need attention
+- what financial actions or risks executives should consider
+
+The correct sequencing is to complete the Platform Comparison implementation plan first, especially Performance Metrics, Cost Analysis, and Insights. After Platform Comparison is source-capability correct across all tabs, UI copy and overlap with Budget & Financial Analysis can be streamlined safely without mixing source comparison with financial decisioning.
+
 ## Current Root Cause
 
 `client/src/pages/platform-comparison.tsx` partially uses `/api/campaigns/:id/outcome-totals`, but still builds comparison rows through page-local, hardcoded platform logic.
@@ -199,6 +219,16 @@ Rules:
 - Do not rank sources on metrics they do not provide.
 - Add copy explaining unavailable metrics where needed.
 
+Status: completed.
+
+Evidence:
+
+- Detailed Performance Metrics now renders CTR, CPC, conversion rate, ROI, and efficiency values only when the connected source provides the required capabilities.
+- Efficiency Comparison now shows an explicit unavailable explanation when a source does not provide both spend and revenue, instead of implying zero ROAS/ROI performance.
+- Volume & Reach now labels engagement as `Clicks`, `Sessions`, or `Engagement` based on the source capabilities, so GA4-only rows use sessions instead of paid-media click assumptions.
+- Empty-state copy now references Connected Platforms generally instead of naming only LinkedIn or Meta.
+- Regression coverage updated in `server/platform-comparison-regression.test.ts`.
+
 ### Commit 4: Cost Analysis Tab
 
 - Include only spend-capable sources for cost analysis, CPA, CPC, budget allocation, ROI, and ROAS cards.
@@ -258,11 +288,13 @@ Proven:
 - Commit 2 follow-up: Platform Comparison now requests the shared aggregate with `dateRange=90days`, matching Performance Summary, Budget & Financial Analysis, and the GA4 platform overview source-of-truth window for current campaign values.
 - Commit 2 follow-up: Platform Comparison GA4 revenue now uses the parent GA4 platform total from `outcomeTotals.revenue.totalRevenue`, so child revenue inputs configured inside GA4 are included in the GA4 row without being shown as separate platforms. Yesop/mock GA4 source rows now use the same date-overlay daily-row merge pattern as the GA4 platform Overview before summing sessions, users, conversions, and revenue.
 - Commit 2 follow-up: The GA4 mock/test aggregate now mirrors the GA4 Overview Summary formula exactly: sessions, conversions, and native GA4 revenue use the larger of GA4 to-date totals and merged daily lookback totals, while users use to-date totals when present because users are not safely additive across daily rows.
+- Commit 2 Render validation passed: the Platform Comparison Overview tab showed only Google Analytics for the current GA4-only campaign, displayed GA4-supported metrics only, matched the GA4 platform Overview values, and no longer flashed Meta before GA4 loaded.
 - Commit 2 follow-up: Platform Comparison no longer renders legacy per-platform fallback rows while the shared aggregate request is still unresolved, preventing Meta or other fallback data from flashing before the connected-source aggregate loads.
+- Commit 3: Performance Metrics now uses source-capability aware display rules for CTR, CPC, conversion rate, ROAS, ROI, CPA, impressions, clicks, and sessions. GA4-only rows show unavailable paid-media efficiency metrics instead of zero-performance paid-media assumptions.
 
 Outstanding:
 
-- Continue wiring Performance Metrics, Cost Analysis, and Insights to capability-aware source rows beyond the initial aggregate source-row boundary.
+- Continue wiring Cost Analysis and Insights to capability-aware source rows beyond the initial aggregate source-row boundary.
 - Remove or gate remaining hardcoded platform blocks and legacy fallback estimates that are still retained only as no-aggregate fallback behavior.
 - Expand targeted regression coverage for each tab.
 - Validate with GA4-only and multi-platform connected-source scenarios.

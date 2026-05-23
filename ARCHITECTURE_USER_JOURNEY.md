@@ -440,6 +440,8 @@ Budget & Financial Analysis may let users fill, edit, or delete campaign pacing 
 
 Budget & Financial Analysis is a downstream consumer of platform-level connected-source financial totals. Platform source records, such as GA4 `Total Revenue` and `Total Spend`, remain the source of truth for revenue and spend. Budget & Financial controls must not write, override, filter, or reinterpret those platform financial totals; pacing metadata only affects pacing formulas.
 
+Platform Comparison and Budget & Financial Analysis may consume the same shared aggregate, but they have different jobs. Platform Comparison answers "which connected source is contributing what?" and should compare main Connected Platforms side by side using only each source's available capabilities. Budget & Financial Analysis answers "what is the campaign's financial position?" and should use aggregate financial totals for ROI, ROAS, cost efficiency, budget pacing, allocation, and financial insights. Do not streamline or merge the two sections until Platform Comparison is first wired to the same source-capability contract across its remaining tabs; otherwise financial decisions could be mixed with source-comparison behavior.
+
 ## Connected Platforms Pattern
 
 Connected Platforms is where the data comes from.

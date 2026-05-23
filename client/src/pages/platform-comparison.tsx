@@ -196,6 +196,7 @@ export default function PlatformComparison() {
             qualityScore: 0,
             reach: users,
             engagement: sessions || clicks,
+            includedMetrics,
             color: source?.id === "ga4" ? "#e37400" : source?.id === "linkedin" ? "#0077b5" : source?.id === "meta" ? "#1877f2" : source?.id === "google_ads" ? "#34a853" : "#8b5cf6",
             isAnalyticsOnly: String(source?.category || "") === "web_analytics",
           };
@@ -349,6 +350,15 @@ export default function PlatformComparison() {
   };
 
   const realPlatformMetrics = buildPlatformMetrics();
+  const hasMetric = (platform: any, metric: string) => {
+    const included = Array.isArray(platform?.includedMetrics) ? platform.includedMetrics.map(String) : [];
+    return included.length === 0 ? Number(platform?.[metric] || 0) > 0 : included.includes(metric);
+  };
+  const canShowCtr = (platform: any) => hasMetric(platform, "impressions") && hasMetric(platform, "clicks");
+  const canShowCpc = (platform: any) => hasMetric(platform, "spend") && hasMetric(platform, "clicks");
+  const canShowConversionRate = (platform: any) => hasMetric(platform, "conversions") && (hasMetric(platform, "clicks") || hasMetric(platform, "sessions"));
+  const canShowFinancialEfficiency = (platform: any) => hasMetric(platform, "spend") && (hasMetric(platform, "revenue") || hasMetric(platform, "attributedRevenue"));
+  const canShowCpa = (platform: any) => hasMetric(platform, "spend") && hasMetric(platform, "conversions");
 
   const totalRevenueSourceRevenue = revenueSourcesData.reduce((sum: number, s: any) => sum + s.revenue, 0);
 
@@ -688,20 +698,20 @@ export default function PlatformComparison() {
                               <div className="grid grid-cols-4 gap-2 text-xs">
                                 <div>
                                   <span className="block text-muted-foreground font-medium">CTR</span>
-                                  <span className="text-foreground font-semibold">{platform.ctr > 0 ? `${formatPct(platform.ctr)}` : '—'}</span>
+                                  <span className="text-foreground font-semibold">{canShowCtr(platform) && platform.impressions > 0 ? `${formatPct(platform.ctr)}` : 'Unavailable'}</span>
                                 </div>
                                 <div>
                                   <span className="block text-muted-foreground font-medium">CPC</span>
-                                  <span className="text-foreground font-semibold">{platform.cpc > 0 ? formatCurrency(platform.cpc) : '—'}</span>
+                                  <span className="text-foreground font-semibold">{canShowCpc(platform) && platform.cpc > 0 ? formatCurrency(platform.cpc) : 'Unavailable'}</span>
                                 </div>
                                 <div>
                                   <span className="block text-muted-foreground font-medium">Conv. Rate</span>
-                                  <span className="text-foreground font-semibold">{platform.conversionRate > 0 ? `${formatPct(platform.conversionRate)}` : '—'}</span>
+                                  <span className="text-foreground font-semibold">{canShowConversionRate(platform) && (platform.clicks > 0 || platform.sessions > 0) ? `${formatPct(platform.conversionRate)}` : 'Unavailable'}</span>
                                 </div>
                                 <div>
                                   <span className="block text-muted-foreground font-medium">ROI</span>
                                   <span className={`font-semibold ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
-                                    {platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : '—'}
+                                    {canShowFinancialEfficiency(platform) && platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : 'Unavailable'}
                                   </span>
                                 </div>
                               </div>
@@ -726,9 +736,9 @@ export default function PlatformComparison() {
                               <div className="flex items-center justify-between text-sm">
                                 <span className="font-medium text-foreground">{platform.platform}</span>
                                 <div className="flex items-center space-x-3">
-                                  <span className="text-muted-foreground/70">{platform.roas > 0 ? `${platform.roas.toFixed(2)}x ROAS` : '—'}</span>
+                                  <span className="text-muted-foreground/70">{canShowFinancialEfficiency(platform) && platform.spend > 0 ? `${platform.roas.toFixed(2)}x ROAS` : 'Efficiency unavailable'}</span>
                                   <span className={`font-medium ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground/70'}`}>
-                                    {platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}% ROI` : '—'}
+                                    {canShowFinancialEfficiency(platform) && platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}% ROI` : 'Unavailable'}
                                   </span>
                                 </div>
                               </div>
@@ -736,15 +746,18 @@ export default function PlatformComparison() {
                                 <div
                                   className="h-2 rounded-full transition-all"
                                   style={{
-                                    width: `${Math.min((platform.roas / 5) * 100, 100)}%`,
+                                    width: `${canShowFinancialEfficiency(platform) ? Math.min((platform.roas / 5) * 100, 100) : 0}%`,
                                     backgroundColor: platform.color
                                   }}
                                 />
                               </div>
                               <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>CPA: {platform.conversions > 0 && platform.spend > 0 ? formatCurrency(platform.spend / platform.conversions) : '—'}</span>
-                                <span>{platform.conversions > 0 ? `${formatNumber(platform.conversions)} Conv.` : '—'}</span>
+                                <span>CPA: {canShowCpa(platform) && platform.conversions > 0 && platform.spend > 0 ? formatCurrency(platform.spend / platform.conversions) : 'Unavailable'}</span>
+                                <span>{hasMetric(platform, "conversions") && platform.conversions > 0 ? `${formatNumber(platform.conversions)} Conv.` : 'Conversions unavailable'}</span>
                               </div>
+                              {!canShowFinancialEfficiency(platform) && (
+                                <p className="text-xs text-muted-foreground">ROAS and ROI require both spend and revenue from this connected source.</p>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -783,7 +796,7 @@ export default function PlatformComparison() {
                                   <div className="flex items-center justify-between text-sm">
                                     <span className="text-muted-foreground/70">Impressions</span>
                                     <span className="font-semibold text-foreground">
-                                      {platform.impressions > 0 ? formatNumber(platform.impressions) : '—'}
+                                      {hasMetric(platform, "impressions") && platform.impressions > 0 ? formatNumber(platform.impressions) : 'Unavailable'}
                                     </span>
                                   </div>
                                   <div className="w-full bg-muted rounded-full h-2">
@@ -799,9 +812,9 @@ export default function PlatformComparison() {
 
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-foreground/70">Clicks / Sessions</span>
+                                    <span className="text-muted-foreground/70">{hasMetric(platform, "clicks") ? "Clicks" : hasMetric(platform, "sessions") ? "Sessions" : "Engagement"}</span>
                                     <span className="font-semibold text-foreground">
-                                      {engagementValue > 0 ? formatNumber(engagementValue) : '—'}
+                                      {engagementValue > 0 ? formatNumber(engagementValue) : 'Unavailable'}
                                     </span>
                                   </div>
                                   <div className="w-full bg-muted rounded-full h-2">
@@ -825,7 +838,7 @@ export default function PlatformComparison() {
               ) : (
                 <Card>
                   <CardContent className="p-6 text-center text-muted-foreground/70">
-                    <p>No platform data available. Connect platforms (LinkedIn, Meta) to see performance metrics.</p>
+                    <p>No connected platform data available yet. Connect a platform in Connected Platforms to see performance metrics.</p>
                   </CardContent>
                 </Card>
               )}

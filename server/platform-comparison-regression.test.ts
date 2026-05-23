@@ -45,6 +45,21 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(overview).not.toContain("Connect platforms (LinkedIn, Meta) or revenue sources (Shopify, HubSpot, Salesforce)");
   });
 
+  it("renders the Performance Metrics tab with source-capability aware unavailable states", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "platform-comparison.tsx"), "utf-8");
+    const performanceStart = page.indexOf('<TabsContent value="performance"');
+    const performanceEnd = page.indexOf('<TabsContent value="cost-analysis"', performanceStart);
+    const performance = page.slice(performanceStart, performanceEnd);
+
+    expect(page).toContain("const canShowCtr = (platform: any) => hasMetric(platform, \"impressions\") && hasMetric(platform, \"clicks\");");
+    expect(page).toContain("const canShowCpc = (platform: any) => hasMetric(platform, \"spend\") && hasMetric(platform, \"clicks\");");
+    expect(page).toContain("const canShowFinancialEfficiency = (platform: any) => hasMetric(platform, \"spend\") && (hasMetric(platform, \"revenue\") || hasMetric(platform, \"attributedRevenue\"));");
+    expect(performance).toContain("ROAS and ROI require both spend and revenue from this connected source.");
+    expect(performance).toContain('hasMetric(platform, "clicks") ? "Clicks" : hasMetric(platform, "sessions") ? "Sessions" : "Engagement"');
+    expect(performance).toContain("No connected platform data available yet. Connect a platform in Connected Platforms to see performance metrics.");
+    expect(performance).not.toContain("Connect platforms (LinkedIn, Meta) to see performance metrics.");
+  });
+
   it("keeps the GA4 aggregate source aligned with the GA4 platform overview source of truth", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
 

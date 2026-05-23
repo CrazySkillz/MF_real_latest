@@ -178,6 +178,8 @@ export default function PlatformComparison() {
             impressions,
             clicks,
             conversions,
+            sessions,
+            users,
             spend,
             revenue,
             ctr: impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : 0,
@@ -331,6 +333,8 @@ export default function PlatformComparison() {
         platform: 'GA4 Analytics',
         impressions: 0, clicks: 0,
         conversions: num(ga4.conversions),
+        sessions: num(ga4.sessions),
+        users: num(ga4.users),
         spend: 0, revenue: num(ga4.revenue),
         ctr: 0, cpc: 0, conversionRate: 0, roas: 0, roi: 0,
         qualityScore: 0, reach: 0, engagement: num(ga4.sessions),
@@ -458,15 +462,31 @@ export default function PlatformComparison() {
                           <span className="text-xs text-muted-foreground">Conversions</span>
                           <span className="font-semibold text-foreground">{platform.conversions > 0 ? formatNumber(platform.conversions) : '—'}</span>
                         </div>
-                        <div className="flex items-center justify-between">
+                        {platform.isAnalyticsOnly && (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Sessions</span>
+                              <span className="font-semibold text-foreground">{platform.sessions > 0 ? formatNumber(platform.sessions) : '—'}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Users</span>
+                              <span className="font-semibold text-foreground">{platform.users > 0 ? formatNumber(platform.users) : '—'}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Revenue</span>
+                              <span className="font-semibold text-foreground">{platform.revenue > 0 ? formatCurrency(platform.revenue) : '—'}</span>
+                            </div>
+                          </>
+                        )}
+                        <div className={platform.isAnalyticsOnly ? "hidden" : "flex items-center justify-between"}>
                           <span className="text-xs text-muted-foreground">Spend</span>
                           <span className="font-semibold text-foreground">{platform.spend > 0 ? formatCurrency(platform.spend) : '—'}</span>
                         </div>
-                        <div className="flex items-center justify-between">
+                        <div className={platform.isAnalyticsOnly ? "hidden" : "flex items-center justify-between"}>
                           <span className="text-xs text-muted-foreground">ROAS</span>
                           <span className="font-semibold text-foreground">{platform.roas > 0 ? `${platform.roas.toFixed(2)}x` : '—'}</span>
                         </div>
-                        <div className="flex items-center justify-between">
+                        <div className={platform.isAnalyticsOnly ? "hidden" : "flex items-center justify-between"}>
                           <span className="text-xs text-muted-foreground">ROI</span>
                           <span className={`font-semibold ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
                             {platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : '—'}
@@ -479,7 +499,7 @@ export default function PlatformComparison() {
               ) : (
                 <Card>
                   <CardContent className="p-6 text-center text-muted-foreground/70">
-                    <p>No platform data available. Connect platforms (LinkedIn, Meta) or revenue sources (Shopify, HubSpot, Salesforce) to see comparison data.</p>
+                    <p>No connected platform data available yet. Connect a platform in Connected Platforms to see comparison data.</p>
                   </CardContent>
                 </Card>
               )}
@@ -497,6 +517,8 @@ export default function PlatformComparison() {
                         <thead>
                           <tr className="border-b bg-muted/50">
                             <th className="text-left py-3 px-4 font-medium text-muted-foreground/70">Platform</th>
+                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Users</th>
+                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Sessions</th>
                             <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Spend</th>
                             <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Impressions</th>
                             <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Clicks</th>
@@ -518,6 +540,8 @@ export default function PlatformComparison() {
                                   )}
                                 </div>
                               </td>
+                              <td className="text-right py-3 px-4">{platform.users > 0 ? formatNumber(platform.users) : '—'}</td>
+                              <td className="text-right py-3 px-4">{platform.sessions > 0 ? formatNumber(platform.sessions) : '—'}</td>
                               <td className="text-right py-3 px-4">{platform.spend > 0 ? formatCurrency(platform.spend) : '—'}</td>
                               <td className="text-right py-3 px-4">{platform.impressions > 0 ? formatNumber(platform.impressions) : '—'}</td>
                               <td className="text-right py-3 px-4">{platform.clicks > 0 ? formatNumber(platform.clicks) : '—'}</td>
@@ -534,6 +558,8 @@ export default function PlatformComparison() {
                         </tbody>
                         <tfoot>
                           {(() => {
+                            const totUsers = realPlatformMetrics.reduce((s: number, p: any) => s + (p.users || 0), 0);
+                            const totSessions = realPlatformMetrics.reduce((s: number, p: any) => s + (p.sessions || 0), 0);
                             const totSpend = realPlatformMetrics.reduce((s: number, p: any) => s + p.spend, 0);
                             const totImpressions = realPlatformMetrics.reduce((s: number, p: any) => s + p.impressions, 0);
                             const totClicks = realPlatformMetrics.reduce((s: number, p: any) => s + p.clicks, 0);
@@ -544,12 +570,14 @@ export default function PlatformComparison() {
                             return (
                               <tr className="bg-muted/50 font-semibold">
                                 <td className="py-3 px-4 text-foreground">Total</td>
-                                <td className="text-right py-3 px-4">{formatCurrency(totSpend)}</td>
-                                <td className="text-right py-3 px-4">{formatNumber(totImpressions)}</td>
-                                <td className="text-right py-3 px-4">{formatNumber(totClicks)}</td>
+                                <td className="text-right py-3 px-4">{totUsers > 0 ? formatNumber(totUsers) : '—'}</td>
+                                <td className="text-right py-3 px-4">{totSessions > 0 ? formatNumber(totSessions) : '—'}</td>
+                                <td className="text-right py-3 px-4">{totSpend > 0 ? formatCurrency(totSpend) : '—'}</td>
+                                <td className="text-right py-3 px-4">{totImpressions > 0 ? formatNumber(totImpressions) : '—'}</td>
+                                <td className="text-right py-3 px-4">{totClicks > 0 ? formatNumber(totClicks) : '—'}</td>
                                 <td className="text-right py-3 px-4">{weightedCtr > 0 ? `${formatPct(weightedCtr)}` : '—'}</td>
-                                <td className="text-right py-3 px-4">{formatNumber(totConversions)}</td>
-                                <td className="text-right py-3 px-4 text-green-600 dark:text-green-400">{formatCurrency(totRevenue)}</td>
+                                <td className="text-right py-3 px-4">{totConversions > 0 ? formatNumber(totConversions) : '—'}</td>
+                                <td className="text-right py-3 px-4 text-green-600 dark:text-green-400">{totRevenue > 0 ? formatCurrency(totRevenue) : '—'}</td>
                                 <td className="text-right py-3 px-4">{weightedRoas > 0 ? `${weightedRoas.toFixed(2)}x` : '—'}</td>
                               </tr>
                             );

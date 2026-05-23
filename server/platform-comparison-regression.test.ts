@@ -12,6 +12,8 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("const aggregateSources = Array.isArray(ot?.performanceSummary?.sources) ? ot.performanceSummary.sources : [];");
     expect(page).toContain('.filter((source: any) => source?.connected === true && source?.category !== "financial")');
     expect(page).toContain("const includedMetrics = Array.isArray(source?.includedMetrics) ? source.includedMetrics.map(String) : [];");
+    expect(page).toContain("const sessions = includesMetric(\"sessions\") ? num(metrics.sessions) : 0;");
+    expect(page).toContain("const users = includesMetric(\"users\") ? num(metrics.users) : 0;");
     expect(page).toContain('source?.id === "ga4" ? "#e37400"');
     expect(page).toContain('source?.id === "google_ads" ? "#34a853"');
   });
@@ -22,5 +24,20 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("if (performanceSummary) return [];");
     expect(page).toContain("const revenueSourcesData = useMemo(() => {");
     expect(page).toContain("source?.category !== \"financial\"");
+  });
+
+  it("renders the Overview tab with web analytics fields for GA4 instead of paid-media zeroes", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "platform-comparison.tsx"), "utf-8");
+    const overviewStart = page.indexOf('<TabsContent value="overview"');
+    const overviewEnd = page.indexOf('<TabsContent value="performance"', overviewStart);
+    const overview = page.slice(overviewStart, overviewEnd);
+
+    expect(overview).toContain("platform.isAnalyticsOnly && (");
+    expect(overview).toContain("<span className=\"text-xs text-muted-foreground\">Sessions</span>");
+    expect(overview).toContain("<span className=\"text-xs text-muted-foreground\">Users</span>");
+    expect(overview).toContain("<span className=\"text-xs text-muted-foreground\">Revenue</span>");
+    expect(overview).toContain('className={platform.isAnalyticsOnly ? "hidden" : "flex items-center justify-between"}');
+    expect(overview).toContain("No connected platform data available yet. Connect a platform in Connected Platforms to see comparison data.");
+    expect(overview).not.toContain("Connect platforms (LinkedIn, Meta) or revenue sources (Shopify, HubSpot, Salesforce)");
   });
 });

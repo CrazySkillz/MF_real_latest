@@ -240,7 +240,7 @@ Rules:
 
 ## Current Status
 
-Not production-ready yet for the full requested source-of-truth rule. Commit 1 is complete.
+Not production-ready yet for the full requested source-of-truth rule. Commit 1 and Commit 2 are complete.
 
 Proven:
 
@@ -250,11 +250,13 @@ Proven:
 - Commit 1: Platform Comparison now uses a URL-style `outcome-totals` query key, reads `outcomeTotals.performanceSummary`, builds primary platform rows from `performanceSummary.sources`, and excludes `category: "financial"` child revenue/spend sources from main platform rows.
 - Commit 1: When the aggregate is present, legacy revenue source rows are not shown as separate revenue platforms.
 - Commit 1 validation: targeted regression coverage added in `server/platform-comparison-regression.test.ts`.
+- Commit 1 Render validation passed: `/api/campaigns/:id/outcome-totals?dateRange=30days` returned `performanceSummary.sources` with GA4, and Platform Comparison used the connected-source aggregate list as the source-of-truth path.
+- Commit 2: Overview cards and the summary table now include GA4 web analytics fields from the aggregate source row (`users`, `sessions`, `conversions`, and `revenue`) and hide paid-media fields (`spend`, `ROAS`, `ROI`) for analytics-only sources instead of presenting them as zero-performance metrics.
+- Commit 2: Overview empty-state copy now references Connected Platforms generally instead of naming only LinkedIn, Meta, or child revenue systems.
 
 Outstanding:
 
-- Continue wiring each tab to capability-aware source rows beyond the initial aggregate source-row boundary.
+- Continue wiring Performance Metrics, Cost Analysis, and Insights to capability-aware source rows beyond the initial aggregate source-row boundary.
 - Remove or gate remaining hardcoded platform blocks and legacy fallback estimates that are still retained only as no-aggregate fallback behavior.
-- Wire each tab to capability-aware source rows.
 - Expand targeted regression coverage for each tab.
 - Validate with GA4-only and multi-platform connected-source scenarios.

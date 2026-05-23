@@ -1037,8 +1037,11 @@ export default function PlatformComparison() {
                 </>
               ) : (
                 <Card>
-                  <CardContent className="p-6 text-center text-muted-foreground/70">
-                    <p>No spend-capable connected platform is available for cost analysis yet. Connect a paid-media platform in Connected Platforms to compare source-level spend, CPA, ROI, and ROAS.</p>
+                  <CardContent className="p-6 text-center">
+                    <p className="font-semibold text-foreground">Cost comparison unavailable</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Google Analytics is connected, but no main paid-media platform is connected yet. Connect LinkedIn Ads, Meta Ads, or Google Ads in Connected Platforms to compare source-level spend, CPA, ROI, and ROAS.
+                    </p>
                   </CardContent>
                 </Card>
               )}

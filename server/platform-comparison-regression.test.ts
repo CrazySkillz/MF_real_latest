@@ -11,6 +11,7 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain('fetch(url, { credentials: "include" })');
     expect(page).toContain("isFetched: outcomeTotalsFetched");
     expect(page).toContain("if (!outcomeTotalsFetched && !ot) return [];");
+    expect(page).toContain("const platformMetricsLoading = !outcomeTotalsFetched && !outcomeTotals;");
     expect(page).toContain("const performanceSummary = outcomeTotals?.performanceSummary;");
     expect(page).toContain("const aggregateSources = Array.isArray(ot?.performanceSummary?.sources) ? ot.performanceSummary.sources : [];");
     expect(page).toContain('.filter((source: any) => source?.connected === true && source?.category !== "financial")');
@@ -41,6 +42,8 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(overview).toContain("<span className=\"text-xs text-muted-foreground\">Users</span>");
     expect(overview).toContain("<span className=\"text-xs text-muted-foreground\">Revenue</span>");
     expect(overview).toContain('className={platform.isAnalyticsOnly ? "hidden" : "flex items-center justify-between"}');
+    expect(overview).toContain("platformMetricsLoading ? (");
+    expect(overview).toContain("animate-pulse space-y-3");
     expect(overview).toContain("No connected platform data available yet. Connect a platform in Connected Platforms to see comparison data.");
     expect(overview).not.toContain("Connect platforms (LinkedIn, Meta) or revenue sources (Shopify, HubSpot, Salesforce)");
   });
@@ -54,7 +57,13 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("const canShowCtr = (platform: any) => hasMetric(platform, \"impressions\") && hasMetric(platform, \"clicks\");");
     expect(page).toContain("const canShowCpc = (platform: any) => hasMetric(platform, \"spend\") && hasMetric(platform, \"clicks\");");
     expect(page).toContain("const canShowFinancialEfficiency = (platform: any) => hasMetric(platform, \"spend\") && (hasMetric(platform, \"revenue\") || hasMetric(platform, \"attributedRevenue\"));");
+    expect(page).toContain("const efficiencyComparisonMetrics = realPlatformMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) || canShowCpa(platform));");
     expect(performance).toContain("ROAS and ROI require both spend and revenue from this connected source.");
+    expect(performance).toContain("No spend-based efficiency comparison is available.");
+    expect(performance).toContain("<span>Volume Comparison</span>");
+    expect(performance).toContain("Available volume metrics across connected platforms");
+    expect(performance).toContain("const hasImpressions = hasMetric(platform, \"impressions\");");
+    expect(performance).toContain('className={hasImpressions ? "grid grid-cols-2 gap-4" : "grid grid-cols-1 gap-4"}');
     expect(performance).toContain('hasMetric(platform, "clicks") ? "Clicks" : hasMetric(platform, "sessions") ? "Sessions" : "Engagement"');
     expect(performance).toContain("No connected platform data available yet. Connect a platform in Connected Platforms to see performance metrics.");
     expect(performance).not.toContain("Connect platforms (LinkedIn, Meta) to see performance metrics.");

@@ -225,7 +225,9 @@ Evidence:
 
 - Detailed Performance Metrics now renders CTR, CPC, conversion rate, ROI, and efficiency values only when the connected source provides the required capabilities.
 - Efficiency Comparison now shows an explicit unavailable explanation when a source does not provide both spend and revenue, instead of implying zero ROAS/ROI performance.
+- Efficiency Comparison now excludes sources that cannot support spend-based efficiency metrics. GA4-only campaigns show a single explanatory unavailable state instead of a Google Analytics row full of unavailable paid-media metrics.
 - Volume & Reach now labels engagement as `Clicks`, `Sessions`, or `Engagement` based on the source capabilities, so GA4-only rows use sessions instead of paid-media click assumptions.
+- Volume Comparison now renders only volume metrics the source can provide. GA4-only campaigns no longer show a separate unavailable impressions lane because GA4 is not an ad-impression source.
 - Empty-state copy now references Connected Platforms generally instead of naming only LinkedIn or Meta.
 - Regression coverage updated in `server/platform-comparison-regression.test.ts`.
 
@@ -290,7 +292,10 @@ Proven:
 - Commit 2 follow-up: The GA4 mock/test aggregate now mirrors the GA4 Overview Summary formula exactly: sessions, conversions, and native GA4 revenue use the larger of GA4 to-date totals and merged daily lookback totals, while users use to-date totals when present because users are not safely additive across daily rows.
 - Commit 2 Render validation passed: the Platform Comparison Overview tab showed only Google Analytics for the current GA4-only campaign, displayed GA4-supported metrics only, matched the GA4 platform Overview values, and no longer flashed Meta before GA4 loaded.
 - Commit 2 follow-up: Platform Comparison no longer renders legacy per-platform fallback rows while the shared aggregate request is still unresolved, preventing Meta or other fallback data from flashing before the connected-source aggregate loads.
+- Commit 2 follow-up: Overview now renders a silent skeleton while the shared aggregate is initially unresolved, so the page does not flash a false no-data state before connected-source rows load.
 - Commit 3: Performance Metrics now uses source-capability aware display rules for CTR, CPC, conversion rate, ROAS, ROI, CPA, impressions, clicks, and sessions. GA4-only rows show unavailable paid-media efficiency metrics instead of zero-performance paid-media assumptions.
+- Commit 3 follow-up: Efficiency Comparison now compares only spend-efficiency-capable sources and shows a concise unavailable explanation for GA4-only campaigns.
+- Commit 3 follow-up: Volume Comparison now hides unavailable impressions lanes for sources that do not provide impressions and presents available volume metrics such as GA4 sessions.
 
 Outstanding:
 

@@ -350,6 +350,7 @@ export default function PlatformComparison() {
   };
 
   const realPlatformMetrics = buildPlatformMetrics();
+  const platformMetricsLoading = !outcomeTotalsFetched && !outcomeTotals;
   const hasMetric = (platform: any, metric: string) => {
     const included = Array.isArray(platform?.includedMetrics) ? platform.includedMetrics.map(String) : [];
     return included.length === 0 ? Number(platform?.[metric] || 0) > 0 : included.includes(metric);
@@ -359,6 +360,7 @@ export default function PlatformComparison() {
   const canShowConversionRate = (platform: any) => hasMetric(platform, "conversions") && (hasMetric(platform, "clicks") || hasMetric(platform, "sessions"));
   const canShowFinancialEfficiency = (platform: any) => hasMetric(platform, "spend") && (hasMetric(platform, "revenue") || hasMetric(platform, "attributedRevenue"));
   const canShowCpa = (platform: any) => hasMetric(platform, "spend") && hasMetric(platform, "conversions");
+  const efficiencyComparisonMetrics = realPlatformMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) || canShowCpa(platform));
 
   const totalRevenueSourceRevenue = revenueSourcesData.reduce((sum: number, s: any) => sum + s.revenue, 0);
 
@@ -455,7 +457,21 @@ export default function PlatformComparison() {
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
               {/* Platform Performance Summary Cards */}
-              {realPlatformMetrics.length > 0 ? (
+              {platformMetricsLoading ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <Card key={index}>
+                      <CardContent className="p-6">
+                        <div className="animate-pulse space-y-3">
+                          <div className="h-4 bg-muted rounded w-2/3"></div>
+                          <div className="h-6 bg-muted rounded w-1/2"></div>
+                          <div className="h-4 bg-muted rounded w-3/4"></div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : realPlatformMetrics.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                   {realPlatformMetrics.map((platform, index) => (
                     <Card key={index} className="border-l-4" style={{ borderLeftColor: platform.color }} data-testid={`platform-card-${index}`}>
@@ -731,35 +747,41 @@ export default function PlatformComparison() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          {realPlatformMetrics.map((platform, index) => (
-                            <div key={index} className="space-y-2">
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="font-medium text-foreground">{platform.platform}</span>
-                                <div className="flex items-center space-x-3">
-                                  <span className="text-muted-foreground/70">{canShowFinancialEfficiency(platform) && platform.spend > 0 ? `${platform.roas.toFixed(2)}x ROAS` : 'Efficiency unavailable'}</span>
-                                  <span className={`font-medium ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground/70'}`}>
-                                    {canShowFinancialEfficiency(platform) && platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}% ROI` : 'Unavailable'}
-                                  </span>
+                          {efficiencyComparisonMetrics.length > 0 ? (
+                            efficiencyComparisonMetrics.map((platform, index) => (
+                              <div key={index} className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="font-medium text-foreground">{platform.platform}</span>
+                                  <div className="flex items-center space-x-3">
+                                    <span className="text-muted-foreground/70">{canShowFinancialEfficiency(platform) && platform.spend > 0 ? `${platform.roas.toFixed(2)}x ROAS` : 'Efficiency unavailable'}</span>
+                                    <span className={`font-medium ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground/70'}`}>
+                                      {canShowFinancialEfficiency(platform) && platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}% ROI` : 'Unavailable'}
+                                    </span>
+                                  </div>
                                 </div>
+                                <div className="w-full bg-muted rounded-full h-2">
+                                  <div
+                                    className="h-2 rounded-full transition-all"
+                                    style={{
+                                      width: `${canShowFinancialEfficiency(platform) ? Math.min((platform.roas / 5) * 100, 100) : 0}%`,
+                                      backgroundColor: platform.color
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                  <span>CPA: {canShowCpa(platform) && platform.conversions > 0 && platform.spend > 0 ? formatCurrency(platform.spend / platform.conversions) : 'Unavailable'}</span>
+                                  <span>{hasMetric(platform, "conversions") && platform.conversions > 0 ? `${formatNumber(platform.conversions)} Conv.` : 'Conversions unavailable'}</span>
+                                </div>
+                                {!canShowFinancialEfficiency(platform) && (
+                                  <p className="text-xs text-muted-foreground">ROAS and ROI require both spend and revenue from this connected source.</p>
+                                )}
                               </div>
-                              <div className="w-full bg-muted rounded-full h-2">
-                                <div
-                                  className="h-2 rounded-full transition-all"
-                                  style={{
-                                    width: `${canShowFinancialEfficiency(platform) ? Math.min((platform.roas / 5) * 100, 100) : 0}%`,
-                                    backgroundColor: platform.color
-                                  }}
-                                />
-                              </div>
-                              <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>CPA: {canShowCpa(platform) && platform.conversions > 0 && platform.spend > 0 ? formatCurrency(platform.spend / platform.conversions) : 'Unavailable'}</span>
-                                <span>{hasMetric(platform, "conversions") && platform.conversions > 0 ? `${formatNumber(platform.conversions)} Conv.` : 'Conversions unavailable'}</span>
-                              </div>
-                              {!canShowFinancialEfficiency(platform) && (
-                                <p className="text-xs text-muted-foreground">ROAS and ROI require both spend and revenue from this connected source.</p>
-                              )}
-                            </div>
-                          ))}
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              No spend-based efficiency comparison is available. ROAS, ROI, and CPA require connected sources with spend plus revenue or conversions.
+                            </p>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -770,9 +792,9 @@ export default function PlatformComparison() {
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-2">
                         <Users className="w-5 h-5" />
-                        <span>Volume & Reach Comparison</span>
+                        <span>Volume Comparison</span>
                       </CardTitle>
-                      <CardDescription>Impressions and engagement across all connected platforms</CardDescription>
+                      <CardDescription>Available volume metrics across connected platforms</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-6">
@@ -780,6 +802,7 @@ export default function PlatformComparison() {
                           const maxImpressions = Math.max(...realPlatformMetrics.map(p => p.impressions), 1);
                           const engagementValue = platform.clicks > 0 ? platform.clicks : platform.engagement;
                           const maxEngagement = Math.max(...realPlatformMetrics.map(p => p.clicks > 0 ? p.clicks : p.engagement), 1);
+                          const hasImpressions = hasMetric(platform, "impressions");
 
                           return (
                             <div key={index} className="space-y-3">
@@ -791,24 +814,26 @@ export default function PlatformComparison() {
                                 )}
                               </div>
 
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-foreground/70">Impressions</span>
-                                    <span className="font-semibold text-foreground">
-                                      {hasMetric(platform, "impressions") && platform.impressions > 0 ? formatNumber(platform.impressions) : 'Unavailable'}
-                                    </span>
+                              <div className={hasImpressions ? "grid grid-cols-2 gap-4" : "grid grid-cols-1 gap-4"}>
+                                {hasImpressions && (
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span className="text-muted-foreground/70">Impressions</span>
+                                      <span className="font-semibold text-foreground">
+                                        {platform.impressions > 0 ? formatNumber(platform.impressions) : 'Unavailable'}
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-muted rounded-full h-2">
+                                      <div
+                                        className="h-2 rounded-full transition-all"
+                                        style={{
+                                          width: `${platform.impressions > 0 ? Math.min((platform.impressions / maxImpressions) * 100, 100) : 0}%`,
+                                          backgroundColor: platform.color
+                                        }}
+                                      />
+                                    </div>
                                   </div>
-                                  <div className="w-full bg-muted rounded-full h-2">
-                                    <div
-                                      className="h-2 rounded-full transition-all"
-                                      style={{
-                                        width: `${platform.impressions > 0 ? Math.min((platform.impressions / maxImpressions) * 100, 100) : 0}%`,
-                                        backgroundColor: platform.color
-                                      }}
-                                    />
-                                  </div>
-                                </div>
+                                )}
 
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between text-sm">

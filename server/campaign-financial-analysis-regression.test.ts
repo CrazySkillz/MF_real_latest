@@ -10,6 +10,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days"');
     expect(page).toContain("outcome-totals?dateRange=90days");
     expect(page).toContain('if (!response.ok) throw new Error("Failed to load aggregate financial totals");');
+    expect(page).toContain("<TabsList>");
+    expect(page).not.toContain('TabsList className="grid w-full grid-cols-5"');
     expect(page).toContain("placeholderData: (previousData: any) => previousData");
     expect(page).toContain("const FINANCIAL_ANALYSIS_REFRESH_MS = 30000;");
     expect(page).toContain("refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS");

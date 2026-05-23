@@ -422,6 +422,7 @@ Proven:
 - Follow-up source-of-truth fix: GA4 platform `Total Revenue`, `Revenue Breakdown`, `Total Spend`, and `Spend Breakdown` now ignore Budget Pacing start/end metadata and read all active source records to date, so Budget & Financial pacing inputs cannot reduce platform-level revenue/spend or distort GA4 ROI/ROAS.
 - Follow-up copy fix: Campaign Health Pacing Status no longer displays the `of target pace` helper text; the pacing percentage and status thresholds remain unchanged.
 - Pacing Status percentage remains documented as actual daily burn rate divided by target daily spend. A value such as `3.2%` is critical because it is more than 50% away from target pace.
+- Follow-up UI consistency fix: Budget & Financial Analysis tabs now use the same content-width tab format as Performance Summary instead of full-page equal-width grid tabs.
 - Financial Performance Insights are logical within the current aggregate contract: summary tones are value-based, source insights are sourced from spend-capable connected sources, scaling language is gated by budget/source conditions, and GA4-only campaigns do not receive paid-media optimization recommendations without a connected spend-capable ad platform.
 - Scheduler-created snapshots include `metrics.performanceSummary`, and Budget & Financial trend indicators compare only compatible aggregate snapshots.
 - The Budget & Financial page refetches current aggregate values while visible and on window focus so source updates are pulled into the UI through the same aggregate contract.

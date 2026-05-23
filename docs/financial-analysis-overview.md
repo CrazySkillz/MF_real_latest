@@ -21,6 +21,8 @@ The page may still load legacy platform endpoints for older fallback paths, but 
 
 Financial source-of-truth rule: platform-level connected-source revenue and spend records feed the Budget & Financial aggregate. Budget & Financial Analysis must not write, override, filter, or reinterpret platform revenue/spend totals. Budget Pacing inputs only update campaign metadata used for pacing formulas.
 
+Tab navigation follows the same content-width tab format as Campaign DeepDive Performance Summary. It must not use full-page equal-width grid tabs.
+
 A historical snapshot endpoint is also queried for trend indicators:
 - `/api/campaigns/{campaignId}/snapshots/comparison?type={comparisonType}` - returns current and previous metric snapshots.
 

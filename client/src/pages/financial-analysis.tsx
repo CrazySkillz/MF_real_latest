@@ -683,7 +683,7 @@ export default function FinancialAnalysis() {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="roi-roas">ROI & ROAS</TabsTrigger>
               <TabsTrigger value="costs">Cost Analysis</TabsTrigger>

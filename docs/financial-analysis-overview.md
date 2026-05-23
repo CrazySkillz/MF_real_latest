@@ -64,6 +64,8 @@ A composite score from 4 equally-weighted sub-scores, each worth 0-25 points:
 
 Budget Utilization requires both available spend and a configured campaign budget. Pacing requires available spend, a configured campaign budget, a valid campaign start date, and a valid campaign end date. If any required input is missing, the related sub-scores are unavailable and contribute 0 points instead of being treated as 0% utilization or 100% on-track pacing.
 
+The Campaign Health `Pacing Status` value displays actual daily burn as a percentage of target daily spend. Example: `3.2% of target pace` is critical because it is 96.8% below the expected daily spend pace.
+
 Campaign ROI and Campaign ROAS in this health card are campaign-level aggregate health inputs read from `performanceSummary.totals.roi` and `performanceSummary.totals.roas`. They use the same formulas as platform ROI/ROAS, but their scope is the campaign aggregate across eligible connected-source financial inputs. GA4 platform ROI/ROAS is the GA4 platform-specific financial view for that campaign's GA4 scope and GA4 financial child inputs. When GA4 is the only connected financial source, the values should align; when additional connected financial sources exist, the campaign aggregate can differ from the GA4 platform view.
 
 ROI and ROAS require available aggregate revenue and spend. If either metric is unavailable, the sub-score is unavailable and contributes 0 points instead of being labeled critical.

@@ -95,12 +95,11 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("const comparableFinancialMetrics = spendCapableMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) && platform.spend > 0);");
     expect(page).toContain("const platformsWithData = spendCapableMetrics.filter((p: any) => {");
     expect(page).toContain("if (metric === 'roas' || metric === 'roi') return canShowFinancialEfficiency(p) && p.spend > 0;");
-    expect(insights).toContain("{spendCapableMetrics.length === 0 ? (");
+    expect(insights).toContain("{spendCapableMetrics.length < 2 ? (");
     expect(insights).toContain("No paid-media platform connected");
     expect(insights).toContain("Google Analytics is connected and contributes analytics metrics, but Platform Comparison insights require a main paid-media platform such as LinkedIn Ads, Meta Ads, or Google Ads.");
+    expect(insights).toContain("Connect at least one more main paid-media platform with source-level spend to generate comparison-based insights and recommendations.");
     expect(insights).toContain("Insights and recommendations use only main Connected Platforms that provide source-level ad spend:");
-    expect(insights).toContain("Paid-media comparison unavailable");
-    expect(insights).toContain("Platform Comparison insights need at least two main paid-media Connected Platforms with comparable source-level spend.");
     expect(insights).toContain("{comparableFinancialMetrics.length > 1 && bestROAS && (");
     expect(insights).toContain("{spendCapableMetrics.length > 1 && bestConversions && (");
     expect(insights).toContain("{spendCapableMetrics.length > 1 && bestCTR && (");

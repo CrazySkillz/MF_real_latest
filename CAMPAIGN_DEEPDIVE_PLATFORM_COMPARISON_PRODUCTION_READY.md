@@ -187,12 +187,14 @@ Examples:
 - Shopify inside GA4
 - CSV revenue/spend imports inside GA4
 - Google Sheets revenue/spend imports inside GA4
+- LinkedIn or Meta spend imported inside GA4
 
 Rules:
 
 - may feed campaign financial totals through the parent platform/campaign financial path
 - must not appear as separate main platforms in Platform Comparison
 - may be referenced only as provenance if a future UI section explicitly displays financial inputs
+- do not make LinkedIn Ads, Meta Ads, or another ad platform eligible for Platform Comparison unless that ad platform is connected as its own main Connected Platform
 
 ## Tab Implementation Plan
 
@@ -204,6 +206,17 @@ Rules:
 - Exclude financial child sources from main platform rows.
 - Add regression coverage proving GA4-only uses one GA4 source row and no child revenue sources appear as platforms.
 
+Status: completed.
+
+Evidence:
+
+- Platform Comparison now uses a URL-style `outcome-totals` query key and reads `outcomeTotals.performanceSummary`.
+- Primary platform rows are built from `performanceSummary.sources`.
+- Financial child sources are excluded from main platform rows with `category !== "financial"`.
+- When the aggregate is present, legacy revenue source rows are not shown as separate revenue platforms.
+- Targeted regression coverage was added in `server/platform-comparison-regression.test.ts`.
+- Render validation passed: `/api/campaigns/:id/outcome-totals?dateRange=30days` returned `performanceSummary.sources` with GA4, and Platform Comparison used the connected-source aggregate list as the source-of-truth path.
+
 ### Commit 2: Overview Tab
 
 - Wire Overview cards and the summary table to normalized aggregate source rows.
@@ -211,6 +224,20 @@ Rules:
 - Use GA4 sessions/users/conversions/revenue where available.
 - Do not show GA4 impressions/clicks/spend as zero-performance paid-media metrics.
 - Update empty-state copy to reference connected sources generally, not only LinkedIn/Meta.
+
+Status: completed.
+
+Evidence:
+
+- Overview cards and the summary table now include GA4 web analytics fields from the aggregate source row: `users`, `sessions`, `conversions`, and `revenue`.
+- Overview hides paid-media fields such as `spend`, `ROAS`, and `ROI` for analytics-only sources instead of presenting them as zero-performance metrics.
+- Empty-state copy now references Connected Platforms generally instead of naming only LinkedIn, Meta, or child revenue systems.
+- Platform Comparison now requests the shared aggregate with `dateRange=90days`, matching Performance Summary, Budget & Financial Analysis, and the GA4 platform Overview source-of-truth window.
+- GA4 revenue now uses the parent GA4 platform total from `outcomeTotals.revenue.totalRevenue`, so child revenue inputs configured inside GA4 are included in the GA4 row without being shown as separate platforms.
+- Yesop/mock GA4 source rows now mirror the GA4 Overview Summary formula: sessions, conversions, and native GA4 revenue use the larger of GA4 to-date totals and merged daily lookback totals, while users use to-date totals when present.
+- Overview no longer renders legacy per-platform fallback rows while the shared aggregate request is unresolved, preventing Meta or other fallback data from flashing before the connected-source aggregate loads.
+- Overview renders a silent skeleton while the shared aggregate is initially unresolved, so the page does not flash a false no-data state before connected-source rows load.
+- Render validation passed: the Platform Comparison Overview tab showed only Google Analytics for the current GA4-only campaign, displayed GA4-supported metrics only, matched the GA4 platform Overview values, and no longer flashed Meta before GA4 loaded.
 
 ### Commit 3: Performance Metrics Tab
 
@@ -296,6 +323,7 @@ Proven:
 - Commit 3: Performance Metrics now uses source-capability aware display rules for CTR, CPC, conversion rate, ROAS, ROI, CPA, impressions, clicks, and sessions. GA4-only rows show unavailable paid-media efficiency metrics instead of zero-performance paid-media assumptions.
 - Commit 3 follow-up: Efficiency Comparison now compares only spend-efficiency-capable sources and shows a concise unavailable explanation for GA4-only campaigns.
 - Commit 3 follow-up: Volume Comparison now hides unavailable impressions lanes for sources that do not provide impressions and presents available volume metrics such as GA4 sessions.
+- Commit 3 Render validation passed: with only Google Analytics connected, Efficiency Comparison correctly remained unavailable because there is no main spend-capable ad platform, and Volume Comparison correctly showed GA4 sessions. LinkedIn/Meta spend imports inside GA4 remain child financial inputs, not separate Platform Comparison rows.
 
 Outstanding:
 

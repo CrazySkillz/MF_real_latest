@@ -366,7 +366,7 @@ Evidence:
 - Follow-up correctness fix: Budget & Financial Overview aggregate metrics now keep prior aggregate data during outcome-totals refetch and fail closed when `performanceSummary` is unavailable, instead of falling back to stale legacy local spend totals.
 - Follow-up correctness fix: Budget pacing metadata no longer filters aggregate imported spend provenance in `/outcome-totals`; Total Spend remains sourced from the full active spend-source aggregate while start/end dates affect only pacing calculations.
 - Follow-up clarity fix: Budget Pacing & Burn Rate now displays the elapsed campaign day count under Daily Burn Rate, making it clear when Daily Burn Rate equals Total Spend because only one pacing day has elapsed.
-- Follow-up formatting fix: the inline Campaign Budget input auto-formats with thousands separators as values are typed while saving the numeric budget value without commas.
+- Follow-up formatting fix: the inline Campaign Budget input accepts numeric input only and auto-formats with thousands separators as values are typed while saving the numeric budget value without commas.
 - Follow-up synchronization fix: Budget Pacing & Burn Rate now refetches campaign budget/start/end metadata while visible and on window focus, uses the returned campaign row immediately after save/delete, and invalidates aggregate totals so recalculations use current spend plus current pacing metadata.
 - Follow-up over-budget guard fix: the Budget Pacing warning now requires a positive campaign budget, so deleting pacing inputs does not show `Budget exceeded by ...` against a missing budget.
 

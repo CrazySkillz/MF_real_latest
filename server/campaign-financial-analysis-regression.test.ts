@@ -85,6 +85,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`] });');
     expect(page).toContain("const handleDeletePacingInputs = () => {");
     expect(page).toContain("const formatBudgetInputValue = (value?: string | number | null) => {");
+    expect(page).toContain('replace(/[^\\d.]/g, "")');
     expect(page).toContain("setPacingBudgetInput(formatBudgetInputValue(campaign.budget));");
     expect(overview).toContain("Requires campaign spend and start date");
     expect(overview).toContain('Based on {campaignElapsedDays} elapsed campaign {campaignElapsedDays === 1 ? "day" : "days"}');

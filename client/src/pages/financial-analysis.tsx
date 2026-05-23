@@ -78,13 +78,14 @@ export default function FinancialAnalysis() {
   };
 
   const formatBudgetInputValue = (value?: string | number | null) => {
-    const raw = String(value ?? "").replace(/,/g, "").trim();
+    const raw = String(value ?? "").replace(/,/g, "").trim().replace(/[^\d.]/g, "");
     if (!raw) return "";
-    const [integerPart, decimalPart] = raw.split(".");
-    const integerValue = Number(integerPart);
-    if (!Number.isFinite(integerValue)) return String(value ?? "");
+    const [integerPart, ...decimalParts] = raw.split(".");
+    const decimalPart = decimalParts.join("");
+    const integerValue = Number(integerPart || "0");
+    if (!Number.isFinite(integerValue)) return "";
     const formattedInteger = new Intl.NumberFormat("en-US").format(integerValue);
-    return decimalPart !== undefined ? `${formattedInteger}.${decimalPart.slice(0, 2)}` : formattedInteger;
+    return decimalParts.length > 0 ? `${formattedInteger}.${decimalPart.slice(0, 2)}` : formattedInteger;
   };
 
   useEffect(() => {

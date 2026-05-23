@@ -95,7 +95,12 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("const comparableFinancialMetrics = spendCapableMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) && platform.spend > 0);");
     expect(page).toContain("const platformsWithData = spendCapableMetrics.filter((p: any) => {");
     expect(page).toContain("if (metric === 'roas' || metric === 'roi') return canShowFinancialEfficiency(p) && p.spend > 0;");
-    expect(insights).toContain("{spendCapableMetrics.length < 2 ? (");
+    expect(page).toContain("const analyticsOnlyMetrics = realPlatformMetrics.filter((platform: any) => platform.isAnalyticsOnly);");
+    expect(insights).toContain("{spendCapableMetrics.length === 0 && analyticsOnlyMetrics.length > 0 ? (");
+    expect(insights).toContain("{platform.platform} analytics summary");
+    expect(insights).toContain("{platform.platform} is the only connected source, so insights are limited to the web analytics metrics it provides.");
+    expect(insights).toContain("Paid-media comparison and budget recommendations require a main paid-media platform with source-level ad spend, such as LinkedIn Ads, Meta Ads, or Google Ads.");
+    expect(insights).toContain(") : spendCapableMetrics.length < 2 ? (");
     expect(insights).toContain("No paid-media platform connected");
     expect(insights).toContain("Google Analytics is connected and contributes analytics metrics, but it does not provide source-level ad spend for paid-media comparison.");
     expect(insights).toContain("Connect LinkedIn Ads, Meta Ads, or Google Ads in Connected Platforms to compare paid-media performance and recommendations.");

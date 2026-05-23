@@ -362,6 +362,7 @@ export default function PlatformComparison() {
   const canShowCpa = (platform: any) => hasMetric(platform, "spend") && hasMetric(platform, "conversions");
   const efficiencyComparisonMetrics = realPlatformMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) || canShowCpa(platform));
   const spendCapableMetrics = realPlatformMetrics.filter((platform: any) => hasMetric(platform, "spend") && !platform.isAnalyticsOnly);
+  const analyticsOnlyMetrics = realPlatformMetrics.filter((platform: any) => platform.isAnalyticsOnly);
   const comparableFinancialMetrics = spendCapableMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) && platform.spend > 0);
 
   const totalRevenueSourceRevenue = revenueSourcesData.reduce((sum: number, s: any) => sum + s.revenue, 0);
@@ -1070,7 +1071,37 @@ export default function PlatformComparison() {
                 </Card>
               ) : realPlatformMetrics.length > 0 ? (
                 <div className="grid gap-6">
-                  {spendCapableMetrics.length < 2 ? (
+                  {spendCapableMetrics.length === 0 && analyticsOnlyMetrics.length > 0 ? (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <Brain className="w-5 h-5" />
+                          <span>Platform Performance Insights</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-6">
+                        {analyticsOnlyMetrics.map((platform: any) => (
+                          <div key={platform.platform} className="space-y-4">
+                            <div className="text-center">
+                              <h4 className="font-semibold text-foreground mb-2">{platform.platform} analytics summary</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {platform.platform} is the only connected source, so insights are limited to the web analytics metrics it provides.
+                              </p>
+                            </div>
+                            <div className="grid gap-3 md:grid-cols-4">
+                              {hasMetric(platform, "sessions") && <div className="rounded-lg border p-3 text-center"><p className="text-xs text-muted-foreground">Sessions</p><p className="font-semibold">{formatNumber(platform.sessions)}</p></div>}
+                              {hasMetric(platform, "users") && <div className="rounded-lg border p-3 text-center"><p className="text-xs text-muted-foreground">Users</p><p className="font-semibold">{formatNumber(platform.users)}</p></div>}
+                              {hasMetric(platform, "conversions") && <div className="rounded-lg border p-3 text-center"><p className="text-xs text-muted-foreground">Conversions</p><p className="font-semibold">{formatNumber(platform.conversions)}</p></div>}
+                              {hasMetric(platform, "revenue") && <div className="rounded-lg border p-3 text-center"><p className="text-xs text-muted-foreground">Revenue</p><p className="font-semibold">{formatCurrency(platform.revenue)}</p></div>}
+                            </div>
+                            <p className="text-center text-sm text-muted-foreground">
+                              Paid-media comparison and budget recommendations require a main paid-media platform with source-level ad spend, such as LinkedIn Ads, Meta Ads, or Google Ads.
+                            </p>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  ) : spendCapableMetrics.length < 2 ? (
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center space-x-2">

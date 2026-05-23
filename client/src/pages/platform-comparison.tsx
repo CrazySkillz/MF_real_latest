@@ -56,19 +56,22 @@ export default function PlatformComparison() {
 
   // Unified outcome-totals for Meta, GA4, revenue sources, and real revenue data
   const { data: outcomeTotals } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "outcome-totals", "30days", demoMode ? "demo" : "live"],
+    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "30days", demoMode ? "demo" : "live"],
     enabled: !!campaignId,
     queryFn: async () => {
       const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=30days${demoMode ? "&demo=1" : ""}`;
-      const resp = await fetch(url);
+      const resp = await fetch(url, { credentials: "include" });
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },
   });
 
+  const performanceSummary = outcomeTotals?.performanceSummary;
+
   // Revenue sources from outcome-totals (Shopify, HubSpot, Salesforce)
   // Must be before early returns to preserve hooks ordering
   const revenueSourcesData = useMemo(() => {
+    if (performanceSummary) return [];
     if (!outcomeTotals?.revenueSources) return [];
     return (outcomeTotals.revenueSources as any[])
       .filter((s: any) => s.connected && Number(s.lastTotalRevenue || 0) > 0)
@@ -86,7 +89,7 @@ export default function PlatformComparison() {
           color: s.type === 'shopify' ? '#96bf48' : s.type === 'hubspot' ? '#ff7a59' : s.type === 'salesforce' ? '#00a1e0' : '#6366f1',
         };
       });
-  }, [outcomeTotals]);
+  }, [outcomeTotals, performanceSummary]);
 
   if (campaignLoading) {
     return (
@@ -141,7 +144,7 @@ export default function PlatformComparison() {
   };
 
   // Build platform metrics from real connected data
-  const buildPlatformMetrics = () => {
+  const buildPlatformMetrics = (): any[] => {
     const platforms: any[] = [];
     const num = (v: any) => {
       if (v === null || typeof v === "undefined" || v === "") return 0;
@@ -150,6 +153,50 @@ export default function PlatformComparison() {
     };
 
     const ot = outcomeTotals;
+    const aggregateSources = Array.isArray(ot?.performanceSummary?.sources) ? ot.performanceSummary.sources : [];
+    if (aggregateSources.length > 0) {
+      return aggregateSources
+        .filter((source: any) => source?.connected === true && source?.category !== "financial")
+        .map((source: any) => {
+          const metrics = source?.metrics && typeof source.metrics === "object" ? source.metrics : {};
+          const includedMetrics = Array.isArray(source?.includedMetrics) ? source.includedMetrics.map(String) : [];
+          const includesMetric = (metric: string) => includedMetrics.includes(metric);
+          const spend = includesMetric("spend") ? num(metrics.spend) : 0;
+          const impressions = includesMetric("impressions") ? num(metrics.impressions) : 0;
+          const clicks = includesMetric("clicks") ? num(metrics.clicks) : 0;
+          const conversions = includesMetric("conversions") ? num(metrics.conversions) : 0;
+          const revenue = includesMetric("attributedRevenue")
+            ? num(metrics.attributedRevenue)
+            : includesMetric("revenue")
+              ? num(metrics.revenue)
+              : 0;
+          const sessions = includesMetric("sessions") ? num(metrics.sessions) : 0;
+          const users = includesMetric("users") ? num(metrics.users) : 0;
+
+          return {
+            platform: String(source?.label || source?.id || "Connected Source"),
+            impressions,
+            clicks,
+            conversions,
+            spend,
+            revenue,
+            ctr: impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : 0,
+            cpc: clicks > 0 && spend > 0 ? spend / clicks : 0,
+            conversionRate: clicks > 0 && conversions > 0
+              ? (conversions / clicks) * 100
+              : sessions > 0 && conversions > 0
+                ? (conversions / sessions) * 100
+                : 0,
+            roas: spend > 0 && revenue > 0 ? revenue / spend : 0,
+            roi: spend > 0 && revenue > 0 ? ((revenue - spend) / spend) * 100 : 0,
+            qualityScore: 0,
+            reach: users,
+            engagement: sessions || clicks,
+            color: source?.id === "ga4" ? "#e37400" : source?.id === "linkedin" ? "#0077b5" : source?.id === "meta" ? "#1877f2" : source?.id === "google_ads" ? "#34a853" : "#8b5cf6",
+            isAnalyticsOnly: String(source?.category || "") === "web_analytics",
+          };
+        });
+    }
 
     // Use outcome-totals as primary data source when available
     if (ot?.platforms) {

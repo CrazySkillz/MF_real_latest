@@ -49,6 +49,8 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(routes).toContain("let ga4TotalsFromSourceTruth = false;");
     expect(routes).toContain("ga4TotalsFromSourceTruth = true;");
     expect(routes).toContain("!ga4TotalsFromSourceTruth && activeGA4");
-    expect(routes).toContain("const rows = [...(Array.isArray(sim?.timeSeries) ? sim.timeSeries : []), ...(Array.isArray(storedRows) ? storedRows : [])];");
+    expect(routes).toContain("const dbByDate = new Map<string, any>();");
+    expect(routes).toContain("const simDates = new Set(simRows.map((row: any) => String(row.date)));");
+    expect(routes).toContain("if (!simDates.has(date)) rows.push(dbRow);");
   });
 });

@@ -10105,7 +10105,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : "2000-01-01";
             const yesterday = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()) - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
             const storedRows = await storage.getGA4DailyMetrics(campaignId, primaryPropertyId, startDateUsed, yesterday).catch(() => [] as any[]);
-            const rows = [...(Array.isArray(sim?.timeSeries) ? sim.timeSeries : []), ...(Array.isArray(storedRows) ? storedRows : [])];
+            const simRows = Array.isArray(sim?.timeSeries) ? sim.timeSeries : [];
+            const dbByDate = new Map<string, any>();
+            for (const row of (Array.isArray(storedRows) ? storedRows : [])) {
+              if (row?.date) dbByDate.set(String(row.date), row);
+            }
+            const simDates = new Set(simRows.map((row: any) => String(row.date)));
+            const rows = simRows.map((row: any) => {
+              const dbRow = dbByDate.get(String(row.date));
+              if (!dbRow) return row;
+              return {
+                ...row,
+                sessions: parseNum(row?.sessions) + parseNum(dbRow?.sessions),
+                users: parseNum(row?.users) + parseNum(dbRow?.users),
+                conversions: parseNum(row?.conversions) + parseNum(dbRow?.conversions),
+                revenue: Number((parseNum(row?.revenue) + parseNum(dbRow?.revenue)).toFixed(2)),
+              };
+            });
+            for (const [date, dbRow] of Array.from(dbByDate)) {
+              if (!simDates.has(date)) rows.push(dbRow);
+            }
             ga4Totals = rows.reduce((totals: any, row: any) => ({
               connected: true,
               revenue: Number((totals.revenue + parseNum(row?.revenue)).toFixed(2)),

@@ -27,6 +27,7 @@ Do not turn Platform Comparison into another platform-specific page.
 Do not duplicate aggregation logic across tabs.
 Do not invent unavailable metrics for sources that do not provide them.
 Do not display platform child revenue/spend inputs as separate main platforms.
+Do not guess when Platform Comparison values differ from the connected platform source-of-truth page. Trace the exact source field, merge rule, date window, and rendered value before editing.
 
 ## Current Root Cause
 
@@ -255,7 +256,7 @@ Proven:
 - Commit 2: Overview cards and the summary table now include GA4 web analytics fields from the aggregate source row (`users`, `sessions`, `conversions`, and `revenue`) and hide paid-media fields (`spend`, `ROAS`, `ROI`) for analytics-only sources instead of presenting them as zero-performance metrics.
 - Commit 2: Overview empty-state copy now references Connected Platforms generally instead of naming only LinkedIn, Meta, or child revenue systems.
 - Commit 2 follow-up: Platform Comparison now requests the shared aggregate with `dateRange=90days`, matching Performance Summary, Budget & Financial Analysis, and the GA4 platform overview source-of-truth window for current campaign values.
-- Commit 2 follow-up: Platform Comparison GA4 revenue now uses the parent GA4 platform total from `outcomeTotals.revenue.totalRevenue`, so child revenue inputs configured inside GA4 are included in the GA4 row without being shown as separate platforms. Yesop/mock GA4 source rows now use the same to-date daily-row calculation pattern as the GA4 platform Overview.
+- Commit 2 follow-up: Platform Comparison GA4 revenue now uses the parent GA4 platform total from `outcomeTotals.revenue.totalRevenue`, so child revenue inputs configured inside GA4 are included in the GA4 row without being shown as separate platforms. Yesop/mock GA4 source rows now use the same date-overlay daily-row merge pattern as the GA4 platform Overview before summing sessions, users, conversions, and revenue.
 
 Outstanding:
 

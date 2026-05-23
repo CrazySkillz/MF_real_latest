@@ -275,6 +275,7 @@ Evidence:
 - Cost-per-conversion chart rows require both spend and conversions, preventing conversion-only sources from appearing as cost-analysis rows.
 - Source-level ROI and ROAS cards render only for spend-capable source rows and show unavailable when required source-level financial inputs are missing.
 - Regression coverage updated in `server/platform-comparison-regression.test.ts`.
+- Render validation passed: with only Google Analytics connected, Cost Analysis showed the `No paid-media platform connected` unavailable state and did not treat GA4 child spend imports as separate Platform Comparison sources.
 
 ### Commit 5: Insights Tab
 
@@ -283,6 +284,17 @@ Evidence:
 - Paid-media recommendations should require at least two spend-capable comparable sources.
 - Use source labels and unavailable reasons from the aggregate where useful.
 - Remove estimated-revenue recommendations that are not backed by aggregate revenue.
+
+Status: completed locally, pending validation.
+
+Evidence:
+
+- Insights now uses the same aggregate-derived `spendCapableMetrics` and metric capability helpers as the other Platform Comparison tabs.
+- GA4-only campaigns show an explicit paid-media comparison unavailable explanation instead of budget reallocation recommendations.
+- ROAS/ROI winner and laggard insights require at least two comparable spend-capable sources with source-level spend and revenue.
+- Volume and engagement insights are gated to spend-capable comparable sources instead of treating GA4 analytics metrics as paid-media recommendation inputs.
+- Strategic recommendations require comparable main paid-media sources and no longer use missing CTR, CPC, conversion-rate, ROAS, or ROI values as if they were real metrics.
+- Regression coverage updated in `server/platform-comparison-regression.test.ts`.
 
 ### Commit 6: Scheduler/History Alignment
 
@@ -312,7 +324,7 @@ Evidence:
 
 ## Current Status
 
-Not production-ready yet for the full requested source-of-truth rule. Commit 1 and Commit 2 are complete.
+Not production-ready yet for the full requested source-of-truth rule. Commits 1-4 are implemented and Render-validated; Commit 5 is implemented locally and pending Render validation.
 
 Proven:
 
@@ -337,10 +349,11 @@ Proven:
 - Commit 3 Render validation passed: with only Google Analytics connected, Efficiency Comparison correctly remained unavailable because there is no main spend-capable ad platform, and Volume Comparison correctly showed GA4 sessions. LinkedIn/Meta spend imports inside GA4 remain child financial inputs, not separate Platform Comparison rows.
 - Commit 4: Cost Analysis now includes only spend-capable main connected platform sources. GA4-only campaigns show an unavailable state, and child spend imports inside GA4 remain excluded from Platform Comparison rows.
 - Commit 4 follow-up: The GA4-only Cost Analysis empty state now uses shorter, clearer copy: Google Analytics is connected, but it does not provide source-level ad spend for Platform Comparison; source-level spend, CPA, ROI, and ROAS comparison requires a main paid-media platform such as LinkedIn Ads, Meta Ads, or Google Ads.
+- Commit 4 Render validation passed: with only Google Analytics connected, Cost Analysis showed the `No paid-media platform connected` unavailable state and did not treat GA4 child spend imports as separate Platform Comparison sources.
+- Commit 5: Insights now uses aggregate-derived source capabilities and spend-capable source rows. GA4-only campaigns show a paid-media comparison unavailable explanation, and budget recommendations require comparable main paid-media platforms.
 
 Outstanding:
 
-- Continue wiring Insights to capability-aware source rows beyond the initial aggregate source-row boundary.
 - Remove or gate remaining hardcoded platform blocks and legacy fallback estimates that are still retained only as no-aggregate fallback behavior.
 - Expand targeted regression coverage for each tab.
 - Validate with GA4-only and multi-platform connected-source scenarios.

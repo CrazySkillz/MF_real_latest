@@ -87,6 +87,26 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(cost).not.toContain("Connect platforms (LinkedIn, Meta) to see cost analysis.");
   });
 
+  it("renders the Insights tab only from comparable spend-capable platform sources", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "platform-comparison.tsx"), "utf-8");
+    const insightsStart = page.indexOf('<TabsContent value="insights"');
+    const insights = page.slice(insightsStart);
+
+    expect(page).toContain("const comparableFinancialMetrics = spendCapableMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) && platform.spend > 0);");
+    expect(page).toContain("const platformsWithData = spendCapableMetrics.filter((p: any) => {");
+    expect(page).toContain("if (metric === 'roas' || metric === 'roi') return canShowFinancialEfficiency(p) && p.spend > 0;");
+    expect(insights).toContain("Insights and recommendations use only main Connected Platforms that provide source-level ad spend:");
+    expect(insights).toContain("Paid-media comparison unavailable");
+    expect(insights).toContain("Platform Comparison insights need at least two main paid-media Connected Platforms with comparable source-level spend.");
+    expect(insights).toContain("{comparableFinancialMetrics.length > 1 && bestROAS && (");
+    expect(insights).toContain("{spendCapableMetrics.length > 1 && bestConversions && (");
+    expect(insights).toContain("{spendCapableMetrics.length > 1 && bestCTR && (");
+    expect(insights).toContain("const platformsWithData = comparableFinancialMetrics;");
+    expect(insights).toContain("Connect at least two main paid-media platforms with source-level spend to generate comparison-based recommendations.");
+    expect(insights).toContain("No connected platform data available yet. Connect a platform in Connected Platforms to see insights and recommendations.");
+    expect(insights).not.toContain("Connect platforms (LinkedIn, Meta) to see insights and recommendations.");
+  });
+
   it("keeps the GA4 aggregate source aligned with the GA4 platform overview source of truth", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
 

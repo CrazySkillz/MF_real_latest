@@ -362,6 +362,7 @@ export default function PlatformComparison() {
   const canShowCpa = (platform: any) => hasMetric(platform, "spend") && hasMetric(platform, "conversions");
   const efficiencyComparisonMetrics = realPlatformMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) || canShowCpa(platform));
   const spendCapableMetrics = realPlatformMetrics.filter((platform: any) => hasMetric(platform, "spend") && !platform.isAnalyticsOnly);
+  const comparableFinancialMetrics = spendCapableMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) && platform.spend > 0);
 
   const totalRevenueSourceRevenue = revenueSourcesData.reduce((sum: number, s: any) => sum + s.revenue, 0);
 
@@ -385,7 +386,13 @@ export default function PlatformComparison() {
 
   // Generate performance rankings (exclude analytics-only platforms)
   const getBestPerformer = (metric: 'roas' | 'roi' | 'conversions' | 'ctr' | 'cpc' | 'conversionRate') => {
-    const platformsWithData = realPlatformMetrics.filter((p: any) => !p.isAnalyticsOnly && (p.spend > 0 || p.conversions > 0));
+    const platformsWithData = spendCapableMetrics.filter((p: any) => {
+      if (metric === 'roas' || metric === 'roi') return canShowFinancialEfficiency(p) && p.spend > 0;
+      if (metric === 'ctr') return canShowCtr(p) && p.impressions > 0;
+      if (metric === 'cpc') return canShowCpc(p) && p.clicks > 0;
+      if (metric === 'conversionRate') return canShowConversionRate(p) && p.conversions > 0;
+      return hasMetric(p, "conversions") && p.conversions > 0;
+    });
     if (platformsWithData.length === 0) return null;
     
     return platformsWithData.reduce((best, current) => {
@@ -1052,7 +1059,16 @@ export default function PlatformComparison() {
 
             {/* Insights Tab */}
             <TabsContent value="insights" className="space-y-6">
-              {realPlatformMetrics.length > 0 ? (
+              {platformMetricsLoading ? (
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="animate-pulse space-y-3">
+                      <div className="h-5 bg-muted rounded w-1/3" />
+                      <div className="h-4 bg-muted rounded w-2/3" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : realPlatformMetrics.length > 0 ? (
                 <div className="grid gap-6">
                   {/* AI-Powered Platform Insights */}
                   <Card>
@@ -1066,8 +1082,8 @@ export default function PlatformComparison() {
                       <div className="space-y-4">
                         {/* Data Source Notice */}
                         {(() => {
-                          const platformsWithAdData = realPlatformMetrics.filter((p: any) => !p.isAnalyticsOnly && (p.spend > 0 || p.conversions > 0));
-                          const platformsWithoutAdData = realPlatformMetrics.filter((p: any) => p.isAnalyticsOnly || (p.spend === 0 && p.conversions === 0));
+                          const platformsWithAdData = spendCapableMetrics;
+                          const platformsWithoutAdData = realPlatformMetrics.filter((p: any) => !spendCapableMetrics.includes(p));
                           
                           if (platformsWithoutAdData.length > 0) {
                             return (
@@ -1077,28 +1093,27 @@ export default function PlatformComparison() {
                                   <div className="text-sm">
                                     <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Data Source Analysis</h4>
                                     <p className="text-blue-700 dark:text-blue-300 mb-2">
-                                      Insights and recommendations are based only on platforms with advertising spend data to ensure financial accuracy:
+                                      Insights and recommendations use only main Connected Platforms that provide source-level ad spend:
                                     </p>
                                     <div className="space-y-1 text-blue-700 dark:text-blue-300">
                                       {platformsWithAdData.length > 0 && (
                                         <p>
                                           <strong>Included in recommendations:</strong> {platformsWithAdData.map(p => p.platform).join(', ')} 
-                                          {platformsWithAdData.length === 1 ? ' (has advertising spend data)' : ' (have advertising spend data)'}
+                                          {platformsWithAdData.length === 1 ? ' (has source-level ad spend)' : ' (have source-level ad spend)'}
                                         </p>
                                       )}
                                       {platformsWithoutAdData.length > 0 && (
                                         <p>
                                           <strong>Excluded from recommendations:</strong> {platformsWithoutAdData.map(p => p.platform).join(', ')} 
                                           {platformsWithoutAdData.length === 1 
-                                            ? ' (website analytics only - no advertising spend)' 
-                                            : ' (website analytics only - no advertising spend)'}
+                                            ? ' (no source-level ad spend for Platform Comparison)' 
+                                            : ' (no source-level ad spend for Platform Comparison)'}
                                         </p>
                                       )}
                                     </div>
                                     {platformsWithoutAdData.length > 0 && (
                                       <p className="text-blue-700 dark:text-blue-300 mt-2 italic">
-                                        Note: When {platformsWithoutAdData.map(p => p.platform).join(' or ')} {platformsWithoutAdData.length === 1 ? 'has' : 'have'} advertising spend, 
-                                        {platformsWithoutAdData.length === 1 ? ' it' : ' they'} will be automatically included in performance comparisons and budget recommendations.
+                                        Connect LinkedIn Ads, Meta Ads, Google Ads, or another main paid-media platform to compare paid-media performance and budget recommendations.
                                       </p>
                                     )}
                                   </div>
@@ -1109,8 +1124,22 @@ export default function PlatformComparison() {
                           return null;
                         })()}
 
+                        {spendCapableMetrics.length < 2 && (
+                          <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg" data-testid="insight-comparison-unavailable">
+                            <div className="flex items-start space-x-3">
+                              <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                              <div>
+                                <h4 className="font-semibold text-amber-800 dark:text-amber-200 mb-1">Paid-media comparison unavailable</h4>
+                                <p className="text-sm text-amber-700 dark:text-amber-300">
+                                  Platform Comparison insights need at least two main paid-media Connected Platforms with comparable source-level spend. GA4 can contribute analytics metrics, but it is not used for paid-media budget recommendations.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Top Performer Insight */}
-                        {bestROAS && (
+                        {comparableFinancialMetrics.length > 1 && bestROAS && (
                           <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg" data-testid="insight-top-performer">
                             <div className="flex items-start space-x-3">
                               <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
@@ -1128,7 +1157,7 @@ export default function PlatformComparison() {
                         )}
 
                         {/* Volume Leader Insight */}
-                        {bestConversions && (
+                        {spendCapableMetrics.length > 1 && bestConversions && (
                           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid="insight-volume-leader">
                             <div className="flex items-start space-x-3">
                               <Eye className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
@@ -1147,7 +1176,7 @@ export default function PlatformComparison() {
                         )}
 
                         {/* Engagement Quality Insight */}
-                        {bestCTR && (
+                        {spendCapableMetrics.length > 1 && bestCTR && (
                           <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg" data-testid="insight-engagement">
                             <div className="flex items-start space-x-3">
                               <Users className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5" />
@@ -1165,9 +1194,8 @@ export default function PlatformComparison() {
                         )}
 
                         {/* Opportunity/Warning Insight */}
-                        {realPlatformMetrics.length > 1 && (() => {
-                          // Only consider platforms with actual financial data
-                          const platformsWithData = realPlatformMetrics.filter((p: any) => !p.isAnalyticsOnly && (p.spend > 0 || p.conversions > 0));
+                        {comparableFinancialMetrics.length > 1 && (() => {
+                          const platformsWithData = comparableFinancialMetrics;
                           if (platformsWithData.length < 2) return null;
                           
                           const weakest = platformsWithData.reduce((min, p) => p.roas < min.roas ? p : min);
@@ -1213,8 +1241,7 @@ export default function PlatformComparison() {
                       <div className="space-y-6">
                         {/* Budget Reallocation */}
                         {(() => {
-                          // Only include platforms with actual financial data
-                          const platformsWithData = realPlatformMetrics.filter((p: any) => !p.isAnalyticsOnly && (p.spend > 0 || p.conversions > 0));
+                          const platformsWithData = comparableFinancialMetrics;
                           return platformsWithData.length > 1 && bestROAS ? (
                             <div className="border-l-4 border-green-500 pl-4">
                               <h4 className="font-semibold text-foreground mb-2">Budget Reallocation Strategy</h4>
@@ -1250,22 +1277,21 @@ export default function PlatformComparison() {
 
                         {/* Platform-Specific Optimizations */}
                         {(() => {
-                          // Only include platforms with actual financial data
-                          const platformsWithData = realPlatformMetrics.filter((p: any) => !p.isAnalyticsOnly && (p.spend > 0 || p.conversions > 0));
-                          return platformsWithData.length > 0 ? (
+                          const platformsWithData = spendCapableMetrics.filter((p: any) => p.spend > 0);
+                          return platformsWithData.length > 1 ? (
                             <div className="border-l-4 border-blue-500 pl-4">
                               <h4 className="font-semibold text-foreground mb-2">Platform-Specific Optimizations</h4>
                               <ul className="space-y-1 text-sm text-muted-foreground/70">
                                 {platformsWithData.map((platform, idx) => {
                                   let recommendation = '';
                                   
-                                  if (platform.ctr < 1) {
+                                  if (canShowCtr(platform) && platform.ctr < 1) {
                                     recommendation = `${platform.platform}: Improve CTR (${formatPct(platform.ctr)}) through creative refresh and A/B testing`;
-                                  } else if (platform.conversionRate < 2) {
+                                  } else if (canShowConversionRate(platform) && platform.conversionRate < 2) {
                                     recommendation = `${platform.platform}: Optimize landing pages to improve ${formatPct(platform.conversionRate)} conversion rate`;
-                                  } else if (platform.cpc > 5) {
+                                  } else if (canShowCpc(platform) && platform.cpc > 5) {
                                     recommendation = `${platform.platform}: Reduce CPC (${formatCurrency(platform.cpc)}) through bid optimization and quality score improvements`;
-                                  } else if (platform.roas >= 4) {
+                                  } else if (canShowFinancialEfficiency(platform) && platform.roas >= 4) {
                                     recommendation = `${platform.platform}: Expand successful campaigns to similar audiences and regions`;
                                   } else {
                                     recommendation = `${platform.platform}: Test new ad formats and audience segments to scale performance`;
@@ -1275,7 +1301,14 @@ export default function PlatformComparison() {
                                 })}
                               </ul>
                             </div>
-                          ) : null;
+                          ) : (
+                            <div className="border-l-4 border-amber-500 pl-4">
+                              <h4 className="font-semibold text-foreground mb-2">Recommendations unavailable</h4>
+                              <p className="text-sm text-muted-foreground/70">
+                                Connect at least two main paid-media platforms with source-level spend to generate comparison-based recommendations.
+                              </p>
+                            </div>
+                          );
                         })()}
 
                       </div>
@@ -1285,7 +1318,7 @@ export default function PlatformComparison() {
               ) : (
                 <Card>
                   <CardContent className="p-6 text-center text-muted-foreground/70">
-                    <p>No platform data available. Connect platforms (LinkedIn, Meta) to see insights and recommendations.</p>
+                    <p>No connected platform data available yet. Connect a platform in Connected Platforms to see insights and recommendations.</p>
                   </CardContent>
                 </Card>
               )}

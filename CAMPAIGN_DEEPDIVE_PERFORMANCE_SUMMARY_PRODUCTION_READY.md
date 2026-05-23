@@ -388,6 +388,8 @@ Scope:
 - Completed: Added GA4-only, LinkedIn-plus-Meta, and canonical spend/revenue regression tests in `server/performance-summary-aggregate.test.ts`.
 - Completed follow-up: Added regression coverage proving current main Connected Platform aggregate sources are defined through the adapter registry.
 - Completed follow-up: Added regression coverage proving future generic main Connected Platform sources aggregate impressions, clicks, conversions, and spend through the shared contract.
+- Completed follow-up: Performance Summary now uses the same URL-style `outcome-totals` query key prefix used by source-update invalidations, so source mutations can refetch the open Performance Summary page instead of requiring a manual page refresh.
+- Completed follow-up: Performance Summary now refetches the aggregate and compatible snapshot queries every 30 seconds while the page is visible, and on window focus, so source updates from user actions or server-side refresh jobs are pulled into the open section without requiring a manual refresh.
 - Completed: Did not refactor or rewire the Performance Summary tab UI.
 - Completed follow-up: When live GA4 in `outcome-totals` returns `TOKEN_EXPIRED` or another live-fetch error, persisted GA4 daily rows now backfill users, sessions, conversions, and revenue instead of only revenue.
 - Completed follow-up: Added `server/outcome-totals-ga4-fallback-regression.test.ts`.
@@ -397,6 +399,8 @@ Validation:
 - Passed: `npm test -- server/performance-summary-aggregate.test.ts`
 - Passed: `npm test -- server/outcome-totals-ga4-fallback-regression.test.ts server/performance-summary-aggregate.test.ts`
 - Passed after `platformSources` follow-up: `npm test -- server/performance-summary-aggregate.test.ts` with 6 tests.
+- Passed after query-key sync follow-up: `npm test -- server/campaign-performance-overview-regression.test.ts`
+- Passed after live-sync follow-up: `npm test -- server/campaign-performance-overview-regression.test.ts`
 - Passed: `npm run check`
 - Passed after `platformSources` follow-up: `npm run check`
 - Passed after `platformSources` follow-up: `git diff --check`
@@ -670,6 +674,7 @@ Live GA4 end-to-end validation setup for later:
 
 - Purpose: validate the full production data path with a real GA4 property: injected GA4 events -> GA4 reporting -> Market Forensics GA4 refresh -> persisted `ga4_daily_metrics` -> campaign metric snapshot -> Performance Summary `What's Changed` and `Metric Trends`.
 - This validates live GA4 API connectivity, token refresh behavior, GA4 metric ingestion, daily metric persistence, snapshot creation, aggregate snapshot compatibility, source-aware cards, source-aware trend charts, and the UI's historical comparison behavior.
+- This also validates that Performance Summary current values stay synchronized as underlying GA4 source data changes because the page refetches the aggregate while visible and on window focus.
 - This does not validate paid-media impressions/clicks for GA4-only campaigns, because GA4 is not a paid-media impression/click source.
 - Create a dedicated GA4 test property and Web stream, then create a Measurement Protocol API secret for that stream.
 - Connect the dedicated GA4 test property to a test Market Forensics campaign through the normal `Connected Platforms -> Google Analytics` flow.
@@ -678,6 +683,8 @@ Live GA4 end-to-end validation setup for later:
 - Wait for GA4 processing, then trigger the app GA4 refresh for the campaign with `POST /api/campaigns/:id/ga4/refresh` while authenticated.
 - After refresh succeeds, create a campaign snapshot with `POST /api/campaigns/:id/snapshots` while authenticated.
 - Repeat daily. After two compatible snapshots, `Metric Trends` should render. After seven or more days of compatible snapshots, `Last 7 Days` should have a real previous aggregate snapshot. After thirty or more days, `Last 30 Days` should have a real previous aggregate snapshot.
+- It will test: GA4 data changes over time; the app refresh pulls updated GA4 data; Performance Summary current values update; new compatible snapshots are created; `What's Changed` compares current values against the previous compatible snapshot; and `Metric Trends` charts multiple compatible snapshots over time.
+- Minimum data needed: at least two compatible snapshots to validate `Metric Trends`; at least two comparable time periods to validate `What's Changed`; seven or more days of snapshots to validate `Last 7 Days`; and thirty or more days of snapshots to validate `Last 30 Days`.
 - Validate `Previous` values by opening `/api/campaigns/:id/snapshots/comparison?type=yesterday`, `/api/campaigns/:id/snapshots/comparison?type=last_week`, or `/api/campaigns/:id/snapshots/comparison?type=last_month` and confirming `previous.metrics.performanceSummary.totals.<metric>.value` matches the UI.
 - Validate `Metric Trends` by opening `/api/campaigns/:id/snapshots?period=daily`, `/api/campaigns/:id/snapshots?period=weekly`, or `/api/campaigns/:id/snapshots?period=monthly` and confirming visible chart points come only from snapshots whose `metrics.performanceSummary.version` is `performance_summary_aggregate_v1`.
 - Expected GA4-only UI behavior: sessions, users, conversions, revenue, and campaign spend can appear when available; impressions and clicks should not appear unless a connected paid-media source provides them.

@@ -10,10 +10,14 @@ describe("campaign Performance Summary Overview regression guard", () => {
     const overview = page.slice(overviewStart, overviewEnd);
 
     expect(page).toContain('const performanceSummary = outcomeTotals?.performanceSummary;');
+    expect(page).toContain("const PERFORMANCE_SUMMARY_REFRESH_MS = 30000;");
     expect(page).toContain("const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery<any>({");
     expect(page).toContain("const performanceSummaryPending = !!campaignId && !performanceSummary && outcomeTotalsLoading;");
-    expect(page).toContain('queryKey: ["/api/campaigns", campaignId, "outcome-totals", "90days"');
+    expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days"');
     expect(page).toContain("outcome-totals?dateRange=90days");
+    expect(page).toContain("refetchInterval: PERFORMANCE_SUMMARY_REFRESH_MS");
+    expect(page).toContain("refetchIntervalInBackground: false");
+    expect(page).toContain("refetchOnWindowFocus: true");
     expect(page).toContain("if (performanceSummaryPending) {");
     expect(page).toContain("return { available: true, value: null, sources: [], unavailableReasons: [], pending: true };");
     expect(page).toContain('if (metric?.pending) return "";');

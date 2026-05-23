@@ -30,6 +30,8 @@ type PerformanceInsight = {
   message: string;
 };
 
+const PERFORMANCE_SUMMARY_REFRESH_MS = 30000;
+
 export default function CampaignPerformanceSummary() {
   const [, params] = useRoute("/campaigns/:id/performance");
   const campaignId = params?.id;
@@ -89,7 +91,7 @@ export default function CampaignPerformanceSummary() {
   });
 
   const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "outcome-totals", "90days", demoMode ? "demo" : "live"],
+    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live"],
     queryFn: async () => {
       const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=90days${demoMode ? "&demo=1" : ""}`;
       const response = await fetch(url, { credentials: "include" });
@@ -97,6 +99,9 @@ export default function CampaignPerformanceSummary() {
       return response.json();
     },
     enabled: !!campaignId,
+    refetchInterval: PERFORMANCE_SUMMARY_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   // Fetch real-time metric changes
@@ -117,6 +122,9 @@ export default function CampaignPerformanceSummary() {
     queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=${comparisonType}`],
     enabled: !!campaignId,
     placeholderData: keepPreviousData,
+    refetchInterval: PERFORMANCE_SUMMARY_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   // Fetch trend snapshots for time-series analysis
@@ -124,6 +132,9 @@ export default function CampaignPerformanceSummary() {
     queryKey: [`/api/campaigns/${campaignId}/snapshots?period=${trendPeriod}`],
     enabled: !!campaignId,
     placeholderData: keepPreviousData,
+    refetchInterval: PERFORMANCE_SUMMARY_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
 

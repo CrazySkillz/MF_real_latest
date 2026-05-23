@@ -69,6 +69,22 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(performance).not.toContain("Connect platforms (LinkedIn, Meta) to see performance metrics.");
   });
 
+  it("renders the Cost Analysis tab only for spend-capable connected platform sources", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "platform-comparison.tsx"), "utf-8");
+    const costStart = page.indexOf('<TabsContent value="cost-analysis"');
+    const costEnd = page.indexOf('<TabsContent value="insights"', costStart);
+    const cost = page.slice(costStart, costEnd);
+
+    expect(page).toContain("const spendCapableMetrics = realPlatformMetrics.filter((platform: any) => hasMetric(platform, \"spend\") && !platform.isAnalyticsOnly);");
+    expect(page).toContain("const budgetPieData = spendCapableMetrics");
+    expect(page).toContain("const costAnalysisData = spendCapableMetrics");
+    expect(page).toContain("const costAnalysisChartData = costAnalysisData.filter(p => p.totalSpend > 0 && p.conversions > 0);");
+    expect(cost).toContain("{spendCapableMetrics.length > 0 ? (");
+    expect(cost).toContain("{spendCapableMetrics.map((platform, index) => (");
+    expect(cost).toContain("No spend-capable connected platform is available for cost analysis yet.");
+    expect(cost).not.toContain("Connect platforms (LinkedIn, Meta) to see cost analysis.");
+  });
+
   it("keeps the GA4 aggregate source aligned with the GA4 platform overview source of truth", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
 

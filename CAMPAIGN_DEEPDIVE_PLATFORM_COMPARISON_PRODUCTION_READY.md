@@ -265,6 +265,17 @@ Evidence:
 - Do not treat child spend imports as separate platforms.
 - Keep campaign financial totals in Budget & Financial Analysis; Platform Comparison should compare source rows.
 
+Status: completed.
+
+Evidence:
+
+- Cost Analysis now derives chart data, budget allocation data, and ROI/ROAS cards from `spendCapableMetrics`, which includes only non-analytics sources that explicitly provide `spend`.
+- GA4-only campaigns show a clear unavailable state for Cost Analysis because GA4 is a web analytics source, not a main spend-capable platform.
+- Platform child spend imports, including ad-platform spend imported inside GA4, are not treated as separate Platform Comparison sources.
+- Cost-per-conversion chart rows require both spend and conversions, preventing conversion-only sources from appearing as cost-analysis rows.
+- Source-level ROI and ROAS cards render only for spend-capable source rows and show unavailable when required source-level financial inputs are missing.
+- Regression coverage updated in `server/platform-comparison-regression.test.ts`.
+
 ### Commit 5: Insights Tab
 
 - Generate insights only from sources with enough comparable metrics.
@@ -324,10 +335,11 @@ Proven:
 - Commit 3 follow-up: Efficiency Comparison now compares only spend-efficiency-capable sources and shows a concise unavailable explanation for GA4-only campaigns.
 - Commit 3 follow-up: Volume Comparison now hides unavailable impressions lanes for sources that do not provide impressions and presents available volume metrics such as GA4 sessions.
 - Commit 3 Render validation passed: with only Google Analytics connected, Efficiency Comparison correctly remained unavailable because there is no main spend-capable ad platform, and Volume Comparison correctly showed GA4 sessions. LinkedIn/Meta spend imports inside GA4 remain child financial inputs, not separate Platform Comparison rows.
+- Commit 4: Cost Analysis now includes only spend-capable main connected platform sources. GA4-only campaigns show an unavailable state, and child spend imports inside GA4 remain excluded from Platform Comparison rows.
 
 Outstanding:
 
-- Continue wiring Cost Analysis and Insights to capability-aware source rows beyond the initial aggregate source-row boundary.
+- Continue wiring Insights to capability-aware source rows beyond the initial aggregate source-row boundary.
 - Remove or gate remaining hardcoded platform blocks and legacy fallback estimates that are still retained only as no-aggregate fallback behavior.
 - Expand targeted regression coverage for each tab.
 - Validate with GA4-only and multi-platform connected-source scenarios.

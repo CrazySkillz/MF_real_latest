@@ -361,17 +361,17 @@ export default function PlatformComparison() {
   const canShowFinancialEfficiency = (platform: any) => hasMetric(platform, "spend") && (hasMetric(platform, "revenue") || hasMetric(platform, "attributedRevenue"));
   const canShowCpa = (platform: any) => hasMetric(platform, "spend") && hasMetric(platform, "conversions");
   const efficiencyComparisonMetrics = realPlatformMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) || canShowCpa(platform));
+  const spendCapableMetrics = realPlatformMetrics.filter((platform: any) => hasMetric(platform, "spend") && !platform.isAnalyticsOnly);
 
   const totalRevenueSourceRevenue = revenueSourcesData.reduce((sum: number, s: any) => sum + s.revenue, 0);
 
   // Budget allocation pie chart data (advertising platforms only)
-  const budgetPieData = realPlatformMetrics
-    .filter((p: any) => p.spend > 0 && !p.isAnalyticsOnly)
+  const budgetPieData = spendCapableMetrics
+    .filter((p: any) => p.spend > 0)
     .map((p: any) => ({ name: p.platform, value: p.spend, color: p.color }));
 
   // Generate cost analysis data (exclude analytics-only)
-  const costAnalysisData = realPlatformMetrics
-    .filter((p: any) => !p.isAnalyticsOnly)
+  const costAnalysisData = spendCapableMetrics
     .map(platform => ({
       name: platform.platform,
       costPerConversion: platform.conversions > 0 ? platform.spend / platform.conversions : 0,
@@ -381,7 +381,7 @@ export default function PlatformComparison() {
     }));
 
   // Filter cost analysis data for chart display (only platforms with actual financial data)
-  const costAnalysisChartData = costAnalysisData.filter(p => p.totalSpend > 0 || p.conversions > 0);
+  const costAnalysisChartData = costAnalysisData.filter(p => p.totalSpend > 0 && p.conversions > 0);
 
   // Generate performance rankings (exclude analytics-only platforms)
   const getBestPerformer = (metric: 'roas' | 'roi' | 'conversions' | 'ctr' | 'cpc' | 'conversionRate') => {
@@ -871,7 +871,7 @@ export default function PlatformComparison() {
 
             {/* Cost Analysis Tab */}
             <TabsContent value="cost-analysis" className="space-y-6">
-              {realPlatformMetrics.length > 0 ? (
+              {spendCapableMetrics.length > 0 ? (
                 <>
                   <div className="grid gap-6 md:grid-cols-2">
                     {/* Cost Efficiency Chart */}
@@ -981,7 +981,7 @@ export default function PlatformComparison() {
                     </CardHeader>
                     <CardContent>
                       <div className="grid gap-4 md:grid-cols-2">
-                        {realPlatformMetrics.map((platform, index) => (
+                        {spendCapableMetrics.map((platform, index) => (
                           <div key={index} className="p-4 border rounded-lg space-y-3" data-testid={`roi-card-${index}`}>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
@@ -997,9 +997,9 @@ export default function PlatformComparison() {
                               <div>
                                 <div className="text-xs text-muted-foreground mb-1">ROI (Profit %)</div>
                                 <div className={`text-2xl font-bold ${platform.spend > 0 ? (platform.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400') : 'text-muted-foreground/70'}`}>
-                                  {platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : '—'}
+                                  {canShowFinancialEfficiency(platform) && platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : 'Unavailable'}
                                 </div>
-                                {platform.spend > 0 && (
+                                {canShowFinancialEfficiency(platform) && platform.spend > 0 && (
                                   <div className="text-xs text-muted-foreground mt-1">
                                     {platform.roi >= 100 ? 'Excellent' : platform.roi >= 50 ? 'Good' : platform.roi >= 0 ? 'Break-even+' : 'Loss'}
                                   </div>
@@ -1009,9 +1009,9 @@ export default function PlatformComparison() {
                               <div>
                                 <div className="text-xs text-muted-foreground mb-1">ROAS (Revenue)</div>
                                 <div className={`text-2xl font-bold ${platform.roas > 0 ? 'text-foreground' : 'text-muted-foreground/70'}`}>
-                                  {platform.roas > 0 ? `${platform.roas.toFixed(2)}x` : '—'}
+                                  {canShowFinancialEfficiency(platform) && platform.spend > 0 ? `${platform.roas.toFixed(2)}x` : 'Unavailable'}
                                 </div>
-                                {platform.roas > 0 && (
+                                {canShowFinancialEfficiency(platform) && platform.spend > 0 && (
                                   <div className="text-xs text-muted-foreground mt-1">
                                     {platform.roas >= 4 ? 'Excellent' : platform.roas >= 3 ? 'Good' : platform.roas >= 1 ? 'Fair' : 'Poor'}
                                   </div>
@@ -1038,7 +1038,7 @@ export default function PlatformComparison() {
               ) : (
                 <Card>
                   <CardContent className="p-6 text-center text-muted-foreground/70">
-                    <p>No platform data available. Connect platforms (LinkedIn, Meta) to see cost analysis.</p>
+                    <p>No spend-capable connected platform is available for cost analysis yet. Connect a paid-media platform in Connected Platforms to compare source-level spend, CPA, ROI, and ROAS.</p>
                   </CardContent>
                 </Card>
               )}

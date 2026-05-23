@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Calculator, PieChart, BarChart3, AlertTriangle, Target, Zap, Activity, Eye, Info } from "lucide-react";
+import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Calculator, PieChart, BarChart3, AlertTriangle, Target, Zap, Activity, Eye, Info, X } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -480,6 +480,13 @@ export default function FinancialAnalysis() {
     metric.unavailableReasons[0] || fallback;
   const hasSavedPacingMetadata = hasCampaignBudget || hasCampaignStartDate || hasCampaignEndDate;
   const hasPacingInputDraft = Boolean(pacingBudgetInput.trim() || pacingStartDateInput || pacingEndDateInput);
+  const handleCancelPacingInputs = () => {
+    setPacingBudgetInput(formatBudgetInputValue(campaign?.budget));
+    setPacingStartDateInput(formatDateInputValue(campaign?.startDate));
+    setPacingEndDateInput(formatDateInputValue(campaign?.endDate));
+    setPacingInputError(null);
+    setIsEditingPacingInputs(false);
+  };
   const handleSavePacingInputs = () => {
     const normalizedBudget = pacingBudgetInput.replace(/,/g, "").trim();
     const budgetValue = Number(normalizedBudget);
@@ -860,7 +867,7 @@ export default function FinancialAnalysis() {
                           
                           <div className="p-4 border rounded-lg" data-testid="health-roi">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium">Campaign ROI Performance</span>
+                              <span className="text-sm font-medium">Campaign ROI</span>
                               <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.roi.status)}`} />
                             </div>
                             <div className="text-2xl font-bold">{formatOverviewPercentage(overviewRoiMetric)}</div>
@@ -876,7 +883,7 @@ export default function FinancialAnalysis() {
                           
                           <div className="p-4 border rounded-lg" data-testid="health-roas">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium">Campaign ROAS Performance</span>
+                              <span className="text-sm font-medium">Campaign ROAS</span>
                               <div className={`w-3 h-3 rounded-full ${getStatusColor(healthData.roas.status)}`} />
                             </div>
                             <div className="text-2xl font-bold">{overviewRoasMetric.available ? `${overviewRoasMetric.value.toFixed(2)}x` : "Unavailable"}</div>
@@ -1049,9 +1056,24 @@ export default function FinancialAnalysis() {
                             )}
                             {shouldShowPacingInputForm && (
                               <div className="pt-3 border-t space-y-3">
-                                <p className="text-xs text-muted-foreground">
-                                  Edit campaign pacing inputs here or in campaign settings.
-                                </p>
+                                <div className="flex items-start justify-between gap-3">
+                                  <p className="text-xs text-muted-foreground">
+                                    Edit campaign pacing inputs here or in campaign settings.
+                                  </p>
+                                  {isEditingPacingInputs && (
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6"
+                                      onClick={handleCancelPacingInputs}
+                                      disabled={updatePacingInputsMutation.isPending}
+                                      aria-label="Cancel editing pacing inputs"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
                                 <div className="grid gap-3 md:grid-cols-3">
                                   <div className="space-y-1">
                                     <span className="text-xs font-medium">Campaign Budget</span>

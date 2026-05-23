@@ -65,8 +65,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(overview).toContain("status: hasPacingHealthInputs ?");
     expect(overview).toContain("status: overviewRoiMetric.available ?");
     expect(overview).toContain("status: overviewRoasMetric.available ?");
-    expect(overview).toContain("Campaign ROI Performance");
-    expect(overview).toContain("Campaign ROAS Performance");
+    expect(overview).toContain("Campaign ROI");
+    expect(overview).toContain("Campaign ROAS");
     expect(overview).toContain("const availableHealthMetricCount = [");
     expect(overview).toContain("const hasAnyHealthInputs = availableHealthMetricCount > 0;");
     expect(overview).toContain("const displayHealthScore = hasAnyHealthInputs ? Math.round((healthData.total / (availableHealthMetricCount * 25)) * 100) : null;");
@@ -86,6 +86,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('queryClient.setQueryData(["/api/campaigns", campaignId], updatedCampaign);');
     expect(page).toContain('queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`] });');
     expect(page).toContain("const handleDeletePacingInputs = () => {");
+    expect(page).toContain("const handleCancelPacingInputs = () => {");
+    expect(page).toContain("setIsEditingPacingInputs(false);");
     expect(page).toContain("const formatBudgetInputValue = (value?: string | number | null) => {");
     expect(page).toContain('replace(/[^\\d.]/g, "")');
     expect(page).toContain("setPacingBudgetInput(formatBudgetInputValue(campaign.budget));");
@@ -102,6 +104,7 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(overview).toContain("Save");
     expect(overview).toContain("Delete inputs");
     expect(overview).toContain("Edit inputs");
+    expect(overview).toContain('aria-label="Cancel editing pacing inputs"');
     expect(overview).not.toContain("Save pacing inputs");
     expect(overview).not.toContain("Campaign start date is required to calculate daily burn rate and pacing.");
     expect(overview).not.toContain("Campaign end date is required to calculate target daily spend and pacing.");

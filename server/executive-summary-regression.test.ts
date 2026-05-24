@@ -15,8 +15,16 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("const metaConnection = await storage.getMetaConnection(id).catch(() => null);");
     expect(route).toContain("if (metaConnection && !(metaConnection as any).spendOnly) {");
     expect(route).toContain("dateRange: executiveDateRange");
+    expect(route).toContain("if (isYesopMockProperty(primaryPropertyId)) {");
+    expect(route).toContain("const result = await ga4Service.getAcquisitionBreakdown(id, storage, ga4DateRange, primaryPropertyId || undefined, 2000, campaignFilter);");
+    expect(route).toContain("let usedGA4SourceTruth = false;");
+    expect(route).toContain("if (!usedGA4SourceTruth) {");
     expect(route).toContain("ga4: { connected: hasGA4Connection, ...ga4Metrics }");
-    expect(route).toContain("spendSource: canonicalSpend > 0 ? \"persisted_spend_sources\" : \"platform_spend_fallback\"");
+    expect(route).toContain("const spendBreakdown = await storage.getSpendBreakdownBySource(id, \"1900-01-01\", endDate).catch(() => []);");
+    expect(route).toContain("const revenueBreakdown = await storage.getRevenueBreakdownBySource(id, \"1900-01-01\", endDate, \"ga4\").catch(() => []);");
+    expect(route).toContain("const aggregateRevenue = hasGA4Connection");
+    expect(route).toContain("parseFloat((ga4Metrics.revenue + importedRevenueToDateTotal).toFixed(2))");
+    expect(route).toContain("spendSource: performanceSummarySpend > 0 ? \"persisted_spend_sources\" : \"platform_spend_fallback\"");
     expect(route).toContain("meta: { connected: hasMetaConnection");
     expect(route).toContain("const aggregateMetricValue = (metricName: string): number => {");
     expect(route).toContain('const totalImpressions = aggregateMetricValue("impressions");');
@@ -40,7 +48,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain('source?.connected === true && source?.category !== "financial"');
     expect(route).toContain("const platformsForDisplay: any[] = mainAggregateSources.map");
     expect(route).toContain("let executiveRevenueSources: any[] = [];");
-    expect(route).toContain("const revenueBreakdown = await storage.getRevenueBreakdownBySource(id, startDate, endDate, \"ga4\").catch(() => []);");
+    expect(route).toContain("const revenueBreakdown = await storage.getRevenueBreakdownBySource(id, \"1900-01-01\", endDate, \"ga4\").catch(() => []);");
     expect(route).toContain("revenueSources: executiveRevenueSources");
     expect(route).toContain("name: source.label");
     expect(route).toContain("sourceId: source.id");

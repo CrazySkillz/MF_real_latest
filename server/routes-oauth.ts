@@ -24981,6 +24981,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       else if (periodParam === '90d') startDate = new Date(now.getTime() - 90 * 86400000).toISOString().split('T')[0];
       else startDate = '2000-01-01'; // "all" — fetch everything
 
+      const executiveDateRange = periodParam === '7d' ? '7days' :
+        periodParam === '30d' ? '30days' :
+          periodParam === '90d' ? '90days' : 'all';
+
       // Demo mode: return comprehensive mock executive summary
       if (req.query.demo === "1") {
         return res.json({
@@ -25099,24 +25103,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const activeGA4Connection = (ga4Connections || []).find((conn: any) => conn?.propertyId && conn.propertyId !== "");
         if (activeGA4Connection) {
           hasGA4Connection = true;
+          const primaryPropertyId = String((activeGA4Connection as any).propertyId || "");
           const ga4Start = startDate;
           const ga4End = endDate;
-          const ga4Daily = await storage.getGA4DailyMetrics(id, (activeGA4Connection as any).propertyId, ga4Start, ga4End);
+          let usedGA4SourceTruth = false;
+          try {
+            if (isYesopMockProperty(primaryPropertyId)) {
+              const simulated = simulateGA4({
+                campaignId: id,
+                propertyId: primaryPropertyId,
+                dateRange: executiveDateRange === "all" ? "90days" : executiveDateRange,
+                noRevenue: isNoRevenueFilter((campaign as any)?.ga4CampaignFilter),
+                ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter,
+              });
+              const totals = (simulated as any)?.metrics || {};
+              ga4Metrics.sessions = parseNum(totals.sessions);
+              ga4Metrics.conversions = parseNum(totals.conversions);
+              ga4Metrics.pageviews = parseNum(totals.pageviews);
+              ga4Metrics.users = parseNum(totals.activeUsers || totals.users || totals.impressions);
+              ga4Metrics.revenue = parseNum(totals.revenue);
+              ga4Metrics.bounceRate = parseNum(totals.bounceRate);
+              const lastRow = Array.isArray((simulated as any)?.timeSeries) ? (simulated as any).timeSeries[(simulated as any).timeSeries.length - 1] : null;
+              ga4LastUpdate = lastRow?.date || null;
+              usedGA4SourceTruth = true;
+            } else {
+              const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+              const ga4DateRange = periodParam === "7d" ? "7daysAgo" :
+                periodParam === "30d" ? "30daysAgo" :
+                  periodParam === "90d" ? "90daysAgo" : ga4Start;
+              const result = await ga4Service.getAcquisitionBreakdown(id, storage, ga4DateRange, primaryPropertyId || undefined, 2000, campaignFilter);
+              ga4Metrics.sessions = parseNum((result as any)?.totals?.sessions);
+              ga4Metrics.conversions = parseNum((result as any)?.totals?.conversions);
+              ga4Metrics.users = parseNum((result as any)?.totals?.users);
+              ga4Metrics.revenue = parseNum((result as any)?.totals?.revenue);
+              usedGA4SourceTruth = true;
+            }
+          } catch {
+            // Fall back to persisted GA4 daily rows below if source-truth GA4 is unavailable.
+          }
+          const ga4Daily = await storage.getGA4DailyMetrics(id, primaryPropertyId, ga4Start, ga4End);
           if (ga4Daily && ga4Daily.length > 0) {
             let bounceRateSum = 0;
             let bounceRateCount = 0;
             ga4Daily.forEach((row: any) => {
-              ga4Metrics.sessions += parseNum(row.sessions);
-              ga4Metrics.conversions += parseNum(row.conversions);
+              if (!usedGA4SourceTruth) {
+                ga4Metrics.sessions += parseNum(row.sessions);
+                ga4Metrics.conversions += parseNum(row.conversions);
+                ga4Metrics.users += parseNum(row.users || row.totalUsers);
+                ga4Metrics.revenue += parseNum(row.revenue);
+              }
               ga4Metrics.pageviews += parseNum(row.pageviews || row.screenPageViews);
-              ga4Metrics.users += parseNum(row.users || row.totalUsers);
-              ga4Metrics.revenue += parseNum(row.revenue);
               const br = parseNum(row.bounceRate);
               if (br > 0) { bounceRateSum += br; bounceRateCount++; }
             });
-            ga4Metrics.bounceRate = bounceRateCount > 0 ? bounceRateSum / bounceRateCount : 0;
+            if (!ga4Metrics.bounceRate) ga4Metrics.bounceRate = bounceRateCount > 0 ? bounceRateSum / bounceRateCount : 0;
             const lastRow = ga4Daily[ga4Daily.length - 1];
-            ga4LastUpdate = (lastRow as any)?.date || null;
+            ga4LastUpdate = ga4LastUpdate || (lastRow as any)?.date || null;
           }
         }
       } catch (err) {
@@ -25149,13 +25191,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch canonical spend/revenue sources (ground truth)
       let canonicalSpend = 0;
       let canonicalRevenue = 0;
+      let performanceSummarySpend = 0;
+      let performanceSummarySpendTotals: any = null;
+      let importedRevenueToDateTotal = 0;
       let executiveRevenueSources: any[] = [];
       try {
         const spendResult = await storage.getSpendTotalForRange(id, startDate, endDate);
         canonicalSpend = spendResult.totalSpend || 0;
+        performanceSummarySpend = canonicalSpend;
+        performanceSummarySpendTotals = spendResult;
+        const spendBreakdown = await storage.getSpendBreakdownBySource(id, "1900-01-01", endDate).catch(() => []);
+        const spendToDate = (Array.isArray(spendBreakdown) ? spendBreakdown : []).reduce((sum: number, source: any) => sum + parseNum(source?.spend), 0);
+        if (spendToDate > performanceSummarySpend) {
+          performanceSummarySpend = Number(spendToDate.toFixed(2));
+          performanceSummarySpendTotals = {
+            totalSpend: performanceSummarySpend,
+            currency: (spendBreakdown as any[]).find((source: any) => source?.currency)?.currency || (spendResult as any)?.currency,
+            sourceIds: (spendBreakdown as any[]).map((source: any) => String(source?.sourceId)).filter(Boolean),
+          };
+        }
         const revenueResult = await storage.getRevenueTotalForRange(id, startDate, endDate);
         canonicalRevenue = revenueResult.totalRevenue || 0;
-        const revenueBreakdown = await storage.getRevenueBreakdownBySource(id, startDate, endDate, "ga4").catch(() => []);
+        const revenueBreakdown = await storage.getRevenueBreakdownBySource(id, "1900-01-01", endDate, "ga4").catch(() => []);
+        importedRevenueToDateTotal = Number((Array.isArray(revenueBreakdown) ? revenueBreakdown : []).reduce((sum: number, source: any) => sum + parseNum(source?.revenue), 0).toFixed(2));
         executiveRevenueSources = (Array.isArray(revenueBreakdown) ? revenueBreakdown : [])
           .filter((source: any) => parseNum(source?.revenue) > 0)
           .map((source: any) => ({
@@ -25169,15 +25227,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('No canonical spend/revenue data found');
       }
 
-      const executiveDateRange = periodParam === '7d' ? '7days' :
-        periodParam === '30d' ? '30days' :
-          periodParam === '90d' ? '90days' : 'all';
       const webAnalyticsProvider = hasGA4Connection ? "ga4" : hasCustomIntegration ? "custom_integration" : null;
       const platformSpend = linkedinMetrics.spend + metaMetrics.spend + customMetrics.spend;
       const platformRevenue = linkedinMetrics.revenue + metaMetrics.revenue + customMetrics.revenue;
-      const aggregateRevenue = canonicalRevenue > 0
-        ? canonicalRevenue
-        : (ga4Metrics.revenue > 0 ? ga4Metrics.revenue : platformRevenue);
+      const aggregateRevenue = hasGA4Connection
+        ? parseFloat((ga4Metrics.revenue + importedRevenueToDateTotal).toFixed(2))
+        : (canonicalRevenue > 0 ? canonicalRevenue : platformRevenue);
       const performanceSummary = buildPerformanceSummaryAggregate({
         campaignId: id,
         dateRange: executiveDateRange,
@@ -25191,11 +25246,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           users: webAnalyticsProvider === "ga4" ? ga4Metrics.users : parseNum(customIntegrationRawData?.users),
         },
         spend: {
-          persistedSpend: canonicalSpend,
-          unifiedSpend: canonicalSpend > 0 ? canonicalSpend : platformSpend,
-          spendSource: canonicalSpend > 0 ? "persisted_spend_sources" : "platform_spend_fallback",
+          persistedSpend: performanceSummarySpend,
+          unifiedSpend: performanceSummarySpend > 0 ? performanceSummarySpend : platformSpend,
+          spendSource: performanceSummarySpend > 0 ? "persisted_spend_sources" : "platform_spend_fallback",
           startDate,
           endDate,
+          ...(performanceSummarySpendTotals || {}),
         },
         platforms: {
           linkedin: { connected: linkedinMetrics.spend > 0 || linkedinMetrics.clicks > 0 || linkedinMetrics.impressions > 0 || linkedinMetrics.conversions > 0, ...linkedinMetrics },

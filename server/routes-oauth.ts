@@ -1110,7 +1110,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDate = formatISODateUTC(start);
       const endDate = formatISODateUTC(end);
 
-      const [ga4Connections, linkedInConn, metaConn, googleAdsConn, customIntegration] = await Promise.all([
+      const [campaign, ga4Connections, linkedInConn, metaConn, googleAdsConn, customIntegration] = await Promise.all([
+        storage.getCampaign(campaignId),
         storage.getGA4Connections(campaignId),
         storage.getLinkedInConnection(campaignId),
         storage.getMetaConnection(campaignId),
@@ -1119,9 +1120,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ]);
 
       const primaryGA4 = (ga4Connections || []).find((c: any) => c?.isPrimary) || (ga4Connections || [])[0];
-      const ga4Rows = primaryGA4?.propertyId
-        ? await storage.getGA4DailyMetrics(campaignId, String(primaryGA4.propertyId), startDate, endDate).catch(() => [] as any[])
-        : [];
+      const primaryGA4PropertyId = String(primaryGA4?.propertyId || "");
+      let ga4Rows: any[] = [];
+      if (primaryGA4PropertyId) {
+        const storedRows = await storage.getGA4DailyMetrics(campaignId, primaryGA4PropertyId, startDate, endDate).catch(() => [] as any[]);
+        if (isYesopMockProperty(primaryGA4PropertyId)) {
+          const simRange = days >= 90 ? "90days" : days >= 30 ? "30days" : "7days";
+          const sim = simulateGA4({
+            campaignId,
+            propertyId: primaryGA4PropertyId,
+            dateRange: simRange,
+            noRevenue: isNoRevenueFilter((campaign as any)?.ga4CampaignFilter),
+            ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter,
+          });
+          const dbByDate = new Map<string, any>();
+          for (const row of storedRows) {
+            if (row?.date) dbByDate.set(String(row.date), row);
+          }
+          const simRows = Array.isArray(sim?.timeSeries) ? sim.timeSeries : [];
+          const simDates = new Set(simRows.map((row: any) => String(row.date)));
+          ga4Rows = simRows.map((row: any) => {
+            const dbRow = dbByDate.get(String(row.date));
+            if (!dbRow) return row;
+            return {
+              ...row,
+              sessions: parseNum(row?.sessions) + parseNum(dbRow?.sessions),
+              users: parseNum(row?.users) + parseNum(dbRow?.users),
+              conversions: parseNum(row?.conversions) + parseNum(dbRow?.conversions),
+              revenue: Number((parseNum(row?.revenue) + parseNum(dbRow?.revenue)).toFixed(2)),
+              pageviews: parseNum(row?.pageviews) + parseNum(dbRow?.pageviews),
+              engagementRate: parseNum(row?.engagementRate) || parseNum(dbRow?.engagementRate),
+            };
+          });
+          for (const row of storedRows) {
+            if (row?.date && !simDates.has(String(row.date))) ga4Rows.push(row);
+          }
+          ga4Rows.sort((a: any, b: any) => String(a.date || "").localeCompare(String(b.date || "")));
+        } else {
+          ga4Rows = storedRows;
+        }
+      }
       const linkedInRows = linkedInConn && !(linkedInConn as any).spendOnly
         ? await storage.getLinkedInDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[])
         : [];

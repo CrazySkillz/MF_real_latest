@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { formatPct } from "@shared/metric-math";
+import { formatPct, normalizeRateToPercent } from "@shared/metric-math";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, BarChart, Bar, ComposedChart, PieChart, Pie, Cell,
@@ -650,7 +650,7 @@ export default function TrendAnalysis() {
                         { label: 'Conversions', value: overviewTrendData.current.conversions === null ? null : fmtNum(overviewTrendData.current.conversions), change: overviewTrendData.comparison.conversions },
                         { label: 'Revenue', value: overviewTrendData.current.revenue === null ? null : fmtCur(overviewTrendData.current.revenue), change: overviewTrendData.comparison.revenue },
                         { label: 'CVR', value: overviewTrendData.current.cvr === null ? null : formatPct(overviewTrendData.current.cvr), change: overviewTrendData.comparison.cvr },
-                        { label: 'Engagement Rate', value: overviewTrendData.current.engagementRate === null ? null : formatPct(overviewTrendData.current.engagementRate), change: overviewTrendData.comparison.engagementRate },
+                        { label: 'Engagement Rate', value: overviewTrendData.current.engagementRate === null ? null : formatPct(normalizeRateToPercent(overviewTrendData.current.engagementRate)), change: overviewTrendData.comparison.engagementRate },
                         { label: 'Spend', value: overviewTrendData.current.spend === null ? null : fmtCur(overviewTrendData.current.spend), change: overviewTrendData.comparison.spend, invertColor: true },
                         { label: 'ROAS', value: overviewTrendData.current.roas === null ? null : `${overviewTrendData.current.roas.toFixed(1)}x`, change: overviewTrendData.comparison.roas },
                         { label: 'CPA', value: overviewTrendData.current.cpa === null ? null : fmtCur(overviewTrendData.current.cpa), change: overviewTrendData.comparison.cpa, invertColor: true },

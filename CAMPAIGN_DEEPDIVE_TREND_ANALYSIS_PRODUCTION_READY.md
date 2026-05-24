@@ -254,12 +254,15 @@ Evidence:
 
 Manual Render validation guidance:
 
-- Use `Last 30 Days` as the primary validation option for the current GA4 mock-placeholder campaign.
+- If the GA4 mock campaign was created or viewed with a 90-day scope, use `Last 90 Days` when comparing Trend Analysis Executive Overview values against the GA4 platform Summary values.
+- Use `Last 30 Days` only when validating the 30-day Trend Analysis window.
 - `Last 30 Days` requests 60 days from the aggregate endpoint so the UI has a current 30-day window plus a previous 30-day comparison window when enough rows exist.
 - `Last 7 Days` is acceptable for a quick smoke test, but it provides less history and is more sensitive to missing daily rows.
-- `Last 90 Days` is not the best current validation choice unless there are at least 180 compatible daily rows, because the page requests 90 current days plus 90 previous comparison days.
+- `Last 90 Days` requests 180 days from the aggregate endpoint, but the current GA4 mock simulator returns the current 90-day mock range. That is valid for current 90-day totals, but it may not show previous-period comparison percentages until enough compatible history exists.
 - With GA4 mock-placeholder data, validate source-aware logic only: the request succeeds, the source list contains GA4 only, GA4-capable metrics appear, paid-media-only metrics remain hidden unless available, and the selected dropdown changes the `dateRange`/`days` request.
 - Do not use the mock-placeholder values as proof of final live GA4 numeric accuracy. Final numeric/time-series validation should be done later with the planned mock-live GA4 account that receives controlled daily data.
+- Commit 2 follow-up fix: Trend Analysis now uses the same deterministic GA4 mock simulation path for `yesop` mock properties as the GA4 platform daily route, then overlays persisted daily rows. This prevents the Executive Overview from showing unrelated persisted-only mock rows when the source GA4 page is using simulated mock data.
+- Commit 2 follow-up fix: GA4 engagement rate is normalized before display, so decimal rates such as `0.6` display as `60%`, not `0.6%`.
 
 ### Commit 3: Efficiency Metrics
 

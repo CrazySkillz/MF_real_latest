@@ -109,6 +109,8 @@ Platform Comparison GA4 behavior is tracked in `CAMPAIGN_DEEPDIVE_PLATFORM_COMPA
 
 Trend Analysis GA4 behavior is tracked in `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`. The Trend Analysis aggregate returns connected main sources, daily rows, source capabilities, included metrics, unavailable reasons, and aggregate daily totals. The Executive Overview tab now uses that aggregate, so GA4-only campaigns should show GA4-capable trends such as sessions, users, conversions, revenue, CVR, and engagement rate where available, while paid-media metrics remain unavailable unless a main paid-media platform supplies the required inputs.
 
+For current `yesop` mock GA4 campaigns, validate Trend Analysis against the same date window used by the GA4 platform view. If the mock campaign was created or viewed with a 90-day scope, choose `Last 90 Days` in Trend Analysis. Mock validation proves source-aware wiring and date-window behavior; final numeric accuracy still requires the planned mock-live GA4 account with controlled daily data.
+
 ## Reference Rule
 
 For future development:

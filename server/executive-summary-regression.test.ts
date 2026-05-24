@@ -15,8 +15,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("const metaConnection = await storage.getMetaConnection(id).catch(() => null);");
     expect(route).toContain("if (metaConnection && !(metaConnection as any).spendOnly) {");
     expect(route).toContain("dateRange: executiveDateRange");
-    expect(route).toContain("if (isYesopMockProperty(primaryPropertyId)) {");
-    expect(route).toContain("const result = await ga4Service.getAcquisitionBreakdown(id, storage, ga4DateRange, primaryPropertyId || undefined, 2000, campaignFilter);");
+    expect(route).toContain("const metrics = await ga4Service.getMetricsWithAutoRefresh(id, storage, ga4DateRange, primaryPropertyId || undefined, campaignFilter);");
+    expect(route).toContain('periodParam === "90d" ? "90daysAgo" : "30daysAgo"');
     expect(route).toContain("let usedGA4SourceTruth = false;");
     expect(route).toContain("if (!usedGA4SourceTruth) {");
     expect(route).toContain("ga4: { connected: hasGA4Connection, ...ga4Metrics }");

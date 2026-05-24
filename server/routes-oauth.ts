@@ -25108,38 +25108,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const ga4End = endDate;
           let usedGA4SourceTruth = false;
           try {
-            if (isYesopMockProperty(primaryPropertyId)) {
-              const simulated = simulateGA4({
-                campaignId: id,
-                propertyId: primaryPropertyId,
-                dateRange: executiveDateRange === "all" ? "90days" : executiveDateRange,
-                noRevenue: isNoRevenueFilter((campaign as any)?.ga4CampaignFilter),
-                ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter,
-              });
-              const totals = (simulated as any)?.metrics || {};
-              ga4Metrics.sessions = parseNum(totals.sessions);
-              ga4Metrics.conversions = parseNum(totals.conversions);
-              ga4Metrics.pageviews = parseNum(totals.pageviews);
-              ga4Metrics.users = parseNum(totals.activeUsers || totals.users || totals.impressions);
-              ga4Metrics.revenue = parseNum(totals.revenue);
-              ga4Metrics.bounceRate = parseNum(totals.bounceRate);
-              const lastRow = Array.isArray((simulated as any)?.timeSeries) ? (simulated as any).timeSeries[(simulated as any).timeSeries.length - 1] : null;
-              ga4LastUpdate = lastRow?.date || null;
-              usedGA4SourceTruth = true;
-            } else {
-              const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
-              const ga4DateRange = periodParam === "7d" ? "7daysAgo" :
-                periodParam === "30d" ? "30daysAgo" :
-                  periodParam === "90d" ? "90daysAgo" : ga4Start;
-              const result = await ga4Service.getAcquisitionBreakdown(id, storage, ga4DateRange, primaryPropertyId || undefined, 2000, campaignFilter);
-              ga4Metrics.sessions = parseNum((result as any)?.totals?.sessions);
-              ga4Metrics.conversions = parseNum((result as any)?.totals?.conversions);
-              ga4Metrics.users = parseNum((result as any)?.totals?.users);
-              ga4Metrics.revenue = parseNum((result as any)?.totals?.revenue);
-              usedGA4SourceTruth = true;
-            }
+            const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+            const ga4DateRange = periodParam === "7d" ? "7daysAgo" :
+              periodParam === "90d" ? "90daysAgo" : "30daysAgo";
+            const metrics = await ga4Service.getMetricsWithAutoRefresh(id, storage, ga4DateRange, primaryPropertyId || undefined, campaignFilter);
+            ga4Metrics.sessions = parseNum((metrics as any)?.sessions);
+            ga4Metrics.conversions = parseNum((metrics as any)?.conversions);
+            ga4Metrics.pageviews = parseNum((metrics as any)?.pageviews);
+            ga4Metrics.users = parseNum((metrics as any)?.impressions);
+            ga4Metrics.revenue = 0;
+            ga4Metrics.bounceRate = parseNum((metrics as any)?.bounceRate);
+            usedGA4SourceTruth = true;
           } catch {
-            // Fall back to persisted GA4 daily rows below if source-truth GA4 is unavailable.
+            // Fall back to persisted GA4 daily rows below if the Connected Platforms GA4 metric source is unavailable.
           }
           const ga4Daily = await storage.getGA4DailyMetrics(id, primaryPropertyId, ga4Start, ga4End);
           if (ga4Daily && ga4Daily.length > 0) {

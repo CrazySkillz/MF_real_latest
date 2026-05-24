@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 
-describe("Trend Analysis Executive Overview regression guard", () => {
+describe("Trend Analysis Overview regression guard", () => {
   it("wires the Overview tab to the source-aware trend aggregate contract", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
     const overviewStart = page.indexOf('<TabsContent value="overview"');
     const overviewEnd = page.indexOf('<TabsContent value="efficiency"', overviewStart);
     const overview = page.slice(overviewStart, overviewEnd);
 
+    expect(page).toContain('<TabsTrigger value="overview">Overview</TabsTrigger>');
+    expect(page).not.toContain('<TabsTrigger value="overview">Executive Overview</TabsTrigger>');
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/trend-analysis`, trendDateRange, perfDays]');
     expect(page).toContain("trend-analysis?dateRange=${trendDateRange}&days=${perfDays * 2}");
     expect(page).toContain("const trendAggregate = (trendAnalysisResponse as any)?.trendAnalysis;");
@@ -91,11 +93,16 @@ describe("Trend Analysis Executive Overview regression guard", () => {
 
   it("wires the Insights tab to aggregate-backed executive recommendations", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
+    const headerStart = page.indexOf("{/* Header */}");
+    const headerEnd = page.indexOf("{/* Tabs */}", headerStart);
+    const header = page.slice(headerStart, headerEnd);
     const insightsStart = page.indexOf('<TabsContent value="insights"');
     const insightsEnd = page.indexOf("</TabsContent>", insightsStart);
     const insights = page.slice(insightsStart, insightsEnd);
 
     expect(page).toContain('<TabsTrigger value="insights">Insights</TabsTrigger>');
+    expect(header).toContain('activeTab !== "insights"');
+    expect(header).toContain("<Select value={perfPeriod} onValueChange={setPerfPeriod}>");
     expect(page).toContain("const trendInsights = useMemo<any[]>(() => {");
     expect(page).toContain("overviewTrendData?.hasPrevious");
     expect(page).toContain("efficiencyTrendData?.cards?.length");

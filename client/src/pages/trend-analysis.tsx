@@ -902,26 +902,28 @@ export default function TrendAnalysis() {
                   <p className="text-muted-foreground/70 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>
-              {/* Period selector — shared across all tabs */}
-              <Select value={perfPeriod} onValueChange={setPerfPeriod}>
-                <SelectTrigger className="w-[140px] h-9">
-                  <Calendar className="w-3.5 h-3.5 mr-1.5" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7d">Last 7 Days</SelectItem>
-                  <SelectItem value="14d">Last 14 Days</SelectItem>
-                  <SelectItem value="30d">Last 30 Days</SelectItem>
-                  <SelectItem value="90d">Last 90 Days</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Period selector is hidden on Insights because that tab summarizes other views. */}
+              {activeTab !== "insights" && (
+                <Select value={perfPeriod} onValueChange={setPerfPeriod}>
+                  <SelectTrigger className="w-[140px] h-9">
+                    <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7d">Last 7 Days</SelectItem>
+                    <SelectItem value="14d">Last 14 Days</SelectItem>
+                    <SelectItem value="30d">Last 30 Days</SelectItem>
+                    <SelectItem value="90d">Last 90 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="overview">Executive Overview</TabsTrigger>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="efficiency">Efficiency Metrics</TabsTrigger>
               <TabsTrigger value="funnel">Conversion Funnel</TabsTrigger>
               <TabsTrigger value="platforms">Platform Breakdown</TabsTrigger>

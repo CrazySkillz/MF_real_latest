@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { formatPct } from "@shared/metric-math";
 
+const PLATFORM_COMPARISON_REFRESH_MS = 30000;
+
 export default function PlatformComparison() {
   const { id: campaignId } = useParams();
   const [demoMode, setDemoMode] = useState(false);
@@ -64,6 +66,9 @@ export default function PlatformComparison() {
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },
+    refetchInterval: PLATFORM_COMPARISON_REFRESH_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   const performanceSummary = outcomeTotals?.performanceSummary;
@@ -153,7 +158,8 @@ export default function PlatformComparison() {
     const ot = outcomeTotals;
     if (!outcomeTotalsFetched && !ot) return [];
     const aggregateSources = Array.isArray(ot?.performanceSummary?.sources) ? ot.performanceSummary.sources : [];
-    if (aggregateSources.length > 0) {
+    if (ot?.performanceSummary) {
+      // Canonical main Connected Platform rows; legacy objects are only a no-aggregate fallback.
       return aggregateSources
         .filter((source: any) => source?.connected === true && source?.category !== "financial")
         .map((source: any) => {

@@ -115,6 +115,7 @@ Preferred approach:
 
 - Reuse `/api/campaigns/:id/outcome-totals` and `outcomeTotals.performanceSummary`.
 - Build normalized Platform Comparison rows from `performanceSummary.sources`.
+- Treat `performanceSummary.sources` as the canonical normalized list of main Connected Platforms for this page, not as a limiting single-source input. If the aggregate exists, do not fall back to older hardcoded platform objects just because the source list is empty.
 - Exclude `category: "financial"` sources from main platform cards/tables.
 - Use source `capabilities`, `includedMetrics`, and `metrics` to decide what each tab can show.
 - Keep unavailable metrics blank or explicitly unavailable instead of treating missing values as zero performance.
@@ -285,7 +286,7 @@ Evidence:
 - Use source labels and unavailable reasons from the aggregate where useful.
 - Remove estimated-revenue recommendations that are not backed by aggregate revenue.
 
-Status: completed locally, pending validation.
+Status: completed and Render-validated.
 
 Evidence:
 
@@ -296,12 +297,22 @@ Evidence:
 - Volume and engagement insights are gated to spend-capable comparable sources instead of treating GA4 analytics metrics as paid-media recommendation inputs.
 - Strategic recommendations require comparable main paid-media sources and no longer use missing CTR, CPC, conversion-rate, ROAS, or ROI values as if they were real metrics.
 - Regression coverage updated in `server/platform-comparison-regression.test.ts`.
+- Render validation passed: Platform Comparison Insights used the source-capability-safe GA4 summary and did not produce paid-media recommendations when only Google Analytics was connected.
 
 ### Commit 6: Scheduler/History Alignment
 
 - If Platform Comparison adds historical comparisons later, use compatible `metrics.performanceSummary` snapshots only.
 - Current values should refetch while visible and on window focus, matching Performance Summary and Budget & Financial Analysis.
 - Add regression coverage for query keys, refresh behavior, and aggregate-only snapshot compatibility if historical UI is used.
+
+Status: completed locally, pending Render validation.
+
+Evidence:
+
+- Platform Comparison current values now refetch from `/api/campaigns/:id/outcome-totals?dateRange=90days` every 30 seconds while the page is visible.
+- The aggregate query refetches on window focus and does not refetch in the background, matching Performance Summary and Budget & Financial Analysis current-value behavior.
+- Platform Comparison has no visible historical comparison tab today, so snapshot compatibility is documented as a future boundary: any future historical UI must use compatible `metrics.performanceSummary` snapshots only.
+- Regression coverage was updated in `server/platform-comparison-regression.test.ts` to guard the aggregate query key and refresh behavior.
 
 ### Commit 7: Documentation And Final Validation
 
@@ -325,7 +336,7 @@ Evidence:
 
 ## Current Status
 
-Not production-ready yet for the full requested source-of-truth rule. Commits 1-4 are implemented and Render-validated; Commit 5 is implemented locally and pending Render validation.
+Not production-ready yet for the full requested source-of-truth rule. Commits 1-5 are implemented and Render-validated; Commit 6 is implemented locally and pending Render validation.
 
 Proven:
 
@@ -357,9 +368,12 @@ Proven:
 - Commit 5 follow-up: GA4-only Insights now show a source-capability-safe analytics summary using GA4 sessions, users, conversions, and revenue when available, while still blocking paid-media comparison and budget recommendations until a main paid-media platform is connected.
 - Commit 5 follow-up: Platform Comparison Insights now uses the same stacked insight-card presentation pattern as Performance Summary and Budget & Financial Analysis instead of a standalone centered metric grid.
 - Commit 5 follow-up: GA4-only Insights copy now uses `Google Analytics Summary` and `Available Source Metrics` to avoid duplicated wording while preserving source-capability meaning.
+- Commit 5 Render validation passed: Platform Comparison Insights used the source-capability-safe GA4 summary and did not produce paid-media recommendations when only Google Analytics was connected.
+- Source contract follow-up: Platform Comparison treats `outcomeTotals.performanceSummary.sources` as the canonical normalized main Connected Platform list whenever the aggregate exists. Legacy hardcoded platform objects are retained only as a no-aggregate fallback, so an empty aggregate source list does not leak stale or child-source platform rows into the page.
+- Commit 6: Platform Comparison current values now refetch from the shared aggregate every 30 seconds while visible and on window focus, matching Performance Summary and Budget & Financial Analysis. Historical snapshot compatibility remains a future UI boundary because Platform Comparison does not currently render historical comparison tabs.
 
 Outstanding:
 
-- Remove or gate remaining hardcoded platform blocks and legacy fallback estimates that are still retained only as no-aggregate fallback behavior.
+- Remove or further reduce remaining hardcoded platform blocks and legacy fallback estimates that are still retained only for responses where the shared aggregate is absent.
 - Expand targeted regression coverage for each tab.
 - Validate with GA4-only and multi-platform connected-source scenarios.

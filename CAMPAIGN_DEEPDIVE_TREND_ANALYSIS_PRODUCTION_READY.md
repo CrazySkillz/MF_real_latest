@@ -346,9 +346,31 @@ Manual validation guidance:
 - Exclude platform child financial inputs as separate main rows.
 - Show source-specific unavailable reasons for metrics a platform does not provide.
 
-Status: pending.
+Status: completed.
 
-Evidence: not started.
+Root cause fixed:
+
+- The Platform Breakdown tab still rendered from the legacy frontend `crossPlatformData.platformTotals` merge.
+- That legacy path hardcoded LinkedIn, Meta, and Google Ads, so GA4 was not represented as a main connected source and future main sources would require tab-specific rewiring.
+- Commit 5 adds an aggregate-backed `platformBreakdownData` model and wires only the Platform Breakdown tab to `trend_analysis_aggregate_v1`.
+- Platform rows now come from `trendAggregate.sources`, which represents main Connected Platforms only.
+- GA4 appears as Google Analytics when connected, with its available web analytics and revenue metrics.
+- Platform child revenue/spend inputs remain excluded as separate main platform rows.
+- Source-specific unavailable metric reasons are surfaced in the table, and spend/efficiency charts explain missing source-level spend instead of rendering misleading empty paid-media comparisons.
+
+Files changed:
+
+- `client/src/pages/trend-analysis.tsx`
+- `server/trend-analysis-overview-regression.test.ts`
+
+Validation:
+
+- `npm test -- server/trend-analysis-aggregate.test.ts server/trend-analysis-overview-regression.test.ts`
+- `npm run check`
+
+Evidence:
+
+- Regression coverage proves the Platform Breakdown tab uses `platformBreakdownData`, reads `trendAggregate.sources`, no longer references `crossPlatformData`, removes hardcoded LinkedIn/Meta/Google Ads trend bars, and explains missing source-level spend/efficiency inputs.
 
 ### Commit 6: Market Trends
 
@@ -438,6 +460,6 @@ Trend Analysis is production ready only when:
 
 ## Current Status
 
-Commits 1 through 4 are completed and validated locally.
+Commits 1 through 5 are completed and validated locally.
 
-Trend Analysis now has an aggregate contract plus aggregate-backed Executive Overview, Efficiency Metrics, and Conversion Funnel tabs. Remaining production-readiness work starts at Commit 5: Platform Breakdown.
+Trend Analysis now has an aggregate contract plus aggregate-backed Executive Overview, Efficiency Metrics, Conversion Funnel, and Platform Breakdown tabs. Remaining production-readiness work starts at Commit 6: Market Trends.

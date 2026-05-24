@@ -72,6 +72,23 @@ describe("Trend Analysis Executive Overview regression guard", () => {
     expect(funnel).not.toContain("Connect an ad platform to see conversion funnel trends.");
   });
 
+  it("wires the Platform Breakdown tab to aggregate-backed connected sources", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
+    const platformsStart = page.indexOf('<TabsContent value="platforms"');
+    const platformsEnd = page.indexOf('<TabsContent value="market"', platformsStart);
+    const platforms = page.slice(platformsStart, platformsEnd);
+
+    expect(page).toContain("const platformBreakdownData = useMemo<any>(() => {");
+    expect(page).toContain("const sources = Array.isArray(aggregate?.sources) ? aggregate.sources : [];");
+    expect(platforms).toContain("platformBreakdownData.sources.map");
+    expect(platforms).toContain("No connected main source provides source-level spend for this selection.");
+    expect(platforms).toContain("CPA and CPC require source-level spend plus conversions or clicks from a connected main source.");
+    expect(platforms).toContain("p.unavailable.join");
+    expect(platforms).not.toContain("crossPlatformData");
+    expect(platforms).not.toContain("Connect at least one ad platform to see breakdown analysis.");
+    expect(platforms).not.toContain("li_${platformMetric}");
+  });
+
   it("keeps mock GA4 Trend Analysis rows aligned with the GA4 mock source path", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/trend-analysis"');

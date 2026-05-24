@@ -668,6 +668,82 @@ export default function TrendAnalysis() {
     };
   }, [trendAggregate, perfDays]);
 
+  const platformBreakdownData = useMemo<any>(() => {
+    const aggregate = trendAggregate;
+    const sources = Array.isArray(aggregate?.sources) ? aggregate.sources : [];
+    if (sources.length === 0) return null;
+
+    const toMetric = (value: any) => {
+      if (value === null || typeof value === "undefined") return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const sourceRows = sources.map((source: any, index: number) => {
+      const includedMetrics = Array.isArray(source?.includedMetrics) ? source.includedMetrics.map(String) : [];
+      const excludedMetrics = Array.isArray(source?.excludedMetrics) ? source.excludedMetrics : [];
+      const dailyRows = Array.isArray(source?.dailyRows) ? source.dailyRows : [];
+      const currentRows = dailyRows.slice(-perfDays);
+      const hasMetric = (metricName: string) => includedMetrics.includes(metricName);
+      const sum = (metricName: string) => hasMetric(metricName)
+        ? currentRows.reduce((total: number, row: any) => total + (Number(row?.metrics?.[metricName]) || 0), 0)
+        : null;
+      const users = sum("users");
+      const sessions = sum("sessions");
+      const impressions = sum("impressions");
+      const clicks = sum("clicks");
+      const spend = sum("spend");
+      const conversions = sum("conversions");
+      const revenue = sum("revenue");
+      return {
+        id: String(source?.id || `source_${index}`),
+        label: String(source?.label || source?.id || "Connected Source"),
+        category: String(source?.category || "custom"),
+        color: PLATFORM_COLORS[String(source?.id || "")] || COLORS[index % COLORS.length],
+        users,
+        sessions,
+        impressions,
+        clicks,
+        spend,
+        conversions,
+        revenue,
+        ctr: impressions && impressions > 0 && clicks !== null ? (clicks / impressions) * 100 : null,
+        cpc: spend && spend > 0 && clicks ? spend / clicks : null,
+        cpa: spend && spend > 0 && conversions ? spend / conversions : null,
+        roas: spend && spend > 0 && revenue !== null ? revenue / spend : null,
+        includedMetrics,
+        unavailable: excludedMetrics.map((item: any) => `${item.metric}: ${item.reason}`).slice(0, 3),
+      };
+    });
+
+    const metricOptions = ["spend", "clicks", "conversions", "impressions", "sessions", "users", "revenue"]
+      .filter((metricName) => sourceRows.some((source: any) => source[metricName] !== null));
+    const activeMetric = metricOptions.includes(platformMetric) ? platformMetric : metricOptions[0] || "conversions";
+
+    const trendRowsByDate = new Map<string, any>();
+    for (const source of sources) {
+      const sourceId = String(source?.id || "");
+      const dailyRows = Array.isArray(source?.dailyRows) ? source.dailyRows.slice(-perfDays) : [];
+      for (const row of dailyRows) {
+        const date = String(row?.date || "").slice(0, 10);
+        if (!date) continue;
+        if (!trendRowsByDate.has(date)) {
+          trendRowsByDate.set(date, { date, label: format(new Date(`${date}T00:00:00`), 'MMM dd') });
+        }
+        const trendRow = trendRowsByDate.get(date);
+        trendRow[`${sourceId}_${activeMetric}`] = Number(row?.metrics?.[activeMetric] || 0);
+      }
+    }
+
+    return {
+      sources: sourceRows,
+      trendRows: Array.from(trendRowsByDate.values()).sort((a: any, b: any) => String(a.date).localeCompare(String(b.date))),
+      metricOptions,
+      activeMetric,
+      spendSources: sourceRows.filter((source: any) => source.spend !== null && source.spend > 0),
+      efficiencySources: sourceRows.filter((source: any) => (source.cpa !== null && source.cpa > 0) || (source.cpc !== null && source.cpc > 0)),
+    };
+  }, [trendAggregate, perfDays, platformMetric]);
+
   // ─── Google Trends mutations & handlers ──────────────────────────
   const updateKeywordsMutation = useMutation({
     mutationFn: async (data: { industry: string; trendKeywords: string[] }) => {
@@ -749,8 +825,6 @@ export default function TrendAnalysis() {
     );
   }
 
-  const hasData = crossPlatformData && crossPlatformData.series.length > 0;
-  const hasAdPlatforms = crossPlatformData && crossPlatformData.current.impressions > 0;
   const overviewHasData = Boolean(overviewTrendData && overviewTrendData.series.length > 0);
   const overviewLoading = trendAnalysisLoading && !trendAnalysisFetched && !overviewTrendData;
 
@@ -1181,9 +1255,18 @@ export default function TrendAnalysis() {
             </TabsContent>
 
             {/* ═══════════ TAB 4: PLATFORM BREAKDOWN ═══════════ */}
-            <TabsContent value="platforms" className={`space-y-6 fade-in chart-transition ${isRefreshing ? 'chart-refreshing' : ''}`}>
-              {!hasData || !crossPlatformData.platformTotals.length ? (
-                <Card><CardContent className="p-8 text-center"><GitCompare className="w-12 h-12 mx-auto text-muted-foreground/60 mb-4" /><h3 className="text-lg font-semibold text-foreground mb-2">No Platform Data</h3><p className="text-sm text-muted-foreground/70">Connect at least one ad platform to see breakdown analysis.</p></CardContent></Card>
+            <TabsContent value="platforms" className={`space-y-6 fade-in chart-transition ${isTrendAnalysisRefreshing ? 'chart-refreshing' : ''}`}>
+              {trendAnalysisLoading && !trendAnalysisFetched && !platformBreakdownData ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="space-y-4">
+                      <div className="h-5 bg-muted rounded w-1/3" />
+                      <div className="h-48 bg-muted rounded" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : !platformBreakdownData || !platformBreakdownData.sources.length ? (
+                <Card><CardContent className="p-8 text-center"><GitCompare className="w-12 h-12 mx-auto text-muted-foreground/60 mb-4" /><h3 className="text-lg font-semibold text-foreground mb-2">No Platform Data</h3><p className="text-sm text-muted-foreground/70">No connected source trend data is available for this selection.</p></CardContent></Card>
               ) : (
                 <>
                   {/* Platform Comparison Table */}
@@ -1195,34 +1278,43 @@ export default function TrendAnalysis() {
                           <thead>
                             <tr className="border-b border-border">
                               <th className="text-left py-3 px-2 font-medium text-muted-foreground">Platform</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Users</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Sessions</th>
                               <th className="text-right py-3 px-2 font-medium text-muted-foreground">Spend</th>
                               <th className="text-right py-3 px-2 font-medium text-muted-foreground">Impressions</th>
                               <th className="text-right py-3 px-2 font-medium text-muted-foreground">Clicks</th>
                               <th className="text-right py-3 px-2 font-medium text-muted-foreground">CTR</th>
                               <th className="text-right py-3 px-2 font-medium text-muted-foreground">Conversions</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Revenue</th>
                               <th className="text-right py-3 px-2 font-medium text-muted-foreground">CPA</th>
                               <th className="text-right py-3 px-2 font-medium text-muted-foreground">CPC</th>
+                              <th className="text-left py-3 px-2 font-medium text-muted-foreground">Unavailable</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {crossPlatformData.platformTotals.map((p, i) => {
-                              const bestCpa = Math.min(...crossPlatformData.platformTotals.filter(x => x.cpa > 0).map(x => x.cpa));
-                              const bestCpc = Math.min(...crossPlatformData.platformTotals.filter(x => x.cpc > 0).map(x => x.cpc));
+                            {platformBreakdownData.sources.map((p: any, i: number) => {
+                              const bestCpa = Math.min(...platformBreakdownData.sources.filter((x: any) => x.cpa > 0).map((x: any) => x.cpa));
+                              const bestCpc = Math.min(...platformBreakdownData.sources.filter((x: any) => x.cpc > 0).map((x: any) => x.cpc));
                               return (
                                 <tr key={i} className="border-b border-slate-100">
                                   <td className="py-3 px-2">
                                     <div className="flex items-center space-x-2">
                                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }} />
-                                      <span className="font-medium text-foreground">{p.platform}</span>
+                                      <span className="font-medium text-foreground">{p.label}</span>
+                                      <Badge variant="outline" className="capitalize">{p.category.replace("_", " ")}</Badge>
                                     </div>
                                   </td>
-                                  <td className="text-right py-3 px-2">{fmtCur(p.spend)}</td>
-                                  <td className="text-right py-3 px-2">{fmtNum(p.impressions)}</td>
-                                  <td className="text-right py-3 px-2">{fmtNum(p.clicks)}</td>
-                                  <td className="text-right py-3 px-2">{formatPct(p.ctr)}</td>
-                                  <td className="text-right py-3 px-2">{fmtNum(p.conversions)}</td>
+                                  <td className="text-right py-3 px-2">{p.users === null ? '—' : fmtNum(p.users)}</td>
+                                  <td className="text-right py-3 px-2">{p.sessions === null ? '—' : fmtNum(p.sessions)}</td>
+                                  <td className="text-right py-3 px-2">{p.spend === null ? '—' : fmtCur(p.spend)}</td>
+                                  <td className="text-right py-3 px-2">{p.impressions === null ? '—' : fmtNum(p.impressions)}</td>
+                                  <td className="text-right py-3 px-2">{p.clicks === null ? '—' : fmtNum(p.clicks)}</td>
+                                  <td className="text-right py-3 px-2">{p.ctr === null ? '—' : formatPct(p.ctr)}</td>
+                                  <td className="text-right py-3 px-2">{p.conversions === null ? '—' : fmtNum(p.conversions)}</td>
+                                  <td className="text-right py-3 px-2">{p.revenue === null ? '—' : fmtCur(p.revenue)}</td>
                                   <td className={`text-right py-3 px-2 ${p.cpa > 0 && p.cpa === bestCpa ? 'text-green-600 font-semibold' : ''}`}>{p.cpa > 0 ? fmtCur(p.cpa) : '—'}</td>
                                   <td className={`text-right py-3 px-2 ${p.cpc > 0 && p.cpc === bestCpc ? 'text-green-600 font-semibold' : ''}`}>{p.cpc > 0 ? fmtCur(p.cpc) : '—'}</td>
+                                  <td className="py-3 px-2 text-xs text-muted-foreground">{p.unavailable.length ? p.unavailable.join("; ") : "—"}</td>
                                 </tr>
                               );
                             })}
@@ -1238,25 +1330,29 @@ export default function TrendAnalysis() {
                     <Card>
                       <CardHeader><CardTitle>Spend Distribution</CardTitle></CardHeader>
                       <CardContent>
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={crossPlatformData.platformTotals.filter(p => p.spend > 0)}
-                                dataKey="spend"
-                                nameKey="platform"
-                                cx="50%" cy="50%"
-                                outerRadius={80}
-                                label={({ platform, percent }) => `${platform} ${(percent * 100).toFixed(0)}%`}
-                              >
-                                {crossPlatformData.platformTotals.filter(p => p.spend > 0).map((p, i) => (
-                                  <Cell key={i} fill={p.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip formatter={(v: any) => fmtCur(Number(v))} />
-                            </PieChart>
-                          </ResponsiveContainer>
-                        </div>
+                        {platformBreakdownData.spendSources.length ? (
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={platformBreakdownData.spendSources}
+                                  dataKey="spend"
+                                  nameKey="label"
+                                  cx="50%" cy="50%"
+                                  outerRadius={80}
+                                  label={({ label, percent }) => `${label} ${(percent * 100).toFixed(0)}%`}
+                                >
+                                  {platformBreakdownData.spendSources.map((p: any, i: number) => (
+                                    <Cell key={i} fill={p.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip formatter={(v: any) => fmtCur(Number(v))} />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground/70">No connected main source provides source-level spend for this selection.</p>
+                        )}
                       </CardContent>
                     </Card>
 
@@ -1264,18 +1360,22 @@ export default function TrendAnalysis() {
                     <Card>
                       <CardHeader><CardTitle>Efficiency Comparison</CardTitle></CardHeader>
                       <CardContent>
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={crossPlatformData.platformTotals} layout="vertical">
-                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                              <XAxis type="number" className="text-xs" />
-                              <YAxis dataKey="platform" type="category" className="text-xs" width={80} />
-                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => fmtCur(Number(v))} />
-                              <Bar dataKey="cpa" fill="#ef4444" name="CPA" />
-                              <Bar dataKey="cpc" fill="#f59e0b" name="CPC" />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
+                        {platformBreakdownData.efficiencySources.length ? (
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={platformBreakdownData.efficiencySources} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                                <XAxis type="number" className="text-xs" />
+                                <YAxis dataKey="label" type="category" className="text-xs" width={100} />
+                                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => fmtCur(Number(v))} />
+                                <Bar dataKey="cpa" fill="#ef4444" name="CPA" />
+                                <Bar dataKey="cpc" fill="#f59e0b" name="CPC" />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground/70">CPA and CPC require source-level spend plus conversions or clicks from a connected main source.</p>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
@@ -1285,13 +1385,12 @@ export default function TrendAnalysis() {
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <CardTitle>Platform Trends</CardTitle>
-                        <Select value={platformMetric} onValueChange={setPlatformMetric}>
+                        <Select value={platformBreakdownData.activeMetric} onValueChange={setPlatformMetric}>
                           <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="spend">Spend</SelectItem>
-                            <SelectItem value="clicks">Clicks</SelectItem>
-                            <SelectItem value="conversions">Conversions</SelectItem>
-                            <SelectItem value="impressions">Impressions</SelectItem>
+                            {platformBreakdownData.metricOptions.map((metricName: string) => (
+                              <SelectItem key={metricName} value={metricName}>{metricName.charAt(0).toUpperCase() + metricName.slice(1)}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -1299,14 +1398,14 @@ export default function TrendAnalysis() {
                     <CardContent>
                       <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={crossPlatformData.series}>
+                          <BarChart data={platformBreakdownData.trendRows}>
                             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                             <XAxis dataKey="label" className="text-xs" />
                             <YAxis className="text-xs" />
-                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [platformMetric === 'spend' ? fmtCur(Number(v)) : Number(v).toLocaleString(), name]} />
-                            <Bar dataKey={`li_${platformMetric}`} stackId="a" fill={PLATFORM_COLORS.linkedin} name="LinkedIn" />
-                            <Bar dataKey={`meta_${platformMetric}`} stackId="a" fill={PLATFORM_COLORS.meta} name="Meta" />
-                            <Bar dataKey={`gads_${platformMetric}`} stackId="a" fill={PLATFORM_COLORS.google_ads} name="Google Ads" />
+                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [platformBreakdownData.activeMetric === 'spend' || platformBreakdownData.activeMetric === 'revenue' ? fmtCur(Number(v)) : Number(v).toLocaleString(), name]} />
+                            {platformBreakdownData.sources.map((source: any) => (
+                              <Bar key={source.id} dataKey={`${source.id}_${platformBreakdownData.activeMetric}`} stackId="a" fill={source.color} name={source.label} />
+                            ))}
                           </BarChart>
                         </ResponsiveContainer>
                       </div>

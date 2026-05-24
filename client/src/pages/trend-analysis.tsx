@@ -396,7 +396,7 @@ export default function TrendAnalysis() {
     const hasEngagementRate = Array.isArray(aggregate?.sources)
       && aggregate.sources.some((source: any) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes("engagementRate"));
 
-    const series = rows.map((row: any) => {
+    const series: any[] = rows.map((row: any) => {
       const date = String(row?.date || "").slice(0, 10);
       const metrics = row?.metrics || {};
       return {
@@ -582,9 +582,89 @@ export default function TrendAnalysis() {
       current,
       cards,
       hasPrevious: previousPeriod.length >= perfDays,
+      hasCompleteCurrentPeriod: currentPeriod.length >= perfDays,
+      currentPeriodDays: currentPeriod.length,
+      requestedPeriodDays: perfDays,
       hasFinancialEfficiency: hasValue("roas") || hasValue("roi"),
       hasCostEfficiency: hasValue("cpa") || hasValue("cpc") || hasValue("cpm"),
       hasRateEfficiency: hasValue("ctr") || hasValue("cvr") || hasValue("engagementRate"),
+    };
+  }, [trendAggregate, perfDays]);
+
+  const conversionFunnelData = useMemo<any>(() => {
+    const aggregate = trendAggregate;
+    const rows = Array.isArray(aggregate?.dailyTotals) ? aggregate.dailyTotals : [];
+    if (rows.length === 0) return null;
+
+    const sourcesFor = (metricName: string): string[] => {
+      const sources = aggregate?.metrics?.[metricName]?.sources;
+      return Array.isArray(sources) ? sources.map(String) : [];
+    };
+    const hasMetric = (metricName: string) => sourcesFor(metricName).length > 0;
+    const hasEngagementRate = Array.isArray(aggregate?.sources)
+      && aggregate.sources.some((source: any) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes("engagementRate"));
+    const toMetric = (value: any) => {
+      if (value === null || typeof value === "undefined") return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const series = rows.map((row: any) => {
+      const date = String(row?.date || "").slice(0, 10);
+      const metrics = row?.metrics || {};
+      const engagementRate = toMetric(metrics.engagementRate);
+      return {
+        date,
+        label: format(new Date(`${date}T00:00:00`), 'MMM dd'),
+        users: Number(metrics.users || 0),
+        sessions: Number(metrics.sessions || 0),
+        conversions: Number(metrics.conversions || 0),
+        engagementRate: engagementRate === null ? null : normalizeRateToPercent(engagementRate),
+        impressions: Number(metrics.impressions || 0),
+        clicks: Number(metrics.clicks || 0),
+        spend: Number(metrics.spend || 0),
+        ctr: toMetric(metrics.ctr),
+        cpc: toMetric(metrics.cpc),
+        cpm: toMetric(metrics.cpm),
+        cpa: toMetric(metrics.cpa),
+        roas: toMetric(metrics.roas),
+      };
+    });
+    const currentPeriod = series.slice(-perfDays);
+    const sum = (key: string) => currentPeriod.reduce((total: number, row: any) => total + (Number(row[key]) || 0), 0);
+    const avg = (key: string) => {
+      const values = currentPeriod.map((row: any) => row[key]).filter((value: any) => value !== null && typeof value !== "undefined" && Number.isFinite(Number(value)));
+      return values.length > 0 ? values.reduce((total: number, value: any) => total + Number(value), 0) / values.length : null;
+    };
+    const sessions = hasMetric("sessions") ? sum("sessions") : null;
+    const users = hasMetric("users") ? sum("users") : null;
+    const conversions = hasMetric("conversions") ? sum("conversions") : null;
+    const impressions = hasMetric("impressions") ? sum("impressions") : null;
+    const clicks = hasMetric("clicks") ? sum("clicks") : null;
+    const spend = hasMetric("spend") ? sum("spend") : null;
+
+    return {
+      series: currentPeriod,
+      current: {
+        sessions,
+        users,
+        conversions,
+        webCvr: conversions !== null && sessions && sessions > 0 ? (conversions / sessions) * 100 : null,
+        engagementRate: hasEngagementRate ? avg("engagementRate") : null,
+        impressions,
+        clicks,
+        spend,
+        ctr: impressions && impressions > 0 && clicks !== null ? (clicks / impressions) * 100 : null,
+        paidCvr: clicks && clicks > 0 && conversions !== null ? (conversions / clicks) * 100 : null,
+        cpa: spend && spend > 0 && conversions ? spend / conversions : null,
+        cpc: spend && spend > 0 && clicks ? spend / clicks : null,
+        cpm: spend && spend > 0 && impressions ? (spend / impressions) * 1000 : null,
+        roas: avg("roas"),
+      },
+      webAvailable: hasMetric("sessions") || hasMetric("users") || hasMetric("conversions") || hasEngagementRate,
+      paidAvailable: hasMetric("impressions") || hasMetric("clicks"),
+      hasCompleteCurrentPeriod: currentPeriod.length >= perfDays,
+      currentPeriodDays: currentPeriod.length,
+      requestedPeriodDays: perfDays,
     };
   }, [trendAggregate, perfDays]);
 
@@ -922,6 +1002,12 @@ export default function TrendAnalysis() {
                     })}
                   </div>
 
+                  {!efficiencyTrendData.hasCompleteCurrentPeriod && (
+                    <p className="text-sm text-muted-foreground">
+                      Showing {efficiencyTrendData.currentPeriodDays} of {efficiencyTrendData.requestedPeriodDays} days available for this selection. Validate full-period efficiency trends after enough daily history exists.
+                    </p>
+                  )}
+
                   {/* ROAS & ROI Chart */}
                   {efficiencyTrendData.hasFinancialEfficiency ? (
                     <Card>
@@ -999,87 +1085,96 @@ export default function TrendAnalysis() {
             </TabsContent>
 
             {/* ═══════════ TAB 3: CONVERSION FUNNEL ═══════════ */}
-            <TabsContent value="funnel" className={`space-y-6 fade-in chart-transition ${isRefreshing ? 'chart-refreshing' : ''}`}>
-              {!hasData ? (
-                <Card><CardContent className="p-8 text-center"><Layers className="w-12 h-12 mx-auto text-muted-foreground/60 mb-4" /><h3 className="text-lg font-semibold text-foreground mb-2">No Funnel Data</h3><p className="text-sm text-muted-foreground/70">Connect an ad platform to see conversion funnel trends.</p></CardContent></Card>
+            <TabsContent value="funnel" className={`space-y-6 fade-in chart-transition ${isTrendAnalysisRefreshing ? 'chart-refreshing' : ''}`}>
+              {trendAnalysisLoading && !trendAnalysisFetched && !conversionFunnelData ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="space-y-4">
+                      <div className="h-5 bg-muted rounded w-1/3" />
+                      <div className="grid gap-4 md:grid-cols-4">
+                        {[0, 1, 2, 3].map((item) => <div key={item} className="h-24 bg-muted rounded" />)}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : !conversionFunnelData || (!conversionFunnelData.webAvailable && !conversionFunnelData.paidAvailable) ? (
+                <Card><CardContent className="p-8 text-center"><Layers className="w-12 h-12 mx-auto text-muted-foreground/60 mb-4" /><h3 className="text-lg font-semibold text-foreground mb-2">No Funnel Data</h3><p className="text-sm text-muted-foreground/70">No connected source provides funnel metrics for this selection.</p></CardContent></Card>
               ) : (
                 <>
-                  {/* Funnel Summary Cards */}
-                  <div className="grid gap-4 md:grid-cols-4">
-                    {[
-                      { label: 'Total Impressions', value: fmtNum(crossPlatformData.current.impressions) },
-                      { label: 'Click-Through Rate', value: `${formatPct(crossPlatformData.current.ctr)}` },
-                      { label: 'Conversion Rate', value: formatPct(crossPlatformData.current.clicks > 0 ? (crossPlatformData.current.conversions / crossPlatformData.current.clicks) * 100 : 0) },
-                      { label: 'Cost per Conversion', value: fmtCur(crossPlatformData.current.cpa) },
-                    ].map((c, i) => (
-                      <Card key={i}><CardContent className="p-4"><div className="text-xs text-muted-foreground mb-1">{c.label}</div><div className="text-xl font-bold text-foreground">{c.value}</div></CardContent></Card>
-                    ))}
-                  </div>
-
-                  {/* Conversion Rates Over Time */}
-                  <Card>
-                    <CardHeader><CardTitle className="flex items-center space-x-2"><TrendingUp className="w-5 h-5" /><span>Conversion Rates Over Time</span></CardTitle></CardHeader>
+                  {conversionFunnelData.webAvailable && (
+                    <Card>
+                      <CardHeader><CardTitle className="flex items-center space-x-2"><BarChart3 className="w-5 h-5" /><span>Web Analytics Funnel</span></CardTitle></CardHeader>
                     <CardContent>
+                      <div className="grid gap-4 md:grid-cols-4 mb-6">
+                        {[
+                          { label: 'Sessions', value: conversionFunnelData.current.sessions === null ? null : fmtNum(conversionFunnelData.current.sessions) },
+                          { label: 'Users', value: conversionFunnelData.current.users === null ? null : fmtNum(conversionFunnelData.current.users) },
+                          { label: 'Conversions', value: conversionFunnelData.current.conversions === null ? null : fmtNum(conversionFunnelData.current.conversions) },
+                          { label: 'Web CVR', value: conversionFunnelData.current.webCvr === null ? null : formatPct(conversionFunnelData.current.webCvr) },
+                          { label: 'Engagement Rate', value: conversionFunnelData.current.engagementRate === null ? null : formatPct(conversionFunnelData.current.engagementRate) },
+                        ].filter((card) => card.value !== null).map((card, i) => (
+                          <Card key={i}><CardContent className="p-4"><div className="text-xs text-muted-foreground mb-1">{card.label}</div><div className="text-xl font-bold text-foreground">{card.value}</div></CardContent></Card>
+                        ))}
+                      </div>
                       <div className="h-72">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={crossPlatformData.series}>
+                          <ComposedChart data={conversionFunnelData.series}>
                             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                             <XAxis dataKey="label" className="text-xs" />
-                            <YAxis className="text-xs" />
-                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [`${formatPct(Number(v))}`, name]} />
-                            <Line type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR (Impressions → Clicks)" />
-                            <Line type="monotone" dataKey="convRate" stroke="#8b5cf6" strokeWidth={2} dot={false} name="Conv Rate (Clicks → Conversions)" />
-                          </LineChart>
+                            <YAxis yAxisId="left" className="text-xs" />
+                            <YAxis yAxisId="right" orientation="right" className="text-xs" domain={[0, 100]} />
+                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [name.includes('Rate') || name.includes('CVR') ? `${formatPct(Number(v))}` : Number(v).toLocaleString(), name]} />
+                            {conversionFunnelData.current.users !== null && <Area yAxisId="left" type="monotone" dataKey="users" fill="#E37400" fillOpacity={0.1} stroke="#E37400" strokeWidth={1.5} name="Users" />}
+                            {conversionFunnelData.current.sessions !== null && <Line yAxisId="left" type="monotone" dataKey="sessions" stroke="#3b82f6" strokeWidth={2} dot={false} name="Sessions" />}
+                            {conversionFunnelData.current.conversions !== null && <Bar yAxisId="left" dataKey="conversions" fill="#10b981" fillOpacity={0.7} name="Conversions" />}
+                            {conversionFunnelData.current.engagementRate !== null && <Line yAxisId="right" type="monotone" dataKey="engagementRate" stroke="#8b5cf6" strokeWidth={2} dot={false} name="Engagement Rate %" />}
+                          </ComposedChart>
                         </ResponsiveContainer>
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  )}
 
-                  {/* Funnel Stacked Area */}
-                  {hasAdPlatforms && (
+                  {conversionFunnelData.paidAvailable ? (
                     <Card>
-                      <CardHeader><CardTitle className="flex items-center space-x-2"><Layers className="w-5 h-5" /><span>Funnel Volume Trends</span></CardTitle></CardHeader>
+                      <CardHeader><CardTitle className="flex items-center space-x-2"><Layers className="w-5 h-5" /><span>Paid-Media Funnel</span></CardTitle></CardHeader>
                       <CardContent>
+                        <div className="grid gap-4 md:grid-cols-4 mb-6">
+                          {[
+                            { label: 'Impressions', value: conversionFunnelData.current.impressions === null ? null : fmtNum(conversionFunnelData.current.impressions) },
+                            { label: 'Clicks', value: conversionFunnelData.current.clicks === null ? null : fmtNum(conversionFunnelData.current.clicks) },
+                            { label: 'CTR', value: conversionFunnelData.current.ctr === null ? null : formatPct(conversionFunnelData.current.ctr) },
+                            { label: 'Paid CVR', value: conversionFunnelData.current.paidCvr === null ? null : formatPct(conversionFunnelData.current.paidCvr) },
+                            { label: 'CPA', value: conversionFunnelData.current.cpa === null ? null : fmtCur(conversionFunnelData.current.cpa) },
+                          ].filter((card) => card.value !== null).map((card, i) => (
+                            <Card key={i}><CardContent className="p-4"><div className="text-xs text-muted-foreground mb-1">{card.label}</div><div className="text-xl font-bold text-foreground">{card.value}</div></CardContent></Card>
+                          ))}
+                        </div>
                         <div className="h-72">
                           <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={crossPlatformData.series}>
+                            <ComposedChart data={conversionFunnelData.series}>
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                               <XAxis dataKey="label" className="text-xs" />
                               <YAxis yAxisId="left" className="text-xs" />
                               <YAxis yAxisId="right" orientation="right" className="text-xs" />
-                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [Number(v).toLocaleString(), name]} />
-                              <Area yAxisId="left" type="monotone" dataKey="impressions" fill="#3b82f6" fillOpacity={0.1} stroke="#3b82f6" strokeWidth={1.5} name="Impressions" />
-                              <Line yAxisId="left" type="monotone" dataKey="clicks" stroke="#06b6d4" strokeWidth={2} dot={false} name="Clicks" />
-                              <Bar yAxisId="right" dataKey="conversions" fill="#8b5cf6" fillOpacity={0.7} name="Conversions" />
+                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [name === 'Spend' ? fmtCur(Number(v)) : Number(v).toLocaleString(), name]} />
+                              {conversionFunnelData.current.impressions !== null && <Area yAxisId="left" type="monotone" dataKey="impressions" fill="#3b82f6" fillOpacity={0.1} stroke="#3b82f6" strokeWidth={1.5} name="Impressions" />}
+                              {conversionFunnelData.current.clicks !== null && <Line yAxisId="left" type="monotone" dataKey="clicks" stroke="#06b6d4" strokeWidth={2} dot={false} name="Clicks" />}
+                              {conversionFunnelData.current.conversions !== null && <Bar yAxisId="left" dataKey="conversions" fill="#8b5cf6" fillOpacity={0.7} name="Conversions" />}
+                              {conversionFunnelData.current.spend !== null && <Line yAxisId="right" type="monotone" dataKey="spend" stroke="#f59e0b" strokeWidth={2} dot={false} name="Spend" />}
                             </ComposedChart>
                           </ResponsiveContainer>
                         </div>
                       </CardContent>
                     </Card>
+                  ) : (
+                    <Card><CardContent className="p-6 text-sm text-muted-foreground/70">Paid-media funnel metrics require a connected paid-media source with impressions or clicks. GA4 web analytics are shown separately above.</CardContent></Card>
                   )}
 
-                  {/* GA4 Engagement Funnel */}
-                  {crossPlatformData.current.users > 0 && (
-                    <Card>
-                      <CardHeader><CardTitle className="flex items-center space-x-2"><BarChart3 className="w-5 h-5" /><span>GA4 Engagement Funnel</span></CardTitle></CardHeader>
-                      <CardContent>
-                        <div className="h-72">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={crossPlatformData.series}>
-                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                              <XAxis dataKey="label" className="text-xs" />
-                              <YAxis yAxisId="left" className="text-xs" />
-                              <YAxis yAxisId="right" orientation="right" className="text-xs" domain={[0, 100]} />
-                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [name.includes('Rate') ? `${Number(v).toFixed(1)}%` : Number(v).toLocaleString(), name]} />
-                              <Area yAxisId="left" type="monotone" dataKey="ga4_users" fill="#E37400" fillOpacity={0.1} stroke="#E37400" strokeWidth={1.5} name="Users" />
-                              <Line yAxisId="left" type="monotone" dataKey="ga4_sessions" stroke="#3b82f6" strokeWidth={2} dot={false} name="Sessions" />
-                              <Bar yAxisId="left" dataKey="ga4_conversions" fill="#10b981" fillOpacity={0.7} name="Conversions" />
-                              <Line yAxisId="right" type="monotone" dataKey="engagementRate" stroke="#8b5cf6" strokeWidth={2} dot={false} name="Engagement Rate %" />
-                            </ComposedChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
+                  {!conversionFunnelData.hasCompleteCurrentPeriod && (
+                    <p className="text-sm text-muted-foreground">
+                      Showing {conversionFunnelData.currentPeriodDays} of {conversionFunnelData.requestedPeriodDays} days available for this selection. Validate full-period funnel trends after enough daily history exists.
+                    </p>
                   )}
                 </>
               )}

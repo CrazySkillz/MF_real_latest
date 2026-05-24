@@ -48,10 +48,28 @@ describe("Trend Analysis Executive Overview regression guard", () => {
     expect(page).toContain("roi: toMetric(metrics.roi)");
     expect(page).toContain("cpa: toMetric(metrics.cpa)");
     expect(page).toContain("engagementRate === null ? null : normalizeRateToPercent(engagementRate)");
+    expect(page).toContain("hasCompleteCurrentPeriod: currentPeriod.length >= perfDays");
+    expect(page).toContain("Validate full-period efficiency trends after enough daily history exists.");
     expect(efficiency).toContain("No connected source efficiency metrics available");
     expect(efficiency).toContain("ROAS and ROI require both spend and revenue from connected source data.");
     expect(efficiency).not.toContain("crossPlatformData");
     expect(efficiency).not.toContain("Avg ROAS");
+  });
+
+  it("wires the Conversion Funnel tab to aggregate-backed source capabilities", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
+    const funnelStart = page.indexOf('<TabsContent value="funnel"');
+    const funnelEnd = page.indexOf('<TabsContent value="platforms"', funnelStart);
+    const funnel = page.slice(funnelStart, funnelEnd);
+
+    expect(page).toContain("const conversionFunnelData = useMemo<any>(() => {");
+    expect(page).toContain('paidAvailable: hasMetric("impressions") || hasMetric("clicks")');
+    expect(funnel).toContain("Web Analytics Funnel");
+    expect(funnel).toContain("Paid-Media Funnel");
+    expect(funnel).toContain("Paid-media funnel metrics require a connected paid-media source with impressions or clicks.");
+    expect(funnel).toContain("Validate full-period funnel trends after enough daily history exists.");
+    expect(funnel).not.toContain("crossPlatformData");
+    expect(funnel).not.toContain("Connect an ad platform to see conversion funnel trends.");
   });
 
   it("keeps mock GA4 Trend Analysis rows aligned with the GA4 mock source path", () => {

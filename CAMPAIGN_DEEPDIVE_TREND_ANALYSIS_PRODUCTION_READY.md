@@ -282,6 +282,7 @@ Root cause fixed:
 - Commit 3 adds an aggregate-backed `efficiencyTrendData` model and wires only the Efficiency Metrics tab to the `trend_analysis_aggregate_v1` daily totals.
 - ROAS, ROI, CPA, CPC, CPM, CTR, CVR, and engagement rate now render only when the aggregate has the required inputs.
 - Unavailable efficiency metric groups explain which inputs are missing instead of showing zero-valued charts.
+- Efficiency current values can render from available daily rows, but comparison percentages require a complete previous window and the UI now discloses when the selected current window is partial.
 
 Files changed:
 
@@ -296,6 +297,7 @@ Validation:
 Evidence:
 
 - Regression coverage proves the Efficiency Metrics tab uses `efficiencyTrendData`, consumes derived aggregate metrics such as ROAS, ROI, CPA, and normalized engagement rate, explains unavailable inputs, and no longer references `crossPlatformData`.
+- Final full-period efficiency trend validation should be done later with the planned mock-live GA4 account once enough controlled daily history exists for the selected window.
 
 ### Commit 4: Conversion Funnel
 
@@ -305,9 +307,31 @@ Evidence:
 - For GA4-only campaigns, do not display paid-media funnel stages as if GA4 provided impressions or clicks.
 - Add regression coverage for GA4-only and paid-media-connected cases.
 
-Status: pending.
+Status: completed.
 
-Evidence: not started.
+Root cause fixed:
+
+- The Conversion Funnel tab still rendered from the legacy frontend `crossPlatformData` merge.
+- That legacy path mixed paid-media funnel stages with GA4 web analytics and could show unavailable paid-media metrics as zero for GA4-only campaigns.
+- Commit 4 adds an aggregate-backed `conversionFunnelData` model and wires only the Conversion Funnel tab to `trend_analysis_aggregate_v1`.
+- GA4-capable web funnel metrics now render in a separate Web Analytics Funnel section.
+- Paid-media funnel metrics render only when a connected main source provides impressions or clicks.
+- Imported child spend/revenue inside GA4 does not make GA4 eligible for paid-media funnel stages.
+- Partial current windows are disclosed; full-period funnel trend validation should be completed later with the planned mock-live GA4 account after enough daily history exists.
+
+Files changed:
+
+- `client/src/pages/trend-analysis.tsx`
+- `server/trend-analysis-overview-regression.test.ts`
+
+Validation:
+
+- `npm test -- server/trend-analysis-aggregate.test.ts server/trend-analysis-overview-regression.test.ts`
+- `npm run check`
+
+Evidence:
+
+- Regression coverage proves the Conversion Funnel tab uses `conversionFunnelData`, separates Web Analytics Funnel from Paid-Media Funnel, requires impressions or clicks for paid-media funnel availability, explains unavailable paid-media funnel metrics for GA4-only campaigns, and no longer references `crossPlatformData`.
 
 ### Commit 5: Platform Breakdown
 
@@ -408,6 +432,6 @@ Trend Analysis is production ready only when:
 
 ## Current Status
 
-Documentation tracker created.
+Commits 1 through 4 are completed and validated locally.
 
-No Trend Analysis production-readiness code fixes have been implemented yet.
+Trend Analysis now has an aggregate contract plus aggregate-backed Executive Overview, Efficiency Metrics, and Conversion Funnel tabs. Remaining production-readiness work starts at Commit 5: Platform Breakdown.

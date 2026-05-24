@@ -111,6 +111,8 @@ Trend Analysis GA4 behavior is tracked in `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PROD
 
 For current `yesop` mock GA4 campaigns, validate Trend Analysis against the same date window used by the GA4 platform view. If the mock campaign was created or viewed with a 90-day scope, choose `Last 90 Days` in Trend Analysis. Mock validation proves source-aware wiring and date-window behavior; final numeric accuracy still requires the planned mock-live GA4 account with controlled daily data.
 
+For the Trend Analysis Conversion Funnel tab, current mock-placeholder validation should confirm that GA4 appears only as a web analytics source and paid-media funnel metrics remain unavailable unless a main paid-media platform supplies impressions or clicks. Full-period funnel trend validation should be done later with the planned mock-live GA4 account after enough controlled daily rows exist.
+
 ## Reference Rule
 
 For future development:

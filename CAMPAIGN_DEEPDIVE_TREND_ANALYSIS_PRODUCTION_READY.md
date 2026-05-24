@@ -333,6 +333,12 @@ Evidence:
 
 - Regression coverage proves the Conversion Funnel tab uses `conversionFunnelData`, separates Web Analytics Funnel from Paid-Media Funnel, requires impressions or clicks for paid-media funnel availability, explains unavailable paid-media funnel metrics for GA4-only campaigns, and no longer references `crossPlatformData`.
 
+Manual validation guidance:
+
+- Current Render validation can prove wiring and source-capability behavior: with only GA4 connected, the Conversion Funnel tab should show Web Analytics Funnel metrics from GA4 and should not show paid-media funnel metrics as available.
+- Full-period historical validation should be completed later with the planned mock-live GA4 account, because funnel trend quality depends on controlled daily rows existing across the selected date window.
+- For mock-placeholder GA4 data, treat the visible values as a source-aware smoke test, not final proof of live GA4 time-series accuracy.
+
 ### Commit 5: Platform Breakdown
 
 - Build platform breakdown rows from the source-aware aggregate, not hardcoded LinkedIn/Meta/Google Ads totals.

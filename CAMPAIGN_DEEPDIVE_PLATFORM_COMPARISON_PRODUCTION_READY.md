@@ -323,7 +323,7 @@ Evidence:
 - Run `npm run build` if final production-readiness validation is requested.
 - Validate on Render with at least one GA4-only campaign and one multi-platform campaign when available.
 
-Status: completed locally, pending commit/push.
+Status: completed and Render-validated.
 
 Evidence:
 
@@ -332,6 +332,7 @@ Evidence:
 - Final targeted regression passed: `npm test -- server/platform-comparison-regression.test.ts`.
 - Final typecheck passed: `npm run check`.
 - Final production build passed: `npm run build`.
+- Render validation passed: Platform Comparison continued to show the correct GA4-only connected-source behavior across Overview, Performance Metrics, Cost Analysis, and Insights after the final documentation/validation commit.
 
 ## Production-Ready Acceptance Criteria
 
@@ -383,6 +384,8 @@ Proven:
 - Source contract follow-up: Platform Comparison treats `outcomeTotals.performanceSummary.sources` as the canonical normalized main Connected Platform list whenever the aggregate exists. Legacy hardcoded platform objects are retained only as a no-aggregate fallback, so an empty aggregate source list does not leak stale or child-source platform rows into the page.
 - Commit 6: Platform Comparison current values now refetch from the shared aggregate every 30 seconds while visible and on window focus, matching Performance Summary and Budget & Financial Analysis. Historical snapshot compatibility remains a future UI boundary because Platform Comparison does not currently render historical comparison tabs.
 - Commit 6 Render validation passed: the Platform Comparison page issued the shared aggregate request on load, refetched while visible after the refresh interval, and refetched on window focus.
+- Commit 7 Render validation passed: final Platform Comparison validation confirmed the GA4-only page still uses connected-source aggregate data correctly across all implemented tabs after the final documentation/validation updates.
+- Post-validation UX fix: Platform Comparison now keeps the selected tab through refresh by controlling tab state and persisting it in the URL/session state, instead of always returning to Overview. Initial aggregate loading now renders a stable blank content area instead of temporary skeleton/no-data cards, so refresh does not flash misleading intermediate cards before the connected-source aggregate loads.
 
 Outstanding:
 

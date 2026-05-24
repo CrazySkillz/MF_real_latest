@@ -13,10 +13,40 @@ import { ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, 
 import { formatPct } from "@shared/metric-math";
 
 const PLATFORM_COMPARISON_REFRESH_MS = 30000;
+const PLATFORM_COMPARISON_TABS = new Set(["overview", "performance", "cost-analysis", "insights"]);
+
+const normalizePlatformComparisonTab = (value: string | null) =>
+  value && PLATFORM_COMPARISON_TABS.has(value) ? value : "overview";
+
+const getInitialPlatformComparisonTab = (campaignId?: string) => {
+  if (typeof window === "undefined") return "overview";
+  const urlTab = new URLSearchParams(window.location.search).get("tab");
+  if (urlTab && PLATFORM_COMPARISON_TABS.has(urlTab)) return urlTab;
+  try {
+    return normalizePlatformComparisonTab(window.sessionStorage.getItem(`platformComparisonTab:${campaignId || "unknown"}`));
+  } catch {
+    return "overview";
+  }
+};
 
 export default function PlatformComparison() {
   const { id: campaignId } = useParams();
   const [demoMode, setDemoMode] = useState(false);
+  const [activeTab, setActiveTab] = useState(() => getInitialPlatformComparisonTab(campaignId));
+
+  const handleTabChange = (value: string) => {
+    const nextTab = normalizePlatformComparisonTab(value);
+    setActiveTab(nextTab);
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage.setItem(`platformComparisonTab:${campaignId || "unknown"}`, nextTab);
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", nextTab);
+      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    } catch {
+      // Tab persistence is a UX improvement; rendering should not depend on storage access.
+    }
+  };
 
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
     queryKey: ["/api/campaigns", campaignId],
@@ -103,14 +133,7 @@ export default function PlatformComparison() {
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-8">
-            <div className="animate-pulse space-y-6">
-              <div className="h-8 bg-muted rounded w-1/3"></div>
-              <div className="grid gap-4 md:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-24 bg-muted rounded"></div>
-                ))}
-              </div>
-            </div>
+            <div aria-hidden="true" />
           </main>
         </div>
       </div>
@@ -460,7 +483,7 @@ export default function PlatformComparison() {
           )}
 
           {/* Platform Comparison Tabs */}
-          <Tabs defaultValue="overview" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="performance">Performance Metrics</TabsTrigger>
@@ -471,21 +494,7 @@ export default function PlatformComparison() {
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
               {/* Platform Performance Summary Cards */}
-              {platformMetricsLoading ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <Card key={index}>
-                      <CardContent className="p-6">
-                        <div className="animate-pulse space-y-3">
-                          <div className="h-4 bg-muted rounded w-2/3"></div>
-                          <div className="h-6 bg-muted rounded w-1/2"></div>
-                          <div className="h-4 bg-muted rounded w-3/4"></div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : realPlatformMetrics.length > 0 ? (
+              {platformMetricsLoading ? null : realPlatformMetrics.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                   {realPlatformMetrics.map((platform, index) => (
                     <Card key={index} className="border-l-4" style={{ borderLeftColor: platform.color }} data-testid={`platform-card-${index}`}>
@@ -701,7 +710,7 @@ export default function PlatformComparison() {
 
             {/* Performance Metrics Tab */}
             <TabsContent value="performance" className="space-y-6">
-              {realPlatformMetrics.length > 0 ? (
+              {platformMetricsLoading ? null : realPlatformMetrics.length > 0 ? (
                 <>
                   <div className="grid gap-6 md:grid-cols-2">
                     {/* Detailed Metrics Table */}
@@ -885,7 +894,7 @@ export default function PlatformComparison() {
 
             {/* Cost Analysis Tab */}
             <TabsContent value="cost-analysis" className="space-y-6">
-              {spendCapableMetrics.length > 0 ? (
+              {platformMetricsLoading ? null : spendCapableMetrics.length > 0 ? (
                 <>
                   <div className="grid gap-6 md:grid-cols-2">
                     {/* Cost Efficiency Chart */}
@@ -1066,16 +1075,7 @@ export default function PlatformComparison() {
 
             {/* Insights Tab */}
             <TabsContent value="insights" className="space-y-6">
-              {platformMetricsLoading ? (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="animate-pulse space-y-3">
-                      <div className="h-5 bg-muted rounded w-1/3" />
-                      <div className="h-4 bg-muted rounded w-2/3" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : realPlatformMetrics.length > 0 ? (
+              {platformMetricsLoading ? null : realPlatformMetrics.length > 0 ? (
                 <div className="grid gap-6">
                   {spendCapableMetrics.length === 0 && analyticsOnlyMetrics.length > 0 ? (
                     <Card>

@@ -13,6 +13,10 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("refetchInterval: PLATFORM_COMPARISON_REFRESH_MS,");
     expect(page).toContain("refetchIntervalInBackground: false,");
     expect(page).toContain("refetchOnWindowFocus: true,");
+    expect(page).toContain('const PLATFORM_COMPARISON_TABS = new Set(["overview", "performance", "cost-analysis", "insights"]);');
+    expect(page).toContain("const [activeTab, setActiveTab] = useState(() => getInitialPlatformComparisonTab(campaignId));");
+    expect(page).toContain('<Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">');
+    expect(page).not.toContain('defaultValue="overview"');
     expect(page).toContain("isFetched: outcomeTotalsFetched");
     expect(page).toContain("if (!outcomeTotalsFetched && !ot) return [];");
     expect(page).toContain("const platformMetricsLoading = !outcomeTotalsFetched && !outcomeTotals;");
@@ -47,9 +51,9 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(overview).toContain("<span className=\"text-xs text-muted-foreground\">Users</span>");
     expect(overview).toContain("<span className=\"text-xs text-muted-foreground\">Revenue</span>");
     expect(overview).toContain('className={platform.isAnalyticsOnly ? "hidden" : "flex items-center justify-between"}');
-    expect(overview).toContain("platformMetricsLoading ? (");
-    expect(overview).toContain("animate-pulse space-y-3");
+    expect(overview).toContain("platformMetricsLoading ? null : realPlatformMetrics.length > 0 ? (");
     expect(overview).toContain("No connected platform data available yet. Connect a platform in Connected Platforms to see comparison data.");
+    expect(page).not.toContain("animate-pulse");
     expect(overview).not.toContain("Connect platforms (LinkedIn, Meta) or revenue sources (Shopify, HubSpot, Salesforce)");
   });
 
@@ -65,6 +69,7 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("const efficiencyComparisonMetrics = realPlatformMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) || canShowCpa(platform));");
     expect(performance).toContain("ROAS and ROI require both spend and revenue from this connected source.");
     expect(performance).toContain("No spend-based efficiency comparison is available.");
+    expect(performance).toContain("platformMetricsLoading ? null : realPlatformMetrics.length > 0 ? (");
     expect(performance).toContain("<span>Volume Comparison</span>");
     expect(performance).toContain("Available volume metrics across connected platforms");
     expect(performance).toContain("const hasImpressions = hasMetric(platform, \"impressions\");");
@@ -84,7 +89,7 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("const budgetPieData = spendCapableMetrics");
     expect(page).toContain("const costAnalysisData = spendCapableMetrics");
     expect(page).toContain("const costAnalysisChartData = costAnalysisData.filter(p => p.totalSpend > 0 && p.conversions > 0);");
-    expect(cost).toContain("{spendCapableMetrics.length > 0 ? (");
+    expect(cost).toContain("platformMetricsLoading ? null : spendCapableMetrics.length > 0 ? (");
     expect(cost).toContain("{spendCapableMetrics.map((platform, index) => (");
     expect(cost).toContain("No paid-media platform connected");
     expect(cost).toContain("Google Analytics is connected, but it does not provide source-level ad spend for Platform Comparison.");
@@ -102,6 +107,7 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("if (metric === 'roas' || metric === 'roi') return canShowFinancialEfficiency(p) && p.spend > 0;");
     expect(page).toContain("const analyticsOnlyMetrics = realPlatformMetrics.filter((platform: any) => platform.isAnalyticsOnly);");
     expect(insights).toContain("{spendCapableMetrics.length === 0 && analyticsOnlyMetrics.length > 0 ? (");
+    expect(insights).toContain("platformMetricsLoading ? null : realPlatformMetrics.length > 0 ? (");
     expect(insights).toContain("Source-capability analysis based on connected platform metrics");
     expect(insights).toContain("{platform.platform} Summary");
     expect(insights).toContain("{platform.platform} is the only connected platform, so this tab shows only the metrics this source provides.");

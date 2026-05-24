@@ -420,9 +420,34 @@ Evidence:
 - Do not compare new aggregate trend data against incompatible legacy snapshots.
 - Add targeted regression tests, then run final targeted tests, `npm run check`, and `npm run build`.
 
-Status: pending.
+Status: completed.
 
-Evidence: not started.
+Root cause fixed:
+
+- Scheduler/manual metric snapshots already stored `metrics.performanceSummary`, but did not store a compatible `metrics.trendAnalysis` aggregate.
+- Trend Analysis current UI reads source-aware daily aggregate rows directly, so current values were source-correct, but scheduler/source-refresh snapshots were not tagged with `trend_analysis_aggregate_v1`.
+- Commit 7 adds `metrics.trendAnalysis` to the existing `aggregateCampaignMetrics` snapshot payload using `buildTrendAnalysisAggregate`.
+- Manual snapshots, platform-sync snapshots, and automatic scheduler snapshots all use `aggregateCampaignMetrics`, so the fix stays on the existing snapshot path and does not add a parallel scheduler.
+- The snapshot payload now includes Trend Analysis source identity, capabilities, daily totals, unavailable reasons, and financial daily rows where available.
+
+Files changed:
+
+- `server/scheduler.ts`
+- `server/trend-analysis-overview-regression.test.ts`
+- `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`
+- `GA4/README.md`
+
+Validation:
+
+- `npm test -- server/trend-analysis-aggregate.test.ts server/trend-analysis-overview-regression.test.ts`
+- `npm test -- server/performance-summary-scheduler-regression.test.ts`
+- `npm run check`
+- `npm run build`
+- `git diff --check`
+
+Evidence:
+
+- Regression coverage proves scheduler snapshots import and build the Trend Analysis aggregate, include `financialDailyRows`, read GA4/LinkedIn/Meta/Google Ads daily rows, and store `trendAnalysis` inside the snapshot metrics payload.
 
 ## Validation Strategy
 
@@ -491,6 +516,6 @@ Trend Analysis is production ready only when:
 
 ## Current Status
 
-Commits 1 through 6 are completed and validated locally.
+Commits 1 through 7 are completed and validated locally.
 
-Trend Analysis now has an aggregate contract plus aggregate-backed Executive Overview, Efficiency Metrics, Conversion Funnel, Platform Breakdown, and Insights tabs. Remaining production-readiness work starts at Commit 7: Scheduler, Snapshots, And Final Validation.
+Trend Analysis now has an aggregate contract plus aggregate-backed Executive Overview, Efficiency Metrics, Conversion Funnel, Platform Breakdown, Insights, and scheduler/snapshot alignment. Final live historical validation should still be completed later with the planned mock-live GA4 account after enough controlled daily rows exist.

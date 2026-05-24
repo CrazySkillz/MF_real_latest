@@ -1,5 +1,8 @@
 import { storage } from './storage';
 import { buildPerformanceSummaryAggregate } from './utils/performance-summary-aggregate';
+import { buildTrendAnalysisAggregate } from './utils/trend-analysis-aggregate';
+import { db } from './db';
+import { sql } from 'drizzle-orm';
 
 interface SnapshotMetrics {
   totalImpressions: number;
@@ -38,12 +41,14 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
   let linkedinMetrics: any = {};
   let linkedinConnected = false;
   let linkedinLastImportedAt: any = null;
+  let linkedinDailyRows: any[] = [];
   try {
     const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
     if (latestSession) {
       linkedinConnected = true;
       linkedinLastImportedAt = (latestSession as any).uploadedAt || (latestSession as any).createdAt || null;
       const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
+      linkedinDailyRows = await storage.getLinkedInDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[]);
       
       metrics.forEach((m: any) => {
         const value = parseFloat(m.metricValue || '0');
@@ -71,16 +76,17 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
   // Fetch Meta metrics (sum daily metrics across all dates)
   let metaData = { impressions: 0, clicks: 0, spend: 0, conversions: 0 };
   let metaConnected = false;
+  let metaDailyRows: any[] = [];
   try {
     const metaConnection = await storage.getMetaConnection(campaignId);
     if (metaConnection) {
       metaConnected = true;
-      const dailyMetrics = await storage.getMetaDailyMetrics(campaignId, startDate, endDate);
+      metaDailyRows = await storage.getMetaDailyMetrics(campaignId, startDate, endDate);
       metaData = {
-        impressions: dailyMetrics.reduce((s: number, m: any) => s + (m.impressions || 0), 0),
-        clicks: dailyMetrics.reduce((s: number, m: any) => s + (m.clicks || 0), 0),
-        spend: dailyMetrics.reduce((s: number, m: any) => s + parseNum(m.spend), 0),
-        conversions: dailyMetrics.reduce((s: number, m: any) => s + (m.conversions || 0), 0),
+        impressions: metaDailyRows.reduce((s: number, m: any) => s + (m.impressions || 0), 0),
+        clicks: metaDailyRows.reduce((s: number, m: any) => s + (m.clicks || 0), 0),
+        spend: metaDailyRows.reduce((s: number, m: any) => s + parseNum(m.spend), 0),
+        conversions: metaDailyRows.reduce((s: number, m: any) => s + (m.conversions || 0), 0),
       };
     }
   } catch (err) {
@@ -90,21 +96,46 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
   // Fetch GA4 metrics (website analytics)
   let ga4Data = { sessions: 0, users: 0, pageviews: 0, conversions: 0, revenue: 0 };
   let ga4Connected = false;
+  let ga4DailyRows: any[] = [];
+  let ga4PropertyId: string | null = null;
   try {
     const ga4Conn = await storage.getPrimaryGA4Connection(campaignId);
     if (ga4Conn) {
       ga4Connected = true;
-      const daily = await storage.getGA4DailyMetrics(campaignId, String(ga4Conn.propertyId), startDate, endDate);
+      ga4PropertyId = String(ga4Conn.propertyId);
+      ga4DailyRows = await storage.getGA4DailyMetrics(campaignId, ga4PropertyId, startDate, endDate);
       ga4Data = {
-        sessions: daily.reduce((s: number, m: any) => s + (m.sessions || 0), 0),
-        users: daily.reduce((s: number, m: any) => s + (m.users || 0), 0),
-        pageviews: daily.reduce((s: number, m: any) => s + (m.pageviews || 0), 0),
-        conversions: daily.reduce((s: number, m: any) => s + (m.conversions || 0), 0),
-        revenue: daily.reduce((s: number, m: any) => s + parseNum(m.revenue), 0),
+        sessions: ga4DailyRows.reduce((s: number, m: any) => s + (m.sessions || 0), 0),
+        users: ga4DailyRows.reduce((s: number, m: any) => s + (m.users || 0), 0),
+        pageviews: ga4DailyRows.reduce((s: number, m: any) => s + (m.pageviews || 0), 0),
+        conversions: ga4DailyRows.reduce((s: number, m: any) => s + (m.conversions || 0), 0),
+        revenue: ga4DailyRows.reduce((s: number, m: any) => s + parseNum(m.revenue), 0),
       };
     }
   } catch (err) {
     console.log(`No GA4 metrics found for campaign ${campaignId}`);
+  }
+
+  let googleAdsConn: any = null;
+  let googleAdsDailyRows: any[] = [];
+  try {
+    googleAdsConn = await storage.getGoogleAdsConnection(campaignId);
+    if (googleAdsConn && !(googleAdsConn as any).spendOnly) {
+      const rawRows = await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[]);
+      const selectedIds = (() => {
+        try {
+          const parsed = JSON.parse(String((googleAdsConn as any)?.selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? new Set(parsed.map(String).filter(Boolean)) : new Set<string>();
+        } catch {
+          return new Set<string>();
+        }
+      })();
+      googleAdsDailyRows = selectedIds.size > 0
+        ? rawRows.filter((row: any) => selectedIds.has(String(row?.googleCampaignId || "")))
+        : rawRows;
+    }
+  } catch (err) {
+    console.log(`No Google Ads metrics found for campaign ${campaignId}`);
   }
 
   // Aggregate legacy engagement only for the existing snapshot schema column.
@@ -155,6 +186,35 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
     // Keep GA4 onsite revenue only if external revenue cannot be resolved.
   }
 
+  let trendFinancialDailyRows: any[] = [];
+  try {
+    const financialData = await db.execute(sql`
+      SELECT sr.date, SUM(sr.spend::NUMERIC) as spend, 0::NUMERIC as revenue
+      FROM spend_records sr
+      INNER JOIN spend_sources ss ON ss.id::text = sr.spend_source_id
+      WHERE sr.campaign_id = ${campaignId} AND ss.is_active = true AND sr.date >= ${startDate} AND sr.date <= ${endDate}
+      GROUP BY sr.date
+      UNION ALL
+      SELECT rr.date, 0::NUMERIC as spend, SUM(rr.revenue::NUMERIC) as revenue
+      FROM revenue_records rr
+      INNER JOIN revenue_sources rs ON rs.id::text = rr.revenue_source_id
+      WHERE rr.campaign_id = ${campaignId} AND rs.is_active = true AND rr.date >= ${startDate} AND rr.date <= ${endDate}
+      GROUP BY rr.date
+    `);
+    const financialByDate = new Map<string, { date: string; spend: number; revenue: number }>();
+    for (const row of (financialData.rows as any[])) {
+      const date = String(row.date || "").slice(0, 10);
+      if (!date) continue;
+      const current = financialByDate.get(date) || { date, spend: 0, revenue: 0 };
+      current.spend += parseNum(row.spend);
+      current.revenue += parseNum(row.revenue);
+      financialByDate.set(date, current);
+    }
+    trendFinancialDailyRows = Array.from(financialByDate.values());
+  } catch {
+    // Trend snapshots can still store platform daily rows if financial daily rows are unavailable.
+  }
+
   const performanceSummary = buildPerformanceSummaryAggregate({
     campaignId,
     dateRange: "90days",
@@ -190,6 +250,114 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
     const metric = (performanceSummary as any)?.totals?.[metricName];
     return metric?.available && metric?.value !== null ? parseNum(metric.value) : 0;
   };
+
+  const trendAnalysis = buildTrendAnalysisAggregate({
+    campaignId,
+    dateRange: "90days",
+    startDate,
+    endDate,
+    financialDailyRows: trendFinancialDailyRows,
+    sources: [
+      {
+        id: "ga4",
+        label: "Google Analytics",
+        category: "web_analytics",
+        connected: ga4Connected,
+        capabilities: ["users", "sessions", "conversions", "revenue", "engagementRate"],
+        includedMetrics: ga4Connected ? ["users", "sessions", "conversions", "revenue", "engagementRate"] : [],
+        excludedMetrics: [
+          { metric: "impressions", reason: "GA4 is not an ad-impression source" },
+          { metric: "clicks", reason: "GA4 is not an ad-click source" },
+          { metric: "spend", reason: "Spend is not a GA4 metric" },
+        ],
+        dailyRows: ga4DailyRows.map((row: any) => ({
+          date: row.date,
+          metrics: {
+            users: row.users,
+            sessions: row.sessions,
+            conversions: row.conversions,
+            revenue: row.revenue,
+            engagementRate: row.engagementRate,
+          },
+        })),
+        freshness: ga4PropertyId ? { propertyId: ga4PropertyId } : undefined,
+      },
+      {
+        id: "linkedin",
+        label: "LinkedIn Ads",
+        category: "paid_media",
+        connected: linkedinConnected,
+        capabilities: ["impressions", "clicks", "spend", "conversions"],
+        includedMetrics: linkedinConnected ? ["impressions", "clicks", "spend", "conversions"] : [],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+        ],
+        dailyRows: linkedinDailyRows.map((row: any) => ({
+          date: row.date,
+          metrics: {
+            impressions: row.impressions,
+            clicks: row.clicks,
+            spend: row.spend || row.costInLocalCurrency,
+            conversions: row.conversions,
+          },
+        })),
+      },
+      {
+        id: "meta",
+        label: "Meta Ads",
+        category: "paid_media",
+        connected: metaConnected,
+        capabilities: ["impressions", "clicks", "spend", "conversions"],
+        includedMetrics: metaConnected ? ["impressions", "clicks", "spend", "conversions"] : [],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+        ],
+        dailyRows: metaDailyRows.map((row: any) => ({
+          date: row.date,
+          metrics: {
+            impressions: row.impressions,
+            clicks: row.clicks,
+            spend: row.spend,
+            conversions: row.conversions,
+          },
+        })),
+      },
+      {
+        id: "google_ads",
+        label: "Google Ads",
+        category: "paid_media",
+        connected: Boolean(googleAdsConn && !(googleAdsConn as any).spendOnly),
+        capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        includedMetrics: googleAdsConn && !(googleAdsConn as any).spendOnly ? ["impressions", "clicks", "spend", "conversions", "attributedRevenue"] : [],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+        ],
+        dailyRows: googleAdsDailyRows.map((row: any) => ({
+          date: row.date,
+          metrics: {
+            impressions: row.impressions,
+            clicks: row.clicks,
+            spend: row.spend,
+            conversions: row.conversions,
+            attributedRevenue: row.ga4Revenue || row.conversionValue,
+          },
+        })),
+      },
+      {
+        id: "custom_integration",
+        label: "Custom Integration",
+        category: "custom",
+        connected: customIntegrationConnected,
+        capabilities: ["impressions", "clicks", "spend", "conversions", "users", "sessions", "pageviews", "revenue"],
+        includedMetrics: customIntegrationConnected ? ["impressions", "clicks", "spend", "conversions", "users", "sessions", "pageviews", "revenue"] : [],
+        excludedMetrics: [],
+        dailyRows: [],
+      },
+    ],
+  });
 
   // Store detailed metrics from all sources for historical tracking
   const detailedMetrics = {
@@ -227,6 +395,7 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
     },
     webAnalyticsProvider: ga4Connected ? 'ga4' : 'custom_integration',
     performanceSummary,
+    trendAnalysis,
   };
   
   return {

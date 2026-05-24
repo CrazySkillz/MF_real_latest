@@ -106,6 +106,20 @@ describe("Trend Analysis Executive Overview regression guard", () => {
     expect(insights).toContain("trendInsights.map");
   });
 
+  it("stores scheduler snapshots with the Trend Analysis aggregate contract", () => {
+    const scheduler = readFileSync(join(process.cwd(), "server", "scheduler.ts"), "utf-8");
+
+    expect(scheduler).toContain('import { buildTrendAnalysisAggregate }');
+    expect(scheduler).toContain("const trendAnalysis = buildTrendAnalysisAggregate({");
+    expect(scheduler).toContain('dateRange: "90days"');
+    expect(scheduler).toContain("financialDailyRows: trendFinancialDailyRows");
+    expect(scheduler).toContain("storage.getGA4DailyMetrics(campaignId");
+    expect(scheduler).toContain("storage.getLinkedInDailyMetrics(campaignId, startDate, endDate)");
+    expect(scheduler).toContain("storage.getMetaDailyMetrics(campaignId, startDate, endDate)");
+    expect(scheduler).toContain("storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate)");
+    expect(scheduler).toContain("trendAnalysis,");
+  });
+
   it("keeps mock GA4 Trend Analysis rows aligned with the GA4 mock source path", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/trend-analysis"');

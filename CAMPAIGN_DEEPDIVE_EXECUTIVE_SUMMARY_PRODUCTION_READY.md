@@ -319,6 +319,8 @@ Scope:
 - Completed: Excluded `category: "financial"` from main platform rows.
 - Completed: Added `performanceSummary` and `metadata.aggregateVersion` to the response as additive fields.
 - Completed: Added regression coverage for the access guard, aggregate current values, main source rows, financial child-source exclusion, and the GA4 zero-row regression risk.
+- Completed follow-up: Meta daily rows and Meta freshness warnings are now gated by a real connected main Meta platform, so stale legacy Meta rows do not appear in GA4-only Executive Summary validation.
+- Completed follow-up: Exact GA4-context revenue-source breakdowns are passed into the aggregate as `revenueSources`, so financial child-source provenance can appear in `performanceSummary.sources` when active child revenue sources exist.
 
 Files changed:
 
@@ -330,6 +332,9 @@ Validation:
 - Passed: `npm test -- server/executive-summary-regression.test.ts`
 - Passed: `npm run check`
 - Passed: `npm run build` after rerunning outside the sandbox because the first sandboxed Vite/esbuild build failed with `spawn EPERM`.
+- Follow-up validation passed: `npm test -- server/executive-summary-regression.test.ts`
+- Follow-up validation passed: `npm run check`
+- Follow-up validation passed: `npm run build` after rerunning outside the sandbox because the first sandboxed Vite/esbuild build failed with `spawn EPERM`.
 
 Why this is first:
 

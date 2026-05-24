@@ -12,9 +12,12 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("const campaign = await ensureCampaignAccess(req as any, res as any, id);");
     expect(route).not.toContain("const campaign = await storage.getCampaign(id);");
     expect(route).toContain("const performanceSummary = buildPerformanceSummaryAggregate({");
+    expect(route).toContain("const metaConnection = await storage.getMetaConnection(id).catch(() => null);");
+    expect(route).toContain("if (metaConnection && !(metaConnection as any).spendOnly) {");
     expect(route).toContain("dateRange: executiveDateRange");
     expect(route).toContain("ga4: { connected: hasGA4Connection, ...ga4Metrics }");
     expect(route).toContain("spendSource: canonicalSpend > 0 ? \"persisted_spend_sources\" : \"platform_spend_fallback\"");
+    expect(route).toContain("meta: { connected: hasMetaConnection");
     expect(route).toContain("const aggregateMetricValue = (metricName: string): number => {");
     expect(route).toContain('const totalImpressions = aggregateMetricValue("impressions");');
     expect(route).toContain('const totalClicks = aggregateMetricValue("clicks");');
@@ -36,6 +39,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("const mainAggregateSources = Array.isArray((performanceSummary as any)?.sources)");
     expect(route).toContain('source?.connected === true && source?.category !== "financial"');
     expect(route).toContain("const platformsForDisplay: any[] = mainAggregateSources.map");
+    expect(route).toContain("let executiveRevenueSources: any[] = [];");
+    expect(route).toContain("const revenueBreakdown = await storage.getRevenueBreakdownBySource(id, startDate, endDate, \"ga4\").catch(() => []);");
+    expect(route).toContain("revenueSources: executiveRevenueSources");
     expect(route).toContain("name: source.label");
     expect(route).toContain("sourceId: source.id");
     expect(route).toContain("includedMetrics: source.includedMetrics");

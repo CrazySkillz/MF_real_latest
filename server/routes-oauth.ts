@@ -25059,26 +25059,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch Meta/Facebook metrics
       let metaMetrics: any = { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0, reach: 0 };
       let metaLastUpdate: string | null = null;
+      let hasMetaConnection = false;
 
       try {
-        // Use a wide date range or the selected period
-        const metaStart = startDate;
-        const metaEnd = endDate;
-        const metaDailyRows = await storage.getMetaDailyMetrics(id, metaStart, metaEnd);
-        if (metaDailyRows && metaDailyRows.length > 0) {
-          metaDailyRows.forEach((row: any) => {
-            metaMetrics.impressions += parseNum(row.impressions);
-            metaMetrics.clicks += parseNum(row.clicks);
-            metaMetrics.conversions += parseNum(row.conversions);
-            metaMetrics.spend += parseNum(row.spend);
-            metaMetrics.reach += parseNum(row.reach);
-          });
-          // Revenue from Meta: pull from revenue sources for this date range
-          const metaRevSources = await storage.getRevenueTotalForRange(id, metaStart, metaEnd).catch(() => ({ totalRevenue: 0 }));
-          metaMetrics.revenue = parseNum((metaRevSources as any)?.totalRevenue);
-          // Use the last row's date as freshness indicator
-          const lastRow = metaDailyRows[metaDailyRows.length - 1];
-          metaLastUpdate = (lastRow as any)?.date || null;
+        const metaConnection = await storage.getMetaConnection(id).catch(() => null);
+        if (metaConnection && !(metaConnection as any).spendOnly) {
+          hasMetaConnection = true;
+          // Use a wide date range or the selected period
+          const metaStart = startDate;
+          const metaEnd = endDate;
+          const metaDailyRows = await storage.getMetaDailyMetrics(id, metaStart, metaEnd);
+          if (metaDailyRows && metaDailyRows.length > 0) {
+            metaDailyRows.forEach((row: any) => {
+              metaMetrics.impressions += parseNum(row.impressions);
+              metaMetrics.clicks += parseNum(row.clicks);
+              metaMetrics.conversions += parseNum(row.conversions);
+              metaMetrics.spend += parseNum(row.spend);
+              metaMetrics.reach += parseNum(row.reach);
+            });
+            // Revenue from Meta: pull from revenue sources for this date range
+            const metaRevSources = await storage.getRevenueTotalForRange(id, metaStart, metaEnd).catch(() => ({ totalRevenue: 0 }));
+            metaMetrics.revenue = parseNum((metaRevSources as any)?.totalRevenue);
+            // Use the last row's date as freshness indicator
+            const lastRow = metaDailyRows[metaDailyRows.length - 1];
+            metaLastUpdate = (lastRow as any)?.date || null;
+          }
         }
       } catch (err) {
         console.log('No Meta metrics found for campaign', id);
@@ -25144,11 +25149,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch canonical spend/revenue sources (ground truth)
       let canonicalSpend = 0;
       let canonicalRevenue = 0;
+      let executiveRevenueSources: any[] = [];
       try {
         const spendResult = await storage.getSpendTotalForRange(id, startDate, endDate);
         canonicalSpend = spendResult.totalSpend || 0;
         const revenueResult = await storage.getRevenueTotalForRange(id, startDate, endDate);
         canonicalRevenue = revenueResult.totalRevenue || 0;
+        const revenueBreakdown = await storage.getRevenueBreakdownBySource(id, startDate, endDate, "ga4").catch(() => []);
+        executiveRevenueSources = (Array.isArray(revenueBreakdown) ? revenueBreakdown : [])
+          .filter((source: any) => parseNum(source?.revenue) > 0)
+          .map((source: any) => ({
+            type: String(source?.displayName || source?.sourceType || "Revenue Source"),
+            connected: true,
+            revenueClassification: "imported_revenue",
+            lastTotalRevenue: parseNum(source?.revenue),
+            platformContext: "ga4",
+          }));
       } catch (err) {
         console.log('No canonical spend/revenue data found');
       }
@@ -25183,7 +25199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         platforms: {
           linkedin: { connected: linkedinMetrics.spend > 0 || linkedinMetrics.clicks > 0 || linkedinMetrics.impressions > 0 || linkedinMetrics.conversions > 0, ...linkedinMetrics },
-          meta: { connected: metaMetrics.spend > 0 || metaMetrics.clicks > 0 || metaMetrics.impressions > 0 || metaMetrics.conversions > 0, ...metaMetrics, attributedRevenue: metaMetrics.revenue },
+          meta: { connected: hasMetaConnection, ...metaMetrics, attributedRevenue: metaMetrics.revenue },
           customIntegration: { connected: hasCustomIntegration, ...customMetrics, users: parseNum(customIntegrationRawData?.users), sessions: parseNum(customIntegrationRawData?.sessions), pageviews: parseNum(customIntegrationRawData?.pageviews), revenue: customMetrics.revenue },
         },
         revenue: {
@@ -25191,7 +25207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           offsiteRevenue: aggregateRevenue > ga4Metrics.revenue ? aggregateRevenue - ga4Metrics.revenue : 0,
           totalRevenue: aggregateRevenue,
         },
-        revenueSources: [],
+        revenueSources: executiveRevenueSources,
       });
       const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];
       const aggregateMetricValue = (metricName: string): number => {

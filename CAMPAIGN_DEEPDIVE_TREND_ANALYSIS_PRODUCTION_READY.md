@@ -252,6 +252,15 @@ Evidence:
 
 - Regression coverage proves the Overview tab fetches `/api/campaigns/:id/trend-analysis`, uses `overviewTrendData.availableSeries`, renders GA4-capable series such as sessions/users/revenue, and no longer references `crossPlatformData` in the Overview tab.
 
+Manual Render validation guidance:
+
+- Use `Last 30 Days` as the primary validation option for the current GA4 mock-placeholder campaign.
+- `Last 30 Days` requests 60 days from the aggregate endpoint so the UI has a current 30-day window plus a previous 30-day comparison window when enough rows exist.
+- `Last 7 Days` is acceptable for a quick smoke test, but it provides less history and is more sensitive to missing daily rows.
+- `Last 90 Days` is not the best current validation choice unless there are at least 180 compatible daily rows, because the page requests 90 current days plus 90 previous comparison days.
+- With GA4 mock-placeholder data, validate source-aware logic only: the request succeeds, the source list contains GA4 only, GA4-capable metrics appear, paid-media-only metrics remain hidden unless available, and the selected dropdown changes the `dateRange`/`days` request.
+- Do not use the mock-placeholder values as proof of final live GA4 numeric accuracy. Final numeric/time-series validation should be done later with the planned mock-live GA4 account that receives controlled daily data.
+
 ### Commit 3: Efficiency Metrics
 
 - Wire efficiency charts and summary cards to source capabilities.

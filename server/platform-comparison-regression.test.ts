@@ -98,9 +98,9 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("const analyticsOnlyMetrics = realPlatformMetrics.filter((platform: any) => platform.isAnalyticsOnly);");
     expect(insights).toContain("{spendCapableMetrics.length === 0 && analyticsOnlyMetrics.length > 0 ? (");
     expect(insights).toContain("Source-capability analysis based on connected platform metrics");
-    expect(insights).toContain("{platform.platform} Analytics Summary");
-    expect(insights).toContain("{platform.platform} is the only connected source, so Platform Comparison is currently limited to the web analytics metrics this source provides.");
-    expect(insights).toContain("Available Analytics Metrics");
+    expect(insights).toContain("{platform.platform} Summary");
+    expect(insights).toContain("{platform.platform} is the only connected platform, so this tab shows only the metrics this source provides.");
+    expect(insights).toContain("Available Source Metrics");
     expect(insights).toContain("Paid-Media Comparison Unavailable");
     expect(insights).toContain(") : spendCapableMetrics.length < 2 ? (");
     expect(insights).toContain("No paid-media platform connected");

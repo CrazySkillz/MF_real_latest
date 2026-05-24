@@ -1081,13 +1081,13 @@ export default function PlatformComparison() {
                         {analyticsOnlyMetrics.map((platform: any) => (
                           <div key={platform.platform} className="space-y-4">
                             <div className="p-4 bg-muted rounded-lg border border-border">
-                              <h4 className="font-semibold mb-2 text-foreground">{platform.platform} Analytics Summary</h4>
+                              <h4 className="font-semibold mb-2 text-foreground">{platform.platform} Summary</h4>
                               <p className="text-sm text-foreground/80">
-                                {platform.platform} is the only connected source, so Platform Comparison is currently limited to the web analytics metrics this source provides.
+                                {platform.platform} is the only connected platform, so this tab shows only the metrics this source provides.
                               </p>
                             </div>
                             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                              <h4 className="font-semibold mb-2 text-blue-900 dark:text-blue-100">Available Analytics Metrics</h4>
+                              <h4 className="font-semibold mb-2 text-blue-900 dark:text-blue-100">Available Source Metrics</h4>
                               <p className="text-sm text-blue-800 dark:text-blue-200">
                                 {[
                                   hasMetric(platform, "sessions") ? `Sessions: ${formatNumber(platform.sessions)}` : null,

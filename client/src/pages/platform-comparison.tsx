@@ -392,15 +392,32 @@ export default function PlatformComparison() {
   const spendCapableMetrics = realPlatformMetrics.filter((platform: any) => hasMetric(platform, "spend") && !platform.isAnalyticsOnly);
   const analyticsOnlyMetrics = realPlatformMetrics.filter((platform: any) => platform.isAnalyticsOnly);
   const comparableFinancialMetrics = spendCapableMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) && platform.spend > 0);
+  const campaignAggregateSpend = Number(performanceSummary?.totals?.spend?.value || 0);
+  const campaignAggregateRevenue = Number(performanceSummary?.totals?.revenue?.value || 0);
+  const canUseSingleSourceFinancialTotals = realPlatformMetrics.length === 1 && campaignAggregateSpend > 0;
+  const getChannelSpend = (platform: any) =>
+    hasMetric(platform, "spend") ? Number(platform.spend || 0) : canUseSingleSourceFinancialTotals ? campaignAggregateSpend : 0;
+  const getChannelRevenue = (platform: any) =>
+    Number(platform.revenue || 0) > 0 ? Number(platform.revenue || 0) : canUseSingleSourceFinancialTotals ? campaignAggregateRevenue : 0;
+  const getChannelRoas = (platform: any) => {
+    const spend = getChannelSpend(platform);
+    const revenue = getChannelRevenue(platform);
+    return spend > 0 && revenue > 0 ? revenue / spend : 0;
+  };
+  const getChannelRoi = (platform: any) => {
+    const spend = getChannelSpend(platform);
+    const revenue = getChannelRevenue(platform);
+    return spend > 0 && revenue > 0 ? ((revenue - spend) / spend) * 100 : 0;
+  };
   const showChannelUsers = realPlatformMetrics.some((platform: any) => hasMetric(platform, "users"));
   const showChannelSessions = realPlatformMetrics.some((platform: any) => hasMetric(platform, "sessions"));
-  const showChannelSpend = realPlatformMetrics.some((platform: any) => hasMetric(platform, "spend"));
+  const showChannelSpend = realPlatformMetrics.some((platform: any) => hasMetric(platform, "spend")) || canUseSingleSourceFinancialTotals;
   const showChannelImpressions = realPlatformMetrics.some((platform: any) => hasMetric(platform, "impressions"));
   const showChannelClicks = realPlatformMetrics.some((platform: any) => hasMetric(platform, "clicks"));
   const showChannelCtr = realPlatformMetrics.some((platform: any) => canShowCtr(platform));
   const showChannelConversions = realPlatformMetrics.some((platform: any) => hasMetric(platform, "conversions"));
   const showChannelRevenue = realPlatformMetrics.some((platform: any) => hasMetric(platform, "revenue") || hasMetric(platform, "attributedRevenue"));
-  const showChannelFinancialEfficiency = realPlatformMetrics.some((platform: any) => canShowFinancialEfficiency(platform));
+  const showChannelFinancialEfficiency = realPlatformMetrics.some((platform: any) => canShowFinancialEfficiency(platform)) || canUseSingleSourceFinancialTotals;
 
   const totalRevenueSourceRevenue = revenueSourcesData.reduce((sum: number, s: any) => sum + s.revenue, 0);
 
@@ -587,18 +604,18 @@ export default function PlatformComparison() {
                               </td>
                               {showChannelUsers && <td className="text-right py-3 px-4">{platform.users > 0 ? formatNumber(platform.users) : '—'}</td>}
                               {showChannelSessions && <td className="text-right py-3 px-4">{platform.sessions > 0 ? formatNumber(platform.sessions) : '—'}</td>}
-                              {showChannelSpend && <td className="text-right py-3 px-4">{hasMetric(platform, "spend") && platform.spend > 0 ? formatCurrency(platform.spend) : '—'}</td>}
+                              {showChannelSpend && <td className="text-right py-3 px-4">{getChannelSpend(platform) > 0 ? formatCurrency(getChannelSpend(platform)) : '—'}</td>}
                               {showChannelImpressions && <td className="text-right py-3 px-4">{platform.impressions > 0 ? formatNumber(platform.impressions) : '—'}</td>}
                               {showChannelClicks && <td className="text-right py-3 px-4">{platform.clicks > 0 ? formatNumber(platform.clicks) : '—'}</td>}
                               {showChannelCtr && <td className="text-right py-3 px-4">{canShowCtr(platform) && platform.ctr > 0 ? `${formatPct(platform.ctr)}` : '—'}</td>}
                               {showChannelConversions && <td className="text-right py-3 px-4">{platform.conversions > 0 ? formatNumber(platform.conversions) : '—'}</td>}
                               {showChannelRevenue && <td className="text-right py-3 px-4">
-                                {platform.revenue > 0 ? (
-                                  <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(platform.revenue)}</span>
+                                {getChannelRevenue(platform) > 0 ? (
+                                  <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(getChannelRevenue(platform))}</span>
                                 ) : '—'}
                               </td>}
-                              {showChannelFinancialEfficiency && <td className="text-right py-3 px-4">{canShowFinancialEfficiency(platform) && platform.roas > 0 ? `${platform.roas.toFixed(2)}x` : '—'}</td>}
-                              {showChannelFinancialEfficiency && <td className="text-right py-3 px-4">{canShowFinancialEfficiency(platform) && platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : '—'}</td>}
+                              {showChannelFinancialEfficiency && <td className="text-right py-3 px-4">{getChannelRoas(platform) > 0 ? `${getChannelRoas(platform).toFixed(2)}x` : '—'}</td>}
+                              {showChannelFinancialEfficiency && <td className="text-right py-3 px-4">{getChannelSpend(platform) > 0 ? `${getChannelRoi(platform) >= 0 ? '+' : ''}${getChannelRoi(platform).toFixed(1)}%` : '—'}</td>}
                             </tr>
                           ))}
                         </tbody>
@@ -606,11 +623,11 @@ export default function PlatformComparison() {
                           {(() => {
                             const totUsers = realPlatformMetrics.reduce((s: number, p: any) => s + (p.users || 0), 0);
                             const totSessions = realPlatformMetrics.reduce((s: number, p: any) => s + (p.sessions || 0), 0);
-                            const totSpend = realPlatformMetrics.reduce((s: number, p: any) => s + p.spend, 0);
+                            const totSpend = realPlatformMetrics.reduce((s: number, p: any) => s + getChannelSpend(p), 0);
                             const totImpressions = realPlatformMetrics.reduce((s: number, p: any) => s + p.impressions, 0);
                             const totClicks = realPlatformMetrics.reduce((s: number, p: any) => s + p.clicks, 0);
                             const totConversions = realPlatformMetrics.reduce((s: number, p: any) => s + p.conversions, 0);
-                            const totRevenue = realPlatformMetrics.reduce((s: number, p: any) => s + p.revenue, 0);
+                            const totRevenue = realPlatformMetrics.reduce((s: number, p: any) => s + getChannelRevenue(p), 0);
                             const weightedCtr = totImpressions > 0 ? (totClicks / totImpressions) * 100 : 0;
                             const weightedRoas = totSpend > 0 ? totRevenue / totSpend : 0;
                             const weightedRoi = totSpend > 0 ? ((totRevenue - totSpend) / totSpend) * 100 : 0;

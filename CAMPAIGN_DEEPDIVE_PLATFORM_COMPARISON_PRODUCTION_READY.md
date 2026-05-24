@@ -223,7 +223,7 @@ Evidence:
 - Wire Overview cards and the summary table to normalized aggregate source rows.
 - Show only available metrics per source.
 - Use GA4 sessions/users/conversions/revenue where available.
-- Do not show GA4 impressions/clicks/spend as zero-performance paid-media metrics.
+- Do not show GA4 impressions/clicks/spend as zero-performance paid-media metrics; single-source aggregate spend may be shown in the Overview table when it comes from the shared campaign financial aggregate.
 - Update empty-state copy to reference connected sources generally, not only LinkedIn/Meta.
 
 Status: completed.
@@ -231,7 +231,7 @@ Status: completed.
 Evidence:
 
 - Overview cards and the summary table now include GA4 web analytics fields from the aggregate source row: `users`, `sessions`, `conversions`, and `revenue`.
-- Overview hides paid-media fields such as `spend`, `ROAS`, and `ROI` for analytics-only sources instead of presenting them as zero-performance metrics.
+- Overview does not present missing paid-media metrics as zeroes. When exactly one main Connected Platform is present and the shared aggregate has campaign financial totals, the Channel Performance Overview table may display aggregate `Spend`, `ROAS`, and `ROI` for that single source while Cost Analysis and Insights still require true paid-media source-level spend.
 - Empty-state copy now references Connected Platforms generally instead of naming only LinkedIn, Meta, or child revenue systems.
 - Platform Comparison now requests the shared aggregate with `dateRange=90days`, matching Performance Summary, Budget & Financial Analysis, and the GA4 platform Overview source-of-truth window.
 - GA4 revenue now uses the parent GA4 platform total from `outcomeTotals.revenue.totalRevenue`, so child revenue inputs configured inside GA4 are included in the GA4 row without being shown as separate platforms.
@@ -359,8 +359,8 @@ Proven:
 - Commit 1: When the aggregate is present, legacy revenue source rows are not shown as separate revenue platforms.
 - Commit 1 validation: targeted regression coverage added in `server/platform-comparison-regression.test.ts`.
 - Commit 1 Render validation passed: `/api/campaigns/:id/outcome-totals?dateRange=30days` returned `performanceSummary.sources` with GA4, and Platform Comparison used the connected-source aggregate list as the source-of-truth path.
-- Commit 2: Overview cards and the summary table now include GA4 web analytics fields from the aggregate source row (`users`, `sessions`, `conversions`, and `revenue`) and hide paid-media fields (`spend`, `ROAS`, `ROI`) for analytics-only sources instead of presenting them as zero-performance metrics.
-- Commit 2 follow-up: Channel Performance Overview now renders columns only when at least one connected main source provides the required capability. Spend, ROAS, and ROI stay hidden for GA4-only because GA4 is not a source-level paid-media spend source; ROI appears alongside ROAS only when a connected main source provides both spend and revenue.
+- Commit 2: Overview cards and the summary table now include GA4 web analytics fields from the aggregate source row (`users`, `sessions`, `conversions`, and `revenue`) and avoid presenting unavailable paid-media metrics as zeroes.
+- Commit 2 follow-up: Channel Performance Overview renders source-capability columns dynamically. For a single connected main platform, it can show aggregate financial totals (`Spend`, `ROAS`, and `ROI`) from the shared campaign aggregate so GA4-only campaigns match the visible platform financial source of truth; Cost Analysis and Insights remain restricted to true paid-media source-level spend.
 - Commit 2: Overview empty-state copy now references Connected Platforms generally instead of naming only LinkedIn, Meta, or child revenue systems.
 - Commit 2 follow-up: Platform Comparison now requests the shared aggregate with `dateRange=90days`, matching Performance Summary, Budget & Financial Analysis, and the GA4 platform overview source-of-truth window for current campaign values.
 - Commit 2 follow-up: Platform Comparison GA4 revenue now uses the parent GA4 platform total from `outcomeTotals.revenue.totalRevenue`, so child revenue inputs configured inside GA4 are included in the GA4 row without being shown as separate platforms. Yesop/mock GA4 source rows now use the same date-overlay daily-row merge pattern as the GA4 platform Overview before summing sessions, users, conversions, and revenue.

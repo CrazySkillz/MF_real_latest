@@ -113,6 +113,8 @@ For current `yesop` mock GA4 campaigns, validate Trend Analysis against the same
 
 For the Trend Analysis Conversion Funnel tab, current mock-placeholder validation should confirm that GA4 appears only as a web analytics source and paid-media funnel metrics remain unavailable unless a main paid-media platform supplies impressions or clicks. Full-period funnel trend validation should be done later with the planned mock-live GA4 account after enough controlled daily rows exist.
 
+For the Trend Analysis Platform Breakdown tab, current mock-placeholder validation should confirm that Google Analytics appears as the main connected source and child revenue/spend inputs do not appear as separate platforms. Full historical breakdown validation should be done later with the planned mock-live GA4 account after enough controlled daily rows exist.
+
 ## Reference Rule
 
 For future development:

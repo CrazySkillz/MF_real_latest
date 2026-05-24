@@ -372,6 +372,13 @@ Evidence:
 
 - Regression coverage proves the Platform Breakdown tab uses `platformBreakdownData`, reads `trendAggregate.sources`, no longer references `crossPlatformData`, removes hardcoded LinkedIn/Meta/Google Ads trend bars, and explains missing source-level spend/efficiency inputs.
 
+Manual validation guidance:
+
+- Current Render validation can prove wiring and source-capability behavior: with only GA4 connected, Platform Breakdown should list Google Analytics as the main source and should not list GA4 child revenue/spend inputs as separate platforms.
+- Current validation should also confirm GA4-only unavailable metrics remain unavailable rather than zero-filled paid-media comparisons.
+- Full historical Platform Breakdown validation should be completed later with the planned mock-live GA4 account, because the tab's trends depend on controlled daily source rows existing across the selected date window.
+- For mock-placeholder GA4 data, treat visible Platform Breakdown values as a source-aware smoke test, not final proof of live GA4 time-series accuracy.
+
 ### Commit 6: Market Trends
 
 - Preserve Market Trends as external keyword trend analysis, not connected-source performance data.

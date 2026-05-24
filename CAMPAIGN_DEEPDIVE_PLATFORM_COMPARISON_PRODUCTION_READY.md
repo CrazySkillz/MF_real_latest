@@ -305,7 +305,7 @@ Evidence:
 - Current values should refetch while visible and on window focus, matching Performance Summary and Budget & Financial Analysis.
 - Add regression coverage for query keys, refresh behavior, and aggregate-only snapshot compatibility if historical UI is used.
 
-Status: completed locally, pending Render validation.
+Status: completed and Render-validated.
 
 Evidence:
 
@@ -313,6 +313,7 @@ Evidence:
 - The aggregate query refetches on window focus and does not refetch in the background, matching Performance Summary and Budget & Financial Analysis current-value behavior.
 - Platform Comparison has no visible historical comparison tab today, so snapshot compatibility is documented as a future boundary: any future historical UI must use compatible `metrics.performanceSummary` snapshots only.
 - Regression coverage was updated in `server/platform-comparison-regression.test.ts` to guard the aggregate query key and refresh behavior.
+- Render validation passed: the Platform Comparison page issued the `outcome-totals?dateRange=90days` request on load, refetched while visible after the refresh interval, and refetched on window focus.
 
 ### Commit 7: Documentation And Final Validation
 
@@ -321,6 +322,16 @@ Evidence:
 - Run `npm run check`.
 - Run `npm run build` if final production-readiness validation is requested.
 - Validate on Render with at least one GA4-only campaign and one multi-platform campaign when available.
+
+Status: completed locally, pending commit/push.
+
+Evidence:
+
+- This tracker records validation status for Commits 1-6 and the final Platform Comparison source contract.
+- `ARCHITECTURE_USER_JOURNEY.md` documents that Platform Comparison must stay synchronized with underlying source updates through the shared aggregate, alongside Performance Summary and Budget & Financial Analysis.
+- Final targeted regression passed: `npm test -- server/platform-comparison-regression.test.ts`.
+- Final typecheck passed: `npm run check`.
+- Final production build passed: `npm run build`.
 
 ## Production-Ready Acceptance Criteria
 
@@ -336,7 +347,7 @@ Evidence:
 
 ## Current Status
 
-Not production-ready yet for the full requested source-of-truth rule. Commits 1-5 are implemented and Render-validated; Commit 6 is implemented locally and pending Render validation.
+Production-ready for the current aggregate-backed Platform Comparison implementation and the Render-validated GA4-only connected-source scenario. Multi-platform live validation remains pending until a campaign has multiple main Connected Platforms connected.
 
 Proven:
 
@@ -371,9 +382,8 @@ Proven:
 - Commit 5 Render validation passed: Platform Comparison Insights used the source-capability-safe GA4 summary and did not produce paid-media recommendations when only Google Analytics was connected.
 - Source contract follow-up: Platform Comparison treats `outcomeTotals.performanceSummary.sources` as the canonical normalized main Connected Platform list whenever the aggregate exists. Legacy hardcoded platform objects are retained only as a no-aggregate fallback, so an empty aggregate source list does not leak stale or child-source platform rows into the page.
 - Commit 6: Platform Comparison current values now refetch from the shared aggregate every 30 seconds while visible and on window focus, matching Performance Summary and Budget & Financial Analysis. Historical snapshot compatibility remains a future UI boundary because Platform Comparison does not currently render historical comparison tabs.
+- Commit 6 Render validation passed: the Platform Comparison page issued the shared aggregate request on load, refetched while visible after the refresh interval, and refetched on window focus.
 
 Outstanding:
 
-- Remove or further reduce remaining hardcoded platform blocks and legacy fallback estimates that are still retained only for responses where the shared aggregate is absent.
-- Expand targeted regression coverage for each tab.
-- Validate with GA4-only and multi-platform connected-source scenarios.
+- Live multi-platform validation when a campaign has two or more main Connected Platforms available on Render.

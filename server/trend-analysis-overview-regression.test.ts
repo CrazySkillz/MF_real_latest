@@ -89,6 +89,23 @@ describe("Trend Analysis Executive Overview regression guard", () => {
     expect(platforms).not.toContain("li_${platformMetric}");
   });
 
+  it("wires the Insights tab to aggregate-backed executive recommendations", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "trend-analysis.tsx"), "utf-8");
+    const insightsStart = page.indexOf('<TabsContent value="insights"');
+    const insightsEnd = page.indexOf("</TabsContent>", insightsStart);
+    const insights = page.slice(insightsStart, insightsEnd);
+
+    expect(page).toContain('<TabsTrigger value="insights">Insights</TabsTrigger>');
+    expect(page).toContain("const trendInsights = useMemo<any[]>(() => {");
+    expect(page).toContain("overviewTrendData?.hasPrevious");
+    expect(page).toContain("efficiencyTrendData?.cards?.length");
+    expect(page).toContain("conversionFunnelData?.webAvailable");
+    expect(page).toContain("platformBreakdownData?.sources?.length === 1");
+    expect(insights).toContain("Trend Performance Insights");
+    expect(insights).toContain("Executive recommendations based on connected-source trend data from the other Trend Analysis tabs.");
+    expect(insights).toContain("trendInsights.map");
+  });
+
   it("keeps mock GA4 Trend Analysis rows aligned with the GA4 mock source path", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/trend-analysis"');

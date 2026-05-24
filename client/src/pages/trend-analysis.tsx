@@ -1,6 +1,6 @@
 import { useParams } from "wouter";
-import { useQuery, useMutation, keepPreviousData } from "@tanstack/react-query";
-import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, Settings, Plus, X, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare, Search } from "lucide-react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Activity, Calendar, Target, DollarSign, AlertTriangle, ArrowUpRight, ArrowDownRight, Layers, GitCompare } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -15,11 +15,8 @@ import {
   ReferenceLine, ReferenceDot,
 } from "recharts";
 import { format, subDays } from "date-fns";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
 const PLATFORM_COLORS: Record<string, string> = {
@@ -88,13 +85,6 @@ function detectAnomalies(series: any[], metrics: string[]): Anomaly[] {
 // ─── Main Component ─────────────────────────────────────────────────
 export default function TrendAnalysis() {
   const { id: campaignId } = useParams();
-  const { toast } = useToast();
-
-  // Google Trends config state
-  const [isConfiguring, setIsConfiguring] = useState(false);
-  const [industry, setIndustry] = useState("");
-  const [keywords, setKeywords] = useState<string[]>([]);
-  const [newKeyword, setNewKeyword] = useState("");
 
   // Page-level state
   const [perfPeriod, setPerfPeriod] = useState<string>("30d");
@@ -197,22 +187,6 @@ export default function TrendAnalysis() {
       return resp.json().catch(() => null);
     },
   });
-
-  // Google Trends embed URLs (built from campaign keywords — no API needed)
-  const trendsEmbedUrls = useMemo(() => {
-    const kws: string[] = (campaign as any)?.trendKeywords || [];
-    if (kws.length === 0) return null;
-    const q = kws.map(k => encodeURIComponent(k)).join(",");
-    const comparisonItems = kws.map(k => ({ keyword: k, geo: "", time: "today 3-m" }));
-    const req = encodeURIComponent(JSON.stringify({ comparisonItem: comparisonItems, category: 0, property: "" }));
-    const guestPath = encodeURIComponent("https://trends.google.com:443/trends/embed/");
-    return {
-      timeseries: `https://trends.google.com/trends/embed/explore/TIMESERIES?req=${req}&tz=${new Date().getTimezoneOffset()}&eq=q=${q}&date=today%203-m`,
-      geo: `https://trends.google.com/trends/embed/explore/GEO_MAP?req=${req}&tz=${new Date().getTimezoneOffset()}&eq=q=${q}&date=today%203-m`,
-      related: `https://trends.google.com/trends/embed/explore/RELATED_QUERIES?req=${req}&tz=${new Date().getTimezoneOffset()}&eq=q=${q}&date=today%203-m`,
-      explore: `https://trends.google.com/trends/explore?date=today%203-m&q=${q}`,
-    };
-  }, [campaign]);
 
   // ─── Unified Cross-Platform Data Layer ───────────────────────────
   const crossPlatformData = useMemo(() => {
@@ -744,29 +718,110 @@ export default function TrendAnalysis() {
     };
   }, [trendAggregate, perfDays, platformMetric]);
 
-  // ─── Google Trends mutations & handlers ──────────────────────────
-  const updateKeywordsMutation = useMutation({
-    mutationFn: async (data: { industry: string; trendKeywords: string[] }) => {
-      return await apiRequest('PATCH', `/api/campaigns/${campaignId}`, data);
-    },
-    onSuccess: async () => {
-      toast({ title: "Keywords Saved", description: "Google Trends widgets updated." });
-      setIsConfiguring(false);
-      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
-    },
-    onError: () => { toast({ title: "Error", description: "Failed to update keywords.", variant: "destructive" }); },
-  });
+  const trendInsights = useMemo<any[]>(() => {
+    const insights: any[] = [];
+    const pushInsight = (insight: any) => insights.push(insight);
+    const sourceLabels = Array.isArray(trendAggregate?.sources)
+      ? trendAggregate.sources.map((source: any) => source?.label).filter(Boolean)
+      : [];
 
-  const handleAddKeyword = () => { if (newKeyword.trim() && !keywords.includes(newKeyword.trim())) { setKeywords([...keywords, newKeyword.trim()]); setNewKeyword(""); } };
-  const handleRemoveKeyword = (kw: string) => setKeywords(keywords.filter(k => k !== kw));
-  const handleSaveKeywords = () => {
-    let finalKw = [...keywords];
-    if (newKeyword.trim() && !finalKw.includes(newKeyword.trim())) { finalKw.push(newKeyword.trim()); setKeywords(finalKw); setNewKeyword(""); }
-    if (finalKw.length === 0) { toast({ title: "No Keywords", description: "Add at least one keyword.", variant: "destructive" }); return; }
-    updateKeywordsMutation.mutate({ industry, trendKeywords: finalKw });
-  };
+    if (sourceLabels.length > 0) {
+      pushInsight({
+        type: "info",
+        title: "Connected Source Coverage",
+        message: `Trend Analysis is using ${sourceLabels.join(", ")} for the selected period. Metrics shown here reflect only capabilities from those connected main sources.`,
+      });
+    }
 
-  useEffect(() => { if (campaign && !isConfiguring) { setIndustry((campaign as any).industry || ""); setKeywords((campaign as any).trendKeywords || []); } }, [campaign, isConfiguring]);
+    if (overviewTrendData?.hasPrevious) {
+      const revenueChange = overviewTrendData.comparison?.revenue;
+      const conversionsChange = overviewTrendData.comparison?.conversions;
+      if (typeof revenueChange === "number" && revenueChange < -10) {
+        pushInsight({
+          type: "warning",
+          title: "Revenue Trend Needs Review",
+          message: `Revenue is down ${Math.abs(revenueChange).toFixed(1)}% versus the previous comparable period. Review the source and funnel tabs before changing spend.`,
+        });
+      } else if (typeof conversionsChange === "number" && conversionsChange < -10) {
+        pushInsight({
+          type: "warning",
+          title: "Conversion Trend Needs Review",
+          message: `Conversions are down ${Math.abs(conversionsChange).toFixed(1)}% versus the previous comparable period. Check traffic quality and conversion path changes.`,
+        });
+      } else {
+        pushInsight({
+          type: "success",
+          title: "Performance Trend Stable",
+          message: "No major negative movement is visible in the current comparable trend window. Continue monitoring source-level changes before making budget decisions.",
+        });
+      }
+    } else if (overviewTrendData?.currentPeriodDays) {
+      pushInsight({
+        type: "info",
+        title: "Historical Comparison Pending",
+        message: `Current values are available for ${overviewTrendData.currentPeriodDays} of ${overviewTrendData.requestedPeriodDays} selected days. Full trend comparisons need enough compatible daily history.`,
+      });
+    }
+
+    if (efficiencyTrendData?.cards?.length) {
+      const roas = efficiencyTrendData.current?.roas;
+      const cpa = efficiencyTrendData.current?.cpa;
+      if (typeof roas === "number" && roas >= 4) {
+        pushInsight({
+          type: "success",
+          title: "Revenue Efficiency Is Strong",
+          message: `ROAS is ${roas.toFixed(2)}x from available revenue and spend inputs. Consider scaling only after source capacity and campaign goals are confirmed.`,
+        });
+      } else if (typeof cpa === "number" && cpa > 0) {
+        pushInsight({
+          type: "info",
+          title: "Cost Efficiency Available",
+          message: `CPA is ${fmtCur(cpa)}. Use this with conversion trend movement before deciding whether spend needs optimization.`,
+        });
+      }
+    } else {
+      pushInsight({
+        type: "warning",
+        title: "Efficiency Inputs Are Limited",
+        message: "ROAS, ROI, CPA, CPC, and CPM require the needed spend, revenue, click, or conversion inputs from connected sources.",
+      });
+    }
+
+    if (conversionFunnelData?.webAvailable) {
+      const webCvr = conversionFunnelData.current?.webCvr;
+      if (typeof webCvr === "number" && webCvr < 2) {
+        pushInsight({
+          type: "warning",
+          title: "Conversion Path Opportunity",
+          message: `Web conversion rate is ${formatPct(webCvr)}. Review landing pages, offer clarity, and conversion tracking before increasing acquisition activity.`,
+        });
+      } else if (typeof webCvr === "number") {
+        pushInsight({
+          type: "success",
+          title: "Web Funnel Is Converting",
+          message: `Web conversion rate is ${formatPct(webCvr)} from available sessions and conversions. Monitor whether this holds as more daily history accumulates.`,
+        });
+      }
+    }
+
+    if (platformBreakdownData?.sources?.length === 1) {
+      pushInsight({
+        type: "info",
+        title: "Single-Source Trend View",
+        message: `${platformBreakdownData.sources[0].label} is the only connected main source in this Trend Analysis view. Cross-platform trend recommendations will become stronger after more main sources are connected.`,
+      });
+    }
+
+    if (insights.length === 0) {
+      pushInsight({
+        type: "info",
+        title: "Trend Insights Pending",
+        message: "Connect a source or wait for compatible daily trend rows to generate executive recommendations.",
+      });
+    }
+
+    return insights.slice(0, 5);
+  }, [trendAggregate, overviewTrendData, efficiencyTrendData, conversionFunnelData, platformBreakdownData]);
 
   const toggleSeries = (key: string) => {
     setVisibleSeries(prev => {
@@ -870,7 +925,7 @@ export default function TrendAnalysis() {
               <TabsTrigger value="efficiency">Efficiency Metrics</TabsTrigger>
               <TabsTrigger value="funnel">Conversion Funnel</TabsTrigger>
               <TabsTrigger value="platforms">Platform Breakdown</TabsTrigger>
-              <TabsTrigger value="market">Market Trends</TabsTrigger>
+              <TabsTrigger value="insights">Insights</TabsTrigger>
             </TabsList>
 
             {/* ═══════════ TAB 1: EXECUTIVE OVERVIEW ═══════════ */}
@@ -1415,128 +1470,58 @@ export default function TrendAnalysis() {
               )}
             </TabsContent>
 
-            {/* ═══════════ TAB 5: MARKET TRENDS ═══════════ */}
-            <TabsContent value="market" className="space-y-6 fade-in">
-              {/* Keyword Configuration */}
-              {(!(campaign as any)?.trendKeywords?.length || isConfiguring) && (
+            {/* ═══════════ TAB 5: INSIGHTS ═══════════ */}
+            <TabsContent value="insights" className={`space-y-6 fade-in chart-transition ${isTrendAnalysisRefreshing ? 'chart-refreshing' : ''}`}>
+              {trendAnalysisLoading && !trendAnalysisFetched ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="space-y-4">
+                      <div className="h-5 bg-muted rounded w-1/3" />
+                      <div className="h-24 bg-muted rounded" />
+                      <div className="h-24 bg-muted rounded" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2"><Settings className="w-5 h-5" /><span>Configure Keyword Tracking</span></CardTitle>
-                    <p className="text-sm text-muted-foreground/70">Add keywords to track search interest from Google Trends.</p>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">Industry (Optional)</label>
-                      <Input placeholder="e.g., Wine, Digital Marketing" value={industry} onChange={(e) => setIndustry(e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">Trend Keywords *</label>
-                      <div className="flex items-center space-x-2 mb-3">
-                        <Input placeholder="e.g., wine" value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()} />
-                        <Button onClick={handleAddKeyword} size="sm"><Plus className="w-4 h-4" /></Button>
-                      </div>
-                      {keywords.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {keywords.map((kw, idx) => (
-                            <Badge key={idx} variant="secondary">{kw}<button onClick={() => handleRemoveKeyword(kw)} className="ml-2 hover:text-red-600"><X className="w-3 h-3" /></button></Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button onClick={handleSaveKeywords} disabled={updateKeywordsMutation.isPending}>
-                        {updateKeywordsMutation.isPending ? "Saving..." : "Save & Track Trends"}
-                      </Button>
-                      {isConfiguring && (campaign as any)?.trendKeywords?.length > 0 && (
-                        <Button variant="ghost" onClick={() => { setIsConfiguring(false); setKeywords([]); setIndustry(""); setNewKeyword(""); }}>Cancel</Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Configure button + View on Google Trends link */}
-              {(campaign as any)?.trendKeywords?.length > 0 && !isConfiguring && (
-                <div className="flex justify-between items-center">
-                  <div className="flex flex-wrap gap-2">
-                    {((campaign as any).trendKeywords || []).map((kw: string, idx: number) => (
-                      <Badge key={idx} variant="outline" className="text-xs">{kw}</Badge>
-                    ))}
-                  </div>
-                  <div className="flex space-x-2">
-                    {trendsEmbedUrls && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={trendsEmbedUrls.explore} target="_blank" rel="noopener noreferrer">
-                          <ArrowUpRight className="w-4 h-4 mr-2" />View on Google Trends
-                        </a>
-                      </Button>
-                    )}
-                    <Button variant="outline" size="sm" onClick={() => { setIsConfiguring(true); setIndustry((campaign as any).industry || ""); setKeywords((campaign as any).trendKeywords || []); }}>
-                      <Settings className="w-4 h-4 mr-2" />Configure Keywords
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Google Trends Embed Widgets */}
-              {(campaign as any)?.trendKeywords?.length > 0 && !isConfiguring && trendsEmbedUrls ? (
-                <>
-                  {/* Interest Over Time */}
-                  <Card>
-                    <CardHeader><CardTitle>Search Interest Over Time</CardTitle></CardHeader>
-                    <CardContent>
-                      <iframe
-                        src={trendsEmbedUrls.timeseries}
-                        width="100%"
-                        height="400"
-                        frameBorder="0"
-                        style={{ border: "none" }}
-                        title="Google Trends - Interest Over Time"
-                      />
-                    </CardContent>
-                  </Card>
-
-                  {/* Geographic Interest */}
-                  <Card>
-                    <CardHeader><CardTitle>Interest by Region</CardTitle></CardHeader>
-                    <CardContent>
-                      <iframe
-                        src={trendsEmbedUrls.geo}
-                        width="100%"
-                        height="400"
-                        frameBorder="0"
-                        style={{ border: "none" }}
-                        title="Google Trends - Interest by Region"
-                      />
-                    </CardContent>
-                  </Card>
-
-                  {/* Related Queries */}
-                  <Card>
-                    <CardHeader><CardTitle>Related Queries</CardTitle></CardHeader>
-                    <CardContent>
-                      <iframe
-                        src={trendsEmbedUrls.related}
-                        width="100%"
-                        height="400"
-                        frameBorder="0"
-                        style={{ border: "none" }}
-                        title="Google Trends - Related Queries"
-                      />
-                    </CardContent>
-                  </Card>
-                </>
-              ) : !isConfiguring ? (
-                <Card>
-                  <CardContent className="p-12 text-center">
-                    <Search className="w-16 h-16 mx-auto text-muted-foreground/60 mb-4" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2">Market Trends</h3>
-                    <p className="text-sm text-muted-foreground/70 max-w-md mx-auto">
-                      Track Google search trends for keywords related to your campaign. This is optional — your performance data is available in the other tabs.
+                    <CardTitle className="flex items-center space-x-2">
+                      <Target className="w-5 h-5" />
+                      <span>Trend Performance Insights</span>
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground/70">
+                      Executive recommendations based on connected-source trend data from the other Trend Analysis tabs.
                     </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {trendInsights.map((insight, index) => {
+                        const style = insight.type === "warning"
+                          ? "border-l-orange-500 bg-orange-50 dark:bg-orange-900/20"
+                          : insight.type === "success"
+                            ? "border-l-green-500 bg-green-50 dark:bg-green-900/20"
+                            : "border-l-blue-500 bg-blue-50 dark:bg-blue-900/20";
+                        const titleStyle = insight.type === "warning"
+                          ? "text-orange-900 dark:text-orange-100"
+                          : insight.type === "success"
+                            ? "text-green-900 dark:text-green-100"
+                            : "text-blue-900 dark:text-blue-100";
+                        const bodyStyle = insight.type === "warning"
+                          ? "text-orange-800 dark:text-orange-200"
+                          : insight.type === "success"
+                            ? "text-green-800 dark:text-green-200"
+                            : "text-blue-800 dark:text-blue-200";
+                        return (
+                          <div key={index} className={`border-l-4 p-4 rounded-r-lg ${style}`}>
+                            <h4 className={`font-semibold mb-1 ${titleStyle}`}>{insight.title}</h4>
+                            <p className={`text-sm ${bodyStyle}`}>{insight.message}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </CardContent>
                 </Card>
-              ) : null}
+              )}
             </TabsContent>
           </Tabs>
         </main>

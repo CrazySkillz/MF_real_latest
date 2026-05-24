@@ -379,15 +379,39 @@ Manual validation guidance:
 - Full historical Platform Breakdown validation should be completed later with the planned mock-live GA4 account, because the tab's trends depend on controlled daily source rows existing across the selected date window.
 - For mock-placeholder GA4 data, treat visible Platform Breakdown values as a source-aware smoke test, not final proof of live GA4 time-series accuracy.
 
-### Commit 6: Market Trends
+### Commit 6: Insights
 
-- Preserve Market Trends as external keyword trend analysis, not connected-source performance data.
-- Clarify UI copy so users understand Google Trends data is external market-interest context.
-- Keep it separate from Connected Platform metric aggregation.
+- Rename the final tab to `Insights`.
+- Replace external keyword trend widgets with executive recommendations based on the other Trend Analysis tabs.
+- Use the same Campaign DeepDive pattern as Performance Summary, Budget & Financial Analysis, and Platform Comparison: connected-source data in earlier tabs feeds a final recommendation/insights tab.
+- Recommendations must be based only on available connected-source trend data and should explain unavailable history or missing source inputs instead of inventing metrics.
 
-Status: pending.
+Status: completed.
 
-Evidence: not started.
+Root cause fixed:
+
+- The final Trend Analysis tab was still `Market Trends`, which rendered optional Google Trends keyword widgets instead of campaign performance recommendations.
+- That did not match the current Campaign DeepDive subsection pattern, where the final tab provides executive-ready insights based on data already shown in the subsection.
+- Commit 6 renames the tab to `Insights` and adds `trendInsights`, which derives recommendations from the aggregate-backed Overview, Efficiency Metrics, Conversion Funnel, and Platform Breakdown data.
+- Insights now identify connected-source coverage, historical comparison readiness, performance trend movement, efficiency input availability, web funnel opportunities, and single-source limitations.
+- The tab does not create new metrics and does not use external Google Trends widgets for campaign performance recommendations.
+
+Files changed:
+
+- `client/src/pages/trend-analysis.tsx`
+- `server/trend-analysis-overview-regression.test.ts`
+- `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`
+- `GA4/README.md`
+
+Validation:
+
+- `npm test -- server/trend-analysis-aggregate.test.ts server/trend-analysis-overview-regression.test.ts`
+- `npm run check`
+- `git diff --check`
+
+Evidence:
+
+- Regression coverage proves the tab trigger is `Insights`, the content uses `trendInsights`, and recommendations are derived from the aggregate-backed Trend Analysis view models.
 
 ### Commit 7: Scheduler, Snapshots, And Final Validation
 
@@ -467,6 +491,6 @@ Trend Analysis is production ready only when:
 
 ## Current Status
 
-Commits 1 through 5 are completed and validated locally.
+Commits 1 through 6 are completed and validated locally.
 
-Trend Analysis now has an aggregate contract plus aggregate-backed Executive Overview, Efficiency Metrics, Conversion Funnel, and Platform Breakdown tabs. Remaining production-readiness work starts at Commit 6: Market Trends.
+Trend Analysis now has an aggregate contract plus aggregate-backed Executive Overview, Efficiency Metrics, Conversion Funnel, Platform Breakdown, and Insights tabs. Remaining production-readiness work starts at Commit 7: Scheduler, Snapshots, And Final Validation.

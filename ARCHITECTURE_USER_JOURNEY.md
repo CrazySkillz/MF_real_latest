@@ -440,6 +440,8 @@ Platform Comparison production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_P
 
 Trend Analysis production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`.
 
+Executive Summary production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md`.
+
 Trend Analysis tabs are `Overview`, `Efficiency Metrics`, `Conversion Funnel`, `Platform Breakdown`, and `Insights`. The `Insights` tab summarizes the other aggregate-backed Trend Analysis tabs and should not show the page-level history dropdown.
 
 Budget & Financial Analysis may let users fill, edit, or delete campaign pacing metadata, such as budget, start date, and end date, from the analysis page. These controls must update the existing campaign fields through the normal campaign update route and must not create separate pacing-only values. Because these are shared campaign metadata fields, changes to the pacing budget also update the Budget value shown in Campaign Management after campaign data refreshes.
@@ -454,6 +456,7 @@ Executive use case:
 
 - A marketing executive opens Budget & Financial Analysis to decide whether the campaign is financially healthy: total spend, total revenue, ROI, ROAS, budget utilization, pacing, and whether the campaign budget should be increased, held, or reduced.
 - The same executive opens Platform Comparison to understand which connected source is contributing which results: GA4 website sessions, users, conversions, and revenue; LinkedIn or Meta paid-media spend, clicks, impressions, CPA, ROAS, and ROI when those main platforms are connected.
+- The same executive opens Executive Summary to get the campaign-wide narrative, health, risk, funnel, and strategic guidance from the connected-source aggregate. Executive Summary should show GA4-only campaigns as web analytics/outcome campaigns, not as paid-media campaigns with zeroed impressions, clicks, CTR, CPC, or paid-media recommendations.
 - If only GA4 is connected, Budget & Financial Analysis can still evaluate the campaign's financial position from GA4/campaign financial totals, while Platform Comparison should show GA4's available analytics metrics and clearly explain that paid-media comparison requires a main paid-media platform connection.
 
 ## Connected Platforms Pattern
@@ -529,14 +532,14 @@ This means:
 - campaign-level analysis is downstream of connected-platform data
 - connected-platform pages are supporting detail views
 - the campaign remains the primary object
-- Campaign DeepDive sections, including Performance Summary, Budget & Financial Analysis, Platform Comparison, and Trend Analysis, must automatically aggregate all implemented main Connected Platforms through a shared source-capability contract instead of relying on one-off tab-specific platform lists
+- Campaign DeepDive sections, including Performance Summary, Budget & Financial Analysis, Platform Comparison, Trend Analysis, and Executive Summary, must automatically aggregate all implemented main Connected Platforms through a shared source-capability contract instead of relying on one-off tab-specific platform lists
 - any future main Connected Platform is not complete until it supplies campaign-scoped source identity, available metrics, unavailable metric reasons, source labels, freshness, scheduler snapshot inputs, and tests for campaign-level aggregation through the shared generic source contract
 - future standalone platforms such as Google Ads, TikTok, Instagram, and other sources should plug into Campaign DeepDive by supplying generic source breakdowns, not by adding tab-specific aggregation logic
 - implemented main Connected Platforms are the source of truth for Campaign DeepDive subsections; downstream subsections consume the shared aggregate and must not push values back into platform-level analytics
 - platform child sources can contribute to the parent platform or campaign financial totals, but should not be displayed as separate main Connected Platforms in campaign-level source lists and should not require duplicate Campaign DeepDive setup
 - ad-platform spend imported inside another platform, such as LinkedIn or Meta spend imported inside GA4, remains a child financial input for that parent platform/campaign financial path; it does not make LinkedIn Ads or Meta Ads a separate Platform Comparison source unless the ad platform is connected as its own main Connected Platform
 - Platform Comparison Overview can display single-source aggregate financial totals for the only connected main platform, but this does not make analytics-only sources eligible for Financial Comparison paid-media rows or budget recommendation logic
-- Performance Summary, Budget & Financial Analysis, Platform Comparison, and Trend Analysis should stay synchronized with underlying source updates by refetching the aggregate while the page is visible and on window focus; historical comparison sections still depend on compatible aggregate snapshots or daily aggregate rows being created after source refresh.
+- Performance Summary, Budget & Financial Analysis, Platform Comparison, Trend Analysis, and Executive Summary should stay synchronized with underlying source updates by refetching the aggregate while the page is visible and on window focus; historical comparison sections still depend on compatible aggregate snapshots or daily aggregate rows being created after source refresh.
 
 ## Consistency Review Of The Current Codebase
 

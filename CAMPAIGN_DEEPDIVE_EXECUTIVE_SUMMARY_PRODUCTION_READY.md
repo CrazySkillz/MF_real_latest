@@ -335,6 +335,7 @@ Validation:
 - Follow-up validation passed: `npm test -- server/executive-summary-regression.test.ts`
 - Follow-up validation passed: `npm run check`
 - Follow-up validation passed: `npm run build` after rerunning outside the sandbox because the first sandboxed Vite/esbuild build failed with `spawn EPERM`.
+- User validation passed: GA4-only Executive Summary no longer returned stale Meta/Facebook freshness warnings, and active financial child-source provenance appeared in `performanceSummary.sources` with `category: "financial"`.
 
 Why this is first:
 
@@ -342,7 +343,7 @@ Why this is first:
 
 ### Commit 2: Executive Overview Tab
 
-Status: Not started.
+Status: Completed locally.
 
 Goal:
 
@@ -355,6 +356,34 @@ Scope:
 - Make GA4-only campaigns show web analytics/outcome metrics instead of paid-media assumptions.
 - Keep KPI Progress and Benchmark Comparison stable unless a traced bug requires a narrow fix.
 - Add regression coverage for GA4-only unavailable paid-media metrics and multi-source available metrics.
+
+Root cause:
+
+- The backend response now includes aggregate availability through `performanceSummary.totals`, but `client/src/pages/executive-summary.tsx` still rendered Executive Overview current-value surfaces from legacy `metrics` fields and hard-coded paid-media labels.
+- In GA4-only campaigns, the tab could therefore display paid-media-style impressions, clicks, CTR, CPC, ROAS, ROI, or funnel copy as available values even when the aggregate correctly marked those metrics unavailable.
+- The smallest safe fix is frontend-only for this commit: keep the response contract stable, keep the existing layout, and choose visible Overview metrics from aggregate availability while leaving health, risk, recommendations, KPI progress, and benchmark comparison to their planned commits.
+
+Completed:
+
+- Added frontend aggregate availability helpers for the Executive Overview tab.
+- Switched the top funnel, mid funnel, bottom funnel, funnel story, and key metric cards to render aggregate-backed available values or `Unavailable`.
+- GA4-only campaigns now prefer web analytics metrics such as users or sessions when paid-media impressions or clicks are unavailable.
+- Left KPI Progress, Benchmark Comparison, health, risk, and Strategic Recommendations unchanged for their planned commits.
+- Added regression coverage that proves the Overview tab uses `performanceSummary.totals` availability and no longer renders the legacy hard-coded impressions, clicks, or revenue expressions.
+
+Files changed:
+
+- `client/src/pages/executive-summary.tsx`
+- `server/executive-summary-regression.test.ts`
+- `ARCHITECTURE_USER_JOURNEY.md`
+- `GA4/README.md`
+- `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md`
+
+Validation:
+
+- Passed: `npm test -- server/executive-summary-regression.test.ts`
+- Passed: `npm run check`
+- Passed: `npm run build` after rerunning outside the sandbox because the first sandboxed Vite/esbuild build failed with `spawn EPERM`.
 
 Why this is second:
 
@@ -459,16 +488,17 @@ Executive Summary is production ready only when:
 
 ## Current Status
 
-Not production ready. Commit 1 is completed locally, but Executive Overview UI semantics, health/risk scoring, trajectory compatibility, recommendation gating, and refresh stability remain outstanding.
+Not production ready. Commits 1 and 2 are completed locally, but health/risk scoring, trajectory compatibility, recommendation gating, and refresh stability remain outstanding.
 
 Proven:
 
 - Documentation requires Campaign DeepDive subsections to aggregate main Connected Platform metrics at the campaign level.
 - The other completed DeepDive subsections use the shared `/api/campaigns/:id/outcome-totals` and `performanceSummary` aggregate pattern.
 - Executive Summary still uses its existing endpoint, but Commit 1 now composes current metrics and source rows from the shared `performanceSummary` aggregate.
-- Executive Summary still has hard-coded UI labels, health/risk assumptions, and recommendation assumptions that need later commits.
+- Commit 2 now makes the Executive Overview tab choose visible current metrics from `performanceSummary.totals` availability.
+- Executive Summary still has health/risk assumptions and recommendation assumptions that need later commits.
 - Commit 1 replaced the endpoint's `storage.getCampaign(id)` campaign lookup with the standard campaign access guard.
-- GA4-only campaigns are at risk of showing unavailable paid-media metrics or paid-media recommendations.
+- GA4-only campaigns are still at risk of showing paid-media recommendations until Commit 4 is completed.
 
 Partially reviewed:
 

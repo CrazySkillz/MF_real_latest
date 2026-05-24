@@ -134,6 +134,47 @@ export default function ExecutiveSummary() {
     }
   };
 
+  const performanceSummary = (executiveSummary as any).performanceSummary;
+  const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];
+  const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;
+  const aggregateMetricValue = (metricName: string): number => {
+    const metric = aggregateMetric(metricName);
+    return metric?.available === true && metric?.value !== null ? Number(metric.value) || 0 : 0;
+  };
+  const aggregateMetricReason = (metricName: string): string => {
+    const reasons = aggregateMetric(metricName)?.unavailableReasons;
+    return Array.isArray(reasons) && reasons.length > 0 ? reasons[0] : "Not available from connected sources";
+  };
+  const aggregateMetricSourceLabel = (metricName: string): string => {
+    const sources = aggregateMetric(metricName)?.sources;
+    return Array.isArray(sources) && sources.length > 0 ? `Sources: ${sources.join(", ")}` : aggregateMetricReason(metricName);
+  };
+  const formatAggregateNumber = (metricName: string) =>
+    aggregateMetricAvailable(metricName) ? formatNumber(aggregateMetricValue(metricName)) : "Unavailable";
+  const formatAggregateCurrency = (metricName: string, showCents: boolean = false) =>
+    aggregateMetricAvailable(metricName) ? formatCurrency(aggregateMetricValue(metricName), showCents) : "Unavailable";
+  const formatAggregatePercent = (metricName: string) =>
+    aggregateMetricAvailable(metricName) ? formatPct(aggregateMetricValue(metricName)) : "Unavailable";
+  const formatAggregateRatio = (metricName: string) =>
+    aggregateMetricAvailable(metricName) ? `${aggregateMetricValue(metricName).toFixed(1)}x` : "Unavailable";
+  const pickFirstAvailableMetric = (metricNames: string[]) =>
+    metricNames.find((metricName) => aggregateMetricAvailable(metricName)) || metricNames[0];
+  const reachMetricKey = pickFirstAvailableMetric(["impressions", "users", "sessions"]);
+  const reachMetricLabels: Record<string, string> = {
+    impressions: "Impressions",
+    users: "Users",
+    sessions: "Sessions",
+  };
+  const engagementMetricKey = pickFirstAvailableMetric(["clicks", "sessions", "users"]);
+  const engagementMetricLabels: Record<string, string> = {
+    clicks: "Clicks",
+    sessions: "Sessions",
+    users: "Users",
+  };
+  const conversionRateLabel = aggregateMetricAvailable("clicks") ? "Click-Through CVR" : "Conversion Rate";
+  const roiAvailable = aggregateMetricAvailable("roi");
+  const roiValue = aggregateMetricValue("roi");
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -292,16 +333,21 @@ export default function ExecutiveSummary() {
                           <div>
                             <div className="text-sm font-semibold text-orange-900 dark:text-orange-300 uppercase tracking-wide">Top of Funnel</div>
                             <div className="text-2xl font-bold text-orange-900 dark:text-orange-100 mt-1">
-                              {formatNumber((executiveSummary as any).metrics.totalImpressions)} Impressions
+                              {formatAggregateNumber(reachMetricKey)} {reachMetricLabels[reachMetricKey]}
                             </div>
                             <div className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">
-                              Advertising: {formatNumber((executiveSummary as any).metrics.advertisingImpressions || 0)} | Website: {formatNumber((executiveSummary as any).metrics.websitePageviews || 0)}
+                              {aggregateMetricSourceLabel(reachMetricKey)}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
                           <div className="text-sm text-orange-700 dark:text-orange-400">Click-Through Rate</div>
-                          <div className="text-3xl font-bold text-orange-900 dark:text-orange-100">{formatPct((executiveSummary as any).metrics.ctr)}</div>
+                          <div className="text-3xl font-bold text-orange-900 dark:text-orange-100">{formatAggregatePercent("ctr")}</div>
+                          {!aggregateMetricAvailable("ctr") && (
+                            <div className="text-xs text-orange-600 dark:text-orange-400 mt-1 max-w-48">
+                              {aggregateMetricReason("ctr")}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex justify-center my-2">
@@ -319,10 +365,10 @@ export default function ExecutiveSummary() {
                           <div>
                             <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-300 uppercase tracking-wide">Mid Funnel</div>
                             <div className="text-2xl font-bold text-indigo-900 dark:text-indigo-100 mt-1">
-                              {formatNumber((executiveSummary as any).metrics.totalClicks)} Clicks
+                              {formatAggregateNumber(engagementMetricKey)} {engagementMetricLabels[engagementMetricKey]}
                             </div>
                             <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">
-                              Advertising: {formatNumber((executiveSummary as any).metrics.advertisingClicks || 0)} | Website: {formatNumber((executiveSummary as any).metrics.websiteClicks || 0)}
+                              {aggregateMetricSourceLabel(engagementMetricKey)}
                             </div>
                           </div>
                         </div>
@@ -330,11 +376,16 @@ export default function ExecutiveSummary() {
                           <div className="space-y-2">
                             <div>
                               <div className="text-xs text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
-                                Click-Through CVR
+                                {conversionRateLabel}
                               </div>
                               <div className="text-2xl font-bold text-indigo-900 dark:text-indigo-100">
-                                {formatPct((executiveSummary as any).metrics.clickThroughCvr)}
+                                {formatAggregatePercent("cvr")}
                               </div>
+                              {!aggregateMetricAvailable("cvr") && (
+                                <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 max-w-48">
+                                  {aggregateMetricReason("cvr")}
+                                </div>
+                              )}
                             </div>
                             {(executiveSummary as any).metrics.totalCvr > 100 && (
                               <div className="pt-1 border-t border-indigo-200 dark:border-indigo-700">
@@ -369,7 +420,7 @@ export default function ExecutiveSummary() {
                             </div>
                             <div className="text-sm text-purple-700 dark:text-purple-400">Conversions</div>
                             <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                              {formatNumber((executiveSummary as any).metrics.totalConversions)}
+                              {formatAggregateNumber("conversions")}
                             </div>
                           </div>
                           <div className="text-center border-l border-r border-border dark:border-slate-600">
@@ -380,7 +431,7 @@ export default function ExecutiveSummary() {
                             </div>
                             <div className="text-sm text-green-700 dark:text-green-400">Revenue</div>
                             <div className="text-2xl font-bold text-green-900 dark:text-green-100">
-                              {formatCurrency((executiveSummary as any).metrics.totalRevenue)}
+                              {formatAggregateCurrency("revenue")}
                             </div>
                           </div>
                           <div className="text-center">
@@ -391,14 +442,14 @@ export default function ExecutiveSummary() {
                             </div>
                             <div className="text-sm text-blue-700 dark:text-blue-400">ROAS</div>
                             <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                              {(executiveSummary as any).metrics.roas.toFixed(1)}x
+                              {formatAggregateRatio("roas")}
                             </div>
                           </div>
                         </div>
                         <div className="mt-4 pt-4 border-t border-border dark:border-slate-600 text-center">
                           <div className="text-sm text-muted-foreground/70">Return on Investment</div>
-                          <div className={`text-2xl font-bold ${(executiveSummary as any).metrics.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            {(executiveSummary as any).metrics.roi.toFixed(1)}%
+                          <div className={`text-2xl font-bold ${!roiAvailable ? 'text-muted-foreground' : roiValue >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {formatAggregatePercent("roi")}
                           </div>
                         </div>
                       </div>
@@ -407,12 +458,12 @@ export default function ExecutiveSummary() {
                     {/* Funnel Summary */}
                     <div className="text-center pt-4 border-t border-border">
                       <p className="text-sm text-muted-foreground/70 leading-relaxed">
-                        <span className="font-semibold">Campaign Story:</span> We spent <span className="font-bold text-blue-600 dark:text-blue-400">{formatCurrency((executiveSummary as any).metrics.totalSpend)}</span>, 
-                        reached <span className="font-bold text-orange-600 dark:text-orange-400">{formatNumber((executiveSummary as any).metrics.totalImpressions)}</span> people, 
-                        got <span className="font-bold text-indigo-600 dark:text-indigo-400">{formatNumber((executiveSummary as any).metrics.totalClicks)}</span> clicks, 
-                        converted <span className="font-bold text-purple-600 dark:text-purple-400">{formatNumber((executiveSummary as any).metrics.totalConversions)}</span> customers, 
-                        generated <span className="font-bold text-green-600 dark:text-green-400">{formatCurrency((executiveSummary as any).metrics.totalRevenue)}</span> revenue, 
-                        making <span className={`font-bold ${(executiveSummary as any).metrics.roi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{(executiveSummary as any).metrics.roi.toFixed(1)}%</span> profit.
+                        <span className="font-semibold">Campaign Story:</span> Connected sources show spend of <span className="font-bold text-blue-600 dark:text-blue-400">{formatAggregateCurrency("spend")}</span>,
+                        <span className="font-bold text-orange-600 dark:text-orange-400">{formatAggregateNumber(reachMetricKey)}</span> {reachMetricLabels[reachMetricKey].toLowerCase()},
+                        <span className="font-bold text-indigo-600 dark:text-indigo-400">{formatAggregateNumber(engagementMetricKey)}</span> {engagementMetricLabels[engagementMetricKey].toLowerCase()},
+                        <span className="font-bold text-purple-600 dark:text-purple-400">{formatAggregateNumber("conversions")}</span> conversions,
+                        <span className="font-bold text-green-600 dark:text-green-400">{formatAggregateCurrency("revenue")}</span> revenue,
+                        and ROI of <span className={`font-bold ${!roiAvailable ? 'text-muted-foreground' : roiValue >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{formatAggregatePercent("roi")}</span>.
                       </p>
                     </div>
                   </div>
@@ -427,10 +478,10 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-foreground mb-1">
-                      {formatCurrency((executiveSummary as any).metrics.totalRevenue)}
+                      {formatAggregateCurrency("revenue")}
                     </div>
                     <div className="flex items-center text-muted-foreground/70">
-                      <span className="text-sm font-medium">ROI: {(executiveSummary as any).metrics.roi.toFixed(1)}%</span>
+                      <span className="text-sm font-medium">ROI: {formatAggregatePercent("roi")}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -441,10 +492,10 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-foreground mb-1">
-                      {(executiveSummary as any).metrics.roas.toFixed(1)}x
+                      {formatAggregateRatio("roas")}
                     </div>
                     <div className="flex items-center text-muted-foreground/70">
-                      <span className="text-sm font-medium">Spend: {formatCurrency((executiveSummary as any).metrics.totalSpend)}</span>
+                      <span className="text-sm font-medium">Spend: {formatAggregateCurrency("spend")}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -455,38 +506,42 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-foreground mb-1">
-                      {formatNumber((executiveSummary as any).metrics.totalConversions)}
+                      {formatAggregateNumber("conversions")}
                     </div>
                     <div className="flex items-center text-muted-foreground/70">
-                      <span className="text-sm font-medium">CVR: {formatPct((executiveSummary as any).metrics.cvr)}</span>
+                      <span className="text-sm font-medium">CVR: {formatAggregatePercent("cvr")}</span>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="border-l-4 border-indigo-500">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground/70">Total Clicks</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground/70">{engagementMetricLabels[engagementMetricKey]}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-foreground mb-1">
-                      {formatNumber((executiveSummary as any).metrics.totalClicks)}
+                      {formatAggregateNumber(engagementMetricKey)}
                     </div>
                     <div className="flex items-center text-muted-foreground/70">
-                      <span className="text-sm font-medium">CPC: {formatCurrency((executiveSummary as any).metrics.cpc, true)}</span>
+                      <span className="text-sm font-medium">
+                        {aggregateMetricAvailable("cpc") ? `CPC: ${formatAggregateCurrency("cpc", true)}` : aggregateMetricSourceLabel(engagementMetricKey)}
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="border-l-4 border-orange-500">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground/70">Audience Reach</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground/70">{reachMetricLabels[reachMetricKey]}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-foreground mb-1">
-                      {formatNumber((executiveSummary as any).metrics.totalImpressions)}
+                      {formatAggregateNumber(reachMetricKey)}
                     </div>
                     <div className="flex items-center text-muted-foreground/70">
-                      <span className="text-sm font-medium">CTR: {formatPct((executiveSummary as any).metrics.ctr)}</span>
+                      <span className="text-sm font-medium">
+                        {aggregateMetricAvailable("ctr") ? `CTR: ${formatAggregatePercent("ctr")}` : aggregateMetricSourceLabel(reachMetricKey)}
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -504,7 +559,7 @@ export default function ExecutiveSummary() {
                   <CardContent>
                     {(executiveSummary as any).platforms.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground/70">
-                        No platform data available. Connect LinkedIn Ads or Custom Integration to see platform performance.
+                        No connected-source platform data available.
                       </div>
                     ) : (
                       <div className="space-y-4">

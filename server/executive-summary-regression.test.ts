@@ -50,4 +50,25 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("performanceSummary,");
     expect(route).toContain("aggregateVersion: (performanceSummary as any)?.version");
   });
+
+  it("renders Executive Overview current values from aggregate availability", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "executive-summary.tsx"), "utf-8");
+    const overviewStart = page.indexOf('<TabsContent value="overview"');
+    const overviewEnd = page.indexOf('{/* Strategic Recommendations Tab */}', overviewStart);
+    const overview = page.slice(overviewStart, overviewEnd);
+
+    expect(page).toContain("const performanceSummary = (executiveSummary as any).performanceSummary;");
+    expect(page).toContain("const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];");
+    expect(page).toContain('const reachMetricKey = pickFirstAvailableMetric(["impressions", "users", "sessions"]);');
+    expect(page).toContain('const engagementMetricKey = pickFirstAvailableMetric(["clicks", "sessions", "users"]);');
+    expect(overview).toContain("{formatAggregateNumber(reachMetricKey)} {reachMetricLabels[reachMetricKey]}");
+    expect(overview).toContain("{formatAggregateNumber(engagementMetricKey)} {engagementMetricLabels[engagementMetricKey]}");
+    expect(overview).toContain('{formatAggregatePercent("ctr")}');
+    expect(overview).toContain('{formatAggregatePercent("cvr")}');
+    expect(overview).toContain('{formatAggregateCurrency("revenue")}');
+    expect(overview).toContain('{formatAggregateRatio("roas")}');
+    expect(overview).not.toContain("{formatNumber((executiveSummary as any).metrics.totalImpressions)} Impressions");
+    expect(overview).not.toContain("{formatNumber((executiveSummary as any).metrics.totalClicks)} Clicks");
+    expect(overview).not.toContain("{formatCurrency((executiveSummary as any).metrics.totalRevenue)}");
+  });
 });

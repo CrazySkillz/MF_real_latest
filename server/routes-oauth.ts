@@ -29,6 +29,7 @@ import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign } from "./auto-refresh-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
+import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 
 // Helper functions for column type detection
 function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency' | 'percentage' | 'boolean' | 'unknown' {
@@ -1093,6 +1094,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch daily financials" });
+    }
+  });
+
+  app.get("/api/campaigns/:id/trend-analysis", requireCampaignAccessParamId, async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const campaignId = req.params.id;
+      const dateRange = String(req.query.dateRange || "30days");
+      const days = Math.max(7, Math.min(365, parseInt(String(req.query.days || dateRangeToDays(dateRange)), 10) || 30));
+
+      const end = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() - 1));
+      const start = new Date(end.getTime());
+      start.setUTCDate(start.getUTCDate() - (days - 1));
+      const startDate = formatISODateUTC(start);
+      const endDate = formatISODateUTC(end);
+
+      const [ga4Connections, linkedInConn, metaConn, googleAdsConn, customIntegration] = await Promise.all([
+        storage.getGA4Connections(campaignId),
+        storage.getLinkedInConnection(campaignId),
+        storage.getMetaConnection(campaignId),
+        storage.getGoogleAdsConnection(campaignId).catch(() => undefined),
+        storage.getCustomIntegration(campaignId),
+      ]);
+
+      const primaryGA4 = (ga4Connections || []).find((c: any) => c?.isPrimary) || (ga4Connections || [])[0];
+      const ga4Rows = primaryGA4?.propertyId
+        ? await storage.getGA4DailyMetrics(campaignId, String(primaryGA4.propertyId), startDate, endDate).catch(() => [] as any[])
+        : [];
+      const linkedInRows = linkedInConn && !(linkedInConn as any).spendOnly
+        ? await storage.getLinkedInDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[])
+        : [];
+      const metaRows = metaConn && !(metaConn as any).spendOnly
+        ? await storage.getMetaDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[])
+        : [];
+      const googleAdsRowsRaw = googleAdsConn && !(googleAdsConn as any).spendOnly
+        ? await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[])
+        : [];
+      const selectedGoogleAdsIds = (() => {
+        try {
+          const parsed = JSON.parse(String((googleAdsConn as any)?.selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? new Set(parsed.map(String).filter(Boolean)) : new Set<string>();
+        } catch {
+          return new Set<string>();
+        }
+      })();
+      const googleAdsRows = selectedGoogleAdsIds.size > 0
+        ? googleAdsRowsRaw.filter((row: any) => selectedGoogleAdsIds.has(String(row?.googleCampaignId || "")))
+        : googleAdsRowsRaw;
+
+      const financialData = await db.execute(sql`
+        SELECT sr.date, SUM(sr.spend::NUMERIC) as spend, 0::NUMERIC as revenue
+        FROM spend_records sr
+        INNER JOIN spend_sources ss ON ss.id::text = sr.spend_source_id
+        WHERE sr.campaign_id = ${campaignId} AND ss.is_active = true AND sr.date >= ${startDate} AND sr.date <= ${endDate}
+        GROUP BY sr.date
+        UNION ALL
+        SELECT rr.date, 0::NUMERIC as spend, SUM(rr.revenue::NUMERIC) as revenue
+        FROM revenue_records rr
+        INNER JOIN revenue_sources rs ON rs.id::text = rr.revenue_source_id
+        WHERE rr.campaign_id = ${campaignId} AND rs.is_active = true AND rr.date >= ${startDate} AND rr.date <= ${endDate}
+        GROUP BY rr.date
+      `);
+      const financialByDate = new Map<string, { date: string; spend: number; revenue: number }>();
+      for (const row of (financialData.rows as any[])) {
+        const date = String(row.date || "").slice(0, 10);
+        if (!date) continue;
+        const current = financialByDate.get(date) || { date, spend: 0, revenue: 0 };
+        current.spend += parseFloat(String(row.spend || 0)) || 0;
+        current.revenue += parseFloat(String(row.revenue || 0)) || 0;
+        financialByDate.set(date, current);
+      }
+
+      const aggregate = buildTrendAnalysisAggregate({
+        campaignId,
+        dateRange,
+        startDate,
+        endDate,
+        financialDailyRows: Array.from(financialByDate.values()),
+        sources: [
+          {
+            id: "ga4",
+            label: "Google Analytics",
+            category: "web_analytics",
+            connected: Boolean(primaryGA4?.propertyId),
+            capabilities: ["users", "sessions", "conversions", "revenue", "engagementRate"],
+            includedMetrics: Boolean(primaryGA4?.propertyId) ? ["users", "sessions", "conversions", "revenue", "engagementRate"] : [],
+            excludedMetrics: [
+              { metric: "impressions", reason: "GA4 is not an ad-impression source" },
+              { metric: "clicks", reason: "GA4 is not an ad-click source" },
+              { metric: "spend", reason: "Spend is not a GA4 metric" },
+            ],
+            dailyRows: ga4Rows.map((row: any) => ({
+              date: row.date,
+              metrics: {
+                users: row.users,
+                sessions: row.sessions,
+                conversions: row.conversions,
+                revenue: row.revenue,
+                engagementRate: row.engagementRate,
+              },
+            })),
+            freshness: primaryGA4?.propertyId ? { propertyId: primaryGA4.propertyId } : undefined,
+          },
+          {
+            id: "linkedin",
+            label: "LinkedIn Ads",
+            category: "paid_media",
+            connected: Boolean(linkedInConn && !(linkedInConn as any).spendOnly),
+            capabilities: ["impressions", "clicks", "spend", "conversions"],
+            includedMetrics: Boolean(linkedInConn && !(linkedInConn as any).spendOnly) ? ["impressions", "clicks", "spend", "conversions"] : [],
+            excludedMetrics: [
+              { metric: "sessions", reason: "Sessions are web analytics metrics" },
+              { metric: "users", reason: "Users are web analytics metrics" },
+            ],
+            dailyRows: linkedInRows.map((row: any) => ({
+              date: row.date,
+              metrics: {
+                impressions: row.impressions,
+                clicks: row.clicks,
+                spend: row.spend,
+                conversions: row.conversions,
+              },
+            })),
+          },
+          {
+            id: "meta",
+            label: "Meta Ads",
+            category: "paid_media",
+            connected: Boolean(metaConn && !(metaConn as any).spendOnly),
+            capabilities: ["impressions", "clicks", "spend", "conversions"],
+            includedMetrics: Boolean(metaConn && !(metaConn as any).spendOnly) ? ["impressions", "clicks", "spend", "conversions"] : [],
+            excludedMetrics: [
+              { metric: "sessions", reason: "Sessions are web analytics metrics" },
+              { metric: "users", reason: "Users are web analytics metrics" },
+            ],
+            dailyRows: metaRows.map((row: any) => ({
+              date: row.date,
+              metrics: {
+                impressions: row.impressions,
+                clicks: row.clicks,
+                spend: row.spend,
+                conversions: row.conversions,
+              },
+            })),
+          },
+          {
+            id: "google_ads",
+            label: "Google Ads",
+            category: "paid_media",
+            connected: Boolean(googleAdsConn && !(googleAdsConn as any).spendOnly),
+            capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+            includedMetrics: Boolean(googleAdsConn && !(googleAdsConn as any).spendOnly) ? ["impressions", "clicks", "spend", "conversions", "attributedRevenue"] : [],
+            excludedMetrics: [
+              { metric: "sessions", reason: "Sessions are web analytics metrics" },
+              { metric: "users", reason: "Users are web analytics metrics" },
+            ],
+            dailyRows: googleAdsRows.map((row: any) => ({
+              date: row.date,
+              metrics: {
+                impressions: row.impressions,
+                clicks: row.clicks,
+                spend: row.spend,
+                conversions: row.conversions,
+                attributedRevenue: row.ga4Revenue || row.conversionValue,
+              },
+            })),
+            freshness: selectedGoogleAdsIds.size > 0 ? { selectedCampaignIds: Array.from(selectedGoogleAdsIds) } : undefined,
+          },
+          {
+            id: "custom_integration",
+            label: "Custom Integration",
+            category: "custom",
+            connected: Boolean(customIntegration),
+            capabilities: ["impressions", "clicks", "spend", "conversions", "users", "sessions", "pageviews", "revenue"],
+            includedMetrics: Boolean(customIntegration) ? ["impressions", "clicks", "spend", "conversions", "users", "sessions", "pageviews", "revenue"] : [],
+            excludedMetrics: [],
+            dailyRows: [],
+          },
+        ],
+      });
+
+      res.json({ success: true, trendAnalysis: aggregate });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed to build trend analysis aggregate" });
     }
   });
 

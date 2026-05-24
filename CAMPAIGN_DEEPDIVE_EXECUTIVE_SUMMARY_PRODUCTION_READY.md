@@ -374,6 +374,8 @@ Completed:
 - Follow-up root cause: the Overview tab was reading the aggregate correctly, but `/api/campaigns/:id/executive-summary` still prepared GA4 and financial aggregate inputs with a simpler path than `/api/campaigns/:id/outcome-totals`. That caused users, sessions, conversions, revenue, ROAS, and ROI to diverge from the shared DeepDive aggregate source truth.
 - Follow-up completed: Executive Summary now resolves GA4 current values through the same GA4 source-truth path, keeps persisted GA4 daily rows as fallback, and uses to-date spend/revenue financial provenance when building the aggregate.
 - Follow-up correction: the user-facing Connected Platforms GA4 card uses `/api/campaigns/:id/ga4-metrics` and `ga4Service.getMetricsWithAutoRefresh`; Executive Summary now uses that same connected-platform metric source for GA4 users, sessions, and conversions instead of the separate acquisition/simulation path.
+- Source-of-truth correction: the Executive Summary page now fetches `/api/campaigns/:id/outcome-totals` directly and uses `outcomeTotals.performanceSummary` for visible Executive Overview metrics, matching the proven connected-source aggregate consumed by the other Campaign DeepDive subsections.
+- Removed the Executive Summary period dropdown and fixed the page's aggregate request to the daily connected-source `90days` window so visible records are no longer changed by a local subsection date selector.
 
 Files changed:
 

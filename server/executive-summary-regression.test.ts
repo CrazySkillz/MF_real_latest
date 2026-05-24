@@ -65,7 +65,12 @@ describe("campaign Executive Summary regression guard", () => {
     const overviewEnd = page.indexOf('{/* Strategic Recommendations Tab */}', overviewStart);
     const overview = page.slice(overviewStart, overviewEnd);
 
-    expect(page).toContain("const performanceSummary = (executiveSummary as any).performanceSummary;");
+    expect(page).not.toContain("const [period");
+    expect(page).not.toContain('params.set("period"');
+    expect(page).not.toContain("<Select value={period}");
+    expect(page).toContain('const executiveOutcomeDateRange = "90days";');
+    expect(page).toContain("`/api/campaigns/${campaignId}/outcome-totals?dateRange=${executiveOutcomeDateRange}${demoMode ? \"&demo=1\" : \"\"}`");
+    expect(page).toContain("const performanceSummary = (outcomeTotals as any)?.performanceSummary || (executiveSummary as any).performanceSummary;");
     expect(page).toContain("const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];");
     expect(page).toContain('const reachMetricKey = pickFirstAvailableMetric(["impressions", "users", "sessions"]);');
     expect(page).toContain('const engagementMetricKey = pickFirstAvailableMetric(["clicks", "sessions", "users"]);');

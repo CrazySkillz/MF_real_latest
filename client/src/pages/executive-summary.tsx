@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Calendar, Brain, Activity, Info, FlaskConical, ChevronDown } from "lucide-react";
+import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, Target, Users, DollarSign, Award, AlertTriangle, CheckCircle, Zap, Eye, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Brain, Activity, Info, FlaskConical, ChevronDown } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar } from "recharts";
 import { format } from "date-fns";
 import { formatPct } from "@shared/metric-math";
@@ -18,7 +17,6 @@ import { formatPct } from "@shared/metric-math";
 export default function ExecutiveSummary() {
   const { id: campaignId } = useParams();
   const [demoMode, setDemoMode] = useState(false);
-  const [period, setPeriod] = useState<string>("all");
 
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
     queryKey: ["/api/campaigns", campaignId],
@@ -26,12 +24,11 @@ export default function ExecutiveSummary() {
   });
 
   const { data: executiveSummary, isLoading: summaryLoading, error: summaryError } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "executive-summary", demoMode ? "demo" : "live", period],
+    queryKey: ["/api/campaigns", campaignId, "executive-summary", demoMode ? "demo" : "live"],
     enabled: !!campaignId,
     queryFn: async () => {
       const params = new URLSearchParams();
       if (demoMode) params.set("demo", "1");
-      if (period !== "all") params.set("period", period);
       const url = `/api/campaigns/${campaignId}/executive-summary${params.toString() ? "?" + params.toString() : ""}`;
       const resp = await fetch(url);
       if (!resp.ok) return null;
@@ -39,7 +36,19 @@ export default function ExecutiveSummary() {
     },
   });
 
-  if (campaignLoading || summaryLoading) {
+  const executiveOutcomeDateRange = "90days";
+  const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery({
+    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, executiveOutcomeDateRange, demoMode ? "demo" : "live", "executive-summary"],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=${executiveOutcomeDateRange}${demoMode ? "&demo=1" : ""}`;
+      const resp = await fetch(url, { credentials: "include" });
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
+
+  if (campaignLoading || summaryLoading || outcomeTotalsLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -134,7 +143,7 @@ export default function ExecutiveSummary() {
     }
   };
 
-  const performanceSummary = (executiveSummary as any).performanceSummary;
+  const performanceSummary = (outcomeTotals as any)?.performanceSummary || (executiveSummary as any).performanceSummary;
   const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];
   const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;
   const aggregateMetricValue = (metricName: string): number => {
@@ -199,18 +208,6 @@ export default function ExecutiveSummary() {
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <Select value={period} onValueChange={setPeriod}>
-                  <SelectTrigger className="w-[150px] h-8 text-xs">
-                    <Calendar className="w-3 h-3 mr-1" />
-                    <SelectValue placeholder="Time Period" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="7d">Last 7 Days</SelectItem>
-                    <SelectItem value="30d">Last 30 Days</SelectItem>
-                    <SelectItem value="90d">Last 90 Days</SelectItem>
-                    <SelectItem value="all">All Time</SelectItem>
-                  </SelectContent>
-                </Select>
                 <Button
                   variant={demoMode ? "default" : "outline"}
                   size="sm"

@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatPct, normalizeRateToPercent } from "@shared/metric-math";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area, BarChart, Bar, ComposedChart, PieChart, Pie, Cell,
+  Area, BarChart, Bar, ComposedChart, PieChart, Pie, Cell,
   ReferenceLine, ReferenceDot,
 } from "recharts";
 import { format, subDays } from "date-fns";
@@ -452,6 +452,8 @@ export default function TrendAnalysis() {
 
     const current = buildSummary(currentPeriod);
     const previous = buildSummary(previousPeriod);
+    const hasCompleteCurrentPeriod = currentPeriod.length >= perfDays;
+    const hasCompletePreviousPeriod = previousPeriod.length >= perfDays;
     const comparison = Object.fromEntries(
       Object.keys(current).map((key) => [key, pctChange(Number((current as any)[key] || 0), Number((previous as any)[key] || 0))]),
     );
@@ -473,7 +475,11 @@ export default function TrendAnalysis() {
       comparison,
       availableSeries,
       anomalies: detectAnomalies(currentPeriod, anomalyKeys),
-      hasPrevious: previousPeriod.length > 0,
+      hasPrevious: hasCompletePreviousPeriod,
+      hasCompleteCurrentPeriod,
+      currentPeriodDays: currentPeriod.length,
+      previousPeriodDays: previousPeriod.length,
+      requestedPeriodDays: perfDays,
       connectedSources: Array.isArray(aggregate?.sources) ? aggregate.sources.map((source: any) => String(source?.label || source?.id)).filter(Boolean) : [],
     };
   }, [trendAggregate, perfDays]);
@@ -484,6 +490,103 @@ export default function TrendAnalysis() {
     if (selected.size > 0) return selected;
     return new Set(keys.slice(0, 3));
   }, [visibleSeries, overviewTrendData]);
+
+  const efficiencyTrendData = useMemo<any>(() => {
+    const aggregate = trendAggregate;
+    const rows = Array.isArray(aggregate?.dailyTotals) ? aggregate.dailyTotals : [];
+    if (rows.length === 0) return null;
+
+    const toMetric = (value: any) => {
+      if (value === null || typeof value === "undefined") return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const series = rows.map((row: any) => {
+      const date = String(row?.date || "").slice(0, 10);
+      const metrics = row?.metrics || {};
+      const engagementRate = toMetric(metrics.engagementRate);
+      return {
+        date,
+        label: format(new Date(`${date}T00:00:00`), 'MMM dd'),
+        spend: Number(metrics.spend || 0),
+        revenue: Number(metrics.revenue || 0),
+        conversions: Number(metrics.conversions || 0),
+        clicks: Number(metrics.clicks || 0),
+        impressions: Number(metrics.impressions || 0),
+        sessions: Number(metrics.sessions || 0),
+        roas: toMetric(metrics.roas),
+        roi: toMetric(metrics.roi),
+        cpa: toMetric(metrics.cpa),
+        cpc: toMetric(metrics.cpc),
+        cpm: toMetric(metrics.cpm),
+        ctr: toMetric(metrics.ctr),
+        cvr: toMetric(metrics.cvr),
+        engagementRate: engagementRate === null ? null : normalizeRateToPercent(engagementRate),
+      };
+    });
+
+    const currentPeriod = series.slice(-perfDays);
+    const previousPeriod = series.slice(-perfDays * 2, -perfDays);
+    const sum = (items: any[], key: string) => items.reduce((total, row) => total + (Number(row[key]) || 0), 0);
+    const avg = (items: any[], key: string) => {
+      const values = items.map((row) => row[key]).filter((value) => value !== null && typeof value !== "undefined" && Number.isFinite(Number(value)));
+      return values.length > 0 ? values.reduce((total, value) => total + Number(value), 0) / values.length : null;
+    };
+    const buildSummary = (items: any[]) => {
+      const spend = sum(items, "spend");
+      const revenue = sum(items, "revenue");
+      const conversions = sum(items, "conversions");
+      const clicks = sum(items, "clicks");
+      const impressions = sum(items, "impressions");
+      const sessions = sum(items, "sessions");
+      return {
+        roas: spend > 0 && revenue > 0 ? revenue / spend : null,
+        roi: spend > 0 && revenue > 0 ? ((revenue - spend) / spend) * 100 : null,
+        cpa: spend > 0 && conversions > 0 ? spend / conversions : null,
+        cpc: spend > 0 && clicks > 0 ? spend / clicks : null,
+        cpm: spend > 0 && impressions > 0 ? (spend / impressions) * 1000 : null,
+        ctr: impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : null,
+        cvr: conversions > 0
+          ? clicks > 0
+            ? (conversions / clicks) * 100
+            : sessions > 0
+              ? (conversions / sessions) * 100
+              : null
+          : null,
+        engagementRate: avg(items, "engagementRate"),
+      };
+    };
+
+    const current = buildSummary(currentPeriod);
+    const previous = buildSummary(previousPeriod);
+    const compare = (key: string) => {
+      const curr = (current as any)[key];
+      const prev = (previous as any)[key];
+      return curr !== null && prev !== null ? pctChange(Number(curr), Number(prev)) : null;
+    };
+    const hasValue = (key: string) => current[key as keyof typeof current] !== null || currentPeriod.some((row: any) => row[key] !== null && typeof row[key] !== "undefined");
+    const cards = [
+      { key: "roas", label: "ROAS", value: current.roas === null ? null : `${current.roas.toFixed(1)}x`, change: compare("roas") },
+      { key: "roi", label: "ROI", value: current.roi === null ? null : formatPct(current.roi), change: compare("roi") },
+      { key: "cpa", label: "CPA", value: current.cpa === null ? null : fmtCur(current.cpa), change: compare("cpa"), invertColor: true },
+      { key: "cvr", label: "CVR", value: current.cvr === null ? null : formatPct(current.cvr), change: compare("cvr") },
+      { key: "engagementRate", label: "Engagement Rate", value: current.engagementRate === null ? null : formatPct(current.engagementRate), change: compare("engagementRate") },
+      { key: "cpc", label: "CPC", value: current.cpc === null ? null : fmtCur(current.cpc), change: compare("cpc"), invertColor: true },
+      { key: "cpm", label: "CPM", value: current.cpm === null ? null : fmtCur(current.cpm), change: compare("cpm"), invertColor: true },
+      { key: "ctr", label: "CTR", value: current.ctr === null ? null : formatPct(current.ctr), change: compare("ctr") },
+    ].filter((card) => hasValue(card.key) && card.value !== null);
+
+    return {
+      series: currentPeriod,
+      current,
+      cards,
+      hasPrevious: previousPeriod.length >= perfDays,
+      hasFinancialEfficiency: hasValue("roas") || hasValue("roi"),
+      hasCostEfficiency: hasValue("cpa") || hasValue("cpc") || hasValue("cpm"),
+      hasRateEfficiency: hasValue("ctr") || hasValue("cvr") || hasValue("engagementRate"),
+    };
+  }, [trendAggregate, perfDays]);
 
   // ─── Google Trends mutations & handlers ──────────────────────────
   const updateKeywordsMutation = useMutation({
@@ -674,6 +777,12 @@ export default function TrendAnalysis() {
                       })}
                     </div>
 
+                  {!overviewTrendData.hasCompleteCurrentPeriod && (
+                    <p className="text-sm text-muted-foreground">
+                      Showing {overviewTrendData.currentPeriodDays} of {overviewTrendData.requestedPeriodDays} days available for this selection. Full-period trend comparisons appear once enough daily history exists.
+                    </p>
+                  )}
+
                   {/* Metric Toggle Row */}
                   <div className="flex flex-wrap gap-2">
                     {overviewTrendData.availableSeries.map((s: any) => (
@@ -776,26 +885,32 @@ export default function TrendAnalysis() {
             </TabsContent>
 
             {/* ═══════════ TAB 2: EFFICIENCY METRICS ═══════════ */}
-            <TabsContent value="efficiency" className={`space-y-6 fade-in chart-transition ${isRefreshing ? 'chart-refreshing' : ''}`}>
-              {!hasData ? (
-                <Card><CardContent className="p-8 text-center"><Activity className="w-12 h-12 mx-auto text-muted-foreground/60 mb-4" /><p className="text-muted-foreground/70">No data available for efficiency analysis.</p></CardContent></Card>
+            <TabsContent value="efficiency" className={`space-y-6 fade-in chart-transition ${isTrendAnalysisRefreshing ? 'chart-refreshing' : ''}`}>
+              {trendAnalysisLoading && !trendAnalysisFetched && !efficiencyTrendData ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="space-y-4">
+                      <div className="h-5 bg-muted rounded w-1/3" />
+                      <div className="grid gap-4 md:grid-cols-4">
+                        {[0, 1, 2, 3].map((item) => <div key={item} className="h-24 bg-muted rounded" />)}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : !efficiencyTrendData || efficiencyTrendData.cards.length === 0 ? (
+                <Card><CardContent className="p-8 text-center"><Activity className="w-12 h-12 mx-auto text-muted-foreground/60 mb-4" /><p className="text-muted-foreground/70">No connected source efficiency metrics available. Efficiency metrics appear only when the connected sources provide the required inputs.</p></CardContent></Card>
               ) : (
                 <>
                   {/* Summary Cards */}
                   <div className="grid gap-4 md:grid-cols-4">
-                    {[
-                      { label: 'Avg ROAS', value: `${crossPlatformData.current.roas.toFixed(1)}x`, change: crossPlatformData.comparison.roas },
-                      { label: 'Avg CPA', value: fmtCur(crossPlatformData.current.cpa), change: crossPlatformData.comparison.cpa, invertColor: true },
-                      { label: 'Avg CPC', value: fmtCur(crossPlatformData.current.cpc), change: pctChange(crossPlatformData.current.cpc, avgArr(crossPlatformData.series, 'cpc')), invertColor: true },
-                      { label: 'Avg CPM', value: fmtCur(crossPlatformData.current.cpm), change: pctChange(crossPlatformData.current.cpm, avgArr(crossPlatformData.series, 'cpm')), invertColor: true },
-                    ].map((card, i) => {
-                      const isGood = card.invertColor ? card.change <= 0 : card.change >= 0;
+                    {efficiencyTrendData.cards.map((card: any, i: number) => {
+                      const isGood = card.invertColor ? Number(card.change) <= 0 : Number(card.change) >= 0;
                       return (
                         <Card key={i}>
                           <CardContent className="p-4">
                             <div className="text-xs text-muted-foreground mb-1">{card.label}</div>
                             <div className="text-xl font-bold text-foreground">{card.value}</div>
-                            {crossPlatformData.hasPrevious && (
+                            {efficiencyTrendData.hasPrevious && card.change !== null && (
                               <div className={`flex items-center text-xs mt-1 ${isGood ? 'text-green-600' : 'text-red-600'}`}>
                                 {card.change >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                                 {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}%
@@ -808,84 +923,77 @@ export default function TrendAnalysis() {
                   </div>
 
                   {/* ROAS & ROI Chart */}
-                  <Card>
-                    <CardHeader><CardTitle className="flex items-center space-x-2"><DollarSign className="w-5 h-5" /><span>ROAS & ROI Trend</span></CardTitle></CardHeader>
-                    <CardContent>
-                      <div className="h-72">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <ComposedChart data={crossPlatformData.series}>
-                            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                            <XAxis dataKey="label" className="text-xs" />
-                            <YAxis yAxisId="left" className="text-xs" label={{ value: 'ROAS (x)', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }} />
-                            <YAxis yAxisId="right" orientation="right" className="text-xs" label={{ value: 'ROI (%)', angle: 90, position: 'insideRight', style: { fontSize: 10 } }} />
-                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [name === 'ROAS' ? `${Number(v).toFixed(2)}x` : `${Number(v).toFixed(1)}%`, name]} />
-                            <Line yAxisId="left" type="monotone" dataKey="roas" stroke="#10b981" strokeWidth={2} dot={false} name="ROAS" />
-                            <Line yAxisId="right" type="monotone" dataKey="roi" stroke="#8b5cf6" strokeWidth={2} dot={false} name="ROI %" />
-                            {kpiTargets.roas && <ReferenceLine yAxisId="left" y={kpiTargets.roas / 100} stroke="#10b981" strokeDasharray="5 5" label={{ value: 'ROAS Target', fill: '#10b981', fontSize: 10 }} />}
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* CPA & CPC Chart */}
-                  <Card>
-                    <CardHeader><CardTitle className="flex items-center space-x-2"><Target className="w-5 h-5" /><span>CPA & CPC Trend</span></CardTitle></CardHeader>
-                    <CardContent>
-                      <div className="h-72">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <ComposedChart data={crossPlatformData.series}>
-                            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                            <XAxis dataKey="label" className="text-xs" />
-                            <YAxis yAxisId="left" className="text-xs" label={{ value: 'CPA ($)', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }} />
-                            <YAxis yAxisId="right" orientation="right" className="text-xs" label={{ value: 'CPC ($)', angle: 90, position: 'insideRight', style: { fontSize: 10 } }} />
-                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [fmtCur(Number(v)), name]} />
-                            <Line yAxisId="left" type="monotone" dataKey="cpa" stroke="#ef4444" strokeWidth={2} dot={false} name="CPA" />
-                            <Line yAxisId="right" type="monotone" dataKey="cpc" stroke="#f59e0b" strokeWidth={2} dot={false} name="CPC" />
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* CTR & Engagement Rate Chart */}
-                  <Card>
-                    <CardHeader><CardTitle className="flex items-center space-x-2"><BarChart3 className="w-5 h-5" /><span>CTR & Engagement Rate</span></CardTitle></CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={crossPlatformData.series}>
-                            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                            <XAxis dataKey="label" className="text-xs" />
-                            <YAxis className="text-xs" />
-                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [`${formatPct(Number(v))}`, name]} />
-                            <Line type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR %" />
-                            <Line type="monotone" dataKey="engagementRate" stroke="#10b981" strokeWidth={2} dot={false} name="Engagement Rate %" />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* CPM Chart */}
-                  {hasAdPlatforms && (
+                  {efficiencyTrendData.hasFinancialEfficiency ? (
                     <Card>
-                      <CardHeader><CardTitle className="flex items-center space-x-2"><DollarSign className="w-5 h-5" /><span>CPM Trend</span></CardTitle></CardHeader>
+                      <CardHeader><CardTitle className="flex items-center space-x-2"><DollarSign className="w-5 h-5" /><span>ROAS & ROI Trend</span></CardTitle></CardHeader>
                       <CardContent>
-                        <div className="h-56">
+                        <div className="h-72">
                           <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={crossPlatformData.series}>
+                            <ComposedChart data={efficiencyTrendData.series}>
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                               <XAxis dataKey="label" className="text-xs" />
-                              <YAxis className="text-xs" />
-                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [fmtCur(Number(v)), 'CPM']} />
-                              <Area type="monotone" dataKey="cpm" fill="#8b5cf6" fillOpacity={0.15} stroke="#8b5cf6" strokeWidth={2} name="CPM ($)" />
-                            </AreaChart>
+                              <YAxis yAxisId="left" className="text-xs" label={{ value: 'ROAS (x)', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }} />
+                              <YAxis yAxisId="right" orientation="right" className="text-xs" label={{ value: 'ROI (%)', angle: 90, position: 'insideRight', style: { fontSize: 10 } }} />
+                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [name === 'ROAS' ? `${Number(v).toFixed(2)}x` : `${Number(v).toFixed(1)}%`, name]} />
+                              {efficiencyTrendData.current.roas !== null && <Line yAxisId="left" type="monotone" dataKey="roas" stroke="#10b981" strokeWidth={2} dot={false} name="ROAS" />}
+                              {efficiencyTrendData.current.roi !== null && <Line yAxisId="right" type="monotone" dataKey="roi" stroke="#8b5cf6" strokeWidth={2} dot={false} name="ROI %" />}
+                              {kpiTargets.roas && efficiencyTrendData.current.roas !== null && <ReferenceLine yAxisId="left" y={kpiTargets.roas / 100} stroke="#10b981" strokeDasharray="5 5" label={{ value: 'ROAS Target', fill: '#10b981', fontSize: 10 }} />}
+                            </ComposedChart>
                           </ResponsiveContainer>
                         </div>
                       </CardContent>
                     </Card>
+                  ) : (
+                    <Card><CardContent className="p-6 text-sm text-muted-foreground/70">ROAS and ROI require both spend and revenue from connected source data.</CardContent></Card>
                   )}
+
+                  {/* CPA & CPC Chart */}
+                  {efficiencyTrendData.hasCostEfficiency ? (
+                    <Card>
+                      <CardHeader><CardTitle className="flex items-center space-x-2"><Target className="w-5 h-5" /><span>Cost Efficiency Trend</span></CardTitle></CardHeader>
+                      <CardContent>
+                        <div className="h-72">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={efficiencyTrendData.series}>
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis dataKey="label" className="text-xs" />
+                              <YAxis className="text-xs" />
+                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [fmtCur(Number(v)), name]} />
+                              {efficiencyTrendData.current.cpa !== null && <Line type="monotone" dataKey="cpa" stroke="#ef4444" strokeWidth={2} dot={false} name="CPA" />}
+                              {efficiencyTrendData.current.cpc !== null && <Line type="monotone" dataKey="cpc" stroke="#f59e0b" strokeWidth={2} dot={false} name="CPC" />}
+                              {efficiencyTrendData.current.cpm !== null && <Line type="monotone" dataKey="cpm" stroke="#8b5cf6" strokeWidth={2} dot={false} name="CPM" />}
+                            </ComposedChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card><CardContent className="p-6 text-sm text-muted-foreground/70">CPA requires spend and conversions. CPC and CPM require paid-media clicks or impressions from a connected source.</CardContent></Card>
+                  )}
+
+                  {/* CTR & Engagement Rate Chart */}
+                  <Card>
+                    <CardHeader><CardTitle className="flex items-center space-x-2"><BarChart3 className="w-5 h-5" /><span>Rate Efficiency Trend</span></CardTitle></CardHeader>
+                    <CardContent>
+                      {efficiencyTrendData.hasRateEfficiency ? (
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={efficiencyTrendData.series}>
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis dataKey="label" className="text-xs" />
+                              <YAxis className="text-xs" />
+                              <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: string) => [`${formatPct(Number(v))}`, name]} />
+                              {efficiencyTrendData.current.ctr !== null && <Line type="monotone" dataKey="ctr" stroke="#3b82f6" strokeWidth={2} dot={false} name="CTR %" />}
+                              {efficiencyTrendData.current.cvr !== null && <Line type="monotone" dataKey="cvr" stroke="#8b5cf6" strokeWidth={2} dot={false} name="CVR %" />}
+                              {efficiencyTrendData.current.engagementRate !== null && <Line type="monotone" dataKey="engagementRate" stroke="#10b981" strokeWidth={2} dot={false} name="Engagement Rate %" />}
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground/70">Rate efficiency requires CTR, CVR, or engagement-rate inputs from connected source data.</p>
+                      )}
+                    </CardContent>
+                  </Card>
                 </>
               )}
             </TabsContent>

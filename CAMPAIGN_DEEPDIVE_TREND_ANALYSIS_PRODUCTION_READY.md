@@ -263,6 +263,8 @@ Manual Render validation guidance:
 - Do not use the mock-placeholder values as proof of final live GA4 numeric accuracy. Final numeric/time-series validation should be done later with the planned mock-live GA4 account that receives controlled daily data.
 - Commit 2 follow-up fix: Trend Analysis now uses the same deterministic GA4 mock simulation path for `yesop` mock properties as the GA4 platform daily route, then overlays persisted daily rows. This prevents the Executive Overview from showing unrelated persisted-only mock rows when the source GA4 page is using simulated mock data.
 - Commit 2 follow-up fix: GA4 engagement rate is normalized before display, so decimal rates such as `0.6` display as `60%`, not `0.6%`.
+- Commit 2 follow-up fix: Executive Overview no longer treats partial historical rows as a complete comparison window. Current values can render from the available daily rows, but comparison percentages appear only after a complete previous window exists for the selected period. If the current selected window is partial, the UI shows how many daily rows are available and explains that full-period comparisons require more history.
+- Commit 2 verification fix: the `yesop` mock GA4 path now requests enough simulated daily rows for the selected Executive Overview comparison window where the simulator supports it. `Last 7 Days` and `Last 14 Days` use a 30-day simulated baseline, `Last 30 Days` uses the 60-day simulated baseline, and `Last 90 Days` uses the 90-day baseline because no 180-day simulator range exists yet.
 
 ### Commit 3: Efficiency Metrics
 
@@ -271,9 +273,29 @@ Manual Render validation guidance:
 - Explain unavailable metrics clearly rather than showing zero or misleading comparisons.
 - Keep GA4 analytics efficiency separate from paid-media cost efficiency.
 
-Status: pending.
+Status: completed.
 
-Evidence: not started.
+Root cause fixed:
+
+- The Efficiency Metrics tab still rendered from the legacy `crossPlatformData` frontend merge, which hardcoded GA4, LinkedIn, Meta, Google Ads, and financial daily endpoints.
+- That legacy merge calculated unavailable derived metrics as zero, so GA4-only campaigns could show fake ROAS, CPA, CPC, CPM, or CTR trend values instead of capability-gated values.
+- Commit 3 adds an aggregate-backed `efficiencyTrendData` model and wires only the Efficiency Metrics tab to the `trend_analysis_aggregate_v1` daily totals.
+- ROAS, ROI, CPA, CPC, CPM, CTR, CVR, and engagement rate now render only when the aggregate has the required inputs.
+- Unavailable efficiency metric groups explain which inputs are missing instead of showing zero-valued charts.
+
+Files changed:
+
+- `client/src/pages/trend-analysis.tsx`
+- `server/trend-analysis-overview-regression.test.ts`
+
+Validation:
+
+- `npm test -- server/trend-analysis-aggregate.test.ts server/trend-analysis-overview-regression.test.ts`
+- `npm run check`
+
+Evidence:
+
+- Regression coverage proves the Efficiency Metrics tab uses `efficiencyTrendData`, consumes derived aggregate metrics such as ROAS, ROI, CPA, and normalized engagement rate, explains unavailable inputs, and no longer references `crossPlatformData`.
 
 ### Commit 4: Conversion Funnel
 

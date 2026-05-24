@@ -1125,7 +1125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (primaryGA4PropertyId) {
         const storedRows = await storage.getGA4DailyMetrics(campaignId, primaryGA4PropertyId, startDate, endDate).catch(() => [] as any[]);
         if (isYesopMockProperty(primaryGA4PropertyId)) {
-          const simRange = days >= 90 ? "90days" : days >= 30 ? "30days" : "7days";
+          const simRange = days >= 90 ? "90days" : days >= 60 ? "60days" : days >= 14 ? "30days" : "7days";
           const sim = simulateGA4({
             campaignId,
             propertyId: primaryGA4PropertyId,

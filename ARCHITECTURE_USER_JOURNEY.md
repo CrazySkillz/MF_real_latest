@@ -440,6 +440,8 @@ Platform Comparison production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_P
 
 Trend Analysis production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`.
 
+Trend Analysis tabs are `Overview`, `Efficiency Metrics`, `Conversion Funnel`, `Platform Breakdown`, and `Insights`. The `Insights` tab summarizes the other aggregate-backed Trend Analysis tabs and should not show the page-level history dropdown.
+
 Budget & Financial Analysis may let users fill, edit, or delete campaign pacing metadata, such as budget, start date, and end date, from the analysis page. These controls must update the existing campaign fields through the normal campaign update route and must not create separate pacing-only values. Because these are shared campaign metadata fields, changes to the pacing budget also update the Budget value shown in Campaign Management after campaign data refreshes.
 
 Budget & Financial Analysis is a downstream consumer of platform-level connected-source financial totals. Platform source records, such as GA4 `Total Revenue` and `Total Spend`, remain the source of truth for revenue and spend. Budget & Financial controls must not write, override, filter, or reinterpret those platform financial totals; pacing metadata only affects pacing formulas.

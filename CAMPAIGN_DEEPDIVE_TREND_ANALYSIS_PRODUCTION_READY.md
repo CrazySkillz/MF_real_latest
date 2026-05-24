@@ -213,6 +213,7 @@ Validation:
 
 - `npm test -- server/trend-analysis-aggregate.test.ts`
 - `npm run check`
+- Render/API validation passed by user after deployment.
 
 Evidence:
 
@@ -226,9 +227,30 @@ Evidence:
 - Keep ad spend, impressions, clicks, CTR, CPC, CPM, and paid CPA unavailable unless a connected source provides the required inputs.
 - Prevent transient empty or demo content from flashing before the aggregate loads.
 
-Status: pending.
+Status: completed.
 
-Evidence: not started.
+Root cause fixed:
+
+- The Executive Overview tab still rendered from the legacy `crossPlatformData` object, which is built by hardcoded frontend merges of GA4, LinkedIn, Meta, Google Ads, and daily financial endpoints.
+- Commit 2 adds a source-aware Trend Analysis query to the page and wires only the Executive Overview tab to `trend_analysis_aggregate_v1`.
+- The Overview tab now builds summary cards, metric toggles, chart series, and anomaly inputs from the connected-source trend aggregate.
+- GA4-only campaigns show GA4-capable metrics such as sessions, users, conversions, revenue, CVR, and engagement rate when available.
+- Paid-media metrics such as impressions, clicks, CTR, CPA, ROAS, and spend only appear when the aggregate reports the required connected-source inputs.
+- The Overview tab no longer shows the old disconnected-platform empty state while the aggregate is loading.
+
+Files changed:
+
+- `client/src/pages/trend-analysis.tsx`
+- `server/trend-analysis-overview-regression.test.ts`
+
+Validation:
+
+- `npm test -- server/trend-analysis-aggregate.test.ts server/trend-analysis-overview-regression.test.ts`
+- `npm run check`
+
+Evidence:
+
+- Regression coverage proves the Overview tab fetches `/api/campaigns/:id/trend-analysis`, uses `overviewTrendData.availableSeries`, renders GA4-capable series such as sessions/users/revenue, and no longer references `crossPlatformData` in the Overview tab.
 
 ### Commit 3: Efficiency Metrics
 

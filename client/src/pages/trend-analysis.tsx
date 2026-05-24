@@ -103,6 +103,7 @@ export default function TrendAnalysis() {
   const [platformMetric, setPlatformMetric] = useState<string>("spend");
 
   const perfDays = perfPeriod === '7d' ? 7 : perfPeriod === '14d' ? 14 : perfPeriod === '90d' ? 90 : 30;
+  const trendDateRange = perfDays === 7 ? "7days" : perfDays === 90 ? "90days" : "30days";
 
   // ─── Data Queries (all fetched on load, not gated by tab) ────────
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
@@ -174,6 +175,24 @@ export default function TrendAnalysis() {
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const resp = await fetch(`/api/campaigns/${campaignId}/daily-financials?days=${perfDays * 2}`);
+      if (!resp.ok) return null;
+      return resp.json().catch(() => null);
+    },
+  });
+
+  const {
+    data: trendAnalysisResponse,
+    isLoading: trendAnalysisLoading,
+    isPlaceholderData: isTrendAnalysisRefreshing,
+    isFetched: trendAnalysisFetched,
+  } = useQuery({
+    queryKey: [`/api/campaigns/${campaignId}/trend-analysis`, trendDateRange, perfDays],
+    enabled: !!campaignId,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const resp = await fetch(`/api/campaigns/${campaignId}/trend-analysis?dateRange=${trendDateRange}&days=${perfDays * 2}`, {
+        credentials: "include",
+      });
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },
@@ -362,6 +381,110 @@ export default function TrendAnalysis() {
     return { series: currentPeriod, current, previous, comparison, anomalies, hasPrevious: previousPeriod.length > 0, platformTotals };
   }, [ga4Daily, linkedinDaily, metaDaily, googleAdsDaily, dailyFinancials, perfDays]);
 
+  const trendAggregate = (trendAnalysisResponse as any)?.trendAnalysis;
+
+  const overviewTrendData = useMemo<any>(() => {
+    const aggregate = trendAggregate;
+    const rows = Array.isArray(aggregate?.dailyTotals) ? aggregate.dailyTotals : [];
+    if (rows.length === 0) return null;
+
+    const sourcesFor = (metricName: string): string[] => {
+      const sources = aggregate?.metrics?.[metricName]?.sources;
+      return Array.isArray(sources) ? sources.map(String) : [];
+    };
+    const hasMetric = (metricName: string) => sourcesFor(metricName).length > 0;
+    const hasEngagementRate = Array.isArray(aggregate?.sources)
+      && aggregate.sources.some((source: any) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes("engagementRate"));
+
+    const series = rows.map((row: any) => {
+      const date = String(row?.date || "").slice(0, 10);
+      const metrics = row?.metrics || {};
+      return {
+        date,
+        label: format(new Date(`${date}T00:00:00`), 'MMM dd'),
+        spend: Number(metrics.spend || 0),
+        revenue: Number(metrics.revenue || 0),
+        conversions: Number(metrics.conversions || 0),
+        impressions: Number(metrics.impressions || 0),
+        clicks: Number(metrics.clicks || 0),
+        users: Number(metrics.users || 0),
+        sessions: Number(metrics.sessions || 0),
+        engagementRate: metrics.engagementRate === null || typeof metrics.engagementRate === "undefined" ? null : Number(metrics.engagementRate),
+      };
+    });
+
+    const currentPeriod = series.slice(-perfDays);
+    const previousPeriod = series.slice(-perfDays * 2, -perfDays);
+    const sum = (items: any[], key: string) => items.reduce((total, row) => total + (Number(row[key]) || 0), 0);
+    const avg = (items: any[], key: string) => {
+      const values = items.map((row) => row[key]).filter((value) => value !== null && typeof value !== "undefined" && Number.isFinite(Number(value)));
+      return values.length > 0 ? values.reduce((total, value) => total + Number(value), 0) / values.length : null;
+    };
+    const buildSummary = (items: any[]) => {
+      const spend = hasMetric("spend") ? sum(items, "spend") : null;
+      const revenue = hasMetric("revenue") ? sum(items, "revenue") : null;
+      const conversions = hasMetric("conversions") ? sum(items, "conversions") : null;
+      const clicks = hasMetric("clicks") ? sum(items, "clicks") : null;
+      const impressions = hasMetric("impressions") ? sum(items, "impressions") : null;
+      const sessions = hasMetric("sessions") ? sum(items, "sessions") : null;
+      const users = hasMetric("users") ? sum(items, "users") : null;
+      return {
+        spend,
+        revenue,
+        conversions,
+        clicks,
+        impressions,
+        sessions,
+        users,
+        roas: spend && spend > 0 && revenue && revenue > 0 ? revenue / spend : null,
+        cpa: spend && spend > 0 && conversions && conversions > 0 ? spend / conversions : null,
+        ctr: impressions && impressions > 0 && clicks && clicks > 0 ? (clicks / impressions) * 100 : null,
+        cvr: conversions && conversions > 0
+          ? clicks && clicks > 0
+            ? (conversions / clicks) * 100
+            : sessions && sessions > 0
+              ? (conversions / sessions) * 100
+              : null
+          : null,
+        engagementRate: hasEngagementRate ? avg(items, "engagementRate") : null,
+      };
+    };
+
+    const current = buildSummary(currentPeriod);
+    const previous = buildSummary(previousPeriod);
+    const comparison = Object.fromEntries(
+      Object.keys(current).map((key) => [key, pctChange(Number((current as any)[key] || 0), Number((previous as any)[key] || 0))]),
+    );
+    const availableSeries = [
+      { key: "spend", label: "Spend", color: "#f59e0b", available: hasMetric("spend") },
+      { key: "revenue", label: "Revenue", color: "#10b981", available: hasMetric("revenue") },
+      { key: "conversions", label: "Conversions", color: "#8b5cf6", available: hasMetric("conversions") },
+      { key: "impressions", label: "Impressions", color: "#3b82f6", available: hasMetric("impressions") },
+      { key: "clicks", label: "Clicks", color: "#06b6d4", available: hasMetric("clicks") },
+      { key: "users", label: "Users", color: "#E37400", available: hasMetric("users") },
+      { key: "sessions", label: "Sessions", color: "#ec4899", available: hasMetric("sessions") },
+    ].filter((item) => item.available);
+    const anomalyKeys = availableSeries.map((item) => item.key).filter((key) => ["spend", "clicks", "conversions", "impressions", "revenue"].includes(key));
+
+    return {
+      series: currentPeriod,
+      current,
+      previous,
+      comparison,
+      availableSeries,
+      anomalies: detectAnomalies(currentPeriod, anomalyKeys),
+      hasPrevious: previousPeriod.length > 0,
+      connectedSources: Array.isArray(aggregate?.sources) ? aggregate.sources.map((source: any) => String(source?.label || source?.id)).filter(Boolean) : [],
+    };
+  }, [trendAggregate, perfDays]);
+
+  const overviewVisibleSeries = useMemo(() => {
+    const keys = (overviewTrendData?.availableSeries || []).map((item: any) => item.key);
+    const selected = new Set(Array.from(visibleSeries).filter((key) => keys.includes(key)));
+    if (selected.size > 0) return selected;
+    return new Set(keys.slice(0, 3));
+  }, [visibleSeries, overviewTrendData]);
+
   // ─── Google Trends mutations & handlers ──────────────────────────
   const updateKeywordsMutation = useMutation({
     mutationFn: async (data: { industry: string; trendKeywords: string[] }) => {
@@ -445,6 +568,8 @@ export default function TrendAnalysis() {
 
   const hasData = crossPlatformData && crossPlatformData.series.length > 0;
   const hasAdPlatforms = crossPlatformData && crossPlatformData.current.impressions > 0;
+  const overviewHasData = Boolean(overviewTrendData && overviewTrendData.series.length > 0);
+  const overviewLoading = trendAnalysisLoading && !trendAnalysisFetched && !overviewTrendData;
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
@@ -492,67 +617,75 @@ export default function TrendAnalysis() {
             </TabsList>
 
             {/* ═══════════ TAB 1: EXECUTIVE OVERVIEW ═══════════ */}
-            <TabsContent value="overview" className={`space-y-6 fade-in chart-transition ${isRefreshing ? 'chart-refreshing' : ''}`}>
-              {!hasData ? (
+            <TabsContent value="overview" className={`space-y-6 fade-in chart-transition ${isTrendAnalysisRefreshing ? 'chart-refreshing' : ''}`}>
+              {overviewLoading ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="space-y-4">
+                      <div className="h-5 bg-muted rounded w-1/3" />
+                      <div className="grid gap-4 md:grid-cols-4">
+                        {[0, 1, 2, 3].map((i) => <div key={i} className="h-20 bg-muted rounded" />)}
+                      </div>
+                      <div className="h-72 bg-muted rounded" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : !overviewHasData ? (
                 <Card>
                   <CardContent className="p-8 text-center">
                     <Activity className="w-16 h-16 mx-auto text-muted-foreground/60 mb-4" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2">No Performance Data Available</h3>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">No connected source trend data available</h3>
                     <p className="text-sm text-muted-foreground/70">
-                      Connect a platform (GA4, LinkedIn, Meta, or Google Ads) to see performance trends.
+                      Refresh a connected platform to populate source-aware trend history.
                     </p>
                   </CardContent>
                 </Card>
               ) : (
                 <>
                   {/* Summary Cards */}
-                  {crossPlatformData.hasPrevious && (
-                    <div className="grid gap-4 md:grid-cols-6">
+                  <div className="grid gap-4 md:grid-cols-6">
                       {[
-                        { label: 'Total Spend', value: fmtCur(crossPlatformData.current.spend), change: crossPlatformData.comparison.spend, invertColor: true },
-                        { label: 'Total Revenue', value: fmtCur(crossPlatformData.current.revenue), change: crossPlatformData.comparison.revenue },
-                        { label: 'ROAS', value: `${crossPlatformData.current.roas.toFixed(1)}x`, change: crossPlatformData.comparison.roas },
-                        { label: 'Conversions', value: fmtNum(crossPlatformData.current.conversions), change: crossPlatformData.comparison.conversions },
-                        { label: 'CPA', value: fmtCur(crossPlatformData.current.cpa), change: crossPlatformData.comparison.cpa, invertColor: true },
-                        { label: 'Avg CTR', value: `${formatPct(crossPlatformData.current.ctr)}`, change: crossPlatformData.comparison.ctr },
-                      ].map((card, i) => {
+                        { label: 'Sessions', value: overviewTrendData.current.sessions === null ? null : fmtNum(overviewTrendData.current.sessions), change: overviewTrendData.comparison.sessions },
+                        { label: 'Users', value: overviewTrendData.current.users === null ? null : fmtNum(overviewTrendData.current.users), change: overviewTrendData.comparison.users },
+                        { label: 'Conversions', value: overviewTrendData.current.conversions === null ? null : fmtNum(overviewTrendData.current.conversions), change: overviewTrendData.comparison.conversions },
+                        { label: 'Revenue', value: overviewTrendData.current.revenue === null ? null : fmtCur(overviewTrendData.current.revenue), change: overviewTrendData.comparison.revenue },
+                        { label: 'CVR', value: overviewTrendData.current.cvr === null ? null : formatPct(overviewTrendData.current.cvr), change: overviewTrendData.comparison.cvr },
+                        { label: 'Engagement Rate', value: overviewTrendData.current.engagementRate === null ? null : formatPct(overviewTrendData.current.engagementRate), change: overviewTrendData.comparison.engagementRate },
+                        { label: 'Spend', value: overviewTrendData.current.spend === null ? null : fmtCur(overviewTrendData.current.spend), change: overviewTrendData.comparison.spend, invertColor: true },
+                        { label: 'ROAS', value: overviewTrendData.current.roas === null ? null : `${overviewTrendData.current.roas.toFixed(1)}x`, change: overviewTrendData.comparison.roas },
+                        { label: 'CPA', value: overviewTrendData.current.cpa === null ? null : fmtCur(overviewTrendData.current.cpa), change: overviewTrendData.comparison.cpa, invertColor: true },
+                        { label: 'CTR', value: overviewTrendData.current.ctr === null ? null : formatPct(overviewTrendData.current.ctr), change: overviewTrendData.comparison.ctr },
+                      ].filter((card) => card.value !== null).slice(0, 6).map((card, i) => {
                         const isGood = card.invertColor ? card.change <= 0 : card.change >= 0;
                         return (
                           <Card key={i}>
                             <CardContent className="p-4">
                               <div className="text-xs text-muted-foreground/70 mb-1">{card.label}</div>
                               <div className="text-xl font-bold text-foreground">{card.value}</div>
-                              <div className={`flex items-center text-xs mt-1 ${isGood ? 'text-green-600' : 'text-red-600'}`}>
-                                {card.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
-                                {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}%
-                              </div>
+                              {overviewTrendData.hasPrevious && (
+                                <div className={`flex items-center text-xs mt-1 ${isGood ? 'text-green-600' : 'text-red-600'}`}>
+                                  {card.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
+                                  {card.change >= 0 ? '+' : ''}{card.change.toFixed(1)}%
+                                </div>
+                              )}
                             </CardContent>
                           </Card>
                         );
                       })}
                     </div>
-                  )}
 
                   {/* Metric Toggle Row */}
                   <div className="flex flex-wrap gap-2">
-                    {[
-                      { key: 'spend', label: 'Spend', color: '#f59e0b' },
-                      { key: 'revenue', label: 'Revenue', color: '#10b981' },
-                      { key: 'conversions', label: 'Conversions', color: '#8b5cf6' },
-                      { key: 'impressions', label: 'Impressions', color: '#3b82f6' },
-                      { key: 'clicks', label: 'Clicks', color: '#06b6d4' },
-                      { key: 'users', label: 'Users', color: '#E37400' },
-                      { key: 'sessions', label: 'Sessions', color: '#ec4899' },
-                    ].map(s => (
+                    {overviewTrendData.availableSeries.map((s: any) => (
                       <button
                         key={s.key}
                         onClick={() => toggleSeries(s.key)}
                         className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                          visibleSeries.has(s.key)
+                          overviewVisibleSeries.has(s.key)
                             ? 'text-white border-transparent'
                             : 'text-muted-foreground/70 border-border bg-transparent'
                         }`}
-                        style={visibleSeries.has(s.key) ? { backgroundColor: s.color } : {}}
+                        style={overviewVisibleSeries.has(s.key) ? { backgroundColor: s.color } : {}}
                       >
                         {s.label}
                       </button>
@@ -570,7 +703,7 @@ export default function TrendAnalysis() {
                     <CardContent>
                       <div className="h-80">
                         <ResponsiveContainer width="100%" height="100%">
-                          <ComposedChart data={crossPlatformData.series}>
+                          <ComposedChart data={overviewTrendData.series}>
                             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                             <XAxis dataKey="label" className="text-xs" />
                             <YAxis yAxisId="left" className="text-xs" />
@@ -579,19 +712,19 @@ export default function TrendAnalysis() {
                               if (['Spend', 'Revenue'].some(n => name.includes(n))) return [fmtCur(Number(value)), name];
                               return [Number(value).toLocaleString(), name];
                             }} />
-                            {visibleSeries.has('spend') && <Area yAxisId="right" type="monotone" dataKey="spend" fill="#f59e0b" fillOpacity={0.1} stroke="#f59e0b" strokeWidth={2} name="Spend ($)" />}
-                            {visibleSeries.has('revenue') && <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} name="Revenue ($)" />}
-                            {visibleSeries.has('conversions') && <Bar yAxisId="left" dataKey="conversions" fill="#8b5cf6" fillOpacity={0.7} name="Conversions" />}
-                            {visibleSeries.has('impressions') && <Area yAxisId="left" type="monotone" dataKey="impressions" fill="#3b82f6" fillOpacity={0.08} stroke="#3b82f6" strokeWidth={1.5} name="Impressions" />}
-                            {visibleSeries.has('clicks') && <Line yAxisId="left" type="monotone" dataKey="clicks" stroke="#06b6d4" strokeWidth={2} dot={false} name="Clicks" />}
-                            {visibleSeries.has('users') && <Line yAxisId="left" type="monotone" dataKey="users" stroke="#E37400" strokeWidth={2} dot={false} name="Users" />}
-                            {visibleSeries.has('sessions') && <Line yAxisId="left" type="monotone" dataKey="sessions" stroke="#ec4899" strokeWidth={2} dot={false} name="Sessions" />}
+                            {overviewVisibleSeries.has('spend') && <Area yAxisId="right" type="monotone" dataKey="spend" fill="#f59e0b" fillOpacity={0.1} stroke="#f59e0b" strokeWidth={2} name="Spend ($)" />}
+                            {overviewVisibleSeries.has('revenue') && <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} name="Revenue ($)" />}
+                            {overviewVisibleSeries.has('conversions') && <Bar yAxisId="left" dataKey="conversions" fill="#8b5cf6" fillOpacity={0.7} name="Conversions" />}
+                            {overviewVisibleSeries.has('impressions') && <Area yAxisId="left" type="monotone" dataKey="impressions" fill="#3b82f6" fillOpacity={0.08} stroke="#3b82f6" strokeWidth={1.5} name="Impressions" />}
+                            {overviewVisibleSeries.has('clicks') && <Line yAxisId="left" type="monotone" dataKey="clicks" stroke="#06b6d4" strokeWidth={2} dot={false} name="Clicks" />}
+                            {overviewVisibleSeries.has('users') && <Line yAxisId="left" type="monotone" dataKey="users" stroke="#E37400" strokeWidth={2} dot={false} name="Users" />}
+                            {overviewVisibleSeries.has('sessions') && <Line yAxisId="left" type="monotone" dataKey="sessions" stroke="#ec4899" strokeWidth={2} dot={false} name="Sessions" />}
                             {/* KPI target lines */}
-                            {kpiTargets.revenue && visibleSeries.has('revenue') && (
+                            {kpiTargets.revenue && overviewVisibleSeries.has('revenue') && (
                               <ReferenceLine yAxisId="right" y={kpiTargets.revenue} stroke="#10b981" strokeDasharray="5 5" label={{ value: 'Revenue Target', fill: '#10b981', fontSize: 10 }} />
                             )}
                             {/* Anomaly dots */}
-                            {crossPlatformData.anomalies.filter(a => visibleSeries.has(a.metric)).slice(0, 8).map((a, i) => (
+                            {overviewTrendData.anomalies.filter((a: any) => overviewVisibleSeries.has(a.metric)).slice(0, 8).map((a: any, i: number) => (
                               <ReferenceDot key={i} x={a.label} y={a.value}
                                 yAxisId={['spend', 'revenue'].includes(a.metric) ? 'right' : 'left'}
                                 r={5} fill={a.severity === 'critical' ? '#ef4444' : '#f59e0b'} stroke="white" strokeWidth={2}
@@ -604,18 +737,18 @@ export default function TrendAnalysis() {
                   </Card>
 
                   {/* Anomaly Alerts */}
-                  {crossPlatformData.anomalies.length > 0 && (
+                  {overviewTrendData.anomalies.length > 0 && (
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center space-x-2">
                           <AlertTriangle className="w-5 h-5 text-orange-500" />
                           <span>Anomaly Detection</span>
-                          <Badge variant="outline" className="text-xs">{crossPlatformData.anomalies.length} detected</Badge>
+                          <Badge variant="outline" className="text-xs">{overviewTrendData.anomalies.length} detected</Badge>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
-                          {crossPlatformData.anomalies.slice(0, 8).map((a, i) => {
+                          {overviewTrendData.anomalies.slice(0, 8).map((a: any, i: number) => {
                             const isSpike = a.value > a.expected;
                             return (
                               <div key={i} className={`p-3 rounded-lg border ${a.severity === 'critical' ? 'border-red-200 bg-red-50 dark:bg-red-900/20' : 'border-orange-200 bg-orange-50 dark:bg-orange-900/20'}`}>

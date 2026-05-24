@@ -438,6 +438,8 @@ Budget & Financial Analysis production-readiness work is tracked in `CAMPAIGN_DE
 
 Platform Comparison production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md`.
 
+Trend Analysis production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`.
+
 Budget & Financial Analysis may let users fill, edit, or delete campaign pacing metadata, such as budget, start date, and end date, from the analysis page. These controls must update the existing campaign fields through the normal campaign update route and must not create separate pacing-only values. Because these are shared campaign metadata fields, changes to the pacing budget also update the Budget value shown in Campaign Management after campaign data refreshes.
 
 Budget & Financial Analysis is a downstream consumer of platform-level connected-source financial totals. Platform source records, such as GA4 `Total Revenue` and `Total Spend`, remain the source of truth for revenue and spend. Budget & Financial controls must not write, override, filter, or reinterpret those platform financial totals; pacing metadata only affects pacing formulas.
@@ -525,14 +527,14 @@ This means:
 - campaign-level analysis is downstream of connected-platform data
 - connected-platform pages are supporting detail views
 - the campaign remains the primary object
-- Campaign DeepDive sections, including Performance Summary, Budget & Financial Analysis, and Platform Comparison, must automatically aggregate all implemented main Connected Platforms through a shared source-capability contract instead of relying on one-off tab-specific platform lists
+- Campaign DeepDive sections, including Performance Summary, Budget & Financial Analysis, Platform Comparison, and Trend Analysis, must automatically aggregate all implemented main Connected Platforms through a shared source-capability contract instead of relying on one-off tab-specific platform lists
 - any future main Connected Platform is not complete until it supplies campaign-scoped source identity, available metrics, unavailable metric reasons, source labels, freshness, scheduler snapshot inputs, and tests for campaign-level aggregation through the shared generic source contract
 - future standalone platforms such as Google Ads, TikTok, Instagram, and other sources should plug into Campaign DeepDive by supplying generic source breakdowns, not by adding tab-specific aggregation logic
 - implemented main Connected Platforms are the source of truth for Campaign DeepDive subsections; downstream subsections consume the shared aggregate and must not push values back into platform-level analytics
 - platform child sources can contribute to the parent platform or campaign financial totals, but should not be displayed as separate main Connected Platforms in campaign-level source lists and should not require duplicate Campaign DeepDive setup
 - ad-platform spend imported inside another platform, such as LinkedIn or Meta spend imported inside GA4, remains a child financial input for that parent platform/campaign financial path; it does not make LinkedIn Ads or Meta Ads a separate Platform Comparison source unless the ad platform is connected as its own main Connected Platform
 - Platform Comparison Overview can display single-source aggregate financial totals for the only connected main platform, but this does not make analytics-only sources eligible for Financial Comparison paid-media rows or budget recommendation logic
-- Performance Summary, Budget & Financial Analysis, and Platform Comparison should stay synchronized with underlying source updates by refetching the aggregate while the page is visible and on window focus; historical comparison sections still depend on compatible aggregate snapshots being created after source refresh.
+- Performance Summary, Budget & Financial Analysis, Platform Comparison, and Trend Analysis should stay synchronized with underlying source updates by refetching the aggregate while the page is visible and on window focus; historical comparison sections still depend on compatible aggregate snapshots or daily aggregate rows being created after source refresh.
 
 ## Consistency Review Of The Current Codebase
 

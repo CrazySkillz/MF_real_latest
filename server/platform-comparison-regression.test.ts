@@ -76,6 +76,9 @@ describe("campaign Platform Comparison regression guard", () => {
     const performanceStart = page.indexOf('<TabsContent value="performance"');
     const performanceEnd = page.indexOf('<TabsContent value="cost-analysis"', performanceStart);
     const performance = page.slice(performanceStart, performanceEnd);
+    const detailedStart = performance.indexOf("<span>Detailed Performance Metrics</span>");
+    const detailedEnd = performance.indexOf("{/* Efficiency Comparison */}", detailedStart);
+    const detailed = performance.slice(detailedStart, detailedEnd);
 
     expect(page).toContain("const canShowCtr = (platform: any) => hasMetric(platform, \"impressions\") && hasMetric(platform, \"clicks\");");
     expect(page).toContain("const canShowCpc = (platform: any) => hasMetric(platform, \"spend\") && hasMetric(platform, \"clicks\");");
@@ -83,6 +86,8 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain("const efficiencyComparisonMetrics = realPlatformMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) || canShowCpa(platform));");
     expect(performance).toContain("ROAS and ROI require both spend and revenue from this connected source.");
     expect(performance).toContain("No spend-based efficiency comparison is available.");
+    expect(detailed).not.toContain('style={{ backgroundColor: platform.color }}');
+    expect(detailed).toContain("{getChannelSpend(platform) > 0 ? `${getChannelRoi(platform) >= 0 ? '+' : ''}${getChannelRoi(platform).toFixed(1)}%` : 'Unavailable'}");
     expect(performance).toContain("platformMetricsLoading ? null : realPlatformMetrics.length > 0 ? (");
     expect(performance).toContain("<span>Volume Comparison</span>");
     expect(performance).toContain("Available volume metrics across connected platforms");

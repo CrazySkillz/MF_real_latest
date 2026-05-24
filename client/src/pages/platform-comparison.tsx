@@ -746,7 +746,6 @@ export default function PlatformComparison() {
                                     <Badge variant="outline" className="text-xs">Analytics</Badge>
                                   )}
                                 </div>
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }}></div>
                               </div>
                               <div className="grid grid-cols-4 gap-2 text-xs">
                                 <div>
@@ -763,8 +762,8 @@ export default function PlatformComparison() {
                                 </div>
                                 <div>
                                   <span className="block text-muted-foreground font-medium">ROI</span>
-                                  <span className={`font-semibold ${platform.roi >= 0 && platform.spend > 0 ? 'text-green-600 dark:text-green-400' : platform.roi < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
-                                    {canShowFinancialEfficiency(platform) && platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : 'Unavailable'}
+                                  <span className={`font-semibold ${getChannelSpend(platform) > 0 ? (getChannelRoi(platform) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400') : ''}`}>
+                                    {getChannelSpend(platform) > 0 ? `${getChannelRoi(platform) >= 0 ? '+' : ''}${getChannelRoi(platform).toFixed(1)}%` : 'Unavailable'}
                                   </span>
                                 </div>
                               </div>

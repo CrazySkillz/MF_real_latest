@@ -252,6 +252,7 @@ Status: completed.
 Evidence:
 
 - Detailed Performance Metrics now renders CTR, CPC, conversion rate, ROI, and efficiency values only when the connected source provides the required capabilities.
+- Detailed Performance Metrics no longer shows a standalone source-color dot because it can be mistaken for an alert/status indicator. ROI may use single-source aggregate financial totals when there is only one main Connected Platform and the aggregate provides spend and revenue.
 - Efficiency Comparison now shows an explicit unavailable explanation when a source does not provide both spend and revenue, instead of implying zero ROAS/ROI performance.
 - Efficiency Comparison now excludes sources that cannot support spend-based efficiency metrics. GA4-only campaigns show a single explanatory unavailable state instead of a Google Analytics row full of unavailable paid-media metrics.
 - Volume & Reach now labels engagement as `Clicks`, `Sessions`, or `Engagement` based on the source capabilities, so GA4-only rows use sessions instead of paid-media click assumptions.
@@ -341,6 +342,7 @@ Evidence:
 - GA4-only campaigns show only GA4-capable metrics.
 - Paid-media comparison and recommendations require paid-media capable sources.
 - Missing metrics are unavailable, not silently zeroed.
+- Overview may show single-source aggregate financial totals for the only connected main platform, but this does not make GA4 or another analytics-only source eligible for paid-media Cost Analysis or budget recommendations.
 - Google Ads appears automatically when connected and present in `performanceSummary.sources`.
 - Future main platforms appear without tab-specific UI rewiring once they feed the shared aggregate contract.
 - Current values stay synchronized with source updates through aggregate refetch.
@@ -369,6 +371,7 @@ Proven:
 - Commit 2 follow-up: Platform Comparison no longer renders legacy per-platform fallback rows while the shared aggregate request is still unresolved, preventing Meta or other fallback data from flashing before the connected-source aggregate loads.
 - Commit 2 follow-up: Overview now renders a silent skeleton while the shared aggregate is initially unresolved, so the page does not flash a false no-data state before connected-source rows load.
 - Commit 3: Performance Metrics now uses source-capability aware display rules for CTR, CPC, conversion rate, ROAS, ROI, CPA, impressions, clicks, and sessions. GA4-only rows show unavailable paid-media efficiency metrics instead of zero-performance paid-media assumptions.
+- Commit 3 follow-up: Detailed Performance Metrics removed the standalone platform-color dot so it is not confused with a health/status indicator, and ROI now uses the same single-source aggregate financial-total path as Overview when only one main Connected Platform is connected.
 - Commit 3 follow-up: Efficiency Comparison now compares only spend-efficiency-capable sources and shows a concise unavailable explanation for GA4-only campaigns.
 - Commit 3 follow-up: Volume Comparison now hides unavailable impressions lanes for sources that do not provide impressions and presents available volume metrics such as GA4 sessions.
 - Commit 3 Render validation passed: with only Google Analytics connected, Efficiency Comparison correctly remained unavailable because there is no main spend-capable ad platform, and Volume Comparison correctly showed GA4 sessions. LinkedIn/Meta spend imports inside GA4 remain child financial inputs, not separate Platform Comparison rows.
@@ -389,6 +392,7 @@ Proven:
 - Post-validation UX fix committed and pushed in `74a68c8b`: Platform Comparison now keeps the selected tab through refresh by controlling tab state and persisting it in the URL/session state, instead of always returning to Overview. Initial aggregate loading now renders a stable blank content area instead of temporary skeleton/no-data cards, so refresh does not flash misleading intermediate cards before the connected-source aggregate loads.
 - Post-validation UX validation path: after Render deploys, open each Platform Comparison tab, refresh the page, and confirm the same tab remains selected without flashing temporary empty/skeleton cards before the aggregate-backed content appears.
 - Post-validation UI alignment: Platform Comparison no longer exposes the local `Demo Data` toggle and now uses the same compact tab-list presentation as Performance Summary instead of full-width grid tabs.
+- Post-validation financial overview fix committed and pushed in `50415b46`: Channel Performance Overview restores `Spend`, `ROAS`, and `ROI` for single-source campaigns when the shared aggregate provides campaign financial totals, while Cost Analysis and paid-media Insights remain restricted to main paid-media sources with source-level spend.
 
 Outstanding:
 

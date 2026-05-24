@@ -35,6 +35,7 @@ Important meaning:
 - revenue and spend sources configured inside GA4, such as Salesforce, HubSpot, Shopify, CSV, or Google Sheets imports, are GA4/campaign financial child inputs; users do not connect them from the campaign `Connected Platforms` section, and they feed financial totals only through the GA4/campaign financial path
 - Campaign DeepDive `Performance Summary` must consume GA4 and every other implemented main Connected Platform through the shared connected-source aggregate contract, not by special-casing GA4-only UI logic
 - Campaign DeepDive must not require duplicate setup for GA4 child revenue/spend systems; those child inputs should affect only the relevant financial totals and should not appear as separate main Connected Platforms
+- Campaign DeepDive `Platform Comparison` may show GA4 single-source aggregate financial totals in the Overview table when GA4 is the only main Connected Platform, but GA4 remains a web analytics source and should not be treated as a paid-media source for Cost Analysis or budget recommendations
 
 ## Doc Map
 
@@ -102,6 +103,8 @@ For future main Connected Platforms, the integration is not complete until it al
 Performance Summary GA4 validation should use the live/mock GA4 test-property setup documented in `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md`. That setup validates GA4 data changes over time, app refresh, updated Performance Summary current values, compatible snapshot creation, `What's Changed`, and `Metric Trends`. It requires at least two compatible snapshots for trends, two comparable periods for `What's Changed`, seven or more days for `Last 7 Days`, and thirty or more days for `Last 30 Days`.
 
 Budget & Financial Analysis GA4 financial behavior is tracked in `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md` and `GA4/FINANCIAL_SOURCES.md`. GA4 child revenue/spend inputs can feed aggregate financial totals, but Budget Allocation and Financial Performance Insights should treat spend-capable main Connected Platforms as the source set for allocation and paid-media optimization guidance. Budget & Financial current values refetch through the same aggregate contract while visible and on window focus, and trend comparisons must use compatible aggregate snapshots rather than legacy top-level snapshot totals.
+
+Platform Comparison GA4 behavior is tracked in `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md`. GA4 should appear as the main Google Analytics source, not as separate child revenue/spend inputs. The Overview table can display aggregate Spend, ROAS, and ROI for a GA4-only campaign when the shared aggregate has those totals, while Cost Analysis and paid-media Insights remain unavailable until a main paid-media platform with source-level spend is connected.
 
 ## Reference Rule
 

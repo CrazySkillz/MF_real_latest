@@ -436,11 +436,21 @@ Performance Summary production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_P
 
 Budget & Financial Analysis production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md`.
 
+Platform Comparison production-readiness work is tracked in `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md`.
+
 Budget & Financial Analysis may let users fill, edit, or delete campaign pacing metadata, such as budget, start date, and end date, from the analysis page. These controls must update the existing campaign fields through the normal campaign update route and must not create separate pacing-only values. Because these are shared campaign metadata fields, changes to the pacing budget also update the Budget value shown in Campaign Management after campaign data refreshes.
 
 Budget & Financial Analysis is a downstream consumer of platform-level connected-source financial totals. Platform source records, such as GA4 `Total Revenue` and `Total Spend`, remain the source of truth for revenue and spend. Budget & Financial controls must not write, override, filter, or reinterpret those platform financial totals; pacing metadata only affects pacing formulas.
 
-Platform Comparison and Budget & Financial Analysis may consume the same shared aggregate, but they have different jobs. Platform Comparison answers "which connected source is contributing what?" and should compare main Connected Platforms side by side using only each source's available capabilities. The Platform Comparison Overview table may show shared campaign financial totals such as Spend, ROAS, and ROI for a single connected main platform when the aggregate proves that platform is the only main source, but source-level Cost Analysis and paid-media Insights must still require true paid-media source-level spend. Budget & Financial Analysis answers "what is the campaign's financial position?" and should use aggregate financial totals for ROI, ROAS, cost efficiency, budget pacing, allocation, and financial insights. Do not streamline or merge the two sections until Platform Comparison is first wired to the same source-capability contract across its remaining tabs; otherwise financial decisions could be mixed with source-comparison behavior.
+Platform Comparison and Budget & Financial Analysis may consume the same shared aggregate, but they have different jobs. Platform Comparison answers "which connected source is contributing what?" and should compare main Connected Platforms side by side using only each source's available capabilities. The Platform Comparison Overview table may show shared campaign financial totals such as Spend, ROAS, and ROI for a single connected main platform when the aggregate proves that platform is the only main source, but source-level Financial Comparison and paid-media Insights must still require true paid-media source-level spend. Budget & Financial Analysis answers "what is the campaign's financial position?" and should use aggregate financial totals for ROI, ROAS, cost efficiency, budget pacing, allocation, and financial insights. Do not merge the two sections; otherwise financial decisioning could be mixed with source-comparison behavior.
+
+Now that both sections use the shared aggregate contract, the product direction is to keep both sections and clarify their roles rather than merge them. Platform Comparison provides source contribution and side-by-side comparability, including source-level financial comparison where the connected sources provide the required inputs. Budget & Financial Analysis provides campaign financial decision support, budget pacing, allocation, and financial-risk interpretation.
+
+Executive use case:
+
+- A marketing executive opens Budget & Financial Analysis to decide whether the campaign is financially healthy: total spend, total revenue, ROI, ROAS, budget utilization, pacing, and whether the campaign budget should be increased, held, or reduced.
+- The same executive opens Platform Comparison to understand which connected source is contributing which results: GA4 website sessions, users, conversions, and revenue; LinkedIn or Meta paid-media spend, clicks, impressions, CPA, ROAS, and ROI when those main platforms are connected.
+- If only GA4 is connected, Budget & Financial Analysis can still evaluate the campaign's financial position from GA4/campaign financial totals, while Platform Comparison should show GA4's available analytics metrics and clearly explain that paid-media comparison requires a main paid-media platform connection.
 
 ## Connected Platforms Pattern
 
@@ -515,13 +525,13 @@ This means:
 - campaign-level analysis is downstream of connected-platform data
 - connected-platform pages are supporting detail views
 - the campaign remains the primary object
-- Campaign DeepDive sections, including Performance Summary and Budget & Financial Analysis, must automatically aggregate all implemented main Connected Platforms through a shared source-capability contract instead of relying on one-off tab-specific platform lists
+- Campaign DeepDive sections, including Performance Summary, Budget & Financial Analysis, and Platform Comparison, must automatically aggregate all implemented main Connected Platforms through a shared source-capability contract instead of relying on one-off tab-specific platform lists
 - any future main Connected Platform is not complete until it supplies campaign-scoped source identity, available metrics, unavailable metric reasons, source labels, freshness, scheduler snapshot inputs, and tests for campaign-level aggregation through the shared generic source contract
 - future standalone platforms such as Google Ads, TikTok, Instagram, and other sources should plug into Campaign DeepDive by supplying generic source breakdowns, not by adding tab-specific aggregation logic
 - implemented main Connected Platforms are the source of truth for Campaign DeepDive subsections; downstream subsections consume the shared aggregate and must not push values back into platform-level analytics
 - platform child sources can contribute to the parent platform or campaign financial totals, but should not be displayed as separate main Connected Platforms in campaign-level source lists and should not require duplicate Campaign DeepDive setup
 - ad-platform spend imported inside another platform, such as LinkedIn or Meta spend imported inside GA4, remains a child financial input for that parent platform/campaign financial path; it does not make LinkedIn Ads or Meta Ads a separate Platform Comparison source unless the ad platform is connected as its own main Connected Platform
-- Platform Comparison Overview can display single-source aggregate financial totals for the only connected main platform, but this does not make analytics-only sources eligible for paid-media Cost Analysis or budget recommendation logic
+- Platform Comparison Overview can display single-source aggregate financial totals for the only connected main platform, but this does not make analytics-only sources eligible for Financial Comparison paid-media rows or budget recommendation logic
 - Performance Summary, Budget & Financial Analysis, and Platform Comparison should stay synchronized with underlying source updates by refetching the aggregate while the page is visible and on window focus; historical comparison sections still depend on compatible aggregate snapshots being created after source refresh.
 
 ## Consistency Review Of The Current Codebase

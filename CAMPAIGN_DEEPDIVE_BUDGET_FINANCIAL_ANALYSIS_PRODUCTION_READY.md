@@ -45,7 +45,13 @@ Platform Comparison should focus on source-level comparison:
 - side-by-side comparison of connected sources
 - source leaders, laggards, and unavailable metric explanations
 
-Do not streamline these two sections until Platform Comparison is source-capability correct across its remaining tabs. Completing the Platform Comparison implementation plan first prevents financial analysis behavior from being mixed into source-comparison behavior.
+Keep both sections separate because they create different executive value. Budget & Financial Analysis is the financial decisioning workspace for budget, pacing, ROI, ROAS, allocation, and financial risk. Platform Comparison is the source-comparison workspace for identifying which connected source contributes which metrics and where sources lead or lag. Source-level financial comparison belongs in Platform Comparison, but the full Budget & Financial Analysis section should not be moved there because campaign-wide budget and pacing decisions are not source-comparison tasks. Overlap should be reduced with role-specific copy and source-capability gating, not by merging the sections.
+
+Executive use case:
+
+- A marketing executive uses Budget & Financial Analysis to answer "is this campaign financially healthy?" This section should show aggregate spend, revenue, ROI, ROAS, budget utilization, pacing, allocation, and whether budget should be increased, held, reduced, or investigated.
+- The same executive uses Platform Comparison to answer "which connected source is contributing what?" For a GA4-only campaign, Platform Comparison should show GA4's available analytics metrics. When LinkedIn, Meta, Google Ads, or another main paid-media source is connected, Platform Comparison should compare the supported source-level metrics side by side.
+- Budget & Financial Analysis may use source breakdowns as evidence, but its primary job is campaign-wide financial decision support, not source ranking.
 
 ## Current Root Cause
 
@@ -448,6 +454,7 @@ Proven:
 - Pacing Status percentage remains documented as actual daily burn rate divided by target daily spend. A value such as `3.2%` is critical because it is more than 50% away from target pace.
 - Follow-up UI consistency fix: Budget & Financial Analysis tabs now use the same content-width tab format as Performance Summary instead of full-page equal-width grid tabs.
 - Financial Performance Insights are logical within the current aggregate contract: summary tones are value-based, source insights are sourced from spend-capable connected sources, scaling language is gated by budget/source conditions, and GA4-only campaigns do not receive paid-media optimization recommendations without a connected spend-capable ad platform.
+- Budget & Financial Analysis remains distinct from Platform Comparison: this section owns campaign-wide budget, pacing, ROI, ROAS, allocation, and financial decisioning, while Platform Comparison owns connected-source contribution/comparison.
 - Scheduler-created snapshots include `metrics.performanceSummary`, and Budget & Financial trend indicators compare only compatible aggregate snapshots.
 - The Budget & Financial page refetches current aggregate values while visible and on window focus so source updates are pulled into the UI through the same aggregate contract.
 - Current server aggregation feeds registered Connected Platforms and financial inputs into `performanceSummary`; Google Ads is now included as a first-class normalized paid-media source when connected and populated with campaign-scoped daily metrics.

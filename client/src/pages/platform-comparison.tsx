@@ -486,7 +486,9 @@ export default function PlatformComparison() {
                 </Link>
                 <div>
                   <h1 className="text-3xl font-bold text-foreground">Platform Comparison</h1>
-                  <p className="text-muted-foreground/70 mt-1">{(campaign as any)?.name}</p>
+                  <p className="text-muted-foreground/70 mt-1">
+                    {(campaign as any)?.name} - Compare which connected sources contribute which metrics.
+                  </p>
                 </div>
               </div>
             </div>
@@ -497,7 +499,7 @@ export default function PlatformComparison() {
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="performance">Performance Metrics</TabsTrigger>
-              <TabsTrigger value="cost-analysis">Cost Analysis</TabsTrigger>
+              <TabsTrigger value="cost-analysis">Financial Comparison</TabsTrigger>
               <TabsTrigger value="insights">Insights</TabsTrigger>
             </TabsList>
 
@@ -570,7 +572,9 @@ export default function PlatformComparison() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Channel Performance Overview</CardTitle>
-                    <CardDescription>Quick comparison across all connected platforms</CardDescription>
+                    <CardDescription>
+                      Source-level comparison across main Connected Platforms. Use Budget & Financial Analysis for campaign-wide budget, pacing, and financial decisions.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="overflow-x-auto">
@@ -905,7 +909,7 @@ export default function PlatformComparison() {
               )}
             </TabsContent>
 
-            {/* Cost Analysis Tab */}
+            {/* Financial Comparison Tab */}
             <TabsContent value="cost-analysis" className="space-y-6">
               {platformMetricsLoading ? null : spendCapableMetrics.length > 0 ? (
                 <>
@@ -1079,7 +1083,7 @@ export default function PlatformComparison() {
                       Google Analytics is connected, but it does not provide source-level ad spend for Platform Comparison.
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Connect LinkedIn Ads, Meta Ads, or Google Ads to compare spend, CPA, ROI, and ROAS by platform.
+                      Connect LinkedIn Ads, Meta Ads, or Google Ads to compare source-level spend, CPA, ROI, and ROAS by platform.
                     </p>
                   </CardContent>
                 </Card>

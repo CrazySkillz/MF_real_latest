@@ -10,9 +10,12 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(page).toContain('outcome-totals?dateRange=90days');
     expect(page).not.toContain('&demo=1');
     expect(page).not.toContain('Demo Data');
+    expect(page).toContain("Compare which connected sources contribute which metrics.");
+    expect(page).toContain("Source-level comparison across main Connected Platforms. Use Budget & Financial Analysis for campaign-wide budget, pacing, and financial decisions.");
     expect(page).not.toContain('FlaskConical');
     expect(page).toContain("<TabsList>");
     expect(page).not.toContain('TabsList className="grid w-full grid-cols-4"');
+    expect(page).toContain('<TabsTrigger value="cost-analysis">Financial Comparison</TabsTrigger>');
     expect(page).toContain('fetch(url, { credentials: "include" })');
     expect(page).toContain("const PLATFORM_COMPARISON_REFRESH_MS = 30000;");
     expect(page).toContain("refetchInterval: PLATFORM_COMPARISON_REFRESH_MS,");
@@ -98,7 +101,7 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(performance).not.toContain("Connect platforms (LinkedIn, Meta) to see performance metrics.");
   });
 
-  it("renders the Cost Analysis tab only for spend-capable connected platform sources", () => {
+  it("renders the Financial Comparison tab only for spend-capable connected platform sources", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "platform-comparison.tsx"), "utf-8");
     const costStart = page.indexOf('<TabsContent value="cost-analysis"');
     const costEnd = page.indexOf('<TabsContent value="insights"', costStart);
@@ -112,7 +115,7 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(cost).toContain("{spendCapableMetrics.map((platform, index) => (");
     expect(cost).toContain("No paid-media platform connected");
     expect(cost).toContain("Google Analytics is connected, but it does not provide source-level ad spend for Platform Comparison.");
-    expect(cost).toContain("Connect LinkedIn Ads, Meta Ads, or Google Ads to compare spend, CPA, ROI, and ROAS by platform.");
+    expect(cost).toContain("Connect LinkedIn Ads, Meta Ads, or Google Ads to compare source-level spend, CPA, ROI, and ROAS by platform.");
     expect(cost).not.toContain("Connect platforms (LinkedIn, Meta) to see cost analysis.");
   });
 

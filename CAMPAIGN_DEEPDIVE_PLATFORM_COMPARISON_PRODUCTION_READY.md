@@ -47,24 +47,30 @@ Budget & Financial Analysis should answer:
 - whether budget pacing, utilization, and allocation need attention
 - what financial actions or risks executives should consider
 
-The correct sequencing is to complete the Platform Comparison implementation plan first, especially Performance Metrics, Cost Analysis, and Insights. After Platform Comparison is source-capability correct across all tabs, UI copy and overlap with Budget & Financial Analysis can be streamlined safely without mixing source comparison with financial decisioning.
+The correct product decision is to keep both sections because they create different executive value. Platform Comparison shows source contribution and comparability. Budget & Financial Analysis supports financial decisioning, budget pacing, and spend allocation. The source-level financial comparison belongs in Platform Comparison, but the full Budget & Financial Analysis section should not be moved into Platform Comparison because it owns campaign-wide financial decisioning. Streamline overlap through role-specific copy and source-capability gating, not by merging the sections.
 
-## Current Root Cause
+Executive use case:
 
-`client/src/pages/platform-comparison.tsx` partially uses `/api/campaigns/:id/outcome-totals`, but still builds comparison rows through page-local, hardcoded platform logic.
+- A marketing executive uses Platform Comparison to answer "which connected source is contributing what?" For a GA4-only campaign, this means GA4 sessions, users, conversions, and revenue. After LinkedIn, Meta, Google Ads, or another main paid-media platform is connected, this section compares each platform's available spend, impressions, clicks, conversions, revenue, ROAS, ROI, CPA, and other supported metrics side by side.
+- The same executive uses Budget & Financial Analysis for the separate question "is the campaign financially healthy and what should we do with budget?" That includes aggregate ROI, ROAS, total spend, total revenue, pacing, utilization, allocation, and financial-risk interpretation.
+- Platform Comparison can include a source-level financial comparison tab, but it should not absorb campaign-wide budget pacing or financial decisioning because those are not source-comparison tasks.
 
-Current issues:
+## Resolved Root Cause
+
+`client/src/pages/platform-comparison.tsx` previously partially used `/api/campaigns/:id/outcome-totals`, but still built comparison rows through page-local, hardcoded platform logic.
+
+Resolved issues:
 
 - source inclusion is hard-coded for LinkedIn, Meta, Custom Integration, and separate GA4 logic
-- the page does not primarily use `outcomeTotals.performanceSummary.sources`
-- Google Ads and future generic main sources can be missed even when they are present in the shared aggregate
+- the page did not primarily use `outcomeTotals.performanceSummary.sources`
+- Google Ads and future generic main sources could be missed even when they were present in the shared aggregate
 - GA4-only campaigns can be mixed with paid-media comparison assumptions
 - child revenue sources such as HubSpot, Shopify, and Salesforce can appear as separate revenue platforms even though they are configured inside a parent platform flow
-- fallback logic can estimate revenue from conversions and average order value, which can drift from source-of-truth platform/campaign financial totals
-- empty-state and explanatory copy still references only LinkedIn and Meta in some places
-- the GA4 row can drift from the GA4 platform Overview if it uses raw native GA4 source-row values instead of the composed GA4 platform source-of-truth values shown in `View Detailed Analytics`
+- fallback logic could estimate revenue from conversions and average order value, which could drift from source-of-truth platform/campaign financial totals
+- empty-state and explanatory copy referenced only LinkedIn and Meta in some places
+- the GA4 row could drift from the GA4 platform Overview if it used raw native GA4 source-row values instead of the composed GA4 platform source-of-truth values shown in `View Detailed Analytics`
 
-The issue is an aggregation contract problem, not a single-card display bug.
+The issue was an aggregation contract problem, not a single-card display bug. The implemented fix is to treat `outcomeTotals.performanceSummary.sources` as the canonical normalized main Connected Platform list whenever the aggregate exists.
 
 ## Existing Relevant Paths
 
@@ -231,7 +237,7 @@ Status: completed.
 Evidence:
 
 - Overview cards and the summary table now include GA4 web analytics fields from the aggregate source row: `users`, `sessions`, `conversions`, and `revenue`.
-- Overview does not present missing paid-media metrics as zeroes. When exactly one main Connected Platform is present and the shared aggregate has campaign financial totals, the Channel Performance Overview table may display aggregate `Spend`, `ROAS`, and `ROI` for that single source while Cost Analysis and Insights still require true paid-media source-level spend.
+- Overview does not present missing paid-media metrics as zeroes. When exactly one main Connected Platform is present and the shared aggregate has campaign financial totals, the Channel Performance Overview table may display aggregate `Spend`, `ROAS`, and `ROI` for that single source while Financial Comparison and Insights still require true paid-media source-level spend.
 - Empty-state copy now references Connected Platforms generally instead of naming only LinkedIn, Meta, or child revenue systems.
 - Platform Comparison now requests the shared aggregate with `dateRange=90days`, matching Performance Summary, Budget & Financial Analysis, and the GA4 platform Overview source-of-truth window.
 - GA4 revenue now uses the parent GA4 platform total from `outcomeTotals.revenue.totalRevenue`, so child revenue inputs configured inside GA4 are included in the GA4 row without being shown as separate platforms.
@@ -260,9 +266,9 @@ Evidence:
 - Empty-state copy now references Connected Platforms generally instead of naming only LinkedIn or Meta.
 - Regression coverage updated in `server/platform-comparison-regression.test.ts`.
 
-### Commit 4: Cost Analysis Tab
+### Commit 4: Financial Comparison Tab
 
-- Include only spend-capable sources for cost analysis, CPA, CPC, budget allocation, ROI, and ROAS cards.
+- Include only spend-capable sources for source-level financial comparison, CPA, CPC, budget allocation, ROI, and ROAS cards.
 - Show a clear unavailable state when only GA4/web analytics is connected.
 - Do not treat child spend imports as separate platforms.
 - Keep campaign financial totals in Budget & Financial Analysis; Platform Comparison should compare source rows.
@@ -271,13 +277,13 @@ Status: completed.
 
 Evidence:
 
-- Cost Analysis now derives chart data, budget allocation data, and ROI/ROAS cards from `spendCapableMetrics`, which includes only non-analytics sources that explicitly provide `spend`.
-- GA4-only campaigns show a clear unavailable state for Cost Analysis because GA4 is a web analytics source, not a main spend-capable platform.
+- Financial Comparison now derives chart data, budget allocation data, and ROI/ROAS cards from `spendCapableMetrics`, which includes only non-analytics sources that explicitly provide `spend`.
+- GA4-only campaigns show a clear unavailable state for Financial Comparison because GA4 is a web analytics source, not a main spend-capable platform.
 - Platform child spend imports, including ad-platform spend imported inside GA4, are not treated as separate Platform Comparison sources.
 - Cost-per-conversion chart rows require both spend and conversions, preventing conversion-only sources from appearing as cost-analysis rows.
 - Source-level ROI and ROAS cards render only for spend-capable source rows and show unavailable when required source-level financial inputs are missing.
 - Regression coverage updated in `server/platform-comparison-regression.test.ts`.
-- Render validation passed: with only Google Analytics connected, Cost Analysis showed the `No paid-media platform connected` unavailable state and did not treat GA4 child spend imports as separate Platform Comparison sources.
+- Render validation passed: with only Google Analytics connected, the source-level financial comparison tab showed the `No paid-media platform connected` unavailable state and did not treat GA4 child spend imports as separate Platform Comparison sources.
 
 ### Commit 5: Insights Tab
 
@@ -333,7 +339,7 @@ Evidence:
 - Final targeted regression passed: `npm test -- server/platform-comparison-regression.test.ts`.
 - Final typecheck passed: `npm run check`.
 - Final production build passed: `npm run build`.
-- Render validation passed: Platform Comparison continued to show the correct GA4-only connected-source behavior across Overview, Performance Metrics, Cost Analysis, and Insights after the final documentation/validation commit.
+- Render validation passed: Platform Comparison continued to show the correct GA4-only connected-source behavior across Overview, Performance Metrics, Financial Comparison, and Insights after the final documentation/validation commit.
 
 ## Production-Ready Acceptance Criteria
 
@@ -342,7 +348,7 @@ Evidence:
 - GA4-only campaigns show only GA4-capable metrics.
 - Paid-media comparison and recommendations require paid-media capable sources.
 - Missing metrics are unavailable, not silently zeroed.
-- Overview may show single-source aggregate financial totals for the only connected main platform, but this does not make GA4 or another analytics-only source eligible for paid-media Cost Analysis or budget recommendations.
+- Overview may show single-source aggregate financial totals for the only connected main platform, but this does not make GA4 or another analytics-only source eligible for Financial Comparison paid-media rows or budget recommendations.
 - Google Ads appears automatically when connected and present in `performanceSummary.sources`.
 - Future main platforms appear without tab-specific UI rewiring once they feed the shared aggregate contract.
 - Current values stay synchronized with source updates through aggregate refetch.
@@ -350,7 +356,16 @@ Evidence:
 
 ## Current Status
 
-Production-ready for the current aggregate-backed Platform Comparison implementation and the Render-validated GA4-only connected-source scenario. Multi-platform live validation remains pending until a campaign has multiple main Connected Platforms connected.
+Production-ready for the current aggregate-backed Platform Comparison implementation and the Render-validated GA4-only connected-source scenario.
+
+Plain-language status before moving to Trend Analysis:
+
+- Nothing else is outstanding for the current GA4-only Platform Comparison flow.
+- The UI is ready to display future main platforms without tab-by-tab rewiring, but each future platform integration must feed the shared aggregate contract first.
+- A future platform is considered ready for Platform Comparison only after the server emits it in `performanceSummary.sources` with source identity, source label, source category, capabilities, included metrics, unavailable metric reasons, metric values, and freshness where available.
+- Live multi-platform validation remains a future validation step, not a known current defect. It should be run when a campaign has two or more real main Connected Platforms connected on Render.
+- Platform child inputs, such as LinkedIn/Meta/Google Sheets spend imported inside GA4, remain child financial inputs and do not count as separate Platform Comparison sources.
+- This handoff means Trend Analysis can start without reopening Platform Comparison unless a new source integration or multi-platform validation failure exposes a specific issue.
 
 Proven:
 
@@ -362,7 +377,7 @@ Proven:
 - Commit 1 validation: targeted regression coverage added in `server/platform-comparison-regression.test.ts`.
 - Commit 1 Render validation passed: `/api/campaigns/:id/outcome-totals?dateRange=30days` returned `performanceSummary.sources` with GA4, and Platform Comparison used the connected-source aggregate list as the source-of-truth path.
 - Commit 2: Overview cards and the summary table now include GA4 web analytics fields from the aggregate source row (`users`, `sessions`, `conversions`, and `revenue`) and avoid presenting unavailable paid-media metrics as zeroes.
-- Commit 2 follow-up: Channel Performance Overview renders source-capability columns dynamically. For a single connected main platform, it can show aggregate financial totals (`Spend`, `ROAS`, and `ROI`) from the shared campaign aggregate so GA4-only campaigns match the visible platform financial source of truth; Cost Analysis and Insights remain restricted to true paid-media source-level spend.
+- Commit 2 follow-up: Channel Performance Overview renders source-capability columns dynamically. For a single connected main platform, it can show aggregate financial totals (`Spend`, `ROAS`, and `ROI`) from the shared campaign aggregate so GA4-only campaigns match the visible platform financial source of truth; Financial Comparison and Insights remain restricted to true paid-media source-level spend.
 - Commit 2: Overview empty-state copy now references Connected Platforms generally instead of naming only LinkedIn, Meta, or child revenue systems.
 - Commit 2 follow-up: Platform Comparison now requests the shared aggregate with `dateRange=90days`, matching Performance Summary, Budget & Financial Analysis, and the GA4 platform overview source-of-truth window for current campaign values.
 - Commit 2 follow-up: Platform Comparison GA4 revenue now uses the parent GA4 platform total from `outcomeTotals.revenue.totalRevenue`, so child revenue inputs configured inside GA4 are included in the GA4 row without being shown as separate platforms. Yesop/mock GA4 source rows now use the same date-overlay daily-row merge pattern as the GA4 platform Overview before summing sessions, users, conversions, and revenue.
@@ -375,9 +390,9 @@ Proven:
 - Commit 3 follow-up: Efficiency Comparison now compares only spend-efficiency-capable sources and shows a concise unavailable explanation for GA4-only campaigns.
 - Commit 3 follow-up: Volume Comparison now hides unavailable impressions lanes for sources that do not provide impressions and presents available volume metrics such as GA4 sessions.
 - Commit 3 Render validation passed: with only Google Analytics connected, Efficiency Comparison correctly remained unavailable because there is no main spend-capable ad platform, and Volume Comparison correctly showed GA4 sessions. LinkedIn/Meta spend imports inside GA4 remain child financial inputs, not separate Platform Comparison rows.
-- Commit 4: Cost Analysis now includes only spend-capable main connected platform sources. GA4-only campaigns show an unavailable state, and child spend imports inside GA4 remain excluded from Platform Comparison rows.
-- Commit 4 follow-up: The GA4-only Cost Analysis empty state now uses shorter, clearer copy: Google Analytics is connected, but it does not provide source-level ad spend for Platform Comparison; source-level spend, CPA, ROI, and ROAS comparison requires a main paid-media platform such as LinkedIn Ads, Meta Ads, or Google Ads.
-- Commit 4 Render validation passed: with only Google Analytics connected, Cost Analysis showed the `No paid-media platform connected` unavailable state and did not treat GA4 child spend imports as separate Platform Comparison sources.
+- Commit 4: Financial Comparison now includes only spend-capable main connected platform sources. GA4-only campaigns show an unavailable state, and child spend imports inside GA4 remain excluded from Platform Comparison rows.
+- Commit 4 follow-up: The GA4-only Financial Comparison empty state now uses shorter, clearer copy: Google Analytics is connected, but it does not provide source-level ad spend for Platform Comparison; source-level spend, CPA, ROI, and ROAS comparison requires a main paid-media platform such as LinkedIn Ads, Meta Ads, or Google Ads.
+- Commit 4 Render validation passed: with only Google Analytics connected, Financial Comparison showed the `No paid-media platform connected` unavailable state and did not treat GA4 child spend imports as separate Platform Comparison sources.
 - Commit 5: Insights now uses aggregate-derived source capabilities and spend-capable source rows. GA4-only campaigns show a paid-media comparison unavailable explanation, and budget recommendations require comparable main paid-media platforms.
 - Commit 5 follow-up: Insights copy was simplified to one unavailable state when fewer than two spend-capable paid-media platforms are connected, so the page does not repeat the same unavailable condition across Data Source Analysis, Paid-media comparison, and Strategic Recommendations cards.
 - Commit 5 follow-up: The GA4-only Insights message now explicitly says GA4 contributes analytics metrics but does not provide source-level ad spend for paid-media comparison.
@@ -392,8 +407,11 @@ Proven:
 - Post-validation UX fix committed and pushed in `74a68c8b`: Platform Comparison now keeps the selected tab through refresh by controlling tab state and persisting it in the URL/session state, instead of always returning to Overview. Initial aggregate loading now renders a stable blank content area instead of temporary skeleton/no-data cards, so refresh does not flash misleading intermediate cards before the connected-source aggregate loads.
 - Post-validation UX validation path: after Render deploys, open each Platform Comparison tab, refresh the page, and confirm the same tab remains selected without flashing temporary empty/skeleton cards before the aggregate-backed content appears.
 - Post-validation UI alignment: Platform Comparison no longer exposes the local `Demo Data` toggle and now uses the same compact tab-list presentation as Performance Summary instead of full-width grid tabs.
-- Post-validation financial overview fix committed and pushed in `50415b46`: Channel Performance Overview restores `Spend`, `ROAS`, and `ROI` for single-source campaigns when the shared aggregate provides campaign financial totals, while Cost Analysis and paid-media Insights remain restricted to main paid-media sources with source-level spend.
+- Post-validation financial overview fix committed and pushed in `50415b46`: Channel Performance Overview restores `Spend`, `ROAS`, and `ROI` for single-source campaigns when the shared aggregate provides campaign financial totals, while Financial Comparison and paid-media Insights remain restricted to main paid-media sources with source-level spend.
+- Post-validation performance-metrics fix committed and pushed in `e258b446`: Detailed Performance Metrics no longer shows the standalone platform-color dot that could be mistaken for a status indicator, and ROI now uses the same single-source aggregate financial-total path as Overview when only one main Connected Platform is connected. Validation passed with `npm test -- server/platform-comparison-regression.test.ts` and `npm run check`.
+- Post-validation section-distinction fix: Platform Comparison and Budget & Financial Analysis remain separate DeepDive sections. UI copy now clarifies that Platform Comparison is for connected-source contribution/comparison, while Budget & Financial Analysis is for campaign-wide budget, pacing, ROI, ROAS, and financial decisioning.
+- Post-validation tab-label fix: the Platform Comparison source-level financial tab is labeled `Financial Comparison` instead of `Cost Analysis`, while keeping the internal `cost-analysis` tab value unchanged for URL/session compatibility.
 
 Outstanding:
 
-- Live multi-platform validation when a campaign has two or more main Connected Platforms available on Render.
+- Live multi-platform validation when a campaign has two or more real main Connected Platforms available on Render.

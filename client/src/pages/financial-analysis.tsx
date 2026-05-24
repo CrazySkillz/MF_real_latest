@@ -675,7 +675,7 @@ export default function FinancialAnalysis() {
                     Budget & Financial Analysis
                   </h1>
                   <p className="text-muted-foreground/70 mt-1">
-                    {campaign.name} - Comprehensive financial performance overview
+                    {campaign.name} - Campaign-wide budget, pacing, ROI, ROAS, and financial decisioning
                   </p>
                 </div>
               </div>
@@ -737,7 +737,7 @@ export default function FinancialAnalysis() {
                     <span>Campaign Health Score</span>
                   </CardTitle>
                   <CardDescription>
-                    Real-time health assessment across key financial metrics
+                    Campaign-level financial health from aggregate spend, revenue, budget, pacing, ROI, and ROAS
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

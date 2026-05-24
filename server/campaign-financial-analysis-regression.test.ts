@@ -12,6 +12,8 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     expect(page).toContain('if (!response.ok) throw new Error("Failed to load aggregate financial totals");');
     expect(page).toContain("<TabsList>");
     expect(page).not.toContain('TabsList className="grid w-full grid-cols-5"');
+    expect(page).toContain("Campaign-wide budget, pacing, ROI, ROAS, and financial decisioning");
+    expect(page).toContain("Campaign-level financial health from aggregate spend, revenue, budget, pacing, ROI, and ROAS");
     expect(page).toContain("placeholderData: (previousData: any) => previousData");
     expect(page).toContain("const FINANCIAL_ANALYSIS_REFRESH_MS = 30000;");
     expect(page).toContain("refetchInterval: FINANCIAL_ANALYSIS_REFRESH_MS");

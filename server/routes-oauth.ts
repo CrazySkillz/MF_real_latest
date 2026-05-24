@@ -24963,12 +24963,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/executive-summary", async (req, res) => {
     try {
       const { id } = req.params;
-      const { parseNum, parseInterval, calculateHealthScore, generateRiskAssessment, generateRecommendations } = await import("./utils/executive-summary-helpers");
+      const { parseNum, calculateHealthScore, generateRiskAssessment, generateRecommendations } = await import("./utils/executive-summary-helpers");
 
       // Get campaign details
-      const campaign = await storage.getCampaign(id);
+      const campaign = await ensureCampaignAccess(req as any, res as any, id);
       if (!campaign) {
-        return res.status(404).json({ message: "Campaign not found" });
+        return;
       }
 
       // Period support: ?period=7d|30d|90d|all (default: all)
@@ -25085,15 +25085,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch GA4 metrics
-      let ga4Metrics: any = { sessions: 0, conversions: 0, bounceRate: 0, pageviews: 0, users: 0 };
+      let ga4Metrics: any = { sessions: 0, conversions: 0, bounceRate: 0, pageviews: 0, users: 0, revenue: 0 };
       let ga4LastUpdate: string | null = null;
+      let hasGA4Connection = false;
 
       try {
         const ga4Connections = await storage.getGA4Connections(id);
-        if (ga4Connections && ga4Connections.length > 0) {
+        const activeGA4Connection = (ga4Connections || []).find((conn: any) => conn?.propertyId && conn.propertyId !== "");
+        if (activeGA4Connection) {
+          hasGA4Connection = true;
           const ga4Start = startDate;
           const ga4End = endDate;
-          const ga4Daily = await storage.getGA4DailyMetrics(id, (ga4Connections[0] as any).propertyId, ga4Start, ga4End);
+          const ga4Daily = await storage.getGA4DailyMetrics(id, (activeGA4Connection as any).propertyId, ga4Start, ga4End);
           if (ga4Daily && ga4Daily.length > 0) {
             let bounceRateSum = 0;
             let bounceRateCount = 0;
@@ -25102,6 +25105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ga4Metrics.conversions += parseNum(row.conversions);
               ga4Metrics.pageviews += parseNum(row.pageviews || row.screenPageViews);
               ga4Metrics.users += parseNum(row.users || row.totalUsers);
+              ga4Metrics.revenue += parseNum(row.revenue);
               const br = parseNum(row.bounceRate);
               if (br > 0) { bounceRateSum += br; bounceRateCount++; }
             });
@@ -25148,6 +25152,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (err) {
         console.log('No canonical spend/revenue data found');
       }
+
+      const executiveDateRange = periodParam === '7d' ? '7days' :
+        periodParam === '30d' ? '30days' :
+          periodParam === '90d' ? '90days' : 'all';
+      const webAnalyticsProvider = hasGA4Connection ? "ga4" : hasCustomIntegration ? "custom_integration" : null;
+      const platformSpend = linkedinMetrics.spend + metaMetrics.spend + customMetrics.spend;
+      const platformRevenue = linkedinMetrics.revenue + metaMetrics.revenue + customMetrics.revenue;
+      const aggregateRevenue = canonicalRevenue > 0
+        ? canonicalRevenue
+        : (ga4Metrics.revenue > 0 ? ga4Metrics.revenue : platformRevenue);
+      const performanceSummary = buildPerformanceSummaryAggregate({
+        campaignId: id,
+        dateRange: executiveDateRange,
+        ga4: { connected: hasGA4Connection, ...ga4Metrics },
+        webAnalytics: {
+          connected: Boolean(webAnalyticsProvider),
+          provider: webAnalyticsProvider,
+          revenue: webAnalyticsProvider === "ga4" ? ga4Metrics.revenue : customMetrics.revenue,
+          conversions: webAnalyticsProvider === "ga4" ? ga4Metrics.conversions : customMetrics.conversions,
+          sessions: webAnalyticsProvider === "ga4" ? ga4Metrics.sessions : customMetrics.engagements,
+          users: webAnalyticsProvider === "ga4" ? ga4Metrics.users : parseNum(customIntegrationRawData?.users),
+        },
+        spend: {
+          persistedSpend: canonicalSpend,
+          unifiedSpend: canonicalSpend > 0 ? canonicalSpend : platformSpend,
+          spendSource: canonicalSpend > 0 ? "persisted_spend_sources" : "platform_spend_fallback",
+          startDate,
+          endDate,
+        },
+        platforms: {
+          linkedin: { connected: linkedinMetrics.spend > 0 || linkedinMetrics.clicks > 0 || linkedinMetrics.impressions > 0 || linkedinMetrics.conversions > 0, ...linkedinMetrics },
+          meta: { connected: metaMetrics.spend > 0 || metaMetrics.clicks > 0 || metaMetrics.impressions > 0 || metaMetrics.conversions > 0, ...metaMetrics, attributedRevenue: metaMetrics.revenue },
+          customIntegration: { connected: hasCustomIntegration, ...customMetrics, users: parseNum(customIntegrationRawData?.users), sessions: parseNum(customIntegrationRawData?.sessions), pageviews: parseNum(customIntegrationRawData?.pageviews), revenue: customMetrics.revenue },
+        },
+        revenue: {
+          onsiteRevenue: ga4Metrics.revenue,
+          offsiteRevenue: aggregateRevenue > ga4Metrics.revenue ? aggregateRevenue - ga4Metrics.revenue : 0,
+          totalRevenue: aggregateRevenue,
+        },
+        revenueSources: [],
+      });
+      const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];
+      const aggregateMetricValue = (metricName: string): number => {
+        const metric = aggregateMetric(metricName);
+        return metric?.available === true && metric?.value !== null ? parseNum(metric.value) : 0;
+      };
+      const mainAggregateSources = Array.isArray((performanceSummary as any)?.sources)
+        ? (performanceSummary as any).sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
+        : [];
 
       // Fetch KPI progress
       let kpiProgress: any[] = [];
@@ -25232,125 +25285,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       checkFreshness(ga4LastUpdate, 'Google Analytics');
       checkFreshness(customIntegrationLastUpdate, 'Custom Integration');
 
-      // Aggregate totals across all platforms
-      const totalImpressions = linkedinMetrics.impressions + metaMetrics.impressions + customMetrics.impressions;
+      // Aggregate totals across connected sources
+      const totalImpressions = aggregateMetricValue("impressions");
       const totalEngagements = (linkedinMetrics.engagements || 0) + customMetrics.engagements;
-      const totalClicks = linkedinMetrics.clicks + metaMetrics.clicks + customMetrics.clicks;
-      const totalConversions = linkedinMetrics.conversions + metaMetrics.conversions + customMetrics.conversions;
-
-      // Prefer canonical spend/revenue when available (from configured sources), else sum platform-reported
-      const platformSpend = linkedinMetrics.spend + metaMetrics.spend + customMetrics.spend;
-      const platformRevenue = linkedinMetrics.revenue + metaMetrics.revenue + customMetrics.revenue;
-      const totalSpend = canonicalSpend > 0 ? canonicalSpend : platformSpend;
-      const totalRevenue = canonicalRevenue > 0 ? canonicalRevenue : platformRevenue;
+      const totalClicks = aggregateMetricValue("clicks");
+      const totalConversions = aggregateMetricValue("conversions");
+      const totalSpend = aggregateMetricValue("spend");
+      const totalRevenue = aggregateMetricValue("revenue");
 
       // Funnel breakdown
-      const advertisingImpressions = linkedinMetrics.impressions + metaMetrics.impressions;
+      const advertisingImpressions = totalImpressions;
       const websitePageviews = (customIntegrationRawData ? parseNum(customIntegrationRawData.pageviews) : 0) + ga4Metrics.pageviews;
-      const advertisingClicks = linkedinMetrics.clicks + metaMetrics.clicks;
+      const advertisingClicks = totalClicks;
       const websiteClicks = customIntegrationRawData ? parseNum(customIntegrationRawData.clicks) : 0;
 
       // Calculate KPIs
-      const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
-      const roi = totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend) * 100 : 0;
-      const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+      const roas = aggregateMetricValue("roas");
+      const roi = aggregateMetricValue("roi");
+      const ctr = aggregateMetricValue("ctr");
       const clickThroughConversions = Math.min(totalConversions, totalClicks);
       const clickThroughCvr = totalClicks > 0 ? (clickThroughConversions / totalClicks) * 100 : 0;
       const totalCvr = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
-      const cvr = totalCvr;
-      const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
-      const cpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
+      const cvr = aggregateMetricValue("cvr");
+      const cpc = aggregateMetricValue("cpc");
+      const cpa = aggregateMetricValue("cpa");
 
       // Health score from helper
       const healthResult = calculateHealthScore({ roi, roas, ctr, cvr });
 
       // Platform performance breakdown
-      const platforms: any[] = [];
-      const platformsForDisplay: any[] = [];
-
-      const hasLinkedInData = linkedinMetrics.spend > 0 || linkedinMetrics.conversions > 0 || linkedinMetrics.revenue > 0;
-      if (hasLinkedInData) {
-        const linkedInPlatform = {
-          name: 'LinkedIn Ads',
-          spend: linkedinMetrics.spend,
-          revenue: linkedinMetrics.revenue,
-          conversions: linkedinMetrics.conversions,
-          roas: linkedinMetrics.spend > 0 ? linkedinMetrics.revenue / linkedinMetrics.spend : 0,
-          roi: linkedinMetrics.spend > 0 ? ((linkedinMetrics.revenue - linkedinMetrics.spend) / linkedinMetrics.spend) * 100 : 0,
-          spendShare: totalSpend > 0 ? (linkedinMetrics.spend / totalSpend) * 100 : 0,
-        };
-        platforms.push(linkedInPlatform);
-        platformsForDisplay.push(linkedInPlatform);
-      }
-
-      // Meta/Facebook platform
-      const hasMetaData = metaMetrics.spend > 0 || metaMetrics.conversions > 0;
-      if (hasMetaData) {
-        const metaPlatform = {
-          name: 'Meta/Facebook',
-          spend: metaMetrics.spend,
-          revenue: metaMetrics.revenue || 0,
-          conversions: metaMetrics.conversions,
-          impressions: metaMetrics.impressions,
-          reach: metaMetrics.reach,
-          roas: metaMetrics.spend > 0 ? (metaMetrics.revenue || 0) / metaMetrics.spend : 0,
-          roi: metaMetrics.spend > 0 ? (((metaMetrics.revenue || 0) - metaMetrics.spend) / metaMetrics.spend) * 100 : 0,
-          spendShare: totalSpend > 0 ? (metaMetrics.spend / totalSpend) * 100 : 0,
-          hasData: true,
-        };
-        platforms.push(metaPlatform);
-        platformsForDisplay.push(metaPlatform);
-      }
-
-      // GA4 platform (website analytics — no spend/revenue)
-      const hasGA4Data = ga4Metrics.sessions > 0 || ga4Metrics.pageviews > 0;
-      if (hasGA4Data) {
-        const ga4Platform = {
-          name: 'Google Analytics',
-          spend: 0,
-          revenue: 0,
-          conversions: ga4Metrics.conversions,
-          roas: 0,
-          roi: 0,
-          spendShare: 0,
-          hasData: false, // No advertising spend data
-          websiteAnalytics: {
-            pageviews: ga4Metrics.pageviews,
-            sessions: ga4Metrics.sessions,
-            users: ga4Metrics.users,
-            bounceRate: ga4Metrics.bounceRate,
+      const sourceMetric = (source: any, metricName: string) => parseNum(source?.metrics?.[metricName]);
+      const sourceIncludesMetric = (source: any, metricName: string) =>
+        Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
+      const platformsForDisplay: any[] = mainAggregateSources.map((source: any) => {
+        const spend = sourceIncludesMetric(source, "spend") ? sourceMetric(source, "spend") : 0;
+        const revenue = sourceIncludesMetric(source, "revenue")
+          ? sourceMetric(source, "revenue")
+          : sourceMetric(source, "attributedRevenue");
+        const sourceConversions = sourceIncludesMetric(source, "conversions") ? sourceMetric(source, "conversions") : 0;
+        const sourceSessions = sourceIncludesMetric(source, "sessions") ? sourceMetric(source, "sessions") : 0;
+        const sourceUsers = sourceIncludesMetric(source, "users") ? sourceMetric(source, "users") : 0;
+        return {
+          name: source.label,
+          sourceId: source.id,
+          category: source.category,
+          spend,
+          revenue,
+          conversions: sourceConversions,
+          impressions: sourceMetric(source, "impressions"),
+          clicks: sourceMetric(source, "clicks"),
+          roas: spend > 0 ? revenue / spend : 0,
+          roi: spend > 0 ? ((revenue - spend) / spend) * 100 : 0,
+          spendShare: totalSpend > 0 ? (spend / totalSpend) * 100 : 0,
+          hasData: spend > 0 || revenue > 0 || sourceConversions > 0,
+          websiteAnalytics: (source.category === "web_analytics" || sourceIncludesMetric(source, "sessions") || sourceIncludesMetric(source, "users")) ? {
+            pageviews: source.id === "ga4" ? ga4Metrics.pageviews : sourceMetric(source, "pageviews"),
+            sessions: sourceSessions,
+            users: sourceUsers,
+            bounceRate: source.id === "ga4" ? ga4Metrics.bounceRate : parseNum(customIntegrationRawData?.bounceRate),
             avgSessionDuration: 0,
-          },
+          } : null,
+          includedMetrics: source.includedMetrics,
+          excludedMetrics: source.excludedMetrics,
         };
-        platformsForDisplay.push(ga4Platform);
-      }
+      });
+      const platforms: any[] = platformsForDisplay.filter((platform: any) =>
+        platform.category !== "web_analytics" && (platform.spend > 0 || platform.revenue > 0 || platform.conversions > 0)
+      );
 
-      // Custom Integration
-      const hasCustomIntegrationData = customMetrics.spend > 0 || customMetrics.conversions > 0 || customMetrics.revenue > 0;
-      if (hasCustomIntegration && customIntegrationRawData) {
-        const customPlatform = {
-          name: 'Custom Integration',
-          spend: customMetrics.spend,
-          revenue: customMetrics.revenue,
-          conversions: customMetrics.conversions,
-          roas: customMetrics.spend > 0 ? customMetrics.revenue / customMetrics.spend : 0,
-          roi: customMetrics.spend > 0 ? ((customMetrics.revenue - customMetrics.spend) / customMetrics.spend) * 100 : 0,
-          spendShare: totalSpend > 0 ? (customMetrics.spend / totalSpend) * 100 : 0,
-          hasData: hasCustomIntegrationData,
-          websiteAnalytics: {
-            pageviews: parseNum(customIntegrationRawData.pageviews),
-            sessions: parseNum(customIntegrationRawData.sessions),
-            clicks: parseNum(customIntegrationRawData.clicks),
-            impressions: parseNum(customIntegrationRawData.impressions),
-            users: parseNum(customIntegrationRawData.users),
-            bounceRate: parseNum(customIntegrationRawData.bounceRate),
-            avgSessionDuration: parseInterval(customIntegrationRawData.avgSessionDuration),
-          },
-        };
-        if (hasCustomIntegrationData) platforms.push(customPlatform);
-        platformsForDisplay.push(customPlatform);
-      }
-
+      const hasLinkedInData = mainAggregateSources.some((source: any) => source.id === "linkedin");
+      const hasMetaData = mainAggregateSources.some((source: any) => source.id === "meta");
+      const hasGA4Data = mainAggregateSources.some((source: any) => source.id === "ga4");
+      const hasCustomIntegrationData = mainAggregateSources.some((source: any) => source.id === "custom_integration");
       // Top / bottom performers
       const topPlatform = platforms.length > 0 ? platforms.reduce((top, p) => p.roas > top.roas ? p : top) : null;
       const bottomPlatform = platforms.length > 1 ? platforms.reduce((bottom, p) => p.roas < bottom.roas ? p : bottom) : null;
@@ -25445,6 +25451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         metadata: {
           generatedAt: now.toISOString(),
+          aggregateVersion: (performanceSummary as any)?.version,
           disclaimer: 'All projections are estimates based on historical performance and industry benchmarks. Actual results will vary based on market conditions, competition, creative execution, and other factors. Recommendations should be validated through controlled testing before full implementation.',
           dataAccuracy: {
             hasLinkedInData,
@@ -25454,6 +25461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             platformsExcludedFromRecommendations: platformsForDisplay.filter((p: any) => !platforms.some((pd: any) => pd.name === p.name)).map((p: any) => p.name),
           },
         },
+        performanceSummary,
         period: periodParam,
       });
 

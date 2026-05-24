@@ -8,6 +8,11 @@ describe("campaign Platform Comparison regression guard", () => {
 
     expect(page).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days"');
     expect(page).toContain('outcome-totals?dateRange=90days');
+    expect(page).not.toContain('&demo=1');
+    expect(page).not.toContain('Demo Data');
+    expect(page).not.toContain('FlaskConical');
+    expect(page).toContain("<TabsList>");
+    expect(page).not.toContain('TabsList className="grid w-full grid-cols-4"');
     expect(page).toContain('fetch(url, { credentials: "include" })');
     expect(page).toContain("const PLATFORM_COMPARISON_REFRESH_MS = 30000;");
     expect(page).toContain("refetchInterval: PLATFORM_COMPARISON_REFRESH_MS,");
@@ -51,6 +56,11 @@ describe("campaign Platform Comparison regression guard", () => {
     expect(overview).toContain("<span className=\"text-xs text-muted-foreground\">Users</span>");
     expect(overview).toContain("<span className=\"text-xs text-muted-foreground\">Revenue</span>");
     expect(overview).toContain('className={platform.isAnalyticsOnly ? "hidden" : "flex items-center justify-between"}');
+    expect(page).toContain('const showChannelSpend = realPlatformMetrics.some((platform: any) => hasMetric(platform, "spend"));');
+    expect(page).toContain('const showChannelFinancialEfficiency = realPlatformMetrics.some((platform: any) => canShowFinancialEfficiency(platform));');
+    expect(overview).toContain('{showChannelSpend && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Spend</th>}');
+    expect(overview).toContain('{showChannelFinancialEfficiency && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">ROAS</th>}');
+    expect(overview).toContain('{showChannelFinancialEfficiency && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">ROI</th>}');
     expect(overview).toContain("platformMetricsLoading ? null : realPlatformMetrics.length > 0 ? (");
     expect(overview).toContain("No connected platform data available yet. Connect a platform in Connected Platforms to see comparison data.");
     expect(page).not.toContain("animate-pulse");

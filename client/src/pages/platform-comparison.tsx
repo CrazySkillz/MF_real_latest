@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BarChart3, TrendingUp, Target, Users, DollarSign, Eye, AlertCircle, Zap, Brain, Activity, Info, FlaskConical } from "lucide-react";
+import { ArrowLeft, BarChart3, TrendingUp, Target, Users, DollarSign, Eye, AlertCircle, Zap, Brain, Activity, Info } from "lucide-react";
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -31,7 +31,6 @@ const getInitialPlatformComparisonTab = (campaignId?: string) => {
 
 export default function PlatformComparison() {
   const { id: campaignId } = useParams();
-  const [demoMode, setDemoMode] = useState(false);
   const [activeTab, setActiveTab] = useState(() => getInitialPlatformComparisonTab(campaignId));
 
   const handleTabChange = (value: string) => {
@@ -88,10 +87,10 @@ export default function PlatformComparison() {
 
   // Unified outcome-totals for Meta, GA4, revenue sources, and real revenue data
   const { data: outcomeTotals, isFetched: outcomeTotalsFetched } = useQuery<any>({
-    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days", demoMode ? "demo" : "live"],
+    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "90days"],
     enabled: !!campaignId,
     queryFn: async () => {
-      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=90days${demoMode ? "&demo=1" : ""}`;
+      const url = `/api/campaigns/${campaignId}/outcome-totals?dateRange=90days`;
       const resp = await fetch(url, { credentials: "include" });
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
@@ -393,6 +392,15 @@ export default function PlatformComparison() {
   const spendCapableMetrics = realPlatformMetrics.filter((platform: any) => hasMetric(platform, "spend") && !platform.isAnalyticsOnly);
   const analyticsOnlyMetrics = realPlatformMetrics.filter((platform: any) => platform.isAnalyticsOnly);
   const comparableFinancialMetrics = spendCapableMetrics.filter((platform: any) => canShowFinancialEfficiency(platform) && platform.spend > 0);
+  const showChannelUsers = realPlatformMetrics.some((platform: any) => hasMetric(platform, "users"));
+  const showChannelSessions = realPlatformMetrics.some((platform: any) => hasMetric(platform, "sessions"));
+  const showChannelSpend = realPlatformMetrics.some((platform: any) => hasMetric(platform, "spend"));
+  const showChannelImpressions = realPlatformMetrics.some((platform: any) => hasMetric(platform, "impressions"));
+  const showChannelClicks = realPlatformMetrics.some((platform: any) => hasMetric(platform, "clicks"));
+  const showChannelCtr = realPlatformMetrics.some((platform: any) => canShowCtr(platform));
+  const showChannelConversions = realPlatformMetrics.some((platform: any) => hasMetric(platform, "conversions"));
+  const showChannelRevenue = realPlatformMetrics.some((platform: any) => hasMetric(platform, "revenue") || hasMetric(platform, "attributedRevenue"));
+  const showChannelFinancialEfficiency = realPlatformMetrics.some((platform: any) => canShowFinancialEfficiency(platform));
 
   const totalRevenueSourceRevenue = revenueSourcesData.reduce((sum: number, s: any) => sum + s.revenue, 0);
 
@@ -464,27 +472,12 @@ export default function PlatformComparison() {
                   <p className="text-muted-foreground/70 mt-1">{(campaign as any)?.name}</p>
                 </div>
               </div>
-              <Button
-                variant={demoMode ? "default" : "outline"}
-                size="sm"
-                onClick={() => setDemoMode(!demoMode)}
-                className="shrink-0"
-              >
-                <FlaskConical className="w-4 h-4 mr-1" />
-                {demoMode ? "Demo On" : "Demo Data"}
-              </Button>
             </div>
           </div>
 
-          {demoMode && (
-            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-2 text-sm text-amber-800 dark:text-amber-300">
-              Showing demo data for testing. Toggle off to see real platform data.
-            </div>
-          )}
-
           {/* Platform Comparison Tabs */}
           <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="performance">Performance Metrics</TabsTrigger>
               <TabsTrigger value="cost-analysis">Cost Analysis</TabsTrigger>
@@ -568,15 +561,16 @@ export default function PlatformComparison() {
                         <thead>
                           <tr className="border-b bg-muted/50">
                             <th className="text-left py-3 px-4 font-medium text-muted-foreground/70">Platform</th>
-                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Users</th>
-                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Sessions</th>
-                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Spend</th>
-                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Impressions</th>
-                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Clicks</th>
-                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">CTR</th>
-                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Conversions</th>
-                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Revenue</th>
-                            <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">ROAS</th>
+                            {showChannelUsers && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Users</th>}
+                            {showChannelSessions && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Sessions</th>}
+                            {showChannelSpend && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Spend</th>}
+                            {showChannelImpressions && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Impressions</th>}
+                            {showChannelClicks && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Clicks</th>}
+                            {showChannelCtr && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">CTR</th>}
+                            {showChannelConversions && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Conversions</th>}
+                            {showChannelRevenue && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">Revenue</th>}
+                            {showChannelFinancialEfficiency && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">ROAS</th>}
+                            {showChannelFinancialEfficiency && <th className="text-right py-3 px-4 font-medium text-muted-foreground/70">ROI</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -591,19 +585,20 @@ export default function PlatformComparison() {
                                   )}
                                 </div>
                               </td>
-                              <td className="text-right py-3 px-4">{platform.users > 0 ? formatNumber(platform.users) : '—'}</td>
-                              <td className="text-right py-3 px-4">{platform.sessions > 0 ? formatNumber(platform.sessions) : '—'}</td>
-                              <td className="text-right py-3 px-4">{platform.spend > 0 ? formatCurrency(platform.spend) : '—'}</td>
-                              <td className="text-right py-3 px-4">{platform.impressions > 0 ? formatNumber(platform.impressions) : '—'}</td>
-                              <td className="text-right py-3 px-4">{platform.clicks > 0 ? formatNumber(platform.clicks) : '—'}</td>
-                              <td className="text-right py-3 px-4">{platform.ctr > 0 ? `${formatPct(platform.ctr)}` : '—'}</td>
-                              <td className="text-right py-3 px-4">{platform.conversions > 0 ? formatNumber(platform.conversions) : '—'}</td>
-                              <td className="text-right py-3 px-4">
+                              {showChannelUsers && <td className="text-right py-3 px-4">{platform.users > 0 ? formatNumber(platform.users) : '—'}</td>}
+                              {showChannelSessions && <td className="text-right py-3 px-4">{platform.sessions > 0 ? formatNumber(platform.sessions) : '—'}</td>}
+                              {showChannelSpend && <td className="text-right py-3 px-4">{hasMetric(platform, "spend") && platform.spend > 0 ? formatCurrency(platform.spend) : '—'}</td>}
+                              {showChannelImpressions && <td className="text-right py-3 px-4">{platform.impressions > 0 ? formatNumber(platform.impressions) : '—'}</td>}
+                              {showChannelClicks && <td className="text-right py-3 px-4">{platform.clicks > 0 ? formatNumber(platform.clicks) : '—'}</td>}
+                              {showChannelCtr && <td className="text-right py-3 px-4">{canShowCtr(platform) && platform.ctr > 0 ? `${formatPct(platform.ctr)}` : '—'}</td>}
+                              {showChannelConversions && <td className="text-right py-3 px-4">{platform.conversions > 0 ? formatNumber(platform.conversions) : '—'}</td>}
+                              {showChannelRevenue && <td className="text-right py-3 px-4">
                                 {platform.revenue > 0 ? (
                                   <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(platform.revenue)}</span>
                                 ) : '—'}
-                              </td>
-                              <td className="text-right py-3 px-4">{platform.roas > 0 ? `${platform.roas.toFixed(2)}x` : '—'}</td>
+                              </td>}
+                              {showChannelFinancialEfficiency && <td className="text-right py-3 px-4">{canShowFinancialEfficiency(platform) && platform.roas > 0 ? `${platform.roas.toFixed(2)}x` : '—'}</td>}
+                              {showChannelFinancialEfficiency && <td className="text-right py-3 px-4">{canShowFinancialEfficiency(platform) && platform.spend > 0 ? `${platform.roi >= 0 ? '+' : ''}${platform.roi.toFixed(1)}%` : '—'}</td>}
                             </tr>
                           ))}
                         </tbody>
@@ -618,18 +613,20 @@ export default function PlatformComparison() {
                             const totRevenue = realPlatformMetrics.reduce((s: number, p: any) => s + p.revenue, 0);
                             const weightedCtr = totImpressions > 0 ? (totClicks / totImpressions) * 100 : 0;
                             const weightedRoas = totSpend > 0 ? totRevenue / totSpend : 0;
+                            const weightedRoi = totSpend > 0 ? ((totRevenue - totSpend) / totSpend) * 100 : 0;
                             return (
                               <tr className="bg-muted/50 font-semibold">
                                 <td className="py-3 px-4 text-foreground">Total</td>
-                                <td className="text-right py-3 px-4">{totUsers > 0 ? formatNumber(totUsers) : '—'}</td>
-                                <td className="text-right py-3 px-4">{totSessions > 0 ? formatNumber(totSessions) : '—'}</td>
-                                <td className="text-right py-3 px-4">{totSpend > 0 ? formatCurrency(totSpend) : '—'}</td>
-                                <td className="text-right py-3 px-4">{totImpressions > 0 ? formatNumber(totImpressions) : '—'}</td>
-                                <td className="text-right py-3 px-4">{totClicks > 0 ? formatNumber(totClicks) : '—'}</td>
-                                <td className="text-right py-3 px-4">{weightedCtr > 0 ? `${formatPct(weightedCtr)}` : '—'}</td>
-                                <td className="text-right py-3 px-4">{totConversions > 0 ? formatNumber(totConversions) : '—'}</td>
-                                <td className="text-right py-3 px-4 text-green-600 dark:text-green-400">{totRevenue > 0 ? formatCurrency(totRevenue) : '—'}</td>
-                                <td className="text-right py-3 px-4">{weightedRoas > 0 ? `${weightedRoas.toFixed(2)}x` : '—'}</td>
+                                {showChannelUsers && <td className="text-right py-3 px-4">{totUsers > 0 ? formatNumber(totUsers) : '—'}</td>}
+                                {showChannelSessions && <td className="text-right py-3 px-4">{totSessions > 0 ? formatNumber(totSessions) : '—'}</td>}
+                                {showChannelSpend && <td className="text-right py-3 px-4">{totSpend > 0 ? formatCurrency(totSpend) : '—'}</td>}
+                                {showChannelImpressions && <td className="text-right py-3 px-4">{totImpressions > 0 ? formatNumber(totImpressions) : '—'}</td>}
+                                {showChannelClicks && <td className="text-right py-3 px-4">{totClicks > 0 ? formatNumber(totClicks) : '—'}</td>}
+                                {showChannelCtr && <td className="text-right py-3 px-4">{weightedCtr > 0 ? `${formatPct(weightedCtr)}` : '—'}</td>}
+                                {showChannelConversions && <td className="text-right py-3 px-4">{totConversions > 0 ? formatNumber(totConversions) : '—'}</td>}
+                                {showChannelRevenue && <td className="text-right py-3 px-4 text-green-600 dark:text-green-400">{totRevenue > 0 ? formatCurrency(totRevenue) : '—'}</td>}
+                                {showChannelFinancialEfficiency && <td className="text-right py-3 px-4">{weightedRoas > 0 ? `${weightedRoas.toFixed(2)}x` : '—'}</td>}
+                                {showChannelFinancialEfficiency && <td className="text-right py-3 px-4">{totSpend > 0 ? `${weightedRoi >= 0 ? '+' : ''}${weightedRoi.toFixed(1)}%` : '—'}</td>}
                               </tr>
                             );
                           })()}

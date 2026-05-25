@@ -211,7 +211,7 @@ Target behavior:
 - The Marketing Funnel Performance chart should make the active path explicit: reach metric -> engagement metric -> conversions -> revenue. For GA4-only campaigns this should read as users/sessions/conversions/revenue; for paid-media campaigns it can read as impressions/clicks/conversions/revenue when those metrics are available.
 - Paid-media Top of Funnel and Mid Funnel blocks appear only when connected sources provide impressions or clicks.
 - Revenue, spend, ROI, ROAS, CPA, CPC, CTR, and CVR display unavailable when required aggregate inputs are missing.
-- Platform Performance lists only main Connected Platforms from `performanceSummary.sources`.
+- Platform detail belongs in the dedicated Platform Comparison subsection; Executive Summary should not render the duplicate Platform Performance card.
 - Financial child inputs do not appear as separate platform rows.
 - Campaign Grade and Health Score are not shown in the Executive Summary UI because the score/grade model is a product-defined heuristic, not a direct connected-source metric.
 - The narrative Executive Summary paragraph should not use hidden grade/score logic. It should state factual available connected-source ROI/ROAS inputs from the same `performanceSummary` aggregate used by the visible Executive Overview metrics, plus current Risk Level and 7-day snapshot trajectory state.
@@ -279,7 +279,7 @@ Required regression coverage:
 - Keep the existing Executive Summary route and tab layout.
 - Remove hard-coded paid-media-only labels where the aggregate says the metric is unavailable.
 - Render unavailable states for unavailable aggregate metrics.
-- Build Platform Performance from endpoint rows derived from the aggregate.
+- Keep platform-level metric comparison in Platform Comparison; do not duplicate those rows in Executive Summary.
 - Update Executive Overview funnel wording for GA4-only and analytics-only cases.
 - Update Strategic Recommendations empty states and explanatory copy.
 - Remove visible demo controls from the production page if final production-readiness scope includes UI consistency with the other DeepDive subsections.
@@ -376,7 +376,7 @@ Root cause:
 Completed:
 
 - Added frontend aggregate availability helpers for the Executive Overview tab.
-- Switched the top funnel, mid funnel, bottom funnel, funnel story, and key metric cards to render aggregate-backed available values or `Unavailable`.
+- Switched the top funnel, mid funnel, bottom funnel, and key metric cards to render aggregate-backed available values or `Unavailable`; the separate Campaign Story paragraph has been removed from the UI.
 - GA4-only campaigns now prefer web analytics metrics such as users or sessions when paid-media impressions or clicks are unavailable.
 - Left KPI Progress, Benchmark Comparison, health, risk, and Strategic Recommendations unchanged for their planned commits.
 - Added regression coverage that proves the Overview tab uses `performanceSummary.totals` availability and no longer renders the legacy hard-coded impressions, clicks, or revenue expressions.

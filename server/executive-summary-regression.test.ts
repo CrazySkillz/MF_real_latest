@@ -110,6 +110,14 @@ describe("campaign Executive Summary regression guard", () => {
     expect(overview).toContain("Are visits becoming conversions and revenue?");
     expect(overview).toContain("{executiveSummaryNarrative}");
     expect(overview).not.toContain("{(executiveSummary as any).ceoSummary}");
+    expect(overview).not.toContain("Campaign Story:");
+    expect(overview).not.toContain("Connected sources show spend");
+    expect(overview).not.toContain("Platform Performance");
+    expect(overview).not.toContain("Website Analytics Only");
+    expect(overview).not.toContain("Needs Attention");
+    expect(overview).not.toContain("Excellent");
+    expect(overview).not.toContain("Good");
+    expect(overview).not.toContain("Fair");
     expect(overview).not.toContain("Campaign Grade");
     expect(overview).not.toContain("Health Score");
     expect(overview).not.toContain("Weighted from available ROI, ROAS, CTR, and CVR inputs.");

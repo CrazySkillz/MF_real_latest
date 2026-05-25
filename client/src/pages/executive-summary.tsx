@@ -160,6 +160,8 @@ export default function ExecutiveSummary() {
   };
   const formatAggregateNumber = (metricName: string) =>
     aggregateMetricAvailable(metricName) ? formatNumber(aggregateMetricValue(metricName)) : "Unavailable";
+  const formatAggregateInteger = (metricName: string) =>
+    aggregateMetricAvailable(metricName) ? Math.round(aggregateMetricValue(metricName)).toLocaleString() : "Unavailable";
   const formatAggregateCurrency = (metricName: string, showCents: boolean = false) =>
     aggregateMetricAvailable(metricName) ? formatCurrency(aggregateMetricValue(metricName), showCents) : "Unavailable";
   const formatAggregatePercent = (metricName: string) =>
@@ -183,6 +185,9 @@ export default function ExecutiveSummary() {
   const conversionRateLabel = aggregateMetricAvailable("clicks") ? "Click-Through CVR" : "Conversion Rate";
   const roiAvailable = aggregateMetricAvailable("roi");
   const roiValue = aggregateMetricValue("roi");
+  const funnelPathLabel = `${reachMetricLabels[reachMetricKey]} -> ${engagementMetricLabels[engagementMetricKey]} -> Conversions -> Revenue`;
+  const reachStageQuestion = reachMetricKey === "impressions" ? "Are enough people seeing the campaign?" : "Are enough people reaching the site?";
+  const engagementStageQuestion = engagementMetricKey === "clicks" ? "Are people clicking through?" : "Are people starting sessions?";
 
   return (
     <div className="min-h-screen bg-background">
@@ -313,10 +318,13 @@ export default function ExecutiveSummary() {
               {/* Marketing Funnel Visualization */}
               <Card className="bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-800 dark:to-blue-900/20">
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <BarChart3 className="w-5 h-5" />
-                    <span>Marketing Funnel Performance</span>
-                  </CardTitle>
+                  <div className="space-y-1">
+                    <CardTitle className="flex items-center space-x-2">
+                      <BarChart3 className="w-5 h-5" />
+                      <span>Marketing Funnel Performance</span>
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground/70">{funnelPathLabel}</p>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
@@ -329,6 +337,7 @@ export default function ExecutiveSummary() {
                           </div>
                           <div>
                             <div className="text-sm font-semibold text-orange-900 dark:text-orange-300 uppercase tracking-wide">Top of Funnel</div>
+                            <div className="text-xs text-orange-700 dark:text-orange-400 mt-1">{reachStageQuestion}</div>
                             <div className="text-2xl font-bold text-orange-900 dark:text-orange-100 mt-1">
                               {formatAggregateNumber(reachMetricKey)} {reachMetricLabels[reachMetricKey]}
                             </div>
@@ -361,6 +370,7 @@ export default function ExecutiveSummary() {
                           </div>
                           <div>
                             <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-300 uppercase tracking-wide">Mid Funnel</div>
+                            <div className="text-xs text-indigo-700 dark:text-indigo-400 mt-1">{engagementStageQuestion}</div>
                             <div className="text-2xl font-bold text-indigo-900 dark:text-indigo-100 mt-1">
                               {formatAggregateNumber(engagementMetricKey)} {engagementMetricLabels[engagementMetricKey]}
                             </div>
@@ -407,6 +417,7 @@ export default function ExecutiveSummary() {
                       <div className="bg-gradient-to-r from-purple-100 to-green-100 dark:from-purple-900/30 dark:to-green-900/30 rounded-lg p-6 border-2 border-purple-300 dark:border-purple-700">
                         <div className="text-center mb-4">
                           <div className="text-sm font-semibold text-purple-900 dark:text-purple-300 uppercase tracking-wide">Bottom of Funnel</div>
+                          <div className="text-xs text-purple-700 dark:text-purple-400 mt-1">Are visits becoming conversions and revenue?</div>
                         </div>
                         <div className="grid grid-cols-3 gap-4">
                           <div className="text-center">
@@ -417,7 +428,7 @@ export default function ExecutiveSummary() {
                             </div>
                             <div className="text-sm text-purple-700 dark:text-purple-400">Conversions</div>
                             <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                              {formatAggregateNumber("conversions")}
+                              {formatAggregateInteger("conversions")}
                             </div>
                           </div>
                           <div className="text-center border-l border-r border-border dark:border-slate-600">
@@ -458,7 +469,7 @@ export default function ExecutiveSummary() {
                         <span className="font-semibold">Campaign Story:</span> Connected sources show spend of <span className="font-bold text-blue-600 dark:text-blue-400">{formatAggregateCurrency("spend")}</span>,
                         <span className="font-bold text-orange-600 dark:text-orange-400">{formatAggregateNumber(reachMetricKey)}</span> {reachMetricLabels[reachMetricKey].toLowerCase()},
                         <span className="font-bold text-indigo-600 dark:text-indigo-400">{formatAggregateNumber(engagementMetricKey)}</span> {engagementMetricLabels[engagementMetricKey].toLowerCase()},
-                        <span className="font-bold text-purple-600 dark:text-purple-400">{formatAggregateNumber("conversions")}</span> conversions,
+                        <span className="font-bold text-purple-600 dark:text-purple-400">{formatAggregateInteger("conversions")}</span> conversions,
                         <span className="font-bold text-green-600 dark:text-green-400">{formatAggregateCurrency("revenue")}</span> revenue,
                         and ROI of <span className={`font-bold ${!roiAvailable ? 'text-muted-foreground' : roiValue >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{formatAggregatePercent("roi")}</span>.
                       </p>
@@ -503,7 +514,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-foreground mb-1">
-                      {formatAggregateNumber("conversions")}
+                      {formatAggregateInteger("conversions")}
                     </div>
                     <div className="flex items-center text-muted-foreground/70">
                       <span className="text-sm font-medium">CVR: {formatAggregatePercent("cvr")}</span>

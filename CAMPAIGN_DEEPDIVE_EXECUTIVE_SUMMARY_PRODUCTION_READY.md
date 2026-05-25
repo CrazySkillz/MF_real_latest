@@ -378,6 +378,7 @@ Completed:
 - Source-of-truth correction: the Executive Summary page now fetches `/api/campaigns/:id/outcome-totals` directly and uses `outcomeTotals.performanceSummary` for visible Executive Overview metrics, matching the proven connected-source aggregate consumed by the other Campaign DeepDive subsections.
 - Removed the Executive Summary period dropdown and fixed the page's aggregate request to the daily connected-source `90days` window so visible records are no longer changed by a local subsection date selector.
 - Funnel clarity correction: Marketing Funnel Performance now labels the active connected-source path and asks the business question each stage answers: whether enough people reached the campaign/site, whether they engaged through clicks or sessions, and whether visits became conversions and revenue.
+- User validation passed: Executive Overview conversion display now shows the exact connected-source count and regression coverage proves the value is not hard-coded.
 
 Files changed:
 
@@ -399,7 +400,7 @@ Why this is second:
 
 ### Commit 3: Health, Risk, And Trajectory
 
-Status: Not started.
+Status: Completed.
 
 Goal:
 
@@ -411,6 +412,33 @@ Scope:
 - Update risk assessment so GA4-only is not called a single advertising-platform risk.
 - Use compatible `metrics.performanceSummary` snapshots for trajectory only when available.
 - Add regression coverage for unavailable inputs, analytics-only sources, and incompatible snapshots.
+
+Root cause:
+
+- Health and risk received numeric zeroes for unavailable aggregate metrics, so missing CTR, ROAS, ROI, or CVR could be scored as poor performance instead of ignored as unavailable.
+- Historical trajectory used legacy `totalConversions` comparison snapshots and estimated revenue from the current revenue-per-conversion ratio, which could mix incompatible snapshot contracts.
+
+Completed:
+
+- Health scoring now uses only aggregate metrics marked available and normalizes the score across available weights.
+- Risk assessment now ignores unavailable ROI/ROAS instead of treating them as zero-value performance risks.
+- GA4-only analytics sources are not treated as a single advertising-platform concentration risk.
+- Trajectory is calculated only from compatible `metrics.performanceSummary` snapshots with matching aggregate versions and available revenue values.
+- Added helper and route regression coverage for unavailable inputs, GA4-only risk, and incompatible legacy trajectory inputs.
+
+Files changed:
+
+- `server/utils/executive-summary-helpers.ts`
+- `server/routes-oauth.ts`
+- `server/executive-summary-regression.test.ts`
+- `server/executive-summary-helpers-regression.test.ts`
+- `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md`
+
+Validation:
+
+- Passed: `npm test -- server/executive-summary-regression.test.ts server/executive-summary-helpers-regression.test.ts`
+- Passed: `npm run check`
+- Passed: `npm run build` after rerunning outside the sandbox because the first sandboxed Vite/esbuild build failed with `spawn EPERM`.
 
 Why this is third:
 
@@ -496,7 +524,7 @@ Executive Summary is production ready only when:
 
 ## Current Status
 
-Not production ready. Commits 1 and 2 are completed locally, but health/risk scoring, trajectory compatibility, recommendation gating, and refresh stability remain outstanding.
+Not production ready. Commits 1, 2, and 3 are completed, but recommendation gating and refresh stability remain outstanding.
 
 Proven:
 
@@ -504,7 +532,7 @@ Proven:
 - The other completed DeepDive subsections use the shared `/api/campaigns/:id/outcome-totals` and `performanceSummary` aggregate pattern.
 - Executive Summary still uses its existing endpoint, but Commit 1 now composes current metrics and source rows from the shared `performanceSummary` aggregate.
 - Commit 2 now makes the Executive Overview tab choose visible current metrics from `performanceSummary.totals` availability.
-- Executive Summary still has health/risk assumptions and recommendation assumptions that need later commits.
+- Commit 3 now makes health, risk, and trajectory use aggregate availability and compatible `performanceSummary` snapshots.
 - Commit 1 replaced the endpoint's `storage.getCampaign(id)` campaign lookup with the standard campaign access guard.
 - GA4-only campaigns are still at risk of showing paid-media recommendations until Commit 4 is completed.
 
@@ -519,6 +547,6 @@ Unverified:
 
 - Full deployed GA4-only behavior.
 - Live multi-platform behavior.
-- Complete historical trajectory behavior.
+- Complete historical trajectory behavior in deployed/live data.
 - Complete frontend regression coverage.
 - Future standalone platforms beyond the current shared aggregate contract.

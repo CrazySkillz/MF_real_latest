@@ -25247,10 +25247,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         revenueSources: executiveRevenueSources,
       });
       const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];
+      const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;
       const aggregateMetricValue = (metricName: string): number => {
         const metric = aggregateMetric(metricName);
         return metric?.available === true && metric?.value !== null ? parseNum(metric.value) : 0;
       };
+      const aggregateMetricValueOrNull = (metricName: string): number | null =>
+        aggregateMetricAvailable(metricName) ? aggregateMetricValue(metricName) : null;
       const mainAggregateSources = Array.isArray((performanceSummary as any)?.sources)
         ? (performanceSummary as any).sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
         : [];
@@ -25364,7 +25367,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cpa = aggregateMetricValue("cpa");
 
       // Health score from helper
-      const healthResult = calculateHealthScore({ roi, roas, ctr, cvr });
+      const healthResult = calculateHealthScore({
+        roi: aggregateMetricValueOrNull("roi"),
+        roas: aggregateMetricValueOrNull("roas"),
+        ctr: aggregateMetricValueOrNull("ctr"),
+        cvr: aggregateMetricValueOrNull("cvr"),
+      });
 
       // Platform performance breakdown
       const sourceMetric = (source: any, metricName: string) => parseNum(source?.metrics?.[metricName]);
@@ -25419,18 +25427,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let trendPercentage = 0;
       let hasHistoricalData = false;
 
-      if (comparisonData?.current && comparisonData?.previous) {
-        hasHistoricalData = true;
-        const currentRevenue = parseNum(comparisonData.current.totalConversions) * (totalRevenue / (totalConversions || 1));
-        const previousRevenue = parseNum(comparisonData.previous.totalConversions) * (totalRevenue / (totalConversions || 1));
-        trendPercentage = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
-        if (trendPercentage > 10) growthTrajectory = 'accelerating';
-        else if (trendPercentage < -10) growthTrajectory = 'declining';
-        else growthTrajectory = 'stable';
+      const snapshotPerformanceSummary = (snapshot: any) => snapshot?.metrics?.performanceSummary || null;
+      const snapshotMetricValue = (summary: any, metricName: string): number | null => {
+        const metric = summary?.totals?.[metricName];
+        return metric?.available === true && metric?.value !== null ? parseNum(metric.value) : null;
+      };
+      const currentSnapshotSummary = snapshotPerformanceSummary(comparisonData?.current);
+      const previousSnapshotSummary = snapshotPerformanceSummary(comparisonData?.previous);
+      const compatibleSnapshotHistory =
+        currentSnapshotSummary?.version &&
+        currentSnapshotSummary.version === previousSnapshotSummary?.version &&
+        currentSnapshotSummary.version === (performanceSummary as any)?.version;
+
+      if (compatibleSnapshotHistory) {
+        const currentRevenue = snapshotMetricValue(currentSnapshotSummary, "revenue");
+        const previousRevenue = snapshotMetricValue(previousSnapshotSummary, "revenue");
+        if (currentRevenue !== null && previousRevenue !== null && previousRevenue > 0) {
+          hasHistoricalData = true;
+          trendPercentage = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+          if (trendPercentage > 10) growthTrajectory = 'accelerating';
+          else if (trendPercentage < -10) growthTrajectory = 'declining';
+          else growthTrajectory = 'stable';
+        }
       }
 
       // Risk assessment from helper
-      const risk = generateRiskAssessment(platforms, platformsForDisplay, { roi, roas }, growthTrajectory, trendPercentage);
+      const risk = generateRiskAssessment(platforms, platformsForDisplay, {
+        roi: aggregateMetricValueOrNull("roi"),
+        roas: aggregateMetricValueOrNull("roas"),
+      }, growthTrajectory, trendPercentage);
 
       // CEO summary
       let ceoSummary = '';

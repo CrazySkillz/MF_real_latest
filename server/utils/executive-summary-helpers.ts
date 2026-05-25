@@ -54,37 +54,36 @@ export function calculateDiminishingReturns(
  * Weights: ROI 0-30, ROAS 0-25, CTR 0-20, CVR 0-25.
  */
 export function calculateHealthScore(metrics: {
-  roi: number;
-  roas: number;
-  ctr: number;
-  cvr: number;
+  roi: number | null;
+  roas: number | null;
+  ctr: number | null;
+  cvr: number | null;
 }) {
   let score = 0;
+  let availableWeight = 0;
   const factors: Array<{ factor: string; score: number; status: string }> = [];
+  const addFactor = (factor: string, value: number | null, weight: number, thresholds: Array<[number, number, string]>, fallback: number) => {
+    if (value === null || !Number.isFinite(value)) return;
+    availableWeight += weight;
+    const matched = thresholds.find(([min]) => value >= min);
+    const factorScore = matched ? matched[1] : fallback;
+    score += factorScore;
+    factors.push({ factor, score: factorScore, status: matched ? matched[2] : 'poor' });
+  };
 
   // ROI component (0-30)
-  if (metrics.roi >= 100) { score += 30; factors.push({ factor: 'ROI', score: 30, status: 'excellent' }); }
-  else if (metrics.roi >= 50) { score += 22; factors.push({ factor: 'ROI', score: 22, status: 'good' }); }
-  else if (metrics.roi >= 0) { score += 15; factors.push({ factor: 'ROI', score: 15, status: 'acceptable' }); }
-  else { score += 5; factors.push({ factor: 'ROI', score: 5, status: 'poor' }); }
+  addFactor('ROI', metrics.roi, 30, [[100, 30, 'excellent'], [50, 22, 'good'], [0, 15, 'acceptable']], 5);
 
   // ROAS component (0-25)
-  if (metrics.roas >= 3) { score += 25; factors.push({ factor: 'ROAS', score: 25, status: 'excellent' }); }
-  else if (metrics.roas >= 1.5) { score += 18; factors.push({ factor: 'ROAS', score: 18, status: 'good' }); }
-  else if (metrics.roas >= 1) { score += 10; factors.push({ factor: 'ROAS', score: 10, status: 'acceptable' }); }
-  else { score += 3; factors.push({ factor: 'ROAS', score: 3, status: 'poor' }); }
+  addFactor('ROAS', metrics.roas, 25, [[3, 25, 'excellent'], [1.5, 18, 'good'], [1, 10, 'acceptable']], 3);
 
   // CTR component (0-20)
-  if (metrics.ctr >= 3) { score += 20; factors.push({ factor: 'CTR', score: 20, status: 'excellent' }); }
-  else if (metrics.ctr >= 2) { score += 15; factors.push({ factor: 'CTR', score: 15, status: 'good' }); }
-  else if (metrics.ctr >= 1) { score += 10; factors.push({ factor: 'CTR', score: 10, status: 'acceptable' }); }
-  else { score += 3; factors.push({ factor: 'CTR', score: 3, status: 'poor' }); }
+  addFactor('CTR', metrics.ctr, 20, [[3, 20, 'excellent'], [2, 15, 'good'], [1, 10, 'acceptable']], 3);
 
   // CVR component (0-25)
-  if (metrics.cvr >= 5) { score += 25; factors.push({ factor: 'CVR', score: 25, status: 'excellent' }); }
-  else if (metrics.cvr >= 3) { score += 18; factors.push({ factor: 'CVR', score: 18, status: 'good' }); }
-  else if (metrics.cvr >= 1) { score += 10; factors.push({ factor: 'CVR', score: 10, status: 'acceptable' }); }
-  else { score += 3; factors.push({ factor: 'CVR', score: 3, status: 'poor' }); }
+  addFactor('CVR', metrics.cvr, 25, [[5, 25, 'excellent'], [3, 18, 'good'], [1, 10, 'acceptable']], 3);
+
+  score = availableWeight > 0 ? (score / availableWeight) * 100 : 0;
 
   let grade = 'F';
   if (score >= 90) grade = 'A';
@@ -101,7 +100,7 @@ export function calculateHealthScore(metrics: {
 export function generateRiskAssessment(
   platforms: any[],
   platformsForDisplay: any[],
-  metrics: { roi: number; roas: number },
+  metrics: { roi: number | null; roas: number | null },
   growthTrajectory: string | null,
   trendPercentage: number,
 ) {
@@ -128,10 +127,10 @@ export function generateRiskAssessment(
     riskLevel = 'medium';
   }
 
-  if (metrics.roi < 0) {
+  if (metrics.roi !== null && metrics.roi < 0) {
     riskFactors.push({ type: 'performance', message: 'Negative ROI - immediate optimization required' });
     riskLevel = 'high';
-  } else if (metrics.roas < 1) {
+  } else if (metrics.roas !== null && metrics.roas < 1) {
     riskFactors.push({ type: 'performance', message: 'ROAS below breakeven - review campaign strategy' });
     if (riskLevel === 'low') riskLevel = 'medium';
   }
@@ -149,7 +148,7 @@ export function generateRiskAssessment(
     if (platforms.length === 1 && platformsForDisplay.length === 1) reasons.push('single advertising platform');
     else if (platforms.length === 1 && platformsForDisplay.length > 1) reasons.push('advertising spend concentrated on one platform');
     if (platforms.length > 1 && platforms[0].spendShare > 70) reasons.push('high platform concentration');
-    if (metrics.roas < 1) reasons.push('ROAS below breakeven');
+    if (metrics.roas !== null && metrics.roas < 1) reasons.push('ROAS below breakeven');
     if (growthTrajectory === 'declining') reasons.push('declining performance trend');
     riskExplanation = `Moderate risk due to ${reasons.join(', ')}. Review recommended.`;
   } else {

@@ -36,6 +36,15 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain('const roi = aggregateMetricValue("roi");');
     expect(route).toContain('const ctr = aggregateMetricValue("ctr");');
     expect(route).toContain('const cvr = aggregateMetricValue("cvr");');
+    expect(route).toContain("const aggregateMetricAvailable = (metricName: string) => aggregateMetric(metricName)?.available === true;");
+    expect(route).toContain("const aggregateMetricValueOrNull = (metricName: string): number | null =>");
+    expect(route).toContain('roi: aggregateMetricValueOrNull("roi")');
+    expect(route).toContain('roas: aggregateMetricValueOrNull("roas")');
+    expect(route).toContain('ctr: aggregateMetricValueOrNull("ctr")');
+    expect(route).toContain('cvr: aggregateMetricValueOrNull("cvr")');
+    expect(route).toContain("const snapshotPerformanceSummary = (snapshot: any) => snapshot?.metrics?.performanceSummary || null;");
+    expect(route).toContain("currentSnapshotSummary.version === previousSnapshotSummary?.version");
+    expect(route).not.toContain("parseNum(comparisonData.current.totalConversions) * (totalRevenue / (totalConversions || 1))");
   });
 
   it("derives main platform rows from performanceSummary sources and excludes financial child inputs", () => {

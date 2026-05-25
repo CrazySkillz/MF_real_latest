@@ -142,7 +142,7 @@ export function generateRiskAssessment(
 
   let riskExplanation = '';
   if (riskLevel === 'low') {
-    riskExplanation = 'Campaign is performing well with minimal risk factors. Continue monitoring performance.';
+    riskExplanation = 'No significant risk factors identified from available connected-source inputs. Continue monitoring performance.';
   } else if (riskLevel === 'medium') {
     const reasons: string[] = [];
     if (platforms.length === 1 && platformsForDisplay.length === 1) reasons.push('single advertising platform');

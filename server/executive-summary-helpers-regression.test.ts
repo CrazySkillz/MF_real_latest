@@ -26,6 +26,7 @@ describe("Executive Summary helper availability guards", () => {
 
     expect(risk.riskLevel).toBe("low");
     expect(risk.riskFactors).toEqual([]);
+    expect(risk.riskExplanation).toBe("No significant risk factors identified from available connected-source inputs. Continue monitoring performance.");
     expect(risk.riskExplanation).not.toContain("single advertising platform");
     expect(risk.riskExplanation).not.toContain("ROAS below breakeven");
   });

@@ -269,9 +269,9 @@ export default function ExecutiveSummary() {
                           </span>
                         </div>
                       </div>
-                      {(executiveSummary as any).health.trajectory && (
-                        <div className="border-l border-border pl-6">
-                          <div className="text-sm text-muted-foreground/70 mb-1">Trajectory</div>
+                      <div className="border-l border-border pl-6">
+                        <div className="text-sm text-muted-foreground/70 mb-1">7-Day Snapshot Trajectory</div>
+                        {(executiveSummary as any).health.trajectory ? (
                           <div className="flex items-center space-x-2">
                             {(executiveSummary as any).health.trajectory === 'accelerating' && <TrendingUp className="w-5 h-5 text-green-600" />}
                             {(executiveSummary as any).health.trajectory === 'declining' && <TrendingDown className="w-5 h-5 text-red-600" />}
@@ -280,8 +280,11 @@ export default function ExecutiveSummary() {
                               {(executiveSummary as any).health.trajectory}
                             </span>
                           </div>
-                        </div>
-                      )}
+                        ) : (
+                          <div className="text-lg font-medium text-muted-foreground">Not enough history</div>
+                        )}
+                        <p className="text-xs text-muted-foreground/70 mt-1">Based on compatible aggregate snapshots, not the removed date selector.</p>
+                      </div>
                       <div className="border-l border-border pl-6">
                         <div className="text-sm text-muted-foreground/70 mb-1">Risk Level</div>
                         <Badge className={

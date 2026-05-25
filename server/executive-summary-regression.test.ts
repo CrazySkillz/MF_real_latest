@@ -92,6 +92,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(overview).toContain("{reachStageQuestion}");
     expect(overview).toContain("{engagementStageQuestion}");
     expect(overview).toContain("Are visits becoming conversions and revenue?");
+    expect(overview).toContain("7-Day Snapshot Trajectory");
+    expect(overview).toContain("Not enough history");
+    expect(overview).toContain("Based on compatible aggregate snapshots, not the removed date selector.");
     expect(overview).toContain("{formatAggregateNumber(reachMetricKey)} {reachMetricLabels[reachMetricKey]}");
     expect(overview).toContain("{formatAggregateNumber(engagementMetricKey)} {engagementMetricLabels[engagementMetricKey]}");
     expect(overview).toContain('{formatAggregatePercent("ctr")}');

@@ -422,8 +422,11 @@ Completed:
 
 - Health scoring now uses only aggregate metrics marked available and normalizes the score across available weights.
 - Risk assessment now ignores unavailable ROI/ROAS instead of treating them as zero-value performance risks.
+- Low-risk explanation now says no significant risk factors were identified from available connected-source inputs, rather than broadly claiming the campaign is performing well.
 - GA4-only analytics sources are not treated as a single advertising-platform concentration risk.
 - Trajectory is calculated only from compatible `metrics.performanceSummary` snapshots with matching aggregate versions and available revenue values.
+- The trajectory UI labels this as a 7-day snapshot trajectory and clarifies that it comes from compatible aggregate snapshots, not from the removed date selector.
+- New campaigns without enough compatible snapshot history show `Not enough history` instead of hiding the trajectory area.
 - Added helper and route regression coverage for unavailable inputs, GA4-only risk, and incompatible legacy trajectory inputs.
 
 Files changed:

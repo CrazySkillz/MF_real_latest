@@ -213,9 +213,17 @@ Target behavior:
 - Revenue, spend, ROI, ROAS, CPA, CPC, CTR, and CVR display unavailable when required aggregate inputs are missing.
 - Platform Performance lists only main Connected Platforms from `performanceSummary.sources`.
 - Financial child inputs do not appear as separate platform rows.
-- Campaign Health is based only on available aggregate inputs.
+- Campaign Grade and Health Score are not shown in the Executive Summary UI because the score/grade model is a product-defined heuristic, not a direct connected-source metric.
+- The narrative Executive Summary paragraph should not use hidden grade/score logic. It should state factual available connected-source ROI/ROAS inputs from the same `performanceSummary` aggregate used by the visible Executive Overview metrics, plus current Risk Level and 7-day snapshot trajectory state.
 - Risk Assessment distinguishes analytics-only source concentration from paid-media spend concentration.
 - KPI Progress and Benchmark Comparison continue to use campaign-level KPI/Benchmark records and should not be rewritten unless their current values are proven stale.
+
+Executive trajectory and risk rules:
+
+- Campaign Grade and Health Score should not render in the Executive Summary UI. The backend response may still include them to preserve the existing API contract, but the executive-facing surface should not ask users to interpret a heuristic score as an analytics fact.
+- The visible Executive Summary paragraph is generated in the page from the same `performanceSummary` object used by the ROI/ROAS cards. It should not render stale `ceoSummary` ROI/ROAS values from a different endpoint aggregate, and it should not say `performing exceptionally`, `strong results`, or `recommend increased investment` from hidden score/grade logic.
+- `7-Day Snapshot Trajectory` compares available revenue from compatible `metrics.performanceSummary` snapshots: latest snapshot versus roughly seven days earlier. `Accelerating` means revenue increased by more than 10%; `Declining` means revenue decreased by more than 10%; otherwise `Stable`. If compatible history is missing, the UI shows `Not enough history`.
+- Risk Level starts as `Low`. It becomes `High` when available `ROI < 0%`. It becomes `Medium` when available `ROAS < 1x`, one paid advertising platform is the only paid source, one paid platform has more than 70% spend share, or compatible trajectory is declining by more than 15%. GA4-only analytics is not a paid-platform concentration risk.
 
 Required regression coverage:
 
@@ -442,6 +450,8 @@ Validation:
 - Passed: `npm test -- server/executive-summary-regression.test.ts server/executive-summary-helpers-regression.test.ts`
 - Passed: `npm run check`
 - Passed: `npm run build` after rerunning outside the sandbox because the first sandboxed Vite/esbuild build failed with `spawn EPERM`.
+- Best live validation path: use a newly connected mock-live GA4 campaign to prove the initial Executive Summary state. Current connected-source metrics should populate immediately from GA4, while `7-Day Snapshot Trajectory` should show `Not enough history` until compatible `performanceSummary` snapshots exist for both the latest point and roughly seven days earlier. Existing mock campaigns can prove UI wiring, but they may already have legacy or seeded snapshot history that is less useful for validating the new-campaign trajectory state.
+- Timing rationale: Risk Level should populate immediately from current available connected-source inputs because it is a current-state risk assessment. Trajectory should use a 7-day snapshot window because 1-2 day comparisons are too noisy for an executive signal, while 30-day comparisons are too slow for an at-a-glance Executive Summary. Outstanding live validation remains: connect a new mock-live GA4 campaign and confirm current values and Risk Level populate immediately, while `7-Day Snapshot Trajectory` shows `Not enough history` until compatible snapshot history exists.
 
 Why this is third:
 
@@ -550,6 +560,7 @@ Unverified:
 
 - Full deployed GA4-only behavior.
 - Live multi-platform behavior.
-- Complete historical trajectory behavior in deployed/live data.
+- New mock-live GA4 validation for the initial no-history state: current metrics and Risk Level should populate immediately, while `7-Day Snapshot Trajectory` should show `Not enough history`.
+- Complete historical trajectory behavior in deployed/live data after compatible snapshots exist for the latest point and roughly seven days earlier.
 - Complete frontend regression coverage.
 - Future standalone platforms beyond the current shared aggregate contract.

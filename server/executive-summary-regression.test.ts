@@ -11,6 +11,8 @@ describe("campaign Executive Summary regression guard", () => {
 
     expect(route).toContain("const campaign = await ensureCampaignAccess(req as any, res as any, id);");
     expect(route).not.toContain("const campaign = await storage.getCampaign(id);");
+    expect(route).not.toContain("performing strongly with 1.93x ROAS");
+    expect(route).not.toContain("Recommend increasing LinkedIn");
     expect(route).toContain("const performanceSummary = buildPerformanceSummaryAggregate({");
     expect(route).toContain("const metaConnection = await storage.getMetaConnection(id).catch(() => null);");
     expect(route).toContain("if (metaConnection && !(metaConnection as any).spendOnly) {");
@@ -45,6 +47,17 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("const snapshotPerformanceSummary = (snapshot: any) => snapshot?.metrics?.performanceSummary || null;");
     expect(route).toContain("currentSnapshotSummary.version === previousSnapshotSummary?.version");
     expect(route).not.toContain("parseNum(comparisonData.current.totalConversions) * (totalRevenue / (totalConversions || 1))");
+
+    const summaryStart = route.indexOf("// CEO summary");
+    const summaryEnd = route.indexOf("// Recommendations from helper", summaryStart);
+    const summaryBlock = route.slice(summaryStart, summaryEnd);
+    expect(summaryBlock).not.toContain("healthResult.grade");
+    expect(summaryBlock).not.toContain("performing exceptionally");
+    expect(summaryBlock).not.toContain("recommend increased investment");
+    expect(summaryBlock).toContain('aggregateMetricAvailable("roi")');
+    expect(summaryBlock).toContain('aggregateMetricAvailable("roas")');
+    expect(summaryBlock).toContain("Risk level is ${risk.riskLevel}.");
+    expect(summaryBlock).toContain("7-day snapshot trajectory does not have enough compatible history yet.");
   });
 
   it("derives main platform rows from performanceSummary sources and excludes financial child inputs", () => {
@@ -83,6 +96,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];");
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");
     expect(page).toContain("aggregateMetricAvailable(metricName) ? Math.round(aggregateMetricValue(metricName)).toLocaleString() : \"Unavailable\";");
+    expect(page).toContain('if (aggregateMetricAvailable("roi")) executiveMetricParts.push(`ROI is ${formatAggregatePercent("roi")}`);');
+    expect(page).toContain('if (aggregateMetricAvailable("roas")) executiveMetricParts.push(`ROAS is ${formatAggregateRatio("roas")}`);');
+    expect(page).toContain("const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${executiveRiskLevel}. ${executiveTrajectorySummary}`;");
     expect(page).not.toContain("2,984");
     expect(page).not.toContain("2984");
     expect(page).toContain('const reachMetricKey = pickFirstAvailableMetric(["impressions", "users", "sessions"]);');
@@ -92,6 +108,13 @@ describe("campaign Executive Summary regression guard", () => {
     expect(overview).toContain("{reachStageQuestion}");
     expect(overview).toContain("{engagementStageQuestion}");
     expect(overview).toContain("Are visits becoming conversions and revenue?");
+    expect(overview).toContain("{executiveSummaryNarrative}");
+    expect(overview).not.toContain("{(executiveSummary as any).ceoSummary}");
+    expect(overview).not.toContain("Campaign Grade");
+    expect(overview).not.toContain("Health Score");
+    expect(overview).not.toContain("Weighted from available ROI, ROAS, CTR, and CVR inputs.");
+    expect(overview).not.toContain("health.grade");
+    expect(overview).not.toContain("health.score");
     expect(overview).toContain("7-Day Snapshot Trajectory");
     expect(overview).toContain("Not enough history");
     expect(overview).toContain("Based on compatible aggregate snapshots, not the removed date selector.");

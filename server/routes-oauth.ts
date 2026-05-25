@@ -24989,7 +24989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.query.demo === "1") {
         return res.json({
           health: { grade: "A", score: 82, trajectory: "accelerating" },
-          ceoSummary: "Campaign is performing strongly with 1.93x ROAS across all platforms. LinkedIn Ads driving highest-quality conversions at $182 average order value. Budget utilization at 72% with 28 days remaining. Recommend increasing LinkedIn budget allocation by 15% to capitalize on strong conversion momentum.",
+          ceoSummary: `${campaign.name}: Current connected-source metrics show ROI is 93.2% and ROAS is 1.9x. Risk level is low. 7-day snapshot trajectory is accelerating.`,
           metrics: {
             totalImpressions: 21000, advertisingImpressions: 12500, websitePageviews: 8500,
             totalClicks: 1310, advertisingClicks: 890, websiteClicks: 420,
@@ -25458,33 +25458,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }, growthTrajectory, trendPercentage);
 
       // CEO summary
-      let ceoSummary = '';
-      if (healthResult.grade === 'A' || healthResult.grade === 'B') {
-        ceoSummary = `${campaign.name} is performing ${healthResult.grade === 'A' ? 'exceptionally' : 'well'} with ${roi >= 0 ? 'strong' : 'positive'} ROI of ${roi.toFixed(1)}% and ROAS of ${roas.toFixed(1)}x. `;
-      } else if (healthResult.grade === 'C') {
-        ceoSummary = `${campaign.name} is showing acceptable performance with ROI of ${roi.toFixed(1)}% and ROAS of ${roas.toFixed(1)}x. `;
-      } else {
-        ceoSummary = `${campaign.name} requires attention with ${roi < 0 ? 'negative' : 'below-target'} ROI of ${roi.toFixed(1)}% and ROAS of ${roas.toFixed(1)}x. `;
-      }
-      if (topPlatform) {
-        if (topPlatform.roas >= 1.5) {
-          ceoSummary += `${topPlatform.name} delivering ${topPlatform.roas > 2 ? 'exceptional' : 'strong'} results (${topPlatform.roas.toFixed(1)}x ROAS). `;
-        } else if (topPlatform.roas >= 1) {
-          ceoSummary += `${topPlatform.name} showing moderate performance (${topPlatform.roas.toFixed(1)}x ROAS). `;
-        } else if (topPlatform.roas > 0) {
-          ceoSummary += `${topPlatform.name} underperforming at ${topPlatform.roas.toFixed(1)}x ROAS — optimization needed. `;
-        } else {
-          ceoSummary += `${topPlatform.name} showing no measurable return — revenue tracking may need configuration. `;
-        }
-      }
-      if (bottomPlatform && bottomPlatform.roas < 1.5) {
-        ceoSummary += `${bottomPlatform.name} underperforming and requires optimization. `;
-      } else if (growthTrajectory === 'accelerating') {
-        ceoSummary += `Campaign momentum growing - recommend increased investment. `;
-      } else if (growthTrajectory === 'declining') {
-        ceoSummary += `Performance trending downward - strategic review recommended. `;
-      }
-
+      const ceoMetricParts: string[] = [];
+      if (aggregateMetricAvailable("roi")) ceoMetricParts.push(`ROI is ${roi.toFixed(1)}%`);
+      if (aggregateMetricAvailable("roas")) ceoMetricParts.push(`ROAS is ${roas.toFixed(1)}x`);
+      const ceoMetricSummary = ceoMetricParts.length > 0
+        ? `Current connected-source metrics show ${ceoMetricParts.join(" and ")}.`
+        : `Current connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.`;
+      const ceoTrajectorySummary = growthTrajectory
+        ? `7-day snapshot trajectory is ${growthTrajectory}.`
+        : `7-day snapshot trajectory does not have enough compatible history yet.`;
+      const ceoSummary = `${campaign.name}: ${ceoMetricSummary} Risk level is ${risk.riskLevel}. ${ceoTrajectorySummary}`;
       // Recommendations from helper
       const recommendations = generateRecommendations(platforms, totalSpend, roas, roi, growthTrajectory);
 

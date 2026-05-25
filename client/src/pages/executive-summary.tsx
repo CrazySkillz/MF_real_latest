@@ -185,6 +185,18 @@ export default function ExecutiveSummary() {
   const conversionRateLabel = aggregateMetricAvailable("clicks") ? "Click-Through CVR" : "Conversion Rate";
   const roiAvailable = aggregateMetricAvailable("roi");
   const roiValue = aggregateMetricValue("roi");
+  const executiveMetricParts: string[] = [];
+  if (aggregateMetricAvailable("roi")) executiveMetricParts.push(`ROI is ${formatAggregatePercent("roi")}`);
+  if (aggregateMetricAvailable("roas")) executiveMetricParts.push(`ROAS is ${formatAggregateRatio("roas")}`);
+  const executiveMetricSummary = executiveMetricParts.length > 0
+    ? `Current connected-source metrics show ${executiveMetricParts.join(" and ")}.`
+    : "Current connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.";
+  const executiveRiskLevel = String((executiveSummary as any)?.risk?.level || "unavailable");
+  const executiveTrajectory = (executiveSummary as any)?.health?.trajectory;
+  const executiveTrajectorySummary = executiveTrajectory
+    ? `7-day snapshot trajectory is ${executiveTrajectory}.`
+    : "7-day snapshot trajectory does not have enough compatible history yet.";
+  const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${executiveRiskLevel}. ${executiveTrajectorySummary}`;
   const funnelPathLabel = `${reachMetricLabels[reachMetricKey]} -> ${engagementMetricLabels[engagementMetricKey]} -> Conversions -> Revenue`;
   const reachStageQuestion = reachMetricKey === "impressions" ? "Are enough people seeing the campaign?" : "Are enough people reaching the site?";
   const engagementStageQuestion = engagementMetricKey === "clicks" ? "Are people clicking through?" : "Are people starting sessions?";
@@ -243,33 +255,12 @@ export default function ExecutiveSummary() {
 
             {/* Executive Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
-              {/* Campaign Health & Grade */}
+              {/* Campaign Trajectory & Risk */}
               <Card className="mb-6">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-6">
-                      <div className="text-center">
-                        <div className="text-sm text-muted-foreground/70 mb-1">Campaign Grade</div>
-                        <div className={`text-6xl font-bold ${
-                          (executiveSummary as any).health.grade === 'A' ? 'text-green-600' :
-                          (executiveSummary as any).health.grade === 'B' ? 'text-blue-600' :
-                          (executiveSummary as any).health.grade === 'C' ? 'text-yellow-600' :
-                          (executiveSummary as any).health.grade === 'D' ? 'text-orange-600' :
-                          'text-red-600'
-                        }`}>
-                          {(executiveSummary as any).health.grade}
-                        </div>
-                      </div>
-                      <div className="border-l border-border pl-6">
-                        <div className="text-sm text-muted-foreground/70 mb-2">Health Score</div>
-                        <div className="flex items-center space-x-3">
-                          <Progress value={(executiveSummary as any).health.score} className="w-40" />
-                          <span className="text-2xl font-bold text-foreground">
-                            {(executiveSummary as any).health.score}/100
-                          </span>
-                        </div>
-                      </div>
-                      <div className="border-l border-border pl-6">
+                      <div>
                         <div className="text-sm text-muted-foreground/70 mb-1">7-Day Snapshot Trajectory</div>
                         {(executiveSummary as any).health.trajectory ? (
                           <div className="flex items-center space-x-2">
@@ -310,7 +301,7 @@ export default function ExecutiveSummary() {
                       <div>
                         <div className="text-sm font-semibold text-foreground mb-1">Executive Summary</div>
                         <p className="text-sm text-foreground/80/60 leading-relaxed">
-                          {(executiveSummary as any).ceoSummary}
+                          {executiveSummaryNarrative}
                         </p>
                       </div>
                     </div>

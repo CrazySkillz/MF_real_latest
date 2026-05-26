@@ -234,6 +234,35 @@ export default function ExecutiveSummary() {
   const executiveKpiProgress = Array.isArray((executiveSummary as any).kpiProgress)
     ? (executiveSummary as any).kpiProgress.filter((kpi: any) => resolveKpiAggregateMetric(kpi))
     : [];
+  const executiveBenchmarkComparison = Array.isArray((executiveSummary as any).benchmarkComparison)
+    ? (executiveSummary as any).benchmarkComparison
+      .map((bm: any) => {
+        const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);
+        if (!aggregateBenchmarkMetric) return null;
+        const yours = aggregateMetricValue(aggregateBenchmarkMetric);
+        const benchmark = Number(bm.benchmark) || 0;
+        const lowerIsBetter = lowerIsBetterKpiMetrics.has(aggregateBenchmarkMetric);
+        const deltaPct = benchmark > 0
+          ? lowerIsBetter
+            ? ((benchmark - yours) / benchmark) * 100
+            : ((yours - benchmark) / benchmark) * 100
+          : 0;
+        const progressRatio = benchmark > 0
+          ? lowerIsBetter
+            ? (yours > 0 ? benchmark / yours : 0)
+            : yours / benchmark
+          : 0;
+        const progressPct = progressRatio * 100;
+        return {
+          ...bm,
+          aggregateMetric: aggregateBenchmarkMetric,
+          yours,
+          delta: `${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%`,
+          status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind',
+        };
+      })
+      .filter(Boolean)
+    : [];
   const formatKpiValue = (metricName: string | null, value: number, unit: string = "") => {
     if (metricName && ["revenue", "spend", "cpa", "cpc", "cpm"].includes(metricName)) return formatCurrency(value, metricName !== "revenue" && metricName !== "spend");
     if (metricName && ["roi", "ctr", "cvr"].includes(metricName)) return formatPct(value);
@@ -646,7 +675,7 @@ export default function ExecutiveSummary() {
               )}
 
               {/* Benchmark Comparison */}
-              {(executiveSummary as any).benchmarkComparison && (executiveSummary as any).benchmarkComparison.length > 0 && (
+              {executiveBenchmarkComparison.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
@@ -656,7 +685,7 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {(executiveSummary as any).benchmarkComparison.map((bm: any, index: number) => (
+                      {executiveBenchmarkComparison.map((bm: any, index: number) => (
                         <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-border">
                           <div className="flex items-center space-x-3">
                             <div className={`w-2 h-8 rounded-full ${bm.status === 'on_track' ? 'bg-green-500' : bm.status === 'needs_attention' ? 'bg-yellow-500' : 'bg-red-500'}`} />
@@ -669,13 +698,13 @@ export default function ExecutiveSummary() {
                             <div className="text-right">
                               <div className="text-xs text-muted-foreground">Yours</div>
                               <div className="text-sm font-semibold text-foreground">
-                                {bm.unit === '$' ? `$${bm.yours.toFixed(2)}` : bm.unit === '%' ? `${formatPct(bm.yours)}` : `${bm.yours.toFixed(2)}${bm.unit}`}
+                                {formatKpiValue(bm.aggregateMetric, bm.yours, bm.unit)}
                               </div>
                             </div>
                             <div className="text-right">
                               <div className="text-xs text-muted-foreground">Benchmark</div>
                               <div className="text-sm font-semibold text-muted-foreground/70">
-                                {bm.unit === '$' ? `$${bm.benchmark.toFixed(2)}` : bm.unit === '%' ? `${formatPct(bm.benchmark)}` : `${bm.benchmark.toFixed(2)}${bm.unit}`}
+                                {formatKpiValue(bm.aggregateMetric, bm.benchmark, bm.unit)}
                               </div>
                             </div>
                             <Badge className={bm.status === 'on_track' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : bm.status === 'needs_attention' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'}>

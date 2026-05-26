@@ -121,6 +121,10 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const resolveKpiAggregateMetric = (kpi: any): string | null => {");
     expect(page).toContain("const executiveKpiProgress = Array.isArray((executiveSummary as any).kpiProgress)");
     expect(page).toContain("? (executiveSummary as any).kpiProgress.filter((kpi: any) => resolveKpiAggregateMetric(kpi))");
+    expect(page).toContain("const executiveBenchmarkComparison = Array.isArray((executiveSummary as any).benchmarkComparison)");
+    expect(page).toContain("const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);");
+    expect(page).toContain("const yours = aggregateMetricValue(aggregateBenchmarkMetric);");
+    expect(page).toContain("status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind'");
     expect(page).toContain("if (!aggregateKpiMetric) return null;");
     expect(page).toContain("const current = aggregateMetricValue(aggregateKpiMetric);");
     expect(page).not.toContain("Number(kpi.current) || 0");
@@ -132,6 +136,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("targetDeltaPct >= -5 ? 'bg-blue-500' : 'bg-red-500';");
     expect(page).toContain("{formatKpiValue(aggregateKpiMetric, current, kpi.unit)}");
     expect(page).toContain('<Progress value={pct} className="h-2" indicatorClassName={barColor} />');
+    expect(page).toContain("{executiveBenchmarkComparison.map((bm: any, index: number) => (");
+    expect(page).toContain("{formatKpiValue(bm.aggregateMetric, bm.yours, bm.unit)}");
+    expect(page).toContain("{formatKpiValue(bm.aggregateMetric, bm.benchmark, bm.unit)}");
     expect(page).toContain("bm.status === 'on_track' ? 'bg-green-500' : bm.status === 'needs_attention' ? 'bg-yellow-500' : 'bg-red-500'");
     expect(page).toContain("bm.status === 'on_track' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : bm.status === 'needs_attention' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'");
     expect(page).not.toContain("const pct = kpi.pctComplete || (kpi.target > 0 ? Math.min((kpi.current / kpi.target) * 100, 100) : 0);");

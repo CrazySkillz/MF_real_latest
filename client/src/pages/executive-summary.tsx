@@ -307,6 +307,9 @@ export default function ExecutiveSummary() {
     { label: "7-day trajectory", status: executiveTrajectory ? "checked" : "not_enough_history", detail: executiveTrajectory ? `${executiveTrajectory}${(executiveSummary as any)?.health?.trendPercentage ? ` (${Number((executiveSummary as any).health.trendPercentage).toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },
     { label: "Budget pacing", status: "separate_section", detail: "Handled in Budget & Financial Analysis until a shared pacing signal is available here" },
   ];
+  const visibleRiskCheckedInputs = riskCheckedInputs.filter((input) =>
+    input.status !== "not_applicable" && input.status !== "separate_section"
+  );
   const formatKpiValue = (metricName: string | null, value: number, unit: string = "") => {
     if (metricName && ["revenue", "spend", "cpa", "cpc", "cpm"].includes(metricName)) return formatCurrency(value, metricName !== "revenue" && metricName !== "spend");
     if (metricName && ["roi", "ctr", "cvr"].includes(metricName)) return formatPct(value);
@@ -798,11 +801,11 @@ export default function ExecutiveSummary() {
                       ))}
                     </div>
                   )}
-                  {riskCheckedInputs.length > 0 && (
+                  {visibleRiskCheckedInputs.length > 0 && (
                     <div className="mt-5 border-t pt-4">
                       <div className="mb-3 text-sm font-medium text-foreground">Checked inputs</div>
                       <div className="grid gap-2 md:grid-cols-2">
-                        {riskCheckedInputs.map((input: any, index: number) => (
+                        {visibleRiskCheckedInputs.map((input: any, index: number) => (
                           <div key={index} className="rounded-md border p-3">
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-sm font-medium">{input.label}</span>

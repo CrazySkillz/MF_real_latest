@@ -140,6 +140,10 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const displayedRiskFactors = [");
     expect(page).toContain('detail: aggregateMetricAvailable("roi") ? formatAggregatePercent("roi") : aggregateMetricReason("roi")');
     expect(page).toContain('detail: aggregateMetricAvailable("roas") ? formatAggregateRatio("roas") : aggregateMetricReason("roas")');
+    expect(page).toContain("const visibleRiskCheckedInputs = riskCheckedInputs.filter((input) =>");
+    expect(page).toContain('input.status !== "not_applicable" && input.status !== "separate_section"');
+    expect(page).toContain("{visibleRiskCheckedInputs.length > 0 && (");
+    expect(page).toContain("{visibleRiskCheckedInputs.map((input: any, index: number) => (");
     expect(page).not.toContain("const riskCheckedInputs = Array.isArray((executiveSummary as any)?.risk?.checkedInputs)");
     expect(page).not.toContain("(executiveSummary as any).risk.factors.length === 0");
     expect(page).not.toContain("(executiveSummary as any).risk.factors.map");

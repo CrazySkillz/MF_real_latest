@@ -3184,6 +3184,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/benchmarks`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaign.id, "executive-summary"] });
       toast({
         title: "Benchmark Created",
         description: "Your benchmark has been successfully created.",
@@ -3209,6 +3210,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/benchmarks`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaign.id, "executive-summary"] });
       toast({
         title: "Benchmark Updated",
         description: "Your benchmark has been successfully updated.",
@@ -3234,6 +3236,7 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/benchmarks`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaign.id, "executive-summary"] });
       toast({
         title: "Benchmark Deleted",
         description: "Your benchmark has been successfully deleted.",

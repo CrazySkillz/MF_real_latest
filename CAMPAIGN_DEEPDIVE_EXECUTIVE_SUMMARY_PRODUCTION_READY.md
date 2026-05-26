@@ -217,7 +217,7 @@ Target behavior:
 - Campaign Grade and Health Score are not shown in the Executive Summary UI because the score/grade model is a product-defined heuristic, not a direct connected-source metric.
 - The narrative Executive Summary paragraph should not use hidden grade/score logic. It should state factual available connected-source ROI/ROAS inputs from the same `performanceSummary` aggregate used by the visible Executive Overview metrics, plus current Risk Level and 7-day snapshot trajectory state.
 - Risk Assessment distinguishes analytics-only source concentration from paid-media spend concentration.
-- KPI Progress continues to list campaign-level KPI records, but mapped current values should use live `performanceSummary.totals` when the KPI metric/name maps to an available connected-source aggregate metric. Benchmark Comparison continues to use campaign-level Benchmark records unless a traced bug requires a narrow fix.
+- KPI Progress and Benchmark Comparison use campaign-level records for rows and targets, but current values must come from mapped live `performanceSummary.totals` aggregate metrics. Unmapped or unavailable current values are excluded from Executive Summary instead of falling back to saved current snapshots.
 
 Executive trajectory and risk rules:
 
@@ -366,7 +366,7 @@ Scope:
 - Render aggregate-backed metrics and unavailable states.
 - Make the funnel source-capability aware.
 - Make GA4-only campaigns show web analytics/outcome metrics instead of paid-media assumptions.
-- Keep KPI Progress and Benchmark Comparison stable unless a traced bug requires a narrow fix; KPI Progress current values have a traced stale-source issue and should use the shared aggregate when a KPI maps to an available aggregate metric.
+- Keep KPI Progress and Benchmark Comparison stable unless a traced bug requires a narrow fix; traced stale-source issues now require both sections to use the shared aggregate for current values when records map to available aggregate metrics.
 - Add regression coverage for GA4-only unavailable paid-media metrics and multi-source available metrics.
 
 Root cause:
@@ -380,7 +380,7 @@ Completed:
 - Added frontend aggregate availability helpers for the Executive Overview tab.
 - Switched the top funnel, mid funnel, bottom funnel, and key metric cards to render aggregate-backed available values or `Unavailable`; the separate Campaign Story paragraph has been removed from the UI.
 - GA4-only campaigns now prefer web analytics metrics such as users or sessions when paid-media impressions or clicks are unavailable.
-- Left KPI Progress, Benchmark Comparison, health, risk, and Strategic Recommendations unchanged in the initial Overview commit; KPI Progress was later corrected after stale saved values were traced.
+- Left KPI Progress, Benchmark Comparison, health, risk, and Strategic Recommendations unchanged in the initial Overview commit; KPI Progress and Benchmark Comparison were later corrected after stale saved current values were traced.
 - Added regression coverage that proves the Overview tab uses `performanceSummary.totals` availability and no longer renders the legacy hard-coded impressions, clicks, or revenue expressions.
 - Follow-up root cause: the Overview tab was reading the aggregate correctly, but `/api/campaigns/:id/executive-summary` still prepared GA4 and financial aggregate inputs with a simpler path than `/api/campaigns/:id/outcome-totals`. That caused users, sessions, conversions, revenue, ROAS, and ROI to diverge from the shared DeepDive aggregate source truth.
 - Follow-up completed: Executive Summary now resolves GA4 current values through the same GA4 source-truth path, keeps persisted GA4 daily rows as fallback, and uses to-date spend/revenue financial provenance when building the aggregate.
@@ -393,15 +393,18 @@ Completed:
 - Narrative correction: the visible Executive Summary paragraph now renders factual ROI/ROAS from the same `performanceSummary` aggregate used by the visible metric cards, plus Risk Level and 7-day snapshot trajectory state, instead of rendering stale endpoint `ceoSummary` values.
 - UI simplification: the Campaign Story paragraph was removed because it duplicated narrative, funnel, and key metric values.
 - UI simplification: the Platform Performance card was removed because it duplicated the dedicated Platform Comparison subsection and could show misleading paid-media-style row status labels for GA4-only campaigns.
-- KPI Progress source-of-truth correction: mapped KPI values now use the same live `performanceSummary.totals` aggregate as the visible Executive Summary metric cards. Saved KPI progress/current values remain as fallback for unmapped or unavailable KPI metrics.
+- KPI Progress source-of-truth correction: KPI current values now use only the same live `performanceSummary.totals` aggregate as the visible Executive Summary metric cards. Unmapped or unavailable KPI current values are excluded from Executive Summary KPI Progress instead of silently falling back to saved KPI progress/current values.
 - KPI Progress rendering correction: the Executive Summary page now recalculates mapped KPI current values, progress percentages, and statuses from the same page-level `performanceSummary` object used by the visible metric cards, so it cannot drift from `/api/campaigns/:id/outcome-totals`.
 - KPI Progress UI correction: Executive Summary KPI progress bars and status labels now follow the campaign-level KPI status scheme: `Above Target` in green when more than 5% above target, `On Track` in blue when within +/-5% of target, and `Below Target` in red when more than 5% below target. Priority badges such as `medium` no longer render beside KPI names.
 - KPI Progress freshness correction: campaign-level KPI create, update, and delete actions now invalidate the campaign Executive Summary query so Executive Summary KPI Progress refetches the campaign KPI list/targets after KPI changes in the same app session.
-- KPI Progress stale-history correction: when saved progress history is used as fallback, the endpoint now reads the newest progress row from the current newest-first storage ordering instead of the oldest row.
+- Benchmark Comparison source-of-truth correction: campaign-level Benchmark records now define Executive Summary Benchmark Comparison rows and targets, but `Yours` current values use only mapped live `performanceSummary.totals` aggregate values. Unmapped or unavailable benchmark current values are excluded instead of falling back to saved Benchmark `currentValue` snapshots.
+- Benchmark Comparison freshness correction: campaign-level Benchmark create, update, and delete actions now invalidate the campaign Executive Summary query so Benchmark Comparison refetches the campaign Benchmark list/targets after Benchmark changes in the same app session.
+- KPI Progress saved-history correction was superseded by removing saved progress/current fallback reads from Executive Summary KPI Progress.
 
 Files changed:
 
 - `client/src/pages/executive-summary.tsx`
+- `client/src/pages/campaign-detail.tsx`
 - `server/executive-summary-regression.test.ts`
 - `ARCHITECTURE_USER_JOURNEY.md`
 - `GA4/README.md`
@@ -462,10 +465,11 @@ Validation:
 - Passed: `npm run check`
 - Passed: `npm run build` after rerunning outside the sandbox because the first sandboxed Vite/esbuild build failed with `spawn EPERM`.
 - Latest UI simplification validation passed with the same focused regression, TypeScript, whitespace, and production build checks. The regression now asserts that Campaign Grade, Health Score, Campaign Story, Platform Performance, Website Analytics Only, and row-level paid-media status labels do not render in Executive Overview.
-- KPI Progress aggregate-source regression now asserts mapped KPI aliases such as Total Users, Revenue, Total Conversions, and ROAS resolve to `performanceSummary.totals`, and saved progress fallback uses the newest progress row.
+- KPI Progress aggregate-source regression now asserts mapped KPI aliases such as Total Users, Revenue, Total Conversions, and ROAS resolve to `performanceSummary.totals`, and saved progress/current fallback reads are not used.
 - KPI Progress frontend regression now asserts the rendered KPI current value/status path uses page-level aggregate values instead of stale `executiveSummary.kpiProgress` current/status fields for mapped KPI metrics.
 - KPI Progress UI regression now asserts Executive Summary uses campaign-level KPI status labels and red/blue/green progress bar colors, and does not render KPI priority badges beside metric names.
 - KPI Progress freshness regression now asserts the Executive Summary endpoint reads campaign-level KPIs through `storage.getCampaignKPIs(id)` and campaign-level KPI create/update/delete success handlers invalidate the campaign Executive Summary query.
+- Benchmark Comparison regression now asserts the Executive Summary endpoint reads campaign-level Benchmarks through `storage.getCampaignBenchmarks(id)`, uses only mapped aggregate values for `Yours`, does not read saved Benchmark `currentValue`, and campaign-level Benchmark create/update/delete success handlers invalidate the campaign Executive Summary query.
 - Best live validation path: use a newly connected mock-live GA4 campaign to prove the initial Executive Summary state. Current connected-source metrics should populate immediately from GA4, while `7-Day Snapshot Trajectory` should show `Not enough history` until compatible `performanceSummary` snapshots exist for both the latest point and roughly seven days earlier. Existing mock campaigns can prove UI wiring, but they may already have legacy or seeded snapshot history that is less useful for validating the new-campaign trajectory state.
 - Timing rationale: Risk Level should populate immediately from current available connected-source inputs because it is a current-state risk assessment. Trajectory should use a 7-day snapshot window because 1-2 day comparisons are too noisy for an executive signal, while 30-day comparisons are too slow for an at-a-glance Executive Summary. Outstanding live validation remains: connect a new mock-live GA4 campaign and confirm current values and Risk Level populate immediately, while `7-Day Snapshot Trajectory` shows `Not enough history` until compatible snapshot history exists.
 

@@ -25297,13 +25297,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const kpis = await storage.getCampaignKPIs(id);
         for (const kpi of kpis) {
-          const progress = await storage.getKPIProgress(kpi.id);
-          const latestProgress = progress.length > 0 ? progress[0] : null;
           const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
-          const currentValue = aggregateKpiMetric ? aggregateMetricValue(aggregateKpiMetric) :
-            latestProgress ? parseNum(latestProgress.value) : parseNum(kpi.currentValue);
+          if (!aggregateKpiMetric) continue;
+          const currentValue = aggregateMetricValue(aggregateKpiMetric);
           const targetValue = parseNum(kpi.targetValue);
-          const lowerIsBetter = aggregateKpiMetric ? lowerIsBetterKpiMetrics.has(aggregateKpiMetric) : false;
+          const lowerIsBetter = lowerIsBetterKpiMetrics.has(aggregateKpiMetric);
           const progressRatio = targetValue > 0
             ? lowerIsBetter
               ? (currentValue > 0 ? targetValue / currentValue : 0)
@@ -25335,9 +25333,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const benchmarks = await storage.getCampaignBenchmarks(id);
         for (const bm of benchmarks) {
-          const currentVal = parseNum(bm.currentValue);
+          const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);
+          if (!aggregateBenchmarkMetric) continue;
+          const currentVal = aggregateMetricValue(aggregateBenchmarkMetric);
           const targetVal = parseNum(bm.benchmarkValue);
-          const delta = targetVal > 0 ? ((currentVal - targetVal) / targetVal) * 100 : 0;
+          const lowerIsBetter = lowerIsBetterKpiMetrics.has(aggregateBenchmarkMetric);
+          const delta = targetVal > 0
+            ? lowerIsBetter
+              ? ((targetVal - currentVal) / targetVal) * 100
+              : ((currentVal - targetVal) / targetVal) * 100
+            : 0;
 
           benchmarkComparison.push({
             metric: bm.name,
@@ -25345,7 +25350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             benchmark: targetVal,
             unit: bm.unit || '',
             delta: `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`,
-            status: currentVal >= targetVal ? 'above' : 'below',
+            status: delta >= -5 ? 'above' : 'below',
             category: bm.category || '',
           });
         }

@@ -231,6 +231,9 @@ export default function ExecutiveSummary() {
     return null;
   };
   const lowerIsBetterKpiMetrics = new Set(["cpa", "cpc", "cpm"]);
+  const executiveKpiProgress = Array.isArray((executiveSummary as any).kpiProgress)
+    ? (executiveSummary as any).kpiProgress.filter((kpi: any) => resolveKpiAggregateMetric(kpi))
+    : [];
   const formatKpiValue = (metricName: string | null, value: number, unit: string = "") => {
     if (metricName && ["revenue", "spend", "cpa", "cpc", "cpm"].includes(metricName)) return formatCurrency(value, metricName !== "revenue" && metricName !== "spend");
     if (metricName && ["roi", "ctr", "cvr"].includes(metricName)) return formatPct(value);
@@ -583,7 +586,7 @@ export default function ExecutiveSummary() {
               </div>
 
               {/* KPI Progress */}
-              {(executiveSummary as any).kpiProgress && (executiveSummary as any).kpiProgress.length > 0 && (
+              {executiveKpiProgress.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
@@ -593,11 +596,12 @@ export default function ExecutiveSummary() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {(executiveSummary as any).kpiProgress.map((kpi: any, index: number) => {
+                      {executiveKpiProgress.map((kpi: any, index: number) => {
                         const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
-                        const current = aggregateKpiMetric ? aggregateMetricValue(aggregateKpiMetric) : Number(kpi.current) || 0;
+                        if (!aggregateKpiMetric) return null;
+                        const current = aggregateMetricValue(aggregateKpiMetric);
                         const target = Number(kpi.target) || 0;
-                        const lowerIsBetter = aggregateKpiMetric ? lowerIsBetterKpiMetrics.has(aggregateKpiMetric) : false;
+                        const lowerIsBetter = lowerIsBetterKpiMetrics.has(aggregateKpiMetric);
                         const targetDeltaPct = target > 0
                           ? lowerIsBetter
                             ? ((target - current) / target) * 100

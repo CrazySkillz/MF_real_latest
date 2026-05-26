@@ -59,6 +59,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);");
     expect(route).toContain("if (!aggregateBenchmarkMetric) continue;");
     expect(route).toContain("const currentVal = aggregateMetricValue(aggregateBenchmarkMetric);");
+    expect(route).toContain("const progressPct = progressRatio * 100;");
+    expect(route).toContain("status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind'");
     expect(route).not.toContain("parseNum(bm.currentValue)");
     expect(route).toContain("const snapshotPerformanceSummary = (snapshot: any) => snapshot?.metrics?.performanceSummary || null;");
     expect(route).toContain("currentSnapshotSummary.version === previousSnapshotSummary?.version");
@@ -130,6 +132,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("targetDeltaPct >= -5 ? 'bg-blue-500' : 'bg-red-500';");
     expect(page).toContain("{formatKpiValue(aggregateKpiMetric, current, kpi.unit)}");
     expect(page).toContain('<Progress value={pct} className="h-2" indicatorClassName={barColor} />');
+    expect(page).toContain("bm.status === 'on_track' ? 'bg-green-500' : bm.status === 'needs_attention' ? 'bg-yellow-500' : 'bg-red-500'");
+    expect(page).toContain("bm.status === 'on_track' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : bm.status === 'needs_attention' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'");
     expect(page).not.toContain("const pct = kpi.pctComplete || (kpi.target > 0 ? Math.min((kpi.current / kpi.target) * 100, 100) : 0);");
     expect(page).not.toContain("{kpi.status.replace('_', ' ')}");
     expect(page).not.toContain("{kpi.priority}");

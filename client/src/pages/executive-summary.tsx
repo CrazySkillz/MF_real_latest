@@ -659,7 +659,7 @@ export default function ExecutiveSummary() {
                       {(executiveSummary as any).benchmarkComparison.map((bm: any, index: number) => (
                         <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-border">
                           <div className="flex items-center space-x-3">
-                            <div className={`w-2 h-8 rounded-full ${bm.status === 'above' ? 'bg-green-500' : 'bg-red-500'}`} />
+                            <div className={`w-2 h-8 rounded-full ${bm.status === 'on_track' ? 'bg-green-500' : bm.status === 'needs_attention' ? 'bg-yellow-500' : 'bg-red-500'}`} />
                             <div>
                               <div className="text-sm font-medium text-foreground">{bm.metric}</div>
                               {bm.category && <div className="text-xs text-muted-foreground">{bm.category}</div>}
@@ -678,7 +678,7 @@ export default function ExecutiveSummary() {
                                 {bm.unit === '$' ? `$${bm.benchmark.toFixed(2)}` : bm.unit === '%' ? `${formatPct(bm.benchmark)}` : `${bm.benchmark.toFixed(2)}${bm.unit}`}
                               </div>
                             </div>
-                            <Badge className={bm.status === 'above' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'}>
+                            <Badge className={bm.status === 'on_track' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : bm.status === 'needs_attention' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'}>
                               {bm.delta}
                             </Badge>
                           </div>

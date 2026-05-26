@@ -25343,6 +25343,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? ((targetVal - currentVal) / targetVal) * 100
               : ((currentVal - targetVal) / targetVal) * 100
             : 0;
+          const progressRatio = targetVal > 0
+            ? lowerIsBetter
+              ? (currentVal > 0 ? targetVal / currentVal : 0)
+              : currentVal / targetVal
+            : 0;
+          const progressPct = progressRatio * 100;
 
           benchmarkComparison.push({
             metric: bm.name,
@@ -25350,7 +25356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             benchmark: targetVal,
             unit: bm.unit || '',
             delta: `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`,
-            status: delta >= -5 ? 'above' : 'below',
+            status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind',
             category: bm.category || '',
           });
         }

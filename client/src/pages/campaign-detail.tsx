@@ -1066,6 +1066,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaign.id, "executive-summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       setShowCreateDialog(false);
       setKpiCalculationConfig(null);
@@ -1107,6 +1108,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaign.id, "executive-summary"] });
       toast({
         title: "KPI Deleted",
         description: "The KPI has been successfully deleted.",
@@ -1129,6 +1131,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaign.id, "executive-summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       setShowEditDialog(false);
       setEditingKPI(null);

@@ -49,6 +49,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain('totalrevenue: "revenue"');
     expect(route).toContain('totalconversions: "conversions"');
     expect(route).toContain('roas: "roas"');
+    expect(route).toContain("const kpis = await storage.getCampaignKPIs(id);");
     expect(route).toContain("const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);");
     expect(route).toContain("const currentValue = aggregateKpiMetric ? aggregateMetricValue(aggregateKpiMetric) :");
     expect(route).toContain("const latestProgress = progress.length > 0 ? progress[0] : null;");
@@ -92,6 +93,7 @@ describe("campaign Executive Summary regression guard", () => {
 
   it("renders Executive Overview current values from aggregate availability", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "executive-summary.tsx"), "utf-8");
+    const campaignDetailPage = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"), "utf-8");
     const overviewStart = page.indexOf('<TabsContent value="overview"');
     const overviewEnd = page.indexOf('{/* Strategic Recommendations Tab */}', overviewStart);
     const overview = page.slice(overviewStart, overviewEnd);
@@ -158,5 +160,6 @@ describe("campaign Executive Summary regression guard", () => {
     expect(overview).not.toContain("{formatNumber((executiveSummary as any).metrics.totalImpressions)} Impressions");
     expect(overview).not.toContain("{formatNumber((executiveSummary as any).metrics.totalClicks)} Clicks");
     expect(overview).not.toContain("{formatCurrency((executiveSummary as any).metrics.totalRevenue)}");
+    expect(campaignDetailPage.match(/queryClient\.invalidateQueries\(\{ queryKey: \["\/api\/campaigns", campaign\.id, "executive-summary"\] \}\);/g)?.length).toBe(3);
   });
 });

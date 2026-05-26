@@ -108,6 +108,13 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain('if (aggregateMetricAvailable("roi")) executiveMetricParts.push(`ROI is ${formatAggregatePercent("roi")}`);');
     expect(page).toContain('if (aggregateMetricAvailable("roas")) executiveMetricParts.push(`ROAS is ${formatAggregateRatio("roas")}`);');
     expect(page).toContain("const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${executiveRiskLevel}. ${executiveTrajectorySummary}`;");
+    expect(page).toContain("const resolveKpiAggregateMetric = (kpi: any): string | null => {");
+    expect(page).toContain("const current = aggregateKpiMetric ? aggregateMetricValue(aggregateKpiMetric) : Number(kpi.current) || 0;");
+    expect(page).toContain("const progressRatio = target > 0");
+    expect(page).toContain("const status = progressRatio >= 0.75 ? 'on_track' : progressRatio >= 0.5 ? 'at_risk' : 'behind';");
+    expect(page).toContain("{formatKpiValue(aggregateKpiMetric, current, kpi.unit)}");
+    expect(page).not.toContain("const pct = kpi.pctComplete || (kpi.target > 0 ? Math.min((kpi.current / kpi.target) * 100, 100) : 0);");
+    expect(page).not.toContain("{kpi.status.replace('_', ' ')}");
     expect(page).not.toContain("2,984");
     expect(page).not.toContain("2984");
     expect(page).toContain('const reachMetricKey = pickFirstAvailableMetric(["impressions", "users", "sessions"]);');

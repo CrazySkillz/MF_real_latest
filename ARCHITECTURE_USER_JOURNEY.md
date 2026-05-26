@@ -463,7 +463,7 @@ Executive use case:
 - Executive Summary Risk Level is a current-state assessment from available connected-source inputs and should populate immediately. Executive Summary trajectory is a historical signal and should use compatible 7-day aggregate snapshot history; new campaigns should show `Not enough history` until that history exists.
 - Executive Summary should not duplicate Platform Comparison. The duplicate Platform Performance card has been removed, and platform-level side-by-side source detail belongs in Platform Comparison.
 - Executive Summary should not render the separate Campaign Story paragraph below the funnel because it duplicated metrics already shown in the narrative, funnel, and key metric cards.
-- Executive Summary KPI Progress should list campaign-level KPI goals but use the same live `performanceSummary.totals` value as the visible metric cards when a KPI maps to an available connected-source aggregate metric. Saved KPI progress/current values are fallback only for unmapped or unavailable KPI metrics.
+- Executive Summary KPI Progress should list campaign-level KPI goals but render current values, progress percentages, and statuses from the same page-level `performanceSummary.totals` values as the visible metric cards when a KPI maps to an available connected-source aggregate metric. Saved KPI progress/current values are fallback only for unmapped or unavailable KPI metrics.
 - If only GA4 is connected, Budget & Financial Analysis can still evaluate the campaign's financial position from GA4/campaign financial totals, while Platform Comparison should show GA4's available analytics metrics and clearly explain that paid-media comparison requires a main paid-media platform connection.
 
 ## Connected Platforms Pattern

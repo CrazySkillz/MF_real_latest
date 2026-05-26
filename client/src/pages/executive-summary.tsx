@@ -197,6 +197,51 @@ export default function ExecutiveSummary() {
     ? `7-day snapshot trajectory is ${executiveTrajectory}.`
     : "7-day snapshot trajectory does not have enough compatible history yet.";
   const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${executiveRiskLevel}. ${executiveTrajectorySummary}`;
+  const kpiMetricAliases: Record<string, string> = {
+    totalusers: "users",
+    users: "users",
+    user: "users",
+    totalsessions: "sessions",
+    sessions: "sessions",
+    totalrevenue: "revenue",
+    revenue: "revenue",
+    totalconversions: "conversions",
+    conversions: "conversions",
+    totalspend: "spend",
+    spend: "spend",
+    totalclicks: "clicks",
+    clicks: "clicks",
+    totalimpressions: "impressions",
+    impressions: "impressions",
+    roas: "roas",
+    roi: "roi",
+    ctr: "ctr",
+    cvr: "cvr",
+    conversionrate: "cvr",
+    cpa: "cpa",
+    cpc: "cpc",
+    cpm: "cpm",
+  };
+  const resolveKpiAggregateMetric = (kpi: any): string | null => {
+    for (const candidate of [kpi?.metricKey, kpi?.metric, kpi?.name]) {
+      const normalized = String(candidate || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const metricName = kpiMetricAliases[normalized];
+      if (metricName && aggregateMetricAvailable(metricName)) return metricName;
+    }
+    return null;
+  };
+  const lowerIsBetterKpiMetrics = new Set(["cpa", "cpc", "cpm"]);
+  const formatKpiValue = (metricName: string | null, value: number, unit: string = "") => {
+    if (metricName && ["revenue", "spend", "cpa", "cpc", "cpm"].includes(metricName)) return formatCurrency(value, metricName !== "revenue" && metricName !== "spend");
+    if (metricName && ["roi", "ctr", "cvr"].includes(metricName)) return formatPct(value);
+    if (metricName === "roas") return `${value.toFixed(1)}x`;
+    if (metricName && ["users", "sessions", "conversions", "clicks", "impressions"].includes(metricName)) return Math.round(value).toLocaleString();
+    if (unit === "$") return formatCurrency(value);
+    if (unit === "%") return `${value.toFixed(1)}%`;
+    if (unit === "ratio") return `${value.toFixed(1)}x`;
+    if (unit === "count") return Math.round(value).toLocaleString();
+    return `${value}${unit}`;
+  };
   const funnelPathLabel = `${reachMetricLabels[reachMetricKey]} -> ${engagementMetricLabels[engagementMetricKey]} -> Conversions -> Revenue`;
   const reachStageQuestion = reachMetricKey === "impressions" ? "Are enough people seeing the campaign?" : "Are enough people reaching the site?";
   const engagementStageQuestion = engagementMetricKey === "clicks" ? "Are people clicking through?" : "Are people starting sessions?";
@@ -549,11 +594,21 @@ export default function ExecutiveSummary() {
                   <CardContent>
                     <div className="space-y-4">
                       {(executiveSummary as any).kpiProgress.map((kpi: any, index: number) => {
-                        const pct = kpi.pctComplete || (kpi.target > 0 ? Math.min((kpi.current / kpi.target) * 100, 100) : 0);
-                        const statusColor = kpi.status === 'on_track' ? 'text-green-600 dark:text-green-400' :
-                          kpi.status === 'at_risk' ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400';
-                        const barColor = kpi.status === 'on_track' ? '[&>div]:bg-green-500' :
-                          kpi.status === 'at_risk' ? '[&>div]:bg-yellow-500' : '[&>div]:bg-red-500';
+                        const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
+                        const current = aggregateKpiMetric ? aggregateMetricValue(aggregateKpiMetric) : Number(kpi.current) || 0;
+                        const target = Number(kpi.target) || 0;
+                        const lowerIsBetter = aggregateKpiMetric ? lowerIsBetterKpiMetrics.has(aggregateKpiMetric) : false;
+                        const progressRatio = target > 0
+                          ? lowerIsBetter
+                            ? (current > 0 ? target / current : 0)
+                            : current / target
+                          : 0;
+                        const pct = Math.min(progressRatio * 100, 100);
+                        const status = progressRatio >= 0.75 ? 'on_track' : progressRatio >= 0.5 ? 'at_risk' : 'behind';
+                        const statusColor = status === 'on_track' ? 'text-green-600 dark:text-green-400' :
+                          status === 'at_risk' ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400';
+                        const barColor = status === 'on_track' ? '[&>div]:bg-green-500' :
+                          status === 'at_risk' ? '[&>div]:bg-yellow-500' : '[&>div]:bg-red-500';
                         return (
                           <div key={index} className="space-y-2">
                             <div className="flex items-center justify-between">
@@ -569,12 +624,12 @@ export default function ExecutiveSummary() {
                               </div>
                               <div className="flex items-center space-x-2">
                                 <span className="text-sm text-muted-foreground/70">
-                                  {kpi.unit === '$' ? `$${kpi.current.toLocaleString()}` : kpi.unit === '%' ? `${kpi.current.toFixed(1)}%` : `${kpi.current}${kpi.unit}`}
+                                  {formatKpiValue(aggregateKpiMetric, current, kpi.unit)}
                                   {' / '}
-                                  {kpi.unit === '$' ? `$${kpi.target.toLocaleString()}` : kpi.unit === '%' ? `${kpi.target}%` : `${kpi.target}${kpi.unit}`}
+                                  {formatKpiValue(aggregateKpiMetric, target, kpi.unit)}
                                 </span>
                                 <span className={`text-xs font-medium ${statusColor} capitalize`}>
-                                  {kpi.status.replace('_', ' ')}
+                                  {status.replace('_', ' ')}
                                 </span>
                               </div>
                             </div>

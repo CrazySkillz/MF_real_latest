@@ -197,6 +197,9 @@ export default function ExecutiveSummary() {
     ? `7-day snapshot trajectory is ${executiveTrajectory}.`
     : "7-day snapshot trajectory does not have enough compatible history yet.";
   const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${executiveRiskLevel}. ${executiveTrajectorySummary}`;
+  const riskCheckedInputs = Array.isArray((executiveSummary as any)?.risk?.checkedInputs)
+    ? (executiveSummary as any).risk.checkedInputs
+    : [];
   const kpiMetricAliases: Record<string, string> = {
     totalusers: "users",
     users: "users",
@@ -730,8 +733,8 @@ export default function ExecutiveSummary() {
                   {(executiveSummary as any).risk.factors.length === 0 ? (
                     <div className="text-center py-6 text-muted-foreground/70">
                       <CheckCircle className="w-12 h-12 mx-auto text-green-600 mb-2" />
-                      <p className="font-medium">No significant risks identified</p>
-                      <p className="text-sm">Campaign is operating within acceptable parameters</p>
+                      <p className="font-medium">No configured risk factors identified</p>
+                      <p className="text-sm">Based on available connected-source inputs checked below.</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -754,6 +757,22 @@ export default function ExecutiveSummary() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+                  {riskCheckedInputs.length > 0 && (
+                    <div className="mt-5 border-t pt-4">
+                      <div className="mb-3 text-sm font-medium text-foreground">Checked inputs</div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {riskCheckedInputs.map((input: any, index: number) => (
+                          <div key={index} className="rounded-md border p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-medium">{input.label}</span>
+                              <Badge variant="outline" className="capitalize">{String(input.status || "").replace(/_/g, " ")}</Badge>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">{input.detail}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </CardContent>

@@ -224,7 +224,10 @@ Executive trajectory and risk rules:
 - Campaign Grade and Health Score should not render in the Executive Summary UI. The backend response may still include them to preserve the existing API contract, but the executive-facing surface should not ask users to interpret a heuristic score as an analytics fact.
 - The visible Executive Summary paragraph is generated in the page from the same `performanceSummary` object used by the ROI/ROAS cards. It should not render stale `ceoSummary` ROI/ROAS values from a different endpoint aggregate, and it should not say `performing exceptionally`, `strong results`, or `recommend increased investment` from hidden score/grade logic.
 - `7-Day Snapshot Trajectory` compares available revenue from compatible `metrics.performanceSummary` snapshots: latest snapshot versus roughly seven days earlier. `Accelerating` means revenue increased by more than 10%; `Declining` means revenue decreased by more than 10%; otherwise `Stable`. If compatible history is missing, the UI shows `Not enough history`.
-- Risk Level starts as `Low`. It becomes `High` when available `ROI < 0%`. It becomes `Medium` when available `ROAS < 1x`, one paid advertising platform is the only paid source, one paid platform has more than 70% spend share, or compatible trajectory is declining by more than 15%. GA4-only analytics is not a paid-platform concentration risk.
+- Risk Level starts as `Low`. It becomes `High` when available `ROI < 0%` or a connected-source data freshness warning is high severity. It becomes `Medium` when available `ROAS < 1x`, one paid advertising platform is the only paid source, one paid platform has more than 70% spend share, compatible trajectory is declining by more than 15%, one or more aggregate-backed KPI rows are below 70% of target, one or more Benchmark rows are below 70% of benchmark, or connected-source data freshness has a medium-severity warning. GA4-only analytics is not a paid-platform concentration risk.
+- Risk Assessment must clearly state what was checked and must not imply that every possible campaign risk was evaluated. Low-risk empty states should say no configured risk factors were identified from available connected-source inputs, not that the whole campaign is operating within acceptable parameters.
+- Risk Assessment checked inputs should visibly disclose available ROI, available ROAS, paid-platform concentration, compatible 7-day trajectory state, and that budget pacing is handled in Budget & Financial Analysis until a shared pacing signal is available in Executive Summary.
+- Budget pacing issues remain in Budget & Financial Analysis and do not raise Executive Summary Risk Level until a shared campaign pacing contract is added to this endpoint.
 
 Required regression coverage:
 
@@ -401,6 +404,7 @@ Completed:
 - Benchmark Comparison freshness correction: campaign-level Benchmark create, update, and delete actions now invalidate the campaign Executive Summary query so Benchmark Comparison refetches the campaign Benchmark list/targets after Benchmark changes in the same app session.
 - Benchmark Comparison UI correction: Executive Summary Benchmark Comparison now follows the campaign-level Benchmark color buckets: green for `On Track` at 90% or more of benchmark, yellow for `Needs Attention` from 70% to under 90%, and red for `Behind` below 70%.
 - Benchmark Comparison frontend correction: the visible Executive Summary page now recalculates Benchmark Comparison `Yours`, delta, and status from the same page-level `performanceSummary` object used by the visible metric cards, so it cannot render stale endpoint benchmark values after `/api/campaigns/:id/outcome-totals` has the current aggregate.
+- User validation passed: campaign-level Benchmark create/update changes feed Executive Summary Benchmark Comparison through the campaign Executive Summary refetch path, while visible `Yours` values remain sourced from the live connected-source aggregate.
 - KPI Progress saved-history correction was superseded by removing saved progress/current fallback reads from Executive Summary KPI Progress.
 
 Files changed:
@@ -474,12 +478,48 @@ Validation:
 - Benchmark Comparison regression now asserts the Executive Summary endpoint reads campaign-level Benchmarks through `storage.getCampaignBenchmarks(id)`, uses only mapped aggregate values for `Yours`, does not read saved Benchmark `currentValue`, and campaign-level Benchmark create/update/delete success handlers invalidate the campaign Executive Summary query.
 - Benchmark Comparison UI regression now asserts Executive Summary uses the same green/yellow/red status buckets as campaign-level Benchmarks.
 - Benchmark Comparison frontend regression now asserts the rendered Benchmark Comparison values and status are recalculated from page-level aggregate values rather than stale endpoint `benchmarkComparison` current/status fields.
+- User validation passed for the Benchmark Comparison feed/refetch path from campaign-level Benchmarks into Executive Summary.
 - Best live validation path: use a newly connected mock-live GA4 campaign to prove the initial Executive Summary state. Current connected-source metrics should populate immediately from GA4, while `7-Day Snapshot Trajectory` should show `Not enough history` until compatible `performanceSummary` snapshots exist for both the latest point and roughly seven days earlier. Existing mock campaigns can prove UI wiring, but they may already have legacy or seeded snapshot history that is less useful for validating the new-campaign trajectory state.
 - Timing rationale: Risk Level should populate immediately from current available connected-source inputs because it is a current-state risk assessment. Trajectory should use a 7-day snapshot window because 1-2 day comparisons are too noisy for an executive signal, while 30-day comparisons are too slow for an at-a-glance Executive Summary. Outstanding live validation remains: connect a new mock-live GA4 campaign and confirm current values and Risk Level populate immediately, while `7-Day Snapshot Trajectory` shows `Not enough history` until compatible snapshot history exists.
 
 Why this is third:
 
 - Health and risk are executive-facing summaries; they must not imply precision when the source inputs are unavailable.
+
+### Commit 3A: Risk Assessment Production Readiness
+
+Status: Completed.
+
+Goal:
+
+- Make the Risk Assessment section clear, bounded, and complete enough for executive use.
+
+Scope:
+
+- Replace broad low-risk copy such as `Campaign is operating within acceptable parameters` with precise wording: no configured risk factors were identified from available connected-source inputs.
+- Add visible context for what Risk Assessment checked: available ROI, available ROAS, paid-platform concentration, and compatible 7-day trajectory when enough history exists.
+- Decide and document whether KPI misses should raise Risk Level, appear as risk factors, or remain only in KPI Progress.
+- Decide and document whether Benchmark misses should raise Risk Level, appear as risk factors, or remain only in Benchmark Comparison.
+- Decide and document whether data freshness warnings should raise Risk Level or appear as separate risk factors.
+- Decide and document whether budget pacing issues from Budget & Financial Analysis should raise Risk Level or stay in that subsection.
+- Add regression coverage for low-risk copy, checked-input disclosure, KPI risk behavior, Benchmark risk behavior, stale-data risk behavior, and unavailable-input behavior.
+
+Root cause:
+
+- Commit 3 corrected unavailable-input handling and GA4-only concentration risk, but it did not define the full production-ready scope of Risk Assessment. The current low-risk UI can therefore sound broader than the backend logic proves.
+
+Implemented:
+
+- The API now returns `risk.checkedInputs` so the UI can show what Risk Assessment checked and what was unavailable or handled elsewhere.
+- Low-risk UI copy now says no configured risk factors were identified from available connected-source inputs, instead of saying the campaign is operating within acceptable parameters.
+- KPI rows below 70% of target add a medium risk factor.
+- Benchmark rows below 70% of benchmark add a medium risk factor.
+- Data freshness warnings add risk factors; high-severity freshness warnings raise Risk Level to high.
+- Budget pacing remains explicitly out of Executive Summary Risk Assessment and belongs in Budget & Financial Analysis until a shared pacing signal is available.
+
+Why this comes before recommendations:
+
+- Strategic Recommendations should not consume or repeat a risk interpretation until the Risk Assessment section clearly defines which risk signals are in scope.
 
 ### Commit 4: Strategic Recommendations
 
@@ -552,6 +592,8 @@ Executive Summary is production ready only when:
 - paid-media metrics require connected paid-media source inputs
 - missing metrics are unavailable, not silently zeroed
 - health and risk scoring account for unavailable inputs
+- Risk Assessment clearly states what configured risk factors were checked and does not imply complete campaign safety when no configured risk factors fire
+- Risk Assessment has explicit product rules and regression coverage for KPI misses, Benchmark misses, data freshness warnings, and budget pacing risk
 - strategic recommendations are generated only from valid metric/source combinations
 - paid-media budget reallocation requires comparable main paid-media sources
 - historical trajectory uses compatible aggregate snapshots only
@@ -561,7 +603,7 @@ Executive Summary is production ready only when:
 
 ## Current Status
 
-Not production ready. Commits 1, 2, and 3 are completed, but recommendation gating and refresh stability remain outstanding.
+Not production ready. Commits 1, 2, 3, and 3A are completed, but recommendation gating and refresh stability remain outstanding.
 
 Proven:
 
@@ -570,8 +612,10 @@ Proven:
 - Executive Summary still uses its existing endpoint, but Commit 1 now composes current metrics and source rows from the shared `performanceSummary` aggregate.
 - Commit 2 now makes the Executive Overview tab choose visible current metrics from `performanceSummary.totals` availability.
 - Commit 3 now makes health, risk, and trajectory use aggregate availability and compatible `performanceSummary` snapshots.
+- Commit 3A now makes Risk Assessment bounded and explicit: it shows checked inputs, uses aggregate-backed KPI and Benchmark misses as risk factors, includes data freshness warnings as risk factors, and documents budget pacing as handled in Budget & Financial Analysis.
 - Commit 1 replaced the endpoint's `storage.getCampaign(id)` campaign lookup with the standard campaign access guard.
 - GA4-only campaigns are still at risk of showing paid-media recommendations until Commit 4 is completed.
+- Risk Assessment currently proves the configured backend rules: available ROI below 0%, available ROAS below 1x, paid-platform concentration, compatible 7-day revenue decline, aggregate-backed KPI rows below 70% of target, Benchmark rows below 70% of benchmark, and connected-source data freshness warnings. Budget pacing remains in Budget & Financial Analysis until Executive Summary has a shared pacing input.
 
 Partially reviewed:
 

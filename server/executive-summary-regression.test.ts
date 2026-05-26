@@ -65,6 +65,12 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("const snapshotPerformanceSummary = (snapshot: any) => snapshot?.metrics?.performanceSummary || null;");
     expect(route).toContain("currentSnapshotSummary.version === previousSnapshotSummary?.version");
     expect(route).not.toContain("parseNum(comparisonData.current.totalConversions) * (totalRevenue / (totalConversions || 1))");
+    expect(route).toContain("const riskExtraFactors: Array<{ type: string; message: string; severity?: string }> = [];");
+    expect(route).toContain("const missedKpiCount = kpiProgress.filter((kpi: any) => Number(kpi.pctComplete) < 70).length;");
+    expect(route).toContain('const missedBenchmarkCount = benchmarkComparison.filter((bm: any) => bm.status === "behind").length;');
+    expect(route).toContain("dataFreshnessWarnings.forEach((warning: any) => {");
+    expect(route).toContain("}, growthTrajectory, trendPercentage, riskExtraFactors);");
+    expect(route).toContain("checkedInputs: risk.checkedInputs");
 
     const summaryStart = route.indexOf("// CEO summary");
     const summaryEnd = route.indexOf("// Recommendations from helper", summaryStart);
@@ -170,6 +176,11 @@ describe("campaign Executive Summary regression guard", () => {
     expect(overview).toContain("7-Day Snapshot Trajectory");
     expect(overview).toContain("Not enough history");
     expect(overview).toContain("Based on compatible aggregate snapshots, not the removed date selector.");
+    expect(overview).toContain("No configured risk factors identified");
+    expect(overview).toContain("Based on available connected-source inputs checked below.");
+    expect(overview).toContain("Checked inputs");
+    expect(page).toContain("risk.checkedInputs");
+    expect(overview).not.toContain("Campaign is operating within acceptable parameters");
     expect(overview).toContain("{formatAggregateNumber(reachMetricKey)} {reachMetricLabels[reachMetricKey]}");
     expect(overview).toContain("{formatAggregateNumber(engagementMetricKey)} {engagementMetricLabels[engagementMetricKey]}");
     expect(overview).toContain('{formatAggregatePercent("ctr")}');

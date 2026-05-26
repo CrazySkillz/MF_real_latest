@@ -25505,10 +25505,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Risk assessment from helper
+      const riskExtraFactors: Array<{ type: string; message: string; severity?: string }> = [];
+      const missedKpiCount = kpiProgress.filter((kpi: any) => Number(kpi.pctComplete) < 70).length;
+      if (missedKpiCount > 0) {
+        riskExtraFactors.push({
+          type: "kpi",
+          message: `${missedKpiCount} KPI${missedKpiCount === 1 ? " is" : "s are"} below 70% of target`,
+          severity: "medium",
+        });
+      }
+      const missedBenchmarkCount = benchmarkComparison.filter((bm: any) => bm.status === "behind").length;
+      if (missedBenchmarkCount > 0) {
+        riskExtraFactors.push({
+          type: "benchmark",
+          message: `${missedBenchmarkCount} benchmark${missedBenchmarkCount === 1 ? " is" : "s are"} below 70% of benchmark`,
+          severity: "medium",
+        });
+      }
+      dataFreshnessWarnings.forEach((warning: any) => {
+        riskExtraFactors.push({
+          type: "freshness",
+          message: warning.message,
+          severity: warning.severity === "high" ? "high" : "medium",
+        });
+      });
       const risk = generateRiskAssessment(platforms, platformsForDisplay, {
         roi: aggregateMetricValueOrNull("roi"),
         roas: aggregateMetricValueOrNull("roas"),
-      }, growthTrajectory, trendPercentage);
+      }, growthTrajectory, trendPercentage, riskExtraFactors);
 
       // CEO summary
       const ceoMetricParts: string[] = [];
@@ -25545,6 +25569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           level: risk.riskLevel,
           explanation: risk.riskExplanation,
           factors: risk.riskFactors,
+          checkedInputs: risk.checkedInputs,
         },
         platforms: platformsForDisplay,
         platformsWithData: platforms,

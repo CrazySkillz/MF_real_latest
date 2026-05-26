@@ -103,9 +103,17 @@ export function generateRiskAssessment(
   metrics: { roi: number | null; roas: number | null },
   growthTrajectory: string | null,
   trendPercentage: number,
+  extraFactors: Array<{ type: string; message: string; severity?: string }> = [],
 ) {
   let riskLevel = 'low';
   const riskFactors: Array<{ type: string; message: string }> = [];
+  const checkedInputs = [
+    { label: 'Available ROI', status: metrics.roi !== null ? 'checked' : 'unavailable', detail: metrics.roi !== null ? `${metrics.roi.toFixed(1)}%` : 'Unavailable from connected sources' },
+    { label: 'Available ROAS', status: metrics.roas !== null ? 'checked' : 'unavailable', detail: metrics.roas !== null ? `${metrics.roas.toFixed(1)}x` : 'Unavailable from connected sources' },
+    { label: 'Paid-platform concentration', status: platforms.length > 0 ? 'checked' : 'not_applicable', detail: platforms.length > 0 ? `${platforms.length} paid source${platforms.length === 1 ? '' : 's'} checked` : 'No paid-media source with spend, revenue, or conversions' },
+    { label: '7-day trajectory', status: growthTrajectory ? 'checked' : 'not_enough_history', detail: growthTrajectory ? `${growthTrajectory}${trendPercentage ? ` (${trendPercentage.toFixed(1)}%)` : ''}` : 'Not enough compatible aggregate snapshot history' },
+    { label: 'Budget pacing', status: 'separate_section', detail: 'Handled in Budget & Financial Analysis until a shared pacing signal is available here' },
+  ];
 
   if (platforms.length === 1 && platformsForDisplay.length === 1) {
     riskFactors.push({ type: 'concentration', message: 'Single advertising platform - diversification recommended' });
@@ -140,6 +148,12 @@ export function generateRiskAssessment(
     if (riskLevel === 'low') riskLevel = 'medium';
   }
 
+  for (const factor of extraFactors) {
+    riskFactors.push({ type: factor.type, message: factor.message });
+    if (factor.severity === 'high') riskLevel = 'high';
+    else if (riskLevel === 'low') riskLevel = 'medium';
+  }
+
   let riskExplanation = '';
   if (riskLevel === 'low') {
     riskExplanation = 'No significant risk factors identified from available connected-source inputs. Continue monitoring performance.';
@@ -150,12 +164,17 @@ export function generateRiskAssessment(
     if (platforms.length > 1 && platforms[0].spendShare > 70) reasons.push('high platform concentration');
     if (metrics.roas !== null && metrics.roas < 1) reasons.push('ROAS below breakeven');
     if (growthTrajectory === 'declining') reasons.push('declining performance trend');
+    if (extraFactors.some((factor) => factor.type === 'kpi')) reasons.push('KPI underperformance');
+    if (extraFactors.some((factor) => factor.type === 'benchmark')) reasons.push('benchmark underperformance');
+    if (extraFactors.some((factor) => factor.type === 'freshness')) reasons.push('stale connected-source data');
     riskExplanation = `Moderate risk due to ${reasons.join(', ')}. Review recommended.`;
   } else {
-    riskExplanation = 'High risk: Campaign experiencing negative ROI. Immediate action required to prevent further losses.';
+    riskExplanation = metrics.roi !== null && metrics.roi < 0
+      ? 'High risk: Campaign experiencing negative ROI. Immediate action required to prevent further losses.'
+      : 'High risk due to configured risk factors from available connected-source inputs. Review immediately.';
   }
 
-  return { riskLevel, riskFactors, riskExplanation };
+  return { riskLevel, riskFactors, riskExplanation, checkedInputs };
 }
 
 /**

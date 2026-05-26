@@ -111,10 +111,14 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const resolveKpiAggregateMetric = (kpi: any): string | null => {");
     expect(page).toContain("const current = aggregateKpiMetric ? aggregateMetricValue(aggregateKpiMetric) : Number(kpi.current) || 0;");
     expect(page).toContain("const progressRatio = target > 0");
-    expect(page).toContain("const status = progressRatio >= 0.75 ? 'on_track' : progressRatio >= 0.5 ? 'at_risk' : 'behind';");
+    expect(page).toContain("const statusLabel = pct >= 100 ? 'Target Achieved' :");
+    expect(page).toContain("pct > 75 ? 'On Track' :");
+    expect(page).toContain("pct > 25 ? 'Needs Attention' : 'Below Target';");
     expect(page).toContain("{formatKpiValue(aggregateKpiMetric, current, kpi.unit)}");
+    expect(page).toContain('<Progress value={pct} className="h-2" />');
     expect(page).not.toContain("const pct = kpi.pctComplete || (kpi.target > 0 ? Math.min((kpi.current / kpi.target) * 100, 100) : 0);");
     expect(page).not.toContain("{kpi.status.replace('_', ' ')}");
+    expect(page).not.toContain("{kpi.priority}");
     expect(page).not.toContain("2,984");
     expect(page).not.toContain("2984");
     expect(page).toContain('const reachMetricKey = pickFirstAvailableMetric(["impressions", "users", "sessions"]);');
@@ -130,7 +134,6 @@ describe("campaign Executive Summary regression guard", () => {
     expect(overview).not.toContain("Connected sources show spend");
     expect(overview).not.toContain("Platform Performance");
     expect(overview).not.toContain("Website Analytics Only");
-    expect(overview).not.toContain("Needs Attention");
     expect(overview).not.toContain("Excellent");
     expect(overview).not.toContain("Good");
     expect(overview).not.toContain("Fair");

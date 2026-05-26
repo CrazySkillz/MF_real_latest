@@ -604,23 +604,17 @@ export default function ExecutiveSummary() {
                             : current / target
                           : 0;
                         const pct = Math.min(progressRatio * 100, 100);
-                        const status = progressRatio >= 0.75 ? 'on_track' : progressRatio >= 0.5 ? 'at_risk' : 'behind';
-                        const statusColor = status === 'on_track' ? 'text-green-600 dark:text-green-400' :
-                          status === 'at_risk' ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400';
-                        const barColor = status === 'on_track' ? '[&>div]:bg-green-500' :
-                          status === 'at_risk' ? '[&>div]:bg-yellow-500' : '[&>div]:bg-red-500';
+                        const statusLabel = pct >= 100 ? 'Target Achieved' :
+                          pct > 75 ? 'On Track' :
+                            pct > 25 ? 'Needs Attention' : 'Below Target';
+                        const statusColor = pct >= 100 ? 'text-green-600 dark:text-green-400' :
+                          pct > 75 ? 'text-blue-600 dark:text-blue-400' :
+                            pct > 25 ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400';
                         return (
                           <div key={index} className="space-y-2">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
                                 <span className="text-sm font-medium text-foreground">{kpi.name}</span>
-                                <Badge variant="outline" className={`text-xs ${
-                                  kpi.priority === 'high' || kpi.priority === 'critical' ? 'border-red-300 text-red-600' :
-                                  kpi.priority === 'medium' ? 'border-yellow-300 text-yellow-600' :
-                                  'border-border text-muted-foreground'
-                                }`}>
-                                  {kpi.priority}
-                                </Badge>
                               </div>
                               <div className="flex items-center space-x-2">
                                 <span className="text-sm text-muted-foreground/70">
@@ -628,12 +622,12 @@ export default function ExecutiveSummary() {
                                   {' / '}
                                   {formatKpiValue(aggregateKpiMetric, target, kpi.unit)}
                                 </span>
-                                <span className={`text-xs font-medium ${statusColor} capitalize`}>
-                                  {status.replace('_', ' ')}
+                                <span className={`text-xs font-medium ${statusColor}`}>
+                                  {statusLabel}
                                 </span>
                               </div>
                             </div>
-                            <Progress value={pct} className={`h-2 ${barColor}`} />
+                            <Progress value={pct} className="h-2" />
                           </div>
                         );
                       })}

@@ -110,12 +110,14 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${executiveRiskLevel}. ${executiveTrajectorySummary}`;");
     expect(page).toContain("const resolveKpiAggregateMetric = (kpi: any): string | null => {");
     expect(page).toContain("const current = aggregateKpiMetric ? aggregateMetricValue(aggregateKpiMetric) : Number(kpi.current) || 0;");
+    expect(page).toContain("const targetDeltaPct = target > 0");
     expect(page).toContain("const progressRatio = target > 0");
-    expect(page).toContain("const statusLabel = pct >= 100 ? 'Target Achieved' :");
-    expect(page).toContain("pct > 75 ? 'On Track' :");
-    expect(page).toContain("pct > 25 ? 'Needs Attention' : 'Below Target';");
+    expect(page).toContain("const statusLabel = targetDeltaPct > 5 ? 'Above Target' :");
+    expect(page).toContain("targetDeltaPct >= -5 ? 'On Track' : 'Below Target';");
+    expect(page).toContain("const barColor = targetDeltaPct > 5 ? 'bg-green-500' :");
+    expect(page).toContain("targetDeltaPct >= -5 ? 'bg-blue-500' : 'bg-red-500';");
     expect(page).toContain("{formatKpiValue(aggregateKpiMetric, current, kpi.unit)}");
-    expect(page).toContain('<Progress value={pct} className="h-2" />');
+    expect(page).toContain('<Progress value={pct} className="h-2" indicatorClassName={barColor} />');
     expect(page).not.toContain("const pct = kpi.pctComplete || (kpi.target > 0 ? Math.min((kpi.current / kpi.target) * 100, 100) : 0);");
     expect(page).not.toContain("{kpi.status.replace('_', ' ')}");
     expect(page).not.toContain("{kpi.priority}");

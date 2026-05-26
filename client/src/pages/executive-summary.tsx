@@ -598,18 +598,23 @@ export default function ExecutiveSummary() {
                         const current = aggregateKpiMetric ? aggregateMetricValue(aggregateKpiMetric) : Number(kpi.current) || 0;
                         const target = Number(kpi.target) || 0;
                         const lowerIsBetter = aggregateKpiMetric ? lowerIsBetterKpiMetrics.has(aggregateKpiMetric) : false;
+                        const targetDeltaPct = target > 0
+                          ? lowerIsBetter
+                            ? ((target - current) / target) * 100
+                            : ((current - target) / target) * 100
+                          : 0;
                         const progressRatio = target > 0
                           ? lowerIsBetter
-                            ? (current > 0 ? target / current : 0)
+                            ? (current > 0 ? target / current : 1)
                             : current / target
                           : 0;
-                        const pct = Math.min(progressRatio * 100, 100);
-                        const statusLabel = pct >= 100 ? 'Target Achieved' :
-                          pct > 75 ? 'On Track' :
-                            pct > 25 ? 'Needs Attention' : 'Below Target';
-                        const statusColor = pct >= 100 ? 'text-green-600 dark:text-green-400' :
-                          pct > 75 ? 'text-blue-600 dark:text-blue-400' :
-                            pct > 25 ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400';
+                        const pct = Math.max(0, Math.min(progressRatio * 100, 100));
+                        const statusLabel = targetDeltaPct > 5 ? 'Above Target' :
+                          targetDeltaPct >= -5 ? 'On Track' : 'Below Target';
+                        const statusColor = targetDeltaPct > 5 ? 'text-green-600 dark:text-green-400' :
+                          targetDeltaPct >= -5 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400';
+                        const barColor = targetDeltaPct > 5 ? 'bg-green-500' :
+                          targetDeltaPct >= -5 ? 'bg-blue-500' : 'bg-red-500';
                         return (
                           <div key={index} className="space-y-2">
                             <div className="flex items-center justify-between">
@@ -627,7 +632,7 @@ export default function ExecutiveSummary() {
                                 </span>
                               </div>
                             </div>
-                            <Progress value={pct} className="h-2" />
+                            <Progress value={pct} className="h-2" indicatorClassName={barColor} />
                           </div>
                         );
                       })}

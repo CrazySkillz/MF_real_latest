@@ -25254,6 +25254,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const aggregateMetricValueOrNull = (metricName: string): number | null =>
         aggregateMetricAvailable(metricName) ? aggregateMetricValue(metricName) : null;
+      const kpiMetricAliases: Record<string, string> = {
+        totalusers: "users",
+        users: "users",
+        user: "users",
+        totalsessions: "sessions",
+        sessions: "sessions",
+        totalrevenue: "revenue",
+        revenue: "revenue",
+        totalconversions: "conversions",
+        conversions: "conversions",
+        totalspend: "spend",
+        spend: "spend",
+        totalclicks: "clicks",
+        clicks: "clicks",
+        totalimpressions: "impressions",
+        impressions: "impressions",
+        roas: "roas",
+        roi: "roi",
+        ctr: "ctr",
+        cvr: "cvr",
+        conversionrate: "cvr",
+        cpa: "cpa",
+        cpc: "cpc",
+        cpm: "cpm",
+      };
+      const resolveKpiAggregateMetric = (kpi: any): string | null => {
+        for (const candidate of [kpi?.metricKey, kpi?.metric, kpi?.name]) {
+          const normalized = String(candidate || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          const metricName = kpiMetricAliases[normalized];
+          if (metricName && aggregateMetricAvailable(metricName)) return metricName;
+        }
+        return null;
+      };
+      const lowerIsBetterKpiMetrics = new Set(["cpa", "cpc", "cpm"]);
       const mainAggregateSources = Array.isArray((performanceSummary as any)?.sources)
         ? (performanceSummary as any).sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
         : [];
@@ -25264,10 +25298,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const kpis = await storage.getCampaignKPIs(id);
         for (const kpi of kpis) {
           const progress = await storage.getKPIProgress(kpi.id);
-          const latestProgress = progress.length > 0 ? progress[progress.length - 1] : null;
-          const currentValue = latestProgress ? parseNum(latestProgress.value) : parseNum(kpi.currentValue);
+          const latestProgress = progress.length > 0 ? progress[0] : null;
+          const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
+          const currentValue = aggregateKpiMetric ? aggregateMetricValue(aggregateKpiMetric) :
+            latestProgress ? parseNum(latestProgress.value) : parseNum(kpi.currentValue);
           const targetValue = parseNum(kpi.targetValue);
-          const pctComplete = targetValue > 0 ? (currentValue / targetValue) * 100 : 0;
+          const lowerIsBetter = aggregateKpiMetric ? lowerIsBetterKpiMetrics.has(aggregateKpiMetric) : false;
+          const progressRatio = targetValue > 0
+            ? lowerIsBetter
+              ? (currentValue > 0 ? targetValue / currentValue : 0)
+              : currentValue / targetValue
+            : 0;
+          const pctComplete = progressRatio * 100;
 
           let kpiStatus = 'on_track';
           if (pctComplete < 50) kpiStatus = 'behind';

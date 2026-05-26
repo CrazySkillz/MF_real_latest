@@ -21,7 +21,7 @@ Preserve the documented split in `ARCHITECTURE_USER_JOURNEY.md`:
 - `Connected Platforms` = source-level campaign inputs.
 - `View Detailed Analytics` = platform-specific drilldown.
 - `Campaign DeepDive` = campaign-wide cross-platform analysis.
-- `Executive Summary` = executive narrative, risk, health, and strategic recommendation layer based on connected-source data.
+- `Executive Summary` = executive narrative, risk, trajectory, funnel, and strategic recommendation layer based on connected-source data.
 
 Do not turn Executive Summary into another platform-specific page.
 Do not duplicate aggregation logic across tabs.
@@ -209,6 +209,7 @@ Target behavior:
 - Shows only connected-source-available funnel stages.
 - GA4-only campaigns show a web analytics/outcome funnel, not a paid-media funnel.
 - The Marketing Funnel Performance chart should make the active path explicit: reach metric -> engagement metric -> conversions -> revenue. For GA4-only campaigns this should read as users/sessions/conversions/revenue; for paid-media campaigns it can read as impressions/clicks/conversions/revenue when those metrics are available.
+- The separate Campaign Story paragraph should not render below the funnel because it duplicates values already shown in the narrative, funnel, and key metric cards.
 - Paid-media Top of Funnel and Mid Funnel blocks appear only when connected sources provide impressions or clicks.
 - Revenue, spend, ROI, ROAS, CPA, CPC, CTR, and CVR display unavailable when required aggregate inputs are missing.
 - Platform detail belongs in the dedicated Platform Comparison subsection; Executive Summary should not render the duplicate Platform Performance card.
@@ -216,7 +217,7 @@ Target behavior:
 - Campaign Grade and Health Score are not shown in the Executive Summary UI because the score/grade model is a product-defined heuristic, not a direct connected-source metric.
 - The narrative Executive Summary paragraph should not use hidden grade/score logic. It should state factual available connected-source ROI/ROAS inputs from the same `performanceSummary` aggregate used by the visible Executive Overview metrics, plus current Risk Level and 7-day snapshot trajectory state.
 - Risk Assessment distinguishes analytics-only source concentration from paid-media spend concentration.
-- KPI Progress and Benchmark Comparison continue to use campaign-level KPI/Benchmark records and should not be rewritten unless their current values are proven stale.
+- KPI Progress continues to list campaign-level KPI records, but mapped current values should use live `performanceSummary.totals` when the KPI metric/name maps to an available connected-source aggregate metric. Benchmark Comparison continues to use campaign-level Benchmark records unless a traced bug requires a narrow fix.
 
 Executive trajectory and risk rules:
 
@@ -280,6 +281,7 @@ Required regression coverage:
 - Remove hard-coded paid-media-only labels where the aggregate says the metric is unavailable.
 - Render unavailable states for unavailable aggregate metrics.
 - Keep platform-level metric comparison in Platform Comparison; do not duplicate those rows in Executive Summary.
+- Do not render the separate Campaign Story paragraph below the funnel.
 - Update Executive Overview funnel wording for GA4-only and analytics-only cases.
 - Update Strategic Recommendations empty states and explanatory copy.
 - Remove visible demo controls from the production page if final production-readiness scope includes UI consistency with the other DeepDive subsections.
@@ -364,21 +366,21 @@ Scope:
 - Render aggregate-backed metrics and unavailable states.
 - Make the funnel source-capability aware.
 - Make GA4-only campaigns show web analytics/outcome metrics instead of paid-media assumptions.
-- Keep KPI Progress and Benchmark Comparison stable unless a traced bug requires a narrow fix.
+- Keep KPI Progress and Benchmark Comparison stable unless a traced bug requires a narrow fix; KPI Progress current values have a traced stale-source issue and should use the shared aggregate when a KPI maps to an available aggregate metric.
 - Add regression coverage for GA4-only unavailable paid-media metrics and multi-source available metrics.
 
 Root cause:
 
 - The backend response now includes aggregate availability through `performanceSummary.totals`, but `client/src/pages/executive-summary.tsx` still rendered Executive Overview current-value surfaces from legacy `metrics` fields and hard-coded paid-media labels.
 - In GA4-only campaigns, the tab could therefore display paid-media-style impressions, clicks, CTR, CPC, ROAS, ROI, or funnel copy as available values even when the aggregate correctly marked those metrics unavailable.
-- The smallest safe fix is frontend-only for this commit: keep the response contract stable, keep the existing layout, and choose visible Overview metrics from aggregate availability while leaving health, risk, recommendations, KPI progress, and benchmark comparison to their planned commits.
+- The smallest safe fix for the initial Overview values was frontend-only: keep the response contract stable, keep the existing layout, and choose visible Overview metrics from aggregate availability while leaving health, risk, recommendations, KPI progress, and benchmark comparison to their planned commits.
 
 Completed:
 
 - Added frontend aggregate availability helpers for the Executive Overview tab.
 - Switched the top funnel, mid funnel, bottom funnel, and key metric cards to render aggregate-backed available values or `Unavailable`; the separate Campaign Story paragraph has been removed from the UI.
 - GA4-only campaigns now prefer web analytics metrics such as users or sessions when paid-media impressions or clicks are unavailable.
-- Left KPI Progress, Benchmark Comparison, health, risk, and Strategic Recommendations unchanged for their planned commits.
+- Left KPI Progress, Benchmark Comparison, health, risk, and Strategic Recommendations unchanged in the initial Overview commit; KPI Progress was later corrected after stale saved values were traced.
 - Added regression coverage that proves the Overview tab uses `performanceSummary.totals` availability and no longer renders the legacy hard-coded impressions, clicks, or revenue expressions.
 - Follow-up root cause: the Overview tab was reading the aggregate correctly, but `/api/campaigns/:id/executive-summary` still prepared GA4 and financial aggregate inputs with a simpler path than `/api/campaigns/:id/outcome-totals`. That caused users, sessions, conversions, revenue, ROAS, and ROI to diverge from the shared DeepDive aggregate source truth.
 - Follow-up completed: Executive Summary now resolves GA4 current values through the same GA4 source-truth path, keeps persisted GA4 daily rows as fallback, and uses to-date spend/revenue financial provenance when building the aggregate.
@@ -387,6 +389,12 @@ Completed:
 - Removed the Executive Summary period dropdown and fixed the page's aggregate request to the daily connected-source `90days` window so visible records are no longer changed by a local subsection date selector.
 - Funnel clarity correction: Marketing Funnel Performance now labels the active connected-source path and asks the business question each stage answers: whether enough people reached the campaign/site, whether they engaged through clicks or sessions, and whether visits became conversions and revenue.
 - User validation passed: Executive Overview conversion display now shows the exact connected-source count and regression coverage proves the value is not hard-coded.
+- UI simplification: Campaign Grade and Health Score were removed from the visible Executive Overview because they were heuristic score/grade fields rather than direct connected-source metrics.
+- Narrative correction: the visible Executive Summary paragraph now renders factual ROI/ROAS from the same `performanceSummary` aggregate used by the visible metric cards, plus Risk Level and 7-day snapshot trajectory state, instead of rendering stale endpoint `ceoSummary` values.
+- UI simplification: the Campaign Story paragraph was removed because it duplicated narrative, funnel, and key metric values.
+- UI simplification: the Platform Performance card was removed because it duplicated the dedicated Platform Comparison subsection and could show misleading paid-media-style row status labels for GA4-only campaigns.
+- KPI Progress source-of-truth correction: mapped KPI values now use the same live `performanceSummary.totals` aggregate as the visible Executive Summary metric cards. Saved KPI progress/current values remain as fallback for unmapped or unavailable KPI metrics.
+- KPI Progress stale-history correction: when saved progress history is used as fallback, the endpoint now reads the newest progress row from the current newest-first storage ordering instead of the oldest row.
 
 Files changed:
 
@@ -450,6 +458,8 @@ Validation:
 - Passed: `npm test -- server/executive-summary-regression.test.ts server/executive-summary-helpers-regression.test.ts`
 - Passed: `npm run check`
 - Passed: `npm run build` after rerunning outside the sandbox because the first sandboxed Vite/esbuild build failed with `spawn EPERM`.
+- Latest UI simplification validation passed with the same focused regression, TypeScript, whitespace, and production build checks. The regression now asserts that Campaign Grade, Health Score, Campaign Story, Platform Performance, Website Analytics Only, and row-level paid-media status labels do not render in Executive Overview.
+- KPI Progress aggregate-source regression now asserts mapped KPI aliases such as Total Users, Revenue, Total Conversions, and ROAS resolve to `performanceSummary.totals`, and saved progress fallback uses the newest progress row.
 - Best live validation path: use a newly connected mock-live GA4 campaign to prove the initial Executive Summary state. Current connected-source metrics should populate immediately from GA4, while `7-Day Snapshot Trajectory` should show `Not enough history` until compatible `performanceSummary` snapshots exist for both the latest point and roughly seven days earlier. Existing mock campaigns can prove UI wiring, but they may already have legacy or seeded snapshot history that is less useful for validating the new-campaign trajectory state.
 - Timing rationale: Risk Level should populate immediately from current available connected-source inputs because it is a current-state risk assessment. Trajectory should use a 7-day snapshot window because 1-2 day comparisons are too noisy for an executive signal, while 30-day comparisons are too slow for an at-a-glance Executive Summary. Outstanding live validation remains: connect a new mock-live GA4 campaign and confirm current values and Risk Level populate immediately, while `7-Day Snapshot Trajectory` shows `Not enough history` until compatible snapshot history exists.
 

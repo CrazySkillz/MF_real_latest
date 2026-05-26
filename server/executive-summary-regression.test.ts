@@ -44,6 +44,15 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain('roas: aggregateMetricValueOrNull("roas")');
     expect(route).toContain('ctr: aggregateMetricValueOrNull("ctr")');
     expect(route).toContain('cvr: aggregateMetricValueOrNull("cvr")');
+    expect(route).toContain("const kpiMetricAliases: Record<string, string> = {");
+    expect(route).toContain('totalusers: "users"');
+    expect(route).toContain('totalrevenue: "revenue"');
+    expect(route).toContain('totalconversions: "conversions"');
+    expect(route).toContain('roas: "roas"');
+    expect(route).toContain("const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);");
+    expect(route).toContain("const currentValue = aggregateKpiMetric ? aggregateMetricValue(aggregateKpiMetric) :");
+    expect(route).toContain("const latestProgress = progress.length > 0 ? progress[0] : null;");
+    expect(route).not.toContain("const latestProgress = progress.length > 0 ? progress[progress.length - 1] : null;");
     expect(route).toContain("const snapshotPerformanceSummary = (snapshot: any) => snapshot?.metrics?.performanceSummary || null;");
     expect(route).toContain("currentSnapshotSummary.version === previousSnapshotSummary?.version");
     expect(route).not.toContain("parseNum(comparisonData.current.totalConversions) * (totalRevenue / (totalConversions || 1))");

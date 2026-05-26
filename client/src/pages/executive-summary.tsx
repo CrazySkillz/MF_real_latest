@@ -191,15 +191,10 @@ export default function ExecutiveSummary() {
   const executiveMetricSummary = executiveMetricParts.length > 0
     ? `Current connected-source metrics show ${executiveMetricParts.join(" and ")}.`
     : "Current connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS.";
-  const executiveRiskLevel = String((executiveSummary as any)?.risk?.level || "unavailable");
   const executiveTrajectory = (executiveSummary as any)?.health?.trajectory;
   const executiveTrajectorySummary = executiveTrajectory
     ? `7-day snapshot trajectory is ${executiveTrajectory}.`
     : "7-day snapshot trajectory does not have enough compatible history yet.";
-  const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${executiveRiskLevel}. ${executiveTrajectorySummary}`;
-  const riskCheckedInputs = Array.isArray((executiveSummary as any)?.risk?.checkedInputs)
-    ? (executiveSummary as any).risk.checkedInputs
-    : [];
   const kpiMetricAliases: Record<string, string> = {
     totalusers: "users",
     users: "users",
@@ -266,6 +261,52 @@ export default function ExecutiveSummary() {
       })
       .filter(Boolean)
     : [];
+  const kpiProgressPct = (kpi: any): number => {
+    const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
+    if (!aggregateKpiMetric) return 0;
+    const current = aggregateMetricValue(aggregateKpiMetric);
+    const target = Number(kpi.target) || 0;
+    const lowerIsBetter = lowerIsBetterKpiMetrics.has(aggregateKpiMetric);
+    const progressRatio = target > 0
+      ? lowerIsBetter
+        ? (current > 0 ? target / current : 1)
+        : current / target
+      : 0;
+    return progressRatio * 100;
+  };
+  const riskKpiMissCount = executiveKpiProgress.filter((kpi: any) => kpiProgressPct(kpi) < 70).length;
+  const riskBenchmarkMissCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "behind").length;
+  const riskFreshnessWarnings = Array.isArray((executiveSummary as any)?.dataFreshness?.warnings) ? (executiveSummary as any).dataFreshness.warnings : [];
+  const aggregateSources = Array.isArray((performanceSummary as any)?.sources) ? (performanceSummary as any).sources : [];
+  const paidRiskSources = aggregateSources.filter((source: any) =>
+    source?.connected === true &&
+    source?.category !== "financial" &&
+    source?.category !== "web_analytics" &&
+    Array.isArray(source?.includedMetrics) &&
+    ["spend", "revenue", "conversions"].some((metricName) => source.includedMetrics.includes(metricName))
+  );
+  const displayedRiskFactors = [
+    ...((executiveSummary as any)?.risk?.factors || []).filter((risk: any) => risk.type === "concentration" || risk.type === "trend"),
+    ...(aggregateMetricAvailable("roi") && aggregateMetricValue("roi") < 0 ? [{ type: "performance", message: "Negative ROI - immediate optimization required" }] : []),
+    ...(aggregateMetricAvailable("roas") && aggregateMetricValue("roas") < 1 ? [{ type: "performance", message: "ROAS below breakeven - review campaign strategy" }] : []),
+    ...(riskKpiMissCount > 0 ? [{ type: "kpi", message: `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} below 70% of target` }] : []),
+    ...(riskBenchmarkMissCount > 0 ? [{ type: "benchmark", message: `${riskBenchmarkMissCount} benchmark${riskBenchmarkMissCount === 1 ? " is" : "s are"} below 70% of benchmark` }] : []),
+    ...riskFreshnessWarnings.map((warning: any) => ({ type: "freshness", message: warning.message })),
+  ];
+  const displayedRiskLevel = (aggregateMetricAvailable("roi") && aggregateMetricValue("roi") < 0) || riskFreshnessWarnings.some((warning: any) => warning.severity === "high")
+    ? "high"
+    : displayedRiskFactors.length > 0 ? "medium" : "low";
+  const displayedRiskExplanation = displayedRiskLevel === "low"
+    ? "No configured risk factors identified from available connected-source inputs."
+    : "Risk factors are based on the same connected-source inputs used by the visible Executive Summary metrics.";
+  const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${displayedRiskLevel}. ${executiveTrajectorySummary}`;
+  const riskCheckedInputs = [
+    { label: "Available ROI", status: aggregateMetricAvailable("roi") ? "checked" : "unavailable", detail: aggregateMetricAvailable("roi") ? formatAggregatePercent("roi") : aggregateMetricReason("roi") },
+    { label: "Available ROAS", status: aggregateMetricAvailable("roas") ? "checked" : "unavailable", detail: aggregateMetricAvailable("roas") ? formatAggregateRatio("roas") : aggregateMetricReason("roas") },
+    { label: "Paid-platform concentration", status: paidRiskSources.length > 0 ? "checked" : "not_applicable", detail: paidRiskSources.length > 0 ? `${paidRiskSources.length} paid source${paidRiskSources.length === 1 ? "" : "s"} checked` : "No paid-media source with spend, revenue, or conversions" },
+    { label: "7-day trajectory", status: executiveTrajectory ? "checked" : "not_enough_history", detail: executiveTrajectory ? `${executiveTrajectory}${(executiveSummary as any)?.health?.trendPercentage ? ` (${Number((executiveSummary as any).health.trendPercentage).toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },
+    { label: "Budget pacing", status: "separate_section", detail: "Handled in Budget & Financial Analysis until a shared pacing signal is available here" },
+  ];
   const formatKpiValue = (metricName: string | null, value: number, unit: string = "") => {
     if (metricName && ["revenue", "spend", "cpa", "cpc", "cpm"].includes(metricName)) return formatCurrency(value, metricName !== "revenue" && metricName !== "spend");
     if (metricName && ["roi", "ctr", "cvr"].includes(metricName)) return formatPct(value);
@@ -359,17 +400,15 @@ export default function ExecutiveSummary() {
                       <div className="border-l border-border pl-6">
                         <div className="text-sm text-muted-foreground/70 mb-1">Risk Level</div>
                         <Badge className={
-                          (executiveSummary as any).risk.level === 'low' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
-                          (executiveSummary as any).risk.level === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                          displayedRiskLevel === 'low' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
+                          displayedRiskLevel === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
                           'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
                         }>
-                          {(executiveSummary as any).risk.level.toUpperCase()}
+                          {displayedRiskLevel.toUpperCase()}
                         </Badge>
-                        {(executiveSummary as any).risk.explanation && (
-                          <p className="text-xs text-muted-foreground/70 mt-2 max-w-xs">
-                            {(executiveSummary as any).risk.explanation}
-                          </p>
-                        )}
+                        <p className="text-xs text-muted-foreground/70 mt-2 max-w-xs">
+                          {displayedRiskExplanation}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -730,7 +769,7 @@ export default function ExecutiveSummary() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {(executiveSummary as any).risk.factors.length === 0 ? (
+                  {displayedRiskFactors.length === 0 ? (
                     <div className="text-center py-6 text-muted-foreground/70">
                       <CheckCircle className="w-12 h-12 mx-auto text-green-600 mb-2" />
                       <p className="font-medium">No configured risk factors identified</p>
@@ -738,7 +777,7 @@ export default function ExecutiveSummary() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {(executiveSummary as any).risk.factors.map((risk: any, index: number) => (
+                      {displayedRiskFactors.map((risk: any, index: number) => (
                         <div key={index} className={`p-4 rounded-lg border ${
                           risk.type === 'performance' ? 'border-red-200 bg-red-50 dark:bg-red-900/20' :
                           risk.type === 'concentration' ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20' :

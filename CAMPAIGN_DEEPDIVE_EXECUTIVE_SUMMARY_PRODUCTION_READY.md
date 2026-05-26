@@ -227,6 +227,7 @@ Executive trajectory and risk rules:
 - Risk Level starts as `Low`. It becomes `High` when available `ROI < 0%` or a connected-source data freshness warning is high severity. It becomes `Medium` when available `ROAS < 1x`, one paid advertising platform is the only paid source, one paid platform has more than 70% spend share, compatible trajectory is declining by more than 15%, one or more aggregate-backed KPI rows are below 70% of target, one or more Benchmark rows are below 70% of benchmark, or connected-source data freshness has a medium-severity warning. GA4-only analytics is not a paid-platform concentration risk.
 - Risk Assessment must clearly state what was checked and must not imply that every possible campaign risk was evaluated. Low-risk empty states should say no configured risk factors were identified from available connected-source inputs, not that the whole campaign is operating within acceptable parameters.
 - Risk Assessment checked inputs should visibly disclose available ROI, available ROAS, paid-platform concentration, compatible 7-day trajectory state, and that budget pacing is handled in Budget & Financial Analysis until a shared pacing signal is available in Executive Summary.
+- Risk Assessment visible checked-input values and KPI/Benchmark risk counts must be derived from the same page-level `performanceSummary` aggregate used by the visible Executive Summary cards, KPI Progress, and Benchmark Comparison. They must not display stale ROI/ROAS or saved KPI/Benchmark values from the `/executive-summary` endpoint when `/outcome-totals` has newer aggregate values.
 - Budget pacing issues remain in Budget & Financial Analysis and do not raise Executive Summary Risk Level until a shared campaign pacing contract is added to this endpoint.
 
 Required regression coverage:
@@ -515,6 +516,7 @@ Implemented:
 - KPI rows below 70% of target add a medium risk factor.
 - Benchmark rows below 70% of benchmark add a medium risk factor.
 - Data freshness warnings add risk factors; high-severity freshness warnings raise Risk Level to high.
+- Visible Risk Assessment ROI/ROAS checked inputs, KPI risk counts, and Benchmark risk counts now use the page-level `performanceSummary` aggregate, matching the Executive Summary metric cards, KPI Progress, and Benchmark Comparison.
 - Budget pacing remains explicitly out of Executive Summary Risk Assessment and belongs in Budget & Financial Analysis until a shared pacing signal is available.
 
 Why this comes before recommendations:
@@ -612,7 +614,7 @@ Proven:
 - Executive Summary still uses its existing endpoint, but Commit 1 now composes current metrics and source rows from the shared `performanceSummary` aggregate.
 - Commit 2 now makes the Executive Overview tab choose visible current metrics from `performanceSummary.totals` availability.
 - Commit 3 now makes health, risk, and trajectory use aggregate availability and compatible `performanceSummary` snapshots.
-- Commit 3A now makes Risk Assessment bounded and explicit: it shows checked inputs, uses aggregate-backed KPI and Benchmark misses as risk factors, includes data freshness warnings as risk factors, and documents budget pacing as handled in Budget & Financial Analysis.
+- Commit 3A now makes Risk Assessment bounded and explicit: it shows checked inputs from the page-level aggregate, uses aggregate-backed KPI and Benchmark misses as risk factors, includes data freshness warnings as risk factors, and documents budget pacing as handled in Budget & Financial Analysis.
 - Commit 1 replaced the endpoint's `storage.getCampaign(id)` campaign lookup with the standard campaign access guard.
 - GA4-only campaigns are still at risk of showing paid-media recommendations until Commit 4 is completed.
 - Risk Assessment currently proves the configured backend rules: available ROI below 0%, available ROAS below 1x, paid-platform concentration, compatible 7-day revenue decline, aggregate-backed KPI rows below 70% of target, Benchmark rows below 70% of benchmark, and connected-source data freshness warnings. Budget pacing remains in Budget & Financial Analysis until Executive Summary has a shared pacing input.

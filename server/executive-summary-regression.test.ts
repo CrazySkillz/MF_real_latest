@@ -123,7 +123,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("aggregateMetricAvailable(metricName) ? Math.round(aggregateMetricValue(metricName)).toLocaleString() : \"Unavailable\";");
     expect(page).toContain('if (aggregateMetricAvailable("roi")) executiveMetricParts.push(`ROI is ${formatAggregatePercent("roi")}`);');
     expect(page).toContain('if (aggregateMetricAvailable("roas")) executiveMetricParts.push(`ROAS is ${formatAggregateRatio("roas")}`);');
-    expect(page).toContain("const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${executiveRiskLevel}. ${executiveTrajectorySummary}`;");
+    expect(page).toContain("const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${displayedRiskLevel}. ${executiveTrajectorySummary}`;");
     expect(page).toContain("const resolveKpiAggregateMetric = (kpi: any): string | null => {");
     expect(page).toContain("const executiveKpiProgress = Array.isArray((executiveSummary as any).kpiProgress)");
     expect(page).toContain("? (executiveSummary as any).kpiProgress.filter((kpi: any) => resolveKpiAggregateMetric(kpi))");
@@ -133,6 +133,17 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind'");
     expect(page).toContain("if (!aggregateKpiMetric) return null;");
     expect(page).toContain("const current = aggregateMetricValue(aggregateKpiMetric);");
+    expect(page).toContain("const kpiProgressPct = (kpi: any): number => {");
+    expect(page).toContain("const riskKpiMissCount = executiveKpiProgress.filter((kpi: any) => kpiProgressPct(kpi) < 70).length;");
+    expect(page).toContain('const riskBenchmarkMissCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "behind").length;');
+    expect(page).toContain("const paidRiskSources = aggregateSources.filter((source: any) =>");
+    expect(page).toContain("const displayedRiskFactors = [");
+    expect(page).toContain('detail: aggregateMetricAvailable("roi") ? formatAggregatePercent("roi") : aggregateMetricReason("roi")');
+    expect(page).toContain('detail: aggregateMetricAvailable("roas") ? formatAggregateRatio("roas") : aggregateMetricReason("roas")');
+    expect(page).not.toContain("const riskCheckedInputs = Array.isArray((executiveSummary as any)?.risk?.checkedInputs)");
+    expect(page).not.toContain("(executiveSummary as any).risk.factors.length === 0");
+    expect(page).not.toContain("(executiveSummary as any).risk.factors.map");
+    expect(page).not.toContain("(executiveSummary as any).risk.level === 'low'");
     expect(page).not.toContain("Number(kpi.current) || 0");
     expect(page).toContain("const targetDeltaPct = target > 0");
     expect(page).toContain("const progressRatio = target > 0");
@@ -179,7 +190,6 @@ describe("campaign Executive Summary regression guard", () => {
     expect(overview).toContain("No configured risk factors identified");
     expect(overview).toContain("Based on available connected-source inputs checked below.");
     expect(overview).toContain("Checked inputs");
-    expect(page).toContain("risk.checkedInputs");
     expect(overview).not.toContain("Campaign is operating within acceptable parameters");
     expect(overview).toContain("{formatAggregateNumber(reachMetricKey)} {reachMetricLabels[reachMetricKey]}");
     expect(overview).toContain("{formatAggregateNumber(engagementMetricKey)} {engagementMetricLabels[engagementMetricKey]}");

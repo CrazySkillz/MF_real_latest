@@ -253,7 +253,7 @@ After Commit 4, the implemented Executive Summary sections use these source path
 | KPI Progress | campaign KPI rows from `/executive-summary`; current values from page-level `performanceSummary.totals` | KPI create/update/delete invalidates Executive Summary; page refetch updates rows and aggregate values |
 | Benchmark Comparison | campaign Benchmark rows from `/executive-summary`; current values from page-level `performanceSummary.totals` | Benchmark create/update/delete invalidates Executive Summary; page refetch updates rows and aggregate values |
 | Risk Assessment | fixed six risk inputs: KPI Risk, Benchmark Risk, Data Freshness, ROI / ROAS Risk, 7-Day Trend Risk, Paid Platform Concentration Risk | refetches `/executive-summary` and `/outcome-totals` on mount and window focus |
-| Strategic Recommendations | `/executive-summary.recommendations` generated from `performanceSummary` source categories and aggregate metric availability | refetches with `/executive-summary`; paid-media guidance requires paid-source and financial metric availability |
+| Strategic Recommendations | `/executive-summary.recommendations` generated from `performanceSummary` source categories and aggregate metric availability; Website Outcomes visible values render from page-level `performanceSummary.totals` | refetches with `/executive-summary` and `/outcome-totals` on mount, window focus, and the active-tab interval; paid-media guidance requires paid-source and financial metric availability |
 
 Root cause for Commit 4:
 
@@ -628,7 +628,7 @@ Why this is fifth:
 
 ### Commit 6: Docs And Final Validation
 
-Status: Not started.
+Status: Completed.
 
 Goal:
 
@@ -642,6 +642,13 @@ Scope:
 - Run related scheduler/snapshot tests if historical trajectory changed.
 - Run `npm run check`.
 - Run `npm run build`.
+
+Implemented behavior:
+
+- Final tracker status now reflects Commits 1, 2, 3, 3A, 4, 5, and 6 as completed for the implemented Executive Summary scope.
+- User validation passed for the Commit 5 active-tab refresh behavior: Network filtering confirmed `/executive-summary` and `/outcome-totals` refresh behavior with the corrected DevTools regex filter.
+- No additional scheduler/snapshot code changed in Commit 6; scheduler/snapshot behavior remains covered by the earlier compatible trajectory work and should be revalidated only if trajectory logic changes again.
+- Final validation evidence is recorded in the Current Status section.
 
 Why this is last:
 
@@ -669,7 +676,7 @@ Executive Summary is production ready only when:
 
 ## Current Status
 
-Production-ready by local code path review and regression coverage for the completed Executive Summary implementation scope. Deployed/live validation remains separate and should still be performed with GA4-only and multi-source campaigns.
+Production-ready by local code path review, regression coverage, build validation, and user validation for the completed Executive Summary implementation scope. Broader deployed/live validation with additional GA4-only and multi-source campaign variants remains separate.
 
 Proven:
 
@@ -684,6 +691,8 @@ Proven:
 - Strategic Recommendations are now executive-ready in implemented scope: they are source-capability gated, avoid unavailable paid-media claims, show live web/outcome values for GA4-only recommendations, compare mapped KPI/Benchmark targets when available, present the expected impact as bullets, and keep timeframe, investment requirement, assumptions, and disclaimers visible.
 - Strategic Recommendations will update when their inputs update and the Executive Summary data refetches. Current connected-source metrics come from `performanceSummary.totals`; paid-media eligibility comes from current main source capability; target context comes from campaign KPI/Benchmark records; and recommendation copy is recomputed by the endpoint plus finalized with page-level aggregate values in the UI.
 - Commit 5 now adds refresh stability: both Executive Summary queries poll every 60 seconds only while the page is active, and regression coverage guards against `isFetching`-based fallback flashes during background refetch.
+- Commit 6 now records final documentation and validation evidence for the completed Executive Summary implementation scope.
+- User validation passed for active-tab refresh behavior after using the DevTools regex filter `/executive-summary|outcome-totals/`.
 - Commit 1 replaced the endpoint's `storage.getCampaign(id)` campaign lookup with the standard campaign access guard.
 - GA4-only campaigns are no longer eligible for paid-media recommendations unless a main paid-media platform is connected and required paid financial inputs are available.
 - Risk Assessment currently proves the configured backend rules: available ROI below 0%, available ROAS below 1x, paid-platform concentration, compatible 7-day revenue decline, aggregate-backed KPI rows below 70% of target, Benchmark rows below 70% of benchmark, and connected-source data freshness warnings. Budget pacing remains in Budget & Financial Analysis until Executive Summary has a shared pacing input.
@@ -695,9 +704,16 @@ Partially reviewed:
 - Executive Summary helper functions.
 - Relationship to `performanceSummary` and compatible snapshots.
 
+Final local validation:
+
+- Passed: `npm test -- server/executive-summary-regression.test.ts server/executive-summary-helpers-regression.test.ts`
+- Passed: `git diff --check`
+- Passed: `npm run check`
+- Passed: `npm run build`
+
 Unverified:
 
-- Full deployed GA4-only behavior.
+- Additional deployed GA4-only variants beyond the user-validated active-tab refresh behavior.
 - Live multi-platform behavior.
 - New mock-live GA4 validation for the initial no-history state: current metrics and Risk Level should populate immediately, while `7-Day Snapshot Trajectory` should show `Not enough history`.
 - Complete historical trajectory behavior in deployed/live data after compatible snapshots exist for the latest point and roughly seven days earlier.

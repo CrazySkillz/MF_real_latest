@@ -583,6 +583,9 @@ Implemented behavior:
 - Fix 2 interpretation text is implemented: GA4-only web/outcome guidance now states live outcomes plainly, such as `Revenue is $88,893 from 392 conversions` and `Conversion rate is 4.7%`, without judging whether those values are good or bad unless targets are available.
 - Fix 3 target comparison and next action is implemented: GA4-only web/outcome guidance now compares mapped CVR, revenue, and conversion KPI/Benchmark targets when they exist, and gives a next action to inspect landing pages/conversion paths when any mapped target is below target.
 - Fix 4 regression and documentation hardening is implemented: coverage now explicitly guards GA4-only with targets, GA4-only without targets, paid-media guidance blocked, and missing GA4/web inputs remaining unavailable.
+- Website Outcomes `Expected Impact` now renders as bullet points so executives can scan available data, interpretation, target check, and next action separately.
+- `Timeframe` is retained because it tells executives when the recommendation should be reviewed or acted on. For GA4-only Website Outcomes, `Next 7 days` means this is a near-term diagnostic review, not a budget pacing period.
+- `Investment Required` is retained because it clarifies whether the recommendation needs budget. For GA4-only Website Outcomes, it should say analysis only and explain that paid-media budget or channel recommendations require a connected paid-media source.
 - Spend-without-revenue and revenue-without-spend states suppress paid efficiency claims instead of treating missing inputs as zero.
 
 Remaining executive-grade recommendation hardening:

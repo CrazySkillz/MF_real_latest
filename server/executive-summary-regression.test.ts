@@ -143,8 +143,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];");
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");
     expect(page).toContain("aggregateMetricAvailable(metricName) ? Math.round(aggregateMetricValue(metricName)).toLocaleString() : \"Unavailable\";");
-    expect(page).toContain("const formatRecommendationExpectedImpact = (rec: any): string => {");
-    expect(page).toContain('if (rec?.category !== "Website Outcomes") return formatRecommendationText(rec?.expectedImpact || "");');
+    expect(page).toContain("const getRecommendationExpectedImpactItems = (rec: any): string[] => {");
+    expect(page).toContain('if (rec?.category !== "Website Outcomes") return [formatRecommendationText(rec?.expectedImpact || "")];');
     expect(page).toContain('if (aggregateMetricAvailable("users")) webMetrics.push');
     expect(page).toContain('if (aggregateMetricAvailable("sessions")) webMetrics.push');
     expect(page).toContain('if (aggregateMetricAvailable("conversions")) webMetrics.push');
@@ -152,11 +152,13 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain('if (aggregateMetricAvailable("cvr")) webMetrics.push');
     expect(page).toContain('Revenue is ${formatAggregateCurrency("revenue")} from ${Math.round(aggregateMetricValue("conversions")).toLocaleString()} conversions.');
     expect(page).toContain('Conversion rate is ${aggregateMetricValue("cvr").toFixed(1)}%.');
-    expect(page).toContain("Target check: ${targetComparisons.join(\"; \")}. ");
+    expect(page).toContain("Target check: ${targetComparisons.join(\"; \")}.");
     expect(page).toContain("Next action: inspect landing pages or conversion paths for metrics below target before increasing spend.");
     expect(page).toContain("Next action: create or confirm KPI/Benchmark targets for conversion rate, revenue, and conversions before judging quality.");
     expect(page).toContain("Next action: keep monitoring these outcome targets and connect a paid-media source before making budget or channel decisions.");
-    expect(page).toContain("{formatRecommendationExpectedImpact(rec)}");
+    expect(page).toContain('<ul className="list-disc pl-4 space-y-1 text-sm text-green-700 dark:text-green-300">');
+    expect(page).toContain("{getRecommendationExpectedImpactItems(rec).map((item, idx) => (");
+    expect(page).toContain("{getRecommendationExpectedImpactItems(rec)[0]}");
     expect(page).not.toContain("{formatRecommendationText(rec.expectedImpact)}");
     expect(page).toContain('if (aggregateMetricAvailable("roi")) executiveMetricParts.push(`ROI is ${formatAggregatePercent("roi")}`);');
     expect(page).toContain('if (aggregateMetricAvailable("roas")) executiveMetricParts.push(`ROAS is ${formatAggregateRatio("roas")}`);');

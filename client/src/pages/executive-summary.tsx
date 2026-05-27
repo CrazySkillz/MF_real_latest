@@ -174,8 +174,8 @@ export default function ExecutiveSummary() {
     aggregateMetricAvailable(metricName) ? formatPct(aggregateMetricValue(metricName)) : "Unavailable";
   const formatAggregateRatio = (metricName: string) =>
     aggregateMetricAvailable(metricName) ? `${aggregateMetricValue(metricName).toFixed(1)}x` : "Unavailable";
-  const formatRecommendationExpectedImpact = (rec: any): string => {
-    if (rec?.category !== "Website Outcomes") return formatRecommendationText(rec?.expectedImpact || "");
+  const getRecommendationExpectedImpactItems = (rec: any): string[] => {
+    if (rec?.category !== "Website Outcomes") return [formatRecommendationText(rec?.expectedImpact || "")];
     const webMetrics: string[] = [];
     if (aggregateMetricAvailable("users")) webMetrics.push(`${Math.round(aggregateMetricValue("users")).toLocaleString()} users`);
     if (aggregateMetricAvailable("sessions")) webMetrics.push(`${Math.round(aggregateMetricValue("sessions")).toLocaleString()} sessions`);
@@ -187,7 +187,7 @@ export default function ExecutiveSummary() {
     const targetText = expectedImpact.includes(unavailableTargetText)
       ? unavailableTargetText
       : (expectedImpact.match(/KPI or Benchmark targets exist for [^.]+; compare against those targets before judging quality\./)?.[0] || "");
-    const metricText = webMetrics.length > 0 ? `Available data: ${webMetrics.join(", ")}. ` : "";
+    const metricText = webMetrics.length > 0 ? `Available data: ${webMetrics.join(", ")}.` : "";
     const interpretationText = [
       aggregateMetricAvailable("revenue") && aggregateMetricAvailable("conversions")
         ? `Revenue is ${formatAggregateCurrency("revenue")} from ${Math.round(aggregateMetricValue("conversions")).toLocaleString()} conversions.`
@@ -220,16 +220,18 @@ export default function ExecutiveSummary() {
       targetComparisons.push(`${targetMetricLabels[metric]} Benchmark is ${isBelow ? "below benchmark" : "on track"}`);
     });
     const targetComparisonText = targetComparisons.length > 0
-      ? `Target check: ${targetComparisons.join("; ")}. `
+      ? `Target check: ${targetComparisons.join("; ")}.`
       : targetText
-        ? `${targetText} `
+        ? targetText
         : "";
     const nextActionText = targetComparisons.length === 0
       ? "Next action: create or confirm KPI/Benchmark targets for conversion rate, revenue, and conversions before judging quality."
       : hasBelowTarget
         ? "Next action: inspect landing pages or conversion paths for metrics below target before increasing spend."
         : "Next action: keep monitoring these outcome targets and connect a paid-media source before making budget or channel decisions.";
-    return formatRecommendationText(`${metricText}${interpretationText ? `${interpretationText} ` : ""}${targetComparisonText}${nextActionText}`);
+    return [metricText, interpretationText, targetComparisonText, nextActionText]
+      .filter(Boolean)
+      .map((item) => formatRecommendationText(item));
   };
   const pickFirstAvailableMetric = (metricNames: string[]) =>
     metricNames.find((metricName) => aggregateMetricAvailable(metricName)) || metricNames[0];
@@ -984,7 +986,15 @@ export default function ExecutiveSummary() {
                           <div className="grid gap-4 md:grid-cols-3">
                             <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                               <div className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">Expected Impact</div>
-                              <div className="text-sm text-green-700 dark:text-green-300">{formatRecommendationExpectedImpact(rec)}</div>
+                              {rec?.category === "Website Outcomes" ? (
+                                <ul className="list-disc pl-4 space-y-1 text-sm text-green-700 dark:text-green-300">
+                                  {getRecommendationExpectedImpactItems(rec).map((item, idx) => (
+                                    <li key={idx}>{item}</li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <div className="text-sm text-green-700 dark:text-green-300">{getRecommendationExpectedImpactItems(rec)[0]}</div>
+                              )}
                             </div>
                             
                             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">

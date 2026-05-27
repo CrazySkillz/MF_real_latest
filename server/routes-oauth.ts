@@ -25555,6 +25555,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasUsers: aggregateMetricAvailable("users"),
         hasConversions: aggregateMetricAvailable("conversions"),
         hasCvr: aggregateMetricAvailable("cvr"),
+        users: aggregateMetricValue("users"),
+        sessions: aggregateMetricValue("sessions"),
+        conversions: aggregateMetricValue("conversions"),
+        revenue: aggregateMetricValue("revenue"),
+        cvr: aggregateMetricValue("cvr"),
         paidMediaSources: platforms.length,
         webAnalyticsSources: platformsForDisplay.filter((platform: any) => platform.category === "web_analytics").length,
       });

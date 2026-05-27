@@ -91,6 +91,11 @@ describe("campaign Executive Summary regression guard", () => {
     expect(recommendationsBlock).toContain('hasRevenue: aggregateMetricAvailable("revenue")');
     expect(recommendationsBlock).toContain('hasRoas: aggregateMetricAvailable("roas")');
     expect(recommendationsBlock).toContain('hasRoi: aggregateMetricAvailable("roi")');
+    expect(recommendationsBlock).toContain('users: aggregateMetricValue("users")');
+    expect(recommendationsBlock).toContain('sessions: aggregateMetricValue("sessions")');
+    expect(recommendationsBlock).toContain('conversions: aggregateMetricValue("conversions")');
+    expect(recommendationsBlock).toContain('revenue: aggregateMetricValue("revenue")');
+    expect(recommendationsBlock).toContain('cvr: aggregateMetricValue("cvr")');
     expect(recommendationsBlock).toContain("paidMediaSources: platforms.length");
     expect(recommendationsBlock).toContain("webAnalyticsSources: platformsForDisplay.filter");
   });

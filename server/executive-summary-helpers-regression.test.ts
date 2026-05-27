@@ -74,12 +74,18 @@ describe("Executive Summary helper availability guards", () => {
       hasUsers: true,
       hasConversions: true,
       hasCvr: true,
+      users: 51906,
+      sessions: 66972,
+      conversions: 2984,
+      revenue: 329245,
+      cvr: 4.454,
       paidMediaSources: 0,
       webAnalyticsSources: 1,
     });
 
     expect(recommendations.map((recommendation) => recommendation.category)).toEqual(["Website Outcomes"]);
     expect(recommendations[0].action).toContain("before making paid-media budget decisions");
+    expect(recommendations[0].expectedImpact).toContain("Available data: 51,906 users, 66,972 sessions, 2,984 conversions, $329,245 revenue, 4.5% conversion rate.");
     expect(recommendations[0].investmentRequired).toContain("connect a paid-media source");
     expect(recommendations[0].assumptions.join(" ")).toContain("not a spend, ROAS, CPA, CPC, CTR, or CPM recommendation");
     expect(JSON.stringify(recommendations)).not.toContain("Increase campaign budget");

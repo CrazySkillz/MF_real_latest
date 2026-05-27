@@ -569,6 +569,7 @@ Implemented behavior:
 - Paid-media scaling, optimization, and diversification now require a connected paid-media source plus available spend, revenue, ROAS, ROI, and total spend.
 - GA4-only campaigns can receive web/outcome guidance from available web analytics and outcome metrics, but cannot receive paid-media budget, platform, or ROAS/ROI claims.
 - GA4-only web/outcome guidance is framed as an executive diagnostic: review whether website users or sessions are becoming conversions and revenue before making paid-media budget decisions.
+- GA4-only web/outcome guidance includes the available aggregate users, sessions, conversions, revenue, and CVR values when those metrics are available, so the recommendation is tied to visible connected-source data.
 - Spend-without-revenue and revenue-without-spend states suppress paid efficiency claims instead of treating missing inputs as zero.
 
 Why this is fourth:

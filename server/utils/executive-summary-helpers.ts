@@ -195,6 +195,11 @@ export function generateRecommendations(
     hasUsers?: boolean;
     hasConversions?: boolean;
     hasCvr?: boolean;
+    users?: number;
+    sessions?: number;
+    conversions?: number;
+    revenue?: number;
+    cvr?: number;
     paidMediaSources?: number;
     webAnalyticsSources?: number;
   } = {},
@@ -342,11 +347,18 @@ export function generateRecommendations(
       (context.webAnalyticsSources || 0) > 0 &&
       (context.hasSessions === true || context.hasUsers === true) &&
       (context.hasConversions === true || context.hasRevenue === true)) {
+    const webMetrics: string[] = [];
+    if (context.hasUsers === true && Number.isFinite(context.users)) webMetrics.push(`${Math.round(context.users || 0).toLocaleString("en-US")} users`);
+    if (context.hasSessions === true && Number.isFinite(context.sessions)) webMetrics.push(`${Math.round(context.sessions || 0).toLocaleString("en-US")} sessions`);
+    if (context.hasConversions === true && Number.isFinite(context.conversions)) webMetrics.push(`${Math.round(context.conversions || 0).toLocaleString("en-US")} conversions`);
+    if (context.hasRevenue === true && Number.isFinite(context.revenue)) webMetrics.push(`$${Math.round(context.revenue || 0).toLocaleString("en-US")} revenue`);
+    if (context.hasCvr === true && Number.isFinite(context.cvr)) webMetrics.push(`${(context.cvr || 0).toFixed(1)}% conversion rate`);
+    const webMetricSummary = webMetrics.length > 0 ? `Available data: ${webMetrics.join(", ")}. ` : "";
     recommendations.push({
       priority: 'medium',
       category: 'Website Outcomes',
       action: 'Review website conversion path before making paid-media budget decisions',
-      expectedImpact: 'Shows whether available users or sessions are turning into conversions and revenue before spend changes are considered',
+      expectedImpact: `${webMetricSummary}Shows whether available users or sessions are turning into conversions and revenue before spend changes are considered`,
       investmentRequired: 'Analysis only; connect a paid-media source for budget or channel recommendations',
       timeline: 'Next 7 days',
       confidence: context.hasCvr === true ? 'medium' : 'low',

@@ -9,6 +9,11 @@ describe("Performance Summary scheduler snapshot alignment", () => {
     expect(scheduler).toContain('import { buildPerformanceSummaryAggregate }');
     expect(scheduler).toContain("const performanceSummary = buildPerformanceSummaryAggregate({");
     expect(scheduler).toContain('dateRange: "90days"');
+    expect(scheduler).toContain('platformSources: [{');
+    expect(scheduler).toContain('id: "google_ads"');
+    expect(scheduler).toContain('metrics: googleAdsData');
+    expect(scheduler).toContain('freshness: { selectedCampaignIds: googleAdsSelectedCampaignIds }');
+    expect(scheduler).toContain("const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend) + metaData.spend + googleAdsData.spend;");
     expect(scheduler).toContain("performanceSummary,");
     expect(scheduler).toContain('aggregateValue("impressions")');
     expect(scheduler).toContain('aggregateValue("conversions")');

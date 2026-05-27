@@ -707,7 +707,7 @@ Outstanding Executive Summary future-proofing tasks:
 
 - [x] Generic future-source regression: prove any normalized `platformSources` source can feed Executive Summary aggregate sources, platform rows, KPI/Benchmark mapping, Risk inputs, and Strategic Recommendation eligibility without a source-specific UI branch.
 - [x] Remaining aggregate-composition sharing: reduce the remaining duplicated source composition between `/outcome-totals` and `/executive-summary` beyond the already shared Google Ads source-builder slice.
-- [ ] Scheduler snapshot parity: confirm scheduler snapshots use the same aggregate/source set as Executive Summary so `7-Day Snapshot Trajectory` works with future or refined main Connected Platforms.
+- [x] Scheduler snapshot parity: confirm scheduler snapshots use the same aggregate/source set as Executive Summary so `7-Day Snapshot Trajectory` works with future or refined main Connected Platforms.
 - [ ] Deployed validation: validate the Executive Summary aggregate pattern with GA4 plus a refined Google Ads source, and with GA4 plus multiple paid-media sources.
 - [ ] Future-platform acceptance rule: every new or refined main Connected Platform must be wired into the shared aggregate contract, `/outcome-totals`, `/executive-summary`, scheduler snapshots, freshness metadata, KPI/Benchmark mapping, Risk inputs, Strategic Recommendations, and regression coverage before that platform is marked production-ready in Executive Summary.
 
@@ -725,6 +725,11 @@ Completed shared aggregate entry-point fix:
 - `/outcome-totals` and `/executive-summary` now call the same route-level aggregate wrapper instead of calling `buildPerformanceSummaryAggregate` directly.
 - The wrapper centralizes generic main-platform source composition through `mainPlatformSources`, so future refined sources can be added to one source-composition path before entering the shared aggregate contract.
 - Endpoint-specific metric fetching remains local to each route to avoid a broad refactor; this fix only removes the drift-prone aggregate entry-point/source-list duplication.
+
+Completed scheduler snapshot parity fix:
+
+- Scheduler snapshots now pass the already-fetched Google Ads rows into snapshot `performanceSummary` as a normalized `platformSources` source, and Google Ads spend contributes to the scheduler fallback spend total.
+- This keeps compatible snapshot trajectory inputs aligned with the live Executive Summary aggregate source pattern for the current refined paid-source path. Each future platform still must be explicitly wired into scheduler snapshots under the future-platform acceptance rule before that platform is marked production-ready.
 
 Proven:
 

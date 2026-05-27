@@ -118,6 +118,7 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
 
   let googleAdsConn: any = null;
   let googleAdsDailyRows: any[] = [];
+  let googleAdsSelectedCampaignIds: string[] = [];
   try {
     googleAdsConn = await storage.getGoogleAdsConnection(campaignId);
     if (googleAdsConn && !(googleAdsConn as any).spendOnly) {
@@ -125,8 +126,10 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
       const selectedIds = (() => {
         try {
           const parsed = JSON.parse(String((googleAdsConn as any)?.selectedCampaignIds || "[]"));
-          return Array.isArray(parsed) ? new Set(parsed.map(String).filter(Boolean)) : new Set<string>();
+          googleAdsSelectedCampaignIds = Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+          return new Set(googleAdsSelectedCampaignIds);
         } catch {
+          googleAdsSelectedCampaignIds = [];
           return new Set<string>();
         }
       })();
@@ -146,6 +149,13 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
   const linkedinEngagement = parseNum(linkedinMetrics.engagement);
   const ciEngagements = parseNum(customIntegrationData.engagements);
   const ciSessions = parseNum(customIntegrationData.sessions);
+  const googleAdsData = googleAdsDailyRows.reduce((totals: any, row: any) => ({
+    impressions: totals.impressions + parseNum(row?.impressions),
+    clicks: totals.clicks + parseNum(row?.clicks),
+    spend: totals.spend + parseNum(row?.spend),
+    conversions: totals.conversions + parseNum(row?.conversions),
+    attributedRevenue: totals.attributedRevenue + parseNum(row?.ga4Revenue || row?.conversionValue),
+  }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, attributedRevenue: 0 });
 
   // Double-counting prevention: GA4 and CI both track website analytics.
   // When GA4 is connected, prefer GA4 for web metrics; otherwise use CI.
@@ -154,7 +164,7 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
   // Advertising metrics: LinkedIn + CI(ads) + Meta — no overlap
   const advertisingEngagements = linkedinClicks + linkedinEngagement + ciClicks + ciEngagements + metaClicks;
   const totalEngagements = advertisingEngagements + webSessions;
-  const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend) + metaData.spend;
+  const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend) + metaData.spend + googleAdsData.spend;
 
   let persistedSpend = 0;
   let spendSourceIds: string[] = [];
@@ -238,6 +248,20 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
       meta: { connected: metaConnected, ...metaData },
       customIntegration: { connected: customIntegrationConnected, ...customIntegrationData },
     },
+    platformSources: [{
+      id: "google_ads",
+      label: "Google Ads",
+      category: "paid_media",
+      connected: Boolean(googleAdsConn && !(googleAdsConn as any).spendOnly),
+      capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+      includedMetrics: googleAdsConn && !(googleAdsConn as any).spendOnly ? ["impressions", "clicks", "spend", "conversions", "attributedRevenue"] : [],
+      excludedMetrics: [
+        { metric: "sessions", reason: "Sessions are web analytics metrics" },
+        { metric: "users", reason: "Users are web analytics metrics" },
+      ],
+      metrics: googleAdsData,
+      freshness: { selectedCampaignIds: googleAdsSelectedCampaignIds },
+    }],
     revenue: {
       onsiteRevenue: ga4Data.revenue,
       offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),

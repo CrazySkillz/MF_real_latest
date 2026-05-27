@@ -132,6 +132,8 @@ Outstanding Executive Summary future-proofing tasks are tracked in `CAMPAIGN_DEE
 
 Executive Summary and `/outcome-totals` should enter the shared aggregate contract through the same route-level aggregate wrapper so future refined main platform sources use one source-composition path before being passed to `buildPerformanceSummaryAggregate`.
 
+Scheduler snapshots that feed Executive Summary `7-Day Snapshot Trajectory` must include the same normalized main source set in `metrics.performanceSummary`. For the current future-proofing slice, Google Ads rows are passed into scheduler snapshot `performanceSummary` as a normalized `platformSources` source; future platforms need the same scheduler wiring before they are production-ready in Executive Summary.
+
 GA4-only Strategic Recommendations regression coverage should guard four cases: web/outcome guidance with targets, web/outcome guidance without targets, paid-media guidance remaining blocked, and insufficient GA4/web inputs producing no recommendation instead of zero-filled claims.
 
 Executive Summary KPI Progress should be fed by campaign-level KPI records whose current value can be mapped to available GA4/connected-source aggregate metrics. Campaign-level KPI create, update, and delete actions should refresh the campaign Executive Summary query so KPI Progress reflects the latest KPI list and targets. Targets come from campaign-level KPI records, but current values, progress percentages, and statuses should render from live GA4/connected-source aggregate values for metrics such as users, sessions, conversions, revenue, ROI, ROAS, CTR, or CVR. Executive Summary must not silently fall back to saved KPI progress/current values when a KPI cannot be mapped to an available aggregate metric.

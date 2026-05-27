@@ -580,11 +580,11 @@ Implemented behavior:
 - GA4-only web/outcome guidance includes the available aggregate users, sessions, conversions, revenue, and CVR values when those metrics are available, so the recommendation is tied to visible connected-source data.
 - Fix 1 target awareness is implemented: GA4-only web/outcome guidance now states whether KPI or Benchmark targets exist for CVR, revenue, and conversions. If no target exists, it says quality cannot be judged yet.
 - Recommendation visible values now render Website Outcomes `Expected Impact` metrics from the same page-level `performanceSummary` aggregate used by the Executive Summary cards, KPI Progress, Benchmark Comparison, and Risk Assessment. This prevents backend `/executive-summary` recommendation values from drifting from the visible page values.
+- Fix 2 interpretation text is implemented: GA4-only web/outcome guidance now states live outcomes plainly, such as `Revenue is $88,893 from 392 conversions` and `Conversion rate is 4.7%`, without judging whether those values are good or bad unless targets are available.
 - Spend-without-revenue and revenue-without-spend states suppress paid efficiency claims instead of treating missing inputs as zero.
 
 Remaining executive-grade recommendation hardening:
 
-- Fix 2: Add interpretation text. State the available GA4/web outcomes plainly, such as `Revenue is $88,893 from 392 conversions` and `Conversion rate is 4.7%`. If a matching KPI or Benchmark target exists, state that the metric should be judged against that target. If no target exists, do not imply the metric is good or bad.
 - Fix 3: Add target comparison and next action. Evaluate available CVR, revenue, and conversions against matched KPI or Benchmark targets. If below target, tell the executive to inspect landing pages or conversion paths. If no target exists, tell the executive to create or confirm KPI/Benchmark targets first.
 - Fix 4: Add regression coverage and docs for GA4-only with targets, GA4-only without targets, paid-media guidance still blocked, and missing metrics remaining unavailable.
 - All remaining fixes must keep this as web/outcome guidance only; do not add paid-media budget, ROAS, CPA, CPC, CTR, CPM, or channel allocation advice unless a paid-media source is connected.

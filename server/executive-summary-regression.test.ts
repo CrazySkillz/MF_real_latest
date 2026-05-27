@@ -146,6 +146,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const formatRecommendationExpectedImpact = (rec: any): string => {");
     expect(page).toContain('if (rec?.category !== "Website Outcomes") return formatRecommendationText(rec?.expectedImpact || "");');
     expect(page).toContain('if (aggregateMetricAvailable("revenue")) webMetrics.push(formatAggregateCurrency("revenue"));');
+    expect(page).toContain('Revenue is ${formatAggregateCurrency("revenue")} from ${Math.round(aggregateMetricValue("conversions")).toLocaleString()} conversions.');
+    expect(page).toContain('Conversion rate is ${aggregateMetricValue("cvr").toFixed(1)}%.');
     expect(page).toContain("{formatRecommendationExpectedImpact(rec)}");
     expect(page).not.toContain("{formatRecommendationText(rec.expectedImpact)}");
     expect(page).toContain('if (aggregateMetricAvailable("roi")) executiveMetricParts.push(`ROI is ${formatAggregatePercent("roi")}`);');

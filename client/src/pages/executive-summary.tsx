@@ -188,7 +188,15 @@ export default function ExecutiveSummary() {
       ? unavailableTargetText
       : (expectedImpact.match(/KPI or Benchmark targets exist for [^.]+; compare against those targets before judging quality\./)?.[0] || "");
     const metricText = webMetrics.length > 0 ? `Available data: ${webMetrics.join(", ")}. ` : "";
-    return formatRecommendationText(`${metricText}${targetText ? `${targetText} ` : ""}Shows whether available users or sessions are turning into conversions and revenue before spend changes are considered`);
+    const interpretationText = [
+      aggregateMetricAvailable("revenue") && aggregateMetricAvailable("conversions")
+        ? `Revenue is ${formatAggregateCurrency("revenue")} from ${Math.round(aggregateMetricValue("conversions")).toLocaleString()} conversions.`
+        : "",
+      aggregateMetricAvailable("cvr")
+        ? `Conversion rate is ${aggregateMetricValue("cvr").toFixed(1)}%.`
+        : "",
+    ].filter(Boolean).join(" ");
+    return formatRecommendationText(`${metricText}${interpretationText ? `${interpretationText} ` : ""}${targetText ? `${targetText} ` : ""}Shows whether available users or sessions are turning into conversions and revenue before spend changes are considered`);
   };
   const pickFirstAvailableMetric = (metricNames: string[]) =>
     metricNames.find((metricName) => aggregateMetricAvailable(metricName)) || metricNames[0];

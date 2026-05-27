@@ -200,6 +200,9 @@ export function generateRecommendations(
     conversions?: number;
     revenue?: number;
     cvr?: number;
+    hasConversionTarget?: boolean;
+    hasRevenueTarget?: boolean;
+    hasCvrTarget?: boolean;
     paidMediaSources?: number;
     webAnalyticsSources?: number;
   } = {},
@@ -354,11 +357,19 @@ export function generateRecommendations(
     if (context.hasRevenue === true && Number.isFinite(context.revenue)) webMetrics.push(`$${Math.round(context.revenue || 0).toLocaleString("en-US")} revenue`);
     if (context.hasCvr === true && Number.isFinite(context.cvr)) webMetrics.push(`${(context.cvr || 0).toFixed(1)}% conversion rate`);
     const webMetricSummary = webMetrics.length > 0 ? `Available data: ${webMetrics.join(", ")}. ` : "";
+    const targetMetrics = [
+      context.hasCvrTarget ? "conversion rate" : null,
+      context.hasRevenueTarget ? "revenue" : null,
+      context.hasConversionTarget ? "conversions" : null,
+    ].filter(Boolean);
+    const targetSummary = targetMetrics.length > 0
+      ? `KPI or Benchmark targets exist for ${targetMetrics.join(", ")}; compare against those targets before judging quality. `
+      : "No KPI or Benchmark target is available for conversion rate, revenue, or conversions, so quality cannot be judged yet. ";
     recommendations.push({
       priority: 'medium',
       category: 'Website Outcomes',
       action: 'Review website conversion path before making paid-media budget decisions',
-      expectedImpact: `${webMetricSummary}Shows whether available users or sessions are turning into conversions and revenue before spend changes are considered`,
+      expectedImpact: `${webMetricSummary}${targetSummary}Shows whether available users or sessions are turning into conversions and revenue before spend changes are considered`,
       investmentRequired: 'Analysis only; connect a paid-media source for budget or channel recommendations',
       timeline: 'Next 7 days',
       confidence: context.hasCvr === true ? 'medium' : 'low',

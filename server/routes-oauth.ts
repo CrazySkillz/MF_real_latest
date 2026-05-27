@@ -25294,6 +25294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch KPI progress
       let kpiProgress: any[] = [];
+      const recommendationTargetMetrics = new Set<string>();
       try {
         const kpis = await storage.getCampaignKPIs(id);
         for (const kpi of kpis) {
@@ -25301,6 +25302,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!aggregateKpiMetric) continue;
           const currentValue = aggregateMetricValue(aggregateKpiMetric);
           const targetValue = parseNum(kpi.targetValue);
+          if (targetValue > 0 && ["cvr", "revenue", "conversions"].includes(aggregateKpiMetric)) {
+            recommendationTargetMetrics.add(aggregateKpiMetric);
+          }
           const lowerIsBetter = lowerIsBetterKpiMetrics.has(aggregateKpiMetric);
           const progressRatio = targetValue > 0
             ? lowerIsBetter
@@ -25337,6 +25341,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!aggregateBenchmarkMetric) continue;
           const currentVal = aggregateMetricValue(aggregateBenchmarkMetric);
           const targetVal = parseNum(bm.benchmarkValue);
+          if (targetVal > 0 && ["cvr", "revenue", "conversions"].includes(aggregateBenchmarkMetric)) {
+            recommendationTargetMetrics.add(aggregateBenchmarkMetric);
+          }
           const lowerIsBetter = lowerIsBetterKpiMetrics.has(aggregateBenchmarkMetric);
           const delta = targetVal > 0
             ? lowerIsBetter
@@ -25560,6 +25567,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversions: aggregateMetricValue("conversions"),
         revenue: aggregateMetricValue("revenue"),
         cvr: aggregateMetricValue("cvr"),
+        hasConversionTarget: recommendationTargetMetrics.has("conversions"),
+        hasRevenueTarget: recommendationTargetMetrics.has("revenue"),
+        hasCvrTarget: recommendationTargetMetrics.has("cvr"),
         paidMediaSources: platforms.length,
         webAnalyticsSources: platformsForDisplay.filter((platform: any) => platform.category === "web_analytics").length,
       });

@@ -269,6 +269,12 @@ Target behavior:
 - Paid-media scaling recommendations require available spend, revenue, ROI/ROAS, and non-declining compatible trajectory where applicable.
 - GA4-only campaigns do not produce paid-media budget reallocation, paid creative optimization, or platform diversification recommendations framed as ad-spend advice.
 - GA4-only campaigns may produce web/outcome recommendations when sessions, users, conversions, revenue, or CVR are available.
+- GA4-only web/outcome recommendations should show the actual available metrics: users, sessions, conversions, revenue, and conversion rate.
+- GA4-only web/outcome recommendations should interpret the metrics, not only list them. Example: `Revenue is $88,893 from 392 conversions.`
+- GA4-only web/outcome recommendations should state whether quality can be judged against an available KPI or Benchmark target. If no target exists, say the metric cannot be judged yet.
+- GA4-only web/outcome recommendations should tie the recommendation to campaign goals before any paid spend decision. Example: `Before increasing paid spend, confirm whether this conversion rate and revenue are acceptable against campaign goals.`
+- GA4-only web/outcome recommendations should give a clear next action. Example: `Next action: compare CVR and revenue against KPI/Benchmark targets, then inspect landing pages or conversion paths if below target.`
+- GA4-only web/outcome recommendations must keep the paid-media boundary clear: do not recommend budget increases, ROAS, CPA, CPC, CTR, CPM, or channel allocation unless a paid-media source is connected.
 - If inputs are insufficient, the tab should show a clear no-recommendations or insufficient-source-coverage state.
 - Recommendation scenarios and projected impacts must state assumptions and avoid claims based on unavailable metrics.
 
@@ -276,6 +282,8 @@ Required regression coverage:
 
 - GA4-only campaign produces no paid-media recommendation.
 - GA4-only campaign can produce web/outcome guidance only from available GA4 metrics.
+- GA4-only web/outcome guidance includes available metric values and states whether KPI/Benchmark targets exist for interpretation.
+- GA4-only web/outcome guidance gives a specific next action without making paid-media claims.
 - One paid-media source does not produce reallocation guidance.
 - Two comparable paid-media sources can produce reallocation guidance when values support it.
 - Revenue-without-spend avoids paid efficiency claims.
@@ -570,7 +578,14 @@ Implemented behavior:
 - GA4-only campaigns can receive web/outcome guidance from available web analytics and outcome metrics, but cannot receive paid-media budget, platform, or ROAS/ROI claims.
 - GA4-only web/outcome guidance is framed as an executive diagnostic: review whether website users or sessions are becoming conversions and revenue before making paid-media budget decisions.
 - GA4-only web/outcome guidance includes the available aggregate users, sessions, conversions, revenue, and CVR values when those metrics are available, so the recommendation is tied to visible connected-source data.
+- Fix 1 target awareness is implemented: GA4-only web/outcome guidance now states whether KPI or Benchmark targets exist for CVR, revenue, and conversions. If no target exists, it says quality cannot be judged yet.
 - Spend-without-revenue and revenue-without-spend states suppress paid efficiency claims instead of treating missing inputs as zero.
+
+Remaining executive-grade recommendation hardening:
+
+- Add target comparison logic that evaluates available CVR, revenue, and conversions against matched KPI or Benchmark targets.
+- Add a specific next action: compare CVR and revenue against KPI/Benchmark targets, then inspect landing pages or conversion paths if below target.
+- Keep this as web/outcome guidance only; do not add paid-media budget, ROAS, CPA, CPC, CTR, CPM, or channel allocation advice unless a paid-media source is connected.
 
 Why this is fourth:
 

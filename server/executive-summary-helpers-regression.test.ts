@@ -86,11 +86,32 @@ describe("Executive Summary helper availability guards", () => {
     expect(recommendations.map((recommendation) => recommendation.category)).toEqual(["Website Outcomes"]);
     expect(recommendations[0].action).toContain("before making paid-media budget decisions");
     expect(recommendations[0].expectedImpact).toContain("Available data: 51,906 users, 66,972 sessions, 2,984 conversions, $329,245 revenue, 4.5% conversion rate.");
+    expect(recommendations[0].expectedImpact).toContain("No KPI or Benchmark target is available for conversion rate, revenue, or conversions, so quality cannot be judged yet.");
     expect(recommendations[0].investmentRequired).toContain("connect a paid-media source");
     expect(recommendations[0].assumptions.join(" ")).toContain("not a spend, ROAS, CPA, CPC, CTR, or CPM recommendation");
     expect(JSON.stringify(recommendations)).not.toContain("Increase campaign budget");
     expect(JSON.stringify(recommendations)).not.toContain("Budget Reallocation");
     expect(JSON.stringify(recommendations)).not.toContain("additional platforms");
+  });
+
+  it("states when GA4-only web outcome targets exist for interpretation", () => {
+    const recommendations = generateRecommendations([], 0, 0, 0, null, {
+      hasRevenue: true,
+      hasSessions: true,
+      hasConversions: true,
+      hasCvr: true,
+      sessions: 8432,
+      conversions: 392,
+      revenue: 88893,
+      cvr: 4.65,
+      hasRevenueTarget: true,
+      hasCvrTarget: true,
+      paidMediaSources: 0,
+      webAnalyticsSources: 1,
+    });
+
+    expect(recommendations[0].expectedImpact).toContain("KPI or Benchmark targets exist for conversion rate, revenue; compare against those targets before judging quality.");
+    expect(JSON.stringify(recommendations)).not.toContain("Increase campaign budget");
   });
 
   it("does not reallocate budget with only one paid-media source", () => {

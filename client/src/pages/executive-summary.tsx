@@ -34,6 +34,9 @@ export default function ExecutiveSummary() {
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const executiveOutcomeDateRange = "90days";
@@ -46,6 +49,9 @@ export default function ExecutiveSummary() {
       if (!resp.ok) return null;
       return resp.json().catch(() => null);
     },
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   if (campaignLoading || summaryLoading || outcomeTotalsLoading) {

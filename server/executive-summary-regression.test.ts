@@ -117,6 +117,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).not.toContain("<Select value={period}");
     expect(page).toContain('const executiveOutcomeDateRange = "90days";');
     expect(page).toContain("`/api/campaigns/${campaignId}/outcome-totals?dateRange=${executiveOutcomeDateRange}${demoMode ? \"&demo=1\" : \"\"}`");
+    expect(page.match(/refetchOnMount: "always"/g)?.length).toBe(2);
+    expect(page.match(/refetchOnWindowFocus: true/g)?.length).toBe(2);
+    expect(page.match(/staleTime: 0/g)?.length).toBe(2);
     expect(page).toContain("const performanceSummary = (outcomeTotals as any)?.performanceSummary || (executiveSummary as any).performanceSummary;");
     expect(page).toContain("const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];");
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");

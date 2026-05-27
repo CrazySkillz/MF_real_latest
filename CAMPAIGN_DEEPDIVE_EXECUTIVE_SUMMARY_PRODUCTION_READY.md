@@ -676,7 +676,7 @@ Executive Summary is production ready only when:
 
 ## Current Status
 
-Production-ready by local code path review, regression coverage, build validation, and user validation for the GA4/LinkedIn/Meta/Custom/financial-source scope. Full production readiness for all current and future Connected Platform integrations is in progress because `/executive-summary` and `/outcome-totals` previously had separate aggregate composition paths that could drift.
+Production-ready by local code path review, regression coverage, build validation, and user validation for the GA4/LinkedIn/Meta/Custom/financial-source scope. Full production readiness for all current and future Connected Platform integrations is in progress because `/executive-summary` and `/outcome-totals` previously had separate aggregate composition paths that could drift. Google Ads still needs separate Connected Platforms refinement before the Google Ads integration itself should be treated as production-ready; the tasks below future-proof Executive Summary so a refined Google Ads source can plug into the same aggregate pattern as Budget & Financial Analysis and the other DeepDive subsections.
 
 ### Outstanding Production-Readiness Tasks For Connected Platform Expansion
 
@@ -688,7 +688,7 @@ Root cause:
 Completed first fix:
 
 - `/executive-summary` now builds a normalized Google Ads `platformSources` row and passes `platformSources: [googleAds]` into `buildPerformanceSummaryAggregate`.
-- Google Ads can now contribute to Executive Summary endpoint source rows, aggregate paid-media totals, KPI/Benchmark metric mapping, paid-platform concentration risk, paid-media recommendation eligibility, and data freshness warnings when connected and available.
+- A refined Google Ads Connected Platform source can now contribute to Executive Summary endpoint source rows, aggregate paid-media totals, KPI/Benchmark metric mapping, paid-platform concentration risk, paid-media recommendation eligibility, and data freshness warnings when connected and available.
 
 Completed next fix:
 
@@ -698,18 +698,27 @@ Completed next fix:
 
 Completed endpoint regression fix:
 
-- Regression coverage now proves a connected Google Ads source reaches the Executive Summary response surfaces: `performanceSummary.sources`, visible `platforms`, paid-source count, and paid-media recommendation eligibility.
+- Regression coverage now proves a normalized connected Google Ads-style source reaches the Executive Summary response surfaces: `performanceSummary.sources`, visible `platforms`, paid-source count, and paid-media recommendation eligibility.
 - The regression also guards the route wiring that passes `platformSources: [googleAds]` into the aggregate and returns `platforms`, `platformsWithData`, and Google Ads data-accuracy metadata from the endpoint.
 - Root cause found during regression: paid sources expose `attributedRevenue`, but aggregate revenue availability only counted metric name `revenue`; this could block paid-media recommendation eligibility even when attributed revenue, spend, ROI, and ROAS were present.
 - Fix: aggregate revenue availability now treats connected source `attributedRevenue` as a valid revenue source while preserving existing metric names and response shape.
 
-Still outstanding:
+Outstanding Executive Summary future-proofing tasks:
 
-- Extract or share the remaining aggregate composition used by `/outcome-totals` and `/executive-summary` so future source support cannot diverge again beyond the Google Ads source-builder slice.
-- Add a generic future-source regression proving normalized `platformSources` feed Executive Summary without hand-coded platform UI branches.
-- Confirm scheduler snapshots include the same platform source set used by Executive Summary trajectory before declaring future-source trajectory complete.
-- Add deployed validation for GA4 + Google Ads and GA4 + multiple paid-media sources.
-- For each new Connected Platform, require the same source to be wired into the shared aggregate contract, `/outcome-totals`, `/executive-summary`, scheduler snapshots, freshness metadata, and regression coverage before marking that platform production-ready in Executive Summary.
+- [x] Generic future-source regression: prove any normalized `platformSources` source can feed Executive Summary aggregate sources, platform rows, KPI/Benchmark mapping, Risk inputs, and Strategic Recommendation eligibility without a source-specific UI branch.
+- [ ] Remaining aggregate-composition sharing: reduce the remaining duplicated source composition between `/outcome-totals` and `/executive-summary` beyond the already shared Google Ads source-builder slice.
+- [ ] Scheduler snapshot parity: confirm scheduler snapshots use the same aggregate/source set as Executive Summary so `7-Day Snapshot Trajectory` works with future or refined main Connected Platforms.
+- [ ] Deployed validation: validate the Executive Summary aggregate pattern with GA4 plus a refined Google Ads source, and with GA4 plus multiple paid-media sources.
+- [ ] Future-platform acceptance rule: every new or refined main Connected Platform must be wired into the shared aggregate contract, `/outcome-totals`, `/executive-summary`, scheduler snapshots, freshness metadata, KPI/Benchmark mapping, Risk inputs, Strategic Recommendations, and regression coverage before that platform is marked production-ready in Executive Summary.
+
+Separate Google Ads Connected Platforms refinement:
+
+- [ ] Google Ads-specific metrics, OAuth/test-mode behavior, attribution, source UI, and metric correctness still need their own Connected Platforms refinement before Google Ads itself is treated as production-ready.
+- [ ] The Executive Summary work above only future-proofs aggregate consumption so a refined Google Ads source can plug into Executive Summary using the same pattern as Budget & Financial Analysis and the other aggregate-backed DeepDive subsections.
+
+Completed generic future-source regression fix:
+
+- Regression coverage now uses a fake future paid-media source, not Google Ads, to prove normalized `platformSources` can feed Executive Summary aggregate totals, visible platform rows, KPI/Benchmark-compatible metrics, Risk inputs, and paid-media recommendation eligibility without a source-specific UI/backend branch.
 
 Proven:
 
@@ -728,7 +737,8 @@ Proven:
 - User validation passed for active-tab refresh behavior after using the DevTools regex filter `/executive-summary|outcome-totals/`.
 - Follow-up parity fix now passes Google Ads as a normalized `platformSources` source into `/executive-summary`, matching the `/outcome-totals` aggregate pattern for the first current future-source gap.
 - Follow-up shared-composition fix now uses the same Google Ads aggregate source builder in `/outcome-totals` and `/executive-summary`, preventing the two endpoints from deriving Google Ads totals differently.
-- Follow-up endpoint regression now proves Google Ads appears in Executive Summary aggregate sources, platform rows, paid-source count, and recommendation eligibility when connected.
+- Follow-up endpoint regression now proves a normalized Google Ads-style source appears in Executive Summary aggregate sources, platform rows, paid-source count, and recommendation eligibility when connected.
+- These Google Ads-related Executive Summary tasks are aggregate-pattern future-proofing only; Google Ads platform-specific refinement remains separate from Executive Summary production readiness.
 - Commit 1 replaced the endpoint's `storage.getCampaign(id)` campaign lookup with the standard campaign access guard.
 - GA4-only campaigns are no longer eligible for paid-media recommendations unless a main paid-media platform is connected and required paid financial inputs are available.
 - Risk Assessment currently proves the configured backend rules: available ROI below 0%, available ROAS below 1x, paid-platform concentration, compatible 7-day revenue decline, aggregate-backed KPI rows below 70% of target, Benchmark rows below 70% of benchmark, and connected-source data freshness warnings. Budget pacing remains in Budget & Financial Analysis until Executive Summary has a shared pacing input.

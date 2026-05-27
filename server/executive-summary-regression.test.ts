@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
-import { generateRecommendations } from "./utils/executive-summary-helpers";
+import { generateRecommendations, generateRiskAssessment } from "./utils/executive-summary-helpers";
 
 describe("campaign Executive Summary regression guard", () => {
   it("guards the endpoint and builds current values from the shared aggregate contract", () => {
@@ -222,6 +222,112 @@ describe("campaign Executive Summary regression guard", () => {
       hasData: true,
     }]);
     expect(platforms).toHaveLength(1);
+    expect(recommendations.some((rec: any) => rec.category === "Scaling Opportunity")).toBe(true);
+  });
+
+  it("proves generic platformSources feed Executive Summary without source-specific branches", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/executive-summary"');
+    const routeEnd = routes.indexOf("// ============================================================================", routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(route).toContain("const platformsForDisplay: any[] = mainAggregateSources.map");
+    expect(route).toContain("const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);");
+    expect(route).toContain("const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);");
+    expect(route).not.toContain("future_paid_source");
+    expect(route).not.toContain("Future Paid Source");
+
+    const performanceSummary = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-future-source",
+      dateRange: "90days",
+      ga4: { connected: false },
+      webAnalytics: { connected: false, provider: null },
+      spend: { unifiedSpend: 2000, spendSource: "platform_spend_fallback" },
+      platforms: {},
+      platformSources: [{
+        id: "future_paid_source",
+        label: "Future Paid Source",
+        category: "paid_media",
+        connected: true,
+        capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        excludedMetrics: [{ metric: "sessions", reason: "Sessions are web analytics metrics" }],
+        metrics: { impressions: 20000, clicks: 1000, spend: 2000, conversions: 80, attributedRevenue: 8000 },
+      }],
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 8000, totalRevenue: 8000 },
+      revenueSources: [],
+    });
+    const aggregateMetric = (metricName: string) => performanceSummary.totals[metricName as keyof typeof performanceSummary.totals];
+    const mainAggregateSources = performanceSummary.sources.filter((source: any) =>
+      source?.connected === true && source?.category !== "financial"
+    );
+    const sourceMetric = (source: any, metricName: string) => Number(source?.metrics?.[metricName] || 0);
+    const sourceIncludesMetric = (source: any, metricName: string) =>
+      Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
+    const platformsForDisplay = mainAggregateSources.map((source: any) => {
+      const spend = sourceIncludesMetric(source, "spend") ? sourceMetric(source, "spend") : 0;
+      const revenue = sourceIncludesMetric(source, "revenue")
+        ? sourceMetric(source, "revenue")
+        : sourceMetric(source, "attributedRevenue");
+      const conversions = sourceIncludesMetric(source, "conversions") ? sourceMetric(source, "conversions") : 0;
+      return {
+        name: source.label,
+        sourceId: source.id,
+        category: source.category,
+        spend,
+        revenue,
+        conversions,
+        roas: spend > 0 ? revenue / spend : 0,
+        roi: spend > 0 ? ((revenue - spend) / spend) * 100 : 0,
+        hasData: spend > 0 || revenue > 0 || conversions > 0,
+      };
+    });
+    const platforms = platformsForDisplay.filter((platform: any) =>
+      platform.category !== "web_analytics" && (platform.spend > 0 || platform.revenue > 0 || platform.conversions > 0)
+    );
+    const risk = generateRiskAssessment(
+      platforms,
+      platformsForDisplay,
+      { roi: Number(aggregateMetric("roi").value), roas: Number(aggregateMetric("roas").value) },
+      "stable",
+      0,
+      [],
+    );
+    const recommendations = generateRecommendations(
+      platforms,
+      Number(aggregateMetric("spend").value),
+      Number(aggregateMetric("roas").value),
+      Number(aggregateMetric("roi").value),
+      "stable",
+      {
+        hasSpend: aggregateMetric("spend").available,
+        hasRevenue: aggregateMetric("revenue").available,
+        hasRoas: aggregateMetric("roas").available,
+        hasRoi: aggregateMetric("roi").available,
+        paidMediaSources: platforms.length,
+        webAnalyticsSources: 0,
+      },
+    );
+
+    expect(performanceSummary.sources.map((source: any) => source.id)).toEqual(["future_paid_source"]);
+    expect(aggregateMetric("conversions")).toMatchObject({ available: true, value: 80, sources: ["future_paid_source"] });
+    expect(aggregateMetric("revenue")).toMatchObject({ available: true, value: 8000, sources: ["future_paid_source"] });
+    expect(aggregateMetric("roas")).toMatchObject({ available: true, value: 4, sources: ["revenue", "spend"] });
+    expect(platformsForDisplay).toMatchObject([{
+      name: "Future Paid Source",
+      sourceId: "future_paid_source",
+      category: "paid_media",
+      spend: 2000,
+      revenue: 8000,
+      conversions: 80,
+      hasData: true,
+    }]);
+    expect(platforms).toHaveLength(1);
+    expect(risk.checkedInputs).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: "Available ROI", status: "checked", detail: "300.0%" }),
+      expect.objectContaining({ label: "Available ROAS", status: "checked", detail: "4.0x" }),
+      expect.objectContaining({ label: "Paid-platform concentration", status: "checked" }),
+    ]));
     expect(recommendations.some((rec: any) => rec.category === "Scaling Opportunity")).toBe(true);
   });
 

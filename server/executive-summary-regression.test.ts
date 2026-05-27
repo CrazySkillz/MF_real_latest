@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
+import { generateRecommendations } from "./utils/executive-summary-helpers";
 
 describe("campaign Executive Summary regression guard", () => {
   it("guards the endpoint and builds current values from the shared aggregate contract", () => {
@@ -130,6 +132,97 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).not.toContain("spend: 0,\n          revenue: 0,\n          conversions: ga4Metrics.conversions");
     expect(route).toContain("performanceSummary,");
     expect(route).toContain("aggregateVersion: (performanceSummary as any)?.version");
+  });
+
+  it("proves Google Ads reaches Executive Summary response surfaces when connected", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/executive-summary"');
+    const routeEnd = routes.indexOf("// ============================================================================", routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(route).toContain("platformSources: [googleAds]");
+    expect(route).toContain("platforms: platformsForDisplay");
+    expect(route).toContain("platformsWithData: platforms");
+    expect(route).toContain("paidMediaSources: platforms.length");
+    expect(route).toContain('const hasGoogleAdsData = mainAggregateSources.some((source: any) => source.id === "google_ads");');
+
+    const performanceSummary = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-google-ads",
+      dateRange: "90days",
+      ga4: { connected: false },
+      webAnalytics: { connected: false, provider: null },
+      spend: { unifiedSpend: 1000, spendSource: "platform_spend_fallback" },
+      platforms: {},
+      platformSources: [{
+        id: "google_ads",
+        label: "Google Ads",
+        category: "paid_media",
+        connected: true,
+        capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        excludedMetrics: [],
+        metrics: { impressions: 10000, clicks: 500, spend: 1000, conversions: 50, attributedRevenue: 5000 },
+      }],
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 5000, totalRevenue: 5000 },
+      revenueSources: [],
+    });
+    const mainAggregateSources = performanceSummary.sources.filter((source: any) =>
+      source?.connected === true && source?.category !== "financial"
+    );
+    const sourceMetric = (source: any, metricName: string) => Number(source?.metrics?.[metricName] || 0);
+    const sourceIncludesMetric = (source: any, metricName: string) =>
+      Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
+    const platformsForDisplay = mainAggregateSources.map((source: any) => {
+      const spend = sourceIncludesMetric(source, "spend") ? sourceMetric(source, "spend") : 0;
+      const revenue = sourceIncludesMetric(source, "revenue")
+        ? sourceMetric(source, "revenue")
+        : sourceMetric(source, "attributedRevenue");
+      const conversions = sourceIncludesMetric(source, "conversions") ? sourceMetric(source, "conversions") : 0;
+      return {
+        name: source.label,
+        sourceId: source.id,
+        category: source.category,
+        spend,
+        revenue,
+        conversions,
+        roas: spend > 0 ? revenue / spend : 0,
+        roi: spend > 0 ? ((revenue - spend) / spend) * 100 : 0,
+        hasData: spend > 0 || revenue > 0 || conversions > 0,
+      };
+    });
+    const platforms = platformsForDisplay.filter((platform: any) =>
+      platform.category !== "web_analytics" && (platform.spend > 0 || platform.revenue > 0 || platform.conversions > 0)
+    );
+    const recommendations = generateRecommendations(
+      platforms,
+      Number(performanceSummary.totals.spend.value),
+      Number(performanceSummary.totals.roas.value),
+      Number(performanceSummary.totals.roi.value),
+      "stable",
+      {
+        hasSpend: performanceSummary.totals.spend.available,
+        hasRevenue: performanceSummary.totals.revenue.available,
+        hasRoas: performanceSummary.totals.roas.available,
+        hasRoi: performanceSummary.totals.roi.available,
+        paidMediaSources: platforms.length,
+        webAnalyticsSources: 0,
+      },
+    );
+
+    expect(performanceSummary.sources.map((source: any) => source.id)).toEqual(["google_ads"]);
+    expect(performanceSummary.totals.spend).toMatchObject({ available: true, value: 1000, sources: ["google_ads"] });
+    expect(performanceSummary.totals.revenue).toMatchObject({ available: true, value: 5000, sources: ["google_ads"] });
+    expect(platformsForDisplay).toMatchObject([{
+      name: "Google Ads",
+      sourceId: "google_ads",
+      category: "paid_media",
+      spend: 1000,
+      revenue: 5000,
+      conversions: 50,
+      hasData: true,
+    }]);
+    expect(platforms).toHaveLength(1);
+    expect(recommendations.some((rec: any) => rec.category === "Scaling Opportunity")).toBe(true);
   });
 
   it("renders Executive Overview current values from aggregate availability", () => {

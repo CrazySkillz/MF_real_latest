@@ -272,7 +272,9 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
     ? ["canonical_spend_sources"]
     : paidMetricSources("spend").map((source) => source.id);
   const revenueValue = parseNum(input.revenue?.totalRevenue);
-  const revenueSourceIds = sourceBreakdown.filter((source) => source.includedMetrics.includes("revenue")).map((source) => source.id);
+  const revenueSourceIds = sourceBreakdown
+    .filter((source) => source.includedMetrics.includes("revenue") || source.includedMetrics.includes("attributedRevenue"))
+    .map((source) => source.id);
 
   const impressionsSources = paidMetricSources("impressions").map((source) => source.id);
   const clicksSources = paidMetricSources("clicks").map((source) => source.id);

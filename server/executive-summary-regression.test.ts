@@ -148,6 +148,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain('if (aggregateMetricAvailable("revenue")) webMetrics.push(formatAggregateCurrency("revenue"));');
     expect(page).toContain('Revenue is ${formatAggregateCurrency("revenue")} from ${Math.round(aggregateMetricValue("conversions")).toLocaleString()} conversions.');
     expect(page).toContain('Conversion rate is ${aggregateMetricValue("cvr").toFixed(1)}%.');
+    expect(page).toContain("Target check: ${targetComparisons.join(\"; \")}. ");
+    expect(page).toContain("Next action: inspect landing pages or conversion paths for metrics below target before increasing spend.");
+    expect(page).toContain("Next action: create or confirm KPI/Benchmark targets for conversion rate, revenue, and conversions before judging quality.");
     expect(page).toContain("{formatRecommendationExpectedImpact(rec)}");
     expect(page).not.toContain("{formatRecommendationText(rec.expectedImpact)}");
     expect(page).toContain('if (aggregateMetricAvailable("roi")) executiveMetricParts.push(`ROI is ${formatAggregatePercent("roi")}`);');

@@ -196,7 +196,40 @@ export default function ExecutiveSummary() {
         ? `Conversion rate is ${aggregateMetricValue("cvr").toFixed(1)}%.`
         : "",
     ].filter(Boolean).join(" ");
-    return formatRecommendationText(`${metricText}${interpretationText ? `${interpretationText} ` : ""}${targetText ? `${targetText} ` : ""}Shows whether available users or sessions are turning into conversions and revenue before spend changes are considered`);
+    const targetMetricLabels: Record<string, string> = { cvr: "Conversion rate", revenue: "Revenue", conversions: "Conversions" };
+    const targetMetrics = new Set(Object.keys(targetMetricLabels));
+    const targetComparisons: string[] = [];
+    let hasBelowTarget = false;
+    executiveKpiProgress.forEach((kpi: any) => {
+      const metric = resolveKpiAggregateMetric(kpi);
+      if (!metric || !targetMetrics.has(metric)) return;
+      const target = Number(kpi.target) || 0;
+      if (target <= 0) return;
+      const progressPct = kpiProgressPct(kpi);
+      const isBelow = progressPct < 95;
+      if (isBelow) hasBelowTarget = true;
+      targetComparisons.push(`${targetMetricLabels[metric]} KPI is ${isBelow ? "below target" : "on track"}`);
+    });
+    executiveBenchmarkComparison.forEach((bm: any) => {
+      const metric = bm.aggregateMetric || resolveKpiAggregateMetric(bm);
+      if (!metric || !targetMetrics.has(metric)) return;
+      const benchmark = Number(bm.benchmark) || 0;
+      if (benchmark <= 0) return;
+      const isBelow = bm.status !== "on_track";
+      if (isBelow) hasBelowTarget = true;
+      targetComparisons.push(`${targetMetricLabels[metric]} Benchmark is ${isBelow ? "below benchmark" : "on track"}`);
+    });
+    const targetComparisonText = targetComparisons.length > 0
+      ? `Target check: ${targetComparisons.join("; ")}. `
+      : targetText
+        ? `${targetText} `
+        : "";
+    const nextActionText = targetComparisons.length === 0
+      ? "Next action: create or confirm KPI/Benchmark targets for conversion rate, revenue, and conversions before judging quality."
+      : hasBelowTarget
+        ? "Next action: inspect landing pages or conversion paths for metrics below target before increasing spend."
+        : "Next action: keep monitoring these outcome targets and connect a paid-media source before making budget or channel decisions.";
+    return formatRecommendationText(`${metricText}${interpretationText ? `${interpretationText} ` : ""}${targetComparisonText}${nextActionText}`);
   };
   const pickFirstAvailableMetric = (metricNames: string[]) =>
     metricNames.find((metricName) => aggregateMetricAvailable(metricName)) || metricNames[0];

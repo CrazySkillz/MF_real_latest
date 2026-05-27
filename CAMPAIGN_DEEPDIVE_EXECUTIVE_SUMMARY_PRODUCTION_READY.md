@@ -600,7 +600,7 @@ Why this is fourth:
 
 ### Commit 5: Refresh Stability And UI Consistency
 
-Status: Not started.
+Status: Completed.
 
 Goal:
 
@@ -613,6 +613,14 @@ Scope:
 - Avoid flashing legacy or empty fallback content before aggregate-backed content is ready.
 - Align tab presentation and production controls with the other DeepDive sections.
 - Add regression coverage for query key, refetch behavior, and no paid-media fallback flash.
+
+Implemented behavior:
+
+- The Executive Summary page now refetches both `/api/campaigns/:id/executive-summary` and `/api/campaigns/:id/outcome-totals` every 60 seconds while the page is active.
+- Background polling is disabled with `refetchIntervalInBackground: false`, so the page does not keep polling while hidden.
+- The page continues to refetch both queries on mount and window focus.
+- The page does not switch to `isFetching`-based loading UI, so an ordinary background refetch keeps the current rendered aggregate-backed content visible instead of flashing an empty or legacy fallback state.
+- Regression coverage now guards the two query keys, mount/focus refetching, visible-tab polling, background polling disablement, and absence of `isFetching` loading replacement.
 
 Why this is fifth:
 
@@ -672,9 +680,10 @@ Proven:
 - Commit 3 now makes health, risk, and trajectory use aggregate availability and compatible `performanceSummary` snapshots.
 - Commit 3A now makes Risk Assessment bounded and explicit: it shows the six executive `Risk inputs`, uses aggregate-backed KPI and Benchmark misses as risk factors, includes data freshness warnings as risk factors, and documents budget pacing as handled in Budget & Financial Analysis.
 - Commit 4 now makes Strategic Recommendations source-capability safe: paid-media guidance requires paid-media main sources and available spend/revenue/ROI/ROAS, while GA4-only campaigns can only receive web/outcome guidance from available web analytics and outcome metrics.
-- Executive Summary currently refetches both `/executive-summary` and `/outcome-totals` on mount and window focus so visible aggregate-backed sections update when upstream inputs change before the user returns to the page.
+- Executive Summary currently refetches both `/executive-summary` and `/outcome-totals` on mount, window focus, and a 60-second active-tab interval so visible aggregate-backed sections update after upstream inputs change.
 - Strategic Recommendations are now executive-ready in implemented scope: they are source-capability gated, avoid unavailable paid-media claims, show live web/outcome values for GA4-only recommendations, compare mapped KPI/Benchmark targets when available, present the expected impact as bullets, and keep timeframe, investment requirement, assumptions, and disclaimers visible.
 - Strategic Recommendations will update when their inputs update and the Executive Summary data refetches. Current connected-source metrics come from `performanceSummary.totals`; paid-media eligibility comes from current main source capability; target context comes from campaign KPI/Benchmark records; and recommendation copy is recomputed by the endpoint plus finalized with page-level aggregate values in the UI.
+- Commit 5 now adds refresh stability: both Executive Summary queries poll every 60 seconds only while the page is active, and regression coverage guards against `isFetching`-based fallback flashes during background refetch.
 - Commit 1 replaced the endpoint's `storage.getCampaign(id)` campaign lookup with the standard campaign access guard.
 - GA4-only campaigns are no longer eligible for paid-media recommendations unless a main paid-media platform is connected and required paid financial inputs are available.
 - Risk Assessment currently proves the configured backend rules: available ROI below 0%, available ROAS below 1x, paid-platform concentration, compatible 7-day revenue decline, aggregate-backed KPI rows below 70% of target, Benchmark rows below 70% of benchmark, and connected-source data freshness warnings. Budget pacing remains in Budget & Financial Analysis until Executive Summary has a shared pacing input.

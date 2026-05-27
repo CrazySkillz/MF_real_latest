@@ -36,6 +36,8 @@ export default function ExecutiveSummary() {
     },
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
+    refetchInterval: 60000,
+    refetchIntervalInBackground: false,
     staleTime: 0,
   });
 
@@ -51,6 +53,8 @@ export default function ExecutiveSummary() {
     },
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
+    refetchInterval: 60000,
+    refetchIntervalInBackground: false,
     staleTime: 0,
   });
 

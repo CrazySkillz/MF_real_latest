@@ -5275,7 +5275,7 @@ export default function CampaignDetail() {
                       </Button>
                     </Link>
                     
-                    <Link href="/reports">
+                    <Link href={`/reports?campaignId=${encodeURIComponent(campaign.id)}`}>
                       <Button
                         variant="outline"
                         className="flex items-center justify-start space-x-3 h-auto p-4 w-full"

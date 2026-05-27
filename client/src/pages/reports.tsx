@@ -29,11 +29,18 @@ import { format } from "date-fns";
 import { reportStorage, type StoredReport } from "@/lib/reportStorage";
 
 export default function Reports() {
+  const campaignContextId = (() => {
+    try {
+      return new URLSearchParams(window.location.search).get("campaignId") || "";
+    } catch {
+      return "";
+    }
+  })();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [reportType, setReportType] = useState("performance");
   const [reportName, setReportName] = useState("");
   const [reportDescription, setReportDescription] = useState("");
-  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>(() => campaignContextId ? [campaignContextId] : []);
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleFrequency, setScheduleFrequency] = useState("weekly");
   const [scheduleDay, setScheduleDay] = useState("monday");
@@ -268,7 +275,7 @@ export default function Reports() {
   const resetForm = () => {
     setReportName("");
     setReportDescription("");
-    setSelectedCampaigns([]);
+    setSelectedCampaigns(campaignContextId ? [campaignContextId] : []);
     setScheduleEnabled(false);
     setScheduleFrequency("weekly");
     setScheduleDay("monday");
@@ -277,11 +284,14 @@ export default function Reports() {
   };
 
   const createReport = () => {
+    const activeCampaignId = campaignContextId || selectedCampaigns[0] || "";
+
     // Save the created report to storage
     const newReport = reportStorage.addReport({
       name: reportName,
       type: reportType,
       status: scheduleEnabled ? 'Scheduled' : 'Generated',
+      campaignId: activeCampaignId || undefined,
       generatedAt: new Date(),
       format: 'PDF', // Default format
       includeKPIs: false,

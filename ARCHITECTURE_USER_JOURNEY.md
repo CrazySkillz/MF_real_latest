@@ -579,7 +579,7 @@ It is a platform-specific layer inside the campaign experience.
 
 ### Small Implementation Caveat
 
-Custom Report currently behaves as a campaign-level reporting launcher, but in implementation it is opened from the hub as a report-building action rather than a dedicated deep-dive page.
+Custom Report currently behaves as a campaign-level reporting launcher, but in implementation it is opened from the hub as a report-building action rather than a dedicated deep-dive page. From Campaign DeepDive, it must preserve campaign context through `/reports?campaignId=<campaignId>` while the global `/reports` entry remains available separately.
 
 That is still consistent with the campaign-wide DeepDive concept and should be treated as part of the campaign-level analysis/reporting layer, not the platform-specific layer.
 

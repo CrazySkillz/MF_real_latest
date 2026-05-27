@@ -174,6 +174,22 @@ export default function ExecutiveSummary() {
     aggregateMetricAvailable(metricName) ? formatPct(aggregateMetricValue(metricName)) : "Unavailable";
   const formatAggregateRatio = (metricName: string) =>
     aggregateMetricAvailable(metricName) ? `${aggregateMetricValue(metricName).toFixed(1)}x` : "Unavailable";
+  const formatRecommendationExpectedImpact = (rec: any): string => {
+    if (rec?.category !== "Website Outcomes") return formatRecommendationText(rec?.expectedImpact || "");
+    const webMetrics: string[] = [];
+    if (aggregateMetricAvailable("users")) webMetrics.push(`${Math.round(aggregateMetricValue("users")).toLocaleString()} users`);
+    if (aggregateMetricAvailable("sessions")) webMetrics.push(`${Math.round(aggregateMetricValue("sessions")).toLocaleString()} sessions`);
+    if (aggregateMetricAvailable("conversions")) webMetrics.push(`${Math.round(aggregateMetricValue("conversions")).toLocaleString()} conversions`);
+    if (aggregateMetricAvailable("revenue")) webMetrics.push(formatAggregateCurrency("revenue"));
+    if (aggregateMetricAvailable("cvr")) webMetrics.push(`${aggregateMetricValue("cvr").toFixed(1)}% conversion rate`);
+    const expectedImpact = String(rec?.expectedImpact || "");
+    const unavailableTargetText = "No KPI or Benchmark target is available for conversion rate, revenue, or conversions, so quality cannot be judged yet.";
+    const targetText = expectedImpact.includes(unavailableTargetText)
+      ? unavailableTargetText
+      : (expectedImpact.match(/KPI or Benchmark targets exist for [^.]+; compare against those targets before judging quality\./)?.[0] || "");
+    const metricText = webMetrics.length > 0 ? `Available data: ${webMetrics.join(", ")}. ` : "";
+    return formatRecommendationText(`${metricText}${targetText ? `${targetText} ` : ""}Shows whether available users or sessions are turning into conversions and revenue before spend changes are considered`);
+  };
   const pickFirstAvailableMetric = (metricNames: string[]) =>
     metricNames.find((metricName) => aggregateMetricAvailable(metricName)) || metricNames[0];
   const reachMetricKey = pickFirstAvailableMetric(["impressions", "users", "sessions"]);
@@ -927,7 +943,7 @@ export default function ExecutiveSummary() {
                           <div className="grid gap-4 md:grid-cols-3">
                             <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                               <div className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">Expected Impact</div>
-                              <div className="text-sm text-green-700 dark:text-green-300">{formatRecommendationText(rec.expectedImpact)}</div>
+                              <div className="text-sm text-green-700 dark:text-green-300">{formatRecommendationExpectedImpact(rec)}</div>
                             </div>
                             
                             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">

@@ -143,6 +143,11 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];");
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");
     expect(page).toContain("aggregateMetricAvailable(metricName) ? Math.round(aggregateMetricValue(metricName)).toLocaleString() : \"Unavailable\";");
+    expect(page).toContain("const formatRecommendationExpectedImpact = (rec: any): string => {");
+    expect(page).toContain('if (rec?.category !== "Website Outcomes") return formatRecommendationText(rec?.expectedImpact || "");');
+    expect(page).toContain('if (aggregateMetricAvailable("revenue")) webMetrics.push(formatAggregateCurrency("revenue"));');
+    expect(page).toContain("{formatRecommendationExpectedImpact(rec)}");
+    expect(page).not.toContain("{formatRecommendationText(rec.expectedImpact)}");
     expect(page).toContain('if (aggregateMetricAvailable("roi")) executiveMetricParts.push(`ROI is ${formatAggregatePercent("roi")}`);');
     expect(page).toContain('if (aggregateMetricAvailable("roas")) executiveMetricParts.push(`ROAS is ${formatAggregateRatio("roas")}`);');
     expect(page).toContain("const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${displayedRiskLevel}. ${executiveTrajectorySummary}`;");

@@ -79,6 +79,9 @@ describe("Executive Summary helper availability guards", () => {
     });
 
     expect(recommendations.map((recommendation) => recommendation.category)).toEqual(["Website Outcomes"]);
+    expect(recommendations[0].action).toContain("before making paid-media budget decisions");
+    expect(recommendations[0].investmentRequired).toContain("connect a paid-media source");
+    expect(recommendations[0].assumptions.join(" ")).toContain("not a spend, ROAS, CPA, CPC, CTR, or CPM recommendation");
     expect(JSON.stringify(recommendations)).not.toContain("Increase campaign budget");
     expect(JSON.stringify(recommendations)).not.toContain("Budget Reallocation");
     expect(JSON.stringify(recommendations)).not.toContain("additional platforms");

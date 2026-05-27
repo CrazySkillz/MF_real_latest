@@ -345,14 +345,14 @@ export function generateRecommendations(
     recommendations.push({
       priority: 'medium',
       category: 'Website Outcomes',
-      action: 'Review conversion path and landing-page performance using connected web analytics data',
-      expectedImpact: 'Identify where available sessions, users, conversions, or revenue are not progressing',
-      investmentRequired: 'Analysis only',
+      action: 'Review website conversion path before making paid-media budget decisions',
+      expectedImpact: 'Shows whether available users or sessions are turning into conversions and revenue before spend changes are considered',
+      investmentRequired: 'Analysis only; connect a paid-media source for budget or channel recommendations',
       timeline: 'Next 7 days',
       confidence: context.hasCvr === true ? 'medium' : 'low',
       assumptions: [
-        'Based on connected web analytics and outcome metrics',
-        'No connected paid-media source is available for ad-spend recommendations',
+        'Based only on connected web analytics and outcome metrics currently available',
+        'No connected paid-media source is available, so this is not a spend, ROAS, CPA, CPC, CTR, or CPM recommendation',
       ],
     });
   }

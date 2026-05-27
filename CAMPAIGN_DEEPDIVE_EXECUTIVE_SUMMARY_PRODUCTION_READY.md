@@ -240,6 +240,26 @@ Required regression coverage:
 - Multi-paid-source campaign still renders comparable paid-media metrics.
 - Missing aggregate inputs render unavailable states, not zeros.
 
+### Pre-Commit 4 Source Data And Refresh Map
+
+Before Strategic Recommendations work begins, the implemented Executive Overview sections use these source paths:
+
+| Executive Summary section | Source data | Refresh behavior |
+| --- | --- | --- |
+| Executive Summary paragraph | campaign name, page-level `performanceSummary` ROI/ROAS, Risk Level, and compatible snapshot trajectory | refetches `/executive-summary` and `/outcome-totals` on mount and window focus |
+| 7-Day Snapshot Trajectory | compatible `metrics.performanceSummary` snapshots returned through `/executive-summary` | updates after compatible snapshots exist and `/executive-summary` refetches |
+| Marketing Funnel Performance | page-level `/outcome-totals.performanceSummary.totals` | updates when `/outcome-totals` refetches |
+| Key Metrics cards | page-level `/outcome-totals.performanceSummary.totals` | updates when `/outcome-totals` refetches |
+| KPI Progress | campaign KPI rows from `/executive-summary`; current values from page-level `performanceSummary.totals` | KPI create/update/delete invalidates Executive Summary; page refetch updates rows and aggregate values |
+| Benchmark Comparison | campaign Benchmark rows from `/executive-summary`; current values from page-level `performanceSummary.totals` | Benchmark create/update/delete invalidates Executive Summary; page refetch updates rows and aggregate values |
+| Risk Assessment | fixed six risk inputs: KPI Risk, Benchmark Risk, Data Freshness, ROI / ROAS Risk, 7-Day Trend Risk, Paid Platform Concentration Risk | refetches `/executive-summary` and `/outcome-totals` on mount and window focus |
+| Strategic Recommendations | `/executive-summary.recommendations` | not production-ready until Commit 4 source-capability gating is completed |
+
+Root cause for Commit 4:
+
+- The Executive Overview, funnel, KPI Progress, Benchmark Comparison, and Risk Assessment sections have been moved to the shared aggregate/source-aware pattern.
+- Strategic Recommendations still need source-capability gating so GA4-only campaigns do not receive paid-media recommendations and recommendation claims do not use unavailable metrics.
+
 ### Strategic Recommendations
 
 Target behavior:
@@ -609,7 +629,7 @@ Executive Summary is production ready only when:
 
 ## Current Status
 
-Not production ready. Commits 1, 2, 3, and 3A are completed, but recommendation gating and refresh stability remain outstanding.
+Not production ready. Commits 1, 2, 3, and 3A are completed, but recommendation gating remains outstanding.
 
 Proven:
 
@@ -619,6 +639,7 @@ Proven:
 - Commit 2 now makes the Executive Overview tab choose visible current metrics from `performanceSummary.totals` availability.
 - Commit 3 now makes health, risk, and trajectory use aggregate availability and compatible `performanceSummary` snapshots.
 - Commit 3A now makes Risk Assessment bounded and explicit: it shows the six executive `Risk inputs`, uses aggregate-backed KPI and Benchmark misses as risk factors, includes data freshness warnings as risk factors, and documents budget pacing as handled in Budget & Financial Analysis.
+- Executive Summary currently refetches both `/executive-summary` and `/outcome-totals` on mount and window focus so visible aggregate-backed sections update when upstream inputs change before the user returns to the page.
 - Commit 1 replaced the endpoint's `storage.getCampaign(id)` campaign lookup with the standard campaign access guard.
 - GA4-only campaigns are still at risk of showing paid-media recommendations until Commit 4 is completed.
 - Risk Assessment currently proves the configured backend rules: available ROI below 0%, available ROAS below 1x, paid-platform concentration, compatible 7-day revenue decline, aggregate-backed KPI rows below 70% of target, Benchmark rows below 70% of benchmark, and connected-source data freshness warnings. Budget pacing remains in Budget & Financial Analysis until Executive Summary has a shared pacing input.

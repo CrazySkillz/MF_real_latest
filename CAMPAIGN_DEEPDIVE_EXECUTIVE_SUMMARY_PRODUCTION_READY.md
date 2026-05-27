@@ -709,7 +709,7 @@ Outstanding Executive Summary future-proofing tasks:
 - [x] Remaining aggregate-composition sharing: reduce the remaining duplicated source composition between `/outcome-totals` and `/executive-summary` beyond the already shared Google Ads source-builder slice.
 - [x] Scheduler snapshot parity: confirm scheduler snapshots use the same aggregate/source set as Executive Summary so `7-Day Snapshot Trajectory` works with future or refined main Connected Platforms.
 - [ ] Deployed validation: validate the Executive Summary aggregate pattern with GA4 plus a refined Google Ads source, and with GA4 plus multiple paid-media sources.
-- [ ] Future-platform acceptance rule: every new or refined main Connected Platform must be wired into the shared aggregate contract, `/outcome-totals`, `/executive-summary`, scheduler snapshots, freshness metadata, KPI/Benchmark mapping, Risk inputs, Strategic Recommendations, and regression coverage before that platform is marked production-ready in Executive Summary.
+- [x] Future-platform acceptance rule documented and regression-guarded: every new or refined main Connected Platform must pass the checklist below before that platform is marked production-ready in Executive Summary.
 
 Separate Google Ads Connected Platforms refinement:
 
@@ -730,6 +730,20 @@ Completed scheduler snapshot parity fix:
 
 - Scheduler snapshots now pass the already-fetched Google Ads rows into snapshot `performanceSummary` as a normalized `platformSources` source, and Google Ads spend contributes to the scheduler fallback spend total.
 - This keeps compatible snapshot trajectory inputs aligned with the live Executive Summary aggregate source pattern for the current refined paid-source path. Each future platform still must be explicitly wired into scheduler snapshots under the future-platform acceptance rule before that platform is marked production-ready.
+
+Future Connected Platform acceptance gate:
+
+Before a new or refined main Connected Platform is marked production-ready in Executive Summary, it must prove all of the following:
+
+- [ ] shared aggregate contract: the source provides normalized source identity, category, capabilities, included metrics, excluded metric reasons, current metric values, and freshness metadata.
+- [ ] `/outcome-totals`: the source appears in `performanceSummary.sources` and contributes only the metrics it can actually provide.
+- [ ] `/executive-summary`: the source appears in endpoint `performanceSummary.sources`, visible platform rows, data-accuracy metadata where applicable, and aggregate-backed current values.
+- [ ] scheduler snapshots: scheduled and manual snapshots store the source in `metrics.performanceSummary` so compatible 7-day trajectory has the same source set as live Executive Summary.
+- [ ] KPI/Benchmark mapping: mapped KPI and Benchmark rows use live aggregate current values and do not fall back to saved stale current values.
+- [ ] Risk inputs: Risk Assessment uses the source only for applicable risks and shows unavailable or not-applicable inputs honestly.
+- [ ] Strategic Recommendations: recommendation eligibility is based on source capability and aggregate metric availability, with no paid-media claims unless spend, revenue, ROI, and ROAS are available from appropriate sources.
+- [ ] regression coverage: source-specific and generic aggregate regressions cover `/outcome-totals`, `/executive-summary`, scheduler snapshots, risk, KPI/Benchmark mapping, and recommendations.
+- [ ] deployed validation evidence: the source has been validated in a deployed or production-like campaign with the expected connected-source mix.
 
 Proven:
 

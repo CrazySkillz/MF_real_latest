@@ -5,6 +5,24 @@ import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-ag
 import { generateRecommendations, generateRiskAssessment } from "./utils/executive-summary-helpers";
 
 describe("campaign Executive Summary regression guard", () => {
+  it("documents the future-platform acceptance gate for Executive Summary", () => {
+    const tracker = readFileSync(join(process.cwd(), "CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md"), "utf-8");
+    const gateStart = tracker.indexOf("Future Connected Platform acceptance gate:");
+    const provenStart = tracker.indexOf("Proven:", gateStart);
+    const gate = tracker.slice(gateStart, provenStart);
+
+    expect(tracker).toContain("[x] Future-platform acceptance rule documented and regression-guarded");
+    expect(gate).toContain("shared aggregate contract");
+    expect(gate).toContain("`/outcome-totals`");
+    expect(gate).toContain("`/executive-summary`");
+    expect(gate).toContain("scheduler snapshots");
+    expect(gate).toContain("KPI/Benchmark mapping");
+    expect(gate).toContain("Risk inputs");
+    expect(gate).toContain("Strategic Recommendations");
+    expect(gate).toContain("regression coverage");
+    expect(gate).toContain("deployed validation evidence");
+  });
+
   it("guards the endpoint and builds current values from the shared aggregate contract", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/executive-summary"');

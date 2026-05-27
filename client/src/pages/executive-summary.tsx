@@ -277,6 +277,7 @@ export default function ExecutiveSummary() {
   const riskKpiMissCount = executiveKpiProgress.filter((kpi: any) => kpiProgressPct(kpi) < 70).length;
   const riskBenchmarkMissCount = executiveBenchmarkComparison.filter((bm: any) => bm.status === "behind").length;
   const riskFreshnessWarnings = Array.isArray((executiveSummary as any)?.dataFreshness?.warnings) ? (executiveSummary as any).dataFreshness.warnings : [];
+  const trendPercentage = Number((executiveSummary as any)?.health?.trendPercentage) || 0;
   const aggregateSources = Array.isArray((performanceSummary as any)?.sources) ? (performanceSummary as any).sources : [];
   const paidRiskSources = aggregateSources.filter((source: any) =>
     source?.connected === true &&
@@ -285,8 +286,16 @@ export default function ExecutiveSummary() {
     Array.isArray(source?.includedMetrics) &&
     ["spend", "revenue", "conversions"].some((metricName) => source.includedMetrics.includes(metricName))
   );
+  const paidSpendTotal = paidRiskSources.reduce((sum: number, source: any) => sum + (Number(source?.metrics?.spend) || 0), 0);
+  const paidTopSpendShare = paidSpendTotal > 0
+    ? Math.max(...paidRiskSources.map((source: any) => ((Number(source?.metrics?.spend) || 0) / paidSpendTotal) * 100))
+    : 0;
+  const paidConcentrationRisk = paidRiskSources.length === 1 || paidTopSpendShare > 70;
+  const roiRoasRisk = (aggregateMetricAvailable("roi") && aggregateMetricValue("roi") < 0) || (aggregateMetricAvailable("roas") && aggregateMetricValue("roas") < 1);
+  const trendRisk = executiveTrajectory === "declining" && trendPercentage < -15;
   const displayedRiskFactors = [
-    ...((executiveSummary as any)?.risk?.factors || []).filter((risk: any) => risk.type === "concentration" || risk.type === "trend"),
+    ...(paidConcentrationRisk && paidRiskSources.length > 0 ? [{ type: "concentration", message: paidRiskSources.length === 1 ? "Single paid platform connected" : `${paidTopSpendShare.toFixed(0)}% paid spend concentration` }] : []),
+    ...(trendRisk ? [{ type: "trend", message: `Performance declining ${Math.abs(trendPercentage).toFixed(0)}% - intervention needed` }] : []),
     ...(aggregateMetricAvailable("roi") && aggregateMetricValue("roi") < 0 ? [{ type: "performance", message: "Negative ROI - immediate optimization required" }] : []),
     ...(aggregateMetricAvailable("roas") && aggregateMetricValue("roas") < 1 ? [{ type: "performance", message: "ROAS below breakeven - review campaign strategy" }] : []),
     ...(riskKpiMissCount > 0 ? [{ type: "kpi", message: `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} below 70% of target` }] : []),
@@ -300,16 +309,14 @@ export default function ExecutiveSummary() {
     ? "No configured risk factors identified from available connected-source inputs."
     : "Risk factors are based on the same connected-source inputs used by the visible Executive Summary metrics.";
   const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${displayedRiskLevel}. ${executiveTrajectorySummary}`;
-  const riskCheckedInputs = [
-    { label: "Available ROI", status: aggregateMetricAvailable("roi") ? "checked" : "unavailable", detail: aggregateMetricAvailable("roi") ? formatAggregatePercent("roi") : aggregateMetricReason("roi") },
-    { label: "Available ROAS", status: aggregateMetricAvailable("roas") ? "checked" : "unavailable", detail: aggregateMetricAvailable("roas") ? formatAggregateRatio("roas") : aggregateMetricReason("roas") },
-    { label: "Paid-platform concentration", status: paidRiskSources.length > 0 ? "checked" : "not_applicable", detail: paidRiskSources.length > 0 ? `${paidRiskSources.length} paid source${paidRiskSources.length === 1 ? "" : "s"} checked` : "No paid-media source with spend, revenue, or conversions" },
-    { label: "7-day trajectory", status: executiveTrajectory ? "checked" : "not_enough_history", detail: executiveTrajectory ? `${executiveTrajectory}${(executiveSummary as any)?.health?.trendPercentage ? ` (${Number((executiveSummary as any).health.trendPercentage).toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },
-    { label: "Budget pacing", status: "separate_section", detail: "Handled in Budget & Financial Analysis until a shared pacing signal is available here" },
+  const riskInputRows = [
+    { label: "KPI Risk", status: riskKpiMissCount > 0 ? "Risk" : executiveKpiProgress.length > 0 ? "No Risk" : "Not Applicable", detail: riskKpiMissCount > 0 ? `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} below 70% of target` : executiveKpiProgress.length > 0 ? "Mapped KPIs are at or above 70% of target" : "No mapped campaign KPIs available" },
+    { label: "Benchmark Risk", status: riskBenchmarkMissCount > 0 ? "Risk" : executiveBenchmarkComparison.length > 0 ? "No Risk" : "Not Applicable", detail: riskBenchmarkMissCount > 0 ? `${riskBenchmarkMissCount} benchmark${riskBenchmarkMissCount === 1 ? " is" : "s are"} below 70% of benchmark` : executiveBenchmarkComparison.length > 0 ? "Mapped benchmarks are at or above 70% of benchmark" : "No mapped campaign benchmarks available" },
+    { label: "Data Freshness", status: riskFreshnessWarnings.length > 0 ? "Risk" : "No Risk", detail: riskFreshnessWarnings.length > 0 ? `${riskFreshnessWarnings.length} stale source warning${riskFreshnessWarnings.length === 1 ? "" : "s"}` : "No stale connected-source warnings" },
+    { label: "ROI / ROAS Risk", status: roiRoasRisk ? "Risk" : aggregateMetricAvailable("roi") || aggregateMetricAvailable("roas") ? "No Risk" : "Not Applicable", detail: aggregateMetricAvailable("roi") || aggregateMetricAvailable("roas") ? [aggregateMetricAvailable("roi") ? `ROI ${formatAggregatePercent("roi")}` : null, aggregateMetricAvailable("roas") ? `ROAS ${formatAggregateRatio("roas")}` : null].filter(Boolean).join(", ") : "ROI and ROAS unavailable from connected sources" },
+    { label: "7-Day Trend Risk", status: trendRisk ? "Risk" : executiveTrajectory ? "No Risk" : "Not Enough History", detail: executiveTrajectory ? `${executiveTrajectory}${trendPercentage ? ` (${trendPercentage.toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },
+    { label: "Paid Platform Concentration Risk", status: paidRiskSources.length === 0 ? "Not Applicable" : paidConcentrationRisk ? "Risk" : "No Risk", detail: paidRiskSources.length === 0 ? "No connected paid-media source" : paidConcentrationRisk ? (paidRiskSources.length === 1 ? "Only one paid platform connected" : `${paidTopSpendShare.toFixed(0)}% of paid spend is concentrated`) : "Paid source mix is not concentrated" },
   ];
-  const visibleRiskCheckedInputs = riskCheckedInputs.filter((input) =>
-    input.status !== "not_applicable" && input.status !== "separate_section"
-  );
   const formatKpiValue = (metricName: string | null, value: number, unit: string = "") => {
     if (metricName && ["revenue", "spend", "cpa", "cpc", "cpm"].includes(metricName)) return formatCurrency(value, metricName !== "revenue" && metricName !== "spend");
     if (metricName && ["roi", "ctr", "cvr"].includes(metricName)) return formatPct(value);
@@ -801,11 +808,11 @@ export default function ExecutiveSummary() {
                       ))}
                     </div>
                   )}
-                  {visibleRiskCheckedInputs.length > 0 && (
+                  {riskInputRows.length > 0 && (
                     <div className="mt-5 border-t pt-4">
-                      <div className="mb-3 text-sm font-medium text-foreground">Checked inputs</div>
+                      <div className="mb-3 text-sm font-medium text-foreground">Risk inputs</div>
                       <div className="grid gap-2 md:grid-cols-2">
-                        {visibleRiskCheckedInputs.map((input: any, index: number) => (
+                        {riskInputRows.map((input: any, index: number) => (
                           <div key={index} className="rounded-md border p-3">
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-sm font-medium">{input.label}</span>

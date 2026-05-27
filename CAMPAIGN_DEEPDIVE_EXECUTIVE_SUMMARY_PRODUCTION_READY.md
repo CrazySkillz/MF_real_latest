@@ -228,7 +228,7 @@ Executive trajectory and risk rules:
 - Risk Assessment must clearly state what was checked and must not imply that every possible campaign risk was evaluated. Low-risk empty states should say no configured risk factors were identified from available connected-source inputs, not that the whole campaign is operating within acceptable parameters.
 - Risk Assessment checked inputs should visibly disclose available ROI, available ROAS, paid-platform concentration, compatible 7-day trajectory state, and that budget pacing is handled in Budget & Financial Analysis until a shared pacing signal is available in Executive Summary.
 - Risk Assessment visible checked-input values and KPI/Benchmark risk counts must be derived from the same page-level `performanceSummary` aggregate used by the visible Executive Summary cards, KPI Progress, and Benchmark Comparison. They must not display stale ROI/ROAS or saved KPI/Benchmark values from the `/executive-summary` endpoint when `/outcome-totals` has newer aggregate values.
-- Risk Assessment should not render non-actionable checked-input boundary rows in the executive UI. `Paid-platform concentration` should be visible only when a paid source is present and can actually be assessed; `Budget pacing` remains documented as a Budget & Financial Analysis responsibility but should not appear as a `Separate Section` card in the Executive Summary Risk Assessment.
+- Risk Assessment should render a fixed executive-facing `Risk inputs` list with six rows: KPI Risk, Benchmark Risk, Data Freshness, ROI / ROAS Risk, 7-Day Trend Risk, and Paid Platform Concentration Risk. Rows that cannot be assessed should remain visible with `Not Applicable` or `Not Enough History` status so executives can see what was considered and why it did not affect risk.
 - Budget pacing issues remain in Budget & Financial Analysis and do not raise Executive Summary Risk Level until a shared campaign pacing contract is added to this endpoint.
 
 Required regression coverage:
@@ -518,7 +518,7 @@ Implemented:
 - Benchmark rows below 70% of benchmark add a medium risk factor.
 - Data freshness warnings add risk factors; high-severity freshness warnings raise Risk Level to high.
 - Visible Risk Assessment ROI/ROAS checked inputs, KPI risk counts, and Benchmark risk counts now use the page-level `performanceSummary` aggregate, matching the Executive Summary metric cards, KPI Progress, and Benchmark Comparison.
-- Non-actionable checked-input rows are hidden from the visible Risk Assessment list: paid-platform concentration is hidden when not applicable, and budget pacing is not shown as a separate-section card.
+- The visible Risk Assessment list now uses the six executive risk inputs instead of technical checked-input cards, and it shows `Not Applicable` or `Not Enough History` where an input cannot currently affect risk.
 - Budget pacing remains explicitly out of Executive Summary Risk Assessment and belongs in Budget & Financial Analysis until a shared pacing signal is available.
 
 Why this comes before recommendations:

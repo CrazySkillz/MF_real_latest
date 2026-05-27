@@ -82,6 +82,17 @@ describe("campaign Executive Summary regression guard", () => {
     expect(summaryBlock).toContain('aggregateMetricAvailable("roas")');
     expect(summaryBlock).toContain("Risk level is ${risk.riskLevel}.");
     expect(summaryBlock).toContain("7-day snapshot trajectory does not have enough compatible history yet.");
+
+    const recommendationsStart = route.indexOf("// Recommendations from helper");
+    const recommendationsEnd = route.indexOf("res.json({", recommendationsStart);
+    const recommendationsBlock = route.slice(recommendationsStart, recommendationsEnd);
+    expect(recommendationsBlock).toContain("generateRecommendations(platforms, totalSpend, roas, roi, growthTrajectory, {");
+    expect(recommendationsBlock).toContain('hasSpend: aggregateMetricAvailable("spend")');
+    expect(recommendationsBlock).toContain('hasRevenue: aggregateMetricAvailable("revenue")');
+    expect(recommendationsBlock).toContain('hasRoas: aggregateMetricAvailable("roas")');
+    expect(recommendationsBlock).toContain('hasRoi: aggregateMetricAvailable("roi")');
+    expect(recommendationsBlock).toContain("paidMediaSources: platforms.length");
+    expect(recommendationsBlock).toContain("webAnalyticsSources: platformsForDisplay.filter");
   });
 
   it("derives main platform rows from performanceSummary sources and excludes financial child inputs", () => {

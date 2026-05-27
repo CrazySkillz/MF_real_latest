@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateHealthScore, generateRiskAssessment } from "./utils/executive-summary-helpers";
+import { calculateHealthScore, generateRecommendations, generateRiskAssessment } from "./utils/executive-summary-helpers";
 
 describe("Executive Summary helper availability guards", () => {
   it("does not penalize health score for unavailable aggregate metrics", () => {
@@ -62,5 +62,88 @@ describe("Executive Summary helper availability guards", () => {
       expect.objectContaining({ label: "Available ROI", status: "unavailable" }),
       expect.objectContaining({ label: "Paid-platform concentration", status: "not_applicable" }),
     ]));
+  });
+
+  it("does not generate paid-media recommendations for GA4-only web analytics", () => {
+    const recommendations = generateRecommendations([], 500, 660, 65914, "accelerating", {
+      hasSpend: true,
+      hasRevenue: true,
+      hasRoas: true,
+      hasRoi: true,
+      hasSessions: true,
+      hasUsers: true,
+      hasConversions: true,
+      hasCvr: true,
+      paidMediaSources: 0,
+      webAnalyticsSources: 1,
+    });
+
+    expect(recommendations.map((recommendation) => recommendation.category)).toEqual(["Website Outcomes"]);
+    expect(JSON.stringify(recommendations)).not.toContain("Increase campaign budget");
+    expect(JSON.stringify(recommendations)).not.toContain("Budget Reallocation");
+    expect(JSON.stringify(recommendations)).not.toContain("additional platforms");
+  });
+
+  it("does not reallocate budget with only one paid-media source", () => {
+    const recommendations = generateRecommendations(
+      [{ name: "LinkedIn Ads", spend: 1000, revenue: 5000, roas: 5 }],
+      1000,
+      5,
+      400,
+      "stable",
+      {
+        hasSpend: true,
+        hasRevenue: true,
+        hasRoas: true,
+        hasRoi: true,
+        paidMediaSources: 1,
+      },
+    );
+
+    expect(recommendations.map((recommendation) => recommendation.category)).not.toContain("Budget Reallocation");
+  });
+
+  it("can reallocate budget across two comparable paid-media sources", () => {
+    const recommendations = generateRecommendations(
+      [
+        { name: "LinkedIn Ads", spend: 1000, revenue: 6000, roas: 6 },
+        { name: "Meta Ads", spend: 1000, revenue: 2000, roas: 2 },
+      ],
+      2000,
+      4,
+      300,
+      "stable",
+      {
+        hasSpend: true,
+        hasRevenue: true,
+        hasRoas: true,
+        hasRoi: true,
+        paidMediaSources: 2,
+      },
+    );
+
+    expect(recommendations.map((recommendation) => recommendation.category)).toContain("Budget Reallocation");
+  });
+
+  it("does not make ROI or ROAS claims when spend or revenue is unavailable", () => {
+    const spendWithoutRevenue = generateRecommendations(
+      [{ name: "LinkedIn Ads", spend: 1000, revenue: 0, roas: 0 }],
+      1000,
+      0,
+      0,
+      "stable",
+      { hasSpend: true, hasRevenue: false, hasRoas: false, hasRoi: false, paidMediaSources: 1 },
+    );
+    const revenueWithoutSpend = generateRecommendations(
+      [{ name: "Google Analytics", spend: 0, revenue: 5000, roas: 0 }],
+      0,
+      0,
+      0,
+      "stable",
+      { hasSpend: false, hasRevenue: true, hasRoas: false, hasRoi: false, paidMediaSources: 0, webAnalyticsSources: 1 },
+    );
+
+    expect(JSON.stringify(spendWithoutRevenue)).not.toMatch(/ROAS|ROI|profit|budget/i);
+    expect(JSON.stringify(revenueWithoutSpend)).not.toMatch(/ROAS|ROI|profit|budget/i);
   });
 });

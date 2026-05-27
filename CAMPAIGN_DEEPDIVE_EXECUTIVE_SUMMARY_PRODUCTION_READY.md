@@ -242,7 +242,7 @@ Required regression coverage:
 
 ### Pre-Commit 4 Source Data And Refresh Map
 
-Before Strategic Recommendations work begins, the implemented Executive Overview sections use these source paths:
+After Commit 4, the implemented Executive Summary sections use these source paths:
 
 | Executive Summary section | Source data | Refresh behavior |
 | --- | --- | --- |
@@ -253,12 +253,12 @@ Before Strategic Recommendations work begins, the implemented Executive Overview
 | KPI Progress | campaign KPI rows from `/executive-summary`; current values from page-level `performanceSummary.totals` | KPI create/update/delete invalidates Executive Summary; page refetch updates rows and aggregate values |
 | Benchmark Comparison | campaign Benchmark rows from `/executive-summary`; current values from page-level `performanceSummary.totals` | Benchmark create/update/delete invalidates Executive Summary; page refetch updates rows and aggregate values |
 | Risk Assessment | fixed six risk inputs: KPI Risk, Benchmark Risk, Data Freshness, ROI / ROAS Risk, 7-Day Trend Risk, Paid Platform Concentration Risk | refetches `/executive-summary` and `/outcome-totals` on mount and window focus |
-| Strategic Recommendations | `/executive-summary.recommendations` | not production-ready until Commit 4 source-capability gating is completed |
+| Strategic Recommendations | `/executive-summary.recommendations` generated from `performanceSummary` source categories and aggregate metric availability | refetches with `/executive-summary`; paid-media guidance requires paid-source and financial metric availability |
 
 Root cause for Commit 4:
 
 - The Executive Overview, funnel, KPI Progress, Benchmark Comparison, and Risk Assessment sections have been moved to the shared aggregate/source-aware pattern.
-- Strategic Recommendations still need source-capability gating so GA4-only campaigns do not receive paid-media recommendations and recommendation claims do not use unavailable metrics.
+- Strategic Recommendations now use source-capability gating so GA4-only campaigns do not receive paid-media recommendations and recommendation claims do not use unavailable metrics.
 
 ### Strategic Recommendations
 
@@ -549,7 +549,7 @@ Why this comes before recommendations:
 
 ### Commit 4: Strategic Recommendations
 
-Status: Not started.
+Status: Completed.
 
 Goal:
 
@@ -561,6 +561,14 @@ Scope:
 - Generate GA4/web recommendations only from available web/outcome metrics.
 - Suppress ROAS, ROI, CPA, CPC, CTR, CPM, and CVR claims when required inputs are unavailable.
 - Add regression coverage for GA4-only, one paid source, two paid sources, spend-without-revenue, and revenue-without-spend cases.
+
+Implemented behavior:
+
+- The Executive Summary endpoint passes aggregate metric availability and source counts into `generateRecommendations`.
+- Paid-media budget reallocation now requires at least two comparable paid-media rows with spend, revenue, and ROAS.
+- Paid-media scaling, optimization, and diversification now require a connected paid-media source plus available spend, revenue, ROAS, ROI, and total spend.
+- GA4-only campaigns can receive web/outcome guidance from available web analytics and outcome metrics, but cannot receive paid-media budget, platform, or ROAS/ROI claims.
+- Spend-without-revenue and revenue-without-spend states suppress paid efficiency claims instead of treating missing inputs as zero.
 
 Why this is fourth:
 
@@ -629,7 +637,7 @@ Executive Summary is production ready only when:
 
 ## Current Status
 
-Not production ready. Commits 1, 2, 3, and 3A are completed, but recommendation gating remains outstanding.
+Not production ready. Commits 1, 2, 3, 3A, and 4 are completed; refresh stability and final validation remain.
 
 Proven:
 
@@ -639,9 +647,10 @@ Proven:
 - Commit 2 now makes the Executive Overview tab choose visible current metrics from `performanceSummary.totals` availability.
 - Commit 3 now makes health, risk, and trajectory use aggregate availability and compatible `performanceSummary` snapshots.
 - Commit 3A now makes Risk Assessment bounded and explicit: it shows the six executive `Risk inputs`, uses aggregate-backed KPI and Benchmark misses as risk factors, includes data freshness warnings as risk factors, and documents budget pacing as handled in Budget & Financial Analysis.
+- Commit 4 now makes Strategic Recommendations source-capability safe: paid-media guidance requires paid-media main sources and available spend/revenue/ROI/ROAS, while GA4-only campaigns can only receive web/outcome guidance from available web analytics and outcome metrics.
 - Executive Summary currently refetches both `/executive-summary` and `/outcome-totals` on mount and window focus so visible aggregate-backed sections update when upstream inputs change before the user returns to the page.
 - Commit 1 replaced the endpoint's `storage.getCampaign(id)` campaign lookup with the standard campaign access guard.
-- GA4-only campaigns are still at risk of showing paid-media recommendations until Commit 4 is completed.
+- GA4-only campaigns are no longer eligible for paid-media recommendations unless a main paid-media platform is connected and required paid financial inputs are available.
 - Risk Assessment currently proves the configured backend rules: available ROI below 0%, available ROAS below 1x, paid-platform concentration, compatible 7-day revenue decline, aggregate-backed KPI rows below 70% of target, Benchmark rows below 70% of benchmark, and connected-source data freshness warnings. Budget pacing remains in Budget & Financial Analysis until Executive Summary has a shared pacing input.
 
 Partially reviewed:

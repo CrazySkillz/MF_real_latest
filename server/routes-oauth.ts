@@ -25546,7 +25546,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : `7-day snapshot trajectory does not have enough compatible history yet.`;
       const ceoSummary = `${campaign.name}: ${ceoMetricSummary} Risk level is ${risk.riskLevel}. ${ceoTrajectorySummary}`;
       // Recommendations from helper
-      const recommendations = generateRecommendations(platforms, totalSpend, roas, roi, growthTrajectory);
+      const recommendations = generateRecommendations(platforms, totalSpend, roas, roi, growthTrajectory, {
+        hasSpend: aggregateMetricAvailable("spend"),
+        hasRevenue: aggregateMetricAvailable("revenue"),
+        hasRoas: aggregateMetricAvailable("roas"),
+        hasRoi: aggregateMetricAvailable("roi"),
+        hasSessions: aggregateMetricAvailable("sessions"),
+        hasUsers: aggregateMetricAvailable("users"),
+        hasConversions: aggregateMetricAvailable("conversions"),
+        hasCvr: aggregateMetricAvailable("cvr"),
+        paidMediaSources: platforms.length,
+        webAnalyticsSources: platformsForDisplay.filter((platform: any) => platform.category === "web_analytics").length,
+      });
 
       res.json({
         campaign: {

@@ -186,18 +186,41 @@ export function generateRecommendations(
   roas: number,
   roi: number,
   growthTrajectory: string | null,
+  context: {
+    hasSpend?: boolean;
+    hasRevenue?: boolean;
+    hasRoas?: boolean;
+    hasRoi?: boolean;
+    hasSessions?: boolean;
+    hasUsers?: boolean;
+    hasConversions?: boolean;
+    hasCvr?: boolean;
+    paidMediaSources?: number;
+    webAnalyticsSources?: number;
+  } = {},
 ) {
   const recommendations: any[] = [];
+  const paidMediaSourceCount = context.paidMediaSources ?? platforms.length;
+  const comparablePaidPlatforms = platforms.filter((platform) =>
+    platform.spend > 0 && platform.revenue > 0 && platform.roas > 0
+  );
+  const hasPaidFinancialInputs = paidMediaSourceCount > 0 &&
+    comparablePaidPlatforms.length > 0 &&
+    context.hasSpend === true &&
+    context.hasRevenue === true &&
+    context.hasRoas === true &&
+    context.hasRoi === true &&
+    totalSpend > 0;
 
-  const topPlatform = platforms.length > 0
-    ? platforms.reduce((top, p) => (p.roas > top.roas ? p : top))
+  const topPlatform = comparablePaidPlatforms.length > 0
+    ? comparablePaidPlatforms.reduce((top, p) => (p.roas > top.roas ? p : top))
     : null;
-  const bottomPlatform = platforms.length > 1
-    ? platforms.reduce((bottom, p) => (p.roas < bottom.roas ? p : bottom))
+  const bottomPlatform = comparablePaidPlatforms.length > 1
+    ? comparablePaidPlatforms.reduce((bottom, p) => (p.roas < bottom.roas ? p : bottom))
     : null;
 
   // Budget reallocation
-  if (topPlatform && bottomPlatform && topPlatform.roas > bottomPlatform.roas * 1.5) {
+  if (hasPaidFinancialInputs && comparablePaidPlatforms.length > 1 && topPlatform && bottomPlatform && topPlatform.roas > bottomPlatform.roas * 1.5) {
     const performanceGap = topPlatform.roas / bottomPlatform.roas;
     const reallocationPct = performanceGap > 3 ? 0.5 : performanceGap > 2 ? 0.3 : 0.2;
     const reallocationAmount = bottomPlatform.spend * reallocationPct;
@@ -226,7 +249,7 @@ export function generateRecommendations(
   }
 
   // Scaling
-  if (roi > 50 && roas > 2 && growthTrajectory !== 'declining') {
+  if (hasPaidFinancialInputs && roi > 50 && roas > 2 && growthTrajectory !== 'declining') {
     const scaleAmount = totalSpend * 0.5;
     const scalingModel = calculateDiminishingReturns(totalSpend, scaleAmount, roas);
     const expectedRevenue = scaleAmount * scalingModel.adjustedRoas;
@@ -258,7 +281,7 @@ export function generateRecommendations(
   }
 
   // Optimization
-  if (bottomPlatform && bottomPlatform.roas < 1.5) {
+  if (hasPaidFinancialInputs && bottomPlatform && bottomPlatform.roas < 1.5) {
     const targetRoas = 1.5;
     const currentRoasGap = targetRoas - bottomPlatform.roas;
     const potentialRevenueLift = bottomPlatform.spend * currentRoasGap;
@@ -286,7 +309,7 @@ export function generateRecommendations(
   }
 
   // Diversification
-  if (platforms.length === 1) {
+  if (hasPaidFinancialInputs && comparablePaidPlatforms.length === 1) {
     const testBudget = totalSpend * 0.15;
     const conservativeRoas = roas * 0.7;
     const expectedRevenue = testBudget * conservativeRoas;
@@ -311,6 +334,26 @@ export function generateRecommendations(
         worstCase: `-$${(testBudget * 0.4).toFixed(0)} loss (testing investment only)`,
       },
       disclaimer: 'Diversification is primarily a risk mitigation strategy. Initial ROI may be lower during testing phase.',
+    });
+  }
+
+  if (recommendations.length === 0 &&
+      paidMediaSourceCount === 0 &&
+      (context.webAnalyticsSources || 0) > 0 &&
+      (context.hasSessions === true || context.hasUsers === true) &&
+      (context.hasConversions === true || context.hasRevenue === true)) {
+    recommendations.push({
+      priority: 'medium',
+      category: 'Website Outcomes',
+      action: 'Review conversion path and landing-page performance using connected web analytics data',
+      expectedImpact: 'Identify where available sessions, users, conversions, or revenue are not progressing',
+      investmentRequired: 'Analysis only',
+      timeline: 'Next 7 days',
+      confidence: context.hasCvr === true ? 'medium' : 'low',
+      assumptions: [
+        'Based on connected web analytics and outcome metrics',
+        'No connected paid-media source is available for ad-spend recommendations',
+      ],
     });
   }
 

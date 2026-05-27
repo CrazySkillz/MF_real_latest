@@ -23,6 +23,28 @@ describe("campaign Executive Summary regression guard", () => {
     expect(gate).toContain("deployed validation evidence");
   });
 
+  it("documents deployed validation evidence separately from implementation readiness", () => {
+    const tracker = readFileSync(join(process.cwd(), "CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md"), "utf-8");
+    const checklistStart = tracker.indexOf("Deployed validation checklist and evidence log:");
+    const provenStart = tracker.indexOf("Proven:", checklistStart);
+    const checklist = tracker.slice(checklistStart, provenStart);
+
+    expect(tracker).toContain("[x] Deployed validation checklist documented:");
+    expect(checklist).toContain("not an additional Executive Summary implementation fix");
+    expect(checklist).toContain("production-ready for the implemented connected-source aggregate pattern");
+    expect(checklist).toContain("GA4-only campaign");
+    expect(checklist).toContain("GA4 plus refined Google Ads campaign");
+    expect(checklist).toContain("GA4 plus multiple paid-media sources");
+    expect(checklist).toContain("`/executive-summary`");
+    expect(checklist).toContain("`/outcome-totals`");
+    expect(checklist).toContain("`performanceSummary.sources`");
+    expect(checklist).toContain("`7-Day Snapshot Trajectory`");
+    expect(checklist).toContain("KPI/Benchmark evidence");
+    expect(checklist).toContain("Evidence recorded");
+    expect(checklist).toContain("Evidence log:");
+    expect(checklist).toContain("Not yet completed.");
+  });
+
   it("guards the endpoint and builds current values from the shared aggregate contract", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/executive-summary"');

@@ -132,6 +132,8 @@ Outstanding Executive Summary future-proofing tasks are tracked in `CAMPAIGN_DEE
 
 The Executive Summary future-platform acceptance gate is tracked in `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md` under `Future Connected Platform acceptance gate`. A new or refined platform is not Executive Summary production-ready until it passes the shared aggregate, `/outcome-totals`, `/executive-summary`, scheduler snapshot, KPI/Benchmark, Risk input, Strategic Recommendation, regression, and deployed-validation checks.
 
+The Executive Summary deployed-validation checklist is tracked in `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md` under `Deployed validation checklist and evidence log`. It is an acceptance evidence log for deployed source mixes, not a separate implementation task. Scenario evidence should remain incomplete until GA4-only, GA4 plus refined Google Ads, and GA4 plus multiple-paid-source campaign variants are validated in a deployed or production-like environment.
+
 Executive Summary and `/outcome-totals` should enter the shared aggregate contract through the same route-level aggregate wrapper so future refined main platform sources use one source-composition path before being passed to `buildPerformanceSummaryAggregate`.
 
 Scheduler snapshots that feed Executive Summary `7-Day Snapshot Trajectory` must include the same normalized main source set in `metrics.performanceSummary`. For the current future-proofing slice, Google Ads rows are passed into scheduler snapshot `performanceSummary` as a normalized `platformSources` source; future platforms need the same scheduler wiring before they are production-ready in Executive Summary.

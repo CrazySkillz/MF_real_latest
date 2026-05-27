@@ -14,9 +14,28 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { format } from "date-fns";
 import { formatPct } from "@shared/metric-math";
 
+const EXECUTIVE_SUMMARY_TABS = new Set(["overview", "recommendations"]);
+
 export default function ExecutiveSummary() {
   const { id: campaignId } = useParams();
   const [demoMode, setDemoMode] = useState(false);
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const hashTab = window.location.hash.replace("#", "");
+      return EXECUTIVE_SUMMARY_TABS.has(hashTab) ? hashTab : "overview";
+    } catch {
+      return "overview";
+    }
+  });
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    try {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${tab}`);
+    } catch {
+      // Ignore environments without history support.
+    }
+  };
 
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useQuery({
     queryKey: ["/api/campaigns", campaignId],
@@ -447,7 +466,7 @@ export default function ExecutiveSummary() {
           )}
 
           {/* Executive Summary Tabs */}
-          <Tabs defaultValue="overview" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
             <TabsList>
               <TabsTrigger value="overview">Executive Overview</TabsTrigger>
               <TabsTrigger value="recommendations">Strategic Recommendations</TabsTrigger>

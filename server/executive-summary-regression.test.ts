@@ -412,6 +412,13 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).not.toContain("outcomeTotalsLoading");
     expect(page).toContain("if (campaignLoading || summaryLoading) {");
     expect(page).not.toContain("if (campaignLoading || summaryLoading || outcomeTotalsLoading)");
+    expect(page).toContain('const EXECUTIVE_SUMMARY_TABS = new Set(["overview", "recommendations"]);');
+    expect(page).toContain("const [activeTab, setActiveTab] = useState(() => {");
+    expect(page).toContain('const hashTab = window.location.hash.replace("#", "");');
+    expect(page).toContain("const handleTabChange = (tab: string) => {");
+    expect(page).toContain('window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${tab}`);');
+    expect(page).toContain('<Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">');
+    expect(page).not.toContain('<Tabs defaultValue="overview" className="space-y-6">');
     expect(page).toContain("<TabsList>");
     expect(page).not.toContain('<TabsList className="grid w-full grid-cols-2">');
     expect(page).toContain("const performanceSummary = (outcomeTotals as any)?.performanceSummary || (executiveSummary as any).performanceSummary;");

@@ -122,6 +122,8 @@ Executive Summary Risk Assessment should refresh both its Executive Summary endp
 
 Executive Summary should not block the full subsection on the secondary outcome-totals request. It should render from `/executive-summary` once available, then use `/outcome-totals` to align page-level aggregate values when that response arrives or refetches.
 
+Executive Summary should preserve the active tab through the URL hash. Refreshing while viewing Strategic Recommendations should reload Strategic Recommendations, not reset to Executive Overview.
+
 Executive Summary Strategic Recommendations now use source-capability gating. For GA4-only campaigns, the tab may show web/outcome guidance from available GA4 users, sessions, conversions, revenue, or CVR, but it must not show paid-media budget reallocation, paid platform diversification, scaling, ROAS/ROI, CPA, CPC, CTR, or CPM claims unless a main paid-media platform supplies the required inputs. GA4-only web/outcome guidance should state live revenue, conversion, and CVR outcomes plainly, compare mapped KPI/Benchmark targets for CVR, revenue, and conversions when available, and give a next action without making paid-media claims.
 
 In GA4-only Strategic Recommendations, Website Outcomes `Expected Impact` should render as bullet points for readability. `Timeframe` should communicate the review/action window, and `Investment Required` should clarify that the recommendation is analysis-only unless a paid-media source is connected.

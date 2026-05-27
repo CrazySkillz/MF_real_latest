@@ -705,6 +705,7 @@ Fix:
 - Executive Summary now leaves the full-page skeleton only while campaign data or `/executive-summary` is loading.
 - `/outcome-totals` continues to refetch and feed the page-level aggregate values, but it no longer blocks initial Executive Summary rendering.
 - Executive Summary tabs now use the default `TabsList` layout to match Performance Summary.
+- Executive Summary now stores the active tab in the URL hash, so refreshing on `Strategic Recommendations` reloads that tab instead of resetting to `Executive Overview`.
 
 ### Completed Production-Readiness Work For Connected Platform Expansion
 

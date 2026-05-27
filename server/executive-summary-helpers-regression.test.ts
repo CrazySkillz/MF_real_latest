@@ -114,6 +114,24 @@ describe("Executive Summary helper availability guards", () => {
     expect(JSON.stringify(recommendations)).not.toContain("Increase campaign budget");
   });
 
+  it("does not generate web outcome guidance when required GA4 outcome inputs are unavailable", () => {
+    const trafficOnly = generateRecommendations([], 0, 0, 0, null, {
+      hasSessions: true,
+      sessions: 8432,
+      paidMediaSources: 0,
+      webAnalyticsSources: 1,
+    });
+    const outcomeOnly = generateRecommendations([], 0, 0, 0, null, {
+      hasRevenue: true,
+      revenue: 88893,
+      paidMediaSources: 0,
+      webAnalyticsSources: 1,
+    });
+
+    expect(trafficOnly).toEqual([]);
+    expect(outcomeOnly).toEqual([]);
+  });
+
   it("does not reallocate budget with only one paid-media source", () => {
     const recommendations = generateRecommendations(
       [{ name: "LinkedIn Ads", spend: 1000, revenue: 5000, roas: 5 }],

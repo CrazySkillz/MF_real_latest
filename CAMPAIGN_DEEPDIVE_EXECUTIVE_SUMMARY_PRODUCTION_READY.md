@@ -582,11 +582,11 @@ Implemented behavior:
 - Recommendation visible values now render Website Outcomes `Expected Impact` metrics from the same page-level `performanceSummary` aggregate used by the Executive Summary cards, KPI Progress, Benchmark Comparison, and Risk Assessment. This prevents backend `/executive-summary` recommendation values from drifting from the visible page values.
 - Fix 2 interpretation text is implemented: GA4-only web/outcome guidance now states live outcomes plainly, such as `Revenue is $88,893 from 392 conversions` and `Conversion rate is 4.7%`, without judging whether those values are good or bad unless targets are available.
 - Fix 3 target comparison and next action is implemented: GA4-only web/outcome guidance now compares mapped CVR, revenue, and conversion KPI/Benchmark targets when they exist, and gives a next action to inspect landing pages/conversion paths when any mapped target is below target.
+- Fix 4 regression and documentation hardening is implemented: coverage now explicitly guards GA4-only with targets, GA4-only without targets, paid-media guidance blocked, and missing GA4/web inputs remaining unavailable.
 - Spend-without-revenue and revenue-without-spend states suppress paid efficiency claims instead of treating missing inputs as zero.
 
 Remaining executive-grade recommendation hardening:
 
-- Fix 4: Add regression coverage and docs for GA4-only with targets, GA4-only without targets, paid-media guidance still blocked, and missing metrics remaining unavailable.
 - All remaining fixes must keep this as web/outcome guidance only; do not add paid-media budget, ROAS, CPA, CPC, CTR, CPM, or channel allocation advice unless a paid-media source is connected.
 
 Why this is fourth:

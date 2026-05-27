@@ -586,6 +586,8 @@ Implemented behavior:
 - Website Outcomes `Expected Impact` now renders as bullet points so executives can scan available data, interpretation, target check, and next action separately.
 - `Timeframe` is retained because it tells executives when the recommendation should be reviewed or acted on. For GA4-only Website Outcomes, `Next 7 days` means this is a near-term diagnostic review, not a budget pacing period.
 - `Investment Required` is retained because it clarifies whether the recommendation needs budget. For GA4-only Website Outcomes, it should say analysis only and explain that paid-media budget or channel recommendations require a connected paid-media source.
+- Strategic Recommendations are executive-ready in the current implemented scope: paid-media recommendations require paid-media source capability and required financial inputs, while GA4-only campaigns receive factual web/outcome guidance with live values, target context, a clear next action, readable bullets, timeframe, investment requirement, assumptions, and disclaimers.
+- Strategic Recommendations update from the same refresh path as the rest of Executive Summary. `/api/campaigns/:id/executive-summary` recomputes recommendation eligibility from current source capability, aggregate metric availability, KPI target availability, Benchmark target availability, and trajectory inputs. The page also fetches `/api/campaigns/:id/outcome-totals` and renders Website Outcomes values from page-level `performanceSummary.totals`, so updated connected-source values are reflected after the page mounts or regains focus. This is refetch-based synchronization, not a live push stream while the tab remains idle.
 - Spend-without-revenue and revenue-without-spend states suppress paid efficiency claims instead of treating missing inputs as zero.
 
 Remaining executive-grade recommendation hardening:
@@ -659,7 +661,7 @@ Executive Summary is production ready only when:
 
 ## Current Status
 
-Not production ready. Commits 1, 2, 3, 3A, and 4 are completed; refresh stability and final validation remain.
+Production-ready by local code path review and regression coverage for the completed Executive Summary implementation scope. Deployed/live validation remains separate and should still be performed with GA4-only and multi-source campaigns.
 
 Proven:
 
@@ -671,6 +673,8 @@ Proven:
 - Commit 3A now makes Risk Assessment bounded and explicit: it shows the six executive `Risk inputs`, uses aggregate-backed KPI and Benchmark misses as risk factors, includes data freshness warnings as risk factors, and documents budget pacing as handled in Budget & Financial Analysis.
 - Commit 4 now makes Strategic Recommendations source-capability safe: paid-media guidance requires paid-media main sources and available spend/revenue/ROI/ROAS, while GA4-only campaigns can only receive web/outcome guidance from available web analytics and outcome metrics.
 - Executive Summary currently refetches both `/executive-summary` and `/outcome-totals` on mount and window focus so visible aggregate-backed sections update when upstream inputs change before the user returns to the page.
+- Strategic Recommendations are now executive-ready in implemented scope: they are source-capability gated, avoid unavailable paid-media claims, show live web/outcome values for GA4-only recommendations, compare mapped KPI/Benchmark targets when available, present the expected impact as bullets, and keep timeframe, investment requirement, assumptions, and disclaimers visible.
+- Strategic Recommendations will update when their inputs update and the Executive Summary data refetches. Current connected-source metrics come from `performanceSummary.totals`; paid-media eligibility comes from current main source capability; target context comes from campaign KPI/Benchmark records; and recommendation copy is recomputed by the endpoint plus finalized with page-level aggregate values in the UI.
 - Commit 1 replaced the endpoint's `storage.getCampaign(id)` campaign lookup with the standard campaign access guard.
 - GA4-only campaigns are no longer eligible for paid-media recommendations unless a main paid-media platform is connected and required paid financial inputs are available.
 - Risk Assessment currently proves the configured backend rules: available ROI below 0%, available ROAS below 1x, paid-platform concentration, compatible 7-day revenue decline, aggregate-backed KPI rows below 70% of target, Benchmark rows below 70% of benchmark, and connected-source data freshness warnings. Budget pacing remains in Budget & Financial Analysis until Executive Summary has a shared pacing input.

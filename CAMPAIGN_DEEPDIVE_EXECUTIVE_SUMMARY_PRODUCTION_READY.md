@@ -706,7 +706,7 @@ Completed endpoint regression fix:
 Outstanding Executive Summary future-proofing tasks:
 
 - [x] Generic future-source regression: prove any normalized `platformSources` source can feed Executive Summary aggregate sources, platform rows, KPI/Benchmark mapping, Risk inputs, and Strategic Recommendation eligibility without a source-specific UI branch.
-- [ ] Remaining aggregate-composition sharing: reduce the remaining duplicated source composition between `/outcome-totals` and `/executive-summary` beyond the already shared Google Ads source-builder slice.
+- [x] Remaining aggregate-composition sharing: reduce the remaining duplicated source composition between `/outcome-totals` and `/executive-summary` beyond the already shared Google Ads source-builder slice.
 - [ ] Scheduler snapshot parity: confirm scheduler snapshots use the same aggregate/source set as Executive Summary so `7-Day Snapshot Trajectory` works with future or refined main Connected Platforms.
 - [ ] Deployed validation: validate the Executive Summary aggregate pattern with GA4 plus a refined Google Ads source, and with GA4 plus multiple paid-media sources.
 - [ ] Future-platform acceptance rule: every new or refined main Connected Platform must be wired into the shared aggregate contract, `/outcome-totals`, `/executive-summary`, scheduler snapshots, freshness metadata, KPI/Benchmark mapping, Risk inputs, Strategic Recommendations, and regression coverage before that platform is marked production-ready in Executive Summary.
@@ -719,6 +719,12 @@ Separate Google Ads Connected Platforms refinement:
 Completed generic future-source regression fix:
 
 - Regression coverage now uses a fake future paid-media source, not Google Ads, to prove normalized `platformSources` can feed Executive Summary aggregate totals, visible platform rows, KPI/Benchmark-compatible metrics, Risk inputs, and paid-media recommendation eligibility without a source-specific UI/backend branch.
+
+Completed shared aggregate entry-point fix:
+
+- `/outcome-totals` and `/executive-summary` now call the same route-level aggregate wrapper instead of calling `buildPerformanceSummaryAggregate` directly.
+- The wrapper centralizes generic main-platform source composition through `mainPlatformSources`, so future refined sources can be added to one source-composition path before entering the shared aggregate contract.
+- Endpoint-specific metric fetching remains local to each route to avoid a broad refactor; this fix only removes the drift-prone aggregate entry-point/source-list duplication.
 
 Proven:
 

@@ -145,6 +145,20 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
   return { googleAds, googleAdsSpend, googleAdsLastUpdate };
 }
 
+function buildMainPlatformSourcesForAggregate(sources: { googleAds?: any } = {}) {
+  return [sources.googleAds].filter((source) => source?.connected === true);
+}
+
+function buildCampaignPerformanceSummaryAggregate(input: any) {
+  const { mainPlatformSources, platformSources, ...aggregateInput } = input || {};
+  return buildPerformanceSummaryAggregate({
+    ...aggregateInput,
+    platformSources: Array.isArray(platformSources)
+      ? platformSources
+      : buildMainPlatformSourcesForAggregate(mainPlatformSources),
+  });
+}
+
 function calculateConfidence(values: any[], detectedType: string): number {
   if (values.length === 0) return 0;
   return 0.8; // Simple confidence score
@@ -10315,7 +10329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             { type: "shopify", connected: true, revenueClassification: "offsite_not_in_ga4", lastTotalRevenue: 6400, offsite: true },
             { type: "hubspot", connected: true, revenueClassification: "offsite_not_in_ga4", lastTotalRevenue: 3200, offsite: true },
           ],
-          performanceSummary: buildPerformanceSummaryAggregate({
+          performanceSummary: buildCampaignPerformanceSummaryAggregate({
             campaignId,
             dateRange,
             ga4: { connected: true, revenue: 11800, conversions: 107, sessions: 3200, users: 2100 },
@@ -10825,7 +10839,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ],
         spend: financialSpendInputs,
       };
-      const performanceSummary = buildPerformanceSummaryAggregate({
+      const performanceSummary = buildCampaignPerformanceSummaryAggregate({
         campaignId,
         dateRange,
         ga4: ga4Totals,
@@ -10843,7 +10857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           meta,
           customIntegration: custom,
         },
-        platformSources: [googleAds],
+        mainPlatformSources: { googleAds },
         revenue: {
           onsiteRevenue,
           offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
@@ -25235,7 +25249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const aggregateRevenue = hasGA4Connection
         ? parseFloat((ga4Metrics.revenue + importedRevenueToDateTotal).toFixed(2))
         : (canonicalRevenue > 0 ? canonicalRevenue : platformRevenue);
-      const performanceSummary = buildPerformanceSummaryAggregate({
+      const performanceSummary = buildCampaignPerformanceSummaryAggregate({
         campaignId: id,
         dateRange: executiveDateRange,
         ga4: { connected: hasGA4Connection, ...ga4Metrics },
@@ -25260,7 +25274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           meta: { connected: hasMetaConnection, ...metaMetrics, attributedRevenue: metaMetrics.revenue },
           customIntegration: { connected: hasCustomIntegration, ...customMetrics, users: parseNum(customIntegrationRawData?.users), sessions: parseNum(customIntegrationRawData?.sessions), pageviews: parseNum(customIntegrationRawData?.pageviews), revenue: customMetrics.revenue },
         },
-        platformSources: [googleAds],
+        mainPlatformSources: { googleAds },
         revenue: {
           onsiteRevenue: ga4Metrics.revenue,
           offsiteRevenue: aggregateRevenue > ga4Metrics.revenue ? aggregateRevenue - ga4Metrics.revenue : 0,

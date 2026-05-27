@@ -130,6 +130,8 @@ When GA4 is combined with paid-media integrations such as Google Ads, Executive 
 
 Outstanding Executive Summary future-proofing tasks are tracked in `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md` under `Outstanding Executive Summary future-proofing tasks`. Google Ads platform-specific refinement is tracked separately from Executive Summary aggregate-readiness.
 
+Executive Summary and `/outcome-totals` should enter the shared aggregate contract through the same route-level aggregate wrapper so future refined main platform sources use one source-composition path before being passed to `buildPerformanceSummaryAggregate`.
+
 GA4-only Strategic Recommendations regression coverage should guard four cases: web/outcome guidance with targets, web/outcome guidance without targets, paid-media guidance remaining blocked, and insufficient GA4/web inputs producing no recommendation instead of zero-filled claims.
 
 Executive Summary KPI Progress should be fed by campaign-level KPI records whose current value can be mapped to available GA4/connected-source aggregate metrics. Campaign-level KPI create, update, and delete actions should refresh the campaign Executive Summary query so KPI Progress reflects the latest KPI list and targets. Targets come from campaign-level KPI records, but current values, progress percentages, and statuses should render from live GA4/connected-source aggregate values for metrics such as users, sessions, conversions, revenue, ROI, ROAS, CTR, or CVR. Executive Summary must not silently fall back to saved KPI progress/current values when a KPI cannot be mapped to an available aggregate metric.

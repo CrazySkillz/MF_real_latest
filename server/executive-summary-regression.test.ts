@@ -409,6 +409,11 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page.match(/refetchIntervalInBackground: false/g)?.length).toBe(2);
     expect(page.match(/staleTime: 0/g)?.length).toBe(2);
     expect(page).not.toContain("isFetching");
+    expect(page).not.toContain("outcomeTotalsLoading");
+    expect(page).toContain("if (campaignLoading || summaryLoading) {");
+    expect(page).not.toContain("if (campaignLoading || summaryLoading || outcomeTotalsLoading)");
+    expect(page).toContain("<TabsList>");
+    expect(page).not.toContain('<TabsList className="grid w-full grid-cols-2">');
     expect(page).toContain("const performanceSummary = (outcomeTotals as any)?.performanceSummary || (executiveSummary as any).performanceSummary;");
     expect(page).toContain("const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];");
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");

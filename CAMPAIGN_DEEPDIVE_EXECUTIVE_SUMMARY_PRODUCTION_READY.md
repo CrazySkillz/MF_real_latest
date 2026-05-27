@@ -692,6 +692,20 @@ Use this section first when resuming Executive Summary work.
 
 Do not treat the deployed evidence log, the future-source acceptance gate, or Google Ads source refinement as unfinished Executive Summary implementation work. They are separate follow-up categories.
 
+### Completed UI Responsiveness And Tab Parity Fix
+
+Root cause:
+
+- Executive Summary blocked the full page loading state on both `/executive-summary` and the secondary `/outcome-totals` request.
+- This made refreshes feel slower than necessary because `/executive-summary` already includes a compatible `performanceSummary` fallback, while `/outcome-totals` is used to align visible current values when it arrives.
+- Executive Summary also used a custom full-width two-column tab grid, while Performance Summary uses the standard `TabsList` layout.
+
+Fix:
+
+- Executive Summary now leaves the full-page skeleton only while campaign data or `/executive-summary` is loading.
+- `/outcome-totals` continues to refetch and feed the page-level aggregate values, but it no longer blocks initial Executive Summary rendering.
+- Executive Summary tabs now use the default `TabsList` layout to match Performance Summary.
+
 ### Completed Production-Readiness Work For Connected Platform Expansion
 
 Root cause:

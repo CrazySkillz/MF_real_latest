@@ -42,7 +42,7 @@ export default function ExecutiveSummary() {
   });
 
   const executiveOutcomeDateRange = "90days";
-  const { data: outcomeTotals, isLoading: outcomeTotalsLoading } = useQuery({
+  const { data: outcomeTotals } = useQuery({
     queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, executiveOutcomeDateRange, demoMode ? "demo" : "live", "executive-summary"],
     enabled: !!campaignId,
     queryFn: async () => {
@@ -58,7 +58,7 @@ export default function ExecutiveSummary() {
     staleTime: 0,
   });
 
-  if (campaignLoading || summaryLoading || outcomeTotalsLoading) {
+  if (campaignLoading || summaryLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -448,7 +448,7 @@ export default function ExecutiveSummary() {
 
           {/* Executive Summary Tabs */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList>
               <TabsTrigger value="overview">Executive Overview</TabsTrigger>
               <TabsTrigger value="recommendations">Strategic Recommendations</TabsTrigger>
             </TabsList>

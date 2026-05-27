@@ -156,6 +156,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain('const trendRisk = executiveTrajectory === "declining" && trendPercentage < -15;');
     expect(page).toContain("const displayedRiskFactors = [");
     expect(page).toContain("const riskInputRows = [");
+    expect(page).toContain("paid-media recommendations are unavailable");
+    expect(page).toContain("Available web analytics and outcome metrics can still feed website recommendations and risk inputs.");
+    expect(page).not.toContain("excluded from strategic recommendations and risk assessment");
     expect(page).toContain('label: "KPI Risk"');
     expect(page).toContain('label: "Benchmark Risk"');
     expect(page).toContain('label: "Data Freshness"');

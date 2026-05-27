@@ -844,7 +844,7 @@ export default function ExecutiveSummary() {
                     <div className="flex items-start space-x-3">
                       <Info className="w-5 h-5 text-muted-foreground/70 mt-0.5 flex-shrink-0" />
                       <div className="text-sm text-foreground/80/60">
-                        <strong>Note:</strong> {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.join(', ')} {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'has' : 'have'} no advertising data (spend, conversions, or revenue) and {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'is' : 'are'} excluded from strategic recommendations and risk assessment. Upload advertising performance data to receive platform-specific recommendations.
+                        <strong>Note:</strong> {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.join(', ')} {(executiveSummary as any).metadata.dataAccuracy.platformsExcludedFromRecommendations.length === 1 ? 'is' : 'are'} not a connected paid-media source, so paid-media recommendations are unavailable. Available web analytics and outcome metrics can still feed website recommendations and risk inputs.
                       </div>
                     </div>
                   </CardContent>

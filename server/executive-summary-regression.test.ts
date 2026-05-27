@@ -16,6 +16,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("const performanceSummary = buildPerformanceSummaryAggregate({");
     expect(route).toContain("const metaConnection = await storage.getMetaConnection(id).catch(() => null);");
     expect(route).toContain("if (metaConnection && !(metaConnection as any).spendOnly) {");
+    expect(routes).toContain("async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string)");
+    expect(routes).toContain("const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate(campaignId, startDate, endDate);");
+    expect(route).toContain("const { googleAds, googleAdsSpend, googleAdsLastUpdate } = await buildGoogleAdsPlatformSourceForAggregate(id, startDate, endDate);");
     expect(route).toContain("dateRange: executiveDateRange");
     expect(route).toContain("const metrics = await ga4Service.getMetricsWithAutoRefresh(id, storage, ga4DateRange, primaryPropertyId || undefined, campaignFilter);");
     expect(route).toContain('periodParam === "90d" ? "90daysAgo" : "30daysAgo"');
@@ -28,6 +31,11 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("parseFloat((ga4Metrics.revenue + importedRevenueToDateTotal).toFixed(2))");
     expect(route).toContain("spendSource: performanceSummarySpend > 0 ? \"persisted_spend_sources\" : \"platform_spend_fallback\"");
     expect(route).toContain("meta: { connected: hasMetaConnection");
+    expect(route).toContain("const platformSpend = linkedinMetrics.spend + metaMetrics.spend + customMetrics.spend + googleAdsSpend;");
+    expect(route).toContain("platformSources: [googleAds]");
+    expect(route).toContain("checkFreshness(googleAdsLastUpdate, 'Google Ads');");
+    expect(route).toContain('const hasGoogleAdsData = mainAggregateSources.some((source: any) => source.id === "google_ads");');
+    expect(route).toContain("hasGoogleAdsData,");
     expect(route).toContain("const aggregateMetricValue = (metricName: string): number => {");
     expect(route).toContain('const totalImpressions = aggregateMetricValue("impressions");');
     expect(route).toContain('const totalClicks = aggregateMetricValue("clicks");');

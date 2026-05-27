@@ -80,6 +80,71 @@ function normalizeCustomIntegrationMetrics(metrics: ParsedMetrics) {
   return normalized;
 }
 
+async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string) {
+  const parseNum = (v: any): number => {
+    if (v === null || typeof v === "undefined" || v === "") return 0;
+    const n = typeof v === "string" ? parseFloat(v) : Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  let googleAds: any = { connected: false };
+  let googleAdsSpend = 0;
+  let googleAdsLastUpdate: string | null = null;
+  let hasGoogleAdsConnection = false;
+
+  try {
+    const googleAdsConn = await storage.getGoogleAdsConnection(campaignId).catch(() => null);
+    hasGoogleAdsConnection = !!googleAdsConn;
+    if (googleAdsConn && !(googleAdsConn as any).spendOnly) {
+      const selectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((googleAdsConn as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      const selectedSet = new Set(selectedCampaignIds);
+      const googleAdsRows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate))
+        .filter((row: any) => selectedSet.size === 0 || selectedSet.has(String(row?.googleCampaignId)));
+      const totals = googleAdsRows.reduce((sum: any, row: any) => ({
+        impressions: sum.impressions + parseNum(row?.impressions),
+        clicks: sum.clicks + parseNum(row?.clicks),
+        spend: sum.spend + parseNum(row?.spend),
+        conversions: sum.conversions + parseNum(row?.conversions),
+        attributedRevenue: sum.attributedRevenue + parseNum(row?.ga4Revenue || row?.conversionValue),
+      }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, attributedRevenue: 0 });
+      googleAdsSpend = parseNum(totals.spend);
+      const lastRow = googleAdsRows[googleAdsRows.length - 1];
+      googleAdsLastUpdate = (lastRow as any)?.date || null;
+      googleAds = {
+        id: "google_ads",
+        label: "Google Ads",
+        category: "paid_media",
+        connected: true,
+        capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+        ],
+        metrics: {
+          impressions: parseNum(totals.impressions),
+          clicks: parseNum(totals.clicks),
+          spend: googleAdsSpend,
+          conversions: parseNum(totals.conversions),
+          attributedRevenue: parseNum(totals.attributedRevenue),
+        },
+        freshness: { selectedCampaignIds },
+      };
+    }
+  } catch (err: any) {
+    googleAds = { connected: hasGoogleAdsConnection, error: err?.message || "Google Ads unavailable" };
+  }
+
+  return { googleAds, googleAdsSpend, googleAdsLastUpdate };
+}
+
 function calculateConfidence(values: any[], detectedType: string): number {
   if (values.length === 0) return 0;
   return 0.8; // Simple confidence score
@@ -10289,12 +10354,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      const [campaign, ga4Connections, linkedInConn, metaConn, googleAdsConn, customIntegration] = await Promise.all([
+      const [campaign, ga4Connections, linkedInConn, metaConn, customIntegration] = await Promise.all([
         storage.getCampaign(campaignId),
         storage.getGA4Connections(campaignId),
         storage.getLinkedInConnection(campaignId),
         storage.getMetaConnection(campaignId),
-        storage.getGoogleAdsConnection(campaignId).catch(() => undefined),
         storage.getCustomIntegration(campaignId),
       ]);
       const activeGA4 = (ga4Connections || []).some((c: any) => c?.propertyId && c.propertyId !== "");
@@ -10629,53 +10693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         meta = { connected: !!metaConn, error: e?.message || "Meta unavailable" };
       }
 
-      let googleAds: any = { connected: false };
-      let googleAdsSpend = 0;
-      try {
-        if (googleAdsConn && !(googleAdsConn as any).spendOnly) {
-          const selectedCampaignIds = (() => {
-            try {
-              const parsed = JSON.parse(String((googleAdsConn as any).selectedCampaignIds || "[]"));
-              return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
-            } catch {
-              return [];
-            }
-          })();
-          const selectedSet = new Set(selectedCampaignIds);
-          const rows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate))
-            .filter((row: any) => selectedSet.size === 0 || selectedSet.has(String(row?.googleCampaignId)));
-          const totals = rows.reduce((sum: any, row: any) => ({
-            impressions: sum.impressions + parseNum(row?.impressions),
-            clicks: sum.clicks + parseNum(row?.clicks),
-            spend: sum.spend + parseNum(row?.spend),
-            conversions: sum.conversions + parseNum(row?.conversions),
-            attributedRevenue: sum.attributedRevenue + parseNum(row?.ga4Revenue || row?.conversionValue),
-          }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, attributedRevenue: 0 });
-          googleAdsSpend = parseNum(totals.spend);
-          googleAds = {
-            id: "google_ads",
-            label: "Google Ads",
-            category: "paid_media",
-            connected: true,
-            capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
-            includedMetrics: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
-            excludedMetrics: [
-              { metric: "sessions", reason: "Sessions are web analytics metrics" },
-              { metric: "users", reason: "Users are web analytics metrics" },
-            ],
-            metrics: {
-              impressions: parseNum(totals.impressions),
-              clicks: parseNum(totals.clicks),
-              spend: googleAdsSpend,
-              conversions: parseNum(totals.conversions),
-              attributedRevenue: parseNum(totals.attributedRevenue),
-            },
-            freshness: { selectedCampaignIds },
-          };
-        }
-      } catch (e: any) {
-        googleAds = { connected: !!googleAdsConn, error: e?.message || "Google Ads unavailable" };
-      }
+      const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate(campaignId, startDate, endDate);
 
       // Custom integration inputs (webhook-fed)
       let custom: any = { connected: false };
@@ -25169,6 +25187,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('No custom integration metrics found for campaign', id);
       }
 
+      // Fetch Google Ads metrics as a normalized platform source
+      const { googleAds, googleAdsSpend, googleAdsLastUpdate } = await buildGoogleAdsPlatformSourceForAggregate(id, startDate, endDate);
+
       // Fetch canonical spend/revenue sources (ground truth)
       let canonicalSpend = 0;
       let canonicalRevenue = 0;
@@ -25209,8 +25230,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const webAnalyticsProvider = hasGA4Connection ? "ga4" : hasCustomIntegration ? "custom_integration" : null;
-      const platformSpend = linkedinMetrics.spend + metaMetrics.spend + customMetrics.spend;
-      const platformRevenue = linkedinMetrics.revenue + metaMetrics.revenue + customMetrics.revenue;
+      const platformSpend = linkedinMetrics.spend + metaMetrics.spend + customMetrics.spend + googleAdsSpend;
+      const platformRevenue = linkedinMetrics.revenue + metaMetrics.revenue + customMetrics.revenue + parseNum(googleAds?.metrics?.attributedRevenue);
       const aggregateRevenue = hasGA4Connection
         ? parseFloat((ga4Metrics.revenue + importedRevenueToDateTotal).toFixed(2))
         : (canonicalRevenue > 0 ? canonicalRevenue : platformRevenue);
@@ -25239,6 +25260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           meta: { connected: hasMetaConnection, ...metaMetrics, attributedRevenue: metaMetrics.revenue },
           customIntegration: { connected: hasCustomIntegration, ...customMetrics, users: parseNum(customIntegrationRawData?.users), sessions: parseNum(customIntegrationRawData?.sessions), pageviews: parseNum(customIntegrationRawData?.pageviews), revenue: customMetrics.revenue },
         },
+        platformSources: [googleAds],
         revenue: {
           onsiteRevenue: ga4Metrics.revenue,
           offsiteRevenue: aggregateRevenue > ga4Metrics.revenue ? aggregateRevenue - ga4Metrics.revenue : 0,
@@ -25400,6 +25422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       checkFreshness(metaLastUpdate, 'Meta/Facebook');
       checkFreshness(ga4LastUpdate, 'Google Analytics');
       checkFreshness(customIntegrationLastUpdate, 'Custom Integration');
+      checkFreshness(googleAdsLastUpdate, 'Google Ads');
 
       // Aggregate totals across connected sources
       const totalImpressions = aggregateMetricValue("impressions");
@@ -25478,6 +25501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasMetaData = mainAggregateSources.some((source: any) => source.id === "meta");
       const hasGA4Data = mainAggregateSources.some((source: any) => source.id === "ga4");
       const hasCustomIntegrationData = mainAggregateSources.some((source: any) => source.id === "custom_integration");
+      const hasGoogleAdsData = mainAggregateSources.some((source: any) => source.id === "google_ads");
       // Top / bottom performers
       const topPlatform = platforms.length > 0 ? platforms.reduce((top, p) => p.roas > top.roas ? p : top) : null;
       const bottomPlatform = platforms.length > 1 ? platforms.reduce((bottom, p) => p.roas < bottom.roas ? p : bottom) : null;
@@ -25623,6 +25647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             hasMetaData,
             hasGA4Data,
             hasCustomIntegrationData,
+            hasGoogleAdsData,
             platformsExcludedFromRecommendations: platformsForDisplay.filter((p: any) => !platforms.some((pd: any) => pd.name === p.name)).map((p: any) => p.name),
           },
         },

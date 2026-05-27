@@ -676,7 +676,33 @@ Executive Summary is production ready only when:
 
 ## Current Status
 
-Production-ready by local code path review, regression coverage, build validation, and user validation for the completed Executive Summary implementation scope. Broader deployed/live validation with additional GA4-only and multi-source campaign variants remains separate.
+Production-ready by local code path review, regression coverage, build validation, and user validation for the GA4/LinkedIn/Meta/Custom/financial-source scope. Full production readiness for all current and future Connected Platform integrations is in progress because `/executive-summary` and `/outcome-totals` previously had separate aggregate composition paths that could drift.
+
+### Outstanding Production-Readiness Tasks For Connected Platform Expansion
+
+Root cause:
+
+- `/outcome-totals` already supports normalized `platformSources` such as Google Ads through `buildPerformanceSummaryAggregate`.
+- `/executive-summary` built a separate aggregate composition and did not pass `platformSources`, so backend-driven Executive Summary sections could miss sources that visible current-value cards received from `/outcome-totals`.
+
+Completed first fix:
+
+- `/executive-summary` now builds a normalized Google Ads `platformSources` row and passes `platformSources: [googleAds]` into `buildPerformanceSummaryAggregate`.
+- Google Ads can now contribute to Executive Summary endpoint source rows, aggregate paid-media totals, KPI/Benchmark metric mapping, paid-platform concentration risk, paid-media recommendation eligibility, and data freshness warnings when connected and available.
+
+Completed next fix:
+
+- Google Ads source composition is now shared by `/outcome-totals` and `/executive-summary` through one route-level helper, so selected Google Ads campaigns, daily rows, paid metrics, attributed revenue, and freshness date are derived the same way in both endpoints.
+- This reduces the current drift risk without changing response shapes or refactoring the broader route pipeline.
+
+Still outstanding:
+
+- Extract or share the remaining aggregate composition used by `/outcome-totals` and `/executive-summary` so future source support cannot diverge again beyond the Google Ads source-builder slice.
+- Add an endpoint-level regression proving Google Ads appears in `/executive-summary.performanceSummary.sources`, `platforms`, paid-source counts, and recommendation eligibility when connected.
+- Add a generic future-source regression proving normalized `platformSources` feed Executive Summary without hand-coded platform UI branches.
+- Confirm scheduler snapshots include the same platform source set used by Executive Summary trajectory before declaring future-source trajectory complete.
+- Add deployed validation for GA4 + Google Ads and GA4 + multiple paid-media sources.
+- For each new Connected Platform, require the same source to be wired into the shared aggregate contract, `/outcome-totals`, `/executive-summary`, scheduler snapshots, freshness metadata, and regression coverage before marking that platform production-ready in Executive Summary.
 
 Proven:
 
@@ -693,6 +719,8 @@ Proven:
 - Commit 5 now adds refresh stability: both Executive Summary queries poll every 60 seconds only while the page is active, and regression coverage guards against `isFetching`-based fallback flashes during background refetch.
 - Commit 6 now records final documentation and validation evidence for the completed Executive Summary implementation scope.
 - User validation passed for active-tab refresh behavior after using the DevTools regex filter `/executive-summary|outcome-totals/`.
+- Follow-up parity fix now passes Google Ads as a normalized `platformSources` source into `/executive-summary`, matching the `/outcome-totals` aggregate pattern for the first current future-source gap.
+- Follow-up shared-composition fix now uses the same Google Ads aggregate source builder in `/outcome-totals` and `/executive-summary`, preventing the two endpoints from deriving Google Ads totals differently.
 - Commit 1 replaced the endpoint's `storage.getCampaign(id)` campaign lookup with the standard campaign access guard.
 - GA4-only campaigns are no longer eligible for paid-media recommendations unless a main paid-media platform is connected and required paid financial inputs are available.
 - Risk Assessment currently proves the configured backend rules: available ROI below 0%, available ROAS below 1x, paid-platform concentration, compatible 7-day revenue decline, aggregate-backed KPI rows below 70% of target, Benchmark rows below 70% of benchmark, and connected-source data freshness warnings. Budget pacing remains in Budget & Financial Analysis until Executive Summary has a shared pacing input.
@@ -718,4 +746,4 @@ Unverified:
 - New mock-live GA4 validation for the initial no-history state: current metrics and Risk Level should populate immediately, while `7-Day Snapshot Trajectory` should show `Not enough history`.
 - Complete historical trajectory behavior in deployed/live data after compatible snapshots exist for the latest point and roughly seven days earlier.
 - Complete frontend regression coverage.
-- Future standalone platforms beyond the current shared aggregate contract.
+- Future standalone platforms beyond the current shared aggregate contract remain unverified until the shared aggregate composition and regression tasks above are complete.

@@ -678,7 +678,21 @@ Executive Summary is production ready only when:
 
 Production-ready by local code path review, regression coverage, build validation, and user validation for the implemented connected-source aggregate pattern. Executive Summary now follows the same future-proofing pattern as the other Campaign DeepDive subsections: current sections consume the shared connected-source aggregate, and future or refined main Connected Platforms must enter through the documented aggregate contract before being marked production-ready for that source. Google Ads still needs separate Connected Platforms refinement before the Google Ads integration itself should be treated as production-ready; Executive Summary is ready to consume it through the same aggregate pattern once that source is refined.
 
-### Outstanding Production-Readiness Tasks For Connected Platform Expansion
+### Executive Summary Status Map
+
+Use this section first when resuming Executive Summary work.
+
+| Category | Status | Meaning |
+| --- | --- | --- |
+| Executive Summary implementation | Complete | The subsection follows the shared connected-source aggregate pattern used by the other Campaign DeepDive subsections. |
+| Connected-source aggregate future-proofing | Complete | `/executive-summary`, `/outcome-totals`, scheduler snapshots, KPI/Benchmark mapping, Risk inputs, and Strategic Recommendations are guarded for normalized main Connected Platform sources. |
+| Deployed validation evidence log | Evidence tracking only | This records QA evidence for real deployed source mixes. It is not an open implementation blocker. |
+| Future Connected Platform acceptance gate | Standing rule | Every new or refined main source must pass this checklist before that source is called production-ready in Executive Summary. |
+| Google Ads Connected Platforms refinement | Separate source work | Google Ads itself still needs source-level refinement before Google Ads data is trusted as production-ready. This does not block Executive Summary as an aggregate consumer. |
+
+Do not treat the deployed evidence log, the future-source acceptance gate, or Google Ads source refinement as unfinished Executive Summary implementation work. They are separate follow-up categories.
+
+### Completed Production-Readiness Work For Connected Platform Expansion
 
 Root cause:
 
@@ -703,7 +717,7 @@ Completed endpoint regression fix:
 - Root cause found during regression: paid sources expose `attributedRevenue`, but aggregate revenue availability only counted metric name `revenue`; this could block paid-media recommendation eligibility even when attributed revenue, spend, ROI, and ROAS were present.
 - Fix: aggregate revenue availability now treats connected source `attributedRevenue` as a valid revenue source while preserving existing metric names and response shape.
 
-Outstanding Executive Summary future-proofing tasks:
+Completed Executive Summary future-proofing checklist:
 
 - [x] Generic future-source regression: prove any normalized `platformSources` source can feed Executive Summary aggregate sources, platform rows, KPI/Benchmark mapping, Risk inputs, and Strategic Recommendation eligibility without a source-specific UI branch.
 - [x] Remaining aggregate-composition sharing: reduce the remaining duplicated source composition between `/outcome-totals` and `/executive-summary` beyond the already shared Google Ads source-builder slice.
@@ -711,7 +725,7 @@ Outstanding Executive Summary future-proofing tasks:
 - [x] Deployed validation checklist documented: record the acceptance evidence needed for GA4-only, GA4 plus a refined Google Ads source, and GA4 plus multiple paid-media sources. Scenario evidence remains unchecked until real deployed or production-like validation is recorded, but the Executive Summary implementation work is complete.
 - [x] Future-platform acceptance rule documented and regression-guarded: every new or refined main Connected Platform must pass the checklist below before that platform is marked production-ready in Executive Summary.
 
-Separate Google Ads Connected Platforms refinement:
+Separate source work: Google Ads Connected Platforms refinement
 
 - [ ] Google Ads-specific metrics, OAuth/test-mode behavior, attribution, source UI, and metric correctness still need their own Connected Platforms refinement before Google Ads itself is treated as production-ready.
 - [ ] The Executive Summary work above only future-proofs aggregate consumption so a refined Google Ads source can plug into Executive Summary using the same pattern as Budget & Financial Analysis and the other aggregate-backed DeepDive subsections.
@@ -733,7 +747,7 @@ Completed scheduler snapshot parity fix:
 
 Future Connected Platform acceptance gate:
 
-Before a new or refined main Connected Platform is marked production-ready in Executive Summary, it must prove all of the following:
+This is a standing rule for future or refined main Connected Platforms, not an open Executive Summary implementation task. Before a new or refined main Connected Platform is marked production-ready in Executive Summary, it must prove all of the following:
 
 - [ ] shared aggregate contract: the source provides normalized source identity, category, capabilities, included metrics, excluded metric reasons, current metric values, and freshness metadata.
 - [ ] `/outcome-totals`: the source appears in `performanceSummary.sources` and contributes only the metrics it can actually provide.
@@ -783,9 +797,9 @@ Proven:
 - GA4-only campaigns are no longer eligible for paid-media recommendations unless a main paid-media platform is connected and required paid financial inputs are available.
 - Risk Assessment currently proves the configured backend rules: available ROI below 0%, available ROAS below 1x, paid-platform concentration, compatible 7-day revenue decline, aggregate-backed KPI rows below 70% of target, Benchmark rows below 70% of benchmark, and connected-source data freshness warnings. Budget pacing remains in Budget & Financial Analysis until Executive Summary has a shared pacing input.
 
-Partially reviewed:
+Reviewed implementation scope:
 
-- Executive Summary frontend rendering.
+- Executive Summary frontend rendering for the implemented connected-source aggregate path.
 - Executive Summary backend endpoint.
 - Executive Summary helper functions.
 - Relationship to `performanceSummary` and compatible snapshots.
@@ -797,11 +811,11 @@ Final local validation:
 - Passed: `npm run check`
 - Passed: `npm run build`
 
-Unverified:
+Not covered by local implementation validation:
 
 - Additional deployed GA4-only variants beyond the user-validated active-tab refresh behavior.
-- Live multi-platform behavior.
+- Live multi-platform source mixes.
 - New mock-live GA4 validation for the initial no-history state: current metrics and Risk Level should populate immediately, while `7-Day Snapshot Trajectory` should show `Not enough history`.
 - Complete historical trajectory behavior in deployed/live data after compatible snapshots exist for the latest point and roughly seven days earlier.
-- Complete frontend regression coverage.
-- Future standalone platforms beyond the current shared aggregate contract remain unverified until the shared aggregate composition and regression tasks above are complete.
+- Complete frontend regression coverage beyond the targeted Executive Summary guards and user-validated flows.
+- Future standalone platforms beyond the current shared aggregate contract require the future-platform acceptance gate before that specific source is called production-ready in Executive Summary.

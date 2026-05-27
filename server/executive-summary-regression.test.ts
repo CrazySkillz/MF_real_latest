@@ -5,6 +5,24 @@ import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-ag
 import { generateRecommendations, generateRiskAssessment } from "./utils/executive-summary-helpers";
 
 describe("campaign Executive Summary regression guard", () => {
+  it("documents Executive Summary readiness without mixing future source work into implementation status", () => {
+    const tracker = readFileSync(join(process.cwd(), "CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md"), "utf-8");
+
+    expect(tracker).toContain("### Executive Summary Status Map");
+    expect(tracker).toContain("| Executive Summary implementation | Complete |");
+    expect(tracker).toContain("| Connected-source aggregate future-proofing | Complete |");
+    expect(tracker).toContain("| Deployed validation evidence log | Evidence tracking only |");
+    expect(tracker).toContain("| Future Connected Platform acceptance gate | Standing rule |");
+    expect(tracker).toContain("| Google Ads Connected Platforms refinement | Separate source work |");
+    expect(tracker).toContain("Do not treat the deployed evidence log, the future-source acceptance gate, or Google Ads source refinement as unfinished Executive Summary implementation work.");
+    expect(tracker).toContain("### Completed Production-Readiness Work For Connected Platform Expansion");
+    expect(tracker).toContain("Completed Executive Summary future-proofing checklist:");
+    expect(tracker).not.toContain("Outstanding Executive Summary future-proofing tasks:");
+    expect(tracker).toContain("Not covered by local implementation validation:");
+    expect(tracker).toContain("Future standalone platforms beyond the current shared aggregate contract require the future-platform acceptance gate before that specific source is called production-ready in Executive Summary.");
+    expect(tracker).not.toContain("remain unverified until the shared aggregate composition and regression tasks above are complete");
+  });
+
   it("documents the future-platform acceptance gate for Executive Summary", () => {
     const tracker = readFileSync(join(process.cwd(), "CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md"), "utf-8");
     const gateStart = tracker.indexOf("Future Connected Platform acceptance gate:");

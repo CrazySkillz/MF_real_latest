@@ -1225,9 +1225,6 @@ export default function Reports() {
                                         </span>
                                       </div>
                                     )}
-
-                                    {renderCustomReportMetricOutput(report)}
-                                    {renderCustomReportKpiBenchmarkOutput(report)}
                                   </div>
                                   
                                   <div className="flex items-center space-x-2 ml-4">

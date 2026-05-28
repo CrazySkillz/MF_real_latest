@@ -48,7 +48,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('selectedReportSections.includes("metrics") && selectedReportMetrics.length === 0');
   });
 
-  it("renders saved custom report output from live aggregate metric values", () => {
+  it("keeps saved custom report output aggregate-backed without rendering details on report cards", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 
     expect(reports).toContain("const renderCustomReportMetricOutput = (report: StoredReport) => {");
@@ -58,7 +58,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("formatCustomReportMetricValue(key, metric?.value)");
     expect(reports).toContain("Connected-source report values");
     expect(reports).toContain("Unavailable${reason ? ` - ${reason}` : \"\"}");
-    expect(reports).toContain("{renderCustomReportMetricOutput(report)}");
+    expect(reports).not.toContain("{renderCustomReportMetricOutput(report)}");
   });
 
   it("does not show a blocking browser confirmation after creating a report", () => {
@@ -78,6 +78,20 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("const renderCustomReportKpiBenchmarkOutput = (report: StoredReport) => {");
     expect(reports).toContain("Current: {metric?.available === true ? formatCustomReportMetricValue(metricKey!, metric.value) : \"Unavailable\"}");
     expect(reports).toContain('selectedSections: reportType === "custom" && activeCampaignId ? selectedReportSections : undefined,');
-    expect(reports).toContain("{renderCustomReportKpiBenchmarkOutput(report)}");
+    expect(reports).not.toContain("{renderCustomReportKpiBenchmarkOutput(report)}");
+  });
+
+  it("covers the production-ready connected-source regression gates", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const campaignDetail = readFileSync(join(process.cwd(), "client/src/pages/campaign-detail.tsx"), "utf-8");
+    const app = readFileSync(join(process.cwd(), "client/src/App.tsx"), "utf-8");
+
+    expect(campaignDetail).toContain('<Link href={`/reports?campaignId=${encodeURIComponent(campaign.id)}`}>');
+    expect(app).toContain('<Route path="/reports" component={Reports} />');
+    expect(reports).toContain('source?.connected === true && source?.category !== "financial"');
+    expect(reports).toContain('return source?.category === "paid_media" && includedMetrics.some((metric: string) => customReportPaidMetricKeys.has(metric));');
+    expect(reports).toContain(".filter((key) => !customReportPaidMetricKeys.has(key) || hasCustomReportPaidMediaSource);");
+    expect(reports).toContain("Unavailable${reason ? ` - ${reason}` : \"\"}");
+    expect(reports).toContain('report.campaignId !== campaignContextId || report.type !== "custom"');
   });
 });

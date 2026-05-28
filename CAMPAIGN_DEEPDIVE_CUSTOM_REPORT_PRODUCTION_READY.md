@@ -201,6 +201,8 @@ Status:
 - [x] Completed locally: campaign Benchmark rows are fetched from `/api/campaigns/:campaignId/benchmarks`.
 - [x] Completed locally: KPI/Benchmark current values render from `performanceSummary.totals` when mapped and available.
 - [x] Completed locally: unmapped or unavailable KPI/Benchmark current values render as `Unavailable` instead of using saved `currentValue`.
+- [x] Completed locally: All Reports cards remain summary cards and do not render connected-source detail previews inline.
+- [x] User validation passed on 2026-05-28: All Reports cards show summary-only layout without connected-source detail previews.
 
 ### Commit 6: Regression Coverage
 
@@ -216,6 +218,15 @@ Required tests:
 - Saved custom report config cannot force unavailable metrics into output.
 - Campaign-scoped Custom Report uses the active campaign ID.
 - Global Reports behavior is not accidentally changed.
+
+Status:
+
+- [x] Completed locally: regression guard covers GA4-only paid-media exclusion.
+- [x] Completed locally: regression guard covers future paid-media source gating.
+- [x] Completed locally: regression guard covers financial child-source exclusion from main source rows.
+- [x] Completed locally: regression guard covers unavailable saved metrics rendering as unavailable.
+- [x] Completed locally: regression guard covers campaign-scoped Custom Report routing and saved campaign ID.
+- [x] Completed locally: regression guard covers global `/reports` route preservation.
 
 ### Commit 7: Documentation And Final Validation
 
@@ -257,7 +268,7 @@ Custom Report is production-ready when:
 - [x] Commit 3: Metric picker availability gating
 - [x] Commit 4: Report output uses aggregate values
 - [x] Commit 5: KPI, Benchmark, and section mapping
-- [ ] Commit 6: Regression coverage
+- [x] Commit 6: Regression coverage
 - [ ] Commit 7: Documentation and final validation
 
 ## Separate Source Work
@@ -278,3 +289,5 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Commit 4 user validation passed on 2026-05-28.
 - Native browser create-confirmation popup removed; user validation passed on 2026-05-28.
 - Commit 5 local regression guard added in `server/custom-report-regression.test.ts`.
+- Commit 5 user validation passed on 2026-05-28.
+- Commit 6 regression coverage completed in `server/custom-report-regression.test.ts`.

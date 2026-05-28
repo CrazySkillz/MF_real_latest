@@ -41,7 +41,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('return source?.category === "paid_media" && includedMetrics.some((metric: string) => customReportPaidMetricKeys.has(metric));');
     expect(reports).toContain(".filter((key) => !customReportPaidMetricKeys.has(key) || hasCustomReportPaidMediaSource);");
     expect(reports).toContain("const customReportSelectableMetricSet = new Set(customReportSelectableMetricKeys);");
-    expect(reports).toContain('setSelectedReportMetrics(reportType === "custom" ? customReportSelectableMetricKeys : []);');
+    expect(reports).toContain("setSelectedReportMetrics([]);");
     expect(reports).toContain("group.keys.filter((key) => customReportSelectableMetricSet.has(key))");
     expect(reports).toContain("Unavailable paid-media metrics are hidden until a connected source provides them.");
     expect(reports).toContain('selectedMetrics: reportType === "custom" && activeCampaignId ? selectedReportMetrics : undefined,');
@@ -75,18 +75,32 @@ describe("campaign Custom Report regression guard", () => {
 
     expect(storage).toContain("updateReport(id: string, updates: Partial<StoredReport>)");
     expect(reports).toContain("const [editingReportId, setEditingReportId] = useState<string | null>(null);");
-    expect(reports).toContain('const nextType = campaignContextId ? "executive-summary" : "performance";');
+    expect(reports).toContain('setReportType("");');
     expect(reports).toContain("setSelectedReportMetrics([]);");
     expect(reports).toContain("const openCreateReport = () => {");
     expect(reports).toContain("<Button onClick={openCreateReport}>");
     expect(reports).toContain("const openEditReport = (report: StoredReport) => {");
     expect(reports).toContain("setOriginalReportFormSignature(getReportFormSignature(nextValues));");
     expect(reports).toContain("reportStorage.updateReport(editingReportId, reportPayload);");
-    expect(reports).toContain('{editingReportId ? "Update Report" : "Create Report"}');
+    expect(reports).toContain('{editingReportId ? "Update Report" : scheduleEnabled ? "Schedule Report" : "Download Report"}');
     expect(reports).toContain("disabled={!isReportFormValid || !isReportFormChanged}");
     expect(reports).toContain("onClick={() => openEditReport(report)}");
     expect(reports).toContain("onOpenAutoFocus={(event) => {");
     expect(reports).toContain("if (editingReportId) event.preventDefault();");
+  });
+
+  it("keeps create mode blank and separates download from scheduling", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain('const [reportType, setReportType] = useState("");');
+    expect(reports).toContain('const [selectedReportSections, setSelectedReportSections] = useState<string[]>([]);');
+    expect(reports).toContain('<SelectValue placeholder="Select report type" />');
+    expect(reports).toContain('Schedule Automated Reports');
+    expect(reports).not.toContain('Schedule Automatic Generation');
+    expect(reports).toContain("const downloadReportPdf = async (report: StoredReport) => {");
+    expect(reports).toContain("const { jsPDF } = await import('jspdf');");
+    expect(reports).toContain('await downloadReportPdf(savedReport);');
+    expect(reports).toContain('selectedSections.forEach((section) => addText(`- ${getReportTabLabel(report.type, section)}`, { indent: 4 }));');
   });
 
   it("lets campaign-scoped reports choose Campaign DeepDive subsections and tabs", () => {

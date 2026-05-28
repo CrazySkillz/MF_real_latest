@@ -100,10 +100,10 @@ const campaignDeepDiveReportTypes = [
 const getCampaignReportTabs = (type: string) =>
   campaignDeepDiveReportTypes.find((reportType) => reportType.key === type)?.tabs || [];
 
-const getDefaultCampaignReportSections = (type: string) => {
-  if (type === "custom") return ["metrics"];
-  return getCampaignReportTabs(type).map((tab) => tab.key);
-};
+const getReportTabLabel = (type: string, key: string) =>
+  getCampaignReportTabs(type).find((tab) => tab.key === key)?.label
+    || customReportSections.find((section) => section.key === key)?.label
+    || key;
 
 const reportTypeLabels: Record<string, string> = {
   performance: "Performance Summary",
@@ -210,7 +210,7 @@ export default function Reports() {
     }
   })();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [reportType, setReportType] = useState(() => campaignContextId ? "executive-summary" : "performance");
+  const [reportType, setReportType] = useState("");
   const [reportName, setReportName] = useState("");
   const [reportDescription, setReportDescription] = useState("");
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>(() => campaignContextId ? [campaignContextId] : []);
@@ -221,8 +221,7 @@ export default function Reports() {
   const [recipients, setRecipients] = useState("");
   const [allStoredReports, setAllStoredReports] = useState<StoredReport[]>([]);
   const [selectedReportMetrics, setSelectedReportMetrics] = useState<string[]>([]);
-  const [selectedReportSections, setSelectedReportSections] = useState<string[]>(() =>
-    campaignContextId ? getDefaultCampaignReportSections("executive-summary") : ["metrics"]);
+  const [selectedReportSections, setSelectedReportSections] = useState<string[]>([]);
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
   const [originalReportFormSignature, setOriginalReportFormSignature] = useState("");
   
@@ -268,14 +267,7 @@ export default function Reports() {
   const customReportSelectableMetricKeys = customReportAvailableMetricKeys
     .filter((key) => !customReportPaidMetricKeys.has(key) || hasCustomReportPaidMediaSource);
   const customReportSelectableMetricSet = new Set(customReportSelectableMetricKeys);
-  const customReportMetricSignature = customReportSelectableMetricKeys.join("|");
   const campaignReportTabs = campaignContextId ? getCampaignReportTabs(reportType) : [];
-
-  useEffect(() => {
-    if (editingReportId || !campaignContextId) return;
-    setSelectedReportSections(getDefaultCampaignReportSections(reportType));
-    setSelectedReportMetrics(reportType === "custom" ? customReportSelectableMetricKeys : []);
-  }, [campaignContextId, editingReportId, reportType, customReportMetricSignature]);
 
   // Load reports from storage
   useEffect(() => {
@@ -495,13 +487,12 @@ export default function Reports() {
   ];
 
   const resetForm = () => {
-    const nextType = campaignContextId ? "executive-summary" : "performance";
     setReportName("");
     setReportDescription("");
-    setReportType(nextType);
+    setReportType("");
     setSelectedCampaigns(campaignContextId ? [campaignContextId] : []);
     setSelectedReportMetrics([]);
-    setSelectedReportSections(campaignContextId ? getDefaultCampaignReportSections(nextType) : ["metrics"]);
+    setSelectedReportSections([]);
     setEditingReportId(null);
     setOriginalReportFormSignature("");
     setScheduleEnabled(false);
@@ -526,10 +517,33 @@ export default function Reports() {
   });
   const isReportFormChanged = !editingReportId || reportFormSignature !== originalReportFormSignature;
   const isReportFormValid = !!reportName.trim()
+    && !!reportType
     && (!scheduleEnabled || !!recipients.trim())
     && (!campaignContextId
       || (selectedReportSections.length > 0
         && (reportType !== "custom" || !selectedReportSections.includes("metrics") || selectedReportMetrics.length > 0)));
+
+  const buildReportPayload = (status: StoredReport["status"]): Omit<StoredReport, "id" | "generatedAt"> => {
+    const activeCampaignId = campaignContextId || selectedCampaigns[0] || "";
+    return {
+      name: reportName,
+      type: reportType,
+      description: reportDescription,
+      status,
+      campaignId: activeCampaignId || undefined,
+      format: 'PDF',
+      includeKPIs: reportType === "custom" && selectedReportSections.includes("kpis"),
+      includeBenchmarks: reportType === "custom" && selectedReportSections.includes("benchmarks"),
+      selectedMetrics: reportType === "custom" && activeCampaignId ? selectedReportMetrics : undefined,
+      selectedSections: activeCampaignId ? selectedReportSections : undefined,
+      schedule: status === "Scheduled" ? {
+        frequency: scheduleFrequency,
+        day: scheduleDay,
+        time: scheduleTime,
+        recipients: normalizeReportRecipients(recipients)
+      } : null
+    };
+  };
 
   const openEditReport = (report: StoredReport) => {
     const nextSelectedCampaigns = report.campaignId ? [report.campaignId] : (campaignContextId ? [campaignContextId] : []);
@@ -575,34 +589,22 @@ export default function Reports() {
     setShowCreateDialog(true);
   };
 
-  const createReport = () => {
-    const activeCampaignId = campaignContextId || selectedCampaigns[0] || "";
-    const reportPayload: Omit<StoredReport, "id" | "generatedAt"> = {
-      name: reportName,
-      type: reportType,
-      description: reportDescription,
-      status: scheduleEnabled ? 'Scheduled' : 'Generated',
-      campaignId: activeCampaignId || undefined,
-      format: 'PDF', // Default format
-      includeKPIs: reportType === "custom" && selectedReportSections.includes("kpis"),
-      includeBenchmarks: reportType === "custom" && selectedReportSections.includes("benchmarks"),
-      selectedMetrics: reportType === "custom" && activeCampaignId ? selectedReportMetrics : undefined,
-      selectedSections: activeCampaignId ? selectedReportSections : undefined,
-      schedule: scheduleEnabled ? {
-        frequency: scheduleFrequency,
-        day: scheduleDay,
-        time: scheduleTime,
-        recipients: normalizeReportRecipients(recipients)
-      } : null
-    };
+  const saveReport = async () => {
+    const reportPayload = buildReportPayload(scheduleEnabled ? "Scheduled" : "Generated");
 
     if (editingReportId) {
       reportStorage.updateReport(editingReportId, reportPayload);
-    } else {
+    } else if (scheduleEnabled) {
       reportStorage.addReport({
         ...reportPayload,
         generatedAt: new Date(),
       });
+    } else {
+      const savedReport = reportStorage.addReport({
+        ...reportPayload,
+        generatedAt: new Date(),
+      });
+      await downloadReportPdf(savedReport);
     }
     
     // Refresh the reports list
@@ -769,6 +771,91 @@ export default function Reports() {
     );
   };
 
+  const downloadReportPdf = async (report: StoredReport) => {
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF();
+    const margin = 18;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let yPosition = margin;
+
+    const addText = (text: string, options: { size?: number; bold?: boolean; indent?: number } = {}) => {
+      const indent = options.indent || 0;
+      doc.setFontSize(options.size || 10);
+      doc.setFont('helvetica', options.bold ? 'bold' : 'normal');
+      const lines = doc.splitTextToSize(text, pageWidth - margin * 2 - indent);
+      lines.forEach((line: string) => {
+        if (yPosition > pageHeight - margin) {
+          doc.addPage();
+          yPosition = margin;
+        }
+        doc.text(line, margin + indent, yPosition);
+        yPosition += options.size && options.size >= 14 ? 8 : 6;
+      });
+    };
+
+    const selectedSections = Array.isArray(report.selectedSections) ? report.selectedSections : [];
+    addText(report.name, { size: 18, bold: true });
+    addText(`Report Type: ${getReportTypeLabel(report.type)}`);
+    addText(`Generated: ${new Date().toLocaleString()}`);
+    yPosition += 4;
+
+    addText("Included sections", { size: 14, bold: true });
+    if (selectedSections.length === 0) {
+      addText("No sections selected.", { indent: 4 });
+    } else {
+      selectedSections.forEach((section) => addText(`- ${getReportTabLabel(report.type, section)}`, { indent: 4 }));
+    }
+    yPosition += 4;
+
+    if (report.type === "custom" && selectedSections.includes("metrics")) {
+      addText("Selected metrics", { size: 14, bold: true });
+      const selectedMetrics = Array.isArray(report.selectedMetrics) ? report.selectedMetrics : [];
+      if (!customReportPerformanceSummary || selectedMetrics.length === 0) {
+        addText("No connected-source metrics selected or available.", { indent: 4 });
+      } else {
+        selectedMetrics.forEach((key) => {
+          const metric = customReportPerformanceSummary?.totals?.[key];
+          const value = metric?.available === true ? formatCustomReportMetricValue(key, metric.value) : "Unavailable";
+          addText(`- ${customReportMetricLabels[key] || key}: ${value}`, { indent: 4 });
+        });
+      }
+      yPosition += 4;
+    }
+
+    if (report.type === "custom" && selectedSections.includes("kpis")) {
+      addText("Campaign KPIs", { size: 14, bold: true });
+      if (campaignKpis.length === 0) {
+        addText("No campaign KPI rows configured.", { indent: 4 });
+      } else {
+        campaignKpis.forEach((record) => {
+          const metricKey = resolveCustomReportAggregateMetric(record);
+          const metric = metricKey ? customReportPerformanceSummary?.totals?.[metricKey] : null;
+          const current = metric?.available === true ? formatCustomReportMetricValue(metricKey!, metric.value) : "Unavailable";
+          addText(`- ${record.name || record.metric || "Untitled"}: Current ${current}; Target ${formatCustomReportMetricValue(metricKey || "", record?.targetValue)}`, { indent: 4 });
+        });
+      }
+      yPosition += 4;
+    }
+
+    if (report.type === "custom" && selectedSections.includes("benchmarks")) {
+      addText("Campaign Benchmarks", { size: 14, bold: true });
+      if (campaignBenchmarks.length === 0) {
+        addText("No campaign Benchmark rows configured.", { indent: 4 });
+      } else {
+        campaignBenchmarks.forEach((record) => {
+          const metricKey = resolveCustomReportAggregateMetric(record);
+          const metric = metricKey ? customReportPerformanceSummary?.totals?.[metricKey] : null;
+          const current = metric?.available === true ? formatCustomReportMetricValue(metricKey!, metric.value) : "Unavailable";
+          addText(`- ${record.name || record.metric || "Untitled"}: Current ${current}; Benchmark ${formatCustomReportMetricValue(metricKey || "", record?.benchmarkValue)}`, { indent: 4 });
+        });
+      }
+    }
+
+    const safeName = report.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "campaign_report";
+    doc.save(`${safeName}_${new Date().toISOString().split("T")[0]}.pdf`);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -815,9 +902,16 @@ export default function Reports() {
                       
                       <div className="space-y-2">
                         <Label>Report Type</Label>
-                        <Select value={reportType} onValueChange={setReportType}>
+                        <Select
+                          value={reportType}
+                          onValueChange={(value) => {
+                            setReportType(value);
+                            setSelectedReportSections([]);
+                            setSelectedReportMetrics([]);
+                          }}
+                        >
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder="Select report type" />
                           </SelectTrigger>
                           <SelectContent>
                             {campaignContextId ? (
@@ -962,7 +1056,7 @@ export default function Reports() {
                           onCheckedChange={(checked) => setScheduleEnabled(checked as boolean)}
                         />
                         <Label htmlFor="enable-schedule" className="text-base font-medium">
-                          Schedule Automatic Generation
+                          Schedule Automated Reports
                         </Label>
                       </div>
                       
@@ -1038,10 +1132,11 @@ export default function Reports() {
                       </Button>
                       <div className="flex items-center space-x-3">
                         <Button 
-                          onClick={createReport}
+                          onClick={saveReport}
                           disabled={!isReportFormValid || !isReportFormChanged}
+                          variant={!editingReportId && scheduleEnabled ? "link" : "default"}
                         >
-                          {editingReportId ? "Update Report" : "Create Report"}
+                          {editingReportId ? "Update Report" : scheduleEnabled ? "Schedule Report" : "Download Report"}
                         </Button>
                       </div>
                     </div>

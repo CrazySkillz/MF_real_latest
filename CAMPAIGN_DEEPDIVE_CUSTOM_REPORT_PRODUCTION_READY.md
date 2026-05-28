@@ -204,10 +204,21 @@ Status:
 - [x] Completed locally: All Reports cards remain summary cards and do not render connected-source detail previews inline.
 - [x] Completed locally: All Reports cards expose an edit icon that opens the report dialog with saved values prefilled.
 - [x] Completed locally: edit mode uses `Update Report`, suppresses first-field autofocus, and disables update until a form value changes.
-- [x] Completed locally: the top-level `Create Report` button opens a fresh create form and does not reuse previously edited report values.
+- [x] Completed locally: the top-level `Create Report` button opens a fresh blank create form and does not reuse previously edited report values, report type, selected tabs, or selected metrics.
+- [x] Completed locally: unscheduled create mode shows `Download Report` and downloads a PDF containing the selected report sections; scheduled create mode shows `Schedule Report`.
+- [x] Completed locally: schedule mode label is `Schedule Automated Reports`.
 - [x] Completed locally: campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types and lets users choose which tabs from the selected subsection to include; the standalone `/reports` route keeps its broader report type options when reached directly.
 - [x] Completed locally: generated report cards no longer show the `Generated` status pill.
 - [x] User validation passed on 2026-05-28: All Reports cards show summary-only layout without connected-source detail previews.
+
+Current campaign-scoped Report Type menu:
+
+- `Executive Summary`: `Executive Overview`, `Strategic Recommendations`
+- `Performance Summary`: `Overview`, `Campaign Health`, `What's Changed`, `Insights`
+- `Budget & Financial Analysis`: `Overview`, `ROI & ROAS`, `Cost Analysis`, `Budget Allocation`, `Insights`
+- `Platform Comparison`: `Overview`, `Performance Metrics`, `Financial Comparison`, `Insights`
+- `Trend Analysis`: `Overview`, `Efficiency Metrics`, `Conversion Funnel`, `Platform Breakdown`, `Insights`
+- `Custom Report`: `Selected metrics`, `Campaign KPIs`, `Campaign Benchmarks`
 
 ### Commit 6: Regression Coverage
 
@@ -275,7 +286,9 @@ Custom Report is production-ready when:
 - saved report configuration cannot reintroduce disconnected-source metrics
 - All Reports cards remain summary-only and do not expose connected-source values, KPI/Benchmark rows, generated status pills, or `Includes` configuration details inline
 - All Reports card edit icons open the report dialog with saved values prefilled, show `Update Report`, and keep update disabled until a change is made
-- The top-level `Create Report` action opens an empty create form, clears custom metric selections, and leaves edit mode; campaign-scoped Custom Report defaults to `Executive Summary`, while standalone `/reports` defaults to `performance`
+- The top-level `Create Report` action opens an empty create form, clears report type, selected tabs, custom metric selections, and edit mode
+- Unscheduled create mode shows `Download Report` and downloads the selected report sections as a PDF
+- Scheduled create mode uses `Schedule Automated Reports` and shows `Schedule Report`
 - Campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types: `Executive Summary`, `Performance Summary`, `Budget & Financial Analysis`, `Platform Comparison`, `Trend Analysis`, and `Custom Report`
 - Selecting a Campaign DeepDive subsection exposes that subsection's current tab list as report composition checkboxes and saves those tab keys in `selectedSections`
 - regression coverage guards GA4-only and future paid-media source scenarios
@@ -317,7 +330,8 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - All Reports summary-only cleanup validated on 2026-05-28: connected-source detail previews and `Includes: KPIs, Benchmarks` are not rendered on report cards.
 - All Reports edit workflow added on 2026-05-28: edit icon opens prefilled dialog, `Update Report` is disabled until changes are made, generated status pill is hidden, and edit-mode report-name autofocus is suppressed.
 - Create Report reset fix added on 2026-05-28: top-level create opens a fresh empty form after prior edits.
-- Report Type composition updated on 2026-05-28: Campaign DeepDive Custom Report creation exposes Campaign DeepDive subsection report types and saves selected subsection tabs; the standalone `/reports` route keeps broader report-type choices when reached directly.
+- Create Report action split added on 2026-05-28: unscheduled create mode downloads the selected sections, while scheduled create mode saves with `Schedule Automated Reports` and `Schedule Report`.
+- Report Type composition updated on 2026-05-28 and pushed in commit `f8dfeee0`: Campaign DeepDive Custom Report creation exposes Campaign DeepDive subsection report types and saves selected subsection tabs; the standalone `/reports` route keeps broader report-type choices when reached directly.
 - Commit 7 documentation updated on 2026-05-28.
 - Local validation passed on 2026-05-28: `npm test -- server/custom-report-regression.test.ts`.
 - Local validation passed on 2026-05-28: `npm run check`.

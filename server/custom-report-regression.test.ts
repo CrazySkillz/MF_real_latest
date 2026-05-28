@@ -41,7 +41,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('return source?.category === "paid_media" && includedMetrics.some((metric: string) => customReportPaidMetricKeys.has(metric));');
     expect(reports).toContain(".filter((key) => !customReportPaidMetricKeys.has(key) || hasCustomReportPaidMediaSource);");
     expect(reports).toContain("const customReportSelectableMetricSet = new Set(customReportSelectableMetricKeys);");
-    expect(reports).toContain("setSelectedReportMetrics(customReportSelectableMetricKeys);");
+    expect(reports).toContain('setSelectedReportMetrics(reportType === "custom" ? customReportSelectableMetricKeys : []);');
     expect(reports).toContain("group.keys.filter((key) => customReportSelectableMetricSet.has(key))");
     expect(reports).toContain("Unavailable paid-media metrics are hidden until a connected source provides them.");
     expect(reports).toContain('selectedMetrics: reportType === "custom" && activeCampaignId ? selectedReportMetrics : undefined,');
@@ -75,7 +75,7 @@ describe("campaign Custom Report regression guard", () => {
 
     expect(storage).toContain("updateReport(id: string, updates: Partial<StoredReport>)");
     expect(reports).toContain("const [editingReportId, setEditingReportId] = useState<string | null>(null);");
-    expect(reports).toContain('setReportType("performance");');
+    expect(reports).toContain('const nextType = campaignContextId ? "executive-summary" : "performance";');
     expect(reports).toContain("setSelectedReportMetrics([]);");
     expect(reports).toContain("const openCreateReport = () => {");
     expect(reports).toContain("<Button onClick={openCreateReport}>");
@@ -89,6 +89,20 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("if (editingReportId) event.preventDefault();");
   });
 
+  it("lets campaign-scoped reports choose Campaign DeepDive subsections and tabs", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("const campaignDeepDiveReportTypes = [");
+    expect(reports).toContain('label: "Executive Summary"');
+    expect(reports).toContain('label: "Budget & Financial Analysis"');
+    expect(reports).toContain('label: "Platform Comparison"');
+    expect(reports).toContain('label: "Trend Analysis"');
+    expect(reports).toContain('label: "Custom Report"');
+    expect(reports).toContain('campaignDeepDiveReportTypes.map((type) => (');
+    expect(reports).toContain('Select the tabs from this Campaign DeepDive subsection to include in the report.');
+    expect(reports).toContain('selectedSections: activeCampaignId ? selectedReportSections : undefined,');
+  });
+
   it("maps custom report KPI and Benchmark sections to campaign records and aggregate current values", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 
@@ -98,7 +112,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("customReportPerformanceSummary?.totals?.[metricName]?.available === true");
     expect(reports).toContain("const renderCustomReportKpiBenchmarkOutput = (report: StoredReport) => {");
     expect(reports).toContain("Current: {metric?.available === true ? formatCustomReportMetricValue(metricKey!, metric.value) : \"Unavailable\"}");
-    expect(reports).toContain('selectedSections: reportType === "custom" && activeCampaignId ? selectedReportSections : undefined,');
+    expect(reports).toContain('selectedSections: activeCampaignId ? selectedReportSections : undefined,');
     expect(reports).not.toContain("{renderCustomReportKpiBenchmarkOutput(report)}");
   });
 

@@ -43,6 +43,81 @@ const customReportSections = [
   { key: "benchmarks", label: "Campaign Benchmarks" },
 ];
 
+const campaignDeepDiveReportTypes = [
+  {
+    key: "executive-summary",
+    label: "Executive Summary",
+    tabs: [
+      { key: "executive-summary:overview", label: "Executive Overview" },
+      { key: "executive-summary:recommendations", label: "Strategic Recommendations" },
+    ],
+  },
+  {
+    key: "performance-summary",
+    label: "Performance Summary",
+    tabs: [
+      { key: "performance-summary:overview", label: "Overview" },
+      { key: "performance-summary:health", label: "Campaign Health" },
+      { key: "performance-summary:changes", label: "What's Changed" },
+      { key: "performance-summary:insights", label: "Insights" },
+    ],
+  },
+  {
+    key: "financial-analysis",
+    label: "Budget & Financial Analysis",
+    tabs: [
+      { key: "financial-analysis:overview", label: "Overview" },
+      { key: "financial-analysis:roi-roas", label: "ROI & ROAS" },
+      { key: "financial-analysis:costs", label: "Cost Analysis" },
+      { key: "financial-analysis:budget", label: "Budget Allocation" },
+      { key: "financial-analysis:insights", label: "Insights" },
+    ],
+  },
+  {
+    key: "platform-comparison",
+    label: "Platform Comparison",
+    tabs: [
+      { key: "platform-comparison:overview", label: "Overview" },
+      { key: "platform-comparison:performance", label: "Performance Metrics" },
+      { key: "platform-comparison:cost-analysis", label: "Financial Comparison" },
+      { key: "platform-comparison:insights", label: "Insights" },
+    ],
+  },
+  {
+    key: "trend-analysis",
+    label: "Trend Analysis",
+    tabs: [
+      { key: "trend-analysis:overview", label: "Overview" },
+      { key: "trend-analysis:efficiency", label: "Efficiency Metrics" },
+      { key: "trend-analysis:funnel", label: "Conversion Funnel" },
+      { key: "trend-analysis:platforms", label: "Platform Breakdown" },
+      { key: "trend-analysis:insights", label: "Insights" },
+    ],
+  },
+  { key: "custom", label: "Custom Report", tabs: customReportSections },
+];
+
+const getCampaignReportTabs = (type: string) =>
+  campaignDeepDiveReportTypes.find((reportType) => reportType.key === type)?.tabs || [];
+
+const getDefaultCampaignReportSections = (type: string) => {
+  if (type === "custom") return ["metrics"];
+  return getCampaignReportTabs(type).map((tab) => tab.key);
+};
+
+const reportTypeLabels: Record<string, string> = {
+  performance: "Performance Summary",
+  financial: "Financial Analysis",
+  kpi: "KPI Tracking",
+  custom: "Custom Report",
+};
+
+const getReportTypeLabel = (type: string) =>
+  campaignDeepDiveReportTypes.find((reportType) => reportType.key === type)?.label
+    || reportTypeLabels[type]
+    || type;
+
+
 const customReportMetricLabels: Record<string, string> = {
   users: "Users",
   sessions: "Sessions",
@@ -135,7 +210,7 @@ export default function Reports() {
     }
   })();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [reportType, setReportType] = useState("performance");
+  const [reportType, setReportType] = useState(() => campaignContextId ? "executive-summary" : "performance");
   const [reportName, setReportName] = useState("");
   const [reportDescription, setReportDescription] = useState("");
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>(() => campaignContextId ? [campaignContextId] : []);
@@ -146,7 +221,8 @@ export default function Reports() {
   const [recipients, setRecipients] = useState("");
   const [allStoredReports, setAllStoredReports] = useState<StoredReport[]>([]);
   const [selectedReportMetrics, setSelectedReportMetrics] = useState<string[]>([]);
-  const [selectedReportSections, setSelectedReportSections] = useState<string[]>(["metrics"]);
+  const [selectedReportSections, setSelectedReportSections] = useState<string[]>(() =>
+    campaignContextId ? getDefaultCampaignReportSections("executive-summary") : ["metrics"]);
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
   const [originalReportFormSignature, setOriginalReportFormSignature] = useState("");
   
@@ -193,10 +269,12 @@ export default function Reports() {
     .filter((key) => !customReportPaidMetricKeys.has(key) || hasCustomReportPaidMediaSource);
   const customReportSelectableMetricSet = new Set(customReportSelectableMetricKeys);
   const customReportMetricSignature = customReportSelectableMetricKeys.join("|");
+  const campaignReportTabs = campaignContextId ? getCampaignReportTabs(reportType) : [];
 
   useEffect(() => {
-    if (editingReportId || !campaignContextId || reportType !== "custom") return;
-    setSelectedReportMetrics(customReportSelectableMetricKeys);
+    if (editingReportId || !campaignContextId) return;
+    setSelectedReportSections(getDefaultCampaignReportSections(reportType));
+    setSelectedReportMetrics(reportType === "custom" ? customReportSelectableMetricKeys : []);
   }, [campaignContextId, editingReportId, reportType, customReportMetricSignature]);
 
   // Load reports from storage
@@ -417,12 +495,13 @@ export default function Reports() {
   ];
 
   const resetForm = () => {
+    const nextType = campaignContextId ? "executive-summary" : "performance";
     setReportName("");
     setReportDescription("");
-    setReportType("performance");
+    setReportType(nextType);
     setSelectedCampaigns(campaignContextId ? [campaignContextId] : []);
     setSelectedReportMetrics([]);
-    setSelectedReportSections(["metrics"]);
+    setSelectedReportSections(campaignContextId ? getDefaultCampaignReportSections(nextType) : ["metrics"]);
     setEditingReportId(null);
     setOriginalReportFormSignature("");
     setScheduleEnabled(false);
@@ -448,8 +527,9 @@ export default function Reports() {
   const isReportFormChanged = !editingReportId || reportFormSignature !== originalReportFormSignature;
   const isReportFormValid = !!reportName.trim()
     && (!scheduleEnabled || !!recipients.trim())
-    && (!(!!campaignContextId && reportType === "custom")
-      || (selectedReportSections.length > 0 && (!selectedReportSections.includes("metrics") || selectedReportMetrics.length > 0)));
+    && (!campaignContextId
+      || (selectedReportSections.length > 0
+        && (reportType !== "custom" || !selectedReportSections.includes("metrics") || selectedReportMetrics.length > 0)));
 
   const openEditReport = (report: StoredReport) => {
     const nextSelectedCampaigns = report.campaignId ? [report.campaignId] : (campaignContextId ? [campaignContextId] : []);
@@ -507,7 +587,7 @@ export default function Reports() {
       includeKPIs: reportType === "custom" && selectedReportSections.includes("kpis"),
       includeBenchmarks: reportType === "custom" && selectedReportSections.includes("benchmarks"),
       selectedMetrics: reportType === "custom" && activeCampaignId ? selectedReportMetrics : undefined,
-      selectedSections: reportType === "custom" && activeCampaignId ? selectedReportSections : undefined,
+      selectedSections: activeCampaignId ? selectedReportSections : undefined,
       schedule: scheduleEnabled ? {
         frequency: scheduleFrequency,
         day: scheduleDay,
@@ -740,10 +820,18 @@ export default function Reports() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="performance">Performance Summary</SelectItem>
-                            <SelectItem value="financial">Financial Analysis</SelectItem>
-                            <SelectItem value="kpi">KPI Tracking</SelectItem>
-                            <SelectItem value="custom">Custom Report</SelectItem>
+                            {campaignContextId ? (
+                              campaignDeepDiveReportTypes.map((type) => (
+                                <SelectItem key={type.key} value={type.key}>{type.label}</SelectItem>
+                              ))
+                            ) : (
+                              <>
+                                <SelectItem value="performance">Performance Summary</SelectItem>
+                                <SelectItem value="financial">Financial Analysis</SelectItem>
+                                <SelectItem value="kpi">KPI Tracking</SelectItem>
+                                <SelectItem value="custom">Custom Report</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
@@ -773,10 +861,39 @@ export default function Reports() {
                         </div>
                       )}
 
+                      {campaignContextId && reportType !== "custom" && campaignReportTabs.length > 0 && (
+                        <div className="space-y-3 rounded-md border p-3">
+                          <div>
+                            <Label>Tabs to include</Label>
+                            <div className="text-sm text-muted-foreground">
+                              Select the tabs from this Campaign DeepDive subsection to include in the report.
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                              {campaignReportTabs.map((tab) => (
+                                <label key={tab.key} className="flex items-center space-x-2 text-sm">
+                                  <Checkbox
+                                    checked={selectedReportSections.includes(tab.key)}
+                                    onCheckedChange={(checked) => {
+                                      setSelectedReportSections((current) => checked
+                                        ? Array.from(new Set([...current, tab.key]))
+                                        : current.filter((key) => key !== tab.key));
+                                    }}
+                                  />
+                                  <span>{tab.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {campaignContextId && reportType === "custom" && (
                         <div className="space-y-3 rounded-md border p-3">
                           <div>
-                            <Label>Sections</Label>
+                            <Label>Tabs to include</Label>
+                            <div className="text-sm text-muted-foreground">
+                              Select the Custom Report tabs to include in the report.
+                            </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                               {customReportSections.map((section) => (
                                 <label key={section.key} className="flex items-center space-x-2 text-sm">
@@ -953,7 +1070,7 @@ export default function Reports() {
                             <div className="flex items-center space-x-4 text-sm text-muted-foreground/70">
                               <div className="flex items-center space-x-1">
                                 <FileText className="w-4 h-4" />
-                                <span>{report.type}</span>
+                                <span>{getReportTypeLabel(report.type)}</span>
                               </div>
                               <div className="flex items-center space-x-1">
                                 <Calendar className="w-4 h-4" />
@@ -1046,7 +1163,7 @@ export default function Reports() {
                             <div className="flex items-center space-x-4 text-sm text-muted-foreground/70">
                               <div className="flex items-center space-x-1">
                                 <FileText className="w-4 h-4" />
-                                <span>{report.type}</span>
+                                <span>{getReportTypeLabel(report.type)}</span>
                               </div>
                               <div className="flex items-center space-x-1">
                                 <Calendar className="w-4 h-4" />
@@ -1203,7 +1320,7 @@ export default function Reports() {
                             <SelectContent>
                               <SelectItem value="all">All Types</SelectItem>
                               {uniqueTypes.map((type) => (
-                                <SelectItem key={type} value={type}>{type}</SelectItem>
+                                <SelectItem key={type} value={type}>{getReportTypeLabel(type)}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -1280,7 +1397,7 @@ export default function Reports() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                                       <div>
                                         <span className="font-medium text-foreground">Type:</span>
-                                        <div className="text-muted-foreground/70">{report.type}</div>
+                                        <div className="text-muted-foreground/70">{getReportTypeLabel(report.type)}</div>
                                       </div>
                                       
                                       <div>

@@ -26,11 +26,11 @@ Custom Report must use metrics from the campaign's connected main sources only. 
 
 ## Original Root Cause
 
-1. The Campaign DeepDive `Custom Report` launcher currently links to `/reports`, which is a global reports page, not a campaign-scoped connected-source report builder.
+1. The Campaign DeepDive `Custom Report` launcher originally linked to `/reports`, which is a standalone reports route, not a campaign-scoped connected-source report builder by default.
 2. Existing report builders are platform-specific:
    - GA4 reports use GA4-specific report inputs.
    - LinkedIn reports use LinkedIn-specific hardcoded metric lists.
-   - Some global report UI uses local/mock report storage.
+   - Some standalone report UI uses local/mock report storage.
 3. Custom Report metric selection is not currently driven by the shared connected-source aggregate contract.
 4. Selected report metrics can include metrics unavailable from the campaign's connected sources.
 5. Some report output paths can fall back to `0`, `N/A`, or platform defaults instead of excluding unavailable metrics or explaining why they are unavailable.
@@ -86,7 +86,7 @@ Tasks:
 - Trace the current `/reports` caller from Campaign DeepDive.
 - Replace the global-only launcher behavior with a campaign-scoped Custom Report entry path or campaign-scoped builder mode.
 - Ensure the builder has the active `campaignId`.
-- Preserve existing global Reports behavior outside Campaign DeepDive unless the current caller proves it must change.
+- Preserve existing standalone `/reports` route behavior outside Campaign DeepDive unless the current caller proves it must change.
 
 Validation:
 
@@ -204,6 +204,8 @@ Status:
 - [x] Completed locally: All Reports cards remain summary cards and do not render connected-source detail previews inline.
 - [x] Completed locally: All Reports cards expose an edit icon that opens the report dialog with saved values prefilled.
 - [x] Completed locally: edit mode uses `Update Report`, suppresses first-field autofocus, and disables update until a form value changes.
+- [x] Completed locally: the top-level `Create Report` button opens a fresh create form and does not reuse previously edited report values.
+- [x] Completed locally: campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types and lets users choose which tabs from the selected subsection to include; the standalone `/reports` route keeps its broader report type options when reached directly.
 - [x] Completed locally: generated report cards no longer show the `Generated` status pill.
 - [x] User validation passed on 2026-05-28: All Reports cards show summary-only layout without connected-source detail previews.
 
@@ -273,6 +275,9 @@ Custom Report is production-ready when:
 - saved report configuration cannot reintroduce disconnected-source metrics
 - All Reports cards remain summary-only and do not expose connected-source values, KPI/Benchmark rows, generated status pills, or `Includes` configuration details inline
 - All Reports card edit icons open the report dialog with saved values prefilled, show `Update Report`, and keep update disabled until a change is made
+- The top-level `Create Report` action opens an empty create form, clears custom metric selections, and leaves edit mode; campaign-scoped Custom Report defaults to `Executive Summary`, while standalone `/reports` defaults to `performance`
+- Campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types: `Executive Summary`, `Performance Summary`, `Budget & Financial Analysis`, `Platform Comparison`, `Trend Analysis`, and `Custom Report`
+- Selecting a Campaign DeepDive subsection exposes that subsection's current tab list as report composition checkboxes and saves those tab keys in `selectedSections`
 - regression coverage guards GA4-only and future paid-media source scenarios
 - documentation matches the implemented behavior
 
@@ -311,6 +316,8 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Commit 6 user validation passed on 2026-05-28.
 - All Reports summary-only cleanup validated on 2026-05-28: connected-source detail previews and `Includes: KPIs, Benchmarks` are not rendered on report cards.
 - All Reports edit workflow added on 2026-05-28: edit icon opens prefilled dialog, `Update Report` is disabled until changes are made, generated status pill is hidden, and edit-mode report-name autofocus is suppressed.
+- Create Report reset fix added on 2026-05-28: top-level create opens a fresh empty form after prior edits.
+- Report Type composition updated on 2026-05-28: Campaign DeepDive Custom Report creation exposes Campaign DeepDive subsection report types and saves selected subsection tabs; the standalone `/reports` route keeps broader report-type choices when reached directly.
 - Commit 7 documentation updated on 2026-05-28.
 - Local validation passed on 2026-05-28: `npm test -- server/custom-report-regression.test.ts`.
 - Local validation passed on 2026-05-28: `npm run check`.

@@ -34,11 +34,12 @@ Delete behavior:
 
 1. user opens the GA4 `Reports` tab
 2. user clicks `Create Report`
-3. the modal offers:
+3. the modal opens as a fresh create form and must not reuse values from the last edited report
+4. the modal offers:
    `Standard Templates`
    `Custom Report`
-4. if the user is creating a new unscheduled report, the flow presents a `Generate & Download report` action
-5. the user can either download immediately or enable scheduling and save the report
+5. if the user is creating a new unscheduled report, the flow presents a `Generate & Download report` action
+6. the user can either download immediately or enable scheduling and save the report
 
 ## Standard Templates
 
@@ -111,9 +112,11 @@ Important meaning:
 - actual report values should come from refreshed GA4 tab inputs when the report is generated or sent
 - Campaign DeepDive Custom Report opens the Reports builder with campaign context and should read current campaign aggregate values from `/outcome-totals`
 - for GA4-only Campaign DeepDive Custom Reports, selectable metrics should be limited to available GA4/web outcome metrics; paid-media metrics stay hidden until a connected main paid-media source supplies them
+- for Campaign DeepDive Custom Report, the report type dropdown should show Campaign DeepDive subsection report types and should save selected subsection tabs as report composition
 - KPI and Benchmark report sections should use campaign records for rows and targets, with current values coming from available aggregate metrics
 - All Reports cards should stay summary-only and should not show connected-source values, KPI/Benchmark row details, generated status pills, or `Includes` configuration details inline
 - All Reports card edit icons should reopen the report dialog with saved values prefilled, show `Update Report`, suppress edit-mode first-field autofocus, and keep update disabled until a value changes
+- the top-level `Create Report` action should reset edit state, report type, and selected metric state so it opens an empty create form after prior edits
 - future work should preserve section-based composition
 - top-level custom sections are parent headers, not checkboxes
 - subsection checkboxes default to unchecked for new custom reports

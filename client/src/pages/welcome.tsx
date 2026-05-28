@@ -3,7 +3,7 @@ import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import CreateClientModal from "@/components/modals/create-client-modal";
 import { Button } from "@/components/ui/button";
-import { Building2, BarChart3, Target, FileText, Bell } from "lucide-react";
+import { Building2, BarChart3, Target, Bell } from "lucide-react";
 
 export default function WelcomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,7 +27,7 @@ export default function WelcomePage() {
               Welcome to MimoSaaS
             </h1>
             <p className="text-muted-foreground mb-8 text-lg leading-relaxed">
-              Get started by creating your first client. All your campaigns, reports, and analytics will be organised under each client.
+              Get started by creating your first client. All your campaigns and analytics will be organised under each client.
             </p>
 
             {/* CTA */}
@@ -45,7 +45,6 @@ export default function WelcomePage() {
               {[
                 { icon: BarChart3, label: "Dashboard", desc: "Overview of all campaign metrics" },
                 { icon: Target, label: "Campaigns", desc: "Create and manage campaigns" },
-                { icon: FileText, label: "Reports", desc: "Schedule and export reports" },
                 { icon: Bell, label: "Notifications", desc: "KPI alerts and reminders" },
               ].map(({ icon: Icon, label, desc }) => (
                 <div key={label} className="flex items-start gap-3 p-3 rounded-xl bg-card border border-slate-100">

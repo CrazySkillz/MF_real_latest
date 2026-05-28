@@ -101,6 +101,31 @@ const formatCustomReportMetricValue = (key: string, value: unknown): string => {
 const customReportNormalizeMetricKey = (value: unknown): string =>
   String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
+const normalizeReportRecipients = (value: string): string[] =>
+  value.split(',').map(email => email.trim()).filter(email => email);
+
+const getReportFormSignature = (values: {
+  name: string;
+  description: string;
+  type: string;
+  selectedCampaigns: string[];
+  scheduleEnabled: boolean;
+  scheduleFrequency: string;
+  scheduleDay: string;
+  scheduleTime: string;
+  recipients: string;
+  selectedReportMetrics: string[];
+  selectedReportSections: string[];
+}) => JSON.stringify({
+  ...values,
+  name: values.name.trim(),
+  description: values.description.trim(),
+  selectedCampaigns: [...values.selectedCampaigns].sort(),
+  recipients: normalizeReportRecipients(values.recipients),
+  selectedReportMetrics: [...values.selectedReportMetrics].sort(),
+  selectedReportSections: [...values.selectedReportSections].sort(),
+});
+
 export default function Reports() {
   const campaignContextId = (() => {
     try {
@@ -122,6 +147,8 @@ export default function Reports() {
   const [allStoredReports, setAllStoredReports] = useState<StoredReport[]>([]);
   const [selectedReportMetrics, setSelectedReportMetrics] = useState<string[]>([]);
   const [selectedReportSections, setSelectedReportSections] = useState<string[]>(["metrics"]);
+  const [editingReportId, setEditingReportId] = useState<string | null>(null);
+  const [originalReportFormSignature, setOriginalReportFormSignature] = useState("");
   
   // Filter states for All Reports tab
   const [searchQuery, setSearchQuery] = useState("");
@@ -168,9 +195,9 @@ export default function Reports() {
   const customReportMetricSignature = customReportSelectableMetricKeys.join("|");
 
   useEffect(() => {
-    if (!campaignContextId || reportType !== "custom") return;
+    if (editingReportId || !campaignContextId || reportType !== "custom") return;
     setSelectedReportMetrics(customReportSelectableMetricKeys);
-  }, [campaignContextId, reportType, customReportMetricSignature]);
+  }, [campaignContextId, editingReportId, reportType, customReportMetricSignature]);
 
   // Load reports from storage
   useEffect(() => {
@@ -395,6 +422,8 @@ export default function Reports() {
     setSelectedCampaigns(campaignContextId ? [campaignContextId] : []);
     setSelectedReportMetrics(reportType === "custom" ? customReportSelectableMetricKeys : []);
     setSelectedReportSections(["metrics"]);
+    setEditingReportId(null);
+    setOriginalReportFormSignature("");
     setScheduleEnabled(false);
     setScheduleFrequency("weekly");
     setScheduleDay("monday");
@@ -402,16 +431,72 @@ export default function Reports() {
     setRecipients("");
   };
 
+  const reportFormSignature = getReportFormSignature({
+    name: reportName,
+    description: reportDescription,
+    type: reportType,
+    selectedCampaigns,
+    scheduleEnabled,
+    scheduleFrequency,
+    scheduleDay,
+    scheduleTime,
+    recipients,
+    selectedReportMetrics,
+    selectedReportSections,
+  });
+  const isReportFormChanged = !editingReportId || reportFormSignature !== originalReportFormSignature;
+  const isReportFormValid = !!reportName.trim()
+    && (!scheduleEnabled || !!recipients.trim())
+    && (!(!!campaignContextId && reportType === "custom")
+      || (selectedReportSections.length > 0 && (!selectedReportSections.includes("metrics") || selectedReportMetrics.length > 0)));
+
+  const openEditReport = (report: StoredReport) => {
+    const nextSelectedCampaigns = report.campaignId ? [report.campaignId] : (campaignContextId ? [campaignContextId] : []);
+    const nextSelectedSections = Array.isArray(report.selectedSections)
+      ? report.selectedSections
+      : [
+          ...(Array.isArray(report.selectedMetrics) && report.selectedMetrics.length > 0 ? ["metrics"] : []),
+          ...(report.includeKPIs ? ["kpis"] : []),
+          ...(report.includeBenchmarks ? ["benchmarks"] : []),
+        ];
+    const nextValues = {
+      name: report.name || "",
+      description: report.description || "",
+      type: report.type || "performance",
+      selectedCampaigns: nextSelectedCampaigns,
+      scheduleEnabled: !!report.schedule,
+      scheduleFrequency: report.schedule?.frequency || "weekly",
+      scheduleDay: report.schedule?.day || "monday",
+      scheduleTime: report.schedule?.time || "09:00",
+      recipients: report.schedule?.recipients?.join(", ") || "",
+      selectedReportMetrics: Array.isArray(report.selectedMetrics) ? report.selectedMetrics : [],
+      selectedReportSections: nextSelectedSections.length > 0 ? nextSelectedSections : ["metrics"],
+    };
+
+    setEditingReportId(report.id);
+    setReportName(nextValues.name);
+    setReportDescription(nextValues.description);
+    setReportType(nextValues.type);
+    setSelectedCampaigns(nextValues.selectedCampaigns);
+    setScheduleEnabled(nextValues.scheduleEnabled);
+    setScheduleFrequency(nextValues.scheduleFrequency);
+    setScheduleDay(nextValues.scheduleDay);
+    setScheduleTime(nextValues.scheduleTime);
+    setRecipients(nextValues.recipients);
+    setSelectedReportMetrics(nextValues.selectedReportMetrics);
+    setSelectedReportSections(nextValues.selectedReportSections);
+    setOriginalReportFormSignature(getReportFormSignature(nextValues));
+    setShowCreateDialog(true);
+  };
+
   const createReport = () => {
     const activeCampaignId = campaignContextId || selectedCampaigns[0] || "";
-
-    // Save the created report to storage
-    const newReport = reportStorage.addReport({
+    const reportPayload: Omit<StoredReport, "id" | "generatedAt"> = {
       name: reportName,
       type: reportType,
+      description: reportDescription,
       status: scheduleEnabled ? 'Scheduled' : 'Generated',
       campaignId: activeCampaignId || undefined,
-      generatedAt: new Date(),
       format: 'PDF', // Default format
       includeKPIs: reportType === "custom" && selectedReportSections.includes("kpis"),
       includeBenchmarks: reportType === "custom" && selectedReportSections.includes("benchmarks"),
@@ -421,9 +506,18 @@ export default function Reports() {
         frequency: scheduleFrequency,
         day: scheduleDay,
         time: scheduleTime,
-        recipients: recipients.split(',').map(email => email.trim()).filter(email => email)
+        recipients: normalizeReportRecipients(recipients)
       } : null
-    });
+    };
+
+    if (editingReportId) {
+      reportStorage.updateReport(editingReportId, reportPayload);
+    } else {
+      reportStorage.addReport({
+        ...reportPayload,
+        generatedAt: new Date(),
+      });
+    }
     
     // Refresh the reports list
     const allReports = reportStorage.getReports();
@@ -604,16 +698,19 @@ export default function Reports() {
                   Manage scheduled reports and download historical data
                 </p>
               </div>
-              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+              <Dialog open={showCreateDialog} onOpenChange={(open) => {
+                setShowCreateDialog(open);
+                if (!open) resetForm();
+              }}>
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button onClick={resetForm}>
                     <Plus className="w-4 h-4 mr-2" />
                     Create Report
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Create Scheduled Report</DialogTitle>
+                    <DialogTitle>{editingReportId ? "Edit Report" : "Create Scheduled Report"}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-6">
                     {/* Basic Info */}
@@ -816,9 +913,9 @@ export default function Reports() {
                       <div className="flex items-center space-x-3">
                         <Button 
                           onClick={createReport}
-                          disabled={!reportName.trim() || (scheduleEnabled && !recipients.trim()) || (!!campaignContextId && reportType === "custom" && (selectedReportSections.length === 0 || (selectedReportSections.includes("metrics") && selectedReportMetrics.length === 0)))}
+                          disabled={!isReportFormValid || !isReportFormChanged}
                         >
-                          Create Report
+                          {editingReportId ? "Update Report" : "Create Report"}
                         </Button>
                       </div>
                     </div>
@@ -1218,6 +1315,14 @@ export default function Reports() {
                                   </div>
                                   
                                   <div className="flex items-center space-x-2 ml-4">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => openEditReport(report)}
+                                      aria-label={`Edit ${report.name}`}
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
                                     {report.status === 'Generated' ? (
                                       <Button variant="outline" size="sm">
                                         <Download className="w-4 h-4 mr-2" />
@@ -1225,10 +1330,6 @@ export default function Reports() {
                                       </Button>
                                     ) : (
                                       <div className="flex items-center space-x-2">
-                                        <Button variant="outline" size="sm">
-                                          <Edit className="w-4 h-4 mr-2" />
-                                          Edit
-                                        </Button>
                                         <Button variant="outline" size="sm">
                                           <Pause className="w-4 h-4 mr-2" />
                                           Pause

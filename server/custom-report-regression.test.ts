@@ -45,7 +45,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("group.keys.filter((key) => customReportSelectableMetricSet.has(key))");
     expect(reports).toContain("Unavailable paid-media metrics are hidden until a connected source provides them.");
     expect(reports).toContain('selectedMetrics: reportType === "custom" && activeCampaignId ? selectedReportMetrics : undefined,');
-    expect(reports).toContain('selectedReportSections.includes("metrics") && selectedReportMetrics.length === 0');
+    expect(reports).toContain('!selectedReportSections.includes("metrics") || selectedReportMetrics.length > 0');
   });
 
   it("keeps saved custom report output aggregate-backed without rendering details on report cards", () => {
@@ -67,6 +67,20 @@ describe("campaign Custom Report regression guard", () => {
 
     expect(reports).not.toContain("report created successfully");
     expect(reports).not.toContain("alert(");
+  });
+
+  it("supports editing stored report cards through the report dialog", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const storage = readFileSync(join(process.cwd(), "client/src/lib/reportStorage.ts"), "utf-8");
+
+    expect(storage).toContain("updateReport(id: string, updates: Partial<StoredReport>)");
+    expect(reports).toContain("const [editingReportId, setEditingReportId] = useState<string | null>(null);");
+    expect(reports).toContain("const openEditReport = (report: StoredReport) => {");
+    expect(reports).toContain("setOriginalReportFormSignature(getReportFormSignature(nextValues));");
+    expect(reports).toContain("reportStorage.updateReport(editingReportId, reportPayload);");
+    expect(reports).toContain('{editingReportId ? "Update Report" : "Create Report"}');
+    expect(reports).toContain("disabled={!isReportFormValid || !isReportFormChanged}");
+    expect(reports).toContain("onClick={() => openEditReport(report)}");
   });
 
   it("maps custom report KPI and Benchmark sections to campaign records and aggregate current values", () => {

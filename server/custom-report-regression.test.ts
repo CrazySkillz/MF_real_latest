@@ -36,6 +36,7 @@ describe("campaign Custom Report regression guard", () => {
     const storage = readFileSync(join(process.cwd(), "client/src/lib/reportStorage.ts"), "utf-8");
 
     expect(storage).toContain("selectedMetrics?: string[];");
+    expect(storage).toContain("selectedSections?: string[];");
     expect(reports).toContain("Only metrics available from this campaign's connected sources are selectable.");
     expect(reports).toContain('return source?.category === "paid_media" && includedMetrics.some((metric: string) => customReportPaidMetricKeys.has(metric));');
     expect(reports).toContain(".filter((key) => !customReportPaidMetricKeys.has(key) || hasCustomReportPaidMediaSource);");
@@ -44,7 +45,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("group.keys.filter((key) => customReportSelectableMetricSet.has(key))");
     expect(reports).toContain("Unavailable paid-media metrics are hidden until a connected source provides them.");
     expect(reports).toContain('selectedMetrics: reportType === "custom" && activeCampaignId ? selectedReportMetrics : undefined,');
-    expect(reports).toContain('!!campaignContextId && reportType === "custom" && selectedReportMetrics.length === 0');
+    expect(reports).toContain('selectedReportSections.includes("metrics") && selectedReportMetrics.length === 0');
   });
 
   it("renders saved custom report output from live aggregate metric values", () => {
@@ -58,5 +59,25 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Connected-source report values");
     expect(reports).toContain("Unavailable${reason ? ` - ${reason}` : \"\"}");
     expect(reports).toContain("{renderCustomReportMetricOutput(report)}");
+  });
+
+  it("does not show a blocking browser confirmation after creating a report", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).not.toContain("report created successfully");
+    expect(reports).not.toContain("alert(");
+  });
+
+  it("maps custom report KPI and Benchmark sections to campaign records and aggregate current values", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain('queryKey: [`/api/campaigns/${campaignContextId}/kpis`],');
+    expect(reports).toContain('queryKey: [`/api/campaigns/${campaignContextId}/benchmarks`],');
+    expect(reports).toContain("const resolveCustomReportAggregateMetric = (record: any): string | null => {");
+    expect(reports).toContain("customReportPerformanceSummary?.totals?.[metricName]?.available === true");
+    expect(reports).toContain("const renderCustomReportKpiBenchmarkOutput = (report: StoredReport) => {");
+    expect(reports).toContain("Current: {metric?.available === true ? formatCustomReportMetricValue(metricKey!, metric.value) : \"Unavailable\"}");
+    expect(reports).toContain('selectedSections: reportType === "custom" && activeCampaignId ? selectedReportSections : undefined,');
+    expect(reports).toContain("{renderCustomReportKpiBenchmarkOutput(report)}");
   });
 });

@@ -174,6 +174,7 @@ Status:
 - [x] Completed locally: saved campaign-scoped Custom Reports render selected metric values from `performanceSummary.totals`.
 - [x] Completed locally: unavailable saved metrics are marked unavailable with aggregate reasons instead of rendering as `0`.
 - [x] Completed locally: report cards only render aggregate-backed Custom Report values for the active campaign context.
+- [x] User validation passed on 2026-05-28: saved Custom Report card shows connected-source report values.
 
 ### Commit 5: KPI, Benchmark, And Section Mapping
 
@@ -192,6 +193,14 @@ Validation:
 
 - KPI/Benchmark rows update after campaign KPI/Benchmark changes and refetch.
 - Current values match the connected-source aggregate where available.
+
+Status:
+
+- [x] Completed locally: Custom Report can save section composition for selected metrics, campaign KPI rows, and campaign Benchmark rows.
+- [x] Completed locally: campaign KPI rows are fetched from `/api/campaigns/:campaignId/kpis`.
+- [x] Completed locally: campaign Benchmark rows are fetched from `/api/campaigns/:campaignId/benchmarks`.
+- [x] Completed locally: KPI/Benchmark current values render from `performanceSummary.totals` when mapped and available.
+- [x] Completed locally: unmapped or unavailable KPI/Benchmark current values render as `Unavailable` instead of using saved `currentValue`.
 
 ### Commit 6: Regression Coverage
 
@@ -247,7 +256,7 @@ Custom Report is production-ready when:
 - [x] Commit 2: Shared aggregate input
 - [x] Commit 3: Metric picker availability gating
 - [x] Commit 4: Report output uses aggregate values
-- [ ] Commit 5: KPI, Benchmark, and section mapping
+- [x] Commit 5: KPI, Benchmark, and section mapping
 - [ ] Commit 6: Regression coverage
 - [ ] Commit 7: Documentation and final validation
 
@@ -266,3 +275,6 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Commit 3 local regression guard added in `server/custom-report-regression.test.ts`.
 - Commit 3 user validation passed on 2026-05-28.
 - Commit 4 local regression guard added in `server/custom-report-regression.test.ts`.
+- Commit 4 user validation passed on 2026-05-28.
+- Native browser create-confirmation popup removed; user validation passed on 2026-05-28.
+- Commit 5 local regression guard added in `server/custom-report-regression.test.ts`.

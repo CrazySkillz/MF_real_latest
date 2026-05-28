@@ -37,6 +37,12 @@ const customReportMetricGroups = [
 
 const customReportPaidMetricKeys = new Set(["impressions", "clicks", "spend", "ctr", "cpc", "cpm", "cpa", "roas", "roi", "leads"]);
 
+const customReportSections = [
+  { key: "metrics", label: "Selected metrics" },
+  { key: "kpis", label: "Campaign KPIs" },
+  { key: "benchmarks", label: "Campaign Benchmarks" },
+];
+
 const customReportMetricLabels: Record<string, string> = {
   users: "Users",
   sessions: "Sessions",
@@ -55,6 +61,32 @@ const customReportMetricLabels: Record<string, string> = {
   leads: "Leads",
 };
 
+const customReportMetricAliases: Record<string, string> = {
+  totalusers: "users",
+  users: "users",
+  user: "users",
+  totalsessions: "sessions",
+  sessions: "sessions",
+  totalrevenue: "revenue",
+  revenue: "revenue",
+  totalconversions: "conversions",
+  conversions: "conversions",
+  totalspend: "spend",
+  spend: "spend",
+  totalclicks: "clicks",
+  clicks: "clicks",
+  totalimpressions: "impressions",
+  impressions: "impressions",
+  roas: "roas",
+  roi: "roi",
+  ctr: "ctr",
+  cvr: "cvr",
+  conversionrate: "cvr",
+  cpa: "cpa",
+  cpc: "cpc",
+  cpm: "cpm",
+};
+
 const formatCustomReportMetricValue = (key: string, value: unknown): string => {
   const numericValue = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(numericValue)) return "Unavailable";
@@ -65,6 +97,9 @@ const formatCustomReportMetricValue = (key: string, value: unknown): string => {
   if (key === "roas") return `${numericValue.toFixed(1)}x`;
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(numericValue);
 };
+
+const customReportNormalizeMetricKey = (value: unknown): string =>
+  String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
 export default function Reports() {
   const campaignContextId = (() => {
@@ -86,6 +121,7 @@ export default function Reports() {
   const [recipients, setRecipients] = useState("");
   const [allStoredReports, setAllStoredReports] = useState<StoredReport[]>([]);
   const [selectedReportMetrics, setSelectedReportMetrics] = useState<string[]>([]);
+  const [selectedReportSections, setSelectedReportSections] = useState<string[]>(["metrics"]);
   
   // Filter states for All Reports tab
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,6 +139,16 @@ export default function Reports() {
     },
     enabled: !!campaignContextId,
     refetchOnWindowFocus: true,
+  });
+
+  const { data: campaignKpis = [] } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaignContextId}/kpis`],
+    enabled: !!campaignContextId,
+  });
+
+  const { data: campaignBenchmarks = [] } = useQuery<any[]>({
+    queryKey: [`/api/campaigns/${campaignContextId}/benchmarks`],
+    enabled: !!campaignContextId,
   });
 
   const customReportPerformanceSummary = campaignOutcomeTotals?.performanceSummary;
@@ -348,6 +394,7 @@ export default function Reports() {
     setReportDescription("");
     setSelectedCampaigns(campaignContextId ? [campaignContextId] : []);
     setSelectedReportMetrics(reportType === "custom" ? customReportSelectableMetricKeys : []);
+    setSelectedReportSections(["metrics"]);
     setScheduleEnabled(false);
     setScheduleFrequency("weekly");
     setScheduleDay("monday");
@@ -366,9 +413,10 @@ export default function Reports() {
       campaignId: activeCampaignId || undefined,
       generatedAt: new Date(),
       format: 'PDF', // Default format
-      includeKPIs: false,
-      includeBenchmarks: false,
+      includeKPIs: reportType === "custom" && selectedReportSections.includes("kpis"),
+      includeBenchmarks: reportType === "custom" && selectedReportSections.includes("benchmarks"),
       selectedMetrics: reportType === "custom" && activeCampaignId ? selectedReportMetrics : undefined,
+      selectedSections: reportType === "custom" && activeCampaignId ? selectedReportSections : undefined,
       schedule: scheduleEnabled ? {
         frequency: scheduleFrequency,
         day: scheduleDay,
@@ -383,7 +431,6 @@ export default function Reports() {
     
     setShowCreateDialog(false);
     resetForm();
-    alert(`${scheduleEnabled ? 'Scheduled' : 'Generated'} report created successfully!`);
   };
 
   // Filter reports for All Reports tab
@@ -458,9 +505,18 @@ export default function Reports() {
     }
   };
 
+  const resolveCustomReportAggregateMetric = (record: any): string | null => {
+    for (const candidate of [record?.metricKey, record?.metric, record?.metricType, record?.name]) {
+      const metricName = customReportMetricAliases[customReportNormalizeMetricKey(candidate)];
+      if (metricName && customReportPerformanceSummary?.totals?.[metricName]?.available === true) return metricName;
+    }
+    return null;
+  };
+
   const renderCustomReportMetricOutput = (report: StoredReport) => {
     const selectedMetrics = Array.isArray(report.selectedMetrics) ? report.selectedMetrics : [];
-    if (!campaignContextId || report.campaignId !== campaignContextId || report.type !== "custom" || selectedMetrics.length === 0) return null;
+    const selectedSections = Array.isArray(report.selectedSections) ? report.selectedSections : ["metrics"];
+    if (!selectedSections.includes("metrics") || !campaignContextId || report.campaignId !== campaignContextId || report.type !== "custom" || selectedMetrics.length === 0) return null;
     if (!customReportPerformanceSummary) {
       return (
         <div className="rounded-md border p-3 text-sm text-muted-foreground">
@@ -487,6 +543,48 @@ export default function Reports() {
             );
           })}
         </div>
+      </div>
+    );
+  };
+
+  const renderCustomReportKpiBenchmarkOutput = (report: StoredReport) => {
+    const selectedSections = Array.isArray(report.selectedSections) ? report.selectedSections : [];
+    if (!campaignContextId || report.campaignId !== campaignContextId || report.type !== "custom") return null;
+    if (!selectedSections.includes("kpis") && !selectedSections.includes("benchmarks")) return null;
+    if (!customReportPerformanceSummary) {
+      return (
+        <div className="rounded-md border p-3 text-sm text-muted-foreground">
+          KPI and Benchmark report values are unavailable until the campaign aggregate loads.
+        </div>
+      );
+    }
+
+    const renderRows = (records: any[], targetField: "targetValue" | "benchmarkValue") => records.map((record) => {
+      const metricKey = resolveCustomReportAggregateMetric(record);
+      const metric = metricKey ? customReportPerformanceSummary?.totals?.[metricKey] : null;
+      return (
+        <div key={record.id || record.name} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <span>{record.name || record.metric || "Untitled"}</span>
+          <span>Current: {metric?.available === true ? formatCustomReportMetricValue(metricKey!, metric.value) : "Unavailable"}</span>
+          <span>Target: {formatCustomReportMetricValue(metricKey || "", record?.[targetField])}</span>
+        </div>
+      );
+    });
+
+    return (
+      <div className="rounded-md border p-3 text-sm space-y-3">
+        {selectedSections.includes("kpis") && (
+          <div>
+            <div className="font-medium text-foreground mb-2">Campaign KPI rows</div>
+            {campaignKpis.length > 0 ? renderRows(campaignKpis, "targetValue") : <div className="text-muted-foreground">No campaign KPI rows configured.</div>}
+          </div>
+        )}
+        {selectedSections.includes("benchmarks") && (
+          <div>
+            <div className="font-medium text-foreground mb-2">Campaign Benchmark rows</div>
+            {campaignBenchmarks.length > 0 ? renderRows(campaignBenchmarks, "benchmarkValue") : <div className="text-muted-foreground">No campaign Benchmark rows configured.</div>}
+          </div>
+        )}
       </div>
     );
   };
@@ -571,6 +669,24 @@ export default function Reports() {
 
                       {campaignContextId && reportType === "custom" && (
                         <div className="space-y-3 rounded-md border p-3">
+                          <div>
+                            <Label>Sections</Label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                              {customReportSections.map((section) => (
+                                <label key={section.key} className="flex items-center space-x-2 text-sm">
+                                  <Checkbox
+                                    checked={selectedReportSections.includes(section.key)}
+                                    onCheckedChange={(checked) => {
+                                      setSelectedReportSections((current) => checked
+                                        ? Array.from(new Set([...current, section.key]))
+                                        : current.filter((key) => key !== section.key));
+                                    }}
+                                  />
+                                  <span>{section.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
                           <div>
                             <Label>Metrics</Label>
                             <div className="text-sm text-muted-foreground">
@@ -700,7 +816,7 @@ export default function Reports() {
                       <div className="flex items-center space-x-3">
                         <Button 
                           onClick={createReport}
-                          disabled={!reportName.trim() || (scheduleEnabled && !recipients.trim()) || (!!campaignContextId && reportType === "custom" && selectedReportMetrics.length === 0)}
+                          disabled={!reportName.trim() || (scheduleEnabled && !recipients.trim()) || (!!campaignContextId && reportType === "custom" && (selectedReportSections.length === 0 || (selectedReportSections.includes("metrics") && selectedReportMetrics.length === 0)))}
                         >
                           Create Report
                         </Button>
@@ -1111,6 +1227,7 @@ export default function Reports() {
                                     )}
 
                                     {renderCustomReportMetricOutput(report)}
+                                    {renderCustomReportKpiBenchmarkOutput(report)}
                                   </div>
                                   
                                   <div className="flex items-center space-x-2 ml-4">

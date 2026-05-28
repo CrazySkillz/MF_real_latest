@@ -19,4 +19,15 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('const activeCampaignId = campaignContextId || selectedCampaigns[0] || "";');
     expect(reports).toContain("campaignId: activeCampaignId || undefined,");
   });
+
+  it("reads connected-source aggregate input for campaign-scoped custom reports", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain('queryKey: [`/api/campaigns/${campaignContextId}/outcome-totals`, "90days"],');
+    expect(reports).toContain('fetch(`/api/campaigns/${campaignContextId}/outcome-totals?dateRange=90days`, { credentials: "include" })');
+    expect(reports).toContain("enabled: !!campaignContextId,");
+    expect(reports).toContain("const customReportPerformanceSummary = campaignOutcomeTotals?.performanceSummary;");
+    expect(reports).toContain('source?.connected === true && source?.category !== "financial"');
+    expect(reports).toContain("metric?.available === true");
+  });
 });

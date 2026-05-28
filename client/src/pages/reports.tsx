@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,25 @@ export default function Reports() {
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
+
+  const { data: campaignOutcomeTotals, isLoading: campaignOutcomeTotalsLoading } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignContextId}/outcome-totals`, "90days"],
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignContextId}/outcome-totals?dateRange=90days`, { credentials: "include" });
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!campaignContextId,
+    refetchOnWindowFocus: true,
+  });
+
+  const customReportPerformanceSummary = campaignOutcomeTotals?.performanceSummary;
+  const customReportSources = Array.isArray(customReportPerformanceSummary?.sources)
+    ? customReportPerformanceSummary.sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
+    : [];
+  const customReportAvailableMetricKeys = Object.entries(customReportPerformanceSummary?.totals || {})
+    .filter(([, metric]: [string, any]) => metric?.available === true)
+    .map(([key]) => key);
 
   // Load reports from storage
   useEffect(() => {
@@ -446,6 +466,22 @@ export default function Reports() {
                           onChange={(e) => setReportDescription(e.target.value)}
                         />
                       </div>
+
+                      {campaignContextId && (
+                        <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+                          <div className="font-medium text-foreground">Campaign connected-source data</div>
+                          {campaignOutcomeTotalsLoading ? (
+                            <div>Checking available connected-source metrics...</div>
+                          ) : customReportPerformanceSummary ? (
+                            <div>
+                              Sources: {customReportSources.map((source: any) => source.label || source.id).join(", ") || "None"}.
+                              Available metrics: {customReportAvailableMetricKeys.join(", ") || "None"}.
+                            </div>
+                          ) : (
+                            <div>No connected-source aggregate is available for this campaign yet.</div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Scheduling */}

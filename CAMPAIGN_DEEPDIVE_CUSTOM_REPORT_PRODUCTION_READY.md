@@ -98,6 +98,7 @@ Status:
 - [x] Completed locally: Campaign DeepDive now opens `/reports?campaignId=<campaignId>`.
 - [x] Completed locally: Reports initializes and persists `campaignId` when launched from Campaign DeepDive.
 - [x] Completed locally: global `/reports` route remains unchanged.
+- [x] User validation passed on 2026-05-28: Campaign DeepDive Custom Report opens with `campaignId` in the URL.
 
 ### Commit 2: Shared Aggregate Input
 
@@ -116,6 +117,13 @@ Validation:
 - GA4-only campaign response contains `ga4` as the main source.
 - Disconnected paid-media sources do not appear as available report sources.
 - Financial child sources do not appear as separate main platform rows.
+
+Status:
+
+- [x] Completed locally: campaign-scoped Reports fetches `/api/campaigns/:campaignId/outcome-totals?dateRange=90days`.
+- [x] Completed locally: available Custom Report sources are derived from `performanceSummary.sources`.
+- [x] Completed locally: available Custom Report metrics are derived from `performanceSummary.totals`.
+- [x] Completed locally: financial child sources are excluded from the visible main source list.
 
 ### Commit 3: Metric Picker Availability Gating
 
@@ -222,7 +230,7 @@ Custom Report is production-ready when:
 ## Outstanding Tasks
 
 - [x] Commit 1: Campaign-scoped entry point
-- [ ] Commit 2: Shared aggregate input
+- [x] Commit 2: Shared aggregate input
 - [ ] Commit 3: Metric picker availability gating
 - [ ] Commit 4: Report output uses aggregate values
 - [ ] Commit 5: KPI, Benchmark, and section mapping
@@ -238,3 +246,5 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 ## Validation Evidence
 
 - Commit 1 local regression guard added in `server/custom-report-regression.test.ts`.
+- Commit 1 user validation passed on 2026-05-28.
+- Commit 2 local regression guard added in `server/custom-report-regression.test.ts`.

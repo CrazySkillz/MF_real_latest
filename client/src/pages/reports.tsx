@@ -29,6 +29,30 @@ import {
 import { format } from "date-fns";
 import { reportStorage, type StoredReport } from "@/lib/reportStorage";
 
+const customReportMetricGroups = [
+  { title: "Web analytics", keys: ["users", "sessions", "cvr"] },
+  { title: "Outcomes", keys: ["conversions", "revenue"] },
+  { title: "Paid media", keys: ["impressions", "clicks", "spend", "ctr", "cpc", "cpm", "cpa", "roas", "roi", "leads"] },
+];
+
+const customReportMetricLabels: Record<string, string> = {
+  users: "Users",
+  sessions: "Sessions",
+  conversions: "Conversions",
+  revenue: "Revenue",
+  cvr: "Conversion rate",
+  impressions: "Impressions",
+  clicks: "Clicks",
+  spend: "Spend",
+  ctr: "Click-through rate",
+  cpc: "Cost per click",
+  cpm: "Cost per thousand impressions",
+  cpa: "Cost per acquisition",
+  roas: "ROAS",
+  roi: "ROI",
+  leads: "Leads",
+};
+
 export default function Reports() {
   const campaignContextId = (() => {
     try {
@@ -48,6 +72,7 @@ export default function Reports() {
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [recipients, setRecipients] = useState("");
   const [allStoredReports, setAllStoredReports] = useState<StoredReport[]>([]);
+  const [selectedReportMetrics, setSelectedReportMetrics] = useState<string[]>([]);
   
   // Filter states for All Reports tab
   const [searchQuery, setSearchQuery] = useState("");
@@ -74,6 +99,13 @@ export default function Reports() {
   const customReportAvailableMetricKeys = Object.entries(customReportPerformanceSummary?.totals || {})
     .filter(([, metric]: [string, any]) => metric?.available === true)
     .map(([key]) => key);
+  const customReportAvailableMetricSet = new Set(customReportAvailableMetricKeys);
+  const customReportMetricSignature = customReportAvailableMetricKeys.join("|");
+
+  useEffect(() => {
+    if (!campaignContextId || reportType !== "custom") return;
+    setSelectedReportMetrics(customReportAvailableMetricKeys);
+  }, [campaignContextId, reportType, customReportMetricSignature]);
 
   // Load reports from storage
   useEffect(() => {
@@ -296,6 +328,7 @@ export default function Reports() {
     setReportName("");
     setReportDescription("");
     setSelectedCampaigns(campaignContextId ? [campaignContextId] : []);
+    setSelectedReportMetrics(reportType === "custom" ? customReportAvailableMetricKeys : []);
     setScheduleEnabled(false);
     setScheduleFrequency("weekly");
     setScheduleDay("monday");
@@ -316,6 +349,7 @@ export default function Reports() {
       format: 'PDF', // Default format
       includeKPIs: false,
       includeBenchmarks: false,
+      selectedMetrics: reportType === "custom" && activeCampaignId ? selectedReportMetrics : undefined,
       schedule: scheduleEnabled ? {
         frequency: scheduleFrequency,
         day: scheduleDay,
@@ -482,6 +516,50 @@ export default function Reports() {
                           )}
                         </div>
                       )}
+
+                      {campaignContextId && reportType === "custom" && (
+                        <div className="space-y-3 rounded-md border p-3">
+                          <div>
+                            <Label>Metrics</Label>
+                            <div className="text-sm text-muted-foreground">
+                              Only metrics available from this campaign's connected sources are selectable.
+                            </div>
+                          </div>
+                          {customReportAvailableMetricKeys.length === 0 ? (
+                            <div className="text-sm text-muted-foreground">
+                              No connected-source metrics are available for this campaign yet.
+                            </div>
+                          ) : (
+                            customReportMetricGroups.map((group) => {
+                              const visibleKeys = group.keys.filter((key) => customReportAvailableMetricSet.has(key));
+                              if (visibleKeys.length === 0) return null;
+                              return (
+                                <div key={group.title} className="space-y-2">
+                                  <div className="text-sm font-medium">{group.title}</div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {visibleKeys.map((key) => (
+                                      <label key={key} className="flex items-center space-x-2 text-sm">
+                                        <Checkbox
+                                          checked={selectedReportMetrics.includes(key)}
+                                          onCheckedChange={(checked) => {
+                                            setSelectedReportMetrics((current) => checked
+                                              ? Array.from(new Set([...current, key]))
+                                              : current.filter((metric) => metric !== key));
+                                          }}
+                                        />
+                                        <span>{customReportMetricLabels[key] || key}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                          <div className="text-xs text-muted-foreground">
+                            Unavailable paid-media metrics are hidden until a connected source provides them.
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Scheduling */}
@@ -570,7 +648,7 @@ export default function Reports() {
                       <div className="flex items-center space-x-3">
                         <Button 
                           onClick={createReport}
-                          disabled={!reportName.trim() || (scheduleEnabled && !recipients.trim())}
+                          disabled={!reportName.trim() || (scheduleEnabled && !recipients.trim()) || (!!campaignContextId && reportType === "custom" && selectedReportMetrics.length === 0)}
                         >
                           Create Report
                         </Button>

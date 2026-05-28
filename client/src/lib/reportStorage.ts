@@ -13,6 +13,7 @@ export interface StoredReport {
   size?: string;
   includeKPIs?: boolean;
   includeBenchmarks?: boolean;
+  selectedMetrics?: string[];
   schedule?: {
     frequency: string;
     day: string;

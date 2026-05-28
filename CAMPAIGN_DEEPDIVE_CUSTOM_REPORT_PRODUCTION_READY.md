@@ -124,6 +124,7 @@ Status:
 - [x] Completed locally: available Custom Report sources are derived from `performanceSummary.sources`.
 - [x] Completed locally: available Custom Report metrics are derived from `performanceSummary.totals`.
 - [x] Completed locally: financial child sources are excluded from the visible main source list.
+- [x] User validation passed on 2026-05-28: Create Report dialog shows campaign connected-source data.
 
 ### Commit 3: Metric Picker Availability Gating
 
@@ -142,6 +143,12 @@ Validation:
 
 - GA4-only Custom Report picker shows GA4/web outcome metrics only.
 - Paid-media metrics appear after a capable main paid-media source is connected and included in the aggregate.
+
+Status:
+
+- [x] Completed locally: campaign-scoped Custom Report shows a metric picker only for metrics marked available by `performanceSummary.totals`.
+- [x] Completed locally: unavailable paid-media metrics are hidden from the picker.
+- [x] Completed locally: selected Custom Report metric keys are stored on the saved report config for aggregate-backed output work.
 
 ### Commit 4: Report Output Uses Aggregate Values
 
@@ -231,7 +238,7 @@ Custom Report is production-ready when:
 
 - [x] Commit 1: Campaign-scoped entry point
 - [x] Commit 2: Shared aggregate input
-- [ ] Commit 3: Metric picker availability gating
+- [x] Commit 3: Metric picker availability gating
 - [ ] Commit 4: Report output uses aggregate values
 - [ ] Commit 5: KPI, Benchmark, and section mapping
 - [ ] Commit 6: Regression coverage
@@ -248,3 +255,5 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Commit 1 local regression guard added in `server/custom-report-regression.test.ts`.
 - Commit 1 user validation passed on 2026-05-28.
 - Commit 2 local regression guard added in `server/custom-report-regression.test.ts`.
+- Commit 2 user validation passed on 2026-05-28.
+- Commit 3 local regression guard added in `server/custom-report-regression.test.ts`.

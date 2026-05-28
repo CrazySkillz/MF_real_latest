@@ -30,4 +30,17 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('source?.connected === true && source?.category !== "financial"');
     expect(reports).toContain("metric?.available === true");
   });
+
+  it("gates custom report metric selection to available connected-source metrics", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const storage = readFileSync(join(process.cwd(), "client/src/lib/reportStorage.ts"), "utf-8");
+
+    expect(storage).toContain("selectedMetrics?: string[];");
+    expect(reports).toContain("Only metrics available from this campaign's connected sources are selectable.");
+    expect(reports).toContain("const customReportAvailableMetricSet = new Set(customReportAvailableMetricKeys);");
+    expect(reports).toContain("group.keys.filter((key) => customReportAvailableMetricSet.has(key))");
+    expect(reports).toContain("Unavailable paid-media metrics are hidden until a connected source provides them.");
+    expect(reports).toContain('selectedMetrics: reportType === "custom" && activeCampaignId ? selectedReportMetrics : undefined,');
+    expect(reports).toContain('!!campaignContextId && reportType === "custom" && selectedReportMetrics.length === 0');
+  });
 });

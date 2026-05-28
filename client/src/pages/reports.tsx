@@ -55,6 +55,17 @@ const customReportMetricLabels: Record<string, string> = {
   leads: "Leads",
 };
 
+const formatCustomReportMetricValue = (key: string, value: unknown): string => {
+  const numericValue = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numericValue)) return "Unavailable";
+  if (["revenue", "spend", "cpc", "cpa", "cpm"].includes(key)) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(numericValue);
+  }
+  if (["ctr", "cvr", "roi"].includes(key)) return `${numericValue.toFixed(1)}%`;
+  if (key === "roas") return `${numericValue.toFixed(1)}x`;
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(numericValue);
+};
+
 export default function Reports() {
   const campaignContextId = (() => {
     try {
@@ -447,6 +458,39 @@ export default function Reports() {
     }
   };
 
+  const renderCustomReportMetricOutput = (report: StoredReport) => {
+    const selectedMetrics = Array.isArray(report.selectedMetrics) ? report.selectedMetrics : [];
+    if (!campaignContextId || report.campaignId !== campaignContextId || report.type !== "custom" || selectedMetrics.length === 0) return null;
+    if (!customReportPerformanceSummary) {
+      return (
+        <div className="rounded-md border p-3 text-sm text-muted-foreground">
+          Connected-source report values are unavailable until the campaign aggregate loads.
+        </div>
+      );
+    }
+
+    return (
+      <div className="rounded-md border p-3 text-sm">
+        <div className="font-medium text-foreground mb-2">Connected-source report values</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {selectedMetrics.map((key) => {
+            const metric = customReportPerformanceSummary?.totals?.[key];
+            const available = metric?.available === true;
+            const reason = Array.isArray(metric?.unavailableReasons) ? metric.unavailableReasons[0] : "";
+            return (
+              <div key={key}>
+                <span className="text-muted-foreground">{customReportMetricLabels[key] || key}: </span>
+                <span className={available ? "font-medium text-foreground" : "text-muted-foreground"}>
+                  {available ? formatCustomReportMetricValue(key, metric?.value) : `Unavailable${reason ? ` - ${reason}` : ""}`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -735,7 +779,7 @@ export default function Reports() {
                               </div>
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center justify-between pt-4 border-t">
                             <div className="flex items-center space-x-2">
                               <Button variant="outline" size="sm">
@@ -1065,6 +1109,8 @@ export default function Reports() {
                                         </span>
                                       </div>
                                     )}
+
+                                    {renderCustomReportMetricOutput(report)}
                                   </div>
                                   
                                   <div className="flex items-center space-x-2 ml-4">

@@ -46,4 +46,17 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('selectedMetrics: reportType === "custom" && activeCampaignId ? selectedReportMetrics : undefined,');
     expect(reports).toContain('!!campaignContextId && reportType === "custom" && selectedReportMetrics.length === 0');
   });
+
+  it("renders saved custom report output from live aggregate metric values", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("const renderCustomReportMetricOutput = (report: StoredReport) => {");
+    expect(reports).toContain('report.campaignId !== campaignContextId || report.type !== "custom"');
+    expect(reports).toContain("const metric = customReportPerformanceSummary?.totals?.[key];");
+    expect(reports).toContain("metric?.available === true");
+    expect(reports).toContain("formatCustomReportMetricValue(key, metric?.value)");
+    expect(reports).toContain("Connected-source report values");
+    expect(reports).toContain("Unavailable${reason ? ` - ${reason}` : \"\"}");
+    expect(reports).toContain("{renderCustomReportMetricOutput(report)}");
+  });
 });

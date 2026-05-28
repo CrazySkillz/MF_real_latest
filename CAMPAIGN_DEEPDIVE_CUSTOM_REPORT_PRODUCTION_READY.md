@@ -169,6 +169,12 @@ Validation:
 - Paid-media-only metrics do not appear for GA4-only campaigns.
 - Saved custom report config cannot force disconnected-source metrics into output.
 
+Status:
+
+- [x] Completed locally: saved campaign-scoped Custom Reports render selected metric values from `performanceSummary.totals`.
+- [x] Completed locally: unavailable saved metrics are marked unavailable with aggregate reasons instead of rendering as `0`.
+- [x] Completed locally: report cards only render aggregate-backed Custom Report values for the active campaign context.
+
 ### Commit 5: KPI, Benchmark, And Section Mapping
 
 Goal:
@@ -240,7 +246,7 @@ Custom Report is production-ready when:
 - [x] Commit 1: Campaign-scoped entry point
 - [x] Commit 2: Shared aggregate input
 - [x] Commit 3: Metric picker availability gating
-- [ ] Commit 4: Report output uses aggregate values
+- [x] Commit 4: Report output uses aggregate values
 - [ ] Commit 5: KPI, Benchmark, and section mapping
 - [ ] Commit 6: Regression coverage
 - [ ] Commit 7: Documentation and final validation
@@ -258,3 +264,5 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Commit 2 local regression guard added in `server/custom-report-regression.test.ts`.
 - Commit 2 user validation passed on 2026-05-28.
 - Commit 3 local regression guard added in `server/custom-report-regression.test.ts`.
+- Commit 3 user validation passed on 2026-05-28.
+- Commit 4 local regression guard added in `server/custom-report-regression.test.ts`.

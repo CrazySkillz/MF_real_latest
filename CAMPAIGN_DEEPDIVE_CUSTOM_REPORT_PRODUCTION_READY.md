@@ -148,6 +148,7 @@ Status:
 
 - [x] Completed locally: campaign-scoped Custom Report shows a metric picker only for metrics marked available by `performanceSummary.totals`.
 - [x] Completed locally: unavailable paid-media metrics are hidden from the picker.
+- [x] Completed locally: paid-media metric keys are hidden unless a connected main paid-media source supplies paid-media metrics.
 - [x] Completed locally: selected Custom Report metric keys are stored on the saved report config for aggregate-backed output work.
 
 ### Commit 4: Report Output Uses Aggregate Values

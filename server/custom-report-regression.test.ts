@@ -37,8 +37,11 @@ describe("campaign Custom Report regression guard", () => {
 
     expect(storage).toContain("selectedMetrics?: string[];");
     expect(reports).toContain("Only metrics available from this campaign's connected sources are selectable.");
-    expect(reports).toContain("const customReportAvailableMetricSet = new Set(customReportAvailableMetricKeys);");
-    expect(reports).toContain("group.keys.filter((key) => customReportAvailableMetricSet.has(key))");
+    expect(reports).toContain('return source?.category === "paid_media" && includedMetrics.some((metric: string) => customReportPaidMetricKeys.has(metric));');
+    expect(reports).toContain(".filter((key) => !customReportPaidMetricKeys.has(key) || hasCustomReportPaidMediaSource);");
+    expect(reports).toContain("const customReportSelectableMetricSet = new Set(customReportSelectableMetricKeys);");
+    expect(reports).toContain("setSelectedReportMetrics(customReportSelectableMetricKeys);");
+    expect(reports).toContain("group.keys.filter((key) => customReportSelectableMetricSet.has(key))");
     expect(reports).toContain("Unavailable paid-media metrics are hidden until a connected source provides them.");
     expect(reports).toContain('selectedMetrics: reportType === "custom" && activeCampaignId ? selectedReportMetrics : undefined,');
     expect(reports).toContain('!!campaignContextId && reportType === "custom" && selectedReportMetrics.length === 0');

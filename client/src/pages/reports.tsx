@@ -35,6 +35,8 @@ const customReportMetricGroups = [
   { title: "Paid media", keys: ["impressions", "clicks", "spend", "ctr", "cpc", "cpm", "cpa", "roas", "roi", "leads"] },
 ];
 
+const customReportPaidMetricKeys = new Set(["impressions", "clicks", "spend", "ctr", "cpc", "cpm", "cpa", "roas", "roi", "leads"]);
+
 const customReportMetricLabels: Record<string, string> = {
   users: "Users",
   sessions: "Sessions",
@@ -99,12 +101,18 @@ export default function Reports() {
   const customReportAvailableMetricKeys = Object.entries(customReportPerformanceSummary?.totals || {})
     .filter(([, metric]: [string, any]) => metric?.available === true)
     .map(([key]) => key);
-  const customReportAvailableMetricSet = new Set(customReportAvailableMetricKeys);
-  const customReportMetricSignature = customReportAvailableMetricKeys.join("|");
+  const hasCustomReportPaidMediaSource = customReportSources.some((source: any) => {
+    const includedMetrics = Array.isArray(source?.includedMetrics) ? source.includedMetrics : [];
+    return source?.category === "paid_media" && includedMetrics.some((metric: string) => customReportPaidMetricKeys.has(metric));
+  });
+  const customReportSelectableMetricKeys = customReportAvailableMetricKeys
+    .filter((key) => !customReportPaidMetricKeys.has(key) || hasCustomReportPaidMediaSource);
+  const customReportSelectableMetricSet = new Set(customReportSelectableMetricKeys);
+  const customReportMetricSignature = customReportSelectableMetricKeys.join("|");
 
   useEffect(() => {
     if (!campaignContextId || reportType !== "custom") return;
-    setSelectedReportMetrics(customReportAvailableMetricKeys);
+    setSelectedReportMetrics(customReportSelectableMetricKeys);
   }, [campaignContextId, reportType, customReportMetricSignature]);
 
   // Load reports from storage
@@ -328,7 +336,7 @@ export default function Reports() {
     setReportName("");
     setReportDescription("");
     setSelectedCampaigns(campaignContextId ? [campaignContextId] : []);
-    setSelectedReportMetrics(reportType === "custom" ? customReportAvailableMetricKeys : []);
+    setSelectedReportMetrics(reportType === "custom" ? customReportSelectableMetricKeys : []);
     setScheduleEnabled(false);
     setScheduleFrequency("weekly");
     setScheduleDay("monday");
@@ -509,7 +517,7 @@ export default function Reports() {
                           ) : customReportPerformanceSummary ? (
                             <div>
                               Sources: {customReportSources.map((source: any) => source.label || source.id).join(", ") || "None"}.
-                              Available metrics: {customReportAvailableMetricKeys.join(", ") || "None"}.
+                              Selectable metrics: {customReportSelectableMetricKeys.join(", ") || "None"}.
                             </div>
                           ) : (
                             <div>No connected-source aggregate is available for this campaign yet.</div>
@@ -525,13 +533,13 @@ export default function Reports() {
                               Only metrics available from this campaign's connected sources are selectable.
                             </div>
                           </div>
-                          {customReportAvailableMetricKeys.length === 0 ? (
+                          {customReportSelectableMetricKeys.length === 0 ? (
                             <div className="text-sm text-muted-foreground">
                               No connected-source metrics are available for this campaign yet.
                             </div>
                           ) : (
                             customReportMetricGroups.map((group) => {
-                              const visibleKeys = group.keys.filter((key) => customReportAvailableMetricSet.has(key));
+                              const visibleKeys = group.keys.filter((key) => customReportSelectableMetricSet.has(key));
                               if (visibleKeys.length === 0) return null;
                               return (
                                 <div key={group.title} className="space-y-2">

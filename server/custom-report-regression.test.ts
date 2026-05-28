@@ -101,6 +101,10 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("const { jsPDF } = await import('jspdf');");
     expect(reports).toContain('await downloadReportPdf(savedReport);');
     expect(reports).toContain('selectedSections.forEach((section) => addText(`- ${getReportTabLabel(report.type, section)}`, { indent: 4 }));');
+    expect(reports).toContain('const addDeepDiveSectionContent = (section: string) => {');
+    expect(reports).toContain('selectedSections.forEach(addDeepDiveSectionContent);');
+    expect(reports).toContain('addMetricList(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);');
+    expect(reports).toContain('addSourceList();');
   });
 
   it("lets campaign-scoped reports choose Campaign DeepDive subsections and tabs", () => {

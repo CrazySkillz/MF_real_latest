@@ -794,6 +794,63 @@ export default function Reports() {
       });
     };
 
+    const metricValue = (key: string) => {
+      const metric = customReportPerformanceSummary?.totals?.[key];
+      if (metric?.available === true) return formatCustomReportMetricValue(key, metric.value);
+      const reason = Array.isArray(metric?.unavailableReasons) ? metric.unavailableReasons[0] : "";
+      return `Unavailable${reason ? ` - ${reason}` : ""}`;
+    };
+    const addMetricList = (keys: string[]) => {
+      if (!customReportPerformanceSummary) {
+        addText("Connected-source aggregate values are unavailable.", { indent: 4 });
+        return;
+      }
+      keys.forEach((key) => addText(`- ${customReportMetricLabels[key] || key}: ${metricValue(key)}`, { indent: 4 }));
+    };
+    const addSourceList = () => {
+      if (customReportSources.length === 0) {
+        addText("- No connected main sources available.", { indent: 4 });
+        return;
+      }
+      customReportSources.forEach((source: any) => {
+        const includedMetrics = Array.isArray(source?.includedMetrics) ? source.includedMetrics.join(", ") : "none";
+        addText(`- ${source?.label || source?.id}: ${includedMetrics}`, { indent: 4 });
+      });
+    };
+    const addDeepDiveSectionContent = (section: string) => {
+      addText(getReportTabLabel(report.type, section), { size: 14, bold: true });
+      if (section.endsWith(":overview")) {
+        addText("Connected-source summary", { bold: true, indent: 4 });
+        addMetricList(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);
+      } else if (section.includes(":recommendations") || section.endsWith(":insights")) {
+        addText("Recommendation basis", { bold: true, indent: 4 });
+        addMetricList(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);
+        addText("Next action: compare unavailable or under-target metrics against campaign KPIs and Benchmarks before changing spend.", { indent: 4 });
+      } else if (section.includes(":roi-roas")) {
+        addMetricList(["revenue", "spend", "roas", "roi"]);
+      } else if (section.includes(":cost")) {
+        addMetricList(["spend", "cpc", "cpa", "cpm", "roas", "roi"]);
+      } else if (section.includes(":budget")) {
+        addText("Budget pacing requires connected spend and campaign budget context.", { indent: 4 });
+        addMetricList(["spend", "revenue", "roas", "roi"]);
+      } else if (section.includes(":performance") || section.includes(":health")) {
+        addMetricList(["impressions", "clicks", "users", "sessions", "conversions", "revenue", "cvr"]);
+      } else if (section.includes(":changes")) {
+        addText("Change analysis requires comparable historical snapshots; this export includes the current connected-source aggregate.", { indent: 4 });
+        addMetricList(["users", "sessions", "conversions", "revenue", "cvr"]);
+      } else if (section.includes(":efficiency")) {
+        addMetricList(["ctr", "cvr", "cpc", "cpa", "roas", "roi"]);
+      } else if (section.includes(":funnel")) {
+        addMetricList(["users", "sessions", "clicks", "conversions", "revenue", "cvr"]);
+      } else if (section.includes(":platforms")) {
+        addText("Connected platform inputs", { bold: true, indent: 4 });
+        addSourceList();
+      } else {
+        addMetricList(["impressions", "clicks", "users", "sessions", "conversions", "revenue", "spend", "roas", "roi"]);
+      }
+      yPosition += 4;
+    };
+
     const selectedSections = Array.isArray(report.selectedSections) ? report.selectedSections : [];
     addText(report.name, { size: 18, bold: true });
     addText(`Report Type: ${getReportTypeLabel(report.type)}`);
@@ -807,6 +864,10 @@ export default function Reports() {
       selectedSections.forEach((section) => addText(`- ${getReportTabLabel(report.type, section)}`, { indent: 4 }));
     }
     yPosition += 4;
+
+    if (report.type !== "custom") {
+      selectedSections.forEach(addDeepDiveSectionContent);
+    }
 
     if (report.type === "custom" && selectedSections.includes("metrics")) {
       addText("Selected metrics", { size: 14, bold: true });

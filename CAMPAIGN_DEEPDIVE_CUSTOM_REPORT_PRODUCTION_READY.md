@@ -206,6 +206,7 @@ Status:
 - [x] Completed locally: edit mode uses `Update Report`, suppresses first-field autofocus, and disables update until a form value changes.
 - [x] Completed locally: the top-level `Create Report` button opens a fresh blank create form and does not reuse previously edited report values, report type, selected tabs, or selected metrics.
 - [x] Completed locally: unscheduled create mode shows `Download Report` and downloads a PDF containing the selected report sections; scheduled create mode shows `Schedule Report`.
+- [x] Completed locally: downloaded Campaign DeepDive subsection PDFs include a body for each selected tab using the existing `/outcome-totals` connected-source aggregate, not just a list of selected tab names.
 - [x] Completed locally: schedule mode label is `Schedule Automated Reports`.
 - [x] Completed locally: campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types and lets users choose which tabs from the selected subsection to include; the standalone `/reports` route keeps its broader report type options when reached directly.
 - [x] Completed locally: generated report cards no longer show the `Generated` status pill.
@@ -288,6 +289,7 @@ Custom Report is production-ready when:
 - All Reports card edit icons open the report dialog with saved values prefilled, show `Update Report`, and keep update disabled until a change is made
 - The top-level `Create Report` action opens an empty create form, clears report type, selected tabs, custom metric selections, and edit mode
 - Unscheduled create mode shows `Download Report` and downloads the selected report sections as a PDF
+- Downloaded PDFs render the selected tab bodies from `performanceSummary.totals` and `performanceSummary.sources` where those aggregate inputs are available
 - Scheduled create mode uses `Schedule Automated Reports` and shows `Schedule Report`
 - Campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types: `Executive Summary`, `Performance Summary`, `Budget & Financial Analysis`, `Platform Comparison`, `Trend Analysis`, and `Custom Report`
 - Selecting a Campaign DeepDive subsection exposes that subsection's current tab list as report composition checkboxes and saves those tab keys in `selectedSections`
@@ -331,6 +333,7 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - All Reports edit workflow added on 2026-05-28: edit icon opens prefilled dialog, `Update Report` is disabled until changes are made, generated status pill is hidden, and edit-mode report-name autofocus is suppressed.
 - Create Report reset fix added on 2026-05-28: top-level create opens a fresh empty form after prior edits.
 - Create Report action split added on 2026-05-28: unscheduled create mode downloads the selected sections, while scheduled create mode saves with `Schedule Automated Reports` and `Schedule Report`.
+- Download Report content fix added on 2026-05-28: Campaign DeepDive subsection exports now print selected tab bodies from the connected-source aggregate instead of only listing selected tab names.
 - Report Type composition updated on 2026-05-28 and pushed in commit `f8dfeee0`: Campaign DeepDive Custom Report creation exposes Campaign DeepDive subsection report types and saves selected subsection tabs; the standalone `/reports` route keeps broader report-type choices when reached directly.
 - Commit 7 documentation updated on 2026-05-28.
 - Local validation passed on 2026-05-28: `npm test -- server/custom-report-regression.test.ts`.

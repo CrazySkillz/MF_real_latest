@@ -5,7 +5,7 @@ import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -419,8 +419,9 @@ export default function Reports() {
   const resetForm = () => {
     setReportName("");
     setReportDescription("");
+    setReportType("performance");
     setSelectedCampaigns(campaignContextId ? [campaignContextId] : []);
-    setSelectedReportMetrics(reportType === "custom" ? customReportSelectableMetricKeys : []);
+    setSelectedReportMetrics([]);
     setSelectedReportSections(["metrics"]);
     setEditingReportId(null);
     setOriginalReportFormSignature("");
@@ -486,6 +487,11 @@ export default function Reports() {
     setSelectedReportMetrics(nextValues.selectedReportMetrics);
     setSelectedReportSections(nextValues.selectedReportSections);
     setOriginalReportFormSignature(getReportFormSignature(nextValues));
+    setShowCreateDialog(true);
+  };
+
+  const openCreateReport = () => {
+    resetForm();
     setShowCreateDialog(true);
   };
 
@@ -702,13 +708,16 @@ export default function Reports() {
                 setShowCreateDialog(open);
                 if (!open) resetForm();
               }}>
-                <DialogTrigger asChild>
-                  <Button onClick={resetForm}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Report
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <Button onClick={openCreateReport}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Report
+                </Button>
+                <DialogContent
+                  className="max-w-2xl max-h-[80vh] overflow-y-auto"
+                  onOpenAutoFocus={(event) => {
+                    if (editingReportId) event.preventDefault();
+                  }}
+                >
                   <DialogHeader>
                     <DialogTitle>{editingReportId ? "Edit Report" : "Create Scheduled Report"}</DialogTitle>
                   </DialogHeader>
@@ -1261,13 +1270,11 @@ export default function Reports() {
                                   <div className="space-y-2 flex-1">
                                     <div className="flex items-center gap-3">
                                       <h3 className="font-semibold text-lg">{report.name}</h3>
-                                      <Badge className={
-                                        report.status === 'Generated' 
-                                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                                          : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                                      }>
-                                        {report.status}
-                                      </Badge>
+                                      {report.status !== 'Generated' && (
+                                        <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                          {report.status}
+                                        </Badge>
+                                      )}
                                     </div>
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">

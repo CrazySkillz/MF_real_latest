@@ -16,7 +16,7 @@ This tracker exists so Custom Report follows the same connected-source aggregate
 
 Production-ready as a Campaign DeepDive connected-source aggregate consumer for the implemented source contract.
 
-Custom Report is still opened through the Reports builder, but Campaign DeepDive now preserves campaign context with `/reports?campaignId=<campaignId>`. Campaign-scoped Custom Reports read the shared connected-source aggregate, expose only available metrics, render saved report outputs from live aggregate-backed values, and keep All Reports cards as summary-only cards.
+Custom Report is still opened through the Reports builder, but Campaign DeepDive now preserves campaign context with `/reports?campaignId=<campaignId>`. Campaign-scoped Custom Reports read the shared connected-source aggregate, expose only available metrics, render saved report outputs from live aggregate-backed values, and keep All Reports cards as summary-only cards with edit, download, and delete actions.
 
 ## Required Product Rule
 
@@ -202,6 +202,9 @@ Status:
 - [x] Completed locally: KPI/Benchmark current values render from `performanceSummary.totals` when mapped and available.
 - [x] Completed locally: unmapped or unavailable KPI/Benchmark current values render as `Unavailable` instead of using saved `currentValue`.
 - [x] Completed locally: All Reports cards remain summary cards and do not render connected-source detail previews inline.
+- [x] Completed locally: All Reports cards expose an edit icon that opens the report dialog with saved values prefilled.
+- [x] Completed locally: edit mode uses `Update Report`, suppresses first-field autofocus, and disables update until a form value changes.
+- [x] Completed locally: generated report cards no longer show the `Generated` status pill.
 - [x] User validation passed on 2026-05-28: All Reports cards show summary-only layout without connected-source detail previews.
 
 ### Commit 6: Regression Coverage
@@ -228,6 +231,7 @@ Status:
 - [x] Completed locally: regression guard covers campaign-scoped Custom Report routing and saved campaign ID.
 - [x] Completed locally: regression guard covers global `/reports` route preservation.
 - [x] Completed locally: regression guard confirms All Reports cards do not render inline connected-source detail previews or the old `Includes: KPIs, Benchmarks` line.
+- [x] Completed locally: regression guard confirms report cards support edit mode through the report dialog and suppress edit-mode autofocus.
 - [x] User validation passed on 2026-05-28: All Reports cards show the summary-only card layout without `Includes: KPIs, Benchmarks`.
 
 ### Commit 7: Documentation And Final Validation
@@ -267,7 +271,8 @@ Custom Report is production-ready when:
 - unavailable metrics are omitted or clearly explained
 - KPI/Benchmark sections use live aggregate-backed current values
 - saved report configuration cannot reintroduce disconnected-source metrics
-- All Reports cards remain summary-only and do not expose connected-source values, KPI/Benchmark rows, or `Includes` configuration details inline
+- All Reports cards remain summary-only and do not expose connected-source values, KPI/Benchmark rows, generated status pills, or `Includes` configuration details inline
+- All Reports card edit icons open the report dialog with saved values prefilled, show `Update Report`, and keep update disabled until a change is made
 - regression coverage guards GA4-only and future paid-media source scenarios
 - documentation matches the implemented behavior
 
@@ -305,6 +310,7 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Commit 6 regression coverage completed in `server/custom-report-regression.test.ts`.
 - Commit 6 user validation passed on 2026-05-28.
 - All Reports summary-only cleanup validated on 2026-05-28: connected-source detail previews and `Includes: KPIs, Benchmarks` are not rendered on report cards.
+- All Reports edit workflow added on 2026-05-28: edit icon opens prefilled dialog, `Update Report` is disabled until changes are made, generated status pill is hidden, and edit-mode report-name autofocus is suppressed.
 - Commit 7 documentation updated on 2026-05-28.
 - Local validation passed on 2026-05-28: `npm test -- server/custom-report-regression.test.ts`.
 - Local validation passed on 2026-05-28: `npm run check`.

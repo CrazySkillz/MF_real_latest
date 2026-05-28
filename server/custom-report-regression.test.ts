@@ -75,12 +75,18 @@ describe("campaign Custom Report regression guard", () => {
 
     expect(storage).toContain("updateReport(id: string, updates: Partial<StoredReport>)");
     expect(reports).toContain("const [editingReportId, setEditingReportId] = useState<string | null>(null);");
+    expect(reports).toContain('setReportType("performance");');
+    expect(reports).toContain("setSelectedReportMetrics([]);");
+    expect(reports).toContain("const openCreateReport = () => {");
+    expect(reports).toContain("<Button onClick={openCreateReport}>");
     expect(reports).toContain("const openEditReport = (report: StoredReport) => {");
     expect(reports).toContain("setOriginalReportFormSignature(getReportFormSignature(nextValues));");
     expect(reports).toContain("reportStorage.updateReport(editingReportId, reportPayload);");
     expect(reports).toContain('{editingReportId ? "Update Report" : "Create Report"}');
     expect(reports).toContain("disabled={!isReportFormValid || !isReportFormChanged}");
     expect(reports).toContain("onClick={() => openEditReport(report)}");
+    expect(reports).toContain("onOpenAutoFocus={(event) => {");
+    expect(reports).toContain("if (editingReportId) event.preventDefault();");
   });
 
   it("maps custom report KPI and Benchmark sections to campaign records and aggregate current values", () => {

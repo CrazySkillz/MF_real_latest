@@ -112,7 +112,8 @@ Important meaning:
 - Campaign DeepDive Custom Report opens the Reports builder with campaign context and should read current campaign aggregate values from `/outcome-totals`
 - for GA4-only Campaign DeepDive Custom Reports, selectable metrics should be limited to available GA4/web outcome metrics; paid-media metrics stay hidden until a connected main paid-media source supplies them
 - KPI and Benchmark report sections should use campaign records for rows and targets, with current values coming from available aggregate metrics
-- All Reports cards should stay summary-only and should not show connected-source values, KPI/Benchmark row details, or `Includes` configuration details inline
+- All Reports cards should stay summary-only and should not show connected-source values, KPI/Benchmark row details, generated status pills, or `Includes` configuration details inline
+- All Reports card edit icons should reopen the report dialog with saved values prefilled, show `Update Report`, suppress edit-mode first-field autofocus, and keep update disabled until a value changes
 - future work should preserve section-based composition
 - top-level custom sections are parent headers, not checkboxes
 - subsection checkboxes default to unchecked for new custom reports
@@ -209,6 +210,7 @@ Important meaning:
   `Overview -> KPIs -> Benchmarks -> Ad Comparison -> Insights -> Reports`
 - reports are an output view of the latest refreshed GA4 campaign state
 - editing a report changes report configuration, scheduling, and delivery settings; it does not directly edit stored campaign metrics
+- generated report cards should not show a `Generated` status pill; generated state is already clear from the generated timestamp and download action
 
 ## Current-State Note
 

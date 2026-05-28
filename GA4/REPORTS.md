@@ -109,6 +109,10 @@ Important meaning:
 - custom reports are section-composition reports
 - custom reports store report configuration, not frozen analytics values
 - actual report values should come from refreshed GA4 tab inputs when the report is generated or sent
+- Campaign DeepDive Custom Report opens the Reports builder with campaign context and should read current campaign aggregate values from `/outcome-totals`
+- for GA4-only Campaign DeepDive Custom Reports, selectable metrics should be limited to available GA4/web outcome metrics; paid-media metrics stay hidden until a connected main paid-media source supplies them
+- KPI and Benchmark report sections should use campaign records for rows and targets, with current values coming from available aggregate metrics
+- All Reports cards should stay summary-only and should not show connected-source values, KPI/Benchmark row details, or `Includes` configuration details inline
 - future work should preserve section-based composition
 - top-level custom sections are parent headers, not checkboxes
 - subsection checkboxes default to unchecked for new custom reports

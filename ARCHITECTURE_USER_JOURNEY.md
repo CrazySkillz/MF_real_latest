@@ -577,9 +577,11 @@ However, it should not be interpreted as the same kind of analytics as campaign-
 
 It is a platform-specific layer inside the campaign experience.
 
-### Small Implementation Caveat
+### Custom Report Implementation Note
 
-Custom Report currently behaves as a campaign-level reporting launcher, but in implementation it is opened from the hub as a report-building action rather than a dedicated deep-dive page. From Campaign DeepDive, it must preserve campaign context through `/reports?campaignId=<campaignId>` while the global `/reports` entry remains available separately.
+Custom Report behaves as a campaign-level reporting launcher, but in implementation it is opened from the hub as a report-building action rather than a dedicated deep-dive page. From Campaign DeepDive, it preserves campaign context through `/reports?campaignId=<campaignId>` while the global `/reports` entry remains available separately.
+
+Campaign-scoped Custom Report must consume the same `/outcome-totals` `performanceSummary` aggregate used by the other Campaign DeepDive sections. Metric selection should expose only metrics marked available by connected main sources; GA4-only campaigns should show web analytics and outcome metrics only, and paid-media metrics should remain hidden until a connected main paid-media source supplies them. KPI and Benchmark sections use campaign records for rows and targets, but current values come from available aggregate metrics. All Reports cards should remain summary-only and should not show connected-source values, KPI/Benchmark row details, or `Includes` configuration details inline.
 
 That is still consistent with the campaign-wide DeepDive concept and should be treated as part of the campaign-level analysis/reporting layer, not the platform-specific layer.
 

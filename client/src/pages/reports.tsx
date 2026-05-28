@@ -1215,16 +1215,6 @@ export default function Reports() {
                                         </span>
                                       </div>
                                     )}
-
-                                    {(report.includeKPIs || report.includeBenchmarks) && (
-                                      <div className="text-sm">
-                                        <span className="font-medium text-primary">
-                                          Includes: {report.includeKPIs ? 'KPIs' : ''}
-                                          {report.includeKPIs && report.includeBenchmarks ? ', ' : ''}
-                                          {report.includeBenchmarks ? 'Benchmarks' : ''}
-                                        </span>
-                                      </div>
-                                    )}
                                   </div>
                                   
                                   <div className="flex items-center space-x-2 ml-4">

@@ -14,9 +14,9 @@ This tracker exists so Custom Report follows the same connected-source aggregate
 
 ## Current Status
 
-Not production-ready as a Campaign DeepDive connected-source aggregate consumer.
+Production-ready as a Campaign DeepDive connected-source aggregate consumer for the implemented source contract.
 
-Custom Report currently behaves as a campaign-level reporting launcher, but the implementation path still points users to the global `/reports` page and several report-generation paths are platform-specific. That means Custom Report does not yet reliably use only metrics that are available from the campaign's main Connected Platforms.
+Custom Report is still opened through the Reports builder, but Campaign DeepDive now preserves campaign context with `/reports?campaignId=<campaignId>`. Campaign-scoped Custom Reports read the shared connected-source aggregate, expose only available metrics, render saved report outputs from live aggregate-backed values, and keep All Reports cards as summary-only cards.
 
 ## Required Product Rule
 
@@ -24,7 +24,7 @@ Connected Platforms is the source of truth.
 
 Custom Report must use metrics from the campaign's connected main sources only. If only Google Analytics is connected, Custom Report should expose and render only GA4-supported web analytics and outcome metrics. Paid-media metrics must remain unavailable unless a main paid-media Connected Platform supplies them.
 
-## Root Cause
+## Original Root Cause
 
 1. The Campaign DeepDive `Custom Report` launcher currently links to `/reports`, which is a global reports page, not a campaign-scoped connected-source report builder.
 2. Existing report builders are platform-specific:
@@ -227,6 +227,8 @@ Status:
 - [x] Completed locally: regression guard covers unavailable saved metrics rendering as unavailable.
 - [x] Completed locally: regression guard covers campaign-scoped Custom Report routing and saved campaign ID.
 - [x] Completed locally: regression guard covers global `/reports` route preservation.
+- [x] Completed locally: regression guard confirms All Reports cards do not render inline connected-source detail previews or the old `Includes: KPIs, Benchmarks` line.
+- [x] User validation passed on 2026-05-28: All Reports cards show the summary-only card layout without `Includes: KPIs, Benchmarks`.
 
 ### Commit 7: Documentation And Final Validation
 
@@ -239,6 +241,13 @@ Tasks:
 - Update `ARCHITECTURE_USER_JOURNEY.md`.
 - Update `GA4/README.md`.
 - Update this tracker with completed fixes, validation, and remaining source-specific boundaries.
+
+Status:
+
+- [x] Completed locally: `ARCHITECTURE_USER_JOURNEY.md` documents the campaign-scoped Custom Report aggregate-consumer pattern.
+- [x] Completed locally: `GA4/README.md` documents the GA4-only Custom Report behavior and paid-media boundary.
+- [x] Completed locally: `GA4/REPORTS.md` documents saved custom report configuration and summary-only All Reports cards.
+- [x] Completed locally: this tracker records implementation status, validation evidence, and separate future-source boundaries.
 
 Validation:
 
@@ -258,6 +267,7 @@ Custom Report is production-ready when:
 - unavailable metrics are omitted or clearly explained
 - KPI/Benchmark sections use live aggregate-backed current values
 - saved report configuration cannot reintroduce disconnected-source metrics
+- All Reports cards remain summary-only and do not expose connected-source values, KPI/Benchmark rows, or `Includes` configuration details inline
 - regression coverage guards GA4-only and future paid-media source scenarios
 - documentation matches the implemented behavior
 
@@ -269,7 +279,9 @@ Custom Report is production-ready when:
 - [x] Commit 4: Report output uses aggregate values
 - [x] Commit 5: KPI, Benchmark, and section mapping
 - [x] Commit 6: Regression coverage
-- [ ] Commit 7: Documentation and final validation
+- [x] Commit 7: Documentation and final validation
+
+No open Custom Report implementation tasks remain for the current connected-source aggregate-consumer scope.
 
 ## Separate Source Work
 
@@ -291,3 +303,9 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Commit 5 local regression guard added in `server/custom-report-regression.test.ts`.
 - Commit 5 user validation passed on 2026-05-28.
 - Commit 6 regression coverage completed in `server/custom-report-regression.test.ts`.
+- Commit 6 user validation passed on 2026-05-28.
+- All Reports summary-only cleanup validated on 2026-05-28: connected-source detail previews and `Includes: KPIs, Benchmarks` are not rendered on report cards.
+- Commit 7 documentation updated on 2026-05-28.
+- Local validation passed on 2026-05-28: `npm test -- server/custom-report-regression.test.ts`.
+- Local validation passed on 2026-05-28: `npm run check`.
+- Local validation passed on 2026-05-28: `npm run build`.

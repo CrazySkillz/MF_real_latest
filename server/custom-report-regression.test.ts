@@ -59,6 +59,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Connected-source report values");
     expect(reports).toContain("Unavailable${reason ? ` - ${reason}` : \"\"}");
     expect(reports).not.toContain("{renderCustomReportMetricOutput(report)}");
+    expect(reports).not.toContain("Includes: {report.includeKPIs ? 'KPIs' : ''}");
   });
 
   it("does not show a blocking browser confirmation after creating a report", () => {

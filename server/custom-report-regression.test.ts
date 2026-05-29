@@ -123,6 +123,20 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).not.toContain("Report Templates");
   });
 
+  it("confirms report deletion and lists connected sources without metric-key noise", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("const [reportPendingDelete, setReportPendingDelete] = useState<StoredReport | null>(null);");
+    expect(reports).toContain("onClick={() => setReportPendingDelete(report)}");
+    expect(reports).toContain("reportStorage.deleteReport(reportPendingDelete.id);");
+    expect(reports).toContain("<AlertDialog open={!!reportPendingDelete}");
+    expect(reports).toContain("<AlertDialogTitle>Delete report?</AlertDialogTitle>");
+    expect(reports).toContain("This action cannot be undone.");
+    expect(reports).toContain("Campaign connected-source data");
+    expect(reports).toContain("customReportSources.map((source: any) => (");
+    expect(reports).not.toContain("Selectable metrics:");
+  });
+
   it("lets campaign-scoped reports choose Campaign DeepDive subsections and tabs", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 

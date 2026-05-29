@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -224,6 +225,7 @@ export default function Reports() {
   const [selectedReportSections, setSelectedReportSections] = useState<string[]>([]);
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
   const [originalReportFormSignature, setOriginalReportFormSignature] = useState("");
+  const [reportPendingDelete, setReportPendingDelete] = useState<StoredReport | null>(null);
   
   // Filter states for All Reports tab
   const [searchQuery, setSearchQuery] = useState("");
@@ -613,6 +615,13 @@ export default function Reports() {
     
     setShowCreateDialog(false);
     resetForm();
+  };
+
+  const deletePendingReport = () => {
+    if (!reportPendingDelete) return;
+    reportStorage.deleteReport(reportPendingDelete.id);
+    setAllStoredReports(reportStorage.getReports());
+    setReportPendingDelete(null);
   };
 
   // Filter reports for All Reports tab
@@ -1008,10 +1017,15 @@ export default function Reports() {
                           {campaignOutcomeTotalsLoading ? (
                             <div>Checking available connected-source metrics...</div>
                           ) : customReportPerformanceSummary ? (
-                            <div>
-                              Sources: {customReportSources.map((source: any) => source.label || source.id).join(", ") || "None"}.
-                              Selectable metrics: {customReportSelectableMetricKeys.join(", ") || "None"}.
-                            </div>
+                            customReportSources.length > 0 ? (
+                              <ul className="mt-2 list-disc space-y-1 pl-5">
+                                {customReportSources.map((source: any) => (
+                                  <li key={source.id || source.label}>{source.label || source.id}</li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <div>No connected sources are available for this campaign yet.</div>
+                            )
                           ) : (
                             <div>No connected-source aggregate is available for this campaign yet.</div>
                           )}
@@ -1393,11 +1407,7 @@ export default function Reports() {
                                 variant="outline" 
                                 size="sm" 
                                 className="text-red-600 hover:text-red-700"
-                                onClick={() => {
-                                  reportStorage.deleteReport(report.id);
-                                  const allReports = reportStorage.getReports();
-                                  setAllStoredReports(allReports);
-                                }}
+                                onClick={() => setReportPendingDelete(report)}
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
                                 Delete
@@ -1623,11 +1633,7 @@ export default function Reports() {
                                       variant="outline" 
                                       size="sm" 
                                       className="text-red-600 hover:text-red-700"
-                                      onClick={() => {
-                                        reportStorage.deleteReport(report.id);
-                                        const allReports = reportStorage.getReports();
-                                        setAllStoredReports(allReports);
-                                      }}
+                                      onClick={() => setReportPendingDelete(report)}
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </Button>
@@ -1696,11 +1702,7 @@ export default function Reports() {
                                 variant="outline"
                                 size="sm"
                                 className="text-red-600 hover:text-red-700"
-                                onClick={() => {
-                                  reportStorage.deleteReport(report.id);
-                                  const allReports = reportStorage.getReports();
-                                  setAllStoredReports(allReports);
-                                }}
+                                onClick={() => setReportPendingDelete(report)}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -1713,6 +1715,22 @@ export default function Reports() {
                 </div>
               </TabsContent>
             </Tabs>
+            <AlertDialog open={!!reportPendingDelete} onOpenChange={(open) => !open && setReportPendingDelete(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete report?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete "{reportPendingDelete?.name || "this report"}"? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={deletePendingReport} className="bg-red-600 hover:bg-red-700">
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </main>
       </div>

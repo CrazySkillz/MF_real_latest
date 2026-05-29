@@ -16,7 +16,7 @@ This tracker exists so Custom Report follows the same connected-source aggregate
 
 Production-ready as a Campaign DeepDive connected-source aggregate consumer for the implemented source contract.
 
-Custom Report is still opened through the Reports builder, but Campaign DeepDive now preserves campaign context with `/reports?campaignId=<campaignId>`. Campaign-scoped Custom Reports read the shared connected-source aggregate, expose only available metrics, render saved report outputs from live aggregate-backed values, and keep All Reports cards as summary-only cards with edit, download, and delete actions.
+Custom Report is still opened through the Reports builder, but Campaign DeepDive now preserves campaign context with `/reports?campaignId=<campaignId>`. Campaign-scoped Custom Reports read the shared connected-source aggregate, expose only available metrics, render saved report outputs from live aggregate-backed values, and keep All Reports cards as summary-only cards with edit, download, and confirmed delete actions.
 
 ## Required Product Rule
 
@@ -212,6 +212,8 @@ Status:
 - [x] Completed locally: report tabs are ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports is the default tab and its download action is labeled `Download latest report`.
 - [x] Completed locally: campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types and lets users choose which tabs from the selected subsection to include; the standalone `/reports` route keeps its broader report type options when reached directly.
 - [x] Completed locally: generated report cards no longer show the `Generated` status pill.
+- [x] Completed locally: report delete icons open the shared website-style confirmation dialog before deleting the stored report.
+- [x] Completed locally: `Campaign connected-source data` lists connected source names as bullets and no longer displays internal selectable metric keys.
 - [x] User validation passed on 2026-05-28: All Reports cards show summary-only layout without connected-source detail previews.
 
 Current campaign-scoped Report Type menu:
@@ -289,6 +291,7 @@ Custom Report is production-ready when:
 - saved report configuration cannot reintroduce disconnected-source metrics
 - All Reports cards remain summary-only and do not expose connected-source values, KPI/Benchmark rows, generated status pills, or `Includes` configuration details inline
 - All Reports card edit icons open the report dialog with saved values prefilled, show `Update Report`, and keep update disabled until a change is made
+- report delete icons open a confirmation dialog before removing the stored report record
 - The top-level `Create Report` action opens an empty create form, clears report type, selected tabs, custom metric selections, and edit mode
 - Unscheduled create mode shows `Download Report` and downloads the selected report sections as a PDF
 - Downloaded PDFs render the selected tab bodies from `performanceSummary.totals` and `performanceSummary.sources` where those aggregate inputs are available
@@ -338,6 +341,7 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Download Report content fix added on 2026-05-28 and pushed in commit `ec6f9234`: Campaign DeepDive subsection exports now print selected tab bodies from the connected-source aggregate instead of only listing selected tab names.
 - Report Type composition updated on 2026-05-28 and pushed in commit `f8dfeee0`: Campaign DeepDive Custom Report creation exposes Campaign DeepDive subsection report types and saves selected subsection tabs; the standalone `/reports` route keeps broader report-type choices when reached directly.
 - Commit 7 documentation updated on 2026-05-28.
+- Report delete confirmation and connected-source source-list cleanup added on 2026-05-29.
 - Local validation passed on 2026-05-28: `npm test -- server/custom-report-regression.test.ts`.
 - Local validation passed on 2026-05-28: `npm run check`.
 - Local validation passed on 2026-05-28: `npm run build`.

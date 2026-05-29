@@ -189,8 +189,8 @@ When scheduling is enabled, users can configure:
 
 - frequency: `daily`, `weekly`, `monthly`, `quarterly`
 - weekly day
-- monthly day
-- quarterly timing
+- monthly day: 1st day, 15th day, or last day of month
+- quarterly timing: start of quarter or end of quarter
 - time
 - email recipients
 

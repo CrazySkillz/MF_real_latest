@@ -104,6 +104,17 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('const [scheduleFrequency, setScheduleFrequency] = useState("daily");');
     expect(reports).toContain('setScheduleFrequency("daily");');
     expect(reports).toContain('scheduleFrequency: report.schedule?.frequency || "daily",');
+    expect(reports).toContain("const getDefaultScheduleDayForFrequency =");
+    expect(reports).toContain("setScheduleDay(getDefaultScheduleDayForFrequency(value));");
+    expect(reports).toContain('Label>Day of Month</Label>');
+    expect(reports).toContain('1st day of month');
+    expect(reports).toContain('15th day of month');
+    expect(reports).toContain('Last day of month');
+    expect(reports).toContain('Label>Quarter Timing</Label>');
+    expect(reports).toContain('Start of quarter');
+    expect(reports).toContain('End of quarter');
+    expect(reports).toContain('payload.scheduleDayOfMonth = schedule?.day === "last" ? 0 : Number(schedule?.day) || 1;');
+    expect(reports).toContain('payload.quarterTiming = schedule?.day === "start" ? "start" : "end";');
     expect(reports).toContain('const CAMPAIGN_DEEPDIVE_REPORT_PLATFORM = "campaign_deepdive";');
     expect(reports).toContain('fetch(`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports${backendReportId ? `/${encodeURIComponent(backendReportId)}` : ""}`');
     expect(reports).toContain('scheduleTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"');

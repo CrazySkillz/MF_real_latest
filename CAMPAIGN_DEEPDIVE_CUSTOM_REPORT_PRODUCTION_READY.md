@@ -211,6 +211,7 @@ Status:
 - [x] Completed locally: schedule mode label is `Schedule Automated Report`.
 - [x] Completed locally: scheduled create mode uses the same filled primary button style as `Download Report` for `Schedule Report`.
 - [x] Completed locally: new scheduled reports default to `Daily`, while edit mode preserves the saved schedule frequency.
+- [x] Completed locally: Monthly schedules expose logical day-of-month options, and Quarterly schedules expose start/end-of-quarter options instead of silently saving hidden defaults.
 - [x] Completed locally: Schedule form now creates backend scheduled report records for Campaign DeepDive Custom Reports, including recipients, schedule time, browser time zone, and saved report composition.
 - [x] Completed locally: the old `Templates` tab is now `Standard Reports`; generated/downloaded reports appear there and scheduled reports appear under `Scheduled Reports`.
 - [x] Completed locally: report tabs are ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports is the default tab and its download action is labeled `Download latest report`.
@@ -319,6 +320,8 @@ Custom Report is production-ready when:
 - Downloaded Budget & Financial Analysis PDFs include the same nested sections, cards, and row labels shown in the selected Budget & Financial web tabs, using `/outcome-totals.performanceSummary` for connected-source financial totals/source availability and the campaign row for budget/start/end pacing inputs
 - `Download latest report` must refetch `/outcome-totals`, `/executive-summary`, campaign context, KPIs, and Benchmarks for the report card's campaign before PDF generation, then use those refetched values immediately
 - Scheduled create mode uses `Schedule Automated Report`, defaults to `Daily`, and shows `Schedule Report` in the same filled primary button style as `Download Report`
+- Monthly schedule mode must show day-of-month choices: 1st day, 15th day, or last day of month
+- Quarterly schedule mode must show timing choices: start of quarter or end of quarter
 - Schedule form must create a backend scheduled report record with `scheduleTimeZone`, `scheduleTime`, recipients, saved report type, and selected tabs so `server/report-scheduler.ts` can send the report like platform-level scheduled reports
 - Campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types in this order: `Performance Summary`, `Budget & Financial Analysis`, `Platform Comparison`, `Trend Analysis`, and `Executive Summary`
 - Selecting a Campaign DeepDive subsection exposes that subsection's current tab list as report composition checkboxes and saves those tab keys in `selectedSections`
@@ -377,6 +380,8 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Performance Summary PDF section parity fix added on 2026-05-29.
 - Budget & Financial Analysis PDF section parity fix added on 2026-05-29 and expanded to include nested card/row parity for Campaign Health Score, Budget Pacing & Burn Rate, source performance, allocation, and insight sections.
 - Campaign DeepDive Custom Report scheduled-email backend wiring added on 2026-05-29: scheduled create/update/delete writes through `/api/platforms/campaign_deepdive/reports`, stores time zone and recipients, and the scheduler has a `campaign_deepdive` PDF attachment path.
+- Monthly and Quarterly schedule option cleanup added on 2026-05-29: Monthly exposes day-of-month choices and Quarterly exposes start/end-of-quarter choices.
+- Local validation passed on 2026-05-29 for Monthly and Quarterly schedule options: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - Local validation passed on 2026-05-29 for scheduled-email backend wiring: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - Local validation passed on 2026-05-28: `npm test -- server/custom-report-regression.test.ts`.
 - Local validation passed on 2026-05-28: `npm run check`.

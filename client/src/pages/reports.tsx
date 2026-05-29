@@ -201,6 +201,13 @@ const scheduleDayOfWeekToInt = (value: string) => ({
   saturday: 6,
 }[value.toLowerCase()] ?? 1);
 
+const getDefaultScheduleDayForFrequency = (frequency: string) => {
+  if (frequency === "weekly") return "monday";
+  if (frequency === "monthly") return "1";
+  if (frequency === "quarterly") return "end";
+  return "monday";
+};
+
 const getReportFormSignature = (values: {
   name: string;
   description: string;
@@ -573,10 +580,12 @@ export default function Reports() {
     };
 
     if (frequency === "weekly") payload.scheduleDayOfWeek = scheduleDayOfWeekToInt(schedule?.day || "monday");
-    if (frequency === "monthly") payload.scheduleDayOfMonth = 1;
+    if (frequency === "monthly") {
+      payload.scheduleDayOfMonth = schedule?.day === "last" ? 0 : Number(schedule?.day) || 1;
+    }
     if (frequency === "quarterly") {
-      payload.scheduleDayOfMonth = 1;
-      payload.quarterTiming = "end";
+      payload.scheduleDayOfMonth = schedule?.day === "start" ? 1 : 0;
+      payload.quarterTiming = schedule?.day === "start" ? "start" : "end";
     }
 
     return payload;
@@ -1738,7 +1747,10 @@ export default function Reports() {
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
                               <Label>Frequency</Label>
-                              <Select value={scheduleFrequency} onValueChange={setScheduleFrequency}>
+                              <Select value={scheduleFrequency} onValueChange={(value) => {
+                                setScheduleFrequency(value);
+                                setScheduleDay(getDefaultScheduleDayForFrequency(value));
+                              }}>
                                 <SelectTrigger>
                                   <SelectValue />
                                 </SelectTrigger>
@@ -1764,6 +1776,37 @@ export default function Reports() {
                                     <SelectItem value="wednesday">Wednesday</SelectItem>
                                     <SelectItem value="thursday">Thursday</SelectItem>
                                     <SelectItem value="friday">Friday</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+
+                            {scheduleFrequency === "monthly" && (
+                              <div className="space-y-2">
+                                <Label>Day of Month</Label>
+                                <Select value={["1", "15", "last"].includes(scheduleDay) ? scheduleDay : "1"} onValueChange={setScheduleDay}>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="1">1st day of month</SelectItem>
+                                    <SelectItem value="15">15th day of month</SelectItem>
+                                    <SelectItem value="last">Last day of month</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+
+                            {scheduleFrequency === "quarterly" && (
+                              <div className="space-y-2">
+                                <Label>Quarter Timing</Label>
+                                <Select value={["start", "end"].includes(scheduleDay) ? scheduleDay : "end"} onValueChange={setScheduleDay}>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="start">Start of quarter</SelectItem>
+                                    <SelectItem value="end">End of quarter</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>

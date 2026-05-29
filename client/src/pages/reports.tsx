@@ -259,6 +259,12 @@ export default function Reports() {
     refetchOnWindowFocus: true,
   });
 
+  const { data: campaignFinancialContext } = useQuery<any>({
+    queryKey: ["/api/campaigns", campaignContextId],
+    enabled: !!campaignContextId,
+    refetchOnWindowFocus: true,
+  });
+
   const { data: campaignKpis = [] } = useQuery<any[]>({
     queryKey: [`/api/campaigns/${campaignContextId}/kpis`],
     enabled: !!campaignContextId,
@@ -270,9 +276,8 @@ export default function Reports() {
   });
 
   const customReportPerformanceSummary = campaignOutcomeTotals?.performanceSummary;
-  const customReportSources = Array.isArray(customReportPerformanceSummary?.sources)
-    ? customReportPerformanceSummary.sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
-    : [];
+  const customReportAllSources = Array.isArray(customReportPerformanceSummary?.sources) ? customReportPerformanceSummary.sources : [];
+  const customReportSources = customReportAllSources.filter((source: any) => source?.connected === true && source?.category !== "financial");
   const customReportAvailableMetricKeys = Object.entries(customReportPerformanceSummary?.totals || {})
     .filter(([, metric]: [string, any]) => metric?.available === true)
     .map(([key]) => key);
@@ -923,59 +928,202 @@ export default function Reports() {
       }
     };
     const addFinancialAnalysisContent = (section: string) => {
+      const campaignBudget = Number(String(campaignFinancialContext?.budget ?? "").replace(/,/g, "")) || 0;
+      const campaignStartDate = campaignFinancialContext?.startDate ? new Date(campaignFinancialContext.startDate) : null;
+      const campaignEndDate = campaignFinancialContext?.endDate ? new Date(campaignFinancialContext.endDate) : null;
+      const hasCampaignDateRange = !!campaignStartDate && !!campaignEndDate && campaignEndDate.getTime() >= campaignStartDate.getTime();
+      const today = new Date();
+      const effectiveElapsedEnd = campaignEndDate && campaignEndDate.getTime() < today.getTime() ? campaignEndDate : today;
+      const campaignElapsedDays = campaignStartDate
+        ? Math.max(0, Math.floor((effectiveElapsedEnd.getTime() - campaignStartDate.getTime()) / (24 * 60 * 60 * 1000)) + 1)
+        : 0;
+      const campaignTotalDays = hasCampaignDateRange
+        ? Math.max(1, Math.floor((campaignEndDate!.getTime() - campaignStartDate!.getTime()) / (24 * 60 * 60 * 1000)) + 1)
+        : 0;
+      const spend = metricNumber("spend");
+      const revenue = metricNumber("revenue");
+      const conversions = metricNumber("conversions");
+      const budgetUtilization = campaignBudget > 0 && metricAvailable("spend") ? (spend / campaignBudget) * 100 : null;
+      const remainingBudget = campaignBudget - spend;
+      const dailyBurnRate = campaignElapsedDays > 0 && metricAvailable("spend") ? spend / campaignElapsedDays : null;
+      const targetDailySpend = campaignTotalDays > 0 && campaignBudget > 0 ? campaignBudget / campaignTotalDays : null;
+      const pacingPercentage = dailyBurnRate !== null && targetDailySpend !== null && targetDailySpend > 0
+        ? (dailyBurnRate / targetDailySpend) * 100
+        : null;
+      const pacingStatus = pacingPercentage === null ? "Unavailable" : pacingPercentage > 115 ? `${(pacingPercentage - 100).toFixed(1)}% Over` : pacingPercentage < 85 ? `${(100 - pacingPercentage).toFixed(1)}% Under` : "On Track";
+      const projectedExhaustionDays = dailyBurnRate !== null && dailyBurnRate > 0 && remainingBudget > 0 ? remainingBudget / dailyBurnRate : null;
+      const sourceIncludesMetric = (source: any, metricName: string) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
+      const sourceMetricNumber = (source: any, metricName: string) => {
+        const value = metricName === "revenue"
+          ? source?.metrics?.attributedRevenue ?? source?.metrics?.revenue
+          : source?.metrics?.[metricName];
+        const numberValue = Number(value);
+        return Number.isFinite(numberValue) ? numberValue : 0;
+      };
+      const sourceRoas = (source: any) => {
+        const explicitRoas = Number(source?.metrics?.roas);
+        if (Number.isFinite(explicitRoas)) return explicitRoas;
+        const sourceSpend = sourceMetricNumber(source, "spend");
+        return sourceSpend > 0 ? sourceMetricNumber(source, "revenue") / sourceSpend : null;
+      };
+      const sourceRoi = (source: any) => {
+        const explicitRoi = Number(source?.metrics?.roi);
+        if (Number.isFinite(explicitRoi)) return explicitRoi;
+        const sourceSpend = sourceMetricNumber(source, "spend");
+        return sourceSpend > 0 ? ((sourceMetricNumber(source, "revenue") - sourceSpend) / sourceSpend) * 100 : null;
+      };
+      const financialMainSources = customReportSources.filter((source: any) =>
+        ["revenue", "spend", "conversions"].some((metricName) => sourceIncludesMetric(source, metricName))
+      );
+      const financialInputSources = customReportAllSources.filter((source: any) => source?.connected === true && source?.category === "financial");
       const spendCapableSources = customReportSources.filter((source: any) => {
         const includedMetrics = Array.isArray(source?.includedMetrics) ? source.includedMetrics : [];
         return source?.category === "paid_media" && includedMetrics.includes("spend");
       });
+      const allocationSpend = spendCapableSources.reduce((sum: number, source: any) => sum + sourceMetricNumber(source, "spend"), 0);
+      const highPerformance = spendCapableSources.filter((source: any) => (sourceRoas(source) ?? 0) >= 3);
+      const mediumPerformance = spendCapableSources.filter((source: any) => {
+        const roas = sourceRoas(source);
+        return roas !== null && roas >= 1 && roas < 3;
+      });
+      const lowPerformance = spendCapableSources.filter((source: any) => {
+        const roas = sourceRoas(source);
+        return roas !== null && roas < 1;
+      });
+      const sourceWithBestRoas = spendCapableSources
+        .filter((source: any) => sourceMetricNumber(source, "spend") > 0 && sourceRoas(source) !== null)
+        .sort((a: any, b: any) => (sourceRoas(b) ?? 0) - (sourceRoas(a) ?? 0))[0];
+      const sourceWithWeakestRoas = spendCapableSources
+        .filter((source: any) => sourceMetricNumber(source, "spend") > 0 && sourceRoas(source) !== null)
+        .sort((a: any, b: any) => (sourceRoas(a) ?? 0) - (sourceRoas(b) ?? 0))[0];
+      const formatDate = (date: Date | null) => date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : "Unavailable";
+      const addRow = (label: string, value: string, indent = 8) => addText(`- ${label}: ${value}`, { indent });
+      const addFinancialMetricRow = (label: string, key: string, indent = 8) => addRow(label, metricValue(key), indent);
+      const addSourceRows = (sources: any[], indent = 8) => {
+        if (sources.length === 0) {
+          addText("- No matching connected source rows available.", { indent });
+          return;
+        }
+        sources.forEach((source: any) => {
+          const sourceSpend = sourceMetricNumber(source, "spend");
+          const sourceRevenue = sourceMetricNumber(source, "revenue");
+          const sourceConversions = sourceMetricNumber(source, "conversions");
+          const roas = sourceRoas(source);
+          const roi = sourceRoi(source);
+          addText(`- ${source?.label || source?.id}: Spend ${formatCustomReportMetricValue("spend", sourceSpend)}, Conversions ${formatCustomReportMetricValue("conversions", sourceConversions)}, Revenue ${formatCustomReportMetricValue("revenue", sourceRevenue)}, ROAS ${roas === null ? "Unavailable" : formatCustomReportMetricValue("roas", roas)}, ROI ${roi === null ? "Unavailable" : formatCustomReportMetricValue("roi", roi)}`, { indent });
+        });
+      };
+      const addFinancialInputRows = () => {
+        const revenueInputs = financialInputSources.filter((source: any) => sourceMetricNumber(source, "revenue") > 0);
+        const spendInputs = financialInputSources.filter((source: any) => sourceMetricNumber(source, "spend") > 0);
+        addText("Revenue", { bold: true, indent: 12 });
+        revenueInputs.length > 0
+          ? revenueInputs.forEach((source: any) => addRow(source?.label || source?.id, formatCustomReportMetricValue("revenue", sourceMetricNumber(source, "revenue")), 16))
+          : addText("- No financial revenue input rows available.", { indent: 16 });
+        addText("Spend", { bold: true, indent: 12 });
+        spendInputs.length > 0
+          ? spendInputs.forEach((source: any) => addRow(source?.label || source?.id, formatCustomReportMetricValue("spend", sourceMetricNumber(source, "spend")), 16))
+          : addText("- No financial spend input rows available.", { indent: 16 });
+      };
+      const budgetHealthStatus = budgetUtilization === null ? "Unavailable" : budgetUtilization <= 80 ? "excellent" : budgetUtilization <= 95 ? "good" : budgetUtilization <= 100 ? "warning" : "critical";
+      const pacingDeviation = pacingPercentage === null ? null : Math.abs(pacingPercentage - 100);
+      const pacingHealthStatus = pacingDeviation === null ? "Unavailable" : pacingDeviation <= 15 ? "excellent" : pacingDeviation <= 30 ? "good" : pacingDeviation <= 50 ? "warning" : "critical";
+      const roiStatus = !metricAvailable("roi") ? "Unavailable" : metricNumber("roi") >= 100 ? "excellent" : metricNumber("roi") >= 50 ? "good" : metricNumber("roi") >= 0 ? "warning" : "critical";
+      const roasStatus = !metricAvailable("roas") ? "Unavailable" : metricNumber("roas") >= 3 ? "excellent" : metricNumber("roas") >= 1.5 ? "good" : metricNumber("roas") >= 1 ? "warning" : "critical";
+      const budgetScore = budgetUtilization === null ? 0 : budgetUtilization <= 80 ? 25 : budgetUtilization <= 95 ? 15 : budgetUtilization <= 100 ? 10 : 0;
+      const pacingScore = pacingDeviation === null ? 0 : pacingDeviation <= 15 ? 25 : pacingDeviation <= 30 ? 15 : pacingDeviation <= 50 ? 10 : 0;
+      const roiScore = !metricAvailable("roi") ? 0 : metricNumber("roi") >= 100 ? 25 : metricNumber("roi") >= 50 ? 15 : metricNumber("roi") >= 0 ? 10 : 0;
+      const roasScore = !metricAvailable("roas") ? 0 : metricNumber("roas") >= 3 ? 25 : metricNumber("roas") >= 1.5 ? 15 : metricNumber("roas") >= 1 ? 10 : 0;
+      const availableHealthMetricCount = [budgetUtilization !== null, pacingPercentage !== null, metricAvailable("roi"), metricAvailable("roas")].filter(Boolean).length;
+      const displayHealthScore = availableHealthMetricCount > 0 ? Math.round(((budgetScore + pacingScore + roiScore + roasScore) / (availableHealthMetricCount * 25)) * 100) : null;
+      const healthRating = displayHealthScore === null ? "Unavailable" : displayHealthScore >= 80 ? "Excellent" : displayHealthScore >= 60 ? "Good" : displayHealthScore >= 40 ? "Fair" : "Needs Attention";
 
       if (section === "financial-analysis:overview") {
+        if (!metricAvailable("revenue")) {
+          addText("Conversion Value Not Configured", { bold: true, indent: 4 });
+          addText("Revenue, ROI, and ROAS calculations require conversion value configuration.", { indent: 8 });
+        }
         addText("Campaign Health Score", { bold: true, indent: 4 });
-        addMetricList(["spend", "revenue", "roas", "roi"]);
+        addRow("Score", displayHealthScore === null ? "Unavailable" : `${displayHealthScore} out of 100 (${availableHealthMetricCount}/4 inputs)`);
+        addRow("Rating", healthRating);
+        addRow("Budget Utilization", `${budgetUtilization === null ? "Unavailable" : `${budgetUtilization.toFixed(1)}%`} - ${budgetHealthStatus}`);
+        addRow("Pacing Status", `${pacingPercentage === null ? "Unavailable" : `${pacingPercentage.toFixed(1)}%`} - ${pacingHealthStatus}`);
+        addRow("Campaign ROI", `${metricValue("roi")} - ${roiStatus}`);
+        addRow("Campaign ROAS", `${metricValue("roas")} - ${roasStatus}`);
         addText("Key Financial Metrics", { bold: true, indent: 4 });
-        addMetricList(["spend", "conversions"]);
+        addFinancialMetricRow("Total Spend", "spend");
+        addFinancialMetricRow("Conversions", "conversions");
         addText("Budget Utilization", { bold: true, indent: 4 });
-        addText("Campaign budget context is required to judge utilization; connected-source spend is shown when available.", { indent: 8 });
-        addMetricList(["spend"]);
+        addRow("Budget Used", `${metricValue("spend")} of ${campaignBudget > 0 ? formatCustomReportMetricValue("spend", campaignBudget) : "Unavailable"}`);
+        addRow("Utilized", budgetUtilization === null ? "Unavailable" : `${budgetUtilization.toFixed(1)}% utilized`);
+        addRow("Remaining", campaignBudget > 0 && metricAvailable("spend") ? formatCustomReportMetricValue("spend", remainingBudget) : "Unavailable");
         addText("Budget Pacing & Burn Rate", { bold: true, indent: 4 });
-        addText("Pacing requires campaign spend, budget, start date, and end date.", { indent: 8 });
-        addMetricList(["spend"]);
+        addRow("Daily Burn Rate", dailyBurnRate === null ? "Unavailable" : formatCustomReportMetricValue("spend", dailyBurnRate));
+        addRow("Daily Burn Rate Basis", campaignElapsedDays > 0 ? `Based on ${campaignElapsedDays} elapsed campaign ${campaignElapsedDays === 1 ? "day" : "days"}` : "Requires campaign spend and start date");
+        addRow("Target Daily Spend", targetDailySpend === null ? "Unavailable" : formatCustomReportMetricValue("spend", targetDailySpend));
+        addRow("Pacing Status", pacingStatus);
+        addRow("Campaign Budget", campaignBudget > 0 ? formatCustomReportMetricValue("spend", campaignBudget) : "Unavailable");
+        addRow("Start Date", formatDate(campaignStartDate));
+        addRow("End Date", formatDate(campaignEndDate));
+        if (remainingBudget < 0 && campaignBudget > 0 && metricAvailable("spend")) {
+          addRow("Budget exceeded by", formatCustomReportMetricValue("spend", Math.abs(remainingBudget)));
+        }
+        if (projectedExhaustionDays !== null) {
+          addRow("Projected Exhaustion", `At current rate, budget will be exhausted in ${Math.ceil(projectedExhaustionDays)} days`);
+        }
         addText("Cost Efficiency Metrics", { bold: true, indent: 4 });
-        addMetricList(["cpc", "cpa", "cvr"]);
+        addFinancialMetricRow("Cost Per Click", "cpc");
+        addFinancialMetricRow("Cost Per Acquisition", "cpa");
+        addFinancialMetricRow("Conversion Rate", "cvr");
       } else if (section === "financial-analysis:roi-roas") {
         addText("ROI & ROAS Analysis", { bold: true, indent: 4 });
         addText("Return on Ad Spend (ROAS)", { bold: true, indent: 8 });
-        addMetricList(["roas", "spend", "revenue"]);
+        addRow("ROAS", metricValue("roas"), 12);
+        addRow("Explanation", metricAvailable("roas") ? `For every $1 spent on advertising, campaign revenue is ${metricValue("roas")}.` : "ROAS requires available revenue and spend.", 12);
+        addRow("Total Ad Spend", metricValue("spend"), 12);
+        addRow("Total Revenue", metricValue("revenue"), 12);
         addText("Return on Investment (ROI)", { bold: true, indent: 8 });
-        addMetricList(["roi", "spend", "revenue"]);
+        addRow("ROI", metricValue("roi"), 12);
+        addRow("Return Status", metricAvailable("roi") ? `${metricNumber("roi") >= 0 ? "Positive" : "Negative"} return on advertising investment` : "ROI requires available revenue and spend", 12);
+        addRow("Net Profit", metricAvailable("revenue") && metricAvailable("spend") ? formatCustomReportMetricValue("revenue", revenue - spend) : "Unavailable", 12);
+        addRow("Investment", metricValue("spend"), 12);
         addText("Source ROAS Performance", { bold: true, indent: 8 });
-        addSourceList();
+        addSourceRows(financialMainSources, 12);
         addText("Source ROI Performance", { bold: true, indent: 8 });
-        addSourceList();
+        addSourceRows(financialMainSources, 12);
         addText("Financial Inputs", { bold: true, indent: 8 });
-        addSourceList();
+        addText("These child inputs feed aggregate revenue and spend through their parent connected platform and are not separate main Connected Platforms.", { indent: 12 });
+        addFinancialInputRows();
       } else if (section === "financial-analysis:costs") {
         addText("Cost Analysis Breakdown", { bold: true, indent: 4 });
         addText("Cost Metrics", { bold: true, indent: 8 });
-        addMetricList(["cpc", "cpa", "cpm"]);
+        addFinancialMetricRow("Cost Per Click (CPC)", "cpc", 12);
+        addFinancialMetricRow("Cost Per Acquisition (CPA)", "cpa", 12);
+        addFinancialMetricRow("Cost Per Thousand Impressions (CPM)", "cpm", 12);
         addText("Efficiency Indicators", { bold: true, indent: 8 });
-        addMetricList(["ctr", "cvr"]);
+        addFinancialMetricRow("Click-through Rate (CTR)", "ctr", 12);
+        addFinancialMetricRow("Conversion Rate (CVR)", "cvr", 12);
         addText("Sources", { bold: true, indent: 8 });
-        addSourceList();
+        addSourceRows(financialMainSources, 12);
       } else if (section === "financial-analysis:budget") {
         addText("Performance-Based Budget Allocation", { bold: true, indent: 4 });
         addText("Imported spend labels inside GA4 feed total spend, ROI, and ROAS but are not connected ad platforms. Budget Allocation only shows sources after a spend-capable ad platform is connected in Connected Platforms.", { indent: 8 });
         addText("Performance Tiers", { bold: true, indent: 4 });
-        addText("High Performance: sources with ROAS >= 3.0x", { indent: 8 });
-        addText("Medium Performance: sources with ROAS 1.0-3.0x", { indent: 8 });
-        addText("Low Performance: sources with ROAS < 1.0x", { indent: 8 });
+        addRow("High Performance", `${formatCustomReportMetricValue("spend", highPerformance.reduce((sum: number, source: any) => sum + sourceMetricNumber(source, "spend"), 0))}; Sources with ROAS >= 3.0x`);
+        addRow("Medium Performance", `${formatCustomReportMetricValue("spend", mediumPerformance.reduce((sum: number, source: any) => sum + sourceMetricNumber(source, "spend"), 0))}; Sources with ROAS 1.0-3.0x`);
+        addRow("Low Performance", `${formatCustomReportMetricValue("spend", lowPerformance.reduce((sum: number, source: any) => sum + sourceMetricNumber(source, "spend"), 0))}; Sources with ROAS < 1.0x`);
         addText("Source Budget Analysis", { bold: true, indent: 4 });
         if (spendCapableSources.length === 0) {
           addText("No spend-capable connected source is available for budget allocation yet.", { indent: 8 });
-        } else {
+        } else if (spendCapableSources.length === 1) {
+          addText("One spend-capable connected source is available. Budget reallocation recommendations require at least two spend-capable sources.", { indent: 8 });
+        }
+        if (spendCapableSources.length > 0) {
           spendCapableSources.forEach((source: any) => {
             const sourceSpend = Number(source?.metrics?.spend);
             const spendText = Number.isFinite(sourceSpend) ? formatCustomReportMetricValue("spend", sourceSpend) : "Spend included in connected-source aggregate";
-            addText(`- ${source?.label || source?.id}: ${spendText}`, { indent: 8 });
+            const budgetShare = allocationSpend > 0 ? (sourceMetricNumber(source, "spend") / allocationSpend) * 100 : 0;
+            addText(`- ${source?.label || source?.id}: Spend ${spendText}, Conversions ${formatCustomReportMetricValue("conversions", sourceMetricNumber(source, "conversions"))}, Revenue ${formatCustomReportMetricValue("revenue", sourceMetricNumber(source, "revenue"))}, Budget Share ${budgetShare.toFixed(1)}%, ROAS ${sourceRoas(source) === null ? "Unavailable" : formatCustomReportMetricValue("roas", sourceRoas(source))}`, { indent: 8 });
           });
         }
         addText("Allocation Guidance", { bold: true, indent: 4 });
@@ -983,19 +1131,46 @@ export default function Reports() {
       } else if (section === "financial-analysis:insights") {
         addText("Financial Performance Insights", { bold: true, indent: 4 });
         addText("Performance Summary", { bold: true, indent: 8 });
-        addMetricList(["roas", "roi"]);
+        addText(metricAvailable("roas") && metricAvailable("roi") ? `Campaign is generating ${metricValue("roas")} ROAS with ${metricValue("roi")} ROI.` : "ROAS and ROI require available revenue and spend.", { indent: 12 });
         addText("Cost Efficiency", { bold: true, indent: 8 });
-        addMetricList(["cpa", "cpc", "cpm"]);
+        addText(metricAvailable("cpa") ? `CPA is ${metricValue("cpa")}. ${metricNumber("cpa") < 25 ? "Acquisition costs are well controlled." : "Review conversion efficiency before increasing spend."}` : "CPA requires available spend and conversions.", { indent: 12 });
         addText("Budget Management", { bold: true, indent: 8 });
-        addMetricList(["spend"]);
+        addText(budgetUtilization === null ? "Budget management requires available spend and campaign budget." : `Campaign has utilized ${budgetUtilization.toFixed(1)}% of budget. ${budgetUtilization > 100 ? "Campaign spend is over budget." : budgetUtilization < 50 ? "Budget is underutilized relative to the total campaign budget." : budgetUtilization > 85 ? "Monitor remaining budget closely." : "Budget usage is currently within range."}`, { indent: 12 });
         addText("Source Performance Insights", { bold: true, indent: 4 });
-        addSourceList();
+        if (spendCapableSources.length === 0) {
+          addText("No spend-capable connected ad platform is available. Financial totals can still use GA4 child spend inputs, but paid-media optimization insights require a connected ad platform.", { indent: 8 });
+        } else {
+          if (sourceWithBestRoas) addText(`- ${spendCapableSources.length > 1 ? "Strongest Source" : "Source Performance"}: ${sourceWithBestRoas.label || sourceWithBestRoas.id} generating ${formatCustomReportMetricValue("roas", sourceRoas(sourceWithBestRoas))} ROAS with ${formatCustomReportMetricValue("spend", sourceMetricNumber(sourceWithBestRoas, "spend"))} spend`, { indent: 8 });
+          if (sourceWithWeakestRoas && sourceWithWeakestRoas !== sourceWithBestRoas) addText(`- Needs Attention: ${sourceWithWeakestRoas.label || sourceWithWeakestRoas.id} generating ${formatCustomReportMetricValue("roas", sourceRoas(sourceWithWeakestRoas))} ROAS`, { indent: 8 });
+          if (spendCapableSources.length === 1) addText("- Source Data Status: Reallocation insights require at least two spend-capable sources.", { indent: 8 });
+        }
         addText("Key Opportunities", { bold: true, indent: 4 });
-        addMetricList(["cvr", "ctr", "roas", "spend"]);
+        if (budgetUtilization !== null && budgetUtilization < 50 && metricAvailable("roas") && metricNumber("roas") > 2) addText(`- Budget Underutilized: Only ${budgetUtilization.toFixed(1)}% of budget is utilized while ROAS is ${metricValue("roas")}.`, { indent: 8 });
+        if (metricAvailable("cvr") && metricNumber("cvr") < 5 && metricAvailable("conversions") && conversions > 10) addText(`- Conversion Rate Optimization: Current CVR of ${metricValue("cvr")} has room for improvement.`, { indent: 8 });
+        if (metricAvailable("ctr") && metricNumber("ctr") < 2) addText(`- Improve Ad Engagement: CTR of ${metricValue("ctr")} is low.`, { indent: 8 });
+        if (budgetUtilization !== null && budgetUtilization > 85 && budgetUtilization <= 100 && metricAvailable("roas") && metricNumber("roas") > 2) addText(`- Budget Capacity: ${budgetUtilization.toFixed(1)}% budget utilized with positive ROAS.`, { indent: 8 });
+        if (spendCapableSources.length === 0) addText("- No spend-capable connected ad platform is available for paid-media optimization opportunities.", { indent: 8 });
         addText("Budget Optimization Recommendations", { bold: true, indent: 4 });
-        addText("Budget optimization recommendations require multiple spend-capable connected sources.", { indent: 8 });
+        if (spendCapableSources.length > 1 && highPerformance.length > 0) addText(`- Scale High-Performing Sources: ${highPerformance.map((source: any) => source.label || source.id).join(", ")} generating ROAS >= 3.0x.`, { indent: 8 });
+        if (spendCapableSources.length > 1 && lowPerformance.length > 0) addText(`- Optimize Underperforming Sources: ${lowPerformance.map((source: any) => source.label || source.id).join(", ")} showing ROAS below 1.0x.`, { indent: 8 });
+        if (spendCapableSources.length > 1 && highPerformance.length > 0 && lowPerformance.length > 0) addText("- Budget Reallocation Opportunity: Lower-performing spend could be reviewed for possible reallocation.", { indent: 8 });
+        if (spendCapableSources.length <= 1) addText("Budget optimization recommendations require multiple spend-capable connected sources.", { indent: 8 });
         addText("Cost Optimization Insights", { bold: true, indent: 4 });
-        addMetricList(["ctr", "cvr", "cpc", "cpa", "cpm"]);
+        const costInsights = [
+          metricAvailable("ctr") && metricNumber("ctr") < 1 ? "Click-through rate below 1% - test new ad creative and messaging on connected paid-media sources" : "",
+          metricAvailable("ctr") && metricNumber("ctr") >= 3 ? `Strong click-through rate of ${metricValue("ctr")} - paid-media engagement is performing well` : "",
+          metricAvailable("cvr") && metricNumber("cvr") < 2 ? "Conversion rate below 2% - review landing page experience and offer relevance" : "",
+          metricAvailable("cvr") && metricNumber("cvr") >= 10 ? `Excellent conversion rate of ${metricValue("cvr")} - landing page appears effective` : "",
+          metricAvailable("cpc") && metricNumber("cpc") > 10 ? `CPC of ${metricValue("cpc")} above average - refine audience targeting to reduce costs` : "",
+          metricAvailable("cpc") && metricNumber("cpc") < 2 ? `Low CPC of ${metricValue("cpc")} indicates efficient paid-media targeting` : "",
+          metricAvailable("cpm") && metricNumber("cpm") < 5 ? `CPM of ${metricValue("cpm")} is cost-efficient - strong reach per dollar spent` : "",
+          metricAvailable("cpm") && metricNumber("cpm") > 30 ? `CPM of ${metricValue("cpm")} above average - consider broadening paid-media audiences` : "",
+          metricAvailable("cpa") && metricNumber("cpa") > 100 ? `CPA of ${metricValue("cpa")} is high - review conversion funnel for drop-off points` : "",
+          metricAvailable("cpa") && metricNumber("cpa") < 15 ? `CPA of ${metricValue("cpa")} is excellent - acquisition costs are well controlled` : "",
+        ].filter(Boolean);
+        costInsights.length > 0
+          ? costInsights.forEach((insight) => addText(`- ${insight}`, { indent: 8 }))
+          : addText("- No cost optimization insight is available from current connected-source inputs.", { indent: 8 });
       }
     };
     const recommendationImpactItems = (rec: any) => {

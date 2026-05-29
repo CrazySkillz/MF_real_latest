@@ -260,7 +260,6 @@ export default function Reports() {
   // Filter states for All Reports tab
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [campaignFilter, setCampaignFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
 
@@ -793,11 +792,6 @@ export default function Reports() {
       return false;
     }
 
-    // Campaign filter
-    if (campaignFilter !== "all" && report.campaignName !== campaignFilter) {
-      return false;
-    }
-
     // Type filter
     if (typeFilter !== "all" && report.type !== typeFilter) {
       return false;
@@ -829,11 +823,6 @@ export default function Reports() {
   });
   const standardReports = allStoredReports.filter(report => report.status === 'Generated');
   const storedScheduledReports = allStoredReports.filter(report => (report.status === 'Scheduled' || report.status === 'Paused') && report.schedule);
-
-  // Get unique campaign names for filter dropdown
-  const uniqueCampaigns = Array.from(new Set(
-    allStoredReports.map(r => r.campaignName).filter(Boolean)
-  ));
 
   // Get unique report types for filter dropdown
   const uniqueTypes = Array.from(new Set(
@@ -2104,12 +2093,6 @@ export default function Reports() {
                                 {getReportSelectedTabSummary(report)}
                               </div>
                             </div>
-                            <div>
-                              <span className="font-medium text-foreground">Status:</span>
-                              <div className={report.status === "Paused" ? "text-amber-700" : "text-green-700"}>
-                                {report.status === "Paused" ? "Paused" : "Enabled"}
-                              </div>
-                            </div>
                           </div>
                           
                           <div className="flex items-center justify-between pt-4 border-t">
@@ -2158,7 +2141,7 @@ export default function Reports() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {/* Search */}
                         <div className="space-y-2">
                           <Label>Search</Label>
@@ -2185,22 +2168,6 @@ export default function Reports() {
                               <SelectItem value="Generated">Generated</SelectItem>
                               <SelectItem value="Scheduled">Scheduled</SelectItem>
                               <SelectItem value="Paused">Paused</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Campaign Filter */}
-                        <div className="space-y-2">
-                          <Label>Campaign</Label>
-                          <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Campaigns</SelectItem>
-                              {uniqueCampaigns.map((campaign) => (
-                                <SelectItem key={campaign} value={campaign!}>{campaign}</SelectItem>
-                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -2265,7 +2232,6 @@ export default function Reports() {
                             onClick={() => {
                               setSearchQuery("");
                               setStatusFilter("all");
-                              setCampaignFilter("all");
                               setTypeFilter("all");
                               setDateFilter("all");
                             }}
@@ -2337,25 +2303,10 @@ export default function Reports() {
                                     >
                                       <Edit className="w-4 h-4" />
                                     </Button>
-                                    {report.status === 'Generated' ? (
-                                      <Button variant="outline" size="sm" onClick={() => downloadReportPdf(report)}>
-                                        <Download className="w-4 h-4 mr-2" />
-                                        Download last sent report
-                                      </Button>
-                                    ) : (
-                                      <div className="flex items-center space-x-2">
-                                        <Button variant="outline" size="sm" onClick={() => downloadReportPdf(report)}>
-                                          <Download className="w-4 h-4 mr-2" />
-                                          Download last sent report
-                                        </Button>
-                                        {report.status === 'Scheduled' && (
-                                        <Button variant="outline" size="sm" onClick={() => pauseScheduledReport(report)}>
-                                          <Pause className="w-4 h-4 mr-2" />
-                                          Pause
-                                        </Button>
-                                        )}
-                                      </div>
-                                    )}
+                                    <Button variant="outline" size="sm" onClick={() => downloadReportPdf(report)}>
+                                      <Download className="w-4 h-4 mr-2" />
+                                      Download latest report
+                                    </Button>
                                     
                                     <Button 
                                       variant="outline" 

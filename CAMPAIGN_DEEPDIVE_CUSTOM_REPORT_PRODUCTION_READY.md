@@ -203,6 +203,8 @@ Status:
 - [x] Completed locally: unmapped or unavailable KPI/Benchmark current values render as `Unavailable` instead of using saved `currentValue`.
 - [x] Completed locally: All Reports cards remain summary cards and do not render connected-source detail previews inline.
 - [x] Completed locally: All Reports cards expose an edit icon that opens the report dialog with saved values prefilled.
+- [x] Completed locally: All Reports cards use `Download latest report` and do not expose Scheduled Reports-only Pause/Resume actions.
+- [x] Completed locally: All Reports filter bar no longer includes the redundant `Campaign` dropdown.
 - [x] Completed locally: edit mode uses `Update Report`, suppresses first-field autofocus, and disables update until a form value changes.
 - [x] Completed locally: Create/edit report descriptions are limited to 160 characters, report cards show the description when available, and report cards no longer show the `Format: PDF` metadata row.
 - [x] Completed locally: the top-level `Create Report` button opens a fresh blank create form and does not reuse previously edited report values, report type, selected tabs, or selected metrics.
@@ -223,7 +225,8 @@ Status:
 - [x] Completed locally: Scheduled Reports shows a `No scheduled reports yet` empty state when no scheduled report records exist.
 - [x] Completed locally: Scheduled Reports cards no longer show the `Scheduled` status pill or settings icon, and their `Edit` action opens the report dialog with saved values prefilled.
 - [x] Completed locally: Scheduled Reports card `Data Included` lists the selected report tabs from `selectedSections` instead of legacy KPI/Benchmark flags.
-- [x] Completed locally: Scheduled Reports card `Pause` disables the backend schedule with backend status `paused`, marks the local card as paused, keeps the report visible in Scheduled Reports, and changes the card action to `Resume` so users can re-enable the saved backend schedule. Scheduled cards also expose `Download last sent report` backed by the same latest-value PDF regeneration path.
+- [x] Completed locally: Scheduled Reports card `Pause` disables the backend schedule with backend status `paused`, marks the local card as paused, keeps the report visible in Scheduled Reports, and changes the card action to `Resume` so users can re-enable the saved backend schedule. Scheduled cards do not show a separate Status field; the action label shows whether the schedule can be paused or resumed. Scheduled cards also expose `Download last sent report` backed by the same latest-value PDF regeneration path.
+- [x] Completed locally: Pause/Resume is intentionally limited to Scheduled Reports because it temporarily stops or restarts recurring email delivery without forcing users to delete and recreate the saved report setup.
 - [x] Completed locally: `Campaign connected-source data` lists connected source names as bullets and no longer displays internal selectable metric keys.
 - [x] Completed locally: Executive Summary `Executive Overview` PDF exports include the same major section set as the web tab: 7-Day Snapshot Trajectory, Risk Level, Executive Summary, Marketing Funnel Performance, KPI Progress, Benchmark Comparison, and Risk Assessment.
 - [x] Completed locally: Executive Summary `Strategic Recommendations` PDF exports include the same major section set as the web tab: data accuracy notice, data freshness alert, enterprise disclaimer, recommendation content, expected impact, timeframe, investment required, projected scenarios, key assumptions, and recommendation disclaimer where those inputs are present.
@@ -305,6 +308,8 @@ Custom Report is production-ready when:
 - KPI/Benchmark sections use live aggregate-backed current values
 - saved report configuration cannot reintroduce disconnected-source metrics
 - All Reports cards remain summary-only and do not expose connected-source values, KPI/Benchmark rows, generated status pills, or `Includes` configuration details inline
+- All Reports cards must show only the edit icon, `Download latest report`, and the delete icon; Pause/Resume belongs only in Scheduled Reports
+- All Reports filters should include Search, Status, Report Type, and Date Range; the redundant Campaign dropdown should not render
 - Report cards show saved descriptions when available and do not show redundant `Format: PDF` metadata
 - All Reports card edit icons open the report dialog with saved values prefilled, show `Update Report`, and keep update disabled until a change is made
 - Create/edit report descriptions are capped at 160 characters
@@ -313,7 +318,8 @@ Custom Report is production-ready when:
 - Scheduled Reports must show a clear empty state when there are no scheduled report records
 - Scheduled Reports cards must keep edit wired to `openEditReport(report)` and should not show redundant `Scheduled` status pills or settings icons
 - Scheduled Reports card `Data Included` must show selected tab labels from the saved `selectedSections` report composition
-- Scheduled Reports card `Pause` must disable the backend schedule where a backend report ID exists, mark the local card as paused, keep the report visible in Scheduled Reports, show whether each scheduled report is currently `Enabled` or `Paused`, and provide `Resume` for paused cards so the saved schedule can be re-enabled
+- Scheduled Reports card `Pause` must disable the backend schedule where a backend report ID exists, mark the local card as paused, keep the report visible in Scheduled Reports, avoid a separate visible Status field, and provide `Resume` for paused cards so the saved schedule can be re-enabled
+- Pause/Resume is required only for recurring scheduled delivery; it should not appear in All Reports because All Reports is a library view, not the schedule-control surface
 - Scheduled Reports card `Download last sent report` must regenerate from latest connected-source values for the saved report type, selected tabs, and selected metrics
 - The top-level `Create Report` action opens an empty create form, clears report type, selected tabs, custom metric selections, and edit mode
 - Unscheduled create mode shows `Download Report` and downloads the selected report sections as a PDF
@@ -374,6 +380,9 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Commit 6 user validation passed on 2026-05-28.
 - All Reports summary-only cleanup validated on 2026-05-28: connected-source detail previews and `Includes: KPIs, Benchmarks` are not rendered on report cards.
 - All Reports edit workflow added on 2026-05-28: edit icon opens prefilled dialog, `Update Report` is disabled until changes are made, generated status pill is hidden, and edit-mode report-name autofocus is suppressed.
+- All Reports action cleanup added on 2026-05-29: All Reports cards use `Download latest report` and keep Pause/Resume out of the library card action set.
+- Local validation passed on 2026-05-29 for All Reports action cleanup: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
+- All Reports Campaign filter removal added on 2026-05-29: Search, Status, Report Type, and Date Range remain; the Campaign dropdown no longer renders.
 - Create Report reset fix added on 2026-05-28: top-level create opens a fresh empty form after prior edits.
 - Create Report action split added on 2026-05-28: unscheduled create mode downloads the selected sections, while scheduled create mode saves with `Schedule Automated Report` and `Schedule Report`.
 - Download Report content fix added on 2026-05-28 and pushed in commit `ec6f9234`: Campaign DeepDive subsection exports now print selected tab bodies from the connected-source aggregate instead of only listing selected tab names.
@@ -387,7 +396,7 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Platform Comparison PDF section parity fix added on 2026-05-29: selected Platform Comparison tabs now export the matching web-tab section structure instead of the generic DeepDive metric-list fallback.
 - Campaign DeepDive Custom Report scheduled-email backend wiring added on 2026-05-29: scheduled create/update/delete writes through `/api/platforms/campaign_deepdive/reports`, stores time zone and recipients, and the scheduler has a `campaign_deepdive` PDF attachment path.
 - Monthly and Quarterly schedule option cleanup added on 2026-05-29: Monthly exposes day-of-month choices and Quarterly exposes start/end-of-quarter choices.
-- Scheduled Reports card action fix added on 2026-05-29: `Pause` now disables the backend schedule, writes backend status `paused`, keeps paused cards visible with a `Paused` status, shows active cards as `Enabled`, and exposes `Resume` on paused cards to re-enable the saved backend schedule. `Download last sent report` regenerates from latest values.
+- Scheduled Reports card action fix added on 2026-05-29: `Pause` now disables the backend schedule, writes backend status `paused`, keeps paused cards visible without a separate Status field, and exposes `Resume` on paused cards to re-enable the saved backend schedule. `Download last sent report` regenerates from latest values.
 - Local validation passed on 2026-05-29 for reversible Scheduled Reports Pause/Resume behavior: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - Local validation passed on 2026-05-29 for Platform Comparison PDF section parity and Scheduled Reports pause state: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - Local validation passed on 2026-05-29 for Monthly and Quarterly schedule options: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.

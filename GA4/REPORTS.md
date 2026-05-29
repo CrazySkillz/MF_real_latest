@@ -118,6 +118,7 @@ Important meaning:
 - report descriptions in create and edit mode should be capped at 160 characters
 - report delete icons should use the shared confirmation dialog before deleting a stored report
 - Scheduled Reports should render stored scheduled report records, not hard-coded demo cards, so delete operates on a real report ID
+- Scheduled Reports should show a clear empty state when there are no scheduled report records
 - the top-level `Create Report` action should reset edit state, report type, selected tabs, and selected metric state so it opens an empty create form after prior edits
 - Campaign connected-source data in the create dialog should list connected source names, not internal selectable metric keys
 - unscheduled create mode should show `Download Report` and download the selected report sections as a PDF

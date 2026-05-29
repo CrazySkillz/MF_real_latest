@@ -216,6 +216,7 @@ Status:
 - [x] Completed locally: generated report cards no longer show the `Generated` status pill.
 - [x] Completed locally: report delete icons open the shared website-style confirmation dialog before deleting the stored report.
 - [x] Completed locally: Scheduled Reports no longer renders hard-coded demo scheduled cards with nonfunctional delete buttons; the tab shows stored scheduled report records that use the shared confirmed delete path.
+- [x] Completed locally: Scheduled Reports shows a `No scheduled reports yet` empty state when no scheduled report records exist.
 - [x] Completed locally: `Campaign connected-source data` lists connected source names as bullets and no longer displays internal selectable metric keys.
 - [x] Completed locally: Executive Summary `Executive Overview` PDF exports include the same major section set as the web tab: 7-Day Snapshot Trajectory, Risk Level, Executive Summary, Marketing Funnel Performance, KPI Progress, Benchmark Comparison, and Risk Assessment.
 - [x] Completed locally: Executive Summary `Strategic Recommendations` PDF exports include the same major section set as the web tab: data accuracy notice, data freshness alert, enterprise disclaimer, recommendation content, expected impact, timeframe, investment required, projected scenarios, key assumptions, and recommendation disclaimer where those inputs are present.
@@ -301,6 +302,7 @@ Custom Report is production-ready when:
 - Create/edit report descriptions are capped at 160 characters
 - report delete icons open a confirmation dialog before removing the stored report record
 - Scheduled Reports must render stored scheduled report records, not hard-coded demo cards, so delete operates on a real report ID
+- Scheduled Reports must show a clear empty state when there are no scheduled report records
 - The top-level `Create Report` action opens an empty create form, clears report type, selected tabs, custom metric selections, and edit mode
 - Unscheduled create mode shows `Download Report` and downloads the selected report sections as a PDF
 - Downloaded PDFs render the selected tab bodies from `performanceSummary.totals` and `performanceSummary.sources` where those aggregate inputs are available

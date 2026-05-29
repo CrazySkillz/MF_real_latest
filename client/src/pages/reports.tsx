@@ -1718,7 +1718,18 @@ export default function Reports() {
 
               <TabsContent value="scheduled" className="space-y-6">
                 <div className="grid gap-6">
-                  {storedScheduledReports.map((report) => (
+                  {storedScheduledReports.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-12">
+                        <div className="text-center text-muted-foreground/70">
+                          <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p className="text-lg font-medium mb-2">No scheduled reports yet</p>
+                          <p>Use Schedule Report to create an automated report.</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    storedScheduledReports.map((report) => (
                     <Card key={report.id}>
                       <CardHeader>
                         <div className="flex items-start justify-between">
@@ -1808,7 +1819,8 @@ export default function Reports() {
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                    ))
+                  )}
                 </div>
               </TabsContent>
 

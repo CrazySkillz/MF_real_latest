@@ -144,6 +144,8 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('<TabsContent value="standard">');
     expect(reports).toContain("standardReports.map((report) => (");
     expect(reports).toContain("storedScheduledReports.map((report) => (");
+    expect(reports).toContain("No scheduled reports yet");
+    expect(reports).toContain("Use Schedule Report to create an automated report.");
     expect(reports).not.toContain("const scheduledReports = [");
     expect(reports).not.toContain("scheduledReports.map((report) => (");
     expect(reports).toContain("Download latest report");

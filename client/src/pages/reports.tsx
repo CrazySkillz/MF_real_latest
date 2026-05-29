@@ -245,6 +245,17 @@ export default function Reports() {
     refetchOnWindowFocus: true,
   });
 
+  const { data: campaignExecutiveSummary } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignContextId}/executive-summary`, "reports"],
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignContextId}/executive-summary`, { credentials: "include" });
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!campaignContextId,
+    refetchOnWindowFocus: true,
+  });
+
   const { data: campaignKpis = [] } = useQuery<any[]>({
     queryKey: [`/api/campaigns/${campaignContextId}/kpis`],
     enabled: !!campaignContextId,
@@ -811,6 +822,84 @@ export default function Reports() {
       const reason = Array.isArray(metric?.unavailableReasons) ? metric.unavailableReasons[0] : "";
       return `Unavailable${reason ? ` - ${reason}` : ""}`;
     };
+    const metricAvailable = (key: string) => customReportPerformanceSummary?.totals?.[key]?.available === true;
+    const metricNumber = (key: string) => {
+      const metric = customReportPerformanceSummary?.totals?.[key];
+      return metric?.available === true ? Number(metric.value) || 0 : 0;
+    };
+    const lowerIsBetterMetrics = new Set(["cpa", "cpc", "cpm"]);
+    const progressPct = (current: number, target: number, metricKey: string) => {
+      if (target <= 0) return 0;
+      const ratio = lowerIsBetterMetrics.has(metricKey) ? (current > 0 ? target / current : 1) : current / target;
+      return ratio * 100;
+    };
+    const executiveKpiRows = Array.isArray(campaignExecutiveSummary?.kpiProgress)
+      ? campaignExecutiveSummary.kpiProgress
+        .map((kpi: any) => ({ ...kpi, aggregateMetric: resolveCustomReportAggregateMetric(kpi) }))
+        .filter((kpi: any) => kpi.aggregateMetric)
+      : [];
+    const executiveBenchmarkRows = Array.isArray(campaignExecutiveSummary?.benchmarkComparison)
+      ? campaignExecutiveSummary.benchmarkComparison
+        .map((bm: any) => ({ ...bm, aggregateMetric: resolveCustomReportAggregateMetric(bm) }))
+        .filter((bm: any) => bm.aggregateMetric)
+      : [];
+    const addExecutiveOverviewContent = () => {
+      const trajectory = campaignExecutiveSummary?.health?.trajectory;
+      const trendPct = Number(campaignExecutiveSummary?.health?.trendPercentage) || 0;
+      const freshnessWarnings = Array.isArray(campaignExecutiveSummary?.dataFreshness?.warnings) ? campaignExecutiveSummary.dataFreshness.warnings : [];
+      const kpiMissCount = executiveKpiRows.filter((kpi: any) => progressPct(metricNumber(kpi.aggregateMetric), Number(kpi.target) || 0, kpi.aggregateMetric) < 70).length;
+      const benchmarkMissCount = executiveBenchmarkRows.filter((bm: any) => progressPct(metricNumber(bm.aggregateMetric), Number(bm.benchmark) || 0, bm.aggregateMetric) < 70).length;
+      const aggregateSources = Array.isArray(customReportPerformanceSummary?.sources) ? customReportPerformanceSummary.sources : [];
+      const paidSources = aggregateSources.filter((source: any) =>
+        source?.connected === true &&
+        source?.category !== "financial" &&
+        source?.category !== "web_analytics" &&
+        Array.isArray(source?.includedMetrics) &&
+        ["spend", "revenue", "conversions"].some((metricName) => source.includedMetrics.includes(metricName))
+      );
+      const paidSpendTotal = paidSources.reduce((sum: number, source: any) => sum + (Number(source?.metrics?.spend) || 0), 0);
+      const topSpendShare = paidSpendTotal > 0
+        ? Math.max(...paidSources.map((source: any) => ((Number(source?.metrics?.spend) || 0) / paidSpendTotal) * 100))
+        : 0;
+      const paidConcentrationRisk = paidSources.length === 1 || topSpendShare > 70;
+      const roiRoasRisk = (metricAvailable("roi") && metricNumber("roi") < 0) || (metricAvailable("roas") && metricNumber("roas") < 1);
+      const trendRisk = trajectory === "declining" && trendPct < -15;
+      const displayedRiskLevel = (metricAvailable("roi") && metricNumber("roi") < 0) || freshnessWarnings.some((warning: any) => warning.severity === "high")
+        ? "high"
+        : (roiRoasRisk || trendRisk || paidConcentrationRisk || kpiMissCount > 0 || benchmarkMissCount > 0 || freshnessWarnings.length > 0) ? "medium" : "low";
+      const metricSummary = [metricAvailable("roi") ? `ROI is ${metricValue("roi")}` : "", metricAvailable("roas") ? `ROAS is ${metricValue("roas")}` : ""].filter(Boolean);
+      const riskInputRows = [
+        { label: "KPI Risk", status: kpiMissCount > 0 ? "Risk" : executiveKpiRows.length > 0 ? "No Risk" : "Not Applicable", detail: kpiMissCount > 0 ? `${kpiMissCount} KPI${kpiMissCount === 1 ? " is" : "s are"} below 70% of target` : executiveKpiRows.length > 0 ? "Mapped KPIs are at or above 70% of target" : "No mapped campaign KPIs available" },
+        { label: "Benchmark Risk", status: benchmarkMissCount > 0 ? "Risk" : executiveBenchmarkRows.length > 0 ? "No Risk" : "Not Applicable", detail: benchmarkMissCount > 0 ? `${benchmarkMissCount} benchmark${benchmarkMissCount === 1 ? " is" : "s are"} below 70% of benchmark` : executiveBenchmarkRows.length > 0 ? "Mapped benchmarks are at or above 70% of benchmark" : "No mapped campaign benchmarks available" },
+        { label: "Data Freshness", status: freshnessWarnings.length > 0 ? "Risk" : "No Risk", detail: freshnessWarnings.length > 0 ? `${freshnessWarnings.length} stale source warning${freshnessWarnings.length === 1 ? "" : "s"}` : "No stale connected-source warnings" },
+        { label: "ROI / ROAS Risk", status: roiRoasRisk ? "Risk" : metricAvailable("roi") || metricAvailable("roas") ? "No Risk" : "Not Applicable", detail: metricAvailable("roi") || metricAvailable("roas") ? [metricAvailable("roi") ? `ROI ${metricValue("roi")}` : "", metricAvailable("roas") ? `ROAS ${metricValue("roas")}` : ""].filter(Boolean).join(", ") : "ROI and ROAS unavailable from connected sources" },
+        { label: "7-Day Trend Risk", status: trendRisk ? "Risk" : trajectory ? "No Risk" : "Not Enough History", detail: trajectory ? `${trajectory}${trendPct ? ` (${trendPct.toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },
+        { label: "Paid Platform Concentration Risk", status: paidSources.length === 0 ? "Not Applicable" : paidConcentrationRisk ? "Risk" : "No Risk", detail: paidSources.length === 0 ? "No connected paid-media source" : paidConcentrationRisk ? (paidSources.length === 1 ? "Only one paid platform connected" : `${topSpendShare.toFixed(0)}% of paid spend is concentrated`) : "Paid source mix is not concentrated" },
+      ];
+
+      addText(`7-Day Snapshot Trajectory: ${trajectory ? `${trajectory}${trendPct ? ` (${trendPct.toFixed(1)}%)` : ""}` : "Not enough history"}`, { bold: true, indent: 4 });
+      addText(`Risk Level: ${displayedRiskLevel.toUpperCase()}`, { bold: true, indent: 4 });
+      addText("Executive Summary", { bold: true, indent: 4 });
+      addText(`${report.campaignName || "Campaign"}: ${metricSummary.length > 0 ? `Current connected-source metrics show ${metricSummary.join(" and ")}.` : "Current connected-source metrics do not include enough spend and revenue to calculate ROI or ROAS."} Risk level is ${displayedRiskLevel}. ${trajectory ? `7-day snapshot trajectory is ${trajectory}.` : "7-day snapshot trajectory does not have enough compatible history yet."}`, { indent: 8 });
+      addText("Marketing Funnel Performance", { bold: true, indent: 4 });
+      addMetricList(["users", "sessions", "conversions", "revenue", "cvr", "roas", "roi"]);
+      addText("KPI Progress", { bold: true, indent: 4 });
+      if (executiveKpiRows.length === 0) addText("- No mapped campaign KPI rows available.", { indent: 8 });
+      executiveKpiRows.forEach((kpi: any) => {
+        const current = metricNumber(kpi.aggregateMetric);
+        const target = Number(kpi.target) || 0;
+        addText(`- ${kpi.name}: ${formatCustomReportMetricValue(kpi.aggregateMetric, current)} / ${formatCustomReportMetricValue(kpi.aggregateMetric, target)} (${progressPct(current, target, kpi.aggregateMetric).toFixed(1)}%)`, { indent: 8 });
+      });
+      addText("Benchmark Comparison", { bold: true, indent: 4 });
+      if (executiveBenchmarkRows.length === 0) addText("- No mapped campaign Benchmark rows available.", { indent: 8 });
+      executiveBenchmarkRows.forEach((bm: any) => {
+        const current = metricNumber(bm.aggregateMetric);
+        const benchmark = Number(bm.benchmark) || 0;
+        addText(`- ${bm.metric || bm.name}: Yours ${formatCustomReportMetricValue(bm.aggregateMetric, current)}; Benchmark ${formatCustomReportMetricValue(bm.aggregateMetric, benchmark)} (${progressPct(current, benchmark, bm.aggregateMetric).toFixed(1)}%)`, { indent: 8 });
+      });
+      addText("Risk Assessment", { bold: true, indent: 4 });
+      riskInputRows.forEach((row) => addText(`- ${row.label}: ${row.status} - ${row.detail}`, { indent: 8 }));
+    };
     const addMetricList = (keys: string[]) => {
       if (!customReportPerformanceSummary) {
         addText("Connected-source aggregate values are unavailable.", { indent: 4 });
@@ -830,7 +919,9 @@ export default function Reports() {
     };
     const addDeepDiveSectionContent = (section: string) => {
       addText(getReportTabLabel(report.type, section), { size: 14, bold: true });
-      if (section.endsWith(":overview")) {
+      if (section === "executive-summary:overview") {
+        addExecutiveOverviewContent();
+      } else if (section.endsWith(":overview")) {
         addText("Connected-source summary", { bold: true, indent: 4 });
         addMetricList(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);
       } else if (section.includes(":recommendations") || section.endsWith(":insights")) {

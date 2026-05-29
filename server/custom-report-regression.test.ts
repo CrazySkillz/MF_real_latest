@@ -151,6 +151,21 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('selectedSections: activeCampaignId ? selectedReportSections : undefined,');
   });
 
+  it("renders Executive Overview PDF exports with the live tab section set", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain('fetch(`/api/campaigns/${campaignContextId}/executive-summary`, { credentials: "include" })');
+    expect(reports).toContain("const addExecutiveOverviewContent = () => {");
+    expect(reports).toContain('if (section === "executive-summary:overview")');
+    expect(reports).toContain("7-Day Snapshot Trajectory");
+    expect(reports).toContain("Risk Level");
+    expect(reports).toContain("Executive Summary");
+    expect(reports).toContain("Marketing Funnel Performance");
+    expect(reports).toContain("KPI Progress");
+    expect(reports).toContain("Benchmark Comparison");
+    expect(reports).toContain("Risk Assessment");
+  });
+
   it("maps custom report KPI and Benchmark sections to campaign records and aggregate current values", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 

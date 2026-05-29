@@ -21,6 +21,7 @@ import {
   Plus,
   Trash2,
   Pause,
+  Play,
   Edit,
   Search,
   Filter
@@ -739,6 +740,43 @@ export default function Reports() {
       setAllStoredReports(reportStorage.getReports());
     } catch (error: any) {
       setReportSaveError(error?.message || "Failed to pause scheduled report");
+    }
+  };
+
+  const resumeScheduledReport = async (report: StoredReport) => {
+    setReportSaveError("");
+    if (!report.schedule) {
+      setReportSaveError("Cannot resume report because schedule details are missing.");
+      return;
+    }
+    try {
+      const reportPayload: Omit<StoredReport, "id" | "generatedAt"> = {
+        name: report.name,
+        type: report.type,
+        description: report.description,
+        status: "Scheduled",
+        campaignId: report.campaignId,
+        campaignName: report.campaignName,
+        format: report.format,
+        size: report.size,
+        includeKPIs: report.includeKPIs,
+        includeBenchmarks: report.includeBenchmarks,
+        selectedMetrics: report.selectedMetrics,
+        selectedSections: report.selectedSections,
+        backendReportId: report.backendReportId,
+        backendPlatformType: report.backendPlatformType,
+        schedule: report.schedule,
+        downloadUrl: report.downloadUrl,
+      };
+      const backendReport = await saveBackendScheduledReport(reportPayload, report.backendReportId);
+      reportStorage.updateReport(report.id, {
+        status: "Scheduled",
+        backendReportId: String(backendReport?.id || report.backendReportId || ""),
+        backendPlatformType: report.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM,
+      });
+      setAllStoredReports(reportStorage.getReports());
+    } catch (error: any) {
+      setReportSaveError(error?.message || "Failed to resume scheduled report");
     }
   };
 
@@ -2086,9 +2124,9 @@ export default function Reports() {
                               </Button>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Button variant="outline" size="sm" onClick={() => pauseScheduledReport(report)} disabled={report.status === "Paused"}>
-                                <Pause className="w-4 h-4 mr-2" />
-                                {report.status === "Paused" ? "Paused" : "Pause"}
+                              <Button variant="outline" size="sm" onClick={() => report.status === "Paused" ? resumeScheduledReport(report) : pauseScheduledReport(report)}>
+                                {report.status === "Paused" ? <Play className="w-4 h-4 mr-2" /> : <Pause className="w-4 h-4 mr-2" />}
+                                {report.status === "Paused" ? "Resume" : "Pause"}
                               </Button>
                               <Button 
                                 variant="outline" 

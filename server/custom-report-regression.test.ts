@@ -169,8 +169,8 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduledTab).toContain("onClick={() => openEditReport(report)}");
     expect(scheduledTab).toContain("onClick={() => downloadReportPdf(report)}");
     expect(scheduledTab).toContain("Download last sent report");
-    expect(scheduledTab).toContain("onClick={() => pauseScheduledReport(report)}");
-    expect(scheduledTab).toContain('disabled={report.status === "Paused"}');
+    expect(scheduledTab).toContain('report.status === "Paused" ? resumeScheduledReport(report) : pauseScheduledReport(report)');
+    expect(scheduledTab).toContain('{report.status === "Paused" ? "Resume" : "Pause"}');
     expect(scheduledTab).toContain('{report.status === "Paused" ? "Paused" : "Enabled"}');
     expect(scheduledTab).not.toContain("<Badge");
     expect(scheduledTab).not.toContain("Settings");
@@ -221,6 +221,10 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("const pauseScheduledReport = async (report: StoredReport) => {");
     expect(reports).toContain("if (report.backendReportId) await disableBackendScheduledReport(report.backendReportId, report.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM);");
     expect(reports).toContain('reportStorage.updateReport(report.id, { status: "Paused" });');
+    expect(reports).toContain("const resumeScheduledReport = async (report: StoredReport) => {");
+    expect(reports).toContain('status: "Scheduled",');
+    expect(reports).toContain("const backendReport = await saveBackendScheduledReport(reportPayload, report.backendReportId);");
+    expect(reports).toContain('reportStorage.updateReport(report.id, {');
     expect(reports).toContain('throw new Error(errorBody?.message || "Failed to pause scheduled report");');
     expect(scheduler).toContain("const scheduledReports = uniqueReports.filter(r => r.scheduleEnabled && r.status === 'active');");
     expect(scheduler).toContain('String((report as any)?.platformType || "") === "campaign_deepdive"');

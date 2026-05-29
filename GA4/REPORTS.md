@@ -121,7 +121,7 @@ Important meaning:
 - Scheduled Reports should show a clear empty state when there are no scheduled report records
 - Scheduled Reports cards should keep edit wired to the report dialog and should not show redundant `Scheduled` status pills or settings icons
 - Scheduled Reports card `Data Included` should list selected tab labels from the saved `selectedSections` report composition
-- Scheduled Reports card `Pause` should disable the backend schedule, persist backend status `paused`, keep the paused report visible in Scheduled Reports, and show whether each scheduled report is `Enabled` or `Paused`
+- Scheduled Reports card `Pause` should disable the backend schedule, persist backend status `paused`, keep the paused report visible in Scheduled Reports, show whether each scheduled report is `Enabled` or `Paused`, and switch paused cards to `Resume` so users can re-enable the saved backend schedule
 - Scheduled Reports card `Download last sent report` should regenerate the report from the latest connected-source values for the saved report type, selected tabs, and selected metrics
 - the top-level `Create Report` action should reset edit state, report type, selected tabs, and selected metric state so it opens an empty create form after prior edits
 - Campaign connected-source data in the create dialog should list connected source names, not internal selectable metric keys

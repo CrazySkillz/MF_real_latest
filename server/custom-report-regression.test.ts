@@ -87,6 +87,11 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("onClick={() => openEditReport(report)}");
     expect(reports).toContain("onOpenAutoFocus={(event) => {");
     expect(reports).toContain("if (editingReportId) event.preventDefault();");
+    expect(reports).toContain("const REPORT_DESCRIPTION_MAX_LENGTH = 160;");
+    expect(reports).toContain("description: limitReportDescription(report.description || \"\"),");
+    expect(reports).toContain("maxLength={REPORT_DESCRIPTION_MAX_LENGTH}");
+    expect(reports).toContain("setReportDescription(limitReportDescription(e.target.value))");
+    expect(reports).toContain("{reportDescription.length}/{REPORT_DESCRIPTION_MAX_LENGTH}");
   });
 
   it("keeps create mode blank and separates download from scheduling", () => {
@@ -107,6 +112,26 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('addSourceList();');
   });
 
+  it("regenerates latest report downloads from freshly refetched campaign inputs", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("refetch: refetchCampaignOutcomeTotals");
+    expect(reports).toContain("refetch: refetchCampaignExecutiveSummary");
+    expect(reports).toContain("refetch: refetchCampaignFinancialContext");
+    expect(reports).toContain("refetch: refetchCampaignKpis");
+    expect(reports).toContain("refetch: refetchCampaignBenchmarks");
+    expect(reports).toContain("const reportCampaignId = report.campaignId || campaignContextId;");
+    expect(reports).toContain("const shouldRefreshCurrentCampaignContext = !!reportCampaignId && reportCampaignId === campaignContextId;");
+    expect(reports).toContain("await Promise.all([");
+    expect(reports).toContain("refetchCampaignOutcomeTotals()");
+    expect(reports).toContain("fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/outcome-totals?dateRange=90days`).then((data) => ({ data }))");
+    expect(reports).toContain("fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/executive-summary`).then((data) => ({ data }))");
+    expect(reports).toContain("const latestCampaignOutcomeTotals = latestOutcomeTotalsResult?.data ?? campaignOutcomeTotals;");
+    expect(reports).toContain("const customReportPerformanceSummary = latestCampaignOutcomeTotals?.performanceSummary;");
+    expect(reports).toContain("const campaignKpis: any[] = Array.isArray(latestKpisResult?.data) ? latestKpisResult.data : liveCampaignKpis;");
+    expect(reports).toContain("const campaignBenchmarks: any[] = Array.isArray(latestBenchmarksResult?.data) ? latestBenchmarksResult.data : liveCampaignBenchmarks;");
+  });
+
   it("routes generated reports to Standard Reports and scheduled reports to Scheduled Reports", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 
@@ -120,6 +145,9 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("standardReports.map((report) => (");
     expect(reports).toContain("storedScheduledReports.map((report) => (");
     expect(reports).toContain("Download latest report");
+    expect(reports).toContain("{report.description && (");
+    expect(reports).toContain('<p className="text-sm text-muted-foreground">{report.description}</p>');
+    expect(reports).not.toContain('<span className="font-medium text-foreground">Format:</span>');
     expect(reports).not.toContain("Report Templates");
   });
 
@@ -141,12 +169,16 @@ describe("campaign Custom Report regression guard", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 
     expect(reports).toContain("const campaignDeepDiveReportTypes = [");
-    expect(reports).toContain('label: "Executive Summary"');
     expect(reports).toContain('label: "Budget & Financial Analysis"');
     expect(reports).toContain('label: "Platform Comparison"');
     expect(reports).toContain('label: "Trend Analysis"');
-    expect(reports).toContain('label: "Custom Report"');
+    expect(reports).toContain('label: "Executive Summary"');
     expect(reports).toContain('campaignDeepDiveReportTypes.map((type) => (');
+    expect(reports.indexOf('label: "Performance Summary"')).toBeLessThan(reports.indexOf('label: "Budget & Financial Analysis"'));
+    expect(reports.indexOf('label: "Budget & Financial Analysis"')).toBeLessThan(reports.indexOf('label: "Platform Comparison"'));
+    expect(reports.indexOf('label: "Platform Comparison"')).toBeLessThan(reports.indexOf('label: "Trend Analysis"'));
+    expect(reports.indexOf('label: "Trend Analysis"')).toBeLessThan(reports.indexOf('label: "Executive Summary"'));
+    expect(reports).not.toContain('{ key: "custom", label: "Custom Report", tabs: customReportSections }');
     expect(reports).toContain('Select the tabs from this Campaign DeepDive subsection to include in the report.');
     expect(reports).toContain('selectedSections: activeCampaignId ? selectedReportSections : undefined,');
   });

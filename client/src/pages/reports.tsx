@@ -44,15 +44,10 @@ const customReportSections = [
   { key: "benchmarks", label: "Campaign Benchmarks" },
 ];
 
+const REPORT_DESCRIPTION_MAX_LENGTH = 160;
+const limitReportDescription = (value: string) => value.slice(0, REPORT_DESCRIPTION_MAX_LENGTH);
+
 const campaignDeepDiveReportTypes = [
-  {
-    key: "executive-summary",
-    label: "Executive Summary",
-    tabs: [
-      { key: "executive-summary:overview", label: "Executive Overview" },
-      { key: "executive-summary:recommendations", label: "Strategic Recommendations" },
-    ],
-  },
   {
     key: "performance-summary",
     label: "Performance Summary",
@@ -95,7 +90,14 @@ const campaignDeepDiveReportTypes = [
       { key: "trend-analysis:insights", label: "Insights" },
     ],
   },
-  { key: "custom", label: "Custom Report", tabs: customReportSections },
+  {
+    key: "executive-summary",
+    label: "Executive Summary",
+    tabs: [
+      { key: "executive-summary:overview", label: "Executive Overview" },
+      { key: "executive-summary:recommendations", label: "Strategic Recommendations" },
+    ],
+  },
 ];
 
 const getCampaignReportTabs = (type: string) =>
@@ -237,7 +239,7 @@ export default function Reports() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
 
-  const { data: campaignOutcomeTotals, isLoading: campaignOutcomeTotalsLoading } = useQuery<any>({
+  const { data: campaignOutcomeTotals, isLoading: campaignOutcomeTotalsLoading, refetch: refetchCampaignOutcomeTotals } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignContextId}/outcome-totals`, "90days"],
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignContextId}/outcome-totals?dateRange=90days`, { credentials: "include" });
@@ -248,7 +250,7 @@ export default function Reports() {
     refetchOnWindowFocus: true,
   });
 
-  const { data: campaignExecutiveSummary } = useQuery<any>({
+  const { data: liveCampaignExecutiveSummary, refetch: refetchCampaignExecutiveSummary } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignContextId}/executive-summary`, "reports"],
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignContextId}/executive-summary`, { credentials: "include" });
@@ -259,22 +261,26 @@ export default function Reports() {
     refetchOnWindowFocus: true,
   });
 
-  const { data: campaignFinancialContext } = useQuery<any>({
+  const { data: liveCampaignFinancialContext, refetch: refetchCampaignFinancialContext } = useQuery<any>({
     queryKey: ["/api/campaigns", campaignContextId],
     enabled: !!campaignContextId,
     refetchOnWindowFocus: true,
   });
 
-  const { data: campaignKpis = [] } = useQuery<any[]>({
+  const { data: liveCampaignKpis = [], refetch: refetchCampaignKpis } = useQuery<any[]>({
     queryKey: [`/api/campaigns/${campaignContextId}/kpis`],
     enabled: !!campaignContextId,
   });
 
-  const { data: campaignBenchmarks = [] } = useQuery<any[]>({
+  const { data: liveCampaignBenchmarks = [], refetch: refetchCampaignBenchmarks } = useQuery<any[]>({
     queryKey: [`/api/campaigns/${campaignContextId}/benchmarks`],
     enabled: !!campaignContextId,
   });
 
+  const campaignExecutiveSummary = liveCampaignExecutiveSummary;
+  const campaignFinancialContext = liveCampaignFinancialContext;
+  const campaignKpis = liveCampaignKpis;
+  const campaignBenchmarks = liveCampaignBenchmarks;
   const customReportPerformanceSummary = campaignOutcomeTotals?.performanceSummary;
   const customReportAllSources = Array.isArray(customReportPerformanceSummary?.sources) ? customReportPerformanceSummary.sources : [];
   const customReportSources = customReportAllSources.filter((source: any) => source?.connected === true && source?.category !== "financial");
@@ -549,7 +555,7 @@ export default function Reports() {
     return {
       name: reportName,
       type: reportType,
-      description: reportDescription,
+      description: reportDescription.trim() || undefined,
       status,
       campaignId: activeCampaignId || undefined,
       format: 'PDF',
@@ -577,7 +583,7 @@ export default function Reports() {
         ];
     const nextValues = {
       name: report.name || "",
-      description: report.description || "",
+      description: limitReportDescription(report.description || ""),
       type: report.type || "performance",
       selectedCampaigns: nextSelectedCampaigns,
       scheduleEnabled: !!report.schedule,
@@ -802,6 +808,45 @@ export default function Reports() {
   };
 
   const downloadReportPdf = async (report: StoredReport) => {
+    const fetchReportJson = async (url: string) => {
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) return null;
+      return response.json();
+    };
+    const reportCampaignId = report.campaignId || campaignContextId;
+    const encodedReportCampaignId = encodeURIComponent(reportCampaignId);
+    const shouldRefreshCurrentCampaignContext = !!reportCampaignId && reportCampaignId === campaignContextId;
+    const [
+      latestOutcomeTotalsResult,
+      latestExecutiveSummaryResult,
+      latestFinancialContextResult,
+      latestKpisResult,
+      latestBenchmarksResult,
+    ] = shouldRefreshCurrentCampaignContext
+      ? await Promise.all([
+          refetchCampaignOutcomeTotals(),
+          refetchCampaignExecutiveSummary(),
+          refetchCampaignFinancialContext(),
+          refetchCampaignKpis(),
+          refetchCampaignBenchmarks(),
+        ])
+      : reportCampaignId
+        ? await Promise.all([
+            fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/outcome-totals?dateRange=90days`).then((data) => ({ data })),
+            fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/executive-summary`).then((data) => ({ data })),
+            fetchReportJson(`/api/campaigns/${encodedReportCampaignId}`).then((data) => ({ data })),
+            fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/kpis`).then((data) => ({ data })),
+            fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/benchmarks`).then((data) => ({ data })),
+          ])
+      : [];
+    const latestCampaignOutcomeTotals = latestOutcomeTotalsResult?.data ?? campaignOutcomeTotals;
+    const customReportPerformanceSummary = latestCampaignOutcomeTotals?.performanceSummary;
+    const customReportAllSources = Array.isArray(customReportPerformanceSummary?.sources) ? customReportPerformanceSummary.sources : [];
+    const customReportSources = customReportAllSources.filter((source: any) => source?.connected === true && source?.category !== "financial");
+    const campaignExecutiveSummary = latestExecutiveSummaryResult?.data ?? liveCampaignExecutiveSummary;
+    const campaignFinancialContext = latestFinancialContextResult?.data ?? liveCampaignFinancialContext;
+    const campaignKpis: any[] = Array.isArray(latestKpisResult?.data) ? latestKpisResult.data : liveCampaignKpis;
+    const campaignBenchmarks: any[] = Array.isArray(latestBenchmarksResult?.data) ? latestBenchmarksResult.data : liveCampaignBenchmarks;
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     const margin = 18;
@@ -1499,8 +1544,12 @@ export default function Reports() {
                         <Input
                           placeholder="Brief description of what this report covers"
                           value={reportDescription}
-                          onChange={(e) => setReportDescription(e.target.value)}
+                          maxLength={REPORT_DESCRIPTION_MAX_LENGTH}
+                          onChange={(e) => setReportDescription(limitReportDescription(e.target.value))}
                         />
+                        <div className="text-xs text-muted-foreground text-right">
+                          {reportDescription.length}/{REPORT_DESCRIPTION_MAX_LENGTH}
+                        </div>
                       </div>
 
                       {campaignContextId && (
@@ -1758,7 +1807,7 @@ export default function Reports() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                             <div>
                               <span className="font-medium text-foreground">Next Run:</span>
                               <div className="text-muted-foreground/70">
@@ -1770,10 +1819,6 @@ export default function Reports() {
                               <div className="text-muted-foreground/70">
                                 {format(report.lastGenerated, "MMM d, yyyy")}
                               </div>
-                            </div>
-                            <div>
-                              <span className="font-medium text-foreground">Format:</span>
-                              <div className="text-muted-foreground/70">{report.format}</div>
                             </div>
                             <div>
                               <span className="font-medium text-foreground">Campaigns:</span>
@@ -1824,6 +1869,9 @@ export default function Reports() {
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <CardTitle className="text-lg">{report.name}</CardTitle>
+                            {report.description && (
+                              <p className="text-sm text-muted-foreground">{report.description}</p>
+                            )}
                             <div className="flex items-center space-x-4 text-sm text-muted-foreground/70">
                               <div className="flex items-center space-x-1">
                                 <FileText className="w-4 h-4" />
@@ -1856,7 +1904,7 @@ export default function Reports() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                             <div>
                               <span className="font-medium text-foreground">Created:</span>
                               <div className="text-muted-foreground/70">
@@ -1868,10 +1916,6 @@ export default function Reports() {
                               <div className="text-muted-foreground/70">
                                 {report.schedule ? `${report.schedule.frequency} at ${report.schedule.time}` : 'Not scheduled'}
                               </div>
-                            </div>
-                            <div>
-                              <span className="font-medium text-foreground">Format:</span>
-                              <div className="text-muted-foreground/70">{report.format}</div>
                             </div>
                             <div>
                               <span className="font-medium text-foreground">Data Included:</span>
@@ -2053,19 +2097,14 @@ export default function Reports() {
                                         </Badge>
                                       )}
                                     </div>
+                                    {report.description && (
+                                      <p className="text-sm text-muted-foreground">{report.description}</p>
+                                    )}
                                     
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                                       <div>
                                         <span className="font-medium text-foreground">Type:</span>
                                         <div className="text-muted-foreground/70">{getReportTypeLabel(report.type)}</div>
-                                      </div>
-                                      
-                                      <div>
-                                        <span className="font-medium text-foreground">Format:</span>
-                                        <div className="text-muted-foreground/70">
-                                          {report.format}
-                                          {report.size && ` (${report.size})`}
-                                        </div>
                                       </div>
                                       
                                       {report.campaignName && (
@@ -2160,14 +2199,13 @@ export default function Reports() {
                           <div className="flex items-start justify-between">
                             <div className="space-y-2 flex-1">
                               <h3 className="font-semibold text-lg">{report.name}</h3>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                              {report.description && (
+                                <p className="text-sm text-muted-foreground">{report.description}</p>
+                              )}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
                                   <span className="font-medium text-foreground">Type:</span>
                                   <div className="text-muted-foreground/70">{getReportTypeLabel(report.type)}</div>
-                                </div>
-                                <div>
-                                  <span className="font-medium text-foreground">Format:</span>
-                                  <div className="text-muted-foreground/70">{report.format}</div>
                                 </div>
                                 <div>
                                   <span className="font-medium text-foreground">Generated:</span>

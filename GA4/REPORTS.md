@@ -113,7 +113,9 @@ Important meaning:
 - for Campaign DeepDive Custom Report, the report type dropdown should show Campaign DeepDive subsection report types and should save selected subsection tabs as report composition
 - KPI and Benchmark report sections should use campaign records for rows and targets, with current values coming from available aggregate metrics
 - All Reports cards should stay summary-only and should not show connected-source values, KPI/Benchmark row details, generated status pills, or `Includes` configuration details inline
+- report cards should show the saved description when one exists and should not show redundant `Format: PDF` metadata
 - All Reports card edit icons should reopen the report dialog with saved values prefilled, show `Update Report`, suppress edit-mode first-field autofocus, and keep update disabled until a value changes
+- report descriptions in create and edit mode should be capped at 160 characters
 - report delete icons should use the shared confirmation dialog before deleting a stored report
 - the top-level `Create Report` action should reset edit state, report type, selected tabs, and selected metric state so it opens an empty create form after prior edits
 - Campaign connected-source data in the create dialog should list connected source names, not internal selectable metric keys
@@ -125,7 +127,7 @@ Important meaning:
 - downloaded Budget & Financial Analysis PDFs should include the selected web-tab section structure down to the visible card and row level: Overview, ROI & ROAS, Cost Analysis, Budget Allocation, and Insights exports should each include the nested live-tab cards/rows instead of a generic metric list
 - generated/downloaded reports should appear in the `Standard Reports` tab, while scheduled reports should appear in the `Scheduled Reports` tab
 - the report tabs should be ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports should be the default tab
-- the Standard Reports download action should say `Download latest report` and regenerate the PDF from the current connected-source aggregate values at click time
+- the Standard Reports download action should say `Download latest report` and refetch the report card's campaign connected-source aggregate, Executive Summary context, campaign context, KPIs, and Benchmarks before regenerating the PDF
 - scheduled create mode should use `Schedule Automated Reports` and show `Schedule Report`
 - future work should preserve section-based composition
 - top-level custom sections are parent headers, not checkboxes
@@ -135,12 +137,11 @@ Important meaning:
 
 Campaign-scoped Report Type menu:
 
-- `Executive Summary`: `Executive Overview`, `Strategic Recommendations`
 - `Performance Summary`: `Overview`, `Campaign Health`, `What's Changed`, `Insights`
 - `Budget & Financial Analysis`: `Overview`, `ROI & ROAS`, `Cost Analysis`, `Budget Allocation`, `Insights`
 - `Platform Comparison`: `Overview`, `Performance Metrics`, `Financial Comparison`, `Insights`
 - `Trend Analysis`: `Overview`, `Efficiency Metrics`, `Conversion Funnel`, `Platform Breakdown`, `Insights`
-- `Custom Report`: `Selected metrics`, `Campaign KPIs`, `Campaign Benchmarks`
+- `Executive Summary`: `Executive Overview`, `Strategic Recommendations`
 
 Custom report output order rule:
 

@@ -204,12 +204,14 @@ Status:
 - [x] Completed locally: All Reports cards remain summary cards and do not render connected-source detail previews inline.
 - [x] Completed locally: All Reports cards expose an edit icon that opens the report dialog with saved values prefilled.
 - [x] Completed locally: edit mode uses `Update Report`, suppresses first-field autofocus, and disables update until a form value changes.
+- [x] Completed locally: Create/edit report descriptions are limited to 160 characters, report cards show the description when available, and report cards no longer show the `Format: PDF` metadata row.
 - [x] Completed locally: the top-level `Create Report` button opens a fresh blank create form and does not reuse previously edited report values, report type, selected tabs, or selected metrics.
 - [x] Completed locally: unscheduled create mode shows `Download Report` and downloads a PDF containing the selected report sections; scheduled create mode shows `Schedule Report`.
 - [x] Completed locally: downloaded Campaign DeepDive subsection PDFs include a body for each selected tab using the existing `/outcome-totals` connected-source aggregate, not just a list of selected tab names.
 - [x] Completed locally: schedule mode label is `Schedule Automated Reports`.
 - [x] Completed locally: the old `Templates` tab is now `Standard Reports`; generated/downloaded reports appear there and scheduled reports appear under `Scheduled Reports`.
 - [x] Completed locally: report tabs are ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports is the default tab and its download action is labeled `Download latest report`.
+- [x] Completed locally: `Download latest report` refetches the report card's campaign connected-source aggregate, Executive Summary context, campaign budget context, KPIs, and Benchmarks before building the PDF, so saved report cards regenerate from current selected report inputs instead of stale page cache.
 - [x] Completed locally: campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types and lets users choose which tabs from the selected subsection to include; the standalone `/reports` route keeps its broader report type options when reached directly.
 - [x] Completed locally: generated report cards no longer show the `Generated` status pill.
 - [x] Completed locally: report delete icons open the shared website-style confirmation dialog before deleting the stored report.
@@ -222,12 +224,11 @@ Status:
 
 Current campaign-scoped Report Type menu:
 
-- `Executive Summary`: `Executive Overview`, `Strategic Recommendations`
 - `Performance Summary`: `Overview`, `Campaign Health`, `What's Changed`, `Insights`
 - `Budget & Financial Analysis`: `Overview`, `ROI & ROAS`, `Cost Analysis`, `Budget Allocation`, `Insights`
 - `Platform Comparison`: `Overview`, `Performance Metrics`, `Financial Comparison`, `Insights`
 - `Trend Analysis`: `Overview`, `Efficiency Metrics`, `Conversion Funnel`, `Platform Breakdown`, `Insights`
-- `Custom Report`: `Selected metrics`, `Campaign KPIs`, `Campaign Benchmarks`
+- `Executive Summary`: `Executive Overview`, `Strategic Recommendations`
 
 ### Commit 6: Regression Coverage
 
@@ -294,7 +295,9 @@ Custom Report is production-ready when:
 - KPI/Benchmark sections use live aggregate-backed current values
 - saved report configuration cannot reintroduce disconnected-source metrics
 - All Reports cards remain summary-only and do not expose connected-source values, KPI/Benchmark rows, generated status pills, or `Includes` configuration details inline
+- Report cards show saved descriptions when available and do not show redundant `Format: PDF` metadata
 - All Reports card edit icons open the report dialog with saved values prefilled, show `Update Report`, and keep update disabled until a change is made
+- Create/edit report descriptions are capped at 160 characters
 - report delete icons open a confirmation dialog before removing the stored report record
 - The top-level `Create Report` action opens an empty create form, clears report type, selected tabs, custom metric selections, and edit mode
 - Unscheduled create mode shows `Download Report` and downloads the selected report sections as a PDF
@@ -303,8 +306,9 @@ Custom Report is production-ready when:
 - Downloaded Executive Summary `Strategic Recommendations` PDFs include the same major recommendation sections shown in the web tab, using `/executive-summary.recommendations`, metadata, freshness warnings, assumptions, scenarios, and recommendation disclaimers
 - Downloaded Performance Summary PDFs include the same major sections shown in the selected Performance Summary web tabs, using `/outcome-totals.performanceSummary` for current connected-source values and campaign KPI/Benchmark records for health rows
 - Downloaded Budget & Financial Analysis PDFs include the same nested sections, cards, and row labels shown in the selected Budget & Financial web tabs, using `/outcome-totals.performanceSummary` for connected-source financial totals/source availability and the campaign row for budget/start/end pacing inputs
+- `Download latest report` must refetch `/outcome-totals`, `/executive-summary`, campaign context, KPIs, and Benchmarks for the report card's campaign before PDF generation, then use those refetched values immediately
 - Scheduled create mode uses `Schedule Automated Reports` and shows `Schedule Report`
-- Campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types: `Executive Summary`, `Performance Summary`, `Budget & Financial Analysis`, `Platform Comparison`, `Trend Analysis`, and `Custom Report`
+- Campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types in this order: `Performance Summary`, `Budget & Financial Analysis`, `Platform Comparison`, `Trend Analysis`, and `Executive Summary`
 - Selecting a Campaign DeepDive subsection exposes that subsection's current tab list as report composition checkboxes and saves those tab keys in `selectedSections`
 - regression coverage guards GA4-only and future paid-media source scenarios
 - documentation matches the implemented behavior

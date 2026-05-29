@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
+  ArrowLeft,
   FileText, 
   Calendar, 
   Clock,
@@ -26,6 +27,7 @@ import {
   Search,
   Filter
 } from "lucide-react";
+import { Link } from "wouter";
 import { format } from "date-fns";
 import { reportStorage, type StoredReport } from "@/lib/reportStorage";
 
@@ -1691,6 +1693,14 @@ export default function Reports() {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div>
+                {campaignContextId && (
+                  <Link href={`/campaigns/${encodeURIComponent(campaignContextId)}`}>
+                    <Button variant="ghost" size="sm" className="mb-2 -ml-3">
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Back to main Campaign Overview
+                    </Button>
+                  </Link>
+                )}
                 <h1 className="text-3xl font-bold text-foreground">Reports</h1>
                 <p className="text-muted-foreground/70 mt-1">
                   Manage scheduled reports and download historical data
@@ -2099,7 +2109,7 @@ export default function Reports() {
                             <div className="flex items-center space-x-2">
                               <Button variant="outline" size="sm" onClick={() => downloadReportPdf(report)}>
                                 <Download className="w-4 h-4 mr-2" />
-                                Download last sent report
+                                Download latest report
                               </Button>
                               <Button variant="outline" size="sm" onClick={() => openEditReport(report)}>
                                 <Edit className="w-4 h-4 mr-2" />

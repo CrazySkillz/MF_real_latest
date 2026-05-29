@@ -109,6 +109,7 @@ Important meaning:
 - custom reports store report configuration, not frozen analytics values
 - actual report values should come from refreshed GA4 tab inputs when the report is generated or sent
 - Campaign DeepDive Custom Report opens the Reports builder with campaign context and should read current campaign aggregate values from `/outcome-totals`
+- campaign-scoped Reports pages should show `Back to main Campaign Overview` and link to `/campaigns/<campaignId>`
 - for GA4-only Campaign DeepDive Custom Reports, selectable metrics should be limited to available GA4/web outcome metrics; paid-media metrics stay hidden until a connected main paid-media source supplies them
 - for Campaign DeepDive Custom Report, the report type dropdown should show Campaign DeepDive subsection report types and should save selected subsection tabs as report composition
 - KPI and Benchmark report sections should use campaign records for rows and targets, with current values coming from available aggregate metrics
@@ -125,7 +126,7 @@ Important meaning:
 - Scheduled Reports card `Data Included` should list selected tab labels from the saved `selectedSections` report composition
 - Scheduled Reports card `Pause` should disable the backend schedule, persist backend status `paused`, keep the paused report visible in Scheduled Reports without a separate visible Status field, and switch paused cards to `Resume` so users can re-enable the saved backend schedule
 - Pause/Resume belongs only in Scheduled Reports because it controls recurring email delivery without deleting the saved report setup
-- Scheduled Reports card `Download last sent report` should regenerate the report from the latest connected-source values for the saved report type, selected tabs, and selected metrics
+- Scheduled Reports card `Download latest report` should regenerate the report from the latest connected-source values for the saved report type, selected tabs, and selected metrics
 - the top-level `Create Report` action should reset edit state, report type, selected tabs, and selected metric state so it opens an empty create form after prior edits
 - Campaign connected-source data in the create dialog should list connected source names, not internal selectable metric keys
 - unscheduled create mode should show `Download Report` and download the selected report sections as a PDF

@@ -19,7 +19,6 @@ import {
   Mail,
   Download,
   Plus,
-  Settings,
   Trash2,
   Pause,
   Edit,
@@ -220,7 +219,7 @@ export default function Reports() {
   const [reportDescription, setReportDescription] = useState("");
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>(() => campaignContextId ? [campaignContextId] : []);
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
-  const [scheduleFrequency, setScheduleFrequency] = useState("weekly");
+  const [scheduleFrequency, setScheduleFrequency] = useState("daily");
   const [scheduleDay, setScheduleDay] = useState("monday");
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [recipients, setRecipients] = useState("");
@@ -482,7 +481,7 @@ export default function Reports() {
     setEditingReportId(null);
     setOriginalReportFormSignature("");
     setScheduleEnabled(false);
-    setScheduleFrequency("weekly");
+    setScheduleFrequency("daily");
     setScheduleDay("monday");
     setScheduleTime("09:00");
     setRecipients("");
@@ -546,7 +545,7 @@ export default function Reports() {
       type: report.type || "performance",
       selectedCampaigns: nextSelectedCampaigns,
       scheduleEnabled: !!report.schedule,
-      scheduleFrequency: report.schedule?.frequency || "weekly",
+      scheduleFrequency: report.schedule?.frequency || "daily",
       scheduleDay: report.schedule?.day || "monday",
       scheduleTime: report.schedule?.time || "09:00",
       recipients: report.schedule?.recipients?.join(", ") || "",
@@ -1757,14 +1756,6 @@ export default function Reports() {
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                              {report.status}
-                            </Badge>
-                            <Button variant="ghost" size="sm">
-                              <Settings className="w-4 h-4" />
-                            </Button>
-                          </div>
                         </div>
                       </CardHeader>
                       <CardContent>
@@ -1794,7 +1785,7 @@ export default function Reports() {
                           
                           <div className="flex items-center justify-between pt-4 border-t">
                             <div className="flex items-center space-x-2">
-                              <Button variant="outline" size="sm">
+                              <Button variant="outline" size="sm" onClick={() => openEditReport(report)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
                               </Button>

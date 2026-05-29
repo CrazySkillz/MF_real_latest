@@ -119,6 +119,7 @@ Important meaning:
 - report delete icons should use the shared confirmation dialog before deleting a stored report
 - Scheduled Reports should render stored scheduled report records, not hard-coded demo cards, so delete operates on a real report ID
 - Scheduled Reports should show a clear empty state when there are no scheduled report records
+- Scheduled Reports cards should keep edit wired to the report dialog and should not show redundant `Scheduled` status pills or settings icons
 - the top-level `Create Report` action should reset edit state, report type, selected tabs, and selected metric state so it opens an empty create form after prior edits
 - Campaign connected-source data in the create dialog should list connected source names, not internal selectable metric keys
 - unscheduled create mode should show `Download Report` and download the selected report sections as a PDF
@@ -130,7 +131,7 @@ Important meaning:
 - generated/downloaded reports should appear in the `Standard Reports` tab, while scheduled reports should appear in the `Scheduled Reports` tab
 - the report tabs should be ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports should be the default tab
 - the Standard Reports download action should say `Download latest report` and refetch the report card's campaign connected-source aggregate, Executive Summary context, campaign context, KPIs, and Benchmarks before regenerating the PDF
-- scheduled create mode should use `Schedule Automated Report` and show `Schedule Report` in the same filled primary button style as `Download Report`
+- scheduled create mode should use `Schedule Automated Report`, default to `Daily`, and show `Schedule Report` in the same filled primary button style as `Download Report`
 - future work should preserve section-based composition
 - top-level custom sections are parent headers, not checkboxes
 - subsection checkboxes default to unchecked for new custom reports

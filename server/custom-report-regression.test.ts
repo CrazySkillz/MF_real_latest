@@ -101,6 +101,9 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('const [selectedReportSections, setSelectedReportSections] = useState<string[]>([]);');
     expect(reports).toContain('<SelectValue placeholder="Select report type" />');
     expect(reports).toContain('Schedule Automated Report');
+    expect(reports).toContain('const [scheduleFrequency, setScheduleFrequency] = useState("daily");');
+    expect(reports).toContain('setScheduleFrequency("daily");');
+    expect(reports).toContain('scheduleFrequency: report.schedule?.frequency || "daily",');
     expect(reports).not.toContain('Schedule Automated Reports');
     expect(reports).not.toContain('Schedule Automatic Generation');
     expect(reports).not.toContain('variant={!editingReportId && scheduleEnabled ? "link" : "default"}');
@@ -146,6 +149,10 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('<TabsContent value="standard">');
     expect(reports).toContain("standardReports.map((report) => (");
     expect(reports).toContain("storedScheduledReports.map((report) => (");
+    const scheduledTab = reports.slice(reports.indexOf('<TabsContent value="scheduled"'), reports.indexOf('<TabsContent value="all"'));
+    expect(scheduledTab).toContain("onClick={() => openEditReport(report)}");
+    expect(scheduledTab).not.toContain("<Badge");
+    expect(scheduledTab).not.toContain("Settings");
     expect(reports).toContain("No scheduled reports yet");
     expect(reports).toContain("Use Schedule Report to create an automated report.");
     expect(reports).not.toContain("const scheduledReports = [");

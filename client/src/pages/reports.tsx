@@ -21,7 +21,6 @@ import {
   Plus,
   Settings,
   Trash2,
-  Play,
   Pause,
   Edit,
   Search,
@@ -473,46 +472,6 @@ export default function Reports() {
     };
   }, []);
 
-  // Mock data for existing reports
-  const scheduledReports = [
-    {
-      id: "1",
-      name: "Weekly Performance Summary",
-      type: "Performance",
-      status: "Active",
-      frequency: "Weekly",
-      nextRun: new Date(2025, 7, 12, 9, 0),
-      recipients: ["sarah.johnson@company.com", "marketing@company.com"],
-      campaigns: ["Digital Marketing Q3", "Brand Awareness"],
-      lastGenerated: new Date(2025, 7, 5, 9, 0),
-      format: "PDF"
-    },
-    {
-      id: "2", 
-      name: "Monthly ROI Analysis",
-      type: "Financial",
-      status: "Active",
-      frequency: "Monthly",
-      nextRun: new Date(2025, 8, 1, 15, 0),
-      recipients: ["cfo@company.com", "marketing-lead@company.com"],
-      campaigns: ["All Campaigns"],
-      lastGenerated: new Date(2025, 6, 1, 15, 0),
-      format: "Excel"
-    },
-    {
-      id: "3",
-      name: "Daily KPI Dashboard",
-      type: "KPI Tracking",
-      status: "Paused",
-      frequency: "Daily",
-      nextRun: null,
-      recipients: ["team@company.com"],
-      campaigns: ["Q3 Lead Generation", "Social Media Campaign"],
-      lastGenerated: new Date(2025, 7, 8, 6, 0),
-      format: "CSV"
-    }
-  ];
-
   const resetForm = () => {
     setReportName("");
     setReportDescription("");
@@ -708,20 +667,6 @@ export default function Reports() {
   const uniqueTypes = Array.from(new Set(
     allStoredReports.map(r => r.type).filter(Boolean)
   ));
-
-  // Helper function for status badge colors
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Active":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "Paused":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "Error":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      default:
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-    }
-  };
 
   const resolveCustomReportAggregateMetric = (record: any): string | null => {
     for (const candidate of [record?.metricKey, record?.metric, record?.metricType, record?.name]) {
@@ -1773,96 +1718,6 @@ export default function Reports() {
 
               <TabsContent value="scheduled" className="space-y-6">
                 <div className="grid gap-6">
-                  {/* Mock scheduled reports (for demo) */}
-                  {scheduledReports.map((report) => (
-                    <Card key={report.id}>
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <CardTitle className="text-lg">{report.name}</CardTitle>
-                            <div className="flex items-center space-x-4 text-sm text-muted-foreground/70">
-                              <div className="flex items-center space-x-1">
-                                <FileText className="w-4 h-4" />
-                                <span>{getReportTypeLabel(report.type)}</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <Calendar className="w-4 h-4" />
-                                <span>{report.frequency}</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <Mail className="w-4 h-4" />
-                                <span>{report.recipients.length} recipient(s)</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge className={getStatusColor(report.status)}>
-                              {report.status}
-                            </Badge>
-                            <Button variant="ghost" size="sm">
-                              <Settings className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                            <div>
-                              <span className="font-medium text-foreground">Next Run:</span>
-                              <div className="text-muted-foreground/70">
-                                {report.nextRun ? format(report.nextRun, "MMM d, yyyy 'at' h:mm a") : "Not scheduled"}
-                              </div>
-                            </div>
-                            <div>
-                              <span className="font-medium text-foreground">Last Generated:</span>
-                              <div className="text-muted-foreground/70">
-                                {format(report.lastGenerated, "MMM d, yyyy")}
-                              </div>
-                            </div>
-                            <div>
-                              <span className="font-medium text-foreground">Campaigns:</span>
-                              <div className="text-muted-foreground/70">
-                                {Array.isArray(report.campaigns) ? report.campaigns.join(", ") : report.campaigns}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between pt-4 border-t">
-                            <div className="flex items-center space-x-2">
-                              <Button variant="outline" size="sm">
-                                <Download className="w-4 h-4 mr-2" />
-                                Download latest report
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit
-                              </Button>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              {report.status === "Active" ? (
-                                <Button variant="outline" size="sm">
-                                  <Pause className="w-4 h-4 mr-2" />
-                                  Pause
-                                </Button>
-                              ) : (
-                                <Button variant="outline" size="sm">
-                                  <Play className="w-4 h-4 mr-2" />
-                                  Resume
-                                </Button>
-                              )}
-                              <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  
-                  {/* Dynamically created scheduled reports */}
                   {storedScheduledReports.map((report) => (
                     <Card key={report.id}>
                       <CardHeader>

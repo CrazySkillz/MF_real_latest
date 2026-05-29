@@ -309,7 +309,7 @@ These are not interchangeable.
 
 To avoid ambiguity:
 
-- `Connected Platforms` belongs inside the campaign-level `Overview` tab
+- `Connected Platforms` belongs inside the campaign-level `Campaign Overview` tab
 - this is correct because it answers a campaign question: which platforms are connected to this campaign?
 - however, the analytics launched from that section are still platform-specific, not campaign-wide
 
@@ -325,14 +325,14 @@ This hub is where the top tabs matter and define the meaning of the campaign-cen
 
 These are campaign-level, not platform-specific:
 
-- KPIs
-- Benchmarks
+- Campaign KPIs
+- Campaign Benchmarks
 - Freestyle Chat
-- Overview
+- Campaign Overview
 
-### KPIs Tab
+### Campaign KPIs Tab
 
-The KPIs tab is campaign-level.
+The Campaign KPIs tab is campaign-level.
 
 It defines what good looks like for the campaign overall.
 
@@ -356,9 +356,9 @@ Connected-platform metrics are the standard upstream source of truth for campaig
 Campaign-level KPI create/edit forms must follow the same unit-display conventions as platform KPI forms. Percent targets should display as clean percentages without forced trailing decimals, count targets as whole numbers, currency targets with currency formatting, and ROAS/ratio targets with ratio-style display.
 Campaign-level and platform-level KPI alert behavior must be consistent: creating or updating a KPI with enabled alerts must immediately run the in-app alert check and refresh the Notifications query so breached thresholds appear in the Notifications bell without waiting for a later scheduler run or manual page refresh.
 
-### Benchmarks Tab
+### Campaign Benchmarks Tab
 
-The Benchmarks tab is campaign-level.
+The Campaign Benchmarks tab is campaign-level.
 
 It answers:
 
@@ -406,9 +406,9 @@ Current-state note:
 - the intended behavior is that users can enter prompts and run queries against their campaign data to get insights
 - future work should preserve this as a campaign-context analytics surface rather than a generic chatbot
 
-### Overview And Campaign DeepDive
+### Campaign Overview And Campaign DeepDive
 
-The Overview tab is the campaign hub landing area.
+The Campaign Overview tab is the campaign hub landing area.
 
 It is allowed, and expected, to contain a mix of:
 
@@ -416,7 +416,7 @@ It is allowed, and expected, to contain a mix of:
 - campaign-scoped launcher sections
 - platform-connection sections related to that campaign
 
-Inside Overview, the Campaign DeepDive section acts as a set of analysis launchers.
+Inside Campaign Overview, the Campaign DeepDive section acts as a set of analysis launchers.
 
 These launchers are campaign-wide and cross-platform in intent.
 
@@ -493,7 +493,7 @@ The correct interpretation is:
 
 Important clarification:
 
-`Connected Platforms` is still part of the campaign-level `Overview` experience.
+`Connected Platforms` is still part of the campaign-level `Campaign Overview` experience.
 
 Why:
 
@@ -697,9 +697,9 @@ Required interpretation for future development:
 
 ### Campaign Overview Entry After Creation
 
-After the campaign exists, clicking it from Campaign Management should take the user to the campaign-level Overview.
+After the campaign exists, clicking it from Campaign Management should take the user to the campaign-level Campaign Overview.
 
-That Overview should function as the campaign hub.
+That Campaign Overview should function as the campaign hub.
 
 Inside that hub, the `Connected Platforms` section should:
 
@@ -717,7 +717,7 @@ This is a super-important design pattern.
 
 Required interpretation for future development:
 
-- `Connected Platforms` belongs inside the campaign-level `Overview` because it answers which sources are attached to the campaign
+- `Connected Platforms` belongs inside the campaign-level `Campaign Overview` because it answers which sources are attached to the campaign
 - the blue `Connected` badge communicates that the source is live for that campaign
 - `View Detailed Analytics` is the handoff from the campaign hub to the platform-specific analytics layer
 - the user should not be sent to a generic or wrong destination; the link must open the correct analytics section for that exact connected platform

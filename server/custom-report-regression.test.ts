@@ -166,6 +166,23 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Risk Assessment");
   });
 
+  it("renders Strategic Recommendations PDF exports with the live tab section set", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("const addExecutiveRecommendationsContent = () => {");
+    expect(reports).toContain('section === "executive-summary:recommendations"');
+    expect(reports).toContain("Data Accuracy Notice");
+    expect(reports).toContain("Data Freshness Alert");
+    expect(reports).toContain("Enterprise Disclaimer");
+    expect(reports).toContain("No Recommendations Available");
+    expect(reports).toContain("Expected Impact");
+    expect(reports).toContain("Timeframe:");
+    expect(reports).toContain("Investment Required:");
+    expect(reports).toContain("Projected Scenarios");
+    expect(reports).toContain("Key Assumptions");
+    expect(reports).toContain("Recommendation Disclaimer");
+  });
+
   it("maps custom report KPI and Benchmark sections to campaign records and aggregate current values", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 

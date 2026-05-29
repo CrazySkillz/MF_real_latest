@@ -177,6 +177,9 @@ const formatCustomReportMetricValue = (key: string, value: unknown): string => {
 const customReportNormalizeMetricKey = (value: unknown): string =>
   String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
+const formatRecommendationText = (text: string): string =>
+  text ? text.replace(/([+-]?)\$(\d+)(?!\.\d)/g, (_match, sign, number) => `${sign}$${parseInt(number).toLocaleString("en-US")}`) : text;
+
 const normalizeReportRecipients = (value: string): string[] =>
   value.split(',').map(email => email.trim()).filter(email => email);
 
@@ -843,6 +846,21 @@ export default function Reports() {
         .map((bm: any) => ({ ...bm, aggregateMetric: resolveCustomReportAggregateMetric(bm) }))
         .filter((bm: any) => bm.aggregateMetric)
       : [];
+    const recommendationImpactItems = (rec: any) => {
+      if (rec?.category !== "Website Outcomes") return [formatRecommendationText(rec?.expectedImpact || "")].filter(Boolean);
+      const webMetrics: string[] = [];
+      if (metricAvailable("users")) webMetrics.push(`${Math.round(metricNumber("users")).toLocaleString()} users`);
+      if (metricAvailable("sessions")) webMetrics.push(`${Math.round(metricNumber("sessions")).toLocaleString()} sessions`);
+      if (metricAvailable("conversions")) webMetrics.push(`${Math.round(metricNumber("conversions")).toLocaleString()} conversions`);
+      if (metricAvailable("revenue")) webMetrics.push(metricValue("revenue"));
+      if (metricAvailable("cvr")) webMetrics.push(`${metricNumber("cvr").toFixed(1)}% conversion rate`);
+      return [
+        webMetrics.length > 0 ? `Available data: ${webMetrics.join(", ")}.` : "",
+        metricAvailable("revenue") && metricAvailable("conversions") ? `Revenue is ${metricValue("revenue")} from ${Math.round(metricNumber("conversions")).toLocaleString()} conversions.` : "",
+        metricAvailable("cvr") ? `Conversion rate is ${metricNumber("cvr").toFixed(1)}%.` : "",
+        formatRecommendationText(rec?.expectedImpact || ""),
+      ].filter(Boolean);
+    };
     const addExecutiveOverviewContent = () => {
       const trajectory = campaignExecutiveSummary?.health?.trajectory;
       const trendPct = Number(campaignExecutiveSummary?.health?.trendPercentage) || 0;
@@ -900,6 +918,56 @@ export default function Reports() {
       addText("Risk Assessment", { bold: true, indent: 4 });
       riskInputRows.forEach((row) => addText(`- ${row.label}: ${row.status} - ${row.detail}`, { indent: 8 }));
     };
+    const addExecutiveRecommendationsContent = () => {
+      const excludedPlatforms = Array.isArray(campaignExecutiveSummary?.metadata?.dataAccuracy?.platformsExcludedFromRecommendations)
+        ? campaignExecutiveSummary.metadata.dataAccuracy.platformsExcludedFromRecommendations
+        : [];
+      const freshnessWarnings = Array.isArray(campaignExecutiveSummary?.dataFreshness?.warnings) ? campaignExecutiveSummary.dataFreshness.warnings : [];
+      const recommendations = Array.isArray(campaignExecutiveSummary?.recommendations) ? campaignExecutiveSummary.recommendations : [];
+
+      if (excludedPlatforms.length > 0) {
+        addText("Data Accuracy Notice", { bold: true, indent: 4 });
+        addText(`Note: ${excludedPlatforms.join(", ")} ${excludedPlatforms.length === 1 ? "is" : "are"} not a connected paid-media source, so paid-media recommendations are unavailable. Available web analytics and outcome metrics can still feed website recommendations and risk inputs.`, { indent: 8 });
+      }
+      if (freshnessWarnings.length > 0) {
+        addText("Data Freshness Alert", { bold: true, indent: 4 });
+        freshnessWarnings.forEach((warning: any) => addText(`- ${warning.source}: ${warning.message}`, { indent: 8 }));
+      }
+      if (campaignExecutiveSummary?.metadata?.disclaimer) {
+        addText("Enterprise Disclaimer", { bold: true, indent: 4 });
+        addText(campaignExecutiveSummary.metadata.disclaimer, { indent: 8 });
+      }
+      if (recommendations.length === 0) {
+        addText("No Recommendations Available", { bold: true, indent: 4 });
+        addText("Campaign is performing well. Continue monitoring for optimization opportunities.", { indent: 8 });
+        return;
+      }
+
+      recommendations.forEach((rec: any, index: number) => {
+        addText(`Recommendation ${index + 1}: ${formatRecommendationText(rec.action || "")}`, { bold: true, indent: 4 });
+        addText(`Category: ${rec.category || "Uncategorized"}`, { indent: 8 });
+        if (rec.priority) addText(`Priority: ${rec.priority}`, { indent: 8 });
+        if (rec.confidence) addText(`Confidence: ${rec.confidence}`, { indent: 8 });
+        addText("Expected Impact", { bold: true, indent: 8 });
+        recommendationImpactItems(rec).forEach((item) => addText(`- ${item}`, { indent: 12 }));
+        addText(`Timeframe: ${rec.timeline || "Not specified"}`, { bold: true, indent: 8 });
+        addText(`Investment Required: ${formatRecommendationText(rec.investmentRequired || "Not specified")}`, { bold: true, indent: 8 });
+        if (rec.scenarios) {
+          addText("Projected Scenarios", { bold: true, indent: 8 });
+          addText(`- Best Case: ${formatRecommendationText(rec.scenarios.bestCase || "")}`, { indent: 12 });
+          addText(`- Expected: ${formatRecommendationText(rec.scenarios.expected || "")}`, { indent: 12 });
+          addText(`- Worst Case: ${formatRecommendationText(rec.scenarios.worstCase || "")}`, { indent: 12 });
+        }
+        if (Array.isArray(rec.assumptions) && rec.assumptions.length > 0) {
+          addText("Key Assumptions", { bold: true, indent: 8 });
+          rec.assumptions.forEach((assumption: string) => addText(`- ${assumption}`, { indent: 12 }));
+        }
+        if (rec.disclaimer) {
+          addText("Recommendation Disclaimer", { bold: true, indent: 8 });
+          addText(rec.disclaimer, { indent: 12 });
+        }
+      });
+    };
     const addMetricList = (keys: string[]) => {
       if (!customReportPerformanceSummary) {
         addText("Connected-source aggregate values are unavailable.", { indent: 4 });
@@ -921,6 +989,8 @@ export default function Reports() {
       addText(getReportTabLabel(report.type, section), { size: 14, bold: true });
       if (section === "executive-summary:overview") {
         addExecutiveOverviewContent();
+      } else if (section === "executive-summary:recommendations") {
+        addExecutiveRecommendationsContent();
       } else if (section.endsWith(":overview")) {
         addText("Connected-source summary", { bold: true, indent: 4 });
         addMetricList(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);

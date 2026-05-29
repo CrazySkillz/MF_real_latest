@@ -120,6 +120,7 @@ Important meaning:
 - unscheduled create mode should show `Download Report` and download the selected report sections as a PDF
 - downloaded Campaign DeepDive subsection PDFs should include content for each selected tab from `performanceSummary.totals` and `performanceSummary.sources`, not just the selected tab names
 - downloaded Executive Summary `Executive Overview` PDFs should include 7-Day Snapshot Trajectory, Risk Level, Executive Summary, Marketing Funnel Performance, KPI Progress, Benchmark Comparison, and Risk Assessment, matching the major web-tab sections
+- downloaded Executive Summary `Strategic Recommendations` PDFs should include the data accuracy notice, data freshness alert, enterprise disclaimer, recommendation cards, expected impact, timeframe, investment required, projected scenarios, key assumptions, and recommendation disclaimers where those inputs exist
 - generated/downloaded reports should appear in the `Standard Reports` tab, while scheduled reports should appear in the `Scheduled Reports` tab
 - the report tabs should be ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports should be the default tab
 - the Standard Reports download action should say `Download latest report` and regenerate the PDF from the current connected-source aggregate values at click time

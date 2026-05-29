@@ -35,6 +35,7 @@ const customReportMetricGroups = [
 ];
 
 const customReportPaidMetricKeys = new Set(["impressions", "clicks", "spend", "ctr", "cpc", "cpm", "cpa", "roas", "roi", "leads"]);
+const CAMPAIGN_DEEPDIVE_REPORT_PLATFORM = "campaign_deepdive";
 
 const customReportSections = [
   { key: "metrics", label: "Selected metrics" },
@@ -190,6 +191,16 @@ const formatRecommendationText = (text: string): string =>
 const normalizeReportRecipients = (value: string): string[] =>
   value.split(',').map(email => email.trim()).filter(email => email);
 
+const scheduleDayOfWeekToInt = (value: string) => ({
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+}[value.toLowerCase()] ?? 1);
+
 const getReportFormSignature = (values: {
   name: string;
   description: string;
@@ -236,6 +247,7 @@ export default function Reports() {
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
   const [originalReportFormSignature, setOriginalReportFormSignature] = useState("");
   const [reportPendingDelete, setReportPendingDelete] = useState<StoredReport | null>(null);
+  const [reportSaveError, setReportSaveError] = useState("");
   
   // Filter states for All Reports tab
   const [searchQuery, setSearchQuery] = useState("");
@@ -487,6 +499,7 @@ export default function Reports() {
     setSelectedReportSections([]);
     setEditingReportId(null);
     setOriginalReportFormSignature("");
+    setReportSaveError("");
     setScheduleEnabled(false);
     setScheduleFrequency("daily");
     setScheduleDay("monday");
@@ -537,6 +550,61 @@ export default function Reports() {
     };
   };
 
+  const buildBackendScheduledReportPayload = (reportPayload: Omit<StoredReport, "id" | "generatedAt">) => {
+    const schedule = reportPayload.schedule;
+    const frequency = String(schedule?.frequency || "daily").toLowerCase();
+    const payload: Record<string, any> = {
+      campaignId: reportPayload.campaignId,
+      name: reportPayload.name,
+      description: reportPayload.description || null,
+      reportType: "custom",
+      configuration: {
+        reportType: reportPayload.type,
+        selectedSections: reportPayload.selectedSections || [],
+        selectedMetrics: reportPayload.selectedMetrics || [],
+        createdFrom: "campaign-deepdive-custom-report",
+      },
+      status: "active",
+      scheduleEnabled: true,
+      scheduleFrequency: frequency,
+      scheduleTime: schedule?.time || "09:00",
+      scheduleTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      scheduleRecipients: schedule?.recipients || [],
+    };
+
+    if (frequency === "weekly") payload.scheduleDayOfWeek = scheduleDayOfWeekToInt(schedule?.day || "monday");
+    if (frequency === "monthly") payload.scheduleDayOfMonth = 1;
+    if (frequency === "quarterly") {
+      payload.scheduleDayOfMonth = 1;
+      payload.quarterTiming = "end";
+    }
+
+    return payload;
+  };
+
+  const saveBackendScheduledReport = async (reportPayload: Omit<StoredReport, "id" | "generatedAt">, backendReportId?: string) => {
+    const response = await fetch(`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports${backendReportId ? `/${encodeURIComponent(backendReportId)}` : ""}`, {
+      method: backendReportId ? "PATCH" : "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildBackendScheduledReportPayload(reportPayload)),
+    });
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      throw new Error(errorBody?.message || "Failed to save scheduled report");
+    }
+    return response.json();
+  };
+
+  const disableBackendScheduledReport = async (backendReportId: string) => {
+    await fetch(`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports/${encodeURIComponent(backendReportId)}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scheduleEnabled: false, status: "archived" }),
+    });
+  };
+
   const openEditReport = (report: StoredReport) => {
     const nextSelectedCampaigns = report.campaignId ? [report.campaignId] : (campaignContextId ? [campaignContextId] : []);
     const nextSelectedSections = Array.isArray(report.selectedSections)
@@ -582,21 +650,46 @@ export default function Reports() {
   };
 
   const saveReport = async () => {
+    setReportSaveError("");
     const reportPayload = buildReportPayload(scheduleEnabled ? "Scheduled" : "Generated");
 
-    if (editingReportId) {
-      reportStorage.updateReport(editingReportId, reportPayload);
-    } else if (scheduleEnabled) {
-      reportStorage.addReport({
-        ...reportPayload,
-        generatedAt: new Date(),
-      });
-    } else {
-      const savedReport = reportStorage.addReport({
-        ...reportPayload,
-        generatedAt: new Date(),
-      });
-      await downloadReportPdf(savedReport);
+    try {
+      const existingReport = editingReportId
+        ? allStoredReports.find((report) => report.id === editingReportId)
+        : undefined;
+      const backendReportId = existingReport?.backendReportId;
+      const backendPlatformType = existingReport?.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM;
+
+      if (editingReportId) {
+        if (scheduleEnabled) {
+          const backendReport = await saveBackendScheduledReport(reportPayload, backendReportId);
+          reportStorage.updateReport(editingReportId, {
+            ...reportPayload,
+            backendReportId: String(backendReport?.id || backendReportId || ""),
+            backendPlatformType,
+          });
+        } else {
+          if (backendReportId) await disableBackendScheduledReport(backendReportId);
+          reportStorage.updateReport(editingReportId, reportPayload);
+        }
+      } else if (scheduleEnabled) {
+        const backendReport = await saveBackendScheduledReport(reportPayload);
+        reportStorage.addReport({
+          ...reportPayload,
+          backendReportId: String(backendReport?.id || ""),
+          backendPlatformType: CAMPAIGN_DEEPDIVE_REPORT_PLATFORM,
+          generatedAt: new Date(),
+        });
+      } else {
+        const savedReport = reportStorage.addReport({
+          ...reportPayload,
+          generatedAt: new Date(),
+        });
+        await downloadReportPdf(savedReport);
+      }
+    } catch (error: any) {
+      setReportSaveError(error?.message || "Failed to save report");
+      return;
     }
     
     // Refresh the reports list
@@ -607,11 +700,22 @@ export default function Reports() {
     resetForm();
   };
 
-  const deletePendingReport = () => {
+  const deletePendingReport = async () => {
     if (!reportPendingDelete) return;
-    reportStorage.deleteReport(reportPendingDelete.id);
-    setAllStoredReports(reportStorage.getReports());
-    setReportPendingDelete(null);
+    try {
+      if (reportPendingDelete.backendReportId) {
+        const response = await fetch(`/api/platforms/${reportPendingDelete.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports/${encodeURIComponent(reportPendingDelete.backendReportId)}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        if (!response.ok) throw new Error("Failed to delete scheduled report");
+      }
+      reportStorage.deleteReport(reportPendingDelete.id);
+      setAllStoredReports(reportStorage.getReports());
+      setReportPendingDelete(null);
+    } catch (error: any) {
+      setReportSaveError(error?.message || "Failed to delete report");
+    }
   };
 
   // Filter reports for All Reports tab
@@ -1689,13 +1793,18 @@ export default function Reports() {
                               value={recipients}
                               onChange={(e) => setRecipients(e.target.value)}
                             />
-                            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                              Scheduled reports are saved in this browser only right now. Automated email delivery is not connected for Custom Reports yet.
+                            <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                              Scheduled reports are sent by email using the saved recipients and your time zone: {Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"}.
                             </div>
                           </div>
                         </div>
                       )}
                     </div>
+                    {reportSaveError && (
+                      <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                        {reportSaveError}
+                      </div>
+                    )}
 
                     {/* Action Buttons */}
                     <div className="flex items-center justify-between pt-4 border-t">

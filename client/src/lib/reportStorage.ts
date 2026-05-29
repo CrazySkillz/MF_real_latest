@@ -16,6 +16,8 @@ export interface StoredReport {
   includeBenchmarks?: boolean;
   selectedMetrics?: string[];
   selectedSections?: string[];
+  backendReportId?: string;
+  backendPlatformType?: string;
   schedule?: {
     frequency: string;
     day: string;

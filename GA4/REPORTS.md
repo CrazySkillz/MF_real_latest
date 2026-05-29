@@ -133,7 +133,7 @@ Important meaning:
 - the report tabs should be ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports should be the default tab
 - the Standard Reports download action should say `Download latest report` and refetch the report card's campaign connected-source aggregate, Executive Summary context, campaign context, KPIs, and Benchmarks before regenerating the PDF
 - scheduled create mode should use `Schedule Automated Report`, default to `Daily`, and show `Schedule Report` in the same filled primary button style as `Download Report`
-- the Custom Report schedule form should visibly state that these scheduled records are currently browser-saved only and do not trigger automated email delivery yet
+- the Custom Report schedule form should create a backend scheduled report record with recipients, schedule time, browser time zone, and saved Campaign DeepDive report composition
 - future work should preserve section-based composition
 - top-level custom sections are parent headers, not checkboxes
 - subsection checkboxes default to unchecked for new custom reports
@@ -178,11 +178,12 @@ Important meaning:
 
 ## Scheduled Reports
 
-Important current boundary:
+Important current behavior:
 
-- Campaign DeepDive Custom Report scheduling in `client/src/pages/reports.tsx` currently saves scheduled report records in browser `localStorage` through `reportStorage`; it does not call the backend platform report API, does not persist `scheduleTimeZone`, and is not processed by `server/report-scheduler.ts`
-- because of that boundary, a Custom Report scheduled for `15:00` is only a saved UI configuration today; it will not send an email until the Custom Report builder is wired to backend scheduled-report persistence and delivery
-- backend scheduled email delivery exists for platform report records created through `/api/platforms/:platformType/reports`; those records require `scheduleTimeZone`, `scheduleTime`, and `scheduleRecipients`
+- Campaign DeepDive Custom Report scheduling in `client/src/pages/reports.tsx` now writes backend scheduled report records through `/api/platforms/campaign_deepdive/reports`
+- scheduled records persist `scheduleTimeZone`, `scheduleTime`, `scheduleRecipients`, report type, selected tabs, and selected metrics in the saved configuration
+- `server/report-scheduler.ts` processes those records alongside platform-level scheduled reports and attaches a generated Campaign DeepDive PDF
+- a Custom Report scheduled for `15:00` is interpreted in the saved browser time zone, then processed by the backend scheduler when that time is due
 
 When scheduling is enabled, users can configure:
 

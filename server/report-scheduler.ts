@@ -170,6 +170,93 @@ function formatWithUnit(value: any, unit: any): string {
   return `${v}${u}`;
 }
 
+const campaignDeepDiveReportTypeLabels: Record<string, string> = {
+  "performance-summary": "Performance Summary",
+  "financial-analysis": "Budget & Financial Analysis",
+  "platform-comparison": "Platform Comparison",
+  "trend-analysis": "Trend Analysis",
+  "executive-summary": "Executive Summary",
+};
+
+const campaignDeepDiveTabLabels: Record<string, string> = {
+  "performance-summary:overview": "Overview",
+  "performance-summary:health": "Campaign Health",
+  "performance-summary:changes": "What's Changed",
+  "performance-summary:insights": "Insights",
+  "financial-analysis:overview": "Overview",
+  "financial-analysis:roi-roas": "ROI & ROAS",
+  "financial-analysis:costs": "Cost Analysis",
+  "financial-analysis:budget": "Budget Allocation",
+  "financial-analysis:insights": "Insights",
+  "platform-comparison:overview": "Overview",
+  "platform-comparison:performance": "Performance Metrics",
+  "platform-comparison:cost-analysis": "Financial Comparison",
+  "platform-comparison:insights": "Insights",
+  "trend-analysis:overview": "Overview",
+  "trend-analysis:efficiency": "Efficiency Metrics",
+  "trend-analysis:funnel": "Conversion Funnel",
+  "trend-analysis:platforms": "Platform Breakdown",
+  "trend-analysis:insights": "Insights",
+  "executive-summary:overview": "Executive Overview",
+  "executive-summary:recommendations": "Strategic Recommendations",
+};
+
+async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
+  report: any;
+  windowStart: string;
+  windowEnd: string;
+  campaignName: string | null;
+}): Promise<Buffer | null> {
+  const { report, windowStart, windowEnd, campaignName } = args;
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF();
+  const cfg = typeof report?.configuration === "string"
+    ? JSON.parse(report.configuration || "{}")
+    : (report?.configuration || {});
+  const reportType = String(cfg?.reportType || "").trim();
+  const selectedSections = Array.isArray(cfg?.selectedSections) ? cfg.selectedSections.map(String).filter(Boolean) : [];
+  const selectedMetrics = Array.isArray(cfg?.selectedMetrics) ? cfg.selectedMetrics.map(String).filter(Boolean) : [];
+  const margin = 18;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  let y = margin;
+
+  const addText = (value: string, opts: { size?: number; bold?: boolean; indent?: number } = {}) => {
+    const indent = opts.indent || 0;
+    doc.setFontSize(opts.size || 10);
+    doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+    const lines = doc.splitTextToSize(String(value || ""), pageWidth - margin * 2 - indent);
+    lines.forEach((line: string) => {
+      if (y > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(line, margin + indent, y);
+      y += opts.size && opts.size >= 14 ? 8 : 6;
+    });
+  };
+
+  addText(String(report?.name || "Campaign Report"), { size: 18, bold: true });
+  addText(`Campaign: ${campaignName || "Campaign"}`);
+  addText(`Report Type: ${campaignDeepDiveReportTypeLabels[reportType] || reportType || "Custom Report"}`);
+  addText(`Window: ${windowStart} to ${windowEnd}`);
+  addText(`Generated: ${new Date().toLocaleString()}`);
+  y += 4;
+  addText("Included sections", { size: 14, bold: true });
+  if (selectedSections.length === 0) {
+    addText("- No sections selected.", { indent: 4 });
+  } else {
+    selectedSections.forEach((section: string) => addText(`- ${campaignDeepDiveTabLabels[section] || section}`, { indent: 4 }));
+  }
+  if (selectedMetrics.length > 0) {
+    y += 4;
+    addText("Selected metrics", { size: 14, bold: true });
+    selectedMetrics.forEach((metric: string) => addText(`- ${metric}`, { indent: 4 }));
+  }
+
+  return coercePdfBufferFromDoc(doc);
+}
+
 export async function buildPdfAttachmentForReport(args: {
   report: any;
   windowStart: string;
@@ -179,6 +266,10 @@ export async function buildPdfAttachmentForReport(args: {
 }): Promise<Buffer | null> {
   const { report, windowStart, windowEnd, campaignName } = args;
   try {
+    if (String((report as any)?.platformType || "") === "campaign_deepdive") {
+      return buildCampaignDeepDiveScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });
+    }
+
     if (String((report as any)?.platformType || "") === "google_analytics") {
       const ga4ReportType = String((report as any)?.reportType || "").toLowerCase();
       if (ga4ReportType === "overview" || ga4ReportType === "kpis" || ga4ReportType === "benchmarks" || ga4ReportType === "ads" || ga4ReportType === "insights" || ga4ReportType === "custom") {

@@ -104,7 +104,11 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('const [scheduleFrequency, setScheduleFrequency] = useState("daily");');
     expect(reports).toContain('setScheduleFrequency("daily");');
     expect(reports).toContain('scheduleFrequency: report.schedule?.frequency || "daily",');
-    expect(reports).toContain('Scheduled reports are saved in this browser only right now. Automated email delivery is not connected for Custom Reports yet.');
+    expect(reports).toContain('const CAMPAIGN_DEEPDIVE_REPORT_PLATFORM = "campaign_deepdive";');
+    expect(reports).toContain('fetch(`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports${backendReportId ? `/${encodeURIComponent(backendReportId)}` : ""}`');
+    expect(reports).toContain('scheduleTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"');
+    expect(reports).toContain('Scheduled reports are sent by email using the saved recipients and your time zone:');
+    expect(reports).not.toContain('Scheduled reports are saved in this browser only right now. Automated email delivery is not connected for Custom Reports yet.');
     expect(reports).not.toContain('Schedule Automated Reports');
     expect(reports).not.toContain('Schedule Automatic Generation');
     expect(reports).not.toContain('variant={!editingReportId && scheduleEnabled ? "link" : "default"}');
@@ -173,12 +177,31 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("const [reportPendingDelete, setReportPendingDelete] = useState<StoredReport | null>(null);");
     expect(reports).toContain("onClick={() => setReportPendingDelete(report)}");
     expect(reports).toContain("reportStorage.deleteReport(reportPendingDelete.id);");
+    expect(reports).toContain("reportPendingDelete.backendReportId");
+    expect(reports).toContain('method: "DELETE"');
     expect(reports).toContain("<AlertDialog open={!!reportPendingDelete}");
     expect(reports).toContain("<AlertDialogTitle>Delete report?</AlertDialogTitle>");
     expect(reports).toContain("This action cannot be undone.");
     expect(reports).toContain("Campaign connected-source data");
     expect(reports).toContain("customReportSources.map((source: any) => (");
     expect(reports).not.toContain("Selectable metrics:");
+  });
+
+  it("wires Campaign DeepDive scheduled reports into backend scheduler records", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const storage = readFileSync(join(process.cwd(), "client/src/lib/reportStorage.ts"), "utf-8");
+    const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
+
+    expect(storage).toContain("backendReportId?: string;");
+    expect(storage).toContain("backendPlatformType?: string;");
+    expect(reports).toContain("const buildBackendScheduledReportPayload =");
+    expect(reports).toContain('reportType: "custom"');
+    expect(reports).toContain('createdFrom: "campaign-deepdive-custom-report"');
+    expect(reports).toContain("const backendReport = await saveBackendScheduledReport(reportPayload);");
+    expect(reports).toContain("backendReportId: String(backendReport?.id || \"\")");
+    expect(reports).toContain("if (backendReportId) await disableBackendScheduledReport(backendReportId);");
+    expect(scheduler).toContain('String((report as any)?.platformType || "") === "campaign_deepdive"');
+    expect(scheduler).toContain("buildCampaignDeepDiveScheduledPdfAttachment");
   });
 
   it("lets campaign-scoped reports choose Campaign DeepDive subsections and tabs", () => {

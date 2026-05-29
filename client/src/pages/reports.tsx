@@ -1209,11 +1209,11 @@ export default function Reports() {
             </div>
 
             {/* Reports Tabs */}
-            <Tabs defaultValue="scheduled" className="space-y-6">
+            <Tabs defaultValue="standard" className="space-y-6">
               <TabsList>
+                <TabsTrigger value="standard">Standard Reports</TabsTrigger>
                 <TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>
                 <TabsTrigger value="all">All Reports</TabsTrigger>
-                <TabsTrigger value="standard">Standard Reports</TabsTrigger>
               </TabsList>
 
               <TabsContent value="scheduled" className="space-y-6">
@@ -1281,7 +1281,7 @@ export default function Reports() {
                             <div className="flex items-center space-x-2">
                               <Button variant="outline" size="sm">
                                 <Download className="w-4 h-4 mr-2" />
-                                Download last sent report
+                                Download latest report
                               </Button>
                               <Button variant="outline" size="sm">
                                 <Edit className="w-4 h-4 mr-2" />
@@ -1690,7 +1690,7 @@ export default function Reports() {
                               </Button>
                               <Button variant="outline" size="sm" onClick={() => downloadReportPdf(report)}>
                                 <Download className="w-4 h-4 mr-2" />
-                                Download last sent report
+                                Download latest report
                               </Button>
                               <Button
                                 variant="outline"

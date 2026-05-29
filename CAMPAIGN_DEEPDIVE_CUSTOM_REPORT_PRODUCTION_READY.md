@@ -209,6 +209,7 @@ Status:
 - [x] Completed locally: downloaded Campaign DeepDive subsection PDFs include a body for each selected tab using the existing `/outcome-totals` connected-source aggregate, not just a list of selected tab names.
 - [x] Completed locally: schedule mode label is `Schedule Automated Reports`.
 - [x] Completed locally: the old `Templates` tab is now `Standard Reports`; generated/downloaded reports appear there and scheduled reports appear under `Scheduled Reports`.
+- [x] Completed locally: report tabs are ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports is the default tab and its download action is labeled `Download latest report`.
 - [x] Completed locally: campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types and lets users choose which tabs from the selected subsection to include; the standalone `/reports` route keeps its broader report type options when reached directly.
 - [x] Completed locally: generated report cards no longer show the `Generated` status pill.
 - [x] User validation passed on 2026-05-28: All Reports cards show summary-only layout without connected-source detail previews.

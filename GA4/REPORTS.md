@@ -118,6 +118,8 @@ Important meaning:
 - unscheduled create mode should show `Download Report` and download the selected report sections as a PDF
 - downloaded Campaign DeepDive subsection PDFs should include content for each selected tab from `performanceSummary.totals` and `performanceSummary.sources`, not just the selected tab names
 - generated/downloaded reports should appear in the `Standard Reports` tab, while scheduled reports should appear in the `Scheduled Reports` tab
+- the report tabs should be ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports should be the default tab
+- the Standard Reports download action should say `Download latest report` and regenerate the PDF from the current connected-source aggregate values at click time
 - scheduled create mode should use `Schedule Automated Reports` and show `Schedule Report`
 - future work should preserve section-based composition
 - top-level custom sections are parent headers, not checkboxes

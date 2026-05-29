@@ -112,10 +112,14 @@ describe("campaign Custom Report regression guard", () => {
 
     expect(reports).toContain("const standardReports = allStoredReports.filter(report => report.status === 'Generated');");
     expect(reports).toContain("const storedScheduledReports = allStoredReports.filter(report => report.status === 'Scheduled');");
+    expect(reports).toContain('<Tabs defaultValue="standard" className="space-y-6">');
     expect(reports).toContain('<TabsTrigger value="standard">Standard Reports</TabsTrigger>');
+    expect(reports.indexOf('<TabsTrigger value="standard">Standard Reports</TabsTrigger>')).toBeLessThan(reports.indexOf('<TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>'));
+    expect(reports.indexOf('<TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>')).toBeLessThan(reports.indexOf('<TabsTrigger value="all">All Reports</TabsTrigger>'));
     expect(reports).toContain('<TabsContent value="standard">');
     expect(reports).toContain("standardReports.map((report) => (");
     expect(reports).toContain("storedScheduledReports.map((report) => (");
+    expect(reports).toContain("Download latest report");
     expect(reports).not.toContain("Report Templates");
   });
 

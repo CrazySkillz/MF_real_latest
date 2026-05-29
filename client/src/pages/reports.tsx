@@ -1619,7 +1619,7 @@ export default function Reports() {
                           onCheckedChange={(checked) => setScheduleEnabled(checked as boolean)}
                         />
                         <Label htmlFor="enable-schedule" className="text-base font-medium">
-                          Schedule Automated Reports
+                          Schedule Automated Report
                         </Label>
                       </div>
                       
@@ -1697,7 +1697,6 @@ export default function Reports() {
                         <Button 
                           onClick={saveReport}
                           disabled={!isReportFormValid || !isReportFormChanged}
-                          variant={!editingReportId && scheduleEnabled ? "link" : "default"}
                         >
                           {editingReportId ? "Update Report" : scheduleEnabled ? "Schedule Report" : "Download Report"}
                         </Button>

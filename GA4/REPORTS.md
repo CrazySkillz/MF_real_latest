@@ -37,7 +37,7 @@ Delete behavior:
 3. the modal opens as a fresh create form and must not reuse values from the last edited report
 4. the modal offers report type and tab selection from the campaign-scoped builder
 5. if the user is creating a new unscheduled report, the flow presents a `Download Report` action and the saved generated report appears under `Standard Reports`
-6. if the user enables `Schedule Automated Reports`, the flow presents a `Schedule Report` action and the saved scheduled report appears under `Scheduled Reports`
+6. if the user enables `Schedule Automated Report`, the flow presents a `Schedule Report` action and the saved scheduled report appears under `Scheduled Reports`
 
 ## Standard Reports
 
@@ -130,7 +130,7 @@ Important meaning:
 - generated/downloaded reports should appear in the `Standard Reports` tab, while scheduled reports should appear in the `Scheduled Reports` tab
 - the report tabs should be ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports should be the default tab
 - the Standard Reports download action should say `Download latest report` and refetch the report card's campaign connected-source aggregate, Executive Summary context, campaign context, KPIs, and Benchmarks before regenerating the PDF
-- scheduled create mode should use `Schedule Automated Reports` and show `Schedule Report`
+- scheduled create mode should use `Schedule Automated Report` and show `Schedule Report` in the same filled primary button style as `Download Report`
 - future work should preserve section-based composition
 - top-level custom sections are parent headers, not checkboxes
 - subsection checkboxes default to unchecked for new custom reports

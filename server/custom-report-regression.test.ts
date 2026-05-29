@@ -100,8 +100,10 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('const [reportType, setReportType] = useState("");');
     expect(reports).toContain('const [selectedReportSections, setSelectedReportSections] = useState<string[]>([]);');
     expect(reports).toContain('<SelectValue placeholder="Select report type" />');
-    expect(reports).toContain('Schedule Automated Reports');
+    expect(reports).toContain('Schedule Automated Report');
+    expect(reports).not.toContain('Schedule Automated Reports');
     expect(reports).not.toContain('Schedule Automatic Generation');
+    expect(reports).not.toContain('variant={!editingReportId && scheduleEnabled ? "link" : "default"}');
     expect(reports).toContain("const downloadReportPdf = async (report: StoredReport) => {");
     expect(reports).toContain("const { jsPDF } = await import('jspdf');");
     expect(reports).toContain('await downloadReportPdf(savedReport);');

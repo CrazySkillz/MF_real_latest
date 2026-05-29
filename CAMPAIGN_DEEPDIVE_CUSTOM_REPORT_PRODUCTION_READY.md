@@ -208,7 +208,8 @@ Status:
 - [x] Completed locally: the top-level `Create Report` button opens a fresh blank create form and does not reuse previously edited report values, report type, selected tabs, or selected metrics.
 - [x] Completed locally: unscheduled create mode shows `Download Report` and downloads a PDF containing the selected report sections; scheduled create mode shows `Schedule Report`.
 - [x] Completed locally: downloaded Campaign DeepDive subsection PDFs include a body for each selected tab using the existing `/outcome-totals` connected-source aggregate, not just a list of selected tab names.
-- [x] Completed locally: schedule mode label is `Schedule Automated Reports`.
+- [x] Completed locally: schedule mode label is `Schedule Automated Report`.
+- [x] Completed locally: scheduled create mode uses the same filled primary button style as `Download Report` for `Schedule Report`.
 - [x] Completed locally: the old `Templates` tab is now `Standard Reports`; generated/downloaded reports appear there and scheduled reports appear under `Scheduled Reports`.
 - [x] Completed locally: report tabs are ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports is the default tab and its download action is labeled `Download latest report`.
 - [x] Completed locally: `Download latest report` refetches the report card's campaign connected-source aggregate, Executive Summary context, campaign budget context, KPIs, and Benchmarks before building the PDF, so saved report cards regenerate from current selected report inputs instead of stale page cache.
@@ -311,7 +312,7 @@ Custom Report is production-ready when:
 - Downloaded Performance Summary PDFs include the same major sections shown in the selected Performance Summary web tabs, using `/outcome-totals.performanceSummary` for current connected-source values and campaign KPI/Benchmark records for health rows
 - Downloaded Budget & Financial Analysis PDFs include the same nested sections, cards, and row labels shown in the selected Budget & Financial web tabs, using `/outcome-totals.performanceSummary` for connected-source financial totals/source availability and the campaign row for budget/start/end pacing inputs
 - `Download latest report` must refetch `/outcome-totals`, `/executive-summary`, campaign context, KPIs, and Benchmarks for the report card's campaign before PDF generation, then use those refetched values immediately
-- Scheduled create mode uses `Schedule Automated Reports` and shows `Schedule Report`
+- Scheduled create mode uses `Schedule Automated Report` and shows `Schedule Report` in the same filled primary button style as `Download Report`
 - Campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types in this order: `Performance Summary`, `Budget & Financial Analysis`, `Platform Comparison`, `Trend Analysis`, and `Executive Summary`
 - Selecting a Campaign DeepDive subsection exposes that subsection's current tab list as report composition checkboxes and saves those tab keys in `selectedSections`
 - regression coverage guards GA4-only and future paid-media source scenarios
@@ -353,7 +354,7 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - All Reports summary-only cleanup validated on 2026-05-28: connected-source detail previews and `Includes: KPIs, Benchmarks` are not rendered on report cards.
 - All Reports edit workflow added on 2026-05-28: edit icon opens prefilled dialog, `Update Report` is disabled until changes are made, generated status pill is hidden, and edit-mode report-name autofocus is suppressed.
 - Create Report reset fix added on 2026-05-28: top-level create opens a fresh empty form after prior edits.
-- Create Report action split added on 2026-05-28: unscheduled create mode downloads the selected sections, while scheduled create mode saves with `Schedule Automated Reports` and `Schedule Report`.
+- Create Report action split added on 2026-05-28: unscheduled create mode downloads the selected sections, while scheduled create mode saves with `Schedule Automated Report` and `Schedule Report`.
 - Download Report content fix added on 2026-05-28 and pushed in commit `ec6f9234`: Campaign DeepDive subsection exports now print selected tab bodies from the connected-source aggregate instead of only listing selected tab names.
 - Report Type composition updated on 2026-05-28 and pushed in commit `f8dfeee0`: Campaign DeepDive Custom Report creation exposes Campaign DeepDive subsection report types and saves selected subsection tabs; the standalone `/reports` route keeps broader report-type choices when reached directly.
 - Commit 7 documentation updated on 2026-05-28.

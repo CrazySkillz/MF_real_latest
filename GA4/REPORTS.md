@@ -35,13 +35,11 @@ Delete behavior:
 1. user opens the GA4 `Reports` tab
 2. user clicks `Create Report`
 3. the modal opens as a fresh create form and must not reuse values from the last edited report
-4. the modal offers:
-   `Standard Templates`
-   `Custom Report`
-5. if the user is creating a new unscheduled report, the flow presents a `Generate & Download report` action
-6. the user can either download immediately or enable scheduling and save the report
+4. the modal offers report type and tab selection from the campaign-scoped builder
+5. if the user is creating a new unscheduled report, the flow presents a `Download Report` action and the saved generated report appears under `Standard Reports`
+6. if the user enables `Schedule Automated Reports`, the flow presents a `Schedule Report` action and the saved scheduled report appears under `Scheduled Reports`
 
-## Standard Templates
+## Standard Reports
 
 Current standard template types:
 
@@ -119,6 +117,7 @@ Important meaning:
 - the top-level `Create Report` action should reset edit state, report type, selected tabs, and selected metric state so it opens an empty create form after prior edits
 - unscheduled create mode should show `Download Report` and download the selected report sections as a PDF
 - downloaded Campaign DeepDive subsection PDFs should include content for each selected tab from `performanceSummary.totals` and `performanceSummary.sources`, not just the selected tab names
+- generated/downloaded reports should appear in the `Standard Reports` tab, while scheduled reports should appear in the `Scheduled Reports` tab
 - scheduled create mode should use `Schedule Automated Reports` and show `Schedule Report`
 - future work should preserve section-based composition
 - top-level custom sections are parent headers, not checkboxes

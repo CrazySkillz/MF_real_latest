@@ -107,6 +107,18 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('addSourceList();');
   });
 
+  it("routes generated reports to Standard Reports and scheduled reports to Scheduled Reports", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("const standardReports = allStoredReports.filter(report => report.status === 'Generated');");
+    expect(reports).toContain("const storedScheduledReports = allStoredReports.filter(report => report.status === 'Scheduled');");
+    expect(reports).toContain('<TabsTrigger value="standard">Standard Reports</TabsTrigger>');
+    expect(reports).toContain('<TabsContent value="standard">');
+    expect(reports).toContain("standardReports.map((report) => (");
+    expect(reports).toContain("storedScheduledReports.map((report) => (");
+    expect(reports).not.toContain("Report Templates");
+  });
+
   it("lets campaign-scoped reports choose Campaign DeepDive subsections and tabs", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 

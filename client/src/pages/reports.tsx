@@ -662,6 +662,8 @@ export default function Reports() {
 
     return true;
   });
+  const standardReports = allStoredReports.filter(report => report.status === 'Generated');
+  const storedScheduledReports = allStoredReports.filter(report => report.status === 'Scheduled');
 
   // Get unique campaign names for filter dropdown
   const uniqueCampaigns = Array.from(new Set(
@@ -1211,7 +1213,7 @@ export default function Reports() {
               <TabsList>
                 <TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>
                 <TabsTrigger value="all">All Reports</TabsTrigger>
-                <TabsTrigger value="templates">Templates</TabsTrigger>
+                <TabsTrigger value="standard">Standard Reports</TabsTrigger>
               </TabsList>
 
               <TabsContent value="scheduled" className="space-y-6">
@@ -1310,7 +1312,7 @@ export default function Reports() {
                   ))}
                   
                   {/* Dynamically created scheduled reports */}
-                  {allStoredReports.filter(r => r.status === 'Scheduled').map((report) => (
+                  {storedScheduledReports.map((report) => (
                     <Card key={report.id}>
                       <CardHeader>
                         <div className="flex items-start justify-between">
@@ -1604,7 +1606,7 @@ export default function Reports() {
                                       <Edit className="w-4 h-4" />
                                     </Button>
                                     {report.status === 'Generated' ? (
-                                      <Button variant="outline" size="sm">
+                                      <Button variant="outline" size="sm" onClick={() => downloadReportPdf(report)}>
                                         <Download className="w-4 h-4 mr-2" />
                                         Download last sent report
                                       </Button>
@@ -1641,18 +1643,74 @@ export default function Reports() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="templates">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Report Templates</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-12 text-muted-foreground/70">
-                      <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>Custom report templates will be available soon</p>
-                    </div>
-                  </CardContent>
-                </Card>
+              <TabsContent value="standard">
+                <div className="space-y-4">
+                  {standardReports.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-12">
+                        <div className="text-center text-muted-foreground/70">
+                          <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p className="text-lg font-medium mb-2">No standard reports yet</p>
+                          <p>Use Download Report to create a standard downloadable report.</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    standardReports.map((report) => (
+                      <Card key={report.id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2 flex-1">
+                              <h3 className="font-semibold text-lg">{report.name}</h3>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                <div>
+                                  <span className="font-medium text-foreground">Type:</span>
+                                  <div className="text-muted-foreground/70">{getReportTypeLabel(report.type)}</div>
+                                </div>
+                                <div>
+                                  <span className="font-medium text-foreground">Format:</span>
+                                  <div className="text-muted-foreground/70">{report.format}</div>
+                                </div>
+                                <div>
+                                  <span className="font-medium text-foreground">Generated:</span>
+                                  <div className="text-muted-foreground/70">
+                                    {format(report.generatedAt, "MMM d, yyyy 'at' h:mm a")}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 ml-4">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openEditReport(report)}
+                                aria-label={`Edit ${report.name}`}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => downloadReportPdf(report)}>
+                                <Download className="w-4 h-4 mr-2" />
+                                Download last sent report
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700"
+                                onClick={() => {
+                                  reportStorage.deleteReport(report.id);
+                                  const allReports = reportStorage.getReports();
+                                  setAllStoredReports(allReports);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
           </div>

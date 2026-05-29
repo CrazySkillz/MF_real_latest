@@ -922,6 +922,82 @@ export default function Reports() {
         addMetricList(["sessions", "conversions", "revenue", "spend", "cvr", "roas", "roi"]);
       }
     };
+    const addFinancialAnalysisContent = (section: string) => {
+      const spendCapableSources = customReportSources.filter((source: any) => {
+        const includedMetrics = Array.isArray(source?.includedMetrics) ? source.includedMetrics : [];
+        return source?.category === "paid_media" && includedMetrics.includes("spend");
+      });
+
+      if (section === "financial-analysis:overview") {
+        addText("Campaign Health Score", { bold: true, indent: 4 });
+        addMetricList(["spend", "revenue", "roas", "roi"]);
+        addText("Key Financial Metrics", { bold: true, indent: 4 });
+        addMetricList(["spend", "conversions"]);
+        addText("Budget Utilization", { bold: true, indent: 4 });
+        addText("Campaign budget context is required to judge utilization; connected-source spend is shown when available.", { indent: 8 });
+        addMetricList(["spend"]);
+        addText("Budget Pacing & Burn Rate", { bold: true, indent: 4 });
+        addText("Pacing requires campaign spend, budget, start date, and end date.", { indent: 8 });
+        addMetricList(["spend"]);
+        addText("Cost Efficiency Metrics", { bold: true, indent: 4 });
+        addMetricList(["cpc", "cpa", "cvr"]);
+      } else if (section === "financial-analysis:roi-roas") {
+        addText("ROI & ROAS Analysis", { bold: true, indent: 4 });
+        addText("Return on Ad Spend (ROAS)", { bold: true, indent: 8 });
+        addMetricList(["roas", "spend", "revenue"]);
+        addText("Return on Investment (ROI)", { bold: true, indent: 8 });
+        addMetricList(["roi", "spend", "revenue"]);
+        addText("Source ROAS Performance", { bold: true, indent: 8 });
+        addSourceList();
+        addText("Source ROI Performance", { bold: true, indent: 8 });
+        addSourceList();
+        addText("Financial Inputs", { bold: true, indent: 8 });
+        addSourceList();
+      } else if (section === "financial-analysis:costs") {
+        addText("Cost Analysis Breakdown", { bold: true, indent: 4 });
+        addText("Cost Metrics", { bold: true, indent: 8 });
+        addMetricList(["cpc", "cpa", "cpm"]);
+        addText("Efficiency Indicators", { bold: true, indent: 8 });
+        addMetricList(["ctr", "cvr"]);
+        addText("Sources", { bold: true, indent: 8 });
+        addSourceList();
+      } else if (section === "financial-analysis:budget") {
+        addText("Performance-Based Budget Allocation", { bold: true, indent: 4 });
+        addText("Imported spend labels inside GA4 feed total spend, ROI, and ROAS but are not connected ad platforms. Budget Allocation only shows sources after a spend-capable ad platform is connected in Connected Platforms.", { indent: 8 });
+        addText("Performance Tiers", { bold: true, indent: 4 });
+        addText("High Performance: sources with ROAS >= 3.0x", { indent: 8 });
+        addText("Medium Performance: sources with ROAS 1.0-3.0x", { indent: 8 });
+        addText("Low Performance: sources with ROAS < 1.0x", { indent: 8 });
+        addText("Source Budget Analysis", { bold: true, indent: 4 });
+        if (spendCapableSources.length === 0) {
+          addText("No spend-capable connected source is available for budget allocation yet.", { indent: 8 });
+        } else {
+          spendCapableSources.forEach((source: any) => {
+            const sourceSpend = Number(source?.metrics?.spend);
+            const spendText = Number.isFinite(sourceSpend) ? formatCustomReportMetricValue("spend", sourceSpend) : "Spend included in connected-source aggregate";
+            addText(`- ${source?.label || source?.id}: ${spendText}`, { indent: 8 });
+          });
+        }
+        addText("Allocation Guidance", { bold: true, indent: 4 });
+        addText(spendCapableSources.length > 1 ? "Review spend from lower-performing sources for possible reallocation to higher-performing spend-capable sources." : "Reallocation guidance requires at least two spend-capable connected sources.", { indent: 8 });
+      } else if (section === "financial-analysis:insights") {
+        addText("Financial Performance Insights", { bold: true, indent: 4 });
+        addText("Performance Summary", { bold: true, indent: 8 });
+        addMetricList(["roas", "roi"]);
+        addText("Cost Efficiency", { bold: true, indent: 8 });
+        addMetricList(["cpa", "cpc", "cpm"]);
+        addText("Budget Management", { bold: true, indent: 8 });
+        addMetricList(["spend"]);
+        addText("Source Performance Insights", { bold: true, indent: 4 });
+        addSourceList();
+        addText("Key Opportunities", { bold: true, indent: 4 });
+        addMetricList(["cvr", "ctr", "roas", "spend"]);
+        addText("Budget Optimization Recommendations", { bold: true, indent: 4 });
+        addText("Budget optimization recommendations require multiple spend-capable connected sources.", { indent: 8 });
+        addText("Cost Optimization Insights", { bold: true, indent: 4 });
+        addMetricList(["ctr", "cvr", "cpc", "cpa", "cpm"]);
+      }
+    };
     const recommendationImpactItems = (rec: any) => {
       if (rec?.category !== "Website Outcomes") return [formatRecommendationText(rec?.expectedImpact || "")].filter(Boolean);
       const webMetrics: string[] = [];
@@ -1069,6 +1145,8 @@ export default function Reports() {
         addExecutiveRecommendationsContent();
       } else if (section.startsWith("performance-summary:")) {
         addPerformanceSummaryContent(section);
+      } else if (section.startsWith("financial-analysis:")) {
+        addFinancialAnalysisContent(section);
       } else if (section.endsWith(":overview")) {
         addText("Connected-source summary", { bold: true, indent: 4 });
         addMetricList(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);

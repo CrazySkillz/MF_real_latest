@@ -457,6 +457,7 @@ Proven:
 - Budget & Financial Analysis remains distinct from Platform Comparison: this section owns campaign-wide budget, pacing, ROI, ROAS, allocation, and financial decisioning, while Platform Comparison owns connected-source contribution/comparison.
 - Scheduler-created snapshots include `metrics.performanceSummary`, and Budget & Financial trend indicators compare only compatible aggregate snapshots.
 - The Budget & Financial page refetches current aggregate values while visible and on window focus so source updates are pulled into the UI through the same aggregate contract.
+- Custom Report PDF exports for Budget & Financial Analysis now include the same major section set as the web tabs and read current values from the connected-source aggregate, instead of using a generic metric-list export.
 - Current server aggregation feeds registered Connected Platforms and financial inputs into `performanceSummary`; Google Ads is now included as a first-class normalized paid-media source when connected and populated with campaign-scoped daily metrics.
 - GA4 `yesop` test-data refresh uses the deterministic simulator and does not require a live OAuth token, so Render validation can trigger a GA4 refresh for system-generated test data without failing on `TOKEN_EXPIRED`.
 - Render validation passed for the GA4 `yesop` source-refresh path: manual refresh returned `success: true` with refreshed metrics, and the Budget & Financial current-value validation passed after refresh.

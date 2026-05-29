@@ -217,6 +217,7 @@ Status:
 - [x] Completed locally: Executive Summary `Executive Overview` PDF exports include the same major section set as the web tab: 7-Day Snapshot Trajectory, Risk Level, Executive Summary, Marketing Funnel Performance, KPI Progress, Benchmark Comparison, and Risk Assessment.
 - [x] Completed locally: Executive Summary `Strategic Recommendations` PDF exports include the same major section set as the web tab: data accuracy notice, data freshness alert, enterprise disclaimer, recommendation content, expected impact, timeframe, investment required, projected scenarios, key assumptions, and recommendation disclaimer where those inputs are present.
 - [x] Completed locally: Performance Summary PDF exports include the same major section set as the web tabs: Overview exports Campaign Health, Top Priority Action, and Aggregated Metrics Snapshot; Campaign Health exports Overall Health Summary, KPI/Benchmark summaries, KPI rows, Benchmark rows, and Data Sources; What's Changed exports What's Changed and Metric Trends; Insights exports Data-Driven Insights & Recommendations, Top Priority Action, and Performance Analysis.
+- [x] Completed locally: Budget & Financial Analysis PDF exports include the same major section set as the web tabs: Overview exports Campaign Health Score, Key Financial Metrics, Budget Utilization, Budget Pacing & Burn Rate, and Cost Efficiency Metrics; ROI & ROAS exports ROI/ROAS analysis, source performance, and financial inputs; Cost Analysis exports cost metrics, efficiency indicators, and sources; Budget Allocation exports performance tiers, source budget analysis, and allocation guidance; Insights exports financial performance, source performance, key opportunities, budget optimization, and cost optimization.
 - [x] User validation passed on 2026-05-28: All Reports cards show summary-only layout without connected-source detail previews.
 
 Current campaign-scoped Report Type menu:
@@ -301,6 +302,7 @@ Custom Report is production-ready when:
 - Downloaded Executive Summary `Executive Overview` PDFs include the same major executive sections shown in the web tab, using `/executive-summary` for trajectory/risk/KPI/Benchmark context and `/outcome-totals.performanceSummary` for current connected-source metric values
 - Downloaded Executive Summary `Strategic Recommendations` PDFs include the same major recommendation sections shown in the web tab, using `/executive-summary.recommendations`, metadata, freshness warnings, assumptions, scenarios, and recommendation disclaimers
 - Downloaded Performance Summary PDFs include the same major sections shown in the selected Performance Summary web tabs, using `/outcome-totals.performanceSummary` for current connected-source values and campaign KPI/Benchmark records for health rows
+- Downloaded Budget & Financial Analysis PDFs include the same major sections shown in the selected Budget & Financial web tabs, using `/outcome-totals.performanceSummary` for connected-source financial totals, source availability, and unavailable states
 - Scheduled create mode uses `Schedule Automated Reports` and shows `Schedule Report`
 - Campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types: `Executive Summary`, `Performance Summary`, `Budget & Financial Analysis`, `Platform Comparison`, `Trend Analysis`, and `Custom Report`
 - Selecting a Campaign DeepDive subsection exposes that subsection's current tab list as report composition checkboxes and saves those tab keys in `selectedSections`
@@ -351,6 +353,7 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Executive Summary `Executive Overview` PDF section parity fix added on 2026-05-29.
 - Executive Summary `Strategic Recommendations` PDF section parity fix added on 2026-05-29.
 - Performance Summary PDF section parity fix added on 2026-05-29.
+- Budget & Financial Analysis PDF section parity fix added on 2026-05-29.
 - Local validation passed on 2026-05-28: `npm test -- server/custom-report-regression.test.ts`.
 - Local validation passed on 2026-05-28: `npm run check`.
 - Local validation passed on 2026-05-28: `npm run build`.

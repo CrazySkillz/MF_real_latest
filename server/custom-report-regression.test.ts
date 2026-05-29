@@ -202,6 +202,35 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Performance Analysis");
   });
 
+  it("renders Budget & Financial Analysis PDF exports with the live tab section set", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("const addFinancialAnalysisContent = (section: string) => {");
+    expect(reports).toContain('section.startsWith("financial-analysis:")');
+    expect(reports).toContain("Campaign Health Score");
+    expect(reports).toContain("Key Financial Metrics");
+    expect(reports).toContain("Budget Utilization");
+    expect(reports).toContain("Budget Pacing & Burn Rate");
+    expect(reports).toContain("Cost Efficiency Metrics");
+    expect(reports).toContain("ROI & ROAS Analysis");
+    expect(reports).toContain("Return on Ad Spend (ROAS)");
+    expect(reports).toContain("Return on Investment (ROI)");
+    expect(reports).toContain("Source ROAS Performance");
+    expect(reports).toContain("Source ROI Performance");
+    expect(reports).toContain("Cost Analysis Breakdown");
+    expect(reports).toContain("Cost Metrics");
+    expect(reports).toContain("Efficiency Indicators");
+    expect(reports).toContain("Performance-Based Budget Allocation");
+    expect(reports).toContain("Performance Tiers");
+    expect(reports).toContain("Source Budget Analysis");
+    expect(reports).toContain("Allocation Guidance");
+    expect(reports).toContain("Financial Performance Insights");
+    expect(reports).toContain("Source Performance Insights");
+    expect(reports).toContain("Key Opportunities");
+    expect(reports).toContain("Budget Optimization Recommendations");
+    expect(reports).toContain("Cost Optimization Insights");
+  });
+
   it("maps custom report KPI and Benchmark sections to campaign records and aggregate current values", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 

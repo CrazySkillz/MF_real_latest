@@ -606,12 +606,16 @@ export default function Reports() {
   };
 
   const disableBackendScheduledReport = async (backendReportId: string) => {
-    await fetch(`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports/${encodeURIComponent(backendReportId)}`, {
+    const response = await fetch(`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports/${encodeURIComponent(backendReportId)}`, {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scheduleEnabled: false, status: "archived" }),
     });
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      throw new Error(errorBody?.message || "Failed to pause scheduled report");
+    }
   };
 
   const openEditReport = (report: StoredReport) => {
@@ -724,6 +728,17 @@ export default function Reports() {
       setReportPendingDelete(null);
     } catch (error: any) {
       setReportSaveError(error?.message || "Failed to delete report");
+    }
+  };
+
+  const pauseScheduledReport = async (report: StoredReport) => {
+    setReportSaveError("");
+    try {
+      if (report.backendReportId) await disableBackendScheduledReport(report.backendReportId);
+      reportStorage.updateReport(report.id, { status: "Paused" });
+      setAllStoredReports(reportStorage.getReports());
+    } catch (error: any) {
+      setReportSaveError(error?.message || "Failed to pause scheduled report");
     }
   };
 
@@ -1945,13 +1960,17 @@ export default function Reports() {
                           
                           <div className="flex items-center justify-between pt-4 border-t">
                             <div className="flex items-center space-x-2">
+                              <Button variant="outline" size="sm" onClick={() => downloadReportPdf(report)}>
+                                <Download className="w-4 h-4 mr-2" />
+                                Download last sent report
+                              </Button>
                               <Button variant="outline" size="sm" onClick={() => openEditReport(report)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
                               </Button>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Button variant="outline" size="sm">
+                              <Button variant="outline" size="sm" onClick={() => pauseScheduledReport(report)}>
                                 <Pause className="w-4 h-4 mr-2" />
                                 Pause
                               </Button>
@@ -2011,6 +2030,7 @@ export default function Reports() {
                               <SelectItem value="all">All Statuses</SelectItem>
                               <SelectItem value="Generated">Generated</SelectItem>
                               <SelectItem value="Scheduled">Scheduled</SelectItem>
+                              <SelectItem value="Paused">Paused</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -2170,10 +2190,16 @@ export default function Reports() {
                                       </Button>
                                     ) : (
                                       <div className="flex items-center space-x-2">
-                                        <Button variant="outline" size="sm">
+                                        <Button variant="outline" size="sm" onClick={() => downloadReportPdf(report)}>
+                                          <Download className="w-4 h-4 mr-2" />
+                                          Download last sent report
+                                        </Button>
+                                        {report.status === 'Scheduled' && (
+                                        <Button variant="outline" size="sm" onClick={() => pauseScheduledReport(report)}>
                                           <Pause className="w-4 h-4 mr-2" />
                                           Pause
                                         </Button>
+                                        )}
                                       </div>
                                     )}
                                     

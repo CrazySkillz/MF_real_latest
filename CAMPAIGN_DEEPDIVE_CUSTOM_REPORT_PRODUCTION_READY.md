@@ -223,6 +223,7 @@ Status:
 - [x] Completed locally: Scheduled Reports shows a `No scheduled reports yet` empty state when no scheduled report records exist.
 - [x] Completed locally: Scheduled Reports cards no longer show the `Scheduled` status pill or settings icon, and their `Edit` action opens the report dialog with saved values prefilled.
 - [x] Completed locally: Scheduled Reports card `Data Included` lists the selected report tabs from `selectedSections` instead of legacy KPI/Benchmark flags.
+- [x] Completed locally: Scheduled Reports card `Pause` disables the backend schedule and marks the local card as paused, and scheduled cards now expose `Download last sent report` backed by the same latest-value PDF regeneration path.
 - [x] Completed locally: `Campaign connected-source data` lists connected source names as bullets and no longer displays internal selectable metric keys.
 - [x] Completed locally: Executive Summary `Executive Overview` PDF exports include the same major section set as the web tab: 7-Day Snapshot Trajectory, Risk Level, Executive Summary, Marketing Funnel Performance, KPI Progress, Benchmark Comparison, and Risk Assessment.
 - [x] Completed locally: Executive Summary `Strategic Recommendations` PDF exports include the same major section set as the web tab: data accuracy notice, data freshness alert, enterprise disclaimer, recommendation content, expected impact, timeframe, investment required, projected scenarios, key assumptions, and recommendation disclaimer where those inputs are present.
@@ -311,6 +312,8 @@ Custom Report is production-ready when:
 - Scheduled Reports must show a clear empty state when there are no scheduled report records
 - Scheduled Reports cards must keep edit wired to `openEditReport(report)` and should not show redundant `Scheduled` status pills or settings icons
 - Scheduled Reports card `Data Included` must show selected tab labels from the saved `selectedSections` report composition
+- Scheduled Reports card `Pause` must disable the backend schedule where a backend report ID exists and mark the local card as paused
+- Scheduled Reports card `Download last sent report` must regenerate from latest connected-source values for the saved report type, selected tabs, and selected metrics
 - The top-level `Create Report` action opens an empty create form, clears report type, selected tabs, custom metric selections, and edit mode
 - Unscheduled create mode shows `Download Report` and downloads the selected report sections as a PDF
 - Downloaded PDFs render the selected tab bodies from `performanceSummary.totals` and `performanceSummary.sources` where those aggregate inputs are available
@@ -381,6 +384,7 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Budget & Financial Analysis PDF section parity fix added on 2026-05-29 and expanded to include nested card/row parity for Campaign Health Score, Budget Pacing & Burn Rate, source performance, allocation, and insight sections.
 - Campaign DeepDive Custom Report scheduled-email backend wiring added on 2026-05-29: scheduled create/update/delete writes through `/api/platforms/campaign_deepdive/reports`, stores time zone and recipients, and the scheduler has a `campaign_deepdive` PDF attachment path.
 - Monthly and Quarterly schedule option cleanup added on 2026-05-29: Monthly exposes day-of-month choices and Quarterly exposes start/end-of-quarter choices.
+- Scheduled Reports card action fix added on 2026-05-29: `Pause` now disables the backend schedule and updates the local report status, while `Download last sent report` regenerates from latest values.
 - Local validation passed on 2026-05-29 for Monthly and Quarterly schedule options: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - Local validation passed on 2026-05-29 for scheduled-email backend wiring: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - Local validation passed on 2026-05-28: `npm test -- server/custom-report-regression.test.ts`.

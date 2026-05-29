@@ -6,7 +6,7 @@ export interface StoredReport {
   name: string;
   type: string;
   description?: string;
-  status: 'Generated' | 'Scheduled' | 'Failed';
+  status: 'Generated' | 'Scheduled' | 'Paused' | 'Failed';
   campaignId?: string;
   campaignName?: string;
   generatedAt: Date;

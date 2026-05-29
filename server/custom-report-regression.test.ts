@@ -167,6 +167,9 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("storedScheduledReports.map((report) => (");
     const scheduledTab = reports.slice(reports.indexOf('<TabsContent value="scheduled"'), reports.indexOf('<TabsContent value="all"'));
     expect(scheduledTab).toContain("onClick={() => openEditReport(report)}");
+    expect(scheduledTab).toContain("onClick={() => downloadReportPdf(report)}");
+    expect(scheduledTab).toContain("Download last sent report");
+    expect(scheduledTab).toContain("onClick={() => pauseScheduledReport(report)}");
     expect(scheduledTab).not.toContain("<Badge");
     expect(scheduledTab).not.toContain("Settings");
     expect(reports).toContain("const getReportSelectedTabSummary = (report: StoredReport) => {");
@@ -176,6 +179,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).not.toContain("const scheduledReports = [");
     expect(reports).not.toContain("scheduledReports.map((report) => (");
     expect(reports).toContain("Download latest report");
+    expect(reports).toContain('<SelectItem value="Paused">Paused</SelectItem>');
     expect(reports).toContain("{report.description && (");
     expect(reports).toContain('<p className="text-sm text-muted-foreground">{report.description}</p>');
     expect(reports).not.toContain('<span className="font-medium text-foreground">Format:</span>');
@@ -211,6 +215,9 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("const backendReport = await saveBackendScheduledReport(reportPayload);");
     expect(reports).toContain("backendReportId: String(backendReport?.id || \"\")");
     expect(reports).toContain("if (backendReportId) await disableBackendScheduledReport(backendReportId);");
+    expect(reports).toContain("const pauseScheduledReport = async (report: StoredReport) => {");
+    expect(reports).toContain('reportStorage.updateReport(report.id, { status: "Paused" });');
+    expect(reports).toContain('throw new Error(errorBody?.message || "Failed to pause scheduled report");');
     expect(scheduler).toContain('String((report as any)?.platformType || "") === "campaign_deepdive"');
     expect(scheduler).toContain("buildCampaignDeepDiveScheduledPdfAttachment");
   });

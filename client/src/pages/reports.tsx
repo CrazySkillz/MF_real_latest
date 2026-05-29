@@ -106,6 +106,13 @@ const getReportTabLabel = (type: string, key: string) =>
     || customReportSections.find((section) => section.key === key)?.label
     || key;
 
+const getReportSelectedTabSummary = (report: StoredReport) => {
+  const selectedSections = Array.isArray(report.selectedSections) ? report.selectedSections : [];
+  return selectedSections.length > 0
+    ? selectedSections.map((section) => getReportTabLabel(report.type, section)).join(", ")
+    : "No tabs selected";
+};
+
 const reportTypeLabels: Record<string, string> = {
   performance: "Performance Summary",
   financial: "Financial Analysis",
@@ -1682,6 +1689,9 @@ export default function Reports() {
                               value={recipients}
                               onChange={(e) => setRecipients(e.target.value)}
                             />
+                            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                              Scheduled reports are saved in this browser only right now. Automated email delivery is not connected for Custom Reports yet.
+                            </div>
                           </div>
                         </div>
                       )}
@@ -1776,9 +1786,7 @@ export default function Reports() {
                             <div>
                               <span className="font-medium text-foreground">Data Included:</span>
                               <div className="text-muted-foreground/70">
-                                {report.includeKPIs || report.includeBenchmarks 
-                                  ? `${report.includeKPIs ? 'KPIs' : ''}${report.includeKPIs && report.includeBenchmarks ? ', ' : ''}${report.includeBenchmarks ? 'Benchmarks' : ''}`
-                                  : 'Standard metrics'}
+                                {getReportSelectedTabSummary(report)}
                               </div>
                             </div>
                           </div>

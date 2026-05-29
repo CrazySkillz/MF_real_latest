@@ -211,6 +211,7 @@ Status:
 - [x] Completed locally: schedule mode label is `Schedule Automated Report`.
 - [x] Completed locally: scheduled create mode uses the same filled primary button style as `Download Report` for `Schedule Report`.
 - [x] Completed locally: new scheduled reports default to `Daily`, while edit mode preserves the saved schedule frequency.
+- [x] Completed locally: Schedule form shows a visible notice that Custom Report scheduled records are browser-saved only and automated email delivery is not connected yet.
 - [x] Completed locally: the old `Templates` tab is now `Standard Reports`; generated/downloaded reports appear there and scheduled reports appear under `Scheduled Reports`.
 - [x] Completed locally: report tabs are ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports is the default tab and its download action is labeled `Download latest report`.
 - [x] Completed locally: `Download latest report` refetches the report card's campaign connected-source aggregate, Executive Summary context, campaign budget context, KPIs, and Benchmarks before building the PDF, so saved report cards regenerate from current selected report inputs instead of stale page cache.
@@ -220,6 +221,7 @@ Status:
 - [x] Completed locally: Scheduled Reports no longer renders hard-coded demo scheduled cards with nonfunctional delete buttons; the tab shows stored scheduled report records that use the shared confirmed delete path.
 - [x] Completed locally: Scheduled Reports shows a `No scheduled reports yet` empty state when no scheduled report records exist.
 - [x] Completed locally: Scheduled Reports cards no longer show the `Scheduled` status pill or settings icon, and their `Edit` action opens the report dialog with saved values prefilled.
+- [x] Completed locally: Scheduled Reports card `Data Included` lists the selected report tabs from `selectedSections` instead of legacy KPI/Benchmark flags.
 - [x] Completed locally: `Campaign connected-source data` lists connected source names as bullets and no longer displays internal selectable metric keys.
 - [x] Completed locally: Executive Summary `Executive Overview` PDF exports include the same major section set as the web tab: 7-Day Snapshot Trajectory, Risk Level, Executive Summary, Marketing Funnel Performance, KPI Progress, Benchmark Comparison, and Risk Assessment.
 - [x] Completed locally: Executive Summary `Strategic Recommendations` PDF exports include the same major section set as the web tab: data accuracy notice, data freshness alert, enterprise disclaimer, recommendation content, expected impact, timeframe, investment required, projected scenarios, key assumptions, and recommendation disclaimer where those inputs are present.
@@ -307,6 +309,7 @@ Custom Report is production-ready when:
 - Scheduled Reports must render stored scheduled report records, not hard-coded demo cards, so delete operates on a real report ID
 - Scheduled Reports must show a clear empty state when there are no scheduled report records
 - Scheduled Reports cards must keep edit wired to `openEditReport(report)` and should not show redundant `Scheduled` status pills or settings icons
+- Scheduled Reports card `Data Included` must show selected tab labels from the saved `selectedSections` report composition
 - The top-level `Create Report` action opens an empty create form, clears report type, selected tabs, custom metric selections, and edit mode
 - Unscheduled create mode shows `Download Report` and downloads the selected report sections as a PDF
 - Downloaded PDFs render the selected tab bodies from `performanceSummary.totals` and `performanceSummary.sources` where those aggregate inputs are available
@@ -316,6 +319,7 @@ Custom Report is production-ready when:
 - Downloaded Budget & Financial Analysis PDFs include the same nested sections, cards, and row labels shown in the selected Budget & Financial web tabs, using `/outcome-totals.performanceSummary` for connected-source financial totals/source availability and the campaign row for budget/start/end pacing inputs
 - `Download latest report` must refetch `/outcome-totals`, `/executive-summary`, campaign context, KPIs, and Benchmarks for the report card's campaign before PDF generation, then use those refetched values immediately
 - Scheduled create mode uses `Schedule Automated Report`, defaults to `Daily`, and shows `Schedule Report` in the same filled primary button style as `Download Report`
+- Schedule form must clearly state that current Campaign DeepDive Custom Report schedules are browser-saved records only and do not trigger automated email delivery yet
 - Campaign-scoped Custom Report creation exposes Campaign DeepDive subsection report types in this order: `Performance Summary`, `Budget & Financial Analysis`, `Platform Comparison`, `Trend Analysis`, and `Executive Summary`
 - Selecting a Campaign DeepDive subsection exposes that subsection's current tab list as report composition checkboxes and saves those tab keys in `selectedSections`
 - regression coverage guards GA4-only and future paid-media source scenarios
@@ -332,6 +336,10 @@ Custom Report is production-ready when:
 - [x] Commit 7: Documentation and final validation
 
 No open Custom Report implementation tasks remain for the current connected-source aggregate-consumer scope.
+
+Open scheduling delivery task:
+
+- [ ] Wire Campaign DeepDive Custom Report scheduled records to backend scheduled-report persistence and delivery. The current Reports builder stores scheduled records in browser `localStorage` through `reportStorage`, so it can display scheduled cards but does not send scheduled emails. Production scheduled email delivery requires a backend report record, `scheduleTimeZone`, `scheduleTime`, recipients, scheduler pickup by `server/report-scheduler.ts`, generated PDF attachment, and send-event audit coverage.
 
 ## Separate Source Work
 

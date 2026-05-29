@@ -120,6 +120,7 @@ Important meaning:
 - Scheduled Reports should render stored scheduled report records, not hard-coded demo cards, so delete operates on a real report ID
 - Scheduled Reports should show a clear empty state when there are no scheduled report records
 - Scheduled Reports cards should keep edit wired to the report dialog and should not show redundant `Scheduled` status pills or settings icons
+- Scheduled Reports card `Data Included` should list selected tab labels from the saved `selectedSections` report composition
 - the top-level `Create Report` action should reset edit state, report type, selected tabs, and selected metric state so it opens an empty create form after prior edits
 - Campaign connected-source data in the create dialog should list connected source names, not internal selectable metric keys
 - unscheduled create mode should show `Download Report` and download the selected report sections as a PDF
@@ -132,6 +133,7 @@ Important meaning:
 - the report tabs should be ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports should be the default tab
 - the Standard Reports download action should say `Download latest report` and refetch the report card's campaign connected-source aggregate, Executive Summary context, campaign context, KPIs, and Benchmarks before regenerating the PDF
 - scheduled create mode should use `Schedule Automated Report`, default to `Daily`, and show `Schedule Report` in the same filled primary button style as `Download Report`
+- the Custom Report schedule form should visibly state that these scheduled records are currently browser-saved only and do not trigger automated email delivery yet
 - future work should preserve section-based composition
 - top-level custom sections are parent headers, not checkboxes
 - subsection checkboxes default to unchecked for new custom reports
@@ -175,6 +177,12 @@ Important meaning:
 - ad hoc output and saved report management are related but distinct workflows
 
 ## Scheduled Reports
+
+Important current boundary:
+
+- Campaign DeepDive Custom Report scheduling in `client/src/pages/reports.tsx` currently saves scheduled report records in browser `localStorage` through `reportStorage`; it does not call the backend platform report API, does not persist `scheduleTimeZone`, and is not processed by `server/report-scheduler.ts`
+- because of that boundary, a Custom Report scheduled for `15:00` is only a saved UI configuration today; it will not send an email until the Custom Report builder is wired to backend scheduled-report persistence and delivery
+- backend scheduled email delivery exists for platform report records created through `/api/platforms/:platformType/reports`; those records require `scheduleTimeZone`, `scheduleTime`, and `scheduleRecipients`
 
 When scheduling is enabled, users can configure:
 

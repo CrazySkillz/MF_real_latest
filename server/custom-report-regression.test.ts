@@ -104,6 +104,7 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('const [scheduleFrequency, setScheduleFrequency] = useState("daily");');
     expect(reports).toContain('setScheduleFrequency("daily");');
     expect(reports).toContain('scheduleFrequency: report.schedule?.frequency || "daily",');
+    expect(reports).toContain('Scheduled reports are saved in this browser only right now. Automated email delivery is not connected for Custom Reports yet.');
     expect(reports).not.toContain('Schedule Automated Reports');
     expect(reports).not.toContain('Schedule Automatic Generation');
     expect(reports).not.toContain('variant={!editingReportId && scheduleEnabled ? "link" : "default"}');
@@ -153,6 +154,8 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduledTab).toContain("onClick={() => openEditReport(report)}");
     expect(scheduledTab).not.toContain("<Badge");
     expect(scheduledTab).not.toContain("Settings");
+    expect(reports).toContain("const getReportSelectedTabSummary = (report: StoredReport) => {");
+    expect(scheduledTab).toContain("{getReportSelectedTabSummary(report)}");
     expect(reports).toContain("No scheduled reports yet");
     expect(reports).toContain("Use Schedule Report to create an automated report.");
     expect(reports).not.toContain("const scheduledReports = [");

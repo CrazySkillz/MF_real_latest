@@ -771,6 +771,7 @@ Proven:
 
 - Documentation intends Campaign DeepDive to be campaign-wide and cross-platform.
 - Overview, Campaign Health, Scheduler/What's Changed snapshot data, and Insights have been wired to the aggregate contract. Fallback calculations remain only as defensive behavior when the aggregate response is unavailable; the normal loaded path uses `performanceSummary`.
+- Campaign DeepDive Custom Report PDF exports for Performance Summary now preserve the selected tab section structure. Overview, Campaign Health, What's Changed, and Insights exports use `performanceSummary` current values plus campaign KPI/Benchmark rows instead of the older generic metric-list export.
 - `outcome-totals` is a stronger existing candidate contract for source-aware campaign totals.
 - Platform Comparison already uses `outcome-totals` as its primary cross-platform source.
 - GA4 child revenue/spend inputs such as Salesforce, HubSpot, Shopify, CSV, and Google Sheets imports are documented as child inputs inside the parent platform flow, not main Connected Platforms.

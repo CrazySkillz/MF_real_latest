@@ -846,6 +846,82 @@ export default function Reports() {
         .map((bm: any) => ({ ...bm, aggregateMetric: resolveCustomReportAggregateMetric(bm) }))
         .filter((bm: any) => bm.aggregateMetric)
       : [];
+    const performanceKpiRows = campaignKpis
+      .map((kpi: any) => ({ ...kpi, aggregateMetric: resolveCustomReportAggregateMetric(kpi) }))
+      .filter((kpi: any) => kpi.aggregateMetric);
+    const performanceBenchmarkRows = campaignBenchmarks
+      .map((bm: any) => ({ ...bm, aggregateMetric: resolveCustomReportAggregateMetric(bm) }))
+      .filter((bm: any) => bm.aggregateMetric);
+    const kpiTargetValue = (kpi: any) => Number(kpi.targetValue ?? kpi.target) || 0;
+    const benchmarkTargetValue = (benchmark: any) => Number(benchmark.benchmarkValue ?? benchmark.benchmark) || 0;
+    const kpiStatus = (kpi: any) => {
+      const current = metricNumber(kpi.aggregateMetric);
+      const target = kpiTargetValue(kpi);
+      const pct = progressPct(current, target, kpi.aggregateMetric);
+      return pct > 105 ? "Above Target" : pct >= 95 ? "On Track" : "Below Target";
+    };
+    const benchmarkStatus = (benchmark: any) => {
+      const pct = progressPct(metricNumber(benchmark.aggregateMetric), benchmarkTargetValue(benchmark), benchmark.aggregateMetric);
+      return pct >= 90 ? "On Track" : pct >= 70 ? "Needs Attention" : "Below Target";
+    };
+    const performanceHealthScore = () => {
+      const total = performanceKpiRows.length + performanceBenchmarkRows.length;
+      if (total === 0) return null;
+      const onTrack = performanceKpiRows.filter((kpi: any) => kpiStatus(kpi) !== "Below Target").length
+        + performanceBenchmarkRows.filter((benchmark: any) => benchmarkStatus(benchmark) === "On Track").length;
+      return { total, onTrack, score: Math.round((onTrack / total) * 100) };
+    };
+    const addPerformanceSummaryContent = (section: string) => {
+      const health = performanceHealthScore();
+      if (section === "performance-summary:overview") {
+        addText("Campaign Health", { bold: true, indent: 4 });
+        addText(health ? `${health.score}% - ${health.onTrack} of ${health.total} metrics on track` : "Set up KPIs and Benchmarks to see campaign health.", { indent: 8 });
+        addText("Top Priority Action", { bold: true, indent: 4 });
+        const priorityKpi = performanceKpiRows.find((kpi: any) => kpiStatus(kpi) === "Below Target");
+        const priorityBenchmark = performanceBenchmarkRows.find((bm: any) => benchmarkStatus(bm) !== "On Track");
+        if (priorityKpi) {
+          addText(`KPI below target: ${priorityKpi.name} - Current ${metricValue(priorityKpi.aggregateMetric)}, Target ${formatCustomReportMetricValue(priorityKpi.aggregateMetric, kpiTargetValue(priorityKpi))}`, { indent: 8 });
+        } else if (priorityBenchmark) {
+          addText(`Benchmark needs attention: ${priorityBenchmark.name || priorityBenchmark.metric} - Current ${metricValue(priorityBenchmark.aggregateMetric)}, Benchmark ${formatCustomReportMetricValue(priorityBenchmark.aggregateMetric, benchmarkTargetValue(priorityBenchmark))}`, { indent: 8 });
+        } else {
+          addText("All mapped KPIs and Benchmarks are on track.", { indent: 8 });
+        }
+        addText("Aggregated Metrics Snapshot", { bold: true, indent: 4 });
+        addMetricList(["impressions", "sessions", "conversions", "spend"]);
+      } else if (section === "performance-summary:health") {
+        addText("Overall Health Summary", { bold: true, indent: 4 });
+        addText(health ? `${health.score}% - ${health.onTrack} of ${health.total} mapped metrics on track` : "No KPIs or Benchmarks configured.", { indent: 8 });
+        addText("KPIs On Track or Above", { bold: true, indent: 4 });
+        addText(`${performanceKpiRows.filter((kpi: any) => kpiStatus(kpi) !== "Below Target").length} of ${performanceKpiRows.length}`, { indent: 8 });
+        addText("Benchmarks On Track", { bold: true, indent: 4 });
+        addText(`${performanceBenchmarkRows.filter((bm: any) => benchmarkStatus(bm) === "On Track").length} of ${performanceBenchmarkRows.length}`, { indent: 8 });
+        addText("Key Performance Indicators (KPIs)", { bold: true, indent: 4 });
+        if (performanceKpiRows.length === 0) addText("- No mapped KPI rows available.", { indent: 8 });
+        performanceKpiRows.forEach((kpi: any) => addText(`- ${kpi.name}: ${metricValue(kpi.aggregateMetric)} / ${formatCustomReportMetricValue(kpi.aggregateMetric, kpiTargetValue(kpi))} - ${kpiStatus(kpi)}`, { indent: 8 }));
+        addText("Benchmarks", { bold: true, indent: 4 });
+        if (performanceBenchmarkRows.length === 0) addText("- No mapped Benchmark rows available.", { indent: 8 });
+        performanceBenchmarkRows.forEach((benchmark: any) => addText(`- ${benchmark.name || benchmark.metric}: ${metricValue(benchmark.aggregateMetric)} / ${formatCustomReportMetricValue(benchmark.aggregateMetric, benchmarkTargetValue(benchmark))} - ${benchmarkStatus(benchmark)}`, { indent: 8 }));
+        addText("Data Sources", { bold: true, indent: 4 });
+        addSourceList();
+      } else if (section === "performance-summary:changes") {
+        addText("What's Changed", { bold: true, indent: 4 });
+        addText("Current connected-source aggregate values are included below. Change comparisons require compatible historical aggregate snapshots.", { indent: 8 });
+        addMetricList(["impressions", "sessions", "conversions", "spend", "revenue", "cvr"]);
+        addText("Metric Trends", { bold: true, indent: 4 });
+        addText("Metric trends appear after at least two compatible aggregate snapshots are available.", { indent: 8 });
+      } else if (section === "performance-summary:insights") {
+        addText("Data-Driven Insights & Recommendations", { bold: true, indent: 4 });
+        addText("Top Priority Action", { bold: true, indent: 8 });
+        const priorityKpi = performanceKpiRows.find((kpi: any) => kpiStatus(kpi) === "Below Target");
+        if (priorityKpi) {
+          addText(`- Improve ${priorityKpi.name}: current ${metricValue(priorityKpi.aggregateMetric)}, target ${formatCustomReportMetricValue(priorityKpi.aggregateMetric, kpiTargetValue(priorityKpi))}`, { indent: 12 });
+        } else {
+          addText("- Continue monitoring mapped KPIs and Benchmarks.", { indent: 12 });
+        }
+        addText("Performance Analysis", { bold: true, indent: 8 });
+        addMetricList(["sessions", "conversions", "revenue", "spend", "cvr", "roas", "roi"]);
+      }
+    };
     const recommendationImpactItems = (rec: any) => {
       if (rec?.category !== "Website Outcomes") return [formatRecommendationText(rec?.expectedImpact || "")].filter(Boolean);
       const webMetrics: string[] = [];
@@ -991,6 +1067,8 @@ export default function Reports() {
         addExecutiveOverviewContent();
       } else if (section === "executive-summary:recommendations") {
         addExecutiveRecommendationsContent();
+      } else if (section.startsWith("performance-summary:")) {
+        addPerformanceSummaryContent(section);
       } else if (section.endsWith(":overview")) {
         addText("Connected-source summary", { bold: true, indent: 4 });
         addMetricList(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);

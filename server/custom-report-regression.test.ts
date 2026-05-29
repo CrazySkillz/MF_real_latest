@@ -183,6 +183,25 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Recommendation Disclaimer");
   });
 
+  it("renders Performance Summary PDF exports with the live tab section set", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("const addPerformanceSummaryContent = (section: string) => {");
+    expect(reports).toContain('section.startsWith("performance-summary:")');
+    expect(reports).toContain("Campaign Health");
+    expect(reports).toContain("Top Priority Action");
+    expect(reports).toContain("Aggregated Metrics Snapshot");
+    expect(reports).toContain("Overall Health Summary");
+    expect(reports).toContain("KPIs On Track or Above");
+    expect(reports).toContain("Benchmarks On Track");
+    expect(reports).toContain("Key Performance Indicators (KPIs)");
+    expect(reports).toContain("Data Sources");
+    expect(reports).toContain("What's Changed");
+    expect(reports).toContain("Metric Trends");
+    expect(reports).toContain("Data-Driven Insights & Recommendations");
+    expect(reports).toContain("Performance Analysis");
+  });
+
   it("maps custom report KPI and Benchmark sections to campaign records and aggregate current values", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 

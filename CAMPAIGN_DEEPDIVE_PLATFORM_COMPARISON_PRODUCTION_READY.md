@@ -411,6 +411,7 @@ Proven:
 - Post-validation performance-metrics fix committed and pushed in `e258b446`: Detailed Performance Metrics no longer shows the standalone platform-color dot that could be mistaken for a status indicator, and ROI now uses the same single-source aggregate financial-total path as Overview when only one main Connected Platform is connected. Validation passed with `npm test -- server/platform-comparison-regression.test.ts` and `npm run check`.
 - Post-validation section-distinction fix: Platform Comparison and Budget & Financial Analysis remain separate DeepDive sections. UI copy now clarifies that Platform Comparison is for connected-source contribution/comparison, while Budget & Financial Analysis is for campaign-wide budget, pacing, ROI, ROAS, and financial decisioning.
 - Post-validation tab-label fix: the Platform Comparison source-level financial tab is labeled `Financial Comparison` instead of `Cost Analysis`, while keeping the internal `cost-analysis` tab value unchanged for URL/session compatibility.
+- Custom Report PDF export parity fix added on 2026-05-29: selected Platform Comparison tabs now export the matching web-tab section structure from the shared connected-source aggregate instead of the generic Custom Report metric-list fallback.
 
 Outstanding:
 

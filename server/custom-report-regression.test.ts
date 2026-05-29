@@ -157,7 +157,7 @@ describe("campaign Custom Report regression guard", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 
     expect(reports).toContain("const standardReports = allStoredReports.filter(report => report.status === 'Generated');");
-    expect(reports).toContain("const storedScheduledReports = allStoredReports.filter(report => report.status === 'Scheduled');");
+    expect(reports).toContain("const storedScheduledReports = allStoredReports.filter(report => (report.status === 'Scheduled' || report.status === 'Paused') && report.schedule);");
     expect(reports).toContain('<Tabs defaultValue="standard" className="space-y-6">');
     expect(reports).toContain('<TabsTrigger value="standard">Standard Reports</TabsTrigger>');
     expect(reports.indexOf('<TabsTrigger value="standard">Standard Reports</TabsTrigger>')).toBeLessThan(reports.indexOf('<TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>'));
@@ -170,6 +170,8 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduledTab).toContain("onClick={() => downloadReportPdf(report)}");
     expect(scheduledTab).toContain("Download last sent report");
     expect(scheduledTab).toContain("onClick={() => pauseScheduledReport(report)}");
+    expect(scheduledTab).toContain('disabled={report.status === "Paused"}');
+    expect(scheduledTab).toContain('{report.status === "Paused" ? "Paused" : "Enabled"}');
     expect(scheduledTab).not.toContain("<Badge");
     expect(scheduledTab).not.toContain("Settings");
     expect(reports).toContain("const getReportSelectedTabSummary = (report: StoredReport) => {");
@@ -214,10 +216,13 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('createdFrom: "campaign-deepdive-custom-report"');
     expect(reports).toContain("const backendReport = await saveBackendScheduledReport(reportPayload);");
     expect(reports).toContain("backendReportId: String(backendReport?.id || \"\")");
-    expect(reports).toContain("if (backendReportId) await disableBackendScheduledReport(backendReportId);");
+    expect(reports).toContain('body: JSON.stringify({ scheduleEnabled: false, status: "paused" }),');
+    expect(reports).toContain("if (backendReportId) await disableBackendScheduledReport(backendReportId, backendPlatformType);");
     expect(reports).toContain("const pauseScheduledReport = async (report: StoredReport) => {");
+    expect(reports).toContain("if (report.backendReportId) await disableBackendScheduledReport(report.backendReportId, report.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM);");
     expect(reports).toContain('reportStorage.updateReport(report.id, { status: "Paused" });');
     expect(reports).toContain('throw new Error(errorBody?.message || "Failed to pause scheduled report");');
+    expect(scheduler).toContain("const scheduledReports = uniqueReports.filter(r => r.scheduleEnabled && r.status === 'active');");
     expect(scheduler).toContain('String((report as any)?.platformType || "") === "campaign_deepdive"');
     expect(scheduler).toContain("buildCampaignDeepDiveScheduledPdfAttachment");
   });
@@ -346,6 +351,34 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Budget Optimization Recommendations");
     expect(reports).toContain("Budget Reallocation Opportunity");
     expect(reports).toContain("Cost Optimization Insights");
+  });
+
+  it("renders Platform Comparison PDF exports with the live tab section set", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("const addPlatformComparisonContent = (section: string) => {");
+    expect(reports).toContain('section.startsWith("platform-comparison:")');
+    expect(reports).toContain("Platform Performance Summary Cards");
+    expect(reports).toContain("Channel Performance Overview");
+    expect(reports).toContain("Revenue Tracking Platforms");
+    expect(reports).toContain("Total Revenue (All Tracking Sources)");
+    expect(reports).toContain("Detailed Performance Metrics");
+    expect(reports).toContain("Efficiency Comparison");
+    expect(reports).toContain("Volume Comparison");
+    expect(reports).toContain("Cost per Conversion");
+    expect(reports).toContain("Budget Allocation");
+    expect(reports).toContain("Return on Investment (ROI) & Return on Ad Spend (ROAS)");
+    expect(reports).toContain("No paid-media platform connected");
+    expect(reports).toContain("Platform Performance Insights");
+    expect(reports).toContain("Platform Summary");
+    expect(reports).toContain("Available Source Metrics");
+    expect(reports).toContain("Paid-Media Comparison Unavailable");
+    expect(reports).toContain("Data Source Analysis");
+    expect(reports).toContain("Top Performer");
+    expect(reports).toContain("Volume Leader");
+    expect(reports).toContain("Highest Engagement");
+    expect(reports).toContain("Optimization Opportunity");
+    expect(reports).toContain("Strategic Recommendations");
   });
 
   it("maps custom report KPI and Benchmark sections to campaign records and aggregate current values", () => {

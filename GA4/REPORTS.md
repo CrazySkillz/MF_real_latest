@@ -121,7 +121,7 @@ Important meaning:
 - Scheduled Reports should show a clear empty state when there are no scheduled report records
 - Scheduled Reports cards should keep edit wired to the report dialog and should not show redundant `Scheduled` status pills or settings icons
 - Scheduled Reports card `Data Included` should list selected tab labels from the saved `selectedSections` report composition
-- Scheduled Reports card `Pause` should disable the backend schedule and mark the local card as paused instead of being a cosmetic button
+- Scheduled Reports card `Pause` should disable the backend schedule, persist backend status `paused`, keep the paused report visible in Scheduled Reports, and show whether each scheduled report is `Enabled` or `Paused`
 - Scheduled Reports card `Download last sent report` should regenerate the report from the latest connected-source values for the saved report type, selected tabs, and selected metrics
 - the top-level `Create Report` action should reset edit state, report type, selected tabs, and selected metric state so it opens an empty create form after prior edits
 - Campaign connected-source data in the create dialog should list connected source names, not internal selectable metric keys
@@ -131,6 +131,7 @@ Important meaning:
 - downloaded Executive Summary `Strategic Recommendations` PDFs should include the data accuracy notice, data freshness alert, enterprise disclaimer, recommendation cards, expected impact, timeframe, investment required, projected scenarios, key assumptions, and recommendation disclaimers where those inputs exist
 - downloaded Performance Summary PDFs should include the selected web-tab section structure: Overview, Campaign Health, What's Changed, and Insights exports should each include their major live-tab subsections instead of a generic metric list
 - downloaded Budget & Financial Analysis PDFs should include the selected web-tab section structure down to the visible card and row level: Overview, ROI & ROAS, Cost Analysis, Budget Allocation, and Insights exports should each include the nested live-tab cards/rows instead of a generic metric list
+- downloaded Platform Comparison PDFs should include the selected web-tab section structure: Overview, Performance Metrics, Financial Comparison, and Insights exports should each include their major live-tab subsections instead of a generic metric list
 - generated/downloaded reports should appear in the `Standard Reports` tab, while scheduled reports should appear in the `Scheduled Reports` tab
 - the report tabs should be ordered `Standard Reports`, `Scheduled Reports`, `All Reports`; Standard Reports should be the default tab
 - the Standard Reports download action should say `Download latest report` and refetch the report card's campaign connected-source aggregate, Executive Summary context, campaign context, KPIs, and Benchmarks before regenerating the PDF

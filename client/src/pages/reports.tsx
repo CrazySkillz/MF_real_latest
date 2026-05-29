@@ -605,12 +605,12 @@ export default function Reports() {
     return response.json();
   };
 
-  const disableBackendScheduledReport = async (backendReportId: string) => {
-    const response = await fetch(`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports/${encodeURIComponent(backendReportId)}`, {
+  const disableBackendScheduledReport = async (backendReportId: string, backendPlatformType = CAMPAIGN_DEEPDIVE_REPORT_PLATFORM) => {
+    const response = await fetch(`/api/platforms/${backendPlatformType}/reports/${encodeURIComponent(backendReportId)}`, {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scheduleEnabled: false, status: "archived" }),
+      body: JSON.stringify({ scheduleEnabled: false, status: "paused" }),
     });
     if (!response.ok) {
       const errorBody = await response.json().catch(() => null);
@@ -682,7 +682,7 @@ export default function Reports() {
             backendPlatformType,
           });
         } else {
-          if (backendReportId) await disableBackendScheduledReport(backendReportId);
+          if (backendReportId) await disableBackendScheduledReport(backendReportId, backendPlatformType);
           reportStorage.updateReport(editingReportId, reportPayload);
         }
       } else if (scheduleEnabled) {
@@ -734,7 +734,7 @@ export default function Reports() {
   const pauseScheduledReport = async (report: StoredReport) => {
     setReportSaveError("");
     try {
-      if (report.backendReportId) await disableBackendScheduledReport(report.backendReportId);
+      if (report.backendReportId) await disableBackendScheduledReport(report.backendReportId, report.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM);
       reportStorage.updateReport(report.id, { status: "Paused" });
       setAllStoredReports(reportStorage.getReports());
     } catch (error: any) {
@@ -790,7 +790,7 @@ export default function Reports() {
     return true;
   });
   const standardReports = allStoredReports.filter(report => report.status === 'Generated');
-  const storedScheduledReports = allStoredReports.filter(report => report.status === 'Scheduled');
+  const storedScheduledReports = allStoredReports.filter(report => (report.status === 'Scheduled' || report.status === 'Paused') && report.schedule);
 
   // Get unique campaign names for filter dropdown
   const uniqueCampaigns = Array.from(new Set(
@@ -1297,6 +1297,114 @@ export default function Reports() {
           : addText("- No cost optimization insight is available from current connected-source inputs.", { indent: 8 });
       }
     };
+    const addPlatformComparisonContent = (section: string) => {
+      const sourceIncludesMetric = (source: any, metricName: string) => Array.isArray(source?.includedMetrics) && source.includedMetrics.includes(metricName);
+      const sourceMetricNumber = (source: any, metricName: string) => {
+        const value = metricName === "revenue"
+          ? source?.metrics?.attributedRevenue ?? source?.metrics?.revenue
+          : source?.metrics?.[metricName];
+        const numberValue = Number(value);
+        return Number.isFinite(numberValue) ? numberValue : 0;
+      };
+      const platformRows = customReportSources.map((source: any) => {
+        const spend = sourceIncludesMetric(source, "spend") ? sourceMetricNumber(source, "spend") : 0;
+        const impressions = sourceIncludesMetric(source, "impressions") ? sourceMetricNumber(source, "impressions") : 0;
+        const clicks = sourceIncludesMetric(source, "clicks") ? sourceMetricNumber(source, "clicks") : 0;
+        const conversions = sourceIncludesMetric(source, "conversions") ? sourceMetricNumber(source, "conversions") : 0;
+        const revenue = source?.id === "ga4" && Number(latestCampaignOutcomeTotals?.revenue?.totalRevenue || 0) > 0
+          ? Number(latestCampaignOutcomeTotals.revenue.totalRevenue)
+          : (sourceIncludesMetric(source, "revenue") || sourceIncludesMetric(source, "attributedRevenue")) ? sourceMetricNumber(source, "revenue") : 0;
+        const sessions = sourceIncludesMetric(source, "sessions") ? sourceMetricNumber(source, "sessions") : 0;
+        const users = sourceIncludesMetric(source, "users") ? sourceMetricNumber(source, "users") : 0;
+        return {
+          label: source?.label || source?.id || "Connected Source",
+          category: source?.category,
+          includedMetrics: Array.isArray(source?.includedMetrics) ? source.includedMetrics : [],
+          spend,
+          impressions,
+          clicks,
+          conversions,
+          revenue,
+          sessions,
+          users,
+          ctr: impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : 0,
+          cpc: clicks > 0 && spend > 0 ? spend / clicks : 0,
+          conversionRate: conversions > 0 && (clicks > 0 || sessions > 0) ? (conversions / (clicks || sessions)) * 100 : 0,
+          roas: spend > 0 && revenue > 0 ? revenue / spend : 0,
+          roi: spend > 0 && revenue > 0 ? ((revenue - spend) / spend) * 100 : 0,
+        };
+      });
+      const spendCapableRows = platformRows.filter((row: any) => row.category === "paid_media" && row.includedMetrics.includes("spend"));
+      const revenueSourceRows = customReportAllSources.filter((source: any) => source?.connected === true && source?.category === "financial" && sourceMetricNumber(source, "revenue") > 0);
+      const addPlatformRows = (rows: any[], indent = 8) => {
+        if (rows.length === 0) {
+          addText("- No connected platform rows available.", { indent });
+          return;
+        }
+        rows.forEach((row: any) => addText(`- ${row.label}: Users ${formatCustomReportMetricValue("users", row.users)}, Sessions ${formatCustomReportMetricValue("sessions", row.sessions)}, Impressions ${row.impressions > 0 ? formatCustomReportMetricValue("impressions", row.impressions) : "Unavailable"}, Clicks ${row.clicks > 0 ? formatCustomReportMetricValue("clicks", row.clicks) : "Unavailable"}, Conversions ${formatCustomReportMetricValue("conversions", row.conversions)}, Revenue ${formatCustomReportMetricValue("revenue", row.revenue)}, Spend ${row.spend > 0 ? formatCustomReportMetricValue("spend", row.spend) : "Unavailable"}, ROAS ${row.roas > 0 ? formatCustomReportMetricValue("roas", row.roas) : "Unavailable"}, ROI ${row.spend > 0 ? formatCustomReportMetricValue("roi", row.roi) : "Unavailable"}`, { indent }));
+      };
+
+      if (section === "platform-comparison:overview") {
+        addText("Platform Performance Summary Cards", { bold: true, indent: 4 });
+        addPlatformRows(platformRows);
+        addText("Channel Performance Overview", { bold: true, indent: 4 });
+        addPlatformRows(platformRows);
+        addText("Revenue Tracking Platforms", { bold: true, indent: 4 });
+        revenueSourceRows.length > 0
+          ? revenueSourceRows.forEach((source: any) => addText(`- ${source?.label || source?.id}: Total Revenue ${formatCustomReportMetricValue("revenue", sourceMetricNumber(source, "revenue"))}`, { indent: 8 }))
+          : addText("- No separate revenue tracking platform rows available.", { indent: 8 });
+        addText(`Total Revenue (All Tracking Sources): ${formatCustomReportMetricValue("revenue", revenueSourceRows.reduce((sum: number, source: any) => sum + sourceMetricNumber(source, "revenue"), 0))}`, { indent: 8 });
+      } else if (section === "platform-comparison:performance") {
+        addText("Detailed Performance Metrics", { bold: true, indent: 4 });
+        addPlatformRows(platformRows);
+        addText("Efficiency Comparison", { bold: true, indent: 4 });
+        spendCapableRows.length > 0
+          ? spendCapableRows.forEach((row: any) => addText(`- ${row.label}: ROAS ${row.roas > 0 ? formatCustomReportMetricValue("roas", row.roas) : "Unavailable"}, ROI ${row.spend > 0 ? formatCustomReportMetricValue("roi", row.roi) : "Unavailable"}, CPA ${row.spend > 0 && row.conversions > 0 ? formatCustomReportMetricValue("cpa", row.spend / row.conversions) : "Unavailable"}, Conversions ${formatCustomReportMetricValue("conversions", row.conversions)}`, { indent: 8 }))
+          : addText("No spend-based efficiency comparison is available. ROAS, ROI, and CPA require connected sources with spend plus revenue or conversions.", { indent: 8 });
+        addText("Volume Comparison", { bold: true, indent: 4 });
+        platformRows.forEach((row: any) => addText(`- ${row.label}: Impressions ${row.impressions > 0 ? formatCustomReportMetricValue("impressions", row.impressions) : "Unavailable"}, ${row.clicks > 0 ? "Clicks" : row.sessions > 0 ? "Sessions" : "Engagement"} ${formatCustomReportMetricValue(row.clicks > 0 ? "clicks" : "sessions", row.clicks || row.sessions)}`, { indent: 8 }));
+      } else if (section === "platform-comparison:cost-analysis") {
+        if (spendCapableRows.length === 0) {
+          addText("No paid-media platform connected", { bold: true, indent: 4 });
+          addText("Google Analytics can contribute analytics metrics, but source-level spend, CPA, ROI, and ROAS comparisons require a connected paid-media platform.", { indent: 8 });
+          return;
+        }
+        addText("Cost per Conversion", { bold: true, indent: 4 });
+        spendCapableRows.forEach((row: any) => addText(`- ${row.label}: ${row.spend > 0 && row.conversions > 0 ? formatCustomReportMetricValue("cpa", row.spend / row.conversions) : "Unavailable"}`, { indent: 8 }));
+        addText("Budget Allocation", { bold: true, indent: 4 });
+        const totalSpend = spendCapableRows.reduce((sum: number, row: any) => sum + row.spend, 0);
+        spendCapableRows.forEach((row: any) => addText(`- ${row.label}: ${formatCustomReportMetricValue("spend", row.spend)} (${totalSpend > 0 ? ((row.spend / totalSpend) * 100).toFixed(1) : "0.0"}%)`, { indent: 8 }));
+        addText("Return on Investment (ROI) & Return on Ad Spend (ROAS)", { bold: true, indent: 4 });
+        spendCapableRows.forEach((row: any) => addText(`- ${row.label}: ROI ${row.spend > 0 ? formatCustomReportMetricValue("roi", row.roi) : "Unavailable"}, ROAS ${row.roas > 0 ? formatCustomReportMetricValue("roas", row.roas) : "Unavailable"}, Total Spend ${formatCustomReportMetricValue("spend", row.spend)}, Conversions ${formatCustomReportMetricValue("conversions", row.conversions)}`, { indent: 8 }));
+      } else if (section === "platform-comparison:insights") {
+        addText("Platform Performance Insights", { bold: true, indent: 4 });
+        if (platformRows.length === 0) {
+          addText("No connected platform data available yet. Connect a platform in Connected Platforms to see insights and recommendations.", { indent: 8 });
+          return;
+        }
+        if (spendCapableRows.length === 0) {
+          addText("Platform Summary", { bold: true, indent: 8 });
+          addText(`${platformRows.map((row: any) => row.label).join(", ")} ${platformRows.length === 1 ? "is" : "are"} connected, so this tab shows only metrics those sources provide.`, { indent: 12 });
+          addText("Available Source Metrics", { bold: true, indent: 8 });
+          addPlatformRows(platformRows, 12);
+          addText("Paid-Media Comparison Unavailable", { bold: true, indent: 8 });
+          addText("Paid-media comparison and budget recommendations require a main paid-media platform with source-level ad spend.", { indent: 12 });
+        } else {
+          addText("Data Source Analysis", { bold: true, indent: 8 });
+          addText(`Included in recommendations: ${spendCapableRows.map((row: any) => row.label).join(", ")}`, { indent: 12 });
+          addText("Top Performer", { bold: true, indent: 8 });
+          addText("Shown when at least two paid-media sources can be compared by ROAS.", { indent: 12 });
+          addText("Volume Leader", { bold: true, indent: 8 });
+          addText("Shown when at least two paid-media sources can be compared by conversion volume.", { indent: 12 });
+          addText("Highest Engagement", { bold: true, indent: 8 });
+          addText("Shown when at least two paid-media sources can be compared by CTR.", { indent: 12 });
+          addText("Optimization Opportunity", { bold: true, indent: 8 });
+          addText("Shown when a paid-media source materially trails the strongest comparable source.", { indent: 12 });
+          addText("Strategic Recommendations", { bold: true, indent: 8 });
+          addText(spendCapableRows.length > 1 ? "Compare paid-media ROAS, ROI, CPA, conversion volume, and engagement before reallocating budget." : "Connect at least one more main paid-media platform with source-level spend to generate comparison-based recommendations.", { indent: 12 });
+        }
+      }
+    };
     const recommendationImpactItems = (rec: any) => {
       if (rec?.category !== "Website Outcomes") return [formatRecommendationText(rec?.expectedImpact || "")].filter(Boolean);
       const webMetrics: string[] = [];
@@ -1446,6 +1554,8 @@ export default function Reports() {
         addPerformanceSummaryContent(section);
       } else if (section.startsWith("financial-analysis:")) {
         addFinancialAnalysisContent(section);
+      } else if (section.startsWith("platform-comparison:")) {
+        addPlatformComparisonContent(section);
       } else if (section.endsWith(":overview")) {
         addText("Connected-source summary", { bold: true, indent: 4 });
         addMetricList(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);
@@ -1956,6 +2066,12 @@ export default function Reports() {
                                 {getReportSelectedTabSummary(report)}
                               </div>
                             </div>
+                            <div>
+                              <span className="font-medium text-foreground">Status:</span>
+                              <div className={report.status === "Paused" ? "text-amber-700" : "text-green-700"}>
+                                {report.status === "Paused" ? "Paused" : "Enabled"}
+                              </div>
+                            </div>
                           </div>
                           
                           <div className="flex items-center justify-between pt-4 border-t">
@@ -1970,9 +2086,9 @@ export default function Reports() {
                               </Button>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Button variant="outline" size="sm" onClick={() => pauseScheduledReport(report)}>
+                              <Button variant="outline" size="sm" onClick={() => pauseScheduledReport(report)} disabled={report.status === "Paused"}>
                                 <Pause className="w-4 h-4 mr-2" />
-                                Pause
+                                {report.status === "Paused" ? "Paused" : "Pause"}
                               </Button>
                               <Button 
                                 variant="outline" 

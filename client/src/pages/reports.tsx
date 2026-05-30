@@ -949,6 +949,12 @@ export default function Reports() {
     const campaignFinancialContext = latestFinancialContextResult?.data ?? liveCampaignFinancialContext;
     const campaignKpis: any[] = Array.isArray(latestKpisResult?.data) ? latestKpisResult.data : liveCampaignKpis;
     const campaignBenchmarks: any[] = Array.isArray(latestBenchmarksResult?.data) ? latestBenchmarksResult.data : liveCampaignBenchmarks;
+    const selectedReportSections = Array.isArray(report.selectedSections) ? report.selectedSections.map(String) : [];
+    const needsTrendAnalysis = selectedReportSections.some((section) => section.startsWith("trend-analysis:"));
+    const latestTrendAnalysis = needsTrendAnalysis && reportCampaignId
+      ? await fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/trend-analysis?dateRange=90days&days=180`)
+      : null;
+    const campaignTrendAnalysis = latestTrendAnalysis?.trendAnalysis;
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     const margin = 18;
@@ -1567,6 +1573,108 @@ export default function Reports() {
         addText(`- ${source?.label || source?.id}: ${includedMetrics}`, { indent: 4 });
       });
     };
+    const addTrendAnalysisContent = (section: string) => {
+      const trendRows = Array.isArray(campaignTrendAnalysis?.dailyTotals) ? campaignTrendAnalysis.dailyTotals : [];
+      const trendSources = Array.isArray(campaignTrendAnalysis?.sources) ? campaignTrendAnalysis.sources : [];
+      const currentWindowDays = Math.max(1, Math.ceil(trendRows.length / 2));
+      const currentRows = trendRows.slice(-currentWindowDays);
+      const previousRows = trendRows.slice(-currentWindowDays * 2, -currentWindowDays);
+      const sumRows = (rows: any[], metricName: string) =>
+        rows.reduce((sum: number, row: any) => sum + (Number(row?.metrics?.[metricName]) || 0), 0);
+      const aggregateMetric = (rows: any[], metricName: string): number | null => {
+        if (rows.length === 0) return null;
+        if (["users", "sessions", "conversions", "revenue", "spend", "impressions", "clicks"].includes(metricName)) {
+          const value = sumRows(rows, metricName);
+          return value > 0 ? value : null;
+        }
+        const spend = sumRows(rows, "spend");
+        const revenue = sumRows(rows, "revenue");
+        const conversions = sumRows(rows, "conversions");
+        const sessions = sumRows(rows, "sessions");
+        const impressions = sumRows(rows, "impressions");
+        const clicks = sumRows(rows, "clicks");
+        if (metricName === "ctr") return impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : null;
+        if (metricName === "cvr") return conversions > 0 && (sessions > 0 || clicks > 0) ? (conversions / (sessions > 0 ? sessions : clicks)) * 100 : null;
+        if (metricName === "cpc") return spend > 0 && clicks > 0 ? spend / clicks : null;
+        if (metricName === "cpm") return spend > 0 && impressions > 0 ? (spend / impressions) * 1000 : null;
+        if (metricName === "cpa") return spend > 0 && conversions > 0 ? spend / conversions : null;
+        if (metricName === "roas") return spend > 0 && revenue > 0 ? revenue / spend : null;
+        if (metricName === "roi") return spend > 0 && revenue > 0 ? ((revenue - spend) / spend) * 100 : null;
+        return null;
+      };
+      const trendMetricValue = (metricName: string) => {
+        const value = aggregateMetric(currentRows, metricName);
+        return value === null ? "Unavailable" : formatCustomReportMetricValue(metricName, value);
+      };
+      const trendChange = (metricName: string) => {
+        const current = aggregateMetric(currentRows, metricName);
+        const previous = aggregateMetric(previousRows, metricName);
+        if (current === null || previous === null || previous === 0) return "No comparable previous window";
+        const pct = ((current - previous) / Math.abs(previous)) * 100;
+        return `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}% vs previous window`;
+      };
+      const addTrendMetricRows = (metrics: string[], indent = 8) => {
+        metrics.forEach((metricName) => {
+          addText(`- ${customReportMetricLabels[metricName] || metricName}: ${trendMetricValue(metricName)} (${trendChange(metricName)})`, { indent });
+        });
+      };
+      const sourceMetricValue = (source: any, metricName: string) => {
+        const rows = Array.isArray(source?.dailyRows) ? source.dailyRows.slice(-currentWindowDays) : [];
+        const value = aggregateMetric(rows, metricName);
+        return value === null ? "Unavailable" : formatCustomReportMetricValue(metricName, value);
+      };
+
+      if (!campaignTrendAnalysis || trendRows.length === 0) {
+        addText("No connected source trend data available. Refresh a connected platform to populate source-aware trend history.", { indent: 4 });
+        return;
+      }
+
+      if (section === "trend-analysis:overview") {
+        addText("Cross-Platform Performance", { bold: true, indent: 4 });
+        addText(`Trend window: ${campaignTrendAnalysis.startDate || "Unavailable"} to ${campaignTrendAnalysis.endDate || "Unavailable"}`, { indent: 8 });
+        addText(`Current comparable days: ${currentRows.length}; previous comparable days: ${previousRows.length}`, { indent: 8 });
+        addText("Summary Metrics", { bold: true, indent: 4 });
+        addTrendMetricRows(["sessions", "users", "conversions", "revenue", "cvr", "spend", "roas", "cpa", "ctr"]);
+        addText("Anomaly Detection", { bold: true, indent: 4 });
+        addText("Anomaly flags require compatible historical daily trend rows. Review major movement in the metric changes above.", { indent: 8 });
+      } else if (section === "trend-analysis:efficiency") {
+        addText("ROAS & ROI Trend", { bold: true, indent: 4 });
+        addTrendMetricRows(["roas", "roi"], 8);
+        addText("Cost Efficiency Trend", { bold: true, indent: 4 });
+        addTrendMetricRows(["cpa", "cpc", "cpm"], 8);
+        addText("Engagement Efficiency", { bold: true, indent: 4 });
+        addTrendMetricRows(["ctr", "cvr"], 8);
+      } else if (section === "trend-analysis:funnel") {
+        addText("Website Conversion Funnel", { bold: true, indent: 4 });
+        addTrendMetricRows(["users", "sessions", "conversions", "revenue", "cvr"], 8);
+        addText("Paid-Media Funnel", { bold: true, indent: 4 });
+        addTrendMetricRows(["impressions", "clicks", "ctr", "spend", "cpa"], 8);
+        addText("Paid-media funnel metrics appear only when a connected paid-media source provides impressions or clicks.", { indent: 8 });
+      } else if (section === "trend-analysis:platforms") {
+        addText("Platform Performance Comparison", { bold: true, indent: 4 });
+        if (trendSources.length === 0) {
+          addText("- No connected source trend rows available.", { indent: 8 });
+        }
+        trendSources.forEach((source: any) => {
+          const includedMetrics = Array.isArray(source?.includedMetrics) ? source.includedMetrics : [];
+          const sourceMetrics = ["users", "sessions", "spend", "impressions", "clicks", "conversions", "revenue"]
+            .filter((metricName) => includedMetrics.includes(metricName))
+            .map((metricName) => `${customReportMetricLabels[metricName] || metricName} ${sourceMetricValue(source, metricName)}`);
+          addText(`- ${source?.label || source?.id}: ${sourceMetrics.length > 0 ? sourceMetrics.join("; ") : "No comparable metrics available"}`, { indent: 8 });
+        });
+        addText("Spend Distribution", { bold: true, indent: 4 });
+        addText("Spend distribution is available when connected main sources provide source-level spend.", { indent: 8 });
+        addText("Efficiency Comparison", { bold: true, indent: 4 });
+        addText("CPA and CPC require source-level spend plus conversions or clicks.", { indent: 8 });
+      } else if (section === "trend-analysis:insights") {
+        addText("Trend Performance Insights", { bold: true, indent: 4 });
+        addText(`Connected trend sources: ${trendSources.length > 0 ? trendSources.map((source: any) => source?.label || source?.id).join(", ") : "None"}`, { indent: 8 });
+        addText(`Current trend rows available: ${currentRows.length}`, { indent: 8 });
+        addText("Recommendation Basis", { bold: true, indent: 4 });
+        addTrendMetricRows(["sessions", "users", "conversions", "revenue", "cvr", "spend", "roas", "roi"], 8);
+        addText("Next action: compare unfavorable trend movement against campaign KPIs and Benchmarks before changing spend.", { indent: 8 });
+      }
+    };
     const addDeepDiveSectionContent = (section: string) => {
       addText(getReportTabLabel(report.type, section), { size: 14, bold: true });
       if (section === "executive-summary:overview") {
@@ -1579,6 +1687,8 @@ export default function Reports() {
         addFinancialAnalysisContent(section);
       } else if (section.startsWith("platform-comparison:")) {
         addPlatformComparisonContent(section);
+      } else if (section.startsWith("trend-analysis:")) {
+        addTrendAnalysisContent(section);
       } else if (section.endsWith(":overview")) {
         addText("Connected-source summary", { bold: true, indent: 4 });
         addMetricList(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);

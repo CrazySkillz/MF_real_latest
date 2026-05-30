@@ -398,6 +398,25 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Strategic Recommendations");
   });
 
+  it("renders Trend Analysis PDF exports with the live tab section set", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("const addTrendAnalysisContent = (section: string) => {");
+    expect(reports).toContain("fetchReportJson(`/api/campaigns/${encodedReportCampaignId}/trend-analysis?dateRange=90days&days=180`)");
+    expect(reports).toContain('section.startsWith("trend-analysis:")');
+    expect(reports).toContain("Cross-Platform Performance");
+    expect(reports).toContain("Summary Metrics");
+    expect(reports).toContain("Anomaly Detection");
+    expect(reports).toContain("ROAS & ROI Trend");
+    expect(reports).toContain("Cost Efficiency Trend");
+    expect(reports).toContain("Website Conversion Funnel");
+    expect(reports).toContain("Paid-Media Funnel");
+    expect(reports).toContain("Platform Performance Comparison");
+    expect(reports).toContain("Spend Distribution");
+    expect(reports).toContain("Efficiency Comparison");
+    expect(reports).toContain("Trend Performance Insights");
+  });
+
   it("maps custom report KPI and Benchmark sections to campaign records and aggregate current values", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 

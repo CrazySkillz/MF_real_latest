@@ -331,7 +331,8 @@ Custom Report is production-ready when:
 - Downloaded Performance Summary PDFs include the same major sections shown in the selected Performance Summary web tabs, using `/outcome-totals.performanceSummary` for current connected-source values and campaign KPI/Benchmark records for health rows
 - Downloaded Budget & Financial Analysis PDFs include the same nested sections, cards, and row labels shown in the selected Budget & Financial web tabs, using `/outcome-totals.performanceSummary` for connected-source financial totals/source availability and the campaign row for budget/start/end pacing inputs
 - Downloaded Platform Comparison PDFs include the same major sections shown in the selected Platform Comparison web tabs, using `/outcome-totals.performanceSummary.sources` for connected-source rows and source capability gating for paid-media-only comparison sections
-- `Download latest report` must refetch `/outcome-totals`, `/executive-summary`, campaign context, KPIs, and Benchmarks for the report card's campaign before PDF generation, then use those refetched values immediately
+- Downloaded Trend Analysis PDFs include the same major sections shown in the selected Trend Analysis web tabs, using `/trend-analysis` source-aware daily aggregates for trend windows, efficiency, funnel, platform breakdown, and insights
+- `Download latest report` must refetch `/outcome-totals`, `/executive-summary`, `/trend-analysis` when Trend Analysis tabs are selected, campaign context, KPIs, and Benchmarks for the report card's campaign before PDF generation, then use those refetched values immediately
 - Scheduled create mode uses `Schedule Automated Report`, defaults to `Daily`, and shows `Schedule Report` in the same filled primary button style as `Download Report`
 - Monthly schedule mode must show day-of-month choices: 1st day, 15th day, or last day of month
 - Quarterly schedule mode must show timing choices: start of quarter or end of quarter
@@ -349,9 +350,14 @@ Custom Report is production-ready when:
 - [x] Commit 4: Report output uses aggregate values
 - [x] Commit 5: KPI, Benchmark, and section mapping
 - [x] Commit 6: Regression coverage
-- [x] Commit 7: Documentation and final validation
+- [x] Commit 7: Documentation and final validation for the implemented aggregate-consumer scope
 
-No open Custom Report implementation tasks remain for the current connected-source aggregate-consumer scope.
+Open production-readiness tasks before Custom Report can be called fully production-ready:
+
+- [x] Add dedicated Trend Analysis PDF parity so selected Trend Analysis tabs export real section content instead of relying on generic fallback output.
+- [ ] Make scheduled Campaign DeepDive PDFs include selected section body content from latest campaign data, not only report metadata and selected section names.
+- [ ] Add regression coverage proving every Campaign DeepDive report type has a dedicated renderer, including Trend Analysis.
+- [ ] Add regression coverage proving scheduled Campaign DeepDive PDFs include selected section body content, not just selected section names.
 
 Scheduling delivery status:
 
@@ -398,6 +404,7 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Performance Summary PDF section parity fix added on 2026-05-29.
 - Budget & Financial Analysis PDF section parity fix added on 2026-05-29 and expanded to include nested card/row parity for Campaign Health Score, Budget Pacing & Burn Rate, source performance, allocation, and insight sections.
 - Platform Comparison PDF section parity fix added on 2026-05-29: selected Platform Comparison tabs now export the matching web-tab section structure instead of the generic DeepDive metric-list fallback.
+- Trend Analysis PDF section parity fix added on 2026-05-30: selected Trend Analysis tabs now export dedicated Overview, Efficiency Metrics, Conversion Funnel, Platform Breakdown, and Insights section content from the source-aware trend aggregate instead of generic fallback output.
 - Campaign DeepDive Custom Report scheduled-email backend wiring added on 2026-05-29: scheduled create/update/delete writes through `/api/platforms/campaign_deepdive/reports`, stores time zone and recipients, and the scheduler has a `campaign_deepdive` PDF attachment path.
 - Monthly and Quarterly schedule option cleanup added on 2026-05-29: Monthly exposes day-of-month choices and Quarterly exposes start/end-of-quarter choices.
 - Scheduled Reports card action fix added on 2026-05-29: `Pause` now disables the backend schedule, writes backend status `paused`, keeps paused cards visible without a separate Status field, and exposes `Resume` on paused cards to re-enable the saved backend schedule. `Download latest report` regenerates from latest values.

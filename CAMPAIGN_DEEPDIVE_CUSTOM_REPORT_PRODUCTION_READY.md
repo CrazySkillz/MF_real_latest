@@ -311,7 +311,7 @@ Custom Report is production-ready when:
 - saved report configuration cannot reintroduce disconnected-source metrics
 - All Reports cards remain summary-only and do not expose connected-source values, KPI/Benchmark rows, generated status pills, or `Includes` configuration details inline
 - All Reports cards must show only the edit icon, `Download latest report`, and the delete icon; Pause/Resume belongs only in Scheduled Reports
-- All Reports filters should include Search, Status, Report Type, and Date Range; the redundant Campaign dropdown should not render
+- All Reports filters should include Search, Report Type, and Date Range; redundant Campaign and Status dropdowns should not render
 - Report cards show saved descriptions when available and do not show redundant `Format: PDF` metadata
 - All Reports card edit icons open the report dialog with saved values prefilled, show `Update Report`, and keep update disabled until a change is made
 - Create/edit report descriptions are capped at 160 characters
@@ -386,6 +386,7 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Campaign return-link cleanup added on 2026-05-29: campaign-scoped Reports pages show `Back to main Campaign Overview` above the page heading and route back to `/campaigns/<campaignId>`.
 - Local validation passed on 2026-05-29 for All Reports action cleanup: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - All Reports Campaign filter removal added on 2026-05-29: Search, Status, Report Type, and Date Range remain; the Campaign dropdown no longer renders.
+- All Reports Status filter removal added on 2026-05-30: Search, Report Type, and Date Range remain; lifecycle state is handled by the Standard Reports and Scheduled Reports tabs.
 - Create Report reset fix added on 2026-05-28: top-level create opens a fresh empty form after prior edits.
 - Create Report action split added on 2026-05-28: unscheduled create mode downloads the selected sections, while scheduled create mode saves with `Schedule Automated Report` and `Schedule Report`.
 - Download Report content fix added on 2026-05-28 and pushed in commit `ec6f9234`: Campaign DeepDive subsection exports now print selected tab bodies from the connected-source aggregate instead of only listing selected tab names.

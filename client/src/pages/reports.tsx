@@ -261,7 +261,6 @@ export default function Reports() {
   
   // Filter states for All Reports tab
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
 
@@ -786,11 +785,6 @@ export default function Reports() {
     // Search query filter
     if (searchQuery && !report.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
         !report.campaignName?.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-
-    // Status filter
-    if (statusFilter !== "all" && report.status !== statusFilter) {
       return false;
     }
 
@@ -2151,7 +2145,7 @@ export default function Reports() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {/* Search */}
                         <div className="space-y-2">
                           <Label>Search</Label>
@@ -2164,22 +2158,6 @@ export default function Reports() {
                               className="pl-10"
                             />
                           </div>
-                        </div>
-
-                        {/* Status Filter */}
-                        <div className="space-y-2">
-                          <Label>Status</Label>
-                          <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Statuses</SelectItem>
-                              <SelectItem value="Generated">Generated</SelectItem>
-                              <SelectItem value="Scheduled">Scheduled</SelectItem>
-                              <SelectItem value="Paused">Paused</SelectItem>
-                            </SelectContent>
-                          </Select>
                         </div>
 
                         {/* Type Filter */}
@@ -2241,7 +2219,6 @@ export default function Reports() {
                             size="sm" 
                             onClick={() => {
                               setSearchQuery("");
-                              setStatusFilter("all");
                               setTypeFilter("all");
                               setDateFilter("all");
                             }}

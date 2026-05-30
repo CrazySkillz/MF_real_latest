@@ -187,12 +187,14 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).not.toContain("const [campaignFilter, setCampaignFilter]");
     expect(reports).not.toContain('<SelectItem value="all">All Campaigns</SelectItem>');
     expect(reports).not.toContain("setCampaignFilter");
+    expect(reports).not.toContain("const [statusFilter, setStatusFilter]");
+    expect(reports).not.toContain('<SelectItem value="all">All Statuses</SelectItem>');
+    expect(reports).not.toContain("setStatusFilter");
     expect(reports).toContain("No scheduled reports yet");
     expect(reports).toContain("Use Schedule Report to create an automated report.");
     expect(reports).not.toContain("const scheduledReports = [");
     expect(reports).not.toContain("scheduledReports.map((report) => (");
     expect(reports).toContain("Download latest report");
-    expect(reports).toContain('<SelectItem value="Paused">Paused</SelectItem>');
     expect(reports).toContain("{report.description && (");
     expect(reports).toContain('<p className="text-sm text-muted-foreground">{report.description}</p>');
     expect(reports).not.toContain('<span className="font-medium text-foreground">Format:</span>');

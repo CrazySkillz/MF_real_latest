@@ -115,7 +115,7 @@ Important meaning:
 - KPI and Benchmark report sections should use campaign records for rows and targets, with current values coming from available aggregate metrics
 - All Reports cards should stay summary-only and should not show connected-source values, KPI/Benchmark row details, generated status pills, or `Includes` configuration details inline
 - All Reports cards should show only edit, `Download latest report`, and delete actions; Pause/Resume belongs only in Scheduled Reports
-- All Reports filters should include Search, Status, Report Type, and Date Range; the redundant Campaign dropdown should not render
+- All Reports filters should include Search, Report Type, and Date Range; redundant Campaign and Status dropdowns should not render
 - report cards should show the saved description when one exists and should not show redundant `Format: PDF` metadata
 - All Reports card edit icons should reopen the report dialog with saved values prefilled, show `Update Report`, suppress edit-mode first-field autofocus, and keep update disabled until a value changes
 - report descriptions in create and edit mode should be capped at 160 characters

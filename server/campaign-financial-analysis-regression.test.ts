@@ -43,14 +43,18 @@ describe("campaign Budget & Financial Analysis regression guard", () => {
     const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"', routeStart);
     const route = routes.slice(routeStart, routeEnd);
 
-    expect(route).toContain("storage.getGoogleAdsConnection(campaignId).catch(() => undefined)");
-    expect(route).toContain("const rows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate))");
-    expect(route).toContain('id: "google_ads"');
-    expect(route).toContain('label: "Google Ads"');
-    expect(route).toContain('category: "paid_media"');
-    expect(route).toContain('includedMetrics: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"]');
+    expect(routes).toContain("async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string)");
+    expect(routes).toContain("async function buildLinkedInPlatformSourceForAggregate(campaignId: string, linkedInConn?: any)");
+    expect(routes).toContain("const googleAdsConn = await storage.getGoogleAdsConnection(campaignId).catch(() => null);");
+    expect(routes).toContain("const googleAdsRows = (await storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate))");
+    expect(routes).toContain('id: "google_ads"');
+    expect(routes).toContain('label: "Google Ads"');
+    expect(routes).toContain('category: "paid_media"');
+    expect(routes).toContain('includedMetrics: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"]');
+    expect(route).toContain("const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate(campaignId, startDate, endDate);");
+    expect(route).toContain("const { linkedIn, linkedInSpend } = await buildLinkedInPlatformSourceForAggregate(campaignId, linkedInConn);");
     expect(route).toContain("const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend).toFixed(2));");
-    expect(route).toContain("platformSources: [googleAds]");
+    expect(route).toContain("mainPlatformSources: { googleAds }");
   });
 
   it("wires the Overview tab to aggregate financial metrics with unavailable states", () => {

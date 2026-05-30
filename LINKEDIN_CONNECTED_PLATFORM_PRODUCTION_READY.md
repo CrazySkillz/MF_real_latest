@@ -139,7 +139,10 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: shared `buildLinkedInPlatformSourceForAggregate` helper added in `server/routes-oauth.ts`.
+- [x] Completed locally: `/api/campaigns/:campaignId/outcome-totals` uses the shared LinkedIn aggregate helper.
+- [x] Completed locally: `/api/campaigns/:campaignId/executive-summary` uses the same LinkedIn aggregate helper.
+- [x] Completed locally: regression guards updated to prevent the two routes from drifting back to separate LinkedIn composition paths.
 
 ### Commit 3: Create Campaign LinkedIn Flow Hardening
 

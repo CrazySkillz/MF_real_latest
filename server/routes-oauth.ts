@@ -145,6 +145,70 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
   return { googleAds, googleAdsSpend, googleAdsLastUpdate };
 }
 
+async function buildLinkedInPlatformSourceForAggregate(campaignId: string, linkedInConn?: any) {
+  const parseNum = (v: any): number => {
+    if (v === null || typeof v === "undefined" || v === "") return 0;
+    const n = typeof v === "string" ? parseFloat(v) : Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  let linkedIn: any = { connected: false };
+  let linkedInSpend = 0;
+  let linkedInLastUpdate: string | null = null;
+
+  try {
+    const connection = linkedInConn ?? await storage.getLinkedInConnection(campaignId).catch(() => null);
+    if (connection && connection.adAccountId && !(connection as any).spendOnly) {
+      const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
+      if (latestSession) {
+        const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
+        const normalizeMetricKey = (key: any) =>
+          String(key || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const sumMetricValues = (normalizedKeys: string[]) =>
+          (metrics || []).reduce((sum: number, m: any) => {
+            const key = normalizeMetricKey((m as any)?.metricKey);
+            return normalizedKeys.includes(key) ? sum + parseNum((m as any)?.metricValue) : sum;
+          }, 0);
+
+        linkedInSpend = parseNum(sumMetricValues(["spend"]));
+        const conversions = parseNum(sumMetricValues(["conversions", "externalwebsiteconversions"]));
+        const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
+        const rev = await resolveLinkedInRevenueContext({
+          campaignId,
+          conversionsTotal: conversions,
+          sessionConversionValue: (latestSession as any)?.conversionValue,
+        });
+        const attributedRevenue = parseFloat(Number((rev as any).totalRevenue || 0).toFixed(2));
+
+        linkedIn = {
+          connected: true,
+          spend: linkedInSpend,
+          clicks: parseNum(sumMetricValues(["clicks"])),
+          impressions: parseNum(sumMetricValues(["impressions"])),
+          conversions,
+          leads: parseNum(sumMetricValues(["leads"])),
+          hasRevenueTracking: !!(rev as any).hasRevenueTracking,
+          conversionValue: parseFloat(Number((rev as any).conversionValue || 0).toFixed(2)),
+          attributedRevenue,
+          revenue: attributedRevenue,
+          roas: linkedInSpend > 0 ? parseFloat((attributedRevenue / linkedInSpend).toFixed(2)) : 0,
+          roi: linkedInSpend > 0 ? parseFloat((((attributedRevenue - linkedInSpend) / linkedInSpend) * 100).toFixed(2)) : 0,
+          lastImportedAt: latestSession.importedAt,
+        };
+        linkedInLastUpdate = latestSession.importedAt instanceof Date
+          ? latestSession.importedAt.toISOString()
+          : String(latestSession.importedAt || "");
+      } else {
+        linkedIn = { connected: true, hasImport: false };
+      }
+    }
+  } catch (e: any) {
+    linkedIn = { connected: !!(linkedInConn && linkedInConn.adAccountId), error: e?.message || "LinkedIn unavailable" };
+  }
+
+  return { linkedIn, linkedInSpend, linkedInLastUpdate };
+}
+
 function buildMainPlatformSourcesForAggregate(sources: { googleAds?: any } = {}) {
   return [sources.googleAds].filter((source) => source?.connected === true);
 }
@@ -10575,73 +10639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Keep mapped-source fallback if revenue records cannot be resolved.
       }
 
-      // LinkedIn aggregated platform inputs (from latest import session)
-      let linkedIn: any = { connected: false };
-      let linkedInSpend = 0;
-      try {
-        if (linkedInConn && linkedInConn.adAccountId && !(linkedInConn as any).spendOnly) {
-          const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
-          if (latestSession) {
-            const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
-            const aggregated: Record<string, number> = {};
-            const keys = Array.from(new Set((metrics || []).map((m: any) => m.metricKey)));
-            keys.forEach((k: string) => {
-              const total = (metrics || [])
-                .filter((m: any) => m.metricKey === k)
-                .reduce((sum: number, m: any) => sum + parseNum(m.metricValue), 0);
-              aggregated[k] = parseFloat(total.toFixed(2));
-            });
-
-            // Canonicalize core LinkedIn totals defensively (enterprise-grade).
-            const normalizeMetricKey = (key: any) =>
-              String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            const sumMetricValues = (normalizedKeys: string[]) =>
-              (metrics || []).reduce((sum: number, m: any) => {
-                const k = normalizeMetricKey((m as any)?.metricKey);
-                if (normalizedKeys.includes(k)) return sum + parseNum((m as any)?.metricValue);
-                return sum;
-              }, 0);
-            const canonImpressions = sumMetricValues(['impressions']);
-            const canonClicks = sumMetricValues(['clicks']);
-            const canonSpend = sumMetricValues(['spend']);
-            const canonConversions = sumMetricValues(['conversions', 'externalwebsiteconversions']);
-            const canonLeads = sumMetricValues(['leads']);
-
-            linkedInSpend = parseNum(canonSpend);
-
-            const conversions = parseNum(canonConversions);
-            const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
-            const rev = await resolveLinkedInRevenueContext({
-              campaignId,
-              conversionsTotal: conversions,
-              sessionConversionValue: (latestSession as any)?.conversionValue,
-            });
-
-            const attributedRevenue = parseFloat(Number(rev.totalRevenue || 0).toFixed(2));
-            const roas = linkedInSpend > 0 ? parseFloat((attributedRevenue / linkedInSpend).toFixed(2)) : 0;
-            const roi = linkedInSpend > 0 ? parseFloat((((attributedRevenue - linkedInSpend) / linkedInSpend) * 100).toFixed(2)) : 0;
-
-            linkedIn = {
-              connected: true,
-              spend: linkedInSpend,
-              clicks: parseNum(canonClicks),
-              impressions: parseNum(canonImpressions),
-              conversions: parseNum(canonConversions),
-              leads: parseNum(canonLeads),
-              hasRevenueTracking: !!rev.hasRevenueTracking,
-              conversionValue: parseFloat(Number(rev.conversionValue || 0).toFixed(2)),
-              attributedRevenue,
-              roas,
-              roi,
-              lastImportedAt: latestSession.importedAt,
-            };
-          } else {
-            linkedIn = { connected: true, hasImport: false };
-          }
-        }
-      } catch (e: any) {
-        linkedIn = { connected: !!(linkedInConn && linkedInConn.adAccountId), error: e?.message || "LinkedIn unavailable" };
-      }
+      const { linkedIn, linkedInSpend } = await buildLinkedInPlatformSourceForAggregate(campaignId, linkedInConn);
 
       // Meta summary inputs — resolve revenue using canonical meta-revenue utility
       let meta: any = { connected: false };
@@ -25060,37 +25058,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Fetch LinkedIn metrics
-      let linkedinMetrics: any = { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 };
-      let linkedinLastUpdate: string | null = null;
-
-      try {
-        const latestSession = await storage.getLatestLinkedInImportSession(id);
-        if (latestSession) {
-          linkedinLastUpdate = latestSession.importedAt.toISOString();
-          const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
-          // Deduplicate: keep latest value per (campaignUrn, metricKey) to prevent double-counting
-          const deduped = new Map<string, number>();
-          metrics.forEach((m: any) => {
-            const dedupKey = `${m.campaignUrn}::${(m.metricKey || '').toLowerCase()}`;
-            deduped.set(dedupKey, parseFloat(m.metricValue || '0'));
-          });
-          deduped.forEach((value, dedupKey) => {
-            const key = dedupKey.split('::')[1];
-            linkedinMetrics[key] = (linkedinMetrics[key] || 0) + value;
-          });
-          const { resolveLinkedInRevenueContext } = await import("./utils/linkedin-revenue");
-          const rev = await resolveLinkedInRevenueContext({
-            campaignId: id,
-            conversionsTotal: parseNum(linkedinMetrics.conversions),
-            sessionConversionValue: (latestSession as any)?.conversionValue,
-          });
-          linkedinMetrics.revenue = parseNum((rev as any)?.totalRevenue);
-          (linkedinMetrics as any).hasRevenueTracking = !!(rev as any)?.hasRevenueTracking;
-        }
-      } catch (err) {
-        console.log('No LinkedIn metrics found for campaign', id);
-      }
+      const {
+        linkedIn: linkedinMetrics,
+        linkedInSpend: linkedinSpend,
+        linkedInLastUpdate: linkedinLastUpdate,
+      } = await buildLinkedInPlatformSourceForAggregate(id);
 
       // Fetch Meta/Facebook metrics
       let metaMetrics: any = { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0, reach: 0 };
@@ -25244,8 +25216,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const webAnalyticsProvider = hasGA4Connection ? "ga4" : hasCustomIntegration ? "custom_integration" : null;
-      const platformSpend = linkedinMetrics.spend + metaMetrics.spend + customMetrics.spend + googleAdsSpend;
-      const platformRevenue = linkedinMetrics.revenue + metaMetrics.revenue + customMetrics.revenue + parseNum(googleAds?.metrics?.attributedRevenue);
+      const platformSpend = linkedinSpend + metaMetrics.spend + customMetrics.spend + googleAdsSpend;
+      const platformRevenue = parseNum(linkedinMetrics.revenue) + metaMetrics.revenue + customMetrics.revenue + parseNum(googleAds?.metrics?.attributedRevenue);
       const aggregateRevenue = hasGA4Connection
         ? parseFloat((ga4Metrics.revenue + importedRevenueToDateTotal).toFixed(2))
         : (canonicalRevenue > 0 ? canonicalRevenue : platformRevenue);
@@ -25270,7 +25242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(performanceSummarySpendTotals || {}),
         },
         platforms: {
-          linkedin: { connected: linkedinMetrics.spend > 0 || linkedinMetrics.clicks > 0 || linkedinMetrics.impressions > 0 || linkedinMetrics.conversions > 0, ...linkedinMetrics },
+          linkedin: linkedinMetrics,
           meta: { connected: hasMetaConnection, ...metaMetrics, attributedRevenue: metaMetrics.revenue },
           customIntegration: { connected: hasCustomIntegration, ...customMetrics, users: parseNum(customIntegrationRawData?.users), sessions: parseNum(customIntegrationRawData?.sessions), pageviews: parseNum(customIntegrationRawData?.pageviews), revenue: customMetrics.revenue },
         },

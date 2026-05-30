@@ -81,6 +81,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(routes).toContain("async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string)");
     expect(routes).toContain("const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate(campaignId, startDate, endDate);");
     expect(route).toContain("const { googleAds, googleAdsSpend, googleAdsLastUpdate } = await buildGoogleAdsPlatformSourceForAggregate(id, startDate, endDate);");
+    expect(routes).toContain("async function buildLinkedInPlatformSourceForAggregate(campaignId: string, linkedInConn?: any)");
+    expect(route).toContain("} = await buildLinkedInPlatformSourceForAggregate(id);");
     expect(route).toContain("dateRange: executiveDateRange");
     expect(route).toContain("const metrics = await ga4Service.getMetricsWithAutoRefresh(id, storage, ga4DateRange, primaryPropertyId || undefined, campaignFilter);");
     expect(route).toContain('periodParam === "90d" ? "90daysAgo" : "30daysAgo"');
@@ -93,7 +95,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("parseFloat((ga4Metrics.revenue + importedRevenueToDateTotal).toFixed(2))");
     expect(route).toContain("spendSource: performanceSummarySpend > 0 ? \"persisted_spend_sources\" : \"platform_spend_fallback\"");
     expect(route).toContain("meta: { connected: hasMetaConnection");
-    expect(route).toContain("const platformSpend = linkedinMetrics.spend + metaMetrics.spend + customMetrics.spend + googleAdsSpend;");
+    expect(route).toContain("const platformSpend = linkedinSpend + metaMetrics.spend + customMetrics.spend + googleAdsSpend;");
     expect(route).toContain("mainPlatformSources: { googleAds }");
     expect(route).toContain("checkFreshness(googleAdsLastUpdate, 'Google Ads');");
     expect(route).toContain('const hasGoogleAdsData = mainAggregateSources.some((source: any) => source.id === "google_ads");');

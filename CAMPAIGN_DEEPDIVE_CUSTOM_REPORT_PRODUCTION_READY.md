@@ -363,8 +363,9 @@ Commit 5 final implementation status:
 
 - [x] Scheduled Campaign DeepDive PDF body rendering is covered for every current Campaign DeepDive report type and tab.
 - [x] Scheduled Campaign DeepDive PDF regression coverage verifies the scheduler uses latest campaign aggregate inputs and selected-section body renderers.
-- [x] No open Custom Report implementation tasks remain for the implemented GA4/current aggregate-consumer scope.
-- [ ] Deployed email-delivery evidence remains a runtime acceptance check, not an implementation task; record it after a real scheduled send confirms provider acceptance/inbox receipt.
+- [x] Browser downloads are production-ready locally for the implemented GA4/current aggregate-consumer scope.
+- [ ] Scheduled PDFs have selected section body content implemented, but exact latest-value composition parity with browser downloads is still outstanding.
+- [ ] Deployed scheduled email evidence remains pending runtime validation after a real scheduled send confirms provider acceptance/inbox receipt.
 
 Scheduling delivery status:
 

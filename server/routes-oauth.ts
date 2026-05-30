@@ -178,7 +178,10 @@ async function buildLinkedInPlatformSourceForAggregate(campaignId: string, linke
           conversionsTotal: conversions,
           sessionConversionValue: (latestSession as any)?.conversionValue,
         });
-        const attributedRevenue = parseFloat(Number((rev as any).totalRevenue || 0).toFixed(2));
+        const hasRevenueTracking = !!(rev as any).hasRevenueTracking;
+        const attributedRevenue = hasRevenueTracking
+          ? parseFloat(Number((rev as any).totalRevenue || 0).toFixed(2))
+          : null;
 
         linkedIn = {
           connected: true,
@@ -187,12 +190,12 @@ async function buildLinkedInPlatformSourceForAggregate(campaignId: string, linke
           impressions: parseNum(sumMetricValues(["impressions"])),
           conversions,
           leads: parseNum(sumMetricValues(["leads"])),
-          hasRevenueTracking: !!(rev as any).hasRevenueTracking,
-          conversionValue: parseFloat(Number((rev as any).conversionValue || 0).toFixed(2)),
+          hasRevenueTracking,
+          conversionValue: hasRevenueTracking ? parseFloat(Number((rev as any).conversionValue || 0).toFixed(2)) : null,
           attributedRevenue,
           revenue: attributedRevenue,
-          roas: linkedInSpend > 0 ? parseFloat((attributedRevenue / linkedInSpend).toFixed(2)) : 0,
-          roi: linkedInSpend > 0 ? parseFloat((((attributedRevenue - linkedInSpend) / linkedInSpend) * 100).toFixed(2)) : 0,
+          roas: hasRevenueTracking && linkedInSpend > 0 ? parseFloat((Number(attributedRevenue) / linkedInSpend).toFixed(2)) : null,
+          roi: hasRevenueTracking && linkedInSpend > 0 ? parseFloat((((Number(attributedRevenue) - linkedInSpend) / linkedInSpend) * 100).toFixed(2)) : null,
           lastImportedAt: latestSession.importedAt,
         };
         linkedInLastUpdate = latestSession.importedAt instanceof Date
@@ -24185,7 +24188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const canonViralImpressions = sumMetricValues(['viralimpressions']);
 
       // Aggregate metrics
-      const aggregated: Record<string, number> = {};
+      const aggregated: Record<string, any> = {};
       const selectedMetrics = Array.from(new Set(metrics.map((m: any) => m.metricKey)));
 
       selectedMetrics.forEach((metricKey: string) => {
@@ -24279,14 +24282,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       aggregated.hasRevenueTracking = rev.hasRevenueTracking ? 1 : 0;
-      aggregated.conversionValue = parseFloat(Number(rev.conversionValue || 0).toFixed(2));
-      aggregated.revenue = parseFloat(Number(rev.totalRevenue || 0).toFixed(2));
+      aggregated.conversionValue = rev.hasRevenueTracking ? parseFloat(Number(rev.conversionValue || 0).toFixed(2)) : null as any;
+      aggregated.revenue = rev.hasRevenueTracking ? parseFloat(Number(rev.totalRevenue || 0).toFixed(2)) : null as any;
       if (rev.hasRevenueTracking && spend > 0) {
         aggregated.roas = parseFloat(((aggregated.revenue as any) / spend).toFixed(2));
         aggregated.roi = parseFloat(((((aggregated.revenue as any) - spend) / spend) * 100).toFixed(2));
       } else {
-        aggregated.roas = 0;
-        aggregated.roi = 0;
+        aggregated.roas = null as any;
+        aggregated.roi = null as any;
       }
 
       // CTR: (Clicks / Impressions) * 100

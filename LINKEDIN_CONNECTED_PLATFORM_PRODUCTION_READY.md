@@ -227,6 +227,7 @@ Status:
 - [x] Completed locally: LinkedIn card impressions, clicks, spend, conversions, CTR, and CPC now come from `/api/linkedin/metrics/:campaignId` after import.
 - [x] Completed locally: LinkedIn import-required state still shows zero/unavailable values until import exists.
 - [x] Completed locally: regression coverage added to prevent placeholder LinkedIn card metrics from returning.
+- [x] User validation passed for Commit 5 using LinkedIn test data flow.
 
 ### Commit 6: Revenue, Spend, And Derived Metric Hardening
 
@@ -249,7 +250,10 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: LinkedIn aggregate source now includes `attributedRevenue` only when LinkedIn revenue tracking is available.
+- [x] Completed locally: LinkedIn helper returns `null` for revenue, ROI, and ROAS when no LinkedIn-scoped revenue source is available.
+- [x] Completed locally: `/api/linkedin/metrics/:campaignId` now returns `null` revenue-derived values when LinkedIn revenue tracking is unavailable.
+- [x] Completed locally: regression coverage added for spend-only LinkedIn campaigns and LinkedIn campaigns with valid attributed revenue.
 
 ### Commit 7: Scheduler And Freshness Hardening
 

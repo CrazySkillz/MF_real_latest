@@ -83,6 +83,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("const { googleAds, googleAdsSpend, googleAdsLastUpdate } = await buildGoogleAdsPlatformSourceForAggregate(id, startDate, endDate);");
     expect(routes).toContain("async function buildLinkedInPlatformSourceForAggregate(campaignId: string, linkedInConn?: any)");
     expect(route).toContain("} = await buildLinkedInPlatformSourceForAggregate(id);");
+    expect(routes).toContain("const hasRevenueTracking = !!(rev as any).hasRevenueTracking;");
+    expect(routes).toContain("roas: hasRevenueTracking && linkedInSpend > 0");
+    expect(routes).toContain("roi: hasRevenueTracking && linkedInSpend > 0");
     expect(route).toContain("dateRange: executiveDateRange");
     expect(route).toContain("const metrics = await ga4Service.getMetricsWithAutoRefresh(id, storage, ga4DateRange, primaryPropertyId || undefined, campaignFilter);");
     expect(route).toContain('periodParam === "90d" ? "90daysAgo" : "30daysAgo"');

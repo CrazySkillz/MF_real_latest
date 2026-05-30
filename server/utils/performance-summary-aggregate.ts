@@ -125,17 +125,23 @@ const mainSourceAdapters: SourceAdapter[] = [
     build: (input) => {
       const linkedin = input.platforms?.linkedin || {};
       const linkedinConnected = linkedin.connected === true;
+      const hasLinkedInRevenue = linkedin.hasRevenueTracking === true;
       return {
         id: "linkedin",
         label: "LinkedIn Ads",
         category: "paid_media",
         connected: linkedinConnected,
         capabilities: ["impressions", "clicks", "spend", "conversions", "leads", "attributedRevenue"],
-        includedMetrics: linkedinConnected ? ["impressions", "clicks", "spend", "conversions", "leads", "attributedRevenue"] : [],
+        includedMetrics: linkedinConnected
+          ? ["impressions", "clicks", "spend", "conversions", "leads", ...(hasLinkedInRevenue ? ["attributedRevenue"] : [])]
+          : [],
         excludedMetrics: [
           { metric: "sessions", reason: "Sessions are web analytics metrics" },
           { metric: "users", reason: "Users are web analytics metrics" },
           { metric: "pageviews", reason: "Pageviews are web analytics metrics" },
+          ...(linkedinConnected && !hasLinkedInRevenue
+            ? [{ metric: "attributedRevenue", reason: "LinkedIn revenue requires a LinkedIn-scoped revenue source" }]
+            : []),
         ],
         metrics: {
           impressions: parseNum(linkedin.impressions),
@@ -143,7 +149,7 @@ const mainSourceAdapters: SourceAdapter[] = [
           spend: parseNum(linkedin.spend),
           conversions: parseNum(linkedin.conversions),
           leads: parseNum(linkedin.leads),
-          attributedRevenue: parseNum(linkedin.attributedRevenue),
+          attributedRevenue: hasLinkedInRevenue ? parseNum(linkedin.attributedRevenue) : null,
         },
         freshness: linkedin.lastImportedAt ? { lastImportedAt: linkedin.lastImportedAt } : undefined,
       };

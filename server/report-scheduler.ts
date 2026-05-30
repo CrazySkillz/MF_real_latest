@@ -7,6 +7,7 @@ import type { LinkedInReport } from "../shared/schema";
 import * as cron from "node-cron";
 import { DateTime } from "luxon";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
+import { aggregateCampaignMetrics } from "./scheduler";
 
 /**
  * Report Scheduler - Automated Email Reports
@@ -201,6 +202,64 @@ const campaignDeepDiveTabLabels: Record<string, string> = {
   "executive-summary:recommendations": "Strategic Recommendations",
 };
 
+const campaignDeepDiveMetricLabels: Record<string, string> = {
+  users: "Users",
+  sessions: "Sessions",
+  conversions: "Conversions",
+  revenue: "Revenue",
+  cvr: "Conversion rate",
+  impressions: "Impressions",
+  clicks: "Clicks",
+  spend: "Spend",
+  ctr: "Click-through rate",
+  cpc: "Cost per click",
+  cpm: "Cost per thousand impressions",
+  cpa: "Cost per acquisition",
+  roas: "ROAS",
+  roi: "ROI",
+  leads: "Leads",
+};
+
+const campaignDeepDiveMetricAliases: Record<string, string> = {
+  totalusers: "users",
+  users: "users",
+  user: "users",
+  totalsessions: "sessions",
+  sessions: "sessions",
+  totalrevenue: "revenue",
+  revenue: "revenue",
+  totalconversions: "conversions",
+  conversions: "conversions",
+  totalspend: "spend",
+  spend: "spend",
+  totalclicks: "clicks",
+  clicks: "clicks",
+  totalimpressions: "impressions",
+  impressions: "impressions",
+  conversionrate: "cvr",
+  cvr: "cvr",
+  ctr: "ctr",
+  cpc: "cpc",
+  cpm: "cpm",
+  cpa: "cpa",
+  roas: "roas",
+  roi: "roi",
+};
+
+function formatCampaignDeepDiveMetricValue(key: string, value: unknown): string {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return "Unavailable";
+  if (["revenue", "spend", "cpc", "cpa", "cpm"].includes(key)) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(n);
+  }
+  if (["ctr", "cvr", "roi"].includes(key)) return `${n.toFixed(1)}%`;
+  if (key === "roas") return `${n.toFixed(1)}x`;
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
+}
+
+const normalizeCampaignDeepDiveMetricKey = (value: unknown): string =>
+  String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
 async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   report: any;
   windowStart: string;
@@ -216,6 +275,20 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const reportType = String(cfg?.reportType || "").trim();
   const selectedSections = Array.isArray(cfg?.selectedSections) ? cfg.selectedSections.map(String).filter(Boolean) : [];
   const selectedMetrics = Array.isArray(cfg?.selectedMetrics) ? cfg.selectedMetrics.map(String).filter(Boolean) : [];
+  const campaignId = String(report?.campaignId || cfg?.campaignId || "").trim();
+  const [campaignMetrics, campaign, kpis, benchmarks] = campaignId
+    ? await Promise.all([
+        aggregateCampaignMetrics(campaignId).catch(() => null),
+        storage.getCampaign(campaignId).catch(() => null),
+        storage.getCampaignKPIs(campaignId).catch(() => []),
+        storage.getCampaignBenchmarks(campaignId).catch(() => []),
+      ])
+    : [null, null, [], []];
+  const performanceSummary = (campaignMetrics as any)?.detailedMetrics?.performanceSummary;
+  const trendAnalysis = (campaignMetrics as any)?.detailedMetrics?.trendAnalysis;
+  const aggregateSources = Array.isArray(performanceSummary?.sources)
+    ? performanceSummary.sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
+    : [];
   const margin = 18;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -236,6 +309,141 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     });
   };
 
+  const metric = (key: string) => performanceSummary?.totals?.[key];
+  const metricAvailable = (key: string) => metric(key)?.available === true;
+  const metricNumber = (key: string) => metricAvailable(key) ? Number(metric(key)?.value) || 0 : 0;
+  const metricValue = (key: string) => {
+    const value = metric(key);
+    if (value?.available === true) return formatCampaignDeepDiveMetricValue(key, value.value);
+    const reason = Array.isArray(value?.unavailableReasons) ? value.unavailableReasons[0] : "";
+    return `Unavailable${reason ? ` - ${reason}` : ""}`;
+  };
+  const resolveAggregateMetric = (record: any) => {
+    for (const candidate of [record?.metricKey, record?.metric, record?.metricType, record?.name]) {
+      const key = campaignDeepDiveMetricAliases[normalizeCampaignDeepDiveMetricKey(candidate)];
+      if (key && metricAvailable(key)) return key;
+    }
+    return null;
+  };
+  const addMetricRows = (keys: string[], indent = 8) => {
+    if (!performanceSummary) {
+      addText("- Connected-source aggregate values are unavailable.", { indent });
+      return;
+    }
+    keys.forEach((key) => addText(`- ${campaignDeepDiveMetricLabels[key] || key}: ${metricValue(key)}`, { indent }));
+  };
+  const addSourceRows = (indent = 8) => {
+    if (aggregateSources.length === 0) {
+      addText("- No connected main sources available.", { indent });
+      return;
+    }
+    aggregateSources.forEach((source: any) => {
+      const included = Array.isArray(source?.includedMetrics) ? source.includedMetrics.join(", ") : "none";
+      addText(`- ${source?.label || source?.id}: ${included}`, { indent });
+    });
+  };
+  const addKpiRows = (indent = 8) => {
+    const mapped = (Array.isArray(kpis) ? kpis : [])
+      .map((row: any) => ({ row, key: resolveAggregateMetric(row) }))
+      .filter((item: any) => item.key);
+    if (mapped.length === 0) {
+      addText("- No mapped campaign KPI rows available.", { indent });
+      return;
+    }
+    mapped.forEach((item: any) => {
+      const target = Number(item.row?.targetValue ?? item.row?.target) || 0;
+      addText(`- ${item.row?.name || item.row?.metric || "KPI"}: Current ${metricValue(item.key)}; Target ${formatCampaignDeepDiveMetricValue(item.key, target)}`, { indent });
+    });
+  };
+  const addBenchmarkRows = (indent = 8) => {
+    const mapped = (Array.isArray(benchmarks) ? benchmarks : [])
+      .map((row: any) => ({ row, key: resolveAggregateMetric(row) }))
+      .filter((item: any) => item.key);
+    if (mapped.length === 0) {
+      addText("- No mapped campaign Benchmark rows available.", { indent });
+      return;
+    }
+    mapped.forEach((item: any) => {
+      const target = Number(item.row?.benchmarkValue ?? item.row?.benchmark) || 0;
+      addText(`- ${item.row?.name || item.row?.metric || "Benchmark"}: Yours ${metricValue(item.key)}; Benchmark ${formatCampaignDeepDiveMetricValue(item.key, target)}`, { indent });
+    });
+  };
+  const addTrendRows = (keys: string[], indent = 8) => {
+    const rows = Array.isArray(trendAnalysis?.dailyTotals) ? trendAnalysis.dailyTotals : [];
+    if (rows.length === 0) {
+      addText("- No connected source trend rows available.", { indent });
+      return;
+    }
+    const currentRows = rows.slice(-Math.max(1, Math.ceil(rows.length / 2)));
+    keys.forEach((key) => {
+      const total = currentRows.reduce((sum: number, row: any) => sum + (Number(row?.metrics?.[key]) || 0), 0);
+      addText(`- ${campaignDeepDiveMetricLabels[key] || key}: ${total > 0 ? formatCampaignDeepDiveMetricValue(key, total) : "Unavailable"}`, { indent });
+    });
+  };
+  const addSelectedSectionBody = (section: string) => {
+    addText(campaignDeepDiveTabLabels[section] || section, { size: 14, bold: true });
+    if (section.startsWith("performance-summary:")) {
+      addText("Connected-source performance", { bold: true, indent: 4 });
+      addMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "impressions", "clicks", "spend"]);
+      if (section === "performance-summary:health" || section === "performance-summary:overview") {
+        addText("Campaign KPI rows", { bold: true, indent: 4 });
+        addKpiRows();
+        addText("Campaign Benchmark rows", { bold: true, indent: 4 });
+        addBenchmarkRows();
+      }
+      if (section === "performance-summary:changes") addText("Metric trends require compatible historical aggregate snapshots; current values are included above.", { indent: 4 });
+      addText("Data Sources", { bold: true, indent: 4 });
+      addSourceRows();
+    } else if (section.startsWith("financial-analysis:")) {
+      addText("Financial metrics", { bold: true, indent: 4 });
+      addMetricRows(["revenue", "spend", "conversions", "cvr", "cpc", "cpa", "roas", "roi"]);
+      addText("Campaign budget context", { bold: true, indent: 4 });
+      addText(`- Budget: ${formatCampaignDeepDiveMetricValue("spend", (campaign as any)?.budget)}`, { indent: 8 });
+      addText(`- Start Date: ${(campaign as any)?.startDate || "Unavailable"}`, { indent: 8 });
+      addText(`- End Date: ${(campaign as any)?.endDate || "Unavailable"}`, { indent: 8 });
+      addText("Financial source rows", { bold: true, indent: 4 });
+      addSourceRows();
+    } else if (section.startsWith("platform-comparison:")) {
+      addText("Platform Performance Summary Cards", { bold: true, indent: 4 });
+      addSourceRows();
+      addText("Detailed Performance Metrics", { bold: true, indent: 4 });
+      addMetricRows(["users", "sessions", "impressions", "clicks", "conversions", "revenue", "spend", "roas", "roi"]);
+    } else if (section.startsWith("trend-analysis:")) {
+      addText("Trend window", { bold: true, indent: 4 });
+      addText(`- ${trendAnalysis?.startDate || "Unavailable"} to ${trendAnalysis?.endDate || "Unavailable"}`, { indent: 8 });
+      addText("Trend metrics", { bold: true, indent: 4 });
+      addTrendRows(["sessions", "users", "conversions", "revenue", "spend", "impressions", "clicks"]);
+    } else if (section === "executive-summary:overview") {
+      addText("Marketing Funnel Performance", { bold: true, indent: 4 });
+      addMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "roas", "roi"]);
+      addText("KPI Progress", { bold: true, indent: 4 });
+      addKpiRows();
+      addText("Benchmark Comparison", { bold: true, indent: 4 });
+      addBenchmarkRows();
+      addText("Risk Assessment", { bold: true, indent: 4 });
+      const kpiRisk = (Array.isArray(kpis) ? kpis : []).filter((row: any) => {
+        const key = resolveAggregateMetric(row);
+        const target = Number(row?.targetValue ?? row?.target) || 0;
+        return key && target > 0 && metricNumber(key) / target < 0.7;
+      }).length;
+      const benchmarkRisk = (Array.isArray(benchmarks) ? benchmarks : []).filter((row: any) => {
+        const key = resolveAggregateMetric(row);
+        const target = Number(row?.benchmarkValue ?? row?.benchmark) || 0;
+        return key && target > 0 && metricNumber(key) / target < 0.7;
+      }).length;
+      addText(`- KPI Risk: ${kpiRisk > 0 ? `${kpiRisk} KPI row(s) below 70% of target` : "No mapped KPI rows below 70% of target"}`, { indent: 8 });
+      addText(`- Benchmark Risk: ${benchmarkRisk > 0 ? `${benchmarkRisk} Benchmark row(s) below 70% of benchmark` : "No mapped Benchmark rows below 70% of benchmark"}`, { indent: 8 });
+    } else if (section === "executive-summary:recommendations") {
+      addText("Recommendation basis", { bold: true, indent: 4 });
+      addMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);
+      addText("Next action: compare below-target KPI or Benchmark rows against landing-page and conversion-path performance before changing spend.", { indent: 4 });
+      addText("Key assumptions", { bold: true, indent: 4 });
+      addText("- Based on connected-source aggregate values available to the scheduler at send time.", { indent: 8 });
+    } else {
+      addMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);
+    }
+  };
+
   addText(String(report?.name || "Campaign Report"), { size: 18, bold: true });
   addText(`Campaign: ${campaignName || "Campaign"}`);
   addText(`Report Type: ${campaignDeepDiveReportTypeLabels[reportType] || reportType || "Custom Report"}`);
@@ -252,6 +460,11 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     y += 4;
     addText("Selected metrics", { size: 14, bold: true });
     selectedMetrics.forEach((metric: string) => addText(`- ${metric}`, { indent: 4 }));
+  }
+  if (selectedSections.length > 0) {
+    y += 4;
+    addText("Selected section content", { size: 14, bold: true });
+    selectedSections.forEach(addSelectedSectionBody);
   }
 
   return coercePdfBufferFromDoc(doc);

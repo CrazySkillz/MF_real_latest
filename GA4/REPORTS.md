@@ -191,6 +191,7 @@ Important current behavior:
 - Campaign DeepDive Custom Report scheduling in `client/src/pages/reports.tsx` now writes backend scheduled report records through `/api/platforms/campaign_deepdive/reports`
 - scheduled records persist `scheduleTimeZone`, `scheduleTime`, `scheduleRecipients`, report type, selected tabs, and selected metrics in the saved configuration
 - `server/report-scheduler.ts` processes those records alongside platform-level scheduled reports and attaches a generated Campaign DeepDive PDF
+- scheduled Campaign DeepDive PDF attachments render selected tab body content from latest server-side campaign aggregate inputs, KPI rows, Benchmark rows, campaign context, and trend snapshot inputs; they should not be metadata-only lists of selected tab names
 - a Custom Report scheduled for `15:00` is interpreted in the saved browser time zone, then processed by the backend scheduler when that time is due
 
 When scheduling is enabled, users can configure:

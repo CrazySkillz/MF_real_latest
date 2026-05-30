@@ -244,6 +244,24 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("buildCampaignDeepDiveScheduledPdfAttachment");
   });
 
+  it("renders scheduled Campaign DeepDive PDFs with selected section body content", () => {
+    const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
+
+    expect(scheduler).toContain('import { aggregateCampaignMetrics } from "./scheduler";');
+    expect(scheduler).toContain("const performanceSummary = (campaignMetrics as any)?.detailedMetrics?.performanceSummary;");
+    expect(scheduler).toContain("const trendAnalysis = (campaignMetrics as any)?.detailedMetrics?.trendAnalysis;");
+    expect(scheduler).toContain("const addSelectedSectionBody = (section: string) => {");
+    expect(scheduler).toContain('addText("Selected section content", { size: 14, bold: true });');
+    expect(scheduler).toContain("selectedSections.forEach(addSelectedSectionBody);");
+    expect(scheduler).toContain("Marketing Funnel Performance");
+    expect(scheduler).toContain("KPI Progress");
+    expect(scheduler).toContain("Benchmark Comparison");
+    expect(scheduler).toContain("Risk Assessment");
+    expect(scheduler).toContain("Platform Performance Summary Cards");
+    expect(scheduler).toContain("Trend metrics");
+    expect(scheduler).toContain("Recommendation basis");
+  });
+
   it("lets campaign-scoped reports choose Campaign DeepDive subsections and tabs", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 

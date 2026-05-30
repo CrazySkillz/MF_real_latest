@@ -355,14 +355,15 @@ Custom Report is production-ready when:
 Open production-readiness tasks before Custom Report can be called fully production-ready:
 
 - [x] Add dedicated Trend Analysis PDF parity so selected Trend Analysis tabs export real section content instead of relying on generic fallback output.
-- [ ] Make scheduled Campaign DeepDive PDFs include selected section body content from latest campaign data, not only report metadata and selected section names.
+- [x] Make scheduled Campaign DeepDive PDFs include selected section body content from latest campaign data, not only report metadata and selected section names.
 - [x] Add regression coverage proving every Campaign DeepDive report type has a dedicated renderer, including Trend Analysis.
-- [ ] Add regression coverage proving scheduled Campaign DeepDive PDFs include selected section body content, not just selected section names.
+- [x] Add regression coverage proving scheduled Campaign DeepDive PDFs include selected section body content, not just selected section names.
 
 Scheduling delivery status:
 
 - [x] Campaign DeepDive Custom Report scheduled creates/updates/deletes now write through `/api/platforms/campaign_deepdive/reports`, persist `scheduleTimeZone`, `scheduleTime`, recipients, and saved report composition, and are picked up by `server/report-scheduler.ts`.
 - [x] The scheduler has a `campaign_deepdive` PDF attachment path so scheduled Custom Report emails do not use the old browser-only path.
+- [x] Scheduled Campaign DeepDive PDF attachments now render selected section body content from the scheduler's latest campaign aggregate, KPI rows, Benchmark rows, campaign context, and trend snapshot inputs instead of only listing selected tab names.
 - [ ] Deployed email-delivery evidence must still be recorded after a real scheduled send, because provider acceptance and inbox receipt depend on runtime email infrastructure.
 
 ## Separate Source Work
@@ -405,6 +406,8 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Budget & Financial Analysis PDF section parity fix added on 2026-05-29 and expanded to include nested card/row parity for Campaign Health Score, Budget Pacing & Burn Rate, source performance, allocation, and insight sections.
 - Platform Comparison PDF section parity fix added on 2026-05-29: selected Platform Comparison tabs now export the matching web-tab section structure instead of the generic DeepDive metric-list fallback.
 - Trend Analysis PDF section parity fix added on 2026-05-30: selected Trend Analysis tabs now export dedicated Overview, Efficiency Metrics, Conversion Funnel, Platform Breakdown, and Insights section content from the source-aware trend aggregate instead of generic fallback output.
+- Scheduled Campaign DeepDive PDF body-content fix added on 2026-05-30: scheduled email attachments now include selected tab body sections from latest server-side campaign aggregate inputs, KPI rows, Benchmark rows, campaign context, and trend snapshot inputs instead of only report metadata and selected tab names.
+- Local validation passed on 2026-05-30 for scheduled Campaign DeepDive PDF body content: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - Campaign DeepDive Custom Report scheduled-email backend wiring added on 2026-05-29: scheduled create/update/delete writes through `/api/platforms/campaign_deepdive/reports`, stores time zone and recipients, and the scheduler has a `campaign_deepdive` PDF attachment path.
 - Monthly and Quarterly schedule option cleanup added on 2026-05-29: Monthly exposes day-of-month choices and Quarterly exposes start/end-of-quarter choices.
 - Scheduled Reports card action fix added on 2026-05-29: `Pause` now disables the backend schedule, writes backend status `paused`, keeps paused cards visible without a separate Status field, and exposes `Resume` on paused cards to re-enable the saved backend schedule. `Download latest report` regenerates from latest values.

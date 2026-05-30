@@ -414,6 +414,15 @@ export default function Campaigns() {
     console.log('🚀 handleConnectorsComplete called with platforms:', selectedPlatforms);
     console.log('🚀 Current connectedPlatformsInDialog:', connectedPlatformsInDialog);
 
+    if (selectedPlatforms.includes('linkedin') && !linkedInImportComplete) {
+      toast({
+        title: "LinkedIn import incomplete",
+        description: "Finish importing selected LinkedIn campaigns before creating this campaign.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Finalize: update the already-created campaign with the chosen platform list.
     try {
       console.log('🔧 Finalizing campaign:', draftCampaignId, 'with platforms:', selectedPlatforms);
@@ -436,8 +445,15 @@ export default function Campaigns() {
 
       setDraftFinalized(true);
 
-      // Wait for query invalidation to complete before navigating
-      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      // Wait for source and aggregate query invalidation to complete before navigating.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", draftCampaignId] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", draftCampaignId, "connected-platforms"] }),
+        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/outcome-totals`], exact: false }),
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns", draftCampaignId, "executive-summary"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false }),
+      ]);
 
       toast({
         title: "Campaign created",

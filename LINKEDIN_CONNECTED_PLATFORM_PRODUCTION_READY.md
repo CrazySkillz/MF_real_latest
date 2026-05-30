@@ -116,6 +116,7 @@ Status:
 - [x] Tracker created.
 - [x] Linked from `CAMPAIGN_DEEPDIVE_PRODUCTION_READY_STATUS.md`.
 - [x] Validation evidence required for both Create Campaign and Connected Platforms flows documented below.
+- [x] User validation passed for Commit 1.
 
 ### Commit 2: Shared LinkedIn Aggregate Builder
 
@@ -143,6 +144,7 @@ Status:
 - [x] Completed locally: `/api/campaigns/:campaignId/outcome-totals` uses the shared LinkedIn aggregate helper.
 - [x] Completed locally: `/api/campaigns/:campaignId/executive-summary` uses the same LinkedIn aggregate helper.
 - [x] Completed locally: regression guards updated to prevent the two routes from drifting back to separate LinkedIn composition paths.
+- [x] User validation passed for Commit 2.
 
 ### Commit 3: Create Campaign LinkedIn Flow Hardening
 
@@ -169,7 +171,9 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: Create Campaign activation now explicitly blocks LinkedIn finalization unless the LinkedIn import completion callback has fired.
+- [x] Completed locally: final campaign activation invalidates campaign, Connected Platforms, outcome totals, Executive Summary, and LinkedIn import query caches.
+- [x] Completed locally: regression coverage added for the LinkedIn Create Campaign activation guard and source-query invalidations.
 
 ### Commit 4: Connected Platforms Add-Source Hardening
 

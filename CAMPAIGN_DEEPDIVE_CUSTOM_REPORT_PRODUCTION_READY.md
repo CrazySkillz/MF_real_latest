@@ -359,6 +359,13 @@ Open production-readiness tasks before Custom Report can be called fully product
 - [x] Add regression coverage proving every Campaign DeepDive report type has a dedicated renderer, including Trend Analysis.
 - [x] Add regression coverage proving scheduled Campaign DeepDive PDFs include selected section body content, not just selected section names.
 
+Commit 5 final implementation status:
+
+- [x] Scheduled Campaign DeepDive PDF body rendering is covered for every current Campaign DeepDive report type and tab.
+- [x] Scheduled Campaign DeepDive PDF regression coverage verifies the scheduler uses latest campaign aggregate inputs and selected-section body renderers.
+- [x] No open Custom Report implementation tasks remain for the implemented GA4/current aggregate-consumer scope.
+- [ ] Deployed email-delivery evidence remains a runtime acceptance check, not an implementation task; record it after a real scheduled send confirms provider acceptance/inbox receipt.
+
 Scheduling delivery status:
 
 - [x] Campaign DeepDive Custom Report scheduled creates/updates/deletes now write through `/api/platforms/campaign_deepdive/reports`, persist `scheduleTimeZone`, `scheduleTime`, recipients, and saved report composition, and are picked up by `server/report-scheduler.ts`.
@@ -408,6 +415,8 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Trend Analysis PDF section parity fix added on 2026-05-30: selected Trend Analysis tabs now export dedicated Overview, Efficiency Metrics, Conversion Funnel, Platform Breakdown, and Insights section content from the source-aware trend aggregate instead of generic fallback output.
 - Scheduled Campaign DeepDive PDF body-content fix added on 2026-05-30: scheduled email attachments now include selected tab body sections from latest server-side campaign aggregate inputs, KPI rows, Benchmark rows, campaign context, and trend snapshot inputs instead of only report metadata and selected tab names.
 - Local validation passed on 2026-05-30 for scheduled Campaign DeepDive PDF body content: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
+- Commit 5 scheduled PDF final regression coverage added on 2026-05-30: regression tests now compare current Campaign DeepDive report type/tab composition against the scheduled PDF renderer so new tabs cannot silently fall back to metadata-only scheduled attachments.
+- Local validation passed on 2026-05-30 for Commit 5 scheduled PDF regression coverage and final docs: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - Campaign DeepDive Custom Report scheduled-email backend wiring added on 2026-05-29: scheduled create/update/delete writes through `/api/platforms/campaign_deepdive/reports`, stores time zone and recipients, and the scheduler has a `campaign_deepdive` PDF attachment path.
 - Monthly and Quarterly schedule option cleanup added on 2026-05-29: Monthly exposes day-of-month choices and Quarterly exposes start/end-of-quarter choices.
 - Scheduled Reports card action fix added on 2026-05-29: `Pause` now disables the backend schedule, writes backend status `paused`, keeps paused cards visible without a separate Status field, and exposes `Resume` on paused cards to re-enable the saved backend schedule. `Download latest report` regenerates from latest values.

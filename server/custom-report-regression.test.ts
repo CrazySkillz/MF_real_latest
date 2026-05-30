@@ -262,6 +262,32 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("Recommendation basis");
   });
 
+  it("covers every Campaign DeepDive scheduled report tab with a body renderer", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
+    const reportTypeBlock = reports.slice(
+      reports.indexOf("const campaignDeepDiveReportTypes = ["),
+      reports.indexOf("const getCampaignReportTabs ="),
+    );
+    const tabKeys = Array.from(reportTypeBlock.matchAll(/key: "([^"]+:[^"]+)"/g)).map((match) => match[1]);
+    const scheduledRendererGates: Record<string, string> = {
+      "performance-summary": 'section.startsWith("performance-summary:")',
+      "financial-analysis": 'section.startsWith("financial-analysis:")',
+      "platform-comparison": 'section.startsWith("platform-comparison:")',
+      "trend-analysis": 'section.startsWith("trend-analysis:")',
+      "executive-summary:overview": 'section === "executive-summary:overview"',
+      "executive-summary:recommendations": 'section === "executive-summary:recommendations"',
+    };
+
+    expect(tabKeys.length).toBeGreaterThan(0);
+    for (const key of tabKeys) {
+      const gate = scheduledRendererGates[key] || scheduledRendererGates[key.split(":")[0]];
+      expect(gate, `${key} should have scheduled PDF body handling`).toBeTruthy();
+      expect(scheduler).toContain(gate);
+      expect(scheduler).toContain(`"${key}":`);
+    }
+  });
+
   it("lets campaign-scoped reports choose Campaign DeepDive subsections and tabs", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 

@@ -511,6 +511,7 @@ export function LinkedInConnectionFlow({ campaignId, onConnectionSuccess, mode =
             onImportComplete();
           }
         } else {
+          onImportComplete?.();
           window.location.href = `/campaigns/${campaignId}/linkedin-analytics?session=${data.sessionId}`;
         }
       } else {

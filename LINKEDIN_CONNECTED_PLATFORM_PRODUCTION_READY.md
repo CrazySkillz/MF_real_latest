@@ -174,6 +174,7 @@ Status:
 - [x] Completed locally: Create Campaign activation now explicitly blocks LinkedIn finalization unless the LinkedIn import completion callback has fired.
 - [x] Completed locally: final campaign activation invalidates campaign, Connected Platforms, outcome totals, Executive Summary, and LinkedIn import query caches.
 - [x] Completed locally: regression coverage added for the LinkedIn Create Campaign activation guard and source-query invalidations.
+- [x] User validation passed for Commit 3 using LinkedIn test data flow.
 
 ### Commit 4: Connected Platforms Add-Source Hardening
 
@@ -198,7 +199,9 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: existing-campaign LinkedIn imports now run the parent import-complete callback before redirecting to LinkedIn analytics.
+- [x] Completed locally: Connected Platforms LinkedIn import now invalidates Connected Platforms, LinkedIn connection/session/metrics, outcome totals, Executive Summary, Trend Analysis, KPI, and Benchmark query caches.
+- [x] Completed locally: regression coverage added for existing-campaign LinkedIn import invalidation before redirect.
 
 ### Commit 5: Remove Placeholder LinkedIn Metrics
 

@@ -4316,6 +4316,21 @@ export default function CampaignDetail() {
 
   const queryClientHook = useQueryClient();
 
+  const invalidateLinkedInConnectedPlatformQueries = () => {
+    if (!campaignId) return;
+    queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
+    queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+    queryClientHook.invalidateQueries({ queryKey: ["/api/linkedin/check-connection", campaignId] });
+    queryClientHook.invalidateQueries({ queryKey: ["/api/linkedin/import-sessions", campaignId] });
+    queryClientHook.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "executive-summary"], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/executive-summary`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/trend-analysis`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpis`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`], exact: false });
+  };
+
   // Mutation to set primary connection
   const setPrimaryMutation = useMutation({
     mutationFn: async (connectionId: string) => {
@@ -5528,13 +5543,10 @@ export default function CampaignDetail() {
                           campaignId={campaign.id} 
                           onConnectionSuccess={() => {
                             setExpandedPlatform(null);
-                            // Invalidate queries to refresh connection status
-                            queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                            queryClientHook.invalidateQueries({ queryKey: ["/api/linkedin/check-connection", campaignId] });
-                            // Small delay to ensure queries are invalidated before reload
-                            setTimeout(() => {
-                            window.location.reload();
-                            }, 100);
+                            invalidateLinkedInConnectedPlatformQueries();
+                          }}
+                          onImportComplete={() => {
+                            invalidateLinkedInConnectedPlatformQueries();
                           }}
                         />
                       ) : platform.platform === "Facebook Ads" ? (

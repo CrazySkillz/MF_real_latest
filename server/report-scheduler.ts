@@ -260,6 +260,46 @@ function formatCampaignDeepDiveMetricValue(key: string, value: unknown): string 
 const normalizeCampaignDeepDiveMetricKey = (value: unknown): string =>
   String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
+type CampaignDeepDiveReportContext = {
+  campaign: any | null;
+  performanceSummary: any | null;
+  executiveSummary: any | null;
+  trendAnalysis: any | null;
+  kpis: any[];
+  benchmarks: any[];
+  aggregateSources: any[];
+};
+
+async function buildCampaignDeepDiveReportContext(campaignId: string, selectedSections: string[]): Promise<CampaignDeepDiveReportContext> {
+  const needsTrendAnalysis = selectedSections.some((section) => section.startsWith("trend-analysis:"));
+  const needsExecutiveSummary = selectedSections.some((section) => section.startsWith("executive-summary:"));
+  const needsKpiRows = selectedSections.some((section) =>
+    section === "performance-summary:overview" ||
+    section === "performance-summary:health" ||
+    section === "executive-summary:overview" ||
+    section === "kpis"
+  );
+  const needsBenchmarkRows = selectedSections.some((section) =>
+    section === "performance-summary:overview" ||
+    section === "performance-summary:health" ||
+    section === "executive-summary:overview" ||
+    section === "benchmarks"
+  );
+  const [campaignMetrics, campaign, kpis, benchmarks] = await Promise.all([
+    aggregateCampaignMetrics(campaignId, { includeTrendAnalysis: needsTrendAnalysis }).catch(() => null),
+    storage.getCampaign(campaignId).catch(() => null),
+    needsKpiRows ? storage.getCampaignKPIs(campaignId).catch(() => []) : Promise.resolve([]),
+    needsBenchmarkRows ? storage.getCampaignBenchmarks(campaignId).catch(() => []) : Promise.resolve([]),
+  ]);
+  const performanceSummary = (campaignMetrics as any)?.detailedMetrics?.performanceSummary || null;
+  const trendAnalysis = needsTrendAnalysis ? ((campaignMetrics as any)?.detailedMetrics?.trendAnalysis || null) : null;
+  const aggregateSources = Array.isArray(performanceSummary?.sources)
+    ? performanceSummary.sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
+    : [];
+  const executiveSummary = needsExecutiveSummary ? { performanceSummary, kpis, benchmarks } : null;
+  return { campaign, performanceSummary, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources };
+}
+
 async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   report: any;
   windowStart: string;
@@ -276,19 +316,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
   const selectedSections = Array.isArray(cfg?.selectedSections) ? cfg.selectedSections.map(String).filter(Boolean) : [];
   const selectedMetrics = Array.isArray(cfg?.selectedMetrics) ? cfg.selectedMetrics.map(String).filter(Boolean) : [];
   const campaignId = String(report?.campaignId || cfg?.campaignId || "").trim();
-  const [campaignMetrics, campaign, kpis, benchmarks] = campaignId
-    ? await Promise.all([
-        aggregateCampaignMetrics(campaignId).catch(() => null),
-        storage.getCampaign(campaignId).catch(() => null),
-        storage.getCampaignKPIs(campaignId).catch(() => []),
-        storage.getCampaignBenchmarks(campaignId).catch(() => []),
-      ])
-    : [null, null, [], []];
-  const performanceSummary = (campaignMetrics as any)?.detailedMetrics?.performanceSummary;
-  const trendAnalysis = (campaignMetrics as any)?.detailedMetrics?.trendAnalysis;
-  const aggregateSources = Array.isArray(performanceSummary?.sources)
-    ? performanceSummary.sources.filter((source: any) => source?.connected === true && source?.category !== "financial")
-    : [];
+  const reportContext = campaignId
+    ? await buildCampaignDeepDiveReportContext(campaignId, selectedSections)
+    : { campaign: null, performanceSummary: null, executiveSummary: null, trendAnalysis: null, kpis: [], benchmarks: [], aggregateSources: [] };
+  const { campaign, performanceSummary, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;
   const margin = 18;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -415,6 +446,9 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addTrendRows(["sessions", "users", "conversions", "revenue", "spend", "impressions", "clicks"]);
     } else if (section === "executive-summary:overview") {
       addText("Marketing Funnel Performance", { bold: true, indent: 4 });
+      if (!executiveSummary?.performanceSummary) {
+        addText("- Executive Summary source context unavailable.", { indent: 8 });
+      }
       addMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "roas", "roi"]);
       addText("KPI Progress", { bold: true, indent: 4 });
       addKpiRows();
@@ -435,6 +469,9 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
       addText(`- Benchmark Risk: ${benchmarkRisk > 0 ? `${benchmarkRisk} Benchmark row(s) below 70% of benchmark` : "No mapped Benchmark rows below 70% of benchmark"}`, { indent: 8 });
     } else if (section === "executive-summary:recommendations") {
       addText("Recommendation basis", { bold: true, indent: 4 });
+      if (!executiveSummary?.performanceSummary) {
+        addText("- Executive Summary source context unavailable.", { indent: 8 });
+      }
       addMetricRows(["users", "sessions", "conversions", "revenue", "cvr", "spend", "roas", "roi"]);
       addText("Next action: compare below-target KPI or Benchmark rows against landing-page and conversion-path performance before changing spend.", { indent: 4 });
       addText("Key assumptions", { bold: true, indent: 4 });

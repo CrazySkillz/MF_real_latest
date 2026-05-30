@@ -364,7 +364,7 @@ Commit 5 final implementation status:
 - [x] Scheduled Campaign DeepDive PDF body rendering is covered for every current Campaign DeepDive report type and tab.
 - [x] Scheduled Campaign DeepDive PDF regression coverage verifies the scheduler uses latest campaign aggregate inputs and selected-section body renderers.
 - [x] Browser downloads are production-ready locally for the implemented GA4/current aggregate-consumer scope.
-- [ ] Scheduled PDFs have selected section body content implemented, but exact latest-value composition parity with browser downloads is still outstanding.
+- [x] Scheduled PDFs now build one server-side `CampaignDeepDiveReportContext` from latest campaign context, `performanceSummary`, Executive Summary context where selected, KPI rows, Benchmark rows, and Trend Analysis aggregate where selected.
 - [ ] Deployed scheduled email evidence remains pending runtime validation after a real scheduled send confirms provider acceptance/inbox receipt.
 
 Scheduling delivery status:
@@ -372,6 +372,7 @@ Scheduling delivery status:
 - [x] Campaign DeepDive Custom Report scheduled creates/updates/deletes now write through `/api/platforms/campaign_deepdive/reports`, persist `scheduleTimeZone`, `scheduleTime`, recipients, and saved report composition, and are picked up by `server/report-scheduler.ts`.
 - [x] The scheduler has a `campaign_deepdive` PDF attachment path so scheduled Custom Report emails do not use the old browser-only path.
 - [x] Scheduled Campaign DeepDive PDF attachments now render selected section body content from the scheduler's latest campaign aggregate, KPI rows, Benchmark rows, campaign context, and trend snapshot inputs instead of only listing selected tab names.
+- [x] Scheduled Campaign DeepDive PDF attachments now use a shared latest-value composition helper. Selected tabs control whether Executive Summary context, KPI rows, Benchmark rows, and Trend Analysis aggregate data are loaded; non-Trend scheduled reports do not request Trend Analysis aggregate construction.
 - [ ] Deployed email-delivery evidence must still be recorded after a real scheduled send, because provider acceptance and inbox receipt depend on runtime email infrastructure.
 
 ## Separate Source Work
@@ -418,6 +419,8 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Local validation passed on 2026-05-30 for scheduled Campaign DeepDive PDF body content: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - Commit 5 scheduled PDF final regression coverage added on 2026-05-30: regression tests now compare current Campaign DeepDive report type/tab composition against the scheduled PDF renderer so new tabs cannot silently fall back to metadata-only scheduled attachments.
 - Local validation passed on 2026-05-30 for Commit 5 scheduled PDF regression coverage and final docs: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
+- Commit 2 shared latest-value scheduled PDF composition added on 2026-05-30: scheduled Campaign DeepDive PDFs now build a shared server-side report context from latest campaign aggregate inputs, campaign context, selected Executive Summary context, KPI rows, Benchmark rows, and selected Trend Analysis aggregate data.
+- Local validation passed on 2026-05-30 for Commit 2 shared scheduled PDF composition: `npm test -- server/custom-report-regression.test.ts`, `npm test -- server/performance-summary-scheduler-regression.test.ts`, `npm test -- server/executive-summary-regression.test.ts server/executive-summary-helpers-regression.test.ts server/trend-analysis-overview-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - Campaign DeepDive Custom Report scheduled-email backend wiring added on 2026-05-29: scheduled create/update/delete writes through `/api/platforms/campaign_deepdive/reports`, stores time zone and recipients, and the scheduler has a `campaign_deepdive` PDF attachment path.
 - Monthly and Quarterly schedule option cleanup added on 2026-05-29: Monthly exposes day-of-month choices and Quarterly exposes start/end-of-quarter choices.
 - Scheduled Reports card action fix added on 2026-05-29: `Pause` now disables the backend schedule, writes backend status `paused`, keeps paused cards visible without a separate Status field, and exposes `Resume` on paused cards to re-enable the saved backend schedule. `Download latest report` regenerates from latest values.

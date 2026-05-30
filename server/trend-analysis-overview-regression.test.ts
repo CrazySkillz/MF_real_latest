@@ -117,7 +117,8 @@ describe("Trend Analysis Overview regression guard", () => {
     const scheduler = readFileSync(join(process.cwd(), "server", "scheduler.ts"), "utf-8");
 
     expect(scheduler).toContain('import { buildTrendAnalysisAggregate }');
-    expect(scheduler).toContain("const trendAnalysis = buildTrendAnalysisAggregate({");
+    expect(scheduler).toContain("const includeTrendAnalysis = options.includeTrendAnalysis !== false;");
+    expect(scheduler).toContain("const trendAnalysis = includeTrendAnalysis ? buildTrendAnalysisAggregate({");
     expect(scheduler).toContain('dateRange: "90days"');
     expect(scheduler).toContain("financialDailyRows: trendFinancialDailyRows");
     expect(scheduler).toContain("storage.getGA4DailyMetrics(campaignId");

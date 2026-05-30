@@ -13,6 +13,10 @@ interface SnapshotMetrics {
   totalSpend: number;
 }
 
+interface AggregateCampaignMetricsOptions {
+  includeTrendAnalysis?: boolean;
+}
+
 const parseNum = (val: any): number => {
   if (val === null || val === undefined || val === '') return 0;
   const num = typeof val === 'string' ? parseFloat(val) : Number(val);
@@ -31,7 +35,8 @@ const hasSnapshotMetricValue = (metrics: SnapshotMetrics & { detailedMetrics: an
     || parseNum(totals.revenue?.value) > 0;
 };
 
-export async function aggregateCampaignMetrics(campaignId: string): Promise<SnapshotMetrics & { detailedMetrics: any }> {
+export async function aggregateCampaignMetrics(campaignId: string, options: AggregateCampaignMetricsOptions = {}): Promise<SnapshotMetrics & { detailedMetrics: any }> {
+  const includeTrendAnalysis = options.includeTrendAnalysis !== false;
   const endDate = new Date().toISOString().slice(0, 10);
   const startDateObj = new Date();
   startDateObj.setDate(startDateObj.getDate() - 90);
@@ -197,32 +202,34 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
   }
 
   let trendFinancialDailyRows: any[] = [];
-  try {
-    const financialData = await db.execute(sql`
-      SELECT sr.date, SUM(sr.spend::NUMERIC) as spend, 0::NUMERIC as revenue
-      FROM spend_records sr
-      INNER JOIN spend_sources ss ON ss.id::text = sr.spend_source_id
-      WHERE sr.campaign_id = ${campaignId} AND ss.is_active = true AND sr.date >= ${startDate} AND sr.date <= ${endDate}
-      GROUP BY sr.date
-      UNION ALL
-      SELECT rr.date, 0::NUMERIC as spend, SUM(rr.revenue::NUMERIC) as revenue
-      FROM revenue_records rr
-      INNER JOIN revenue_sources rs ON rs.id::text = rr.revenue_source_id
-      WHERE rr.campaign_id = ${campaignId} AND rs.is_active = true AND rr.date >= ${startDate} AND rr.date <= ${endDate}
-      GROUP BY rr.date
-    `);
-    const financialByDate = new Map<string, { date: string; spend: number; revenue: number }>();
-    for (const row of (financialData.rows as any[])) {
-      const date = String(row.date || "").slice(0, 10);
-      if (!date) continue;
-      const current = financialByDate.get(date) || { date, spend: 0, revenue: 0 };
-      current.spend += parseNum(row.spend);
-      current.revenue += parseNum(row.revenue);
-      financialByDate.set(date, current);
+  if (includeTrendAnalysis) {
+    try {
+      const financialData = await db.execute(sql`
+        SELECT sr.date, SUM(sr.spend::NUMERIC) as spend, 0::NUMERIC as revenue
+        FROM spend_records sr
+        INNER JOIN spend_sources ss ON ss.id::text = sr.spend_source_id
+        WHERE sr.campaign_id = ${campaignId} AND ss.is_active = true AND sr.date >= ${startDate} AND sr.date <= ${endDate}
+        GROUP BY sr.date
+        UNION ALL
+        SELECT rr.date, 0::NUMERIC as spend, SUM(rr.revenue::NUMERIC) as revenue
+        FROM revenue_records rr
+        INNER JOIN revenue_sources rs ON rs.id::text = rr.revenue_source_id
+        WHERE rr.campaign_id = ${campaignId} AND rs.is_active = true AND rr.date >= ${startDate} AND rr.date <= ${endDate}
+        GROUP BY rr.date
+      `);
+      const financialByDate = new Map<string, { date: string; spend: number; revenue: number }>();
+      for (const row of (financialData.rows as any[])) {
+        const date = String(row.date || "").slice(0, 10);
+        if (!date) continue;
+        const current = financialByDate.get(date) || { date, spend: 0, revenue: 0 };
+        current.spend += parseNum(row.spend);
+        current.revenue += parseNum(row.revenue);
+        financialByDate.set(date, current);
+      }
+      trendFinancialDailyRows = Array.from(financialByDate.values());
+    } catch {
+      // Trend snapshots can still store platform daily rows if financial daily rows are unavailable.
     }
-    trendFinancialDailyRows = Array.from(financialByDate.values());
-  } catch {
-    // Trend snapshots can still store platform daily rows if financial daily rows are unavailable.
   }
 
   const performanceSummary = buildPerformanceSummaryAggregate({
@@ -275,7 +282,7 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
     return metric?.available && metric?.value !== null ? parseNum(metric.value) : 0;
   };
 
-  const trendAnalysis = buildTrendAnalysisAggregate({
+  const trendAnalysis = includeTrendAnalysis ? buildTrendAnalysisAggregate({
     campaignId,
     dateRange: "90days",
     startDate,
@@ -381,7 +388,7 @@ export async function aggregateCampaignMetrics(campaignId: string): Promise<Snap
         dailyRows: [],
       },
     ],
-  });
+  }) : null;
 
   // Store detailed metrics from all sources for historical tracking
   const detailedMetrics = {

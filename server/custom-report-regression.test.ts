@@ -248,8 +248,10 @@ describe("campaign Custom Report regression guard", () => {
     const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
 
     expect(scheduler).toContain('import { aggregateCampaignMetrics } from "./scheduler";');
-    expect(scheduler).toContain("const performanceSummary = (campaignMetrics as any)?.detailedMetrics?.performanceSummary;");
-    expect(scheduler).toContain("const trendAnalysis = (campaignMetrics as any)?.detailedMetrics?.trendAnalysis;");
+    expect(scheduler).toContain("type CampaignDeepDiveReportContext = {");
+    expect(scheduler).toContain("async function buildCampaignDeepDiveReportContext");
+    expect(scheduler).toContain("const reportContext = campaignId");
+    expect(scheduler).toContain("const { campaign, performanceSummary, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;");
     expect(scheduler).toContain("const addSelectedSectionBody = (section: string) => {");
     expect(scheduler).toContain('addText("Selected section content", { size: 14, bold: true });');
     expect(scheduler).toContain("selectedSections.forEach(addSelectedSectionBody);");
@@ -260,6 +262,28 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("Platform Performance Summary Cards");
     expect(scheduler).toContain("Trend metrics");
     expect(scheduler).toContain("Recommendation basis");
+  });
+
+  it("uses selected Campaign DeepDive tabs to compose scheduled PDF data context", () => {
+    const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
+    const metricsScheduler = readFileSync(join(process.cwd(), "server/scheduler.ts"), "utf-8");
+
+    expect(scheduler).toContain('section.startsWith("trend-analysis:")');
+    expect(scheduler).toContain('section.startsWith("executive-summary:")');
+    expect(scheduler).toContain('section === "performance-summary:overview"');
+    expect(scheduler).toContain('section === "performance-summary:health"');
+    expect(scheduler).toContain('section === "executive-summary:overview"');
+    expect(scheduler).toContain('section === "kpis"');
+    expect(scheduler).toContain('section === "benchmarks"');
+    expect(scheduler).toContain("aggregateCampaignMetrics(campaignId, { includeTrendAnalysis: needsTrendAnalysis })");
+    expect(scheduler).toContain("needsKpiRows ? storage.getCampaignKPIs(campaignId)");
+    expect(scheduler).toContain("needsBenchmarkRows ? storage.getCampaignBenchmarks(campaignId)");
+    expect(scheduler).toContain("const executiveSummary = needsExecutiveSummary ? { performanceSummary, kpis, benchmarks } : null;");
+    expect(metricsScheduler).toContain("interface AggregateCampaignMetricsOptions");
+    expect(metricsScheduler).toContain("includeTrendAnalysis?: boolean;");
+    expect(metricsScheduler).toContain("const includeTrendAnalysis = options.includeTrendAnalysis !== false;");
+    expect(metricsScheduler).toContain("if (includeTrendAnalysis) {");
+    expect(metricsScheduler).toContain("const trendAnalysis = includeTrendAnalysis ? buildTrendAnalysisAggregate({");
   });
 
   it("covers every Campaign DeepDive scheduled report tab with a body renderer", () => {

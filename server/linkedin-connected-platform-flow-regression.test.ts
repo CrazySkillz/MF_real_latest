@@ -33,4 +33,22 @@ describe("LinkedIn Connected Platforms add-source flow regression guard", () => 
     expect(page).toContain("onImportComplete={() => {");
     expect(page).toContain("invalidateLinkedInConnectedPlatformQueries();");
   });
+
+  it("does not render placeholder LinkedIn card metrics from campaign distribution", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"), "utf-8");
+    const linkedInStart = page.indexOf('platform: "LinkedIn Ads"');
+    const linkedInEnd = page.indexOf('platform: "Custom Integration"', linkedInStart);
+    const linkedInCard = page.slice(linkedInStart, linkedInEnd);
+
+    expect(page).toContain("const linkedInSourceMetrics = linkedinMetrics || {};");
+    expect(page).not.toContain('"LinkedIn Ads": { impressions: 0.15');
+    expect(linkedInCard).toContain("impressions: linkedInRequiresImport ? 0 : (isLinkedInConnected ? linkedInImpressions : 0)");
+    expect(linkedInCard).toContain("clicks: linkedInRequiresImport ? 0 : (isLinkedInConnected ? linkedInClicks : 0)");
+    expect(linkedInCard).toContain("conversions: linkedInRequiresImport ? 0 : (isLinkedInConnected ? linkedInConversions : 0)");
+    expect(linkedInCard).toContain('spend: linkedInRequiresImport ? "0.00" : (isLinkedInConnected ? linkedInSpend.toFixed(2) : "0.00")');
+    expect(linkedInCard).not.toContain('platformDistribution["LinkedIn Ads"]');
+    expect(linkedInCard).not.toContain('campaignSpend *');
+    expect(linkedInCard).not.toContain('"2.78%"');
+    expect(linkedInCard).not.toContain('"$0.48"');
+  });
 });

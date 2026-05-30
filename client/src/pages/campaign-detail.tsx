@@ -4543,7 +4543,6 @@ export default function CampaignDetail() {
   const platformDistribution = {
     "Facebook Ads": { impressions: 0.35, clicks: 0.32, spend: 0.38, conversions: 0.28 },
     "Google Ads": { impressions: 0.28, clicks: 0.35, spend: 0.32, conversions: 0.42 },
-    "LinkedIn Ads": { impressions: 0.15, clicks: 0.15, spend: 0.12, conversions: 0.15 }
   };
   
   // Debug: Log connection status
@@ -4571,6 +4570,17 @@ export default function CampaignDetail() {
   const isLinkedInConnected = platformStatusMap.get("linkedin")?.connected === true;
   const hasLinkedInImportSession = !!linkedInSession?.id;
   const linkedInRequiresImport = isLinkedInConnected && !hasLinkedInImportSession;
+  const parseLinkedInMetric = (value: any): number => {
+    const parsed = typeof value === "string" ? parseFloat(value.replace(/,/g, "")) : Number(value || 0);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const linkedInSourceMetrics = linkedinMetrics || {};
+  const linkedInImpressions = parseLinkedInMetric(linkedInSourceMetrics.impressions);
+  const linkedInClicks = parseLinkedInMetric(linkedInSourceMetrics.clicks);
+  const linkedInSpend = parseLinkedInMetric(linkedInSourceMetrics.spend);
+  const linkedInConversions = parseLinkedInMetric(linkedInSourceMetrics.conversions);
+  const linkedInCtr = linkedInImpressions > 0 ? formatPct((linkedInClicks / linkedInImpressions) * 100) : "0.00%";
+  const linkedInCpc = linkedInClicks > 0 ? `$${(linkedInSpend / linkedInClicks).toFixed(2)}` : "$0.00";
   
   // Build platformMetrics array dynamically based on connected platforms
   const allPlatformMetrics: PlatformMetrics[] = [
@@ -4625,12 +4635,12 @@ export default function CampaignDetail() {
       platform: "LinkedIn Ads",
       connected: isLinkedInConnected,
       requiresImport: linkedInRequiresImport,
-      impressions: linkedInRequiresImport ? 0 : (isLinkedInConnected ? Math.round(campaignImpressions * platformDistribution["LinkedIn Ads"].impressions) : 0),
-      clicks: linkedInRequiresImport ? 0 : (isLinkedInConnected ? Math.round(campaignClicks * platformDistribution["LinkedIn Ads"].clicks) : 0),
-      conversions: linkedInRequiresImport ? 0 : (isLinkedInConnected ? Math.round(estimatedConversions * platformDistribution["LinkedIn Ads"].conversions) : 0),
-      spend: linkedInRequiresImport ? "0.00" : (isLinkedInConnected ? (campaignSpend * platformDistribution["LinkedIn Ads"].spend).toFixed(2) : "0.00"),
-      ctr: linkedInRequiresImport ? "0.00%" : (isLinkedInConnected ? "2.78%" : "0.00%"),
-      cpc: linkedInRequiresImport ? "$0.00" : (isLinkedInConnected ? "$0.48" : "$0.00"),
+      impressions: linkedInRequiresImport ? 0 : (isLinkedInConnected ? linkedInImpressions : 0),
+      clicks: linkedInRequiresImport ? 0 : (isLinkedInConnected ? linkedInClicks : 0),
+      conversions: linkedInRequiresImport ? 0 : (isLinkedInConnected ? linkedInConversions : 0),
+      spend: linkedInRequiresImport ? "0.00" : (isLinkedInConnected ? linkedInSpend.toFixed(2) : "0.00"),
+      ctr: linkedInRequiresImport ? "0.00%" : (isLinkedInConnected ? linkedInCtr : "0.00%"),
+      cpc: linkedInRequiresImport ? "$0.00" : (isLinkedInConnected ? linkedInCpc : "$0.00"),
       analyticsPath: linkedInRequiresImport
         ? null
         : ((connectedPlatformsLoading || !campaign?.id)

@@ -202,6 +202,7 @@ Status:
 - [x] Completed locally: existing-campaign LinkedIn imports now run the parent import-complete callback before redirecting to LinkedIn analytics.
 - [x] Completed locally: Connected Platforms LinkedIn import now invalidates Connected Platforms, LinkedIn connection/session/metrics, outcome totals, Executive Summary, Trend Analysis, KPI, and Benchmark query caches.
 - [x] Completed locally: regression coverage added for existing-campaign LinkedIn import invalidation before redirect.
+- [x] User validation passed for Commit 4 using LinkedIn test data flow.
 
 ### Commit 5: Remove Placeholder LinkedIn Metrics
 
@@ -222,7 +223,10 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: LinkedIn Connected Platforms card metrics no longer use campaign distribution percentages.
+- [x] Completed locally: LinkedIn card impressions, clicks, spend, conversions, CTR, and CPC now come from `/api/linkedin/metrics/:campaignId` after import.
+- [x] Completed locally: LinkedIn import-required state still shows zero/unavailable values until import exists.
+- [x] Completed locally: regression coverage added to prevent placeholder LinkedIn card metrics from returning.
 
 ### Commit 6: Revenue, Spend, And Derived Metric Hardening
 

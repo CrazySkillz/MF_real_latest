@@ -264,26 +264,66 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("Recommendation basis");
   });
 
-  it("uses selected Campaign DeepDive tabs to compose scheduled PDF data context", () => {
+  it("loads latest aggregate context for scheduled Campaign DeepDive PDFs", () => {
+    const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
+
+    expect(scheduler).toContain("async function buildCampaignDeepDiveReportContext");
+    expect(scheduler).toContain("aggregateCampaignMetrics(campaignId, { includeTrendAnalysis: needsTrendAnalysis })");
+    expect(scheduler).toContain("storage.getCampaign(campaignId)");
+    expect(scheduler).toContain("const performanceSummary = (campaignMetrics as any)?.detailedMetrics?.performanceSummary || null;");
+    expect(scheduler).toContain("const aggregateSources = Array.isArray(performanceSummary?.sources)");
+    expect(scheduler).toContain("const reportContext = campaignId");
+    expect(scheduler).toContain("const { campaign, performanceSummary, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;");
+  });
+
+  it("loads scheduled Trend Analysis aggregate only when Trend Analysis tabs are selected", () => {
     const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
     const metricsScheduler = readFileSync(join(process.cwd(), "server/scheduler.ts"), "utf-8");
 
     expect(scheduler).toContain('section.startsWith("trend-analysis:")');
+    expect(scheduler).toContain("const needsTrendAnalysis = selectedSections.some((section) => section.startsWith(\"trend-analysis:\"));");
+    expect(scheduler).toContain("aggregateCampaignMetrics(campaignId, { includeTrendAnalysis: needsTrendAnalysis })");
+    expect(scheduler).toContain("const trendAnalysis = needsTrendAnalysis ? ((campaignMetrics as any)?.detailedMetrics?.trendAnalysis || null) : null;");
+    expect(scheduler).toContain("addTrendRows([\"sessions\", \"users\", \"conversions\", \"revenue\", \"spend\", \"impressions\", \"clicks\"]);");
+    expect(metricsScheduler).toContain("interface AggregateCampaignMetricsOptions");
+    expect(metricsScheduler).toContain("includeTrendAnalysis?: boolean;");
+    expect(metricsScheduler).toContain("const includeTrendAnalysis = options.includeTrendAnalysis !== false;");
+    expect(metricsScheduler).toContain("if (includeTrendAnalysis) {");
+    expect(metricsScheduler).toContain("const trendAnalysis = includeTrendAnalysis ? buildTrendAnalysisAggregate({");
+  });
+
+  it("loads scheduled Executive Summary context only when Executive Summary tabs are selected", () => {
+    const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
+
     expect(scheduler).toContain('section.startsWith("executive-summary:")');
     expect(scheduler).toContain('section === "performance-summary:overview"');
     expect(scheduler).toContain('section === "performance-summary:health"');
     expect(scheduler).toContain('section === "executive-summary:overview"');
     expect(scheduler).toContain('section === "kpis"');
     expect(scheduler).toContain('section === "benchmarks"');
-    expect(scheduler).toContain("aggregateCampaignMetrics(campaignId, { includeTrendAnalysis: needsTrendAnalysis })");
     expect(scheduler).toContain("needsKpiRows ? storage.getCampaignKPIs(campaignId)");
     expect(scheduler).toContain("needsBenchmarkRows ? storage.getCampaignBenchmarks(campaignId)");
     expect(scheduler).toContain("const executiveSummary = needsExecutiveSummary ? { performanceSummary, kpis, benchmarks } : null;");
-    expect(metricsScheduler).toContain("interface AggregateCampaignMetricsOptions");
-    expect(metricsScheduler).toContain("includeTrendAnalysis?: boolean;");
-    expect(metricsScheduler).toContain("const includeTrendAnalysis = options.includeTrendAnalysis !== false;");
-    expect(metricsScheduler).toContain("if (includeTrendAnalysis) {");
-    expect(metricsScheduler).toContain("const trendAnalysis = includeTrendAnalysis ? buildTrendAnalysisAggregate({");
+    expect(scheduler).toContain("if (!executiveSummary?.performanceSummary)");
+    expect(scheduler).toContain("Marketing Funnel Performance");
+    expect(scheduler).toContain("Recommendation basis");
+  });
+
+  it("does not allow scheduled Campaign DeepDive PDFs to fall back to metadata-only section names", () => {
+    const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
+    const builderStart = scheduler.indexOf("async function buildCampaignDeepDiveScheduledPdfAttachment");
+    const builderEnd = scheduler.indexOf("export async function buildPdfAttachmentForReport", builderStart);
+    const builder = scheduler.slice(builderStart, builderEnd);
+
+    expect(builder).toContain('addText("Selected section content", { size: 14, bold: true });');
+    expect(builder).toContain("selectedSections.forEach(addSelectedSectionBody);");
+    expect(builder).toContain("addMetricRows([\"users\", \"sessions\", \"conversions\", \"revenue\", \"cvr\", \"impressions\", \"clicks\", \"spend\"]);");
+    expect(builder).toContain("addSourceRows();");
+    expect(builder).toContain("addKpiRows();");
+    expect(builder).toContain("addBenchmarkRows();");
+    expect(builder).toContain("addTrendRows([\"sessions\", \"users\", \"conversions\", \"revenue\", \"spend\", \"impressions\", \"clicks\"]);");
+    expect(builder).not.toContain("This PDF includes the report header only.");
+    expect(builder).not.toContain("For full interactive content, open the dashboard Reports tab.");
   });
 
   it("covers every Campaign DeepDive scheduled report tab with a body renderer", () => {

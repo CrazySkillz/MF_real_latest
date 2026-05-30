@@ -262,6 +262,27 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain('selectedSections: activeCampaignId ? selectedReportSections : undefined,');
   });
 
+  it("requires every Campaign DeepDive report type to have a dedicated PDF renderer", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+    const reportTypeBlock = reports.slice(
+      reports.indexOf("const campaignDeepDiveReportTypes = ["),
+      reports.indexOf("const getCampaignReportTabs ="),
+    );
+    const menuReportTypes = Array.from(reportTypeBlock.matchAll(/key: "([^":]+)"/g)).map((match) => match[1]);
+    const dedicatedRendererGates: Record<string, string[]> = {
+      "performance-summary": ['section.startsWith("performance-summary:")', "addPerformanceSummaryContent(section)"],
+      "financial-analysis": ['section.startsWith("financial-analysis:")', "addFinancialAnalysisContent(section)"],
+      "platform-comparison": ['section.startsWith("platform-comparison:")', "addPlatformComparisonContent(section)"],
+      "trend-analysis": ['section.startsWith("trend-analysis:")', "addTrendAnalysisContent(section)"],
+      "executive-summary": ['section === "executive-summary:overview"', 'section === "executive-summary:recommendations"', "addExecutiveOverviewContent()", "addExecutiveRecommendationsContent()"],
+    };
+
+    expect(menuReportTypes).toEqual(Object.keys(dedicatedRendererGates));
+    for (const gates of Object.values(dedicatedRendererGates)) {
+      gates.forEach((gate) => expect(reports).toContain(gate));
+    }
+  });
+
   it("renders Executive Overview PDF exports with the live tab section set", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 

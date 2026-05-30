@@ -356,7 +356,7 @@ Open production-readiness tasks before Custom Report can be called fully product
 
 - [x] Add dedicated Trend Analysis PDF parity so selected Trend Analysis tabs export real section content instead of relying on generic fallback output.
 - [ ] Make scheduled Campaign DeepDive PDFs include selected section body content from latest campaign data, not only report metadata and selected section names.
-- [ ] Add regression coverage proving every Campaign DeepDive report type has a dedicated renderer, including Trend Analysis.
+- [x] Add regression coverage proving every Campaign DeepDive report type has a dedicated renderer, including Trend Analysis.
 - [ ] Add regression coverage proving scheduled Campaign DeepDive PDFs include selected section body content, not just selected section names.
 
 Scheduling delivery status:

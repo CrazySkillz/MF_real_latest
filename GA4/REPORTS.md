@@ -225,6 +225,15 @@ Important meaning:
 - report emails should remain plain transactional messages with simple subject/body text and no marketing banner, dashboard CTA, or styled report body because Gmail deliverability rejected the richer report-email payload
 - Mailgun/API acceptance is not proof of inbox delivery; when provider delivery events are available, test-send and scheduler diagnostics must distinguish accepted, delivered, failed, and pending delivery states
 
+Deployed scheduled Custom Report validation checklist:
+
+- create a scheduled Campaign DeepDive Custom Report
+- select known Campaign DeepDive tabs
+- wait for the scheduled send time in the saved browser time zone
+- confirm the email is received
+- confirm the attached PDF includes selected tab body content, not only section names
+- confirm the attached PDF values match current app values for the same campaign and tabs at send time
+
 ## Backend Report Model
 
 The current backend supports:

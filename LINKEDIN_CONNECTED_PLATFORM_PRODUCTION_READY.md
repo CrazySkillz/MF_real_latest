@@ -343,6 +343,7 @@ Status:
 - [x] Completed locally: campaign-scoped LinkedIn import sessions, aggregate metrics, daily metrics, coverage, and direct import-session reads now require an active LinkedIn connection before exposing old LinkedIn import data.
 - [x] Completed locally: historical import rows are retained after disconnect; they are hidden from LinkedIn visibility paths until LinkedIn is reconnected.
 - [x] Completed locally: regression coverage added for stale import-session visibility after disconnect.
+- [x] User validation passed for Commit 9 using LinkedIn test data flow.
 
 ### Commit 10: Regression Coverage And Final Evidence
 
@@ -372,7 +373,9 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: regression coverage inventory exists across Create Campaign, Connected Platforms add-source, shared aggregate, LinkedIn financial handling, scheduler refresh, disconnect/reconnect, Custom Report browser PDF output, and scheduled report output.
+- [x] Completed locally: reconnect regression guard proves retained LinkedIn import rows can feed aggregates only after an active campaign-scoped LinkedIn connection exists again.
+- [ ] Pending deployed evidence: mock-live LinkedIn campaign values must be validated against Connected Platforms and Campaign DeepDive after deployment.
 
 ## Validation Checklist
 

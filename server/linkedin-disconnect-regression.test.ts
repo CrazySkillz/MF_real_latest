@@ -37,4 +37,19 @@ describe("LinkedIn disconnect visibility regression guard", () => {
     expect(helper).toContain("const linkedInConnection = await storage.getLinkedInConnection(String((sess as any).campaignId)).catch(() => null);");
     expect(helper).toContain('res.status(404).json({ success: false, message: "LinkedIn connection not found" });');
   });
+
+  it("allows LinkedIn aggregate values to return only after an active reconnect", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const helperStart = routes.indexOf("async function buildLinkedInPlatformSourceForAggregate");
+    const helperEnd = routes.indexOf("function buildMainPlatformSourcesForAggregate", helperStart);
+    const helper = routes.slice(helperStart, helperEnd);
+
+    expect(helper).toContain("const connection = linkedInConn ?? await storage.getLinkedInConnection(campaignId).catch(() => null);");
+    expect(helper).toContain("if (connection && connection.adAccountId && !(connection as any).spendOnly) {");
+    expect(helper).toContain("const latestSession = await storage.getLatestLinkedInImportSession(campaignId);");
+    expect(helper.indexOf("if (connection && connection.adAccountId && !(connection as any).spendOnly) {")).toBeLessThan(
+      helper.indexOf("const latestSession = await storage.getLatestLinkedInImportSession(campaignId);"),
+    );
+    expect(helper).toContain("linkedIn = {\n          connected: true,");
+  });
 });

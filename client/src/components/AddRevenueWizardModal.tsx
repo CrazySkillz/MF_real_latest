@@ -1313,7 +1313,7 @@ export function AddRevenueWizardModal(props: {
     }
   };
 
-  const title = step === "select" ? "Add revenue source" :
+  const title = step === "select" ? (platformContext === 'linkedin' ? "Add LinkedIn revenue attribution" : "Add revenue source") :
     step === "manual" ? (isEditing ? "Edit manual revenue" : "Manual revenue") :
       step === "csv" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
         step === "csv_map" ? (isEditing ? "Edit CSV revenue" : "Map CSV columns") :
@@ -1325,7 +1325,7 @@ export function AddRevenueWizardModal(props: {
                     "Add revenue source";
 
   const description = step === "select"
-    ? "Choose where your revenue data comes from."
+    ? (platformContext === 'linkedin' ? "Choose the source that attributes revenue back to LinkedIn ad activity." : "Choose where your revenue data comes from.")
     : `Currency: ${currency} • Revenue is treated as “to date” (campaign lifetime)`;
 
   const isEmbeddedWizardStep = step === "hubspot" || step === "salesforce" || step === "shopify";

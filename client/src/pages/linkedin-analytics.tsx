@@ -5100,19 +5100,19 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   <CardContent className="p-6">
                                     <div className="flex items-center gap-3 mb-3">
                                       <AlertCircle className="w-5 h-5 text-amber-500" />
-                                      <h3 className="text-lg font-semibold text-foreground">Revenue Tracking Not Configured</h3>
+                                      <h3 className="text-lg font-semibold text-foreground">Revenue Attribution Not Configured</h3>
                                     </div>
                                     <p className="text-sm text-muted-foreground/70 mb-3">
-                                      Set up revenue tracking to unlock ROAS, ROI, and revenue-dependent metrics.
+                                      LinkedIn provides paid-ad activity. Connect attributed revenue to unlock ROAS, ROI, and revenue-dependent metrics.
                                     </p>
                                     <ul className="text-sm text-muted-foreground space-y-1 mb-4 list-disc list-inside">
-                                      <li>Manually enter a conversion value or revenue total</li>
-                                      <li>Connect HubSpot, Salesforce, or Shopify in Connected Platforms</li>
-                                      <li>Upload a CSV or connect Google Sheets</li>
+                                      <li>Use CRM, ecommerce, CSV, Google Sheets, or manual attribution</li>
+                                      <li>Choose revenue to date or average conversion value</li>
+                                      <li>GA4 revenue does not count as LinkedIn revenue without attribution</li>
                                     </ul>
                                     <Button variant="outline" size="sm" onClick={() => void openAddRevenueModal('add')}>
                                       <Plus className="w-4 h-4 mr-2" />
-                                      Add Revenue Source
+                                      Connect Revenue Attribution
                                     </Button>
                                   </CardContent>
                                 </Card>

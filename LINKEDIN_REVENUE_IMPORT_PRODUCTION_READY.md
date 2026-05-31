@@ -74,6 +74,7 @@ Validation:
 Status:
 
 - [x] Completed locally: the LinkedIn Overview `Revenue Tracking Not Configured` card now opens the existing LinkedIn-scoped revenue wizard directly with `platformContext="linkedin"` instead of routing users back to Campaign Overview.
+- [x] User validation passed.
 
 ### Commit 2: LinkedIn-Specific Revenue Attribution Copy
 
@@ -97,7 +98,8 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: LinkedIn Overview now explains that LinkedIn supplies paid-ad activity and revenue must be attributed from CRM, ecommerce, CSV, Google Sheets, or manual input before ROI/ROAS unlock.
+- [x] Completed locally: the shared revenue wizard shows a LinkedIn-specific title and source-selection description only when opened with `platformContext="linkedin"`, leaving GA4 copy unchanged.
 
 ### Commit 3: Confirm Revenue Source Modes
 

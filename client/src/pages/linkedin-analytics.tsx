@@ -5000,7 +5000,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               </div>
 
                               {/* Summary Cards */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
                                 <Card>
                                   <CardContent className="p-4">
                                     <div className="flex items-start justify-between mb-1">
@@ -5010,6 +5010,21 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     <p className="text-2xl font-bold text-foreground">{formatCurrency(totalSpend)}</p>
                                     <p className="text-xs text-muted-foreground mt-1">{allCampaigns.length} campaign{allCampaigns.length !== 1 ? 's' : ''}</p>
                                     {(() => { const b = getBenchmarkForMetric('spend'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('spend', totalSpend, 'lower-better') : null; })()}
+                                  </CardContent>
+                                </Card>
+                                <Card>
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start justify-between mb-1">
+                                      <p className="text-sm text-muted-foreground/70">Total Revenue</p>
+                                      <DollarSign className="w-4 h-4 text-muted-foreground/70" />
+                                    </div>
+                                    <p className="text-2xl font-bold text-foreground">
+                                      {hasRevenueTracking ? formatCurrency(totalRevenue) : "Not connected"}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {hasRevenueTracking ? (linkedInRevenueSourceLabel || "Connected revenue source") : "Connect attributed revenue"}
+                                    </p>
+                                    {hasRevenueTracking && (() => { const b = getBenchmarkForMetric('totalRevenue'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('totalRevenue', totalRevenue, 'higher-better') : null; })()}
                                   </CardContent>
                                 </Card>
                                 <Card>

@@ -45,6 +45,7 @@ Production-ready behavior:
 - Each LinkedIn revenue source follows the same user flow as the matching GA4 revenue source. LinkedIn-specific behavior should be limited to platform scoping with `platformContext="linkedin"` and source-specific attribution copy where needed.
 - LinkedIn revenue imports use revenue-to-date style revenue inputs like GA4. The UI should not expose a separate LinkedIn-only `Conversion Value` source-of-truth selector.
 - Imported LinkedIn revenue updates LinkedIn Overview, KPI, Benchmark, Campaign DeepDive, and Custom Report consumers through the existing cache/refetch pattern.
+- LinkedIn Overview shows a top-level `Total Revenue` summary card; when no LinkedIn-scoped revenue source exists, the card says `Not connected` instead of showing a misleading zero.
 - Removing the LinkedIn revenue source disables LinkedIn revenue-derived metrics immediately.
 - GA4 revenue does not make LinkedIn revenue, ROI, or ROAS available.
 
@@ -149,6 +150,7 @@ Status:
 - [x] Completed locally: LinkedIn revenue add/edit now invalidates and refetches LinkedIn Overview, LinkedIn KPI, LinkedIn Benchmark, LinkedIn campaign revenue breakdown, Campaign DeepDive aggregate, Executive Summary, Trend Analysis, campaign KPI, campaign Benchmark, and Custom Report aggregate query families where applicable.
 - [x] Completed locally: LinkedIn revenue removal now invalidates the same revenue-dependent consumers so revenue-derived metrics are disabled without requiring a hard reload.
 - [x] Corrected locally: the shared revenue modal now scopes CRM/ecommerce source-card status and disconnect actions by `platformContext`, so GA4 HubSpot/Salesforce/Shopify revenue sources cannot appear as LinkedIn revenue sources and LinkedIn disconnect cannot delete a GA4-scoped revenue source.
+- [x] Completed locally: LinkedIn Overview now includes a top-level `Total Revenue` summary card populated from the existing LinkedIn-scoped `aggregated.totalRevenue` value, with `Not connected` shown when no LinkedIn revenue source is configured.
 
 ### Commit 4A: Normalize LinkedIn CSV To GA4 Revenue Flow
 

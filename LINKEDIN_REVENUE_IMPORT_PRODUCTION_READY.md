@@ -13,7 +13,7 @@ This tracker is scoped to revenue attribution for LinkedIn campaigns, not the fu
 LinkedIn revenue must be optional, explicit, and source-scoped.
 
 - LinkedIn spend and ad metrics can come from LinkedIn.
-- LinkedIn revenue must come from a connected revenue attribution source such as CRM, ecommerce, CSV, Google Sheets, webhook conversion events, or manual entry.
+- LinkedIn revenue must come from a connected revenue attribution source such as CRM, ecommerce, CSV, Google Sheets, or webhook conversion events.
 - GA4 revenue must not unlock LinkedIn revenue, ROI, or ROAS unless a validated LinkedIn attribution mapping exists.
 - Revenue, ROI, and ROAS must remain unavailable when no LinkedIn-scoped revenue source exists.
 
@@ -42,7 +42,7 @@ Production-ready behavior:
 - `Revenue Tracking Not Configured` shows a direct LinkedIn revenue attribution action.
 - Clicking the action opens the existing `AddRevenueWizardModal` with `platformContext="linkedin"`.
 - The modal clearly explains the two valid LinkedIn modes:
-  - Revenue to date: actual attributed revenue from CRM, ecommerce, CSV, Google Sheets, webhook, or manual source.
+  - Revenue to date: actual attributed revenue from CRM, ecommerce, CSV, Google Sheets, or webhook source.
   - Conversion value: average value per LinkedIn conversion.
 - Imported LinkedIn revenue updates LinkedIn Overview, KPI, Benchmark, Campaign DeepDive, and Custom Report consumers through the existing cache/refetch pattern.
 - Removing the LinkedIn revenue source disables LinkedIn revenue-derived metrics immediately.
@@ -86,7 +86,7 @@ Changes:
 
 - Update LinkedIn Overview copy to explain:
   - LinkedIn provides paid-ad activity.
-  - Revenue must be attributed from CRM, ecommerce, CSV, Google Sheets, webhook, or manual input.
+  - Revenue must be attributed from CRM, ecommerce, CSV, Google Sheets, or webhook input.
   - ROI/ROAS unlock only after a LinkedIn-scoped revenue source is connected.
 - Update modal/help text only where the existing shared wizard supports contextual copy without changing GA4 behavior.
 
@@ -98,7 +98,7 @@ Validation:
 
 Status:
 
-- [x] Completed locally: LinkedIn Overview now explains that LinkedIn supplies paid-ad activity and revenue must be attributed from CRM, ecommerce, CSV, Google Sheets, or manual input before ROI/ROAS unlock.
+- [x] Completed locally: LinkedIn Overview now explains that LinkedIn supplies paid-ad activity and revenue must be attributed from CRM, ecommerce, CSV, or Google Sheets before ROI/ROAS unlock.
 - [x] Completed locally: the shared revenue wizard shows a LinkedIn-specific title and source-selection description only when opened with `platformContext="linkedin"`, leaving GA4 copy unchanged.
 
 ### Commit 3: Confirm Revenue Source Modes
@@ -109,7 +109,7 @@ Goal:
 
 Changes:
 
-- Review and, only if necessary, tighten `AddRevenueWizardModal` LinkedIn mode handling:
+- Review and, only if necessary, tighten `AddRevenueWizardModal` LinkedIn mode handling for imported/connected sources:
   - `revenue_to_date`
   - `conversion_value`
 - Preserve existing backend request shapes.
@@ -117,8 +117,6 @@ Changes:
 
 Validation:
 
-- Manual revenue-to-date can be saved for LinkedIn.
-- Manual conversion value can be saved for LinkedIn.
 - CSV revenue-to-date can be imported for LinkedIn.
 - CSV conversion value can be imported for LinkedIn.
 - Google Sheets revenue-to-date can be imported for LinkedIn.
@@ -126,7 +124,7 @@ Validation:
 
 Status:
 
-- [x] Completed locally: LinkedIn revenue attribution now exposes the Manual attribution option from the source picker without exposing the hidden manual card to GA4.
+- [x] Corrected locally: LinkedIn revenue attribution no longer exposes the Manual attribution option. The UI follows the GA4-like import pattern through CRM, ecommerce, CSV, Google Sheets, or webhook attribution sources.
 - [x] Completed locally: CSV and Google Sheets mappings now persist `mode` as `conversion_value` when Conversion Value is selected and `revenue_to_date` when Revenue is selected, matching the backend source-of-truth modes.
 
 ### Commit 4: Source-Scoped Refresh And UI Propagation
@@ -218,6 +216,7 @@ LinkedIn revenue import is production-ready when:
 - users can start LinkedIn revenue attribution directly from LinkedIn Analytics Overview
 - copy clearly explains what is being attributed and why
 - LinkedIn revenue remains scoped to `platformContext="linkedin"`
+- the visible LinkedIn revenue flow uses connected/imported attribution sources and does not offer manual entry
 - GA4 revenue does not unlock LinkedIn revenue metrics
 - LinkedIn revenue source add/edit/delete paths update LinkedIn analytics and Campaign DeepDive consumers
 - regression coverage protects the source-scoping rules

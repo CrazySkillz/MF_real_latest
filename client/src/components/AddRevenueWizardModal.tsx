@@ -1499,10 +1499,7 @@ export function AddRevenueWizardModal(props: {
                   </CardHeader>
                 </Card>
 
-                <Card
-                  className={platformContext === 'linkedin' ? "cursor-pointer hover:border-blue-500 transition-colors" : "hidden"}
-                  onClick={() => setStep("manual")}
-                >
+                <Card className="hidden" onClick={() => setStep("manual")}>
                   <CardHeader>
                     <CardTitle className="text-lg">Manual attribution</CardTitle>
                     <CardDescription>

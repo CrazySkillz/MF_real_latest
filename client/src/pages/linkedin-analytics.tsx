@@ -5106,7 +5106,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                       LinkedIn provides paid-ad activity. Connect attributed revenue to unlock ROAS, ROI, and revenue-dependent metrics.
                                     </p>
                                     <ul className="text-sm text-muted-foreground space-y-1 mb-4 list-disc list-inside">
-                                      <li>Use CRM, ecommerce, CSV, Google Sheets, or manual attribution</li>
+                                      <li>Use CRM, ecommerce, CSV, or Google Sheets attribution</li>
                                       <li>Choose revenue to date or average conversion value</li>
                                       <li>GA4 revenue does not count as LinkedIn revenue without attribution</li>
                                     </ul>

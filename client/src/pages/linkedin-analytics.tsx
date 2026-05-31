@@ -4956,7 +4956,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                   <TabsContent value="overview" className="space-y-6 fade-in" data-testid="content-overview">
                     {sessionLoading ? (
                       <div className="animate-pulse space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                           <div className="h-24 bg-muted rounded"></div>
                           <div className="h-24 bg-muted rounded"></div>
                           <div className="h-24 bg-muted rounded"></div>
@@ -5001,11 +5001,11 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                           const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
                           const revenuePerLead = getVal('leads') > 0 ? totalRevenue / getVal('leads') : 0;
                           const conversionValue = Number((aggregated as any)?.conversionValue || 0);
-                          const renderPipelineProxyCard = (showEmpty = false) => {
+                          const renderPipelineProxyCard = (showEmpty = false, className = "") => {
                             const hasPipelineProxy = !!pipelineProxyData?.success;
                             if (!hasPipelineProxy && !showEmpty) return null;
                             return (
-                            <Card>
+                            <Card className={className}>
                               <CardContent className="p-4">
                                 <div className="flex items-start justify-between mb-1">
                                   <p className="text-sm text-muted-foreground/70">Pipeline Proxy</p>
@@ -5062,7 +5062,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               </div>
 
                               {/* Summary Cards */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 <Card>
                                   <CardContent className="p-4">
                                     <div className="flex items-start justify-between mb-1">
@@ -5137,9 +5137,9 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               </div>
 
                               {/* ═══ SECTION 2: REVENUE TRACKING ═══ */}
-                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                               {hasRevenueTracking ? (
-                                <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
+                                <Card className="lg:col-span-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
                                   <CardContent className="p-6">
                                     <div className="flex items-center justify-between mb-4">
                                       <div className="flex items-center gap-2">
@@ -5178,7 +5178,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   </CardContent>
                                 </Card>
                               ) : (
-                                <Card className="border-border">
+                                <Card className="lg:col-span-2 border-border">
                                   <CardContent className="p-6">
                                     <div className="flex items-center gap-3 mb-3">
                                       <AlertCircle className="w-5 h-5 text-amber-500" />
@@ -5200,7 +5200,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                 </Card>
                               )}
 
-                              {renderPipelineProxyCard(true)}
+                              {renderPipelineProxyCard(true, "lg:col-span-2")}
                               </div>
 
                               {/* ═══ SECTION 3: PERFORMANCE METRICS ═══ */}

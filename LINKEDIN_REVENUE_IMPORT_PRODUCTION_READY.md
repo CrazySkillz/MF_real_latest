@@ -32,6 +32,7 @@ The main gaps are:
 - The current call to action routes users back to Campaign Overview instead of opening the revenue import flow directly.
 - The wording does not clearly explain that users are connecting revenue attribution for LinkedIn, not importing native LinkedIn revenue.
 - The LinkedIn revenue modal still contains older LinkedIn-only flow branches for CSV, Google Sheets, and some CRM/ecommerce paths instead of matching the GA4 revenue-source flow and changing only `platformContext`.
+- The LinkedIn `Total Revenue` summary card is display-only today; unlike GA4, it does not expose a `+` action or `Sources (n)` link for managing multiple LinkedIn-scoped revenue sources.
 - The production-ready path needs regression coverage proving GA4 revenue cannot leak into LinkedIn revenue.
 
 ## Production-Ready Target
@@ -46,6 +47,7 @@ Production-ready behavior:
 - LinkedIn revenue imports use revenue-to-date style revenue inputs like GA4. The UI should not expose a separate LinkedIn-only `Conversion Value` source-of-truth selector.
 - Imported LinkedIn revenue updates LinkedIn Overview, KPI, Benchmark, Campaign DeepDive, and Custom Report consumers through the existing cache/refetch pattern.
 - LinkedIn Overview shows a top-level `Total Revenue` summary card; when no LinkedIn-scoped revenue source exists, the card says `Not connected` instead of showing a misleading zero.
+- LinkedIn Overview `Total Revenue` follows the GA4 card pattern: `+` opens the LinkedIn-scoped add-revenue flow, and `Sources (n)` opens the LinkedIn-scoped source list for multiple active sources.
 - Removing the LinkedIn revenue source disables LinkedIn revenue-derived metrics immediately.
 - GA4 revenue does not make LinkedIn revenue, ROI, or ROAS available.
 
@@ -123,7 +125,7 @@ Status:
 - [x] Corrected locally: LinkedIn revenue attribution no longer exposes the Manual attribution option. The UI follows the GA4-like import pattern through CRM, ecommerce, CSV, Google Sheets, or webhook attribution sources.
 - [x] Completed locally: CSV and Google Sheets mappings now persist `mode` as `conversion_value` when Conversion Value is selected and `revenue_to_date` when Revenue is selected, matching the backend source-of-truth modes.
 - [x] User validation passed for the corrected no-manual-entry flow.
-- [ ] Rework required: Google Sheets and CRM/ecommerce LinkedIn flows still need to be aligned to the GA4 revenue-source flow. See Commit 4B-4E before proceeding to regression/finalization work.
+- [ ] Rework required: CRM/ecommerce LinkedIn flows still need to be aligned to the GA4 revenue-source flow. See Commit 4C-4E before proceeding to regression/finalization work.
 
 ### Commit 4: Source-Scoped Refresh And UI Propagation
 
@@ -176,6 +178,7 @@ Validation:
 Status:
 
 - [x] Completed locally: LinkedIn CSV no longer exposes the LinkedIn-only `Total Revenue / Conversion Value` selector or conversion-value column mapping. It now uses the GA4-style revenue-column CSV flow while preserving `platformContext="linkedin"` in the save payload.
+- [x] User validation passed.
 
 ### Commit 4B: Normalize LinkedIn Google Sheets To GA4 Revenue Flow
 
@@ -200,7 +203,7 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: LinkedIn Google Sheets no longer exposes the LinkedIn-only `Total Revenue / Conversion Value` selector or conversion-value column mapping. It now uses the GA4-style revenue-column Google Sheets flow while preserving `purpose="linkedin_revenue"` and `platformContext="linkedin"` in the save/process payload.
 
 ### Commit 4C: Normalize LinkedIn CRM And Ecommerce Revenue Wizards To GA4 Flow
 
@@ -267,6 +270,34 @@ Validation:
 
 - Documentation no longer claims active LinkedIn revenue setup supports a separate conversion-value source mode.
 - Regression coverage or documented manual validation confirms CSV, Google Sheets, HubSpot, Salesforce, and Shopify follow the GA4 revenue-source flow.
+
+Status:
+
+- [ ] Pending.
+
+### Commit 4F: LinkedIn Total Revenue Card Source Controls
+
+Goal:
+
+- Make the LinkedIn `Total Revenue` summary card match the GA4 source-management pattern for multiple revenue sources.
+
+Changes:
+
+- Add a `+` action to the LinkedIn Overview `Total Revenue` summary card.
+- Wire `+` to the existing LinkedIn-scoped `openAddRevenueModal("add")` flow.
+- Add a `Sources (n)` link based only on active LinkedIn-scoped revenue sources from `/api/campaigns/:campaignId/revenue-sources?platformContext=linkedin`.
+- Make `Sources (n)` open a GA4-style source list for LinkedIn revenue sources.
+- Ensure source edit/delete actions are source-specific and scoped to `platformContext="linkedin"`.
+- Preserve GA4 revenue card behavior and avoid changing revenue aggregation logic.
+
+Validation:
+
+- Open LinkedIn Analytics -> Overview.
+- Confirm the `Total Revenue` card shows a `+` action.
+- Click `+` and confirm the LinkedIn-scoped add-revenue wizard opens.
+- Add more than one LinkedIn revenue source and confirm `Sources (n)` shows the correct LinkedIn-only count.
+- Open `Sources (n)` and confirm only LinkedIn-scoped revenue sources appear.
+- Confirm editing/deleting one source updates the count and Total Revenue without affecting GA4 revenue sources.
 
 Status:
 
@@ -339,6 +370,7 @@ LinkedIn revenue import is production-ready when:
 - LinkedIn revenue remains scoped to `platformContext="linkedin"`
 - each visible LinkedIn revenue source flow matches the corresponding GA4 revenue source flow, with LinkedIn-specific behavior limited to `platformContext="linkedin"` scoping and necessary attribution copy
 - the visible LinkedIn revenue flow uses connected/imported attribution sources and does not offer manual entry or LinkedIn-only conversion-value source selection
+- the LinkedIn `Total Revenue` summary card exposes the GA4-style `+` and `Sources (n)` controls for multiple LinkedIn-scoped revenue sources
 - GA4 revenue does not unlock LinkedIn revenue metrics
 - LinkedIn revenue source add/edit/delete paths update LinkedIn analytics and Campaign DeepDive consumers
 - regression coverage protects the source-scoping rules

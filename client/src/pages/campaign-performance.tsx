@@ -565,6 +565,17 @@ export default function CampaignPerformanceSummary() {
 
   // Get top priority action
   const getPriorityAction = () => {
+    const hasPriorityActionMetrics = performanceSummary
+      ? Object.values(performanceSummary?.totals || {}).some((metric: any) => metric?.available === true && metric?.value !== null)
+      : true;
+
+    if (!hasPriorityActionMetrics) {
+      return {
+        type: 'info',
+        message: 'No connected-source metrics available. Connect a source to generate a priority action.'
+      };
+    }
+
     const laggingKPIs = effectiveKpis.map((kpi: any) => {
       const deltaPct = getKpiDeltaPct(kpi);
       return { type: 'kpi', item: kpi, severity: Math.abs(deltaPct), deltaPct };
@@ -709,6 +720,7 @@ export default function CampaignPerformanceSummary() {
     if (metric?.pending) return "";
     if (!performanceSummary) return fallbackLabel;
     if (!metric?.available) {
+      if (metric === overviewImpressions) return "Unavailable from connected sources";
       const reason = metric?.unavailableReasons?.[0] || "No connected source provides this metric";
       const sourceLabels = performanceSources
         .filter((source: any) => source?.category !== "financial")
@@ -872,7 +884,7 @@ export default function CampaignPerformanceSummary() {
                       );
                     } else {
                       return (
-                        <p className="text-green-700 dark:text-green-400 font-medium">{priority.message}</p>
+                        <p className={`${priority.type === 'success' ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'} font-medium`}>{priority.message}</p>
                       );
                     }
                   })()}

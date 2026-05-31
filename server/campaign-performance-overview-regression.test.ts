@@ -32,6 +32,7 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(overview).toContain("formatOverviewValue(overviewSessions");
     expect(overview).toContain("formatOverviewValue(overviewConversions");
     expect(overview).toContain("formatOverviewValue(overviewSpend");
+    expect(page).toContain('if (metric === overviewImpressions) return "Unavailable from connected sources";');
     expect(overview).toContain("overviewSourceLabel(overviewConversions");
     expect(overview).not.toContain("LinkedIn: {linkedinConversions.toLocaleString()} | CI: {ciConversions.toLocaleString()}");
   });
@@ -47,6 +48,10 @@ describe("campaign Performance Summary Overview regression guard", () => {
   it("selects top priority from lagging campaign KPIs before Benchmark fallback", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
+    expect(page).toContain("const hasPriorityActionMetrics = performanceSummary");
+    expect(page).toContain("Object.values(performanceSummary?.totals || {}).some((metric: any) => metric?.available === true && metric?.value !== null)");
+    expect(page).toContain("No connected-source metrics available. Connect a source to generate a priority action.");
+    expect(page).toContain("priority.type === 'success' ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'");
     expect(page).toContain("const laggingKPIs = effectiveKpis.map((kpi: any) => {");
     expect(page).toContain("}).filter((entry: any) => entry.deltaPct < -5);");
     expect(page).toContain("const laggingBenchmarks = effectiveBenchmarks.map((benchmark: any) => {");

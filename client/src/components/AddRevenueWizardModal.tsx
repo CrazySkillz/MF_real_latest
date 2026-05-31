@@ -63,12 +63,20 @@ export function AddRevenueWizardModal(props: {
       void queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId], exact: false });
       // LinkedIn Overview tab consumes session-scoped aggregates: refresh any open session views.
       void queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-campaign-revenue"], exact: false });
 
       // LinkedIn KPI tab caches (ROI/ROAS/etc). Revenue changes must refresh these immediately.
       // NOTE: LinkedIn KPIs are refreshed server-side on fetch (`GET /api/platforms/linkedin/kpis?campaignId=...`),
       // so the critical piece is to force a refetch by invalidating the query keys used by the UI.
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/kpis"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/kpis", campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/linkedin/benchmarks", campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpis`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/executive-summary`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "executive-summary"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/trend-analysis`], exact: false });
 
       // Optional HubSpot/Salesforce pipeline proxy (exec daily signal) - must invalidate both so correct one refetches
       void queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
@@ -101,6 +109,8 @@ export function AddRevenueWizardModal(props: {
 
     if (platformContext === 'linkedin') {
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/linkedin/kpis", campaignId], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/platforms/linkedin/benchmarks", campaignId], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-campaign-revenue"], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
     } else if (platformContext === 'meta') {

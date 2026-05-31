@@ -1521,6 +1521,14 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "linkedin"] });
       // KPI tab: clear/recompute revenue-dependent KPIs (ROI/ROAS/etc)
       await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId] });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpis`], exact: false });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`], exact: false });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/executive-summary`], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "executive-summary"], exact: false });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/trend-analysis`], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-campaign-revenue"], exact: false });
       // Force immediate recompute for the active page (no waiting for intervals)
       await queryClient.refetchQueries({ queryKey: ["/api/linkedin/metrics", campaignId], exact: true });
       await queryClient.refetchQueries({ queryKey: ['/api/linkedin/imports', sessionId], exact: true });
@@ -1528,6 +1536,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       await queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: true });
       await queryClient.refetchQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: true });
       await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "linkedin"], exact: true });
+      await queryClient.refetchQueries({ queryKey: ['/api/platforms/linkedin/benchmarks', campaignId], exact: false });
+      await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "linkedin-campaign-revenue"], exact: false });
       await queryClient.refetchQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId], exact: true });
     },
     onError: (error: any) => {

@@ -126,6 +126,7 @@ Status:
 
 - [x] Corrected locally: LinkedIn revenue attribution no longer exposes the Manual attribution option. The UI follows the GA4-like import pattern through CRM, ecommerce, CSV, Google Sheets, or webhook attribution sources.
 - [x] Completed locally: CSV and Google Sheets mappings now persist `mode` as `conversion_value` when Conversion Value is selected and `revenue_to_date` when Revenue is selected, matching the backend source-of-truth modes.
+- [x] User validation passed for the corrected no-manual-entry flow.
 
 ### Commit 4: Source-Scoped Refresh And UI Propagation
 
@@ -149,7 +150,8 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: LinkedIn revenue add/edit now invalidates and refetches LinkedIn Overview, LinkedIn KPI, LinkedIn Benchmark, LinkedIn campaign revenue breakdown, Campaign DeepDive aggregate, Executive Summary, Trend Analysis, campaign KPI, campaign Benchmark, and Custom Report aggregate query families where applicable.
+- [x] Completed locally: LinkedIn revenue removal now invalidates the same revenue-dependent consumers so revenue-derived metrics are disabled without requiring a hard reload.
 
 ### Commit 5: Regression Coverage For Revenue Isolation
 

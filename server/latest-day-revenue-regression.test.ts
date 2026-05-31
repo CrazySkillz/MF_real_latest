@@ -109,6 +109,22 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).not.toContain("/linkedin-campaigns");
   });
 
+  it("Salesforce review total preview key is stable when moving from Revenue to Save", () => {
+    const clientFile = readFileSync(
+      join(process.cwd(), "client", "src", "components", "SalesforceRevenueWizard.tsx"),
+      "utf-8"
+    );
+
+    const keyBlock = clientFile.slice(
+      clientFile.indexOf("const reviewPreviewKey = useMemo("),
+      clientFile.indexOf("const canUpdateRevenue = useMemo(")
+    );
+    expect(keyBlock).toContain("campaignField,");
+    expect(keyBlock).toContain("selectedValues: [...selectedValues].sort(),");
+    expect(keyBlock).not.toContain("step,");
+    expect(clientFile).toContain("setPreviewKey(reviewPreviewKey);");
+  });
+
   it("HubSpot edit review uses the saved pipeline proxy amount before live preview", () => {
     const modalFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"),

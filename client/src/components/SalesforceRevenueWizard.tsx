@@ -594,7 +594,6 @@ export function SalesforceRevenueWizard(props: {
   const reviewPreviewKey = useMemo(
     () =>
       JSON.stringify({
-        step,
         campaignField,
         revenueField,
         selectedValues: [...selectedValues].sort(),
@@ -603,7 +602,7 @@ export function SalesforceRevenueWizard(props: {
         dateField,
         days,
       }),
-    [step, campaignField, revenueField, selectedValues, pipelineEnabled, pipelineStageName, dateField, days]
+    [campaignField, revenueField, selectedValues, pipelineEnabled, pipelineStageName, dateField, days]
   );
   const canUpdateRevenue = useMemo(() => {
     if (mode !== "edit") return true;

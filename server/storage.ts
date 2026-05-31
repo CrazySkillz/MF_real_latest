@@ -1140,6 +1140,7 @@ export class DatabaseStorage implements IStorage {
         revenue: revenueRecords.revenue,
         currency: revenueRecords.currency,
         revenueSourceId: revenueRecords.revenueSourceId,
+        subCampaignUrn: revenueRecords.subCampaignUrn,
       })
       .from(revenueRecords)
       .innerJoin(revenueSources, sql`${revenueSources.id}::text = ${revenueRecords.revenueSourceId}`)
@@ -1153,17 +1154,22 @@ export class DatabaseStorage implements IStorage {
         sql`${revenueRecords.date} <= ${endDate}`
       ));
 
-    let total = 0;
+    const totalsBySource = new Map<string, { aggregate: number; subCampaign: number }>();
     const sourceIds = new Set<string>();
     let currency: string | undefined = undefined;
     for (const r of rows as any[]) {
       const v = parseFloat(String((r as any).revenueRecords?.revenue ?? (r as any).revenue ?? "0"));
-      if (!Number.isNaN(v)) total += v;
+      if (Number.isNaN(v)) continue;
       const sid = String((r as any).revenueRecords?.revenueSourceId ?? (r as any).revenueSourceId);
       if (sid) sourceIds.add(sid);
+      const existing = totalsBySource.get(sid) || { aggregate: 0, subCampaign: 0 };
+      if ((r as any).subCampaignUrn ?? (r as any).revenueRecords?.subCampaignUrn) existing.subCampaign += v;
+      else existing.aggregate += v;
+      totalsBySource.set(sid, existing);
       const cur = (r as any).revenueRecords?.currency ?? (r as any).currency;
       if (!currency && cur) currency = String(cur);
     }
+    const total = Array.from(totalsBySource.values()).reduce((sum, item) => sum + (item.aggregate > 0 ? item.aggregate : item.subCampaign), 0);
     return { totalRevenue: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
   }
 
@@ -1175,6 +1181,7 @@ export class DatabaseStorage implements IStorage {
         sourceType: revenueSources.sourceType,
         revenue: revenueRecords.revenue,
         currency: revenueRecords.currency,
+        subCampaignUrn: revenueRecords.subCampaignUrn,
       })
       .from(revenueRecords)
       .innerJoin(revenueSources, sql`${revenueSources.id}::text = ${revenueRecords.revenueSourceId}`)
@@ -1188,7 +1195,7 @@ export class DatabaseStorage implements IStorage {
         sql`${revenueRecords.date} <= ${endDate}`
       ));
 
-    const totals = new Map<string, { displayName: string; sourceType: string; revenue: number; currency?: string }>();
+    const totals = new Map<string, { displayName: string; sourceType: string; aggregate: number; subCampaign: number; currency?: string }>();
     for (const r of rows as any[]) {
       const sid = String(r.revenueSourceId ?? r.revenueRecords?.revenueSourceId);
       const v = parseFloat(String(r.revenue ?? r.revenueRecords?.revenue ?? "0"));
@@ -1196,16 +1203,18 @@ export class DatabaseStorage implements IStorage {
       const existing = totals.get(sid) || {
         displayName: String(r.displayName ?? r.revenueSources?.displayName ?? 'Unknown'),
         sourceType: String(r.sourceType ?? r.revenueSources?.sourceType ?? 'unknown'),
-        revenue: 0,
+        aggregate: 0,
+        subCampaign: 0,
         currency: r.currency ?? r.revenueRecords?.currency,
       };
-      existing.revenue += v;
+      if (r.subCampaignUrn ?? r.revenueRecords?.subCampaignUrn) existing.subCampaign += v;
+      else existing.aggregate += v;
       totals.set(sid, existing);
     }
 
     return Array.from(totals.entries()).map(([sourceId, data]) => ({
       sourceId, displayName: data.displayName, sourceType: data.sourceType,
-      revenue: Number(data.revenue.toFixed(2)), currency: data.currency,
+      revenue: Number((data.aggregate > 0 ? data.aggregate : data.subCampaign).toFixed(2)), currency: data.currency,
     }));
   }
 

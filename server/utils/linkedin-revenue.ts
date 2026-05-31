@@ -76,7 +76,7 @@ export async function resolveLinkedInRevenueContext(opts: {
 
   let importedRevenueToDate = 0;
   try {
-    const totals = await (storage as any).getRevenueTotalForRange?.(campaignId, startDate, endDate, "linkedin");
+    const totals = await (storage as any).getRevenueTotalForRange?.(campaignId, "1900-01-01", new Date().toISOString().slice(0, 10), "linkedin");
     importedRevenueToDate = parseNum((totals as any)?.totalRevenue);
   } catch {
     importedRevenueToDate = 0;

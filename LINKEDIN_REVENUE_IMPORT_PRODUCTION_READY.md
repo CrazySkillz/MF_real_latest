@@ -33,6 +33,8 @@ The main gaps are:
 - The wording does not clearly explain that users are connecting revenue attribution for LinkedIn, not importing native LinkedIn revenue.
 - The LinkedIn revenue modal still contains older LinkedIn-only flow branches for CSV, Google Sheets, and some CRM/ecommerce paths instead of matching the GA4 revenue-source flow and changing only `platformContext`.
 - The LinkedIn `Total Revenue` summary card is display-only today; unlike GA4, it does not expose a `+` action or `Sources (n)` link for managing multiple LinkedIn-scoped revenue sources.
+- LinkedIn Overview revenue totals previously read imported revenue through a 30-day window even though LinkedIn revenue imports are treated as campaign-lifetime revenue-to-date. Sources that materialized older daily rows could therefore be undercounted.
+- CRM imports can materialize both aggregate revenue rows and per-LinkedIn-campaign rows for attribution. Totals must not double-count those sub-campaign rows when an aggregate row exists for the same source.
 - The production-ready path needs regression coverage proving GA4 revenue cannot leak into LinkedIn revenue.
 
 ## Production-Ready Target
@@ -47,6 +49,7 @@ Production-ready behavior:
 - LinkedIn revenue imports use revenue-to-date style revenue inputs like GA4. The UI should not expose a separate LinkedIn-only `Conversion Value` source-of-truth selector.
 - Imported LinkedIn revenue updates LinkedIn Overview, KPI, Benchmark, Campaign DeepDive, and Custom Report consumers through the existing cache/refetch pattern.
 - LinkedIn Overview shows a top-level `Total Revenue` summary card; when no LinkedIn-scoped revenue source exists, the card says `Not connected` instead of showing a misleading zero.
+- LinkedIn Overview `Total Revenue` sums all active LinkedIn-scoped imported revenue sources using campaign-lifetime revenue-to-date semantics.
 - LinkedIn Overview `Total Revenue` follows the GA4 card pattern: `+` opens the LinkedIn-scoped add-revenue flow, and `Sources (n)` opens the LinkedIn-scoped source list for multiple active sources.
 - Removing the LinkedIn revenue source disables LinkedIn revenue-derived metrics immediately.
 - GA4 revenue does not make LinkedIn revenue, ROI, or ROAS available.

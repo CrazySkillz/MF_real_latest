@@ -256,6 +256,7 @@ Changes:
 - Render Pipeline Proxy from the saved LinkedIn-scoped revenue source configuration when the live proxy endpoint has not returned yet, while still preferring the live endpoint when it succeeds.
 - Add executive-facing Pipeline Proxy card copy explaining that it is open CRM value only and is excluded from Total Revenue, ROI, and ROAS until the deal closes.
 - Keep a visible Pipeline Proxy card beside `Revenue Attribution Not Configured`; it shows `Not configured` until the user selects `Total Revenue + Pipeline (Proxy)` in the revenue wizard, then it populates from saved/live proxy data.
+- Keep the revenue-status area in a two-column desktop grid even before Pipeline Proxy is configured, so the proxy card appears next to the revenue attribution card instead of underneath it.
 
 Validation:
 
@@ -271,6 +272,7 @@ Validation:
 - Confirm Pipeline Proxy appears next to `Revenue Attribution Not Configured` when no confirmed revenue is available yet but the proxy source is configured.
 - Confirm the Pipeline Proxy card explains that open CRM value is not counted in Total Revenue, ROI, or ROAS until it closes.
 - Confirm the Pipeline Proxy card remains visible as `Not configured` before setup so users know where the proxy signal will appear.
+- Confirm on desktop that Pipeline Proxy appears next to `Revenue Attribution Not Configured`, not beneath it.
 - Local validation: `npm run check`.
 - Local validation: `npm test -- server/latest-day-revenue-regression.test.ts`.
 
@@ -284,6 +286,7 @@ Status:
 - [x] Completed locally: LinkedIn Overview now falls back to the saved LinkedIn-scoped revenue source config for Pipeline Proxy so the card can render next to `Revenue Attribution Not Configured` before the live proxy endpoint succeeds.
 - [x] Completed locally: Pipeline Proxy card now explains the business meaning of the value so users know it is an open CRM pipeline signal, not confirmed revenue.
 - [x] Completed locally: Pipeline Proxy card now remains visible beside `Revenue Attribution Not Configured`, with `Not configured` copy until proxy setup is selected and saved.
+- [x] Completed locally: the revenue-status area now always uses the two-column desktop layout so Pipeline Proxy renders next to the revenue attribution card.
 - [ ] Pending: full manual parity pass for Back/Cancel behavior across CSV, Google Sheets, CRM, and ecommerce flows.
 
 LinkedIn Pipeline Proxy rule implemented:

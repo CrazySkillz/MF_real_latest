@@ -88,6 +88,7 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain("pipelineProxyApiData?.success ? pipelineProxyApiData : pipelineProxyFallbackData");
     expect(clientFile).toContain("const renderPipelineProxyCard = (showEmpty = false) => {");
     expect(clientFile).toContain("if (!hasPipelineProxy && !showEmpty) return null;");
+    expect(clientFile).toContain('<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">');
     expect(clientFile).toContain('{renderPipelineProxyCard(true)}');
     expect(clientFile).toContain("Select Total Revenue + Pipeline (Proxy) in the revenue wizard");
     expect(clientFile).toContain("Open CRM value only. Not counted in Total Revenue, ROI, or ROAS until it closes.");

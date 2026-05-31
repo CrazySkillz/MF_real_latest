@@ -5137,7 +5137,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               </div>
 
                               {/* ═══ SECTION 2: REVENUE TRACKING ═══ */}
-                              <div className={pipelineProxyData?.success ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : ""}>
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                               {hasRevenueTracking ? (
                                 <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
                                   <CardContent className="p-6">

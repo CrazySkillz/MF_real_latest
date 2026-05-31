@@ -109,10 +109,6 @@ export function HubSpotRevenueWizard(props: {
     return null;
   }, [lastSaveResult, reviewPreviewRevenue, initialMappingConfig]);
 
-  // Per-LinkedIn-campaign mapping (crosswalk enhancement)
-  const [linkedinCampaigns, setLinkedinCampaigns] = useState<Array<{ urn: string; name: string; status: string }>>([]);
-  const [campaignMappings, setCampaignMappings] = useState<Array<{ crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string }>>([]);
-
   const hasEditChanges = useMemo(() => {
     if (mode !== "edit" || !initialMappingConfig) return true;
     const normalize = (cfg: any) => JSON.stringify({
@@ -123,10 +119,9 @@ export function HubSpotRevenueWizard(props: {
       pipelineEnabled: cfg?.pipelineEnabled === true,
       pipelineStageId: cfg?.pipelineEnabled === true ? String(cfg?.pipelineStageId || "") : "",
       dateField: String(cfg?.dateField || (isLinkedIn ? "hs_lastmodifieddate" : "closedate")),
-      campaignMappings: Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [],
     });
-    return normalize({ campaignProperty, selectedValues, revenueProperty, revenueClassification, pipelineEnabled, pipelineStageId, dateField, campaignMappings }) !== normalize(initialMappingConfig);
-  }, [campaignMappings, campaignProperty, dateField, initialMappingConfig, isLinkedIn, mode, pipelineEnabled, pipelineStageId, revenueClassification, revenueProperty, selectedValues]);
+    return normalize({ campaignProperty, selectedValues, revenueProperty, revenueClassification, pipelineEnabled, pipelineStageId, dateField }) !== normalize(initialMappingConfig);
+  }, [campaignProperty, dateField, initialMappingConfig, isLinkedIn, mode, pipelineEnabled, pipelineStageId, revenueClassification, revenueProperty, selectedValues]);
 
   const reviewPipelineProxyDisplayAmount = useMemo(() => {
     if (reviewPipelineProxyAmount != null) return reviewPipelineProxyAmount;
@@ -135,14 +130,6 @@ export function HubSpotRevenueWizard(props: {
     return null;
   }, [hasEditChanges, initialMappingConfig, mode, reviewPipelineProxyAmount]);
 
-  // Fetch LinkedIn campaigns when in linkedin context
-  useEffect(() => {
-    if (!isLinkedIn || !campaignId) return;
-    fetch(`/api/campaigns/${campaignId}/linkedin-campaigns`)
-      .then(r => r.ok ? r.json() : { campaigns: [] })
-      .then(data => setLinkedinCampaigns(data.campaigns || []))
-      .catch(() => setLinkedinCampaigns([]));
-  }, [isLinkedIn, campaignId]);
   // Advanced options intentionally hidden for exec flow simplicity.
   // Revenue classification hardcoded to offsite — users should not add HubSpot revenue that's already in GA4
 
@@ -444,7 +431,7 @@ export function HubSpotRevenueWizard(props: {
     reviewPreviewFiredRef.current = false;
     setReviewPreviewRevenue(null);
     setReviewPipelineProxyAmount(null);
-  }, [campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn, campaignMappings]);
+  }, [campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn]);
 
   useEffect(() => {
     if (step !== "review") return;
@@ -471,7 +458,6 @@ export function HubSpotRevenueWizard(props: {
             pipelineStageId: pipelineEnabled ? pipelineStageId : null,
             pipelineStageLabel: pipelineEnabled ? (pipelineStageLabel || null) : null,
             platformContext,
-            ...(isLinkedIn && campaignMappings.length > 0 ? { campaignMappings } : {}),
           }),
         });
         const json = await resp.json().catch(() => ({}));
@@ -482,7 +468,7 @@ export function HubSpotRevenueWizard(props: {
         // Keep the review usable even if preview fails.
       }
     })();
-  }, [step, isConnected, campaignId, campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn, campaignMappings]);
+  }, [step, isConnected, campaignId, campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn]);
 
   const save = async () => {
     setIsSaving(true);
@@ -505,7 +491,6 @@ export function HubSpotRevenueWizard(props: {
           pipelineStageId: pipelineEnabled ? pipelineStageId : null,
           pipelineStageLabel: pipelineEnabled ? (pipelineStageLabel || null) : null,
           platformContext,
-          ...(isLinkedIn && campaignMappings.length > 0 ? { campaignMappings } : {}),
         }),
       });
       const json = await resp.json().catch(() => ({}));
@@ -732,7 +717,6 @@ export function HubSpotRevenueWizard(props: {
                     <strong className="min-w-0 flex-1 truncate text-foreground">{connectStatusLabel}</strong>
                   </div>
                 ) : null}
-                <div>Only add HubSpot revenue if these deals are NOT already tracked as GA4 ecommerce transactions.</div>
               </div>
             )}
             {step === "campaign-field" &&
@@ -896,9 +880,7 @@ export function HubSpotRevenueWizard(props: {
                 )}
                 <div className="flex items-center justify-between gap-2 shrink-0">
                   <div className="text-sm text-muted-foreground">
-                    {isLinkedIn && linkedinCampaigns.length > 0
-                      ? <>Mapped: <strong>{campaignMappings.length}</strong> of {uniqueValues.length} values</>
-                      : <>Selected: <strong>{selectedValues.length}</strong></>}
+                    Selected: <strong>{selectedValues.length}</strong>
                   </div>
                 </div>
 
@@ -907,55 +889,6 @@ export function HubSpotRevenueWizard(props: {
                     <div className="text-sm text-muted-foreground">Loading values…</div>
                   ) : uniqueValues.length === 0 ? (
                     <div className="text-sm text-muted-foreground">No values found.</div>
-                  ) : isLinkedIn && linkedinCampaigns.length > 0 ? (
-                    /* LinkedIn campaign mapping mode */
-                    <div className="space-y-3">
-                      <div className="text-xs text-muted-foreground mb-2">
-                        Map each HubSpot value to a LinkedIn campaign. Unmapped values will be skipped.
-                      </div>
-                      {uniqueValues.map((v) => {
-                        const value = String(v.value);
-                        const existing = campaignMappings.find(m => m.crmValue === value);
-                        return (
-                          <div key={value} className="flex items-center gap-3 p-2 rounded border border-slate-100">
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium truncate">{value}</div>
-                              <div className="text-xs text-muted-foreground">{v.count} deal(s)</div>
-                            </div>
-                            <Select
-                              value={existing?.linkedinCampaignUrn || "__none__"}
-                              onValueChange={(urn) => {
-                                setCampaignMappings(prev => {
-                                  const filtered = prev.filter(m => m.crmValue !== value);
-                                  if (urn === "__none__") return filtered;
-                                  const campaign = linkedinCampaigns.find(c => c.urn === urn);
-                                  return [...filtered, {
-                                    crmValue: value,
-                                    linkedinCampaignUrn: urn,
-                                    linkedinCampaignName: campaign?.name || urn,
-                                  }];
-                                });
-                                // Also maintain selectedValues for backward compat
-                                setSelectedValues(prev => {
-                                  if (urn === "__none__") return prev.filter(x => x !== value);
-                                  return Array.from(new Set([...prev, value]));
-                                });
-                              }}
-                            >
-                              <SelectTrigger className="w-[200px] text-xs">
-                                <SelectValue placeholder="Select campaign…" />
-                              </SelectTrigger>
-                              <SelectContent className="z-[10000]">
-                                <SelectItem value="__none__">— Skip —</SelectItem>
-                                {linkedinCampaigns.map(c => (
-                                  <SelectItem key={c.urn} value={c.urn}>{c.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        );
-                      })}
-                    </div>
                   ) : (
                     /* Standard checkbox mode */
                     <div className="space-y-2">
@@ -1219,7 +1152,7 @@ export function HubSpotRevenueWizard(props: {
                   isSaving ||
                   statusLoading ||
                   (step === "campaign-field" ? ((!isConnected && mode !== "edit" && !initialMappingConfig) || !campaignProperty) :
-                    step === "crosswalk" ? (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0) :
+                    step === "crosswalk" ? selectedValues.length === 0 :
                       step === "pipeline" ? (!pipelineStageId) :
                         step === "revenue" ? (!revenueProperty) :
                           false) ||

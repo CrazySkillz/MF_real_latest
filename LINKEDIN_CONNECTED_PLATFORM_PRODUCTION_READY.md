@@ -315,6 +315,7 @@ Status:
 - [x] Completed locally: scheduled report LinkedIn freshness uses the latest import session timestamp.
 - [x] Completed locally: browser Campaign DeepDive pages remain on `/outcome-totals`, `/executive-summary`, and `/trend-analysis` connected-source aggregate paths.
 - [x] Completed locally: regression coverage added so scheduled report LinkedIn values cannot be populated from stale import sessions without an active LinkedIn connection.
+- [x] User validation passed for Commit 8 using LinkedIn test data flow.
 
 ### Commit 9: Destructive And Visibility Path Hardening
 
@@ -338,7 +339,10 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: LinkedIn disconnect remains campaign-scoped and deletes only the active LinkedIn connection row.
+- [x] Completed locally: campaign-scoped LinkedIn import sessions, aggregate metrics, daily metrics, coverage, and direct import-session reads now require an active LinkedIn connection before exposing old LinkedIn import data.
+- [x] Completed locally: historical import rows are retained after disconnect; they are hidden from LinkedIn visibility paths until LinkedIn is reconnected.
+- [x] Completed locally: regression coverage added for stale import-session visibility after disconnect.
 
 ### Commit 10: Regression Coverage And Final Evidence
 

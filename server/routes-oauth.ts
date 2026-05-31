@@ -5123,6 +5123,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDate = start.toISOString().slice(0, 10);
       const endDate = end.toISOString().slice(0, 10);
 
+      const linkedInConnection = await storage.getLinkedInConnection(campaignId).catch(() => null);
+      if (!linkedInConnection) {
+        return res.json({
+          success: true,
+          campaignId,
+          days,
+          startDate,
+          endDate,
+          dataThroughUtc: null,
+          availableDays: 0,
+          totals: {
+            impressions: 0,
+            clicks: 0,
+            reach: 0,
+            engagements: 0,
+            conversions: 0,
+            leads: 0,
+            spend: 0,
+            videoViews: 0,
+            viralImpressions: 0,
+            ctr: 0,
+            cpc: 0,
+            cpm: 0,
+            cvr: 0,
+            cpa: 0,
+            cpl: 0,
+            er: 0,
+          },
+          latestImportAt: null,
+          lastRefreshAt: null,
+        });
+      }
       const daily = await storage.getLinkedInDailyMetrics(campaignId, startDate, endDate).catch(() => []);
       const dataThroughUtc = daily && daily.length > 0 ? String((daily as any[])[(daily as any[]).length - 1]?.date || "") : null;
       const availableDays = Array.isArray(daily) ? daily.length : 0;
@@ -5179,8 +5211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const latestSession = await storage.getLatestLinkedInImportSession(campaignId).catch(() => undefined);
       const latestImportAt = latestSession ? (latestSession as any).importedAt : null;
 
-      const connection = await storage.getLinkedInConnection(campaignId).catch(() => undefined);
-      const lastRefreshAt = connection ? (connection as any).lastRefreshAt : null;
+      const lastRefreshAt = (linkedInConnection as any).lastRefreshAt || null;
 
       return res.json({
         success: true,
@@ -5824,6 +5855,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const okCampaign = await ensureCampaignAccess(req, res, (sess as any).campaignId);
     if (!okCampaign) return null;
+    const linkedInConnection = await storage.getLinkedInConnection(String((sess as any).campaignId)).catch(() => null);
+    if (!linkedInConnection) {
+      res.status(404).json({ success: false, message: "LinkedIn connection not found" });
+      return null;
+    }
     return sess;
   };
 
@@ -20199,6 +20235,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId } = req.params;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
+      const linkedInConnection = await storage.getLinkedInConnection(campaignId).catch(() => null);
+      if (!linkedInConnection) return res.json({ success: true, metrics: [] });
       const { startDate, endDate } = req.query;
       const end = (endDate as string) || new Date().toISOString().slice(0, 10);
       const start = (startDate as string) || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
@@ -24144,6 +24182,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
+      const linkedInConnection = await storage.getLinkedInConnection(campaignId).catch(() => null);
+      if (!linkedInConnection) return res.json([]);
       const sessions = await storage.getCampaignLinkedInImportSessions(campaignId);
       res.json(sessions);
     } catch (error) {
@@ -24159,6 +24199,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
+      const linkedInConnection = await storage.getLinkedInConnection(campaignId).catch(() => null);
+      if (!linkedInConnection) return res.json(null);
 
       // Canonical "latest session" selection: DB-ordered, deterministic.
       const latestSession = await storage.getLatestLinkedInImportSession(campaignId);

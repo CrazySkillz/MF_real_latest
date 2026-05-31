@@ -51,6 +51,8 @@ describe("campaign Performance Summary Overview regression guard", () => {
     expect(page).toContain("const hasPriorityActionMetrics = performanceSummary");
     expect(page).toContain("Object.values(performanceSummary?.totals || {}).some((metric: any) => metric?.available === true && metric?.value !== null)");
     expect(page).toContain("No connected-source metrics available. Connect a source to generate a priority action.");
+    expect(page).toContain("if (totalMetrics === 0) {");
+    expect(page).toContain("No KPI or Benchmark targets configured. Add campaign KPIs or Benchmarks to generate a priority action.");
     expect(page).toContain("priority.type === 'success' ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'");
     expect(page).toContain("const laggingKPIs = effectiveKpis.map((kpi: any) => {");
     expect(page).toContain("}).filter((entry: any) => entry.deltaPct < -5);");

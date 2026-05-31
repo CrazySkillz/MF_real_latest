@@ -576,6 +576,13 @@ export default function CampaignPerformanceSummary() {
       };
     }
 
+    if (totalMetrics === 0) {
+      return {
+        type: 'info',
+        message: 'No KPI or Benchmark targets configured. Add campaign KPIs or Benchmarks to generate a priority action.'
+      };
+    }
+
     const laggingKPIs = effectiveKpis.map((kpi: any) => {
       const deltaPct = getKpiDeltaPct(kpi);
       return { type: 'kpi', item: kpi, severity: Math.abs(deltaPct), deltaPct };

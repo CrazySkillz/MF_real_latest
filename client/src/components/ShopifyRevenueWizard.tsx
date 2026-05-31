@@ -264,10 +264,10 @@ export function ShopifyRevenueWizard(props: {
     () => [
       { id: "campaign-field" as const, label: "Campaign field", icon: Target },
       { id: "crosswalk" as const, label: "Crosswalk", icon: Link2 },
-      { id: "revenue" as const, label: isLinkedIn ? "Revenue / Conversion Value" : "Revenue", icon: DollarSign },
+      { id: "revenue" as const, label: "Revenue", icon: DollarSign },
       { id: "review" as const, label: "Save", icon: ClipboardCheck },
     ],
-    [isLinkedIn]
+    []
   );
 
   const currentStepIndex = useMemo(() => {

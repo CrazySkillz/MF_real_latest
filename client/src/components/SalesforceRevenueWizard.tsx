@@ -231,11 +231,8 @@ export function SalesforceRevenueWizard(props: {
     const cfg = initialMappingConfig || {};
     const nextCampaignField = cfg.campaignField ? String(cfg.campaignField) : "Name";
     const nextRevenueField = cfg.revenueField ? String(cfg.revenueField) : "Amount";
-    const nextConversionValueField = cfg.conversionValueField ? String(cfg.conversionValueField) : "";
     const nextSelectedValues = Array.isArray(cfg.selectedValues) ? cfg.selectedValues.map((v) => String(v)) : [];
     const nextDays = Number.isFinite(Number(cfg.days)) ? Math.min(Math.max(Number(cfg.days), 1), 3650) : 3650;
-    const nextValueSource: "revenue" | "conversion_value" =
-      String(cfg.valueSource || "").trim().toLowerCase() === "conversion_value" ? "conversion_value" : "revenue";
     const nextPipelineEnabled = cfg.pipelineEnabled === true;
     const nextPipelineStageName = cfg.pipelineStageName ? String(cfg.pipelineStageName) : "";
     const nextPipelineStageLabel = cfg.pipelineStageLabel ? String(cfg.pipelineStageLabel) : "";
@@ -244,8 +241,8 @@ export function SalesforceRevenueWizard(props: {
     setFieldsError(null);
     setCampaignField(nextCampaignField);
     setRevenueField(nextRevenueField);
-    setConversionValueField(nextConversionValueField);
-    setValueSource(nextValueSource);
+    setConversionValueField("");
+    setValueSource("revenue");
     setPipelineEnabled(nextPipelineEnabled);
     setPipelineStageName(nextPipelineStageName);
     setPipelineStageLabel(nextPipelineStageLabel);
@@ -607,12 +604,6 @@ export function SalesforceRevenueWizard(props: {
     return pipelineEnabled ? ("revenue_plus_pipeline" as const) : ("revenue_only" as const);
   }, [pipelineEnabled]);
 
-  const isLegacyConversionValueConfig = useMemo(() => {
-    if (mode !== "edit") return false;
-    const raw = String((initialMappingConfig as any)?.valueSource || "").trim().toLowerCase();
-    return raw === "conversion_value";
-  }, [mode, initialMappingConfig]);
-
   // Re-fire preview when the review-driving mapping changes so edit mode totals stay fresh.
   const reviewPreviewKey = useMemo(
     () =>
@@ -797,8 +788,8 @@ export function SalesforceRevenueWizard(props: {
           campaignField,
           selectedValues,
           revenueField,
-          ...(isLinkedIn && conversionValueField ? { conversionValueField } : {}),
-          valueSource: isLinkedIn ? valueSource : "revenue",
+          conversionValueField: null,
+          valueSource: "revenue",
           revenueClassification,
           days,
           dateField,
@@ -814,10 +805,7 @@ export function SalesforceRevenueWizard(props: {
       setLastSaveResult(json);
       toast({
         title: "Revenue Metrics Processed",
-        description:
-          isLinkedIn && valueSource === "conversion_value"
-            ? `Conversion value saved: $${json?.conversionValue || "0"} per conversion.`
-            : `Total Revenue processed: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+        description: `Total Revenue processed: $${Number(json?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
       });
       onSuccess?.(json);
       setStep("complete");
@@ -894,24 +882,13 @@ export function SalesforceRevenueWizard(props: {
       return;
     }
     if (step === "revenue") {
-      if (isLinkedIn && valueSource === "conversion_value") {
-        if (!conversionValueField) {
-          toast({
-            title: "Select a conversion value field",
-            description: "Choose the Opportunity field that represents conversion value per conversion (estimated value).",
-            variant: "destructive",
-          });
-          return;
-        }
-      } else {
-        if (!revenueField) {
-          toast({
-            title: "Select a revenue field",
-            description: "Choose the Opportunity field that represents revenue (usually Amount).",
-            variant: "destructive",
-          });
-          return;
-        }
+      if (!revenueField) {
+        toast({
+          title: "Select a revenue field",
+          description: "Choose the Opportunity field that represents revenue (usually Amount).",
+          variant: "destructive",
+        });
+        return;
       }
       setStep("review");
       // Fire preview in background to populate revenue total — non-blocking, fails silently
@@ -1036,7 +1013,7 @@ export function SalesforceRevenueWizard(props: {
               {step === "revenue" && (
                 <>
                   <DollarSign className="w-5 h-5 text-green-600" />
-                  {isLinkedIn && valueSource === "conversion_value" ? "Select Conversion Value Field" : "Select Revenue Field"}
+                  Select Revenue Field
                 </>
               )}
               {step === "review" && (
@@ -1083,22 +1060,16 @@ export function SalesforceRevenueWizard(props: {
               </div>
             ) : null}
             {step === "value-source" &&
-              (isLegacyConversionValueConfig
-                ? "Choose what Salesforce should provide for this campaign."
-                : "Only add Salesforce revenue if these deals are NOT already tracked as GA4 ecommerce transactions.")}
+              "Only add Salesforce revenue if these deals are NOT already tracked as GA4 ecommerce transactions."}
             {step === "campaign-field" &&
               "Select the Salesforce Opportunity field that identifies which deals belong to this MimoSaaS campaign."}
             {step === "crosswalk" && !pipelineEnabled &&
               `Select the value(s) from "${campaignFieldLabel}" that should map to this MimoSaaS campaign.`}
             {step === "revenue" &&
-              (isLinkedIn && valueSource === "conversion_value"
-                ? "Select the Opportunity field that represents conversion value per conversion (estimated value)."
-                : "Select the Opportunity field that represents revenue (usually Amount).")}
+              "Select the Opportunity field that represents revenue (usually Amount)."}
             {step === "review" && "Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign."}
             {step === "complete" &&
-              (isLinkedIn && valueSource === "conversion_value"
-                ? "Conversion value is saved. Revenue metrics should now be unlocked in Overview."
-                : "Revenue is saved. Revenue metrics should now be unlocked in Overview.")}
+              "Revenue is saved. Revenue metrics should now be unlocked in Overview."}
           </CardDescription>
         </CardHeader>
 
@@ -1379,12 +1350,11 @@ export function SalesforceRevenueWizard(props: {
           {step === "revenue" && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>{isLinkedIn && valueSource === "conversion_value" ? "Conversion value field" : "Revenue field"}</Label>
+                <Label>Revenue field</Label>
                 <Select
-                  value={isLinkedIn && valueSource === "conversion_value" ? conversionValueField : revenueField}
+                  value={revenueField}
                   onValueChange={(v) => {
-                    if (isLinkedIn && valueSource === "conversion_value") setConversionValueField(v);
-                    else setRevenueField(v);
+                    setRevenueField(v);
                   }}
                 >
                   <SelectTrigger>
@@ -1401,13 +1371,13 @@ export function SalesforceRevenueWizard(props: {
                         ));
                       }
                       // Fallback: show prefilled value when fields haven't loaded
-                      const currentVal = isLinkedIn && valueSource === "conversion_value" ? conversionValueField : revenueField;
+                      const currentVal = revenueField;
                       return currentVal ? <SelectItem value={currentVal}>{revenueFieldLabel} ({currentVal})</SelectItem> : null;
                     })()}
                   </SelectContent>
                 </Select>
                 <div className="text-xs text-muted-foreground">
-                  {isLinkedIn && valueSource === "conversion_value" ? "Choose a numeric field representing value per conversion." : "Default: Amount."}
+                  Default: Amount.
                 </div>
               </div>
 
@@ -1516,9 +1486,6 @@ export function SalesforceRevenueWizard(props: {
 
           {step === "complete" && (
             <div className="space-y-3">
-              <div className="text-sm text-foreground/80">
-                Saved conversion value: <strong>${String(lastSaveResult?.conversionValue ?? "0")}</strong> per conversion.
-              </div>
               <div className="text-sm text-foreground/80">
                 Revenue metrics have been processed and are now available in the <strong>Overview</strong> tab.
               </div>

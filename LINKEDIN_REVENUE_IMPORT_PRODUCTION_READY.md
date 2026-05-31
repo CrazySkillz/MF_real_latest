@@ -128,7 +128,7 @@ Status:
 - [x] Corrected locally: LinkedIn revenue attribution no longer exposes the Manual attribution option. The UI follows the GA4-like import pattern through CRM, ecommerce, CSV, Google Sheets, or webhook attribution sources.
 - [x] Completed locally: CSV and Google Sheets mappings now persist `mode` as `conversion_value` when Conversion Value is selected and `revenue_to_date` when Revenue is selected, matching the backend source-of-truth modes.
 - [x] User validation passed for the corrected no-manual-entry flow.
-- [ ] Rework required: CRM/ecommerce LinkedIn flows still need to be aligned to the GA4 revenue-source flow. See Commit 4C-4E before proceeding to regression/finalization work.
+- [ ] Rework required: modal navigation and regression guard work still need to be completed. See Commit 4D-4E before proceeding to regression/finalization work.
 
 ### Commit 4: Source-Scoped Refresh And UI Propagation
 
@@ -207,6 +207,7 @@ Validation:
 Status:
 
 - [x] Completed locally: LinkedIn Google Sheets no longer exposes the LinkedIn-only `Total Revenue / Conversion Value` selector or conversion-value column mapping. It now uses the GA4-style revenue-column Google Sheets flow while preserving `purpose="linkedin_revenue"` and `platformContext="linkedin"` in the save/process payload.
+- [x] User validation passed.
 
 ### Commit 4C: Normalize LinkedIn CRM And Ecommerce Revenue Wizards To GA4 Flow
 
@@ -230,7 +231,9 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: HubSpot already follows the revenue-to-date path for LinkedIn and keeps conversion value disabled.
+- [x] Completed locally: Salesforce active UI no longer exposes or saves conversion-value mode for LinkedIn; it now sends `valueSource="revenue"` and `conversionValueField=null` while preserving `platformContext="linkedin"`.
+- [x] Completed locally: Shopify no longer labels the revenue step as `Revenue / Conversion Value`; it now presents the same revenue step label used by GA4 while preserving LinkedIn platform scoping.
 
 ### Commit 4D: Align LinkedIn Revenue Modal Navigation With GA4
 

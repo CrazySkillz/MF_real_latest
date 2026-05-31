@@ -156,8 +156,10 @@ describe("campaign Custom Report regression guard", () => {
   it("routes generated reports to Standard Reports and scheduled reports to Scheduled Reports", () => {
     const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
 
-    expect(reports).toContain("const standardReports = allStoredReports.filter(report => report.status === 'Generated');");
-    expect(reports).toContain("const storedScheduledReports = allStoredReports.filter(report => (report.status === 'Scheduled' || report.status === 'Paused') && report.schedule);");
+    expect(reports).toContain("const visibleStoredReports = campaignContextId");
+    expect(reports).toContain("allStoredReports.filter(report => report.campaignId === campaignContextId)");
+    expect(reports).toContain("const standardReports = visibleStoredReports.filter(report => report.status === 'Generated');");
+    expect(reports).toContain("const storedScheduledReports = visibleStoredReports.filter(report => (report.status === 'Scheduled' || report.status === 'Paused') && report.schedule);");
     expect(reports).toContain('<Tabs defaultValue="standard" className="space-y-6">');
     expect(reports).toContain('<TabsTrigger value="standard">Standard Reports</TabsTrigger>');
     expect(reports.indexOf('<TabsTrigger value="standard">Standard Reports</TabsTrigger>')).toBeLessThan(reports.indexOf('<TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>'));
@@ -194,6 +196,9 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("Use Schedule Report to create an automated report.");
     expect(reports).not.toContain("const scheduledReports = [");
     expect(reports).not.toContain("scheduledReports.map((report) => (");
+    expect(reports).toContain("if (campaignContextId) {");
+    expect(reports).toContain("setAllStoredReports([]);");
+    expect(reports).toContain("Showing {filteredReports.length} of {visibleStoredReports.length} reports");
     expect(reports).toContain("Download latest report");
     expect(reports).toContain("{report.description && (");
     expect(reports).toContain('<p className="text-sm text-muted-foreground">{report.description}</p>');

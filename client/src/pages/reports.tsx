@@ -328,6 +328,10 @@ export default function Reports() {
       
       // Add mock data if no reports exist
       if (allReports.length === 0) {
+        if (campaignContextId) {
+          setAllStoredReports([]);
+          return;
+        }
         const mockReports = [
           // Generated Reports
           {
@@ -496,7 +500,7 @@ export default function Reports() {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('reportAdded', handleStorageChange);
     };
-  }, []);
+  }, [campaignContextId]);
 
   const resetForm = () => {
     setReportName("");
@@ -780,8 +784,12 @@ export default function Reports() {
     }
   };
 
+  const visibleStoredReports = campaignContextId
+    ? allStoredReports.filter(report => report.campaignId === campaignContextId)
+    : allStoredReports;
+
   // Filter reports for All Reports tab
-  const filteredReports = allStoredReports.filter(report => {
+  const filteredReports = visibleStoredReports.filter(report => {
     // Search query filter
     if (searchQuery && !report.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
         !report.campaignName?.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -817,12 +825,12 @@ export default function Reports() {
 
     return true;
   });
-  const standardReports = allStoredReports.filter(report => report.status === 'Generated');
-  const storedScheduledReports = allStoredReports.filter(report => (report.status === 'Scheduled' || report.status === 'Paused') && report.schedule);
+  const standardReports = visibleStoredReports.filter(report => report.status === 'Generated');
+  const storedScheduledReports = visibleStoredReports.filter(report => (report.status === 'Scheduled' || report.status === 'Paused') && report.schedule);
 
   // Get unique report types for filter dropdown
   const uniqueTypes = Array.from(new Set(
-    allStoredReports.map(r => r.type).filter(Boolean)
+    visibleStoredReports.map(r => r.type).filter(Boolean)
   ));
 
   const resolveCustomReportAggregateMetric = (record: any): string | null => {
@@ -2322,7 +2330,7 @@ export default function Reports() {
                       <>
                         <div className="flex items-center justify-between">
                           <p className="text-sm text-muted-foreground/70">
-                            Showing {filteredReports.length} of {allStoredReports.length} reports
+                            Showing {filteredReports.length} of {visibleStoredReports.length} reports
                           </p>
                           <Button 
                             variant="outline" 

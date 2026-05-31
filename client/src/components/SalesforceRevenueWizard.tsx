@@ -120,10 +120,6 @@ export function SalesforceRevenueWizard(props: {
   const [valuesError, setValuesError] = useState<string | null>(null);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
 
-  // Per-LinkedIn-campaign mapping (crosswalk enhancement)
-  const [linkedinCampaigns, setLinkedinCampaigns] = useState<Array<{ urn: string; name: string; status: string }>>([]);
-  const [campaignMappings, setCampaignMappings] = useState<Array<{ crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string }>>([]);
-
   const hasEditChanges = useMemo(() => {
     if (mode !== "edit" || !initialMappingConfig) return true;
     const normalize = (cfg: any) => JSON.stringify({
@@ -134,19 +130,9 @@ export function SalesforceRevenueWizard(props: {
       pipelineEnabled: cfg?.pipelineEnabled === true,
       pipelineStageName: cfg?.pipelineEnabled === true ? String(cfg?.pipelineStageName || "") : "",
       dateField: String(cfg?.dateField || "CloseDate"),
-      campaignMappings: Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [],
     });
-    return normalize({ campaignField, selectedValues, revenueField, valueSource, pipelineEnabled, pipelineStageName, dateField, campaignMappings }) !== normalize(initialMappingConfig);
-  }, [campaignField, campaignMappings, dateField, initialMappingConfig, mode, pipelineEnabled, pipelineStageName, revenueField, selectedValues, valueSource]);
-
-  // Fetch LinkedIn campaigns when in linkedin context
-  useEffect(() => {
-    if (!isLinkedIn || !campaignId) return;
-    fetch(`/api/campaigns/${campaignId}/linkedin-campaigns`)
-      .then(r => r.ok ? r.json() : { campaigns: [] })
-      .then(data => setLinkedinCampaigns(data.campaigns || []))
-      .catch(() => setLinkedinCampaigns([]));
-  }, [isLinkedIn, campaignId]);
+    return normalize({ campaignField, selectedValues, revenueField, valueSource, pipelineEnabled, pipelineStageName, dateField }) !== normalize(initialMappingConfig);
+  }, [campaignField, dateField, initialMappingConfig, mode, pipelineEnabled, pipelineStageName, revenueField, selectedValues, valueSource]);
 
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -797,7 +783,6 @@ export function SalesforceRevenueWizard(props: {
           pipelineStageName: pipelineEnabled ? (pipelineStageName || null) : null,
           pipelineStageLabel: pipelineEnabled ? (pipelineStageLabel || null) : null,
           platformContext,
-          ...(isLinkedIn && campaignMappings.length > 0 ? { campaignMappings } : {}),
         }),
       });
       const json = await resp.json().catch(() => ({}));
@@ -847,10 +832,7 @@ export function SalesforceRevenueWizard(props: {
       return;
     }
     if (step === "crosswalk") {
-      const crosswalkEmpty = isLinkedIn && linkedinCampaigns.length > 0
-        ? campaignMappings.length === 0
-        : selectedValues.length === 0;
-      if (crosswalkEmpty) {
+      if (selectedValues.length === 0) {
         toast({
           title: "Select at least one value",
           description: "Pick the Salesforce value(s) that should map to this campaign.",
@@ -1206,9 +1188,7 @@ export function SalesforceRevenueWizard(props: {
               </div>
               <div className="flex items-center justify-between gap-2">
                 <div className="text-sm text-muted-foreground">
-                  {isLinkedIn && linkedinCampaigns.length > 0
-                    ? <>Mapped: <strong>{campaignMappings.length}</strong> of {uniqueValues.length} values</>
-                    : <>Selected: <strong>{selectedValues.length}</strong></>}
+                  Selected: <strong>{selectedValues.length}</strong>
                 </div>
               </div>
               <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
@@ -1224,55 +1204,6 @@ export function SalesforceRevenueWizard(props: {
                 ) : uniqueValues.length === 0 ? (
                   <div className="text-sm text-muted-foreground">
                     No values found. Try increasing the lookback window, or confirm you're connected to the correct Salesforce org/user.
-                  </div>
-                ) : isLinkedIn && linkedinCampaigns.length > 0 ? (
-                  /* LinkedIn campaign mapping mode */
-                  <div className="space-y-3">
-                    <div className="text-xs text-muted-foreground mb-2">
-                      Map each Salesforce value to a LinkedIn campaign. Unmapped values will be skipped.
-                    </div>
-                    {uniqueValues.map((v) => {
-                      const value = String(v.value);
-                      const existing = campaignMappings.find(m => m.crmValue === value);
-                      return (
-                        <div key={value} className="flex items-center gap-3 p-2 rounded border border-slate-100">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{value}</div>
-                            <div className="text-xs text-muted-foreground">{v.count} opportunity(ies)</div>
-                          </div>
-                          <Select
-                            value={existing?.linkedinCampaignUrn || "__none__"}
-                            onValueChange={(urn) => {
-                              setCampaignMappings(prev => {
-                                const filtered = prev.filter(m => m.crmValue !== value);
-                                if (urn === "__none__") return filtered;
-                                const campaign = linkedinCampaigns.find(c => c.urn === urn);
-                                return [...filtered, {
-                                  crmValue: value,
-                                  linkedinCampaignUrn: urn,
-                                  linkedinCampaignName: campaign?.name || urn,
-                                }];
-                              });
-                              // Also maintain selectedValues for backward compat
-                              setSelectedValues(prev => {
-                                if (urn === "__none__") return prev.filter(x => x !== value);
-                                return Array.from(new Set([...prev, value]));
-                              });
-                            }}
-                          >
-                            <SelectTrigger className="w-[200px] text-xs">
-                              <SelectValue placeholder="Select campaign…" />
-                            </SelectTrigger>
-                            <SelectContent className="z-[10000]">
-                              <SelectItem value="__none__">— Skip —</SelectItem>
-                              {linkedinCampaigns.map(c => (
-                                <SelectItem key={c.urn} value={c.urn}>{c.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      );
-                    })}
                   </div>
                 ) : (
                   /* Standard checkbox mode */
@@ -1510,7 +1441,7 @@ export function SalesforceRevenueWizard(props: {
                   isSaving ||
                   stagesLoading ||
                   (step === "campaign-field" && (statusLoading || (!isConnected && mode !== "edit" && !initialMappingConfig) || fieldsLoading || (fields.length === 0 && mode !== "edit" && !initialMappingConfig) || !campaignField)) ||
-                  (step === "crosswalk" && (isLinkedIn && linkedinCampaigns.length > 0 ? campaignMappings.length === 0 : selectedValues.length === 0)) ||
+                  (step === "crosswalk" && selectedValues.length === 0) ||
                   (step === "pipeline" && !pipelineStageName) ||
                   // Enterprise accuracy: don't allow saving when currency mismatch is known, or when currency is unknown.
                   (step === "review" && effectiveCurrencyMismatch) ||

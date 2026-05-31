@@ -250,6 +250,7 @@ Changes:
 - Keep edit mode prefill behavior only where it matches the existing GA4 edit pattern.
 - Keep HubSpot/Salesforce/Shopify reconnect returns inside the selected provider wizard after a successful connection.
 - Keep LinkedIn HubSpot Crosswalk on the GA4-style selected-value flow instead of a LinkedIn campaign dropdown mapping flow.
+- Keep LinkedIn Salesforce Crosswalk on the same GA4-style selected-value flow so selected Opportunity values populate Revenue and Save steps directly.
 - Default LinkedIn HubSpot confirmed revenue dating to HubSpot `Close Date`.
 - Keep confirmed revenue and Pipeline Proxy separate: closed-won records feed Total Revenue; selected open-stage records feed Pipeline Proxy only.
 - Show Pipeline Proxy in LinkedIn Overview only when a proxy source is configured.
@@ -266,6 +267,7 @@ Validation:
 - Confirm edit mode still opens the correct saved source with prefilled values.
 - Confirm HubSpot/Salesforce/Shopify connection returns open the selected provider wizard instead of dumping the user back at the source chooser.
 - Confirm HubSpot Crosswalk values are clickable selections and selected values populate the Revenue and Save steps.
+- Confirm Salesforce Crosswalk values are clickable selections and selected values populate the Revenue and Save steps.
 - Confirm the HubSpot Revenue step defaults the Date field to `Close Date`.
 - Confirm selecting `Total Revenue + Pipeline (Proxy)` creates a Pipeline Proxy card in LinkedIn Overview.
 - Confirm open selected-stage deals contribute to Pipeline Proxy only, while closed-won matched deals contribute to Total Revenue after refresh/reprocess.
@@ -281,6 +283,7 @@ Status:
 - [x] Completed locally: HubSpot and Salesforce OAuth return handling now falls through to the selected revenue wizard even when the popup success message is missed, by confirming the provider connection status after the popup closes.
 - [x] Completed locally: Shopify revenue OAuth now listens to the same BroadcastChannel signal already emitted by the callback route, so the wizard remains in the import flow after connection instead of leaving the user at the source chooser.
 - [x] Completed locally: LinkedIn HubSpot revenue Crosswalk now uses the same clickable selected-value flow as GA4 so selected HubSpot values populate the downstream Revenue and Save steps.
+- [x] Completed locally: LinkedIn Salesforce revenue Crosswalk now uses the same clickable selected-value flow as GA4/HubSpot so selected Opportunity values populate the downstream Revenue and Save steps.
 - [x] Completed locally: LinkedIn HubSpot revenue now defaults confirmed revenue dating to HubSpot `Close Date`, and LinkedIn Overview shows a display-only `Pipeline Proxy` summary card when a HubSpot/Salesforce proxy source is configured.
 - [x] Completed locally: LinkedIn HubSpot confirmed revenue now uses closed-won HubSpot stages by default while `Pipeline Proxy` remains a separate open-stage signal; the Overview revenue-status area renders the proxy card next to the revenue configuration card when configured.
 - [x] Completed locally: LinkedIn Overview now falls back to the saved LinkedIn-scoped revenue source config for Pipeline Proxy so the card can render next to `Revenue Attribution Not Configured` before the live proxy endpoint succeeds.
@@ -322,6 +325,7 @@ Status:
 
 - [x] Completed locally: regression coverage now guards the LinkedIn HubSpot closed-won default and prevents the old non-lost default from being reintroduced into confirmed Total Revenue.
 - [x] Completed locally: regression coverage now guards that LinkedIn Overview can render Pipeline Proxy from saved source config when the live proxy endpoint has not returned.
+- [x] Completed locally: regression coverage now guards that LinkedIn Salesforce Crosswalk uses selected Opportunity values instead of the stale LinkedIn campaign dropdown mapping flow.
 - [ ] Pending: keep this tracker current as remaining provider manual parity checks are completed.
 
 ### Commit 4F: LinkedIn Total Revenue Card Source Controls

@@ -95,6 +95,20 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain("Open CRM value only. Not counted in Total Revenue, ROI, or ROAS until it closes.");
   });
 
+  it("LinkedIn Salesforce Crosswalk uses selected Salesforce values instead of campaign dropdown mapping", () => {
+    const clientFile = readFileSync(
+      join(process.cwd(), "client", "src", "components", "SalesforceRevenueWizard.tsx"),
+      "utf-8"
+    );
+
+    expect(clientFile).toContain("Selected: <strong>{selectedValues.length}</strong>");
+    expect(clientFile).toContain('(step === "crosswalk" && selectedValues.length === 0)');
+    expect(clientFile).toContain("selectedValues,");
+    expect(clientFile).not.toContain("Map each Salesforce value to a LinkedIn campaign");
+    expect(clientFile).not.toContain("campaignMappings");
+    expect(clientFile).not.toContain("/linkedin-campaigns");
+  });
+
   it("HubSpot edit review uses the saved pipeline proxy amount before live preview", () => {
     const modalFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"),

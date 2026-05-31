@@ -4964,6 +4964,22 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                           const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
                           const revenuePerLead = getVal('leads') > 0 ? totalRevenue / getVal('leads') : 0;
                           const conversionValue = Number((aggregated as any)?.conversionValue || 0);
+                          const renderPipelineProxyCard = () => !pipelineProxyData?.success ? null : (
+                            <Card>
+                              <CardContent className="p-4">
+                                <div className="flex items-start justify-between mb-1">
+                                  <p className="text-sm text-muted-foreground/70">Pipeline Proxy</p>
+                                  <Target className="w-4 h-4 text-muted-foreground/70" />
+                                </div>
+                                <p className="text-2xl font-bold text-foreground">
+                                  {formatCurrency(Number(pipelineProxyData.totalToDate || 0))}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {pipelineProxyData.pipelineStageLabel || 'Selected stage'} {pipelineProxyEntityNoun} signal
+                                </p>
+                              </CardContent>
+                            </Card>
+                          );
 
                           // Build per-campaign data for charts and table
                           const campaignMap: Record<string, { urn: string; name: string; status: string; metrics: Record<string, number> }> = {};
@@ -5027,22 +5043,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     {hasRevenueTracking && (() => { const b = getBenchmarkForMetric('totalRevenue'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('totalRevenue', totalRevenue, 'higher-better') : null; })()}
                                   </CardContent>
                                 </Card>
-                                {pipelineProxyData?.success && (
-                                  <Card>
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start justify-between mb-1">
-                                        <p className="text-sm text-muted-foreground/70">Pipeline Proxy</p>
-                                        <Target className="w-4 h-4 text-muted-foreground/70" />
-                                      </div>
-                                      <p className="text-2xl font-bold text-foreground">
-                                        {formatCurrency(Number(pipelineProxyData.totalToDate || 0))}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground mt-1">
-                                        {pipelineProxyData.pipelineStageLabel || 'Selected stage'} {pipelineProxyEntityNoun} signal
-                                      </p>
-                                    </CardContent>
-                                  </Card>
-                                )}
+                                {renderPipelineProxyCard()}
                                 <Card>
                                   <CardContent className="p-4">
                                     <div className="flex items-start justify-between mb-1">
@@ -5090,6 +5091,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                               </div>
 
                               {/* ═══ SECTION 2: REVENUE TRACKING ═══ */}
+                              <div className={pipelineProxyData?.success ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : ""}>
                               {hasRevenueTracking ? (
                                 <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
                                   <CardContent className="p-6">
@@ -5126,13 +5128,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         <p className="text-sm text-muted-foreground/70">Profit</p>
                                         <p className={`text-2xl font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(profit)}</p>
                                       </div>
-                                      {pipelineProxyData?.success && (
-                                        <div>
-                                          <p className="text-sm text-muted-foreground/70">Pipeline Proxy</p>
-                                          <p className="text-2xl font-bold text-foreground">{formatCurrency(Number(pipelineProxyData.totalToDate || 0))}</p>
-                                          <p className="text-xs text-muted-foreground/70 mt-1">{pipelineProxyData.pipelineStageLabel || 'Selected stage'} {pipelineProxyEntityNoun} signal</p>
-                                        </div>
-                                      )}
                                     </div>
                                   </CardContent>
                                 </Card>
@@ -5158,6 +5153,9 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   </CardContent>
                                 </Card>
                               )}
+
+                              {renderPipelineProxyCard()}
+                              </div>
 
                               {/* ═══ SECTION 3: PERFORMANCE METRICS ═══ */}
                               <Card>

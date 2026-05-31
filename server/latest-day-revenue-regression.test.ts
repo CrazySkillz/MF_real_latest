@@ -66,6 +66,17 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).toContain("HubSpot access token missing and no refresh token available. Please reconnect HubSpot.");
   });
 
+  it("LinkedIn HubSpot confirmed revenue uses closed-won stages while Pipeline Proxy stays separate", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    expect(routesFile).toContain("Confirmed revenue must use closed-won-ish stages; Pipeline Proxy stays separate.");
+    expect(routesFile).toContain("const derived = deriveDefaultClosedWonStageIds(pipelines);");
+    expect(routesFile).not.toContain('const derived = platformCtx === "linkedin" ? deriveDefaultNonLostStageIds(pipelines) : deriveDefaultClosedWonStageIds(pipelines);');
+  });
+
   it("HubSpot edit review uses the saved pipeline proxy amount before live preview", () => {
     const modalFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"),

@@ -261,6 +261,7 @@ Status:
 - [x] Completed locally: Shopify revenue OAuth now listens to the same BroadcastChannel signal already emitted by the callback route, so the wizard remains in the import flow after connection instead of leaving the user at the source chooser.
 - [x] Completed locally: LinkedIn HubSpot revenue Crosswalk now uses the same clickable selected-value flow as GA4 so selected HubSpot values populate the downstream Revenue and Save steps.
 - [x] Completed locally: LinkedIn HubSpot revenue now defaults confirmed revenue dating to HubSpot `Close Date`, and LinkedIn Overview shows a display-only `Pipeline Proxy` summary card when a HubSpot/Salesforce proxy source is configured.
+- [x] Completed locally: LinkedIn HubSpot confirmed revenue now uses closed-won HubSpot stages by default while `Pipeline Proxy` remains a separate open-stage signal; the Overview revenue-status area renders the proxy card next to the revenue configuration card when configured.
 - [ ] Pending: full manual parity pass for Back/Cancel behavior across CSV, Google Sheets, CRM, and ecommerce flows.
 
 ### Commit 4E: Document And Guard The GA4-Flow Rule

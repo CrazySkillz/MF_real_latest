@@ -1105,7 +1105,7 @@ export function AddRevenueWizardModal(props: {
         dateColumn: csvDateCol || null,
         currency,
         displayName: csvFile?.name || csvPrefill?.displayName || initialSource?.displayName || "CSV",
-        mode: "revenue_to_date",
+        mode: valueSource === 'conversion_value' ? "conversion_value" : "revenue_to_date",
         csvHeaders: Array.isArray(csvPreview?.headers) ? csvPreview.headers : undefined,
         csvSampleRows: Array.isArray(csvPreview?.sampleRows) ? csvPreview.sampleRows : undefined,
         csvRowCount: typeof csvPreview?.rowCount === "number" ? csvPreview.rowCount : undefined,
@@ -1280,7 +1280,7 @@ export function AddRevenueWizardModal(props: {
         dateColumn: sheetsDateCol || null,
         currency,
         displayName: "Google Sheets revenue",
-        mode: "revenue_to_date",
+        mode: valueSource === 'conversion_value' ? "conversion_value" : "revenue_to_date",
         ...(isEditing && initialSource?.id ? { sourceId: String(initialSource.id) } : {}),
       };
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/process`, {
@@ -1499,13 +1499,16 @@ export function AddRevenueWizardModal(props: {
                   </CardHeader>
                 </Card>
 
-                <Card className="hidden" onClick={() => setStep("manual")}>
+                <Card
+                  className={platformContext === 'linkedin' ? "cursor-pointer hover:border-blue-500 transition-colors" : "hidden"}
+                  onClick={() => setStep("manual")}
+                >
                   <CardHeader>
-                    <CardTitle className="text-lg">Manual</CardTitle>
+                    <CardTitle className="text-lg">Manual attribution</CardTitle>
                     <CardDescription>
                       <div className="flex items-start gap-2">
                         <span className="text-amber-600 dark:text-amber-500 font-medium">⚠️</span>
-                        <span>Enter revenue manually. Requires manual updates (best for testing only).</span>
+                        <span>Enter LinkedIn-attributed revenue or conversion value manually. Requires manual updates.</span>
                       </div>
                     </CardDescription>
                   </CardHeader>

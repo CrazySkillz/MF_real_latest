@@ -126,7 +126,8 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: LinkedIn revenue attribution now exposes the Manual attribution option from the source picker without exposing the hidden manual card to GA4.
+- [x] Completed locally: CSV and Google Sheets mappings now persist `mode` as `conversion_value` when Conversion Value is selected and `revenue_to_date` when Revenue is selected, matching the backend source-of-truth modes.
 
 ### Commit 4: Source-Scoped Refresh And UI Propagation
 

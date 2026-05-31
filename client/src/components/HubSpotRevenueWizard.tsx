@@ -90,7 +90,7 @@ export function HubSpotRevenueWizard(props: {
   const [days] = useState<number>(3650);
   // Which HubSpot date field to use for revenue dating (close date vs last modified vs created)
   const [dateField, setDateField] = useState<string>(
-    (initialMappingConfig as any)?.dateField || (isLinkedIn ? "hs_lastmodifieddate" : "closedate")
+    (initialMappingConfig as any)?.dateField || "closedate"
   );
 
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
@@ -118,7 +118,7 @@ export function HubSpotRevenueWizard(props: {
       revenueClassification: String(cfg?.revenueClassification || "offsite_not_in_ga4"),
       pipelineEnabled: cfg?.pipelineEnabled === true,
       pipelineStageId: cfg?.pipelineEnabled === true ? String(cfg?.pipelineStageId || "") : "",
-      dateField: String(cfg?.dateField || (isLinkedIn ? "hs_lastmodifieddate" : "closedate")),
+      dateField: String(cfg?.dateField || "closedate"),
     });
     return normalize({ campaignProperty, selectedValues, revenueProperty, revenueClassification, pipelineEnabled, pipelineStageId, dateField }) !== normalize(initialMappingConfig);
   }, [campaignProperty, dateField, initialMappingConfig, isLinkedIn, mode, pipelineEnabled, pipelineStageId, revenueClassification, revenueProperty, selectedValues]);

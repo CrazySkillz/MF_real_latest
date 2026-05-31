@@ -5027,6 +5027,22 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     {hasRevenueTracking && (() => { const b = getBenchmarkForMetric('totalRevenue'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('totalRevenue', totalRevenue, 'higher-better') : null; })()}
                                   </CardContent>
                                 </Card>
+                                {pipelineProxyData?.success && (
+                                  <Card>
+                                    <CardContent className="p-4">
+                                      <div className="flex items-start justify-between mb-1">
+                                        <p className="text-sm text-muted-foreground/70">Pipeline Proxy</p>
+                                        <Target className="w-4 h-4 text-muted-foreground/70" />
+                                      </div>
+                                      <p className="text-2xl font-bold text-foreground">
+                                        {formatCurrency(Number(pipelineProxyData.totalToDate || 0))}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {pipelineProxyData.pipelineStageLabel || 'Selected stage'} {pipelineProxyEntityNoun} signal
+                                      </p>
+                                    </CardContent>
+                                  </Card>
+                                )}
                                 <Card>
                                   <CardContent className="p-4">
                                     <div className="flex items-start justify-between mb-1">

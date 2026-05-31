@@ -14776,8 +14776,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { accessToken } = await getHubspotAccessTokenForCampaign(campaignId);
 
-      // User-selected date field; fall back to platform-specific defaults for backward compatibility
-      const dateFieldChoice = body.data.dateField || (platformCtx === "linkedin" ? "hs_lastmodifieddate" : "closedate");
+      // User-selected date field; fall back to Close Date for confirmed revenue.
+      const dateFieldChoice = body.data.dateField || "closedate";
       const effectiveValueSource: 'revenue' | 'conversion_value' = (platformCtx === 'linkedin' ? parsedValueSource : 'revenue');
 
       // Determine default stage ids unless caller provides an explicit list:
@@ -14820,7 +14820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               filters: [
                 { propertyName: campaignProp, operator: 'IN', values: selected },
                 { propertyName: 'dealstage', operator: 'IN', values: effectiveStageIds },
-                // Use the user-selected date field (defaults: GA4=closedate, LinkedIn=hs_lastmodifieddate)
+                // Use the user-selected date field (default: closedate)
                 { propertyName: dateFieldChoice, operator: 'GTE', value: String(startMs) },
               ],
             },

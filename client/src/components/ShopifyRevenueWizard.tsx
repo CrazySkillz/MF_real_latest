@@ -191,18 +191,25 @@ export function ShopifyRevenueWizard(props: {
       const w = window.open(authUrl, "shopify_oauth", "width=520,height=680");
       if (!w) throw new Error("Popup blocked. Please allow popups and try again.");
 
-      const onMessage = async (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return;
-        const data: any = event.data;
+      let handled = false;
+      let bc: BroadcastChannel | null = null;
+      const cleanupOAuthListeners = () => {
+        window.removeEventListener("message", onMessage);
+        bc?.close();
+      };
+      const handleOAuthResult = async (data: any) => {
+        if (handled) return;
         if (!data || typeof data !== "object") return;
 
         if (data.type === "shopify_auth_success") {
-          window.removeEventListener("message", onMessage);
+          handled = true;
+          cleanupOAuthListeners();
           await fetchStatus();
           toast({ title: "Shopify Connected", description: "Now map how Shopify orders should be attributed to this campaign." });
           setStep("campaign-field");
         } else if (data.type === "shopify_auth_error") {
-          window.removeEventListener("message", onMessage);
+          handled = true;
+          cleanupOAuthListeners();
           toast({
             title: "Shopify Connection Failed",
             description: data.error || "Please try again.",
@@ -210,6 +217,17 @@ export function ShopifyRevenueWizard(props: {
           });
         }
       };
+      const onMessage = async (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        await handleOAuthResult(event.data);
+      };
+
+      try {
+        bc = new BroadcastChannel("metricmind_oauth");
+        bc.onmessage = (event) => void handleOAuthResult((event as any).data);
+      } catch {
+        bc = null;
+      }
 
       window.addEventListener("message", onMessage);
     } catch (err: any) {

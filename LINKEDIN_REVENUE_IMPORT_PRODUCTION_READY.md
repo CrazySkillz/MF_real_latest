@@ -257,7 +257,9 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: HubSpot and Salesforce OAuth return handling now falls through to the selected revenue wizard even when the popup success message is missed, by confirming the provider connection status after the popup closes.
+- [x] Completed locally: Shopify revenue OAuth now listens to the same BroadcastChannel signal already emitted by the callback route, so the wizard remains in the import flow after connection instead of leaving the user at the source chooser.
+- [ ] Pending: full manual parity pass for Back/Cancel behavior across CSV, Google Sheets, CRM, and ecommerce flows.
 
 ### Commit 4E: Document And Guard The GA4-Flow Rule
 

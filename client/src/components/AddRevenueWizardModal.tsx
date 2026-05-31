@@ -305,19 +305,32 @@ export function AddRevenueWizardModal(props: {
       const windowName = `${platform}_oauth`;
       const popup = window.open(json.authUrl, windowName, "width=520,height=680");
 
+      let bc: BroadcastChannel | null = null;
+      let completed = false;
+      const cleanupOAuthListeners = () => {
+        window.removeEventListener("message", onMessage);
+        bc?.close();
+      };
+      const handleAuthSuccess = () => {
+        if (completed) return;
+        completed = true;
+        cleanupOAuthListeners();
+        setCrmOAuth(prev => ({ ...prev, [platform]: true }));
+        setCrmConnecting(null);
+        toast({ title: `${platform.charAt(0).toUpperCase() + platform.slice(1)} connected`, description: "Now configure revenue attribution." });
+        setStep(platform);
+      };
+
       // Listen for OAuth completion via postMessage
       const onMessage = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
         const data = event.data;
         if (!data || typeof data !== "object") return;
         if (data.type === `${platform}_auth_success`) {
-          window.removeEventListener("message", onMessage);
-          setCrmOAuth(prev => ({ ...prev, [platform]: true }));
-          setCrmConnecting(null);
-          toast({ title: `${platform.charAt(0).toUpperCase() + platform.slice(1)} connected`, description: "Now configure revenue attribution." });
-          setStep(platform);
+          handleAuthSuccess();
         } else if (data.type === `${platform}_auth_error`) {
-          window.removeEventListener("message", onMessage);
+          completed = true;
+          cleanupOAuthListeners();
           setCrmConnecting(null);
           toast({ title: "Connection failed", description: data.error || "OAuth was cancelled or failed.", variant: "destructive" });
         }
@@ -325,22 +338,16 @@ export function AddRevenueWizardModal(props: {
       window.addEventListener("message", onMessage);
 
       // Salesforce also uses BroadcastChannel as fallback
-      let bc: BroadcastChannel | null = null;
       if (platform === "salesforce" && typeof BroadcastChannel !== "undefined") {
         bc = new BroadcastChannel("metricmind_oauth");
         bc.addEventListener("message", ((event: MessageEvent) => {
           const data = event.data;
           if (!data || typeof data !== "object") return;
           if (data.type === "salesforce_auth_success") {
-            window.removeEventListener("message", onMessage);
-            bc?.close();
-            setCrmOAuth(prev => ({ ...prev, salesforce: true }));
-            setCrmConnecting(null);
-            toast({ title: "Salesforce connected", description: "Now configure revenue attribution." });
-            setStep("salesforce");
+            handleAuthSuccess();
           } else if (data.type === "salesforce_auth_error") {
-            window.removeEventListener("message", onMessage);
-            bc?.close();
+            completed = true;
+            cleanupOAuthListeners();
             setCrmConnecting(null);
             toast({ title: "Connection failed", description: data.error || "OAuth was cancelled or failed.", variant: "destructive" });
           }
@@ -353,14 +360,22 @@ export function AddRevenueWizardModal(props: {
           clearInterval(interval);
           // Give postMessage a moment to arrive
           setTimeout(() => {
-            setCrmConnecting(prev => {
-              if (prev === platform) {
-                window.removeEventListener("message", onMessage);
-                bc?.close();
-                return null;
+            void (async () => {
+              if (completed) return;
+              try {
+                const statusResp = await fetch(`/api/${platform}/${campaignId}/status`, { credentials: "include" });
+                const statusJson = await statusResp.json().catch(() => ({}));
+                if (statusJson?.connected) {
+                  handleAuthSuccess();
+                  return;
+                }
+              } catch {
+                // Fall through to restore the chooser if status cannot be confirmed.
               }
-              return prev;
-            });
+              if (completed) return;
+              cleanupOAuthListeners();
+              setCrmConnecting(prev => prev === platform ? null : prev);
+            })();
           }, 1500);
         }
       }, 1000);

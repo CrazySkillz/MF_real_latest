@@ -77,6 +77,19 @@ describe("Latest Day Revenue regression guard", () => {
     expect(routesFile).not.toContain('const derived = platformCtx === "linkedin" ? deriveDefaultNonLostStageIds(pipelines) : deriveDefaultClosedWonStageIds(pipelines);');
   });
 
+  it("LinkedIn Overview can show Pipeline Proxy from saved source config when the live proxy endpoint has not returned", () => {
+    const clientFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "linkedin-analytics.tsx"),
+      "utf-8"
+    );
+
+    expect(clientFile).toContain("const pipelineProxyFallbackData = (() => {");
+    expect(clientFile).toContain("cfg?.pipelineEnabled === true && !!(cfg?.pipelineStageId || cfg?.pipelineStageName)");
+    expect(clientFile).toContain("pipelineProxyApiData?.success ? pipelineProxyApiData : pipelineProxyFallbackData");
+    expect(clientFile).toContain('const renderPipelineProxyCard = () => !pipelineProxyData?.success ? null : (');
+    expect(clientFile).toContain("Open CRM value only. Not counted in Total Revenue, ROI, or ROAS until it closes.");
+  });
+
   it("HubSpot edit review uses the saved pipeline proxy amount before live preview", () => {
     const modalFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"),

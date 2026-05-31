@@ -128,7 +128,8 @@ Status:
 - [x] Corrected locally: LinkedIn revenue attribution no longer exposes the Manual attribution option. The UI follows the GA4-like import pattern through CRM, ecommerce, CSV, Google Sheets, or webhook attribution sources.
 - [x] Completed locally: CSV and Google Sheets mappings now persist `mode` as `conversion_value` when Conversion Value is selected and `revenue_to_date` when Revenue is selected, matching the backend source-of-truth modes.
 - [x] User validation passed for the corrected no-manual-entry flow.
-- [ ] Rework required: modal navigation and regression guard work still need to be completed. See Commit 4D-4E before proceeding to regression/finalization work.
+- [x] Reworked locally through Commit 4D: modal navigation, provider reconnect return handling, HubSpot Crosswalk selection, Close Date defaults, and Pipeline Proxy separation have been corrected.
+- [ ] Remaining follow-up: Commit 4E regression/documentation guard work must stay current as the remaining provider parity checks are completed.
 
 ### Commit 4: Source-Scoped Refresh And UI Propagation
 
@@ -247,6 +248,13 @@ Changes:
 - Ensure normal add flow starts at the source chooser like GA4.
 - Ensure Back/Cancel behavior matches GA4 for CSV, Google Sheets, CRM, and ecommerce flows.
 - Keep edit mode prefill behavior only where it matches the existing GA4 edit pattern.
+- Keep HubSpot/Salesforce/Shopify reconnect returns inside the selected provider wizard after a successful connection.
+- Keep LinkedIn HubSpot Crosswalk on the GA4-style selected-value flow instead of a LinkedIn campaign dropdown mapping flow.
+- Default LinkedIn HubSpot confirmed revenue dating to HubSpot `Close Date`.
+- Keep confirmed revenue and Pipeline Proxy separate: closed-won records feed Total Revenue; selected open-stage records feed Pipeline Proxy only.
+- Show Pipeline Proxy in LinkedIn Overview only when a proxy source is configured.
+- Render Pipeline Proxy from the saved LinkedIn-scoped revenue source configuration when the live proxy endpoint has not returned yet, while still preferring the live endpoint when it succeeds.
+- Add executive-facing Pipeline Proxy card copy explaining that it is open CRM value only and is excluded from Total Revenue, ROI, and ROAS until the deal closes.
 
 Validation:
 
@@ -254,6 +262,15 @@ Validation:
 - Confirm the first screen is the shared source chooser.
 - Confirm choosing CSV/Google Sheets shows the same Back behavior as GA4.
 - Confirm edit mode still opens the correct saved source with prefilled values.
+- Confirm HubSpot/Salesforce/Shopify connection returns open the selected provider wizard instead of dumping the user back at the source chooser.
+- Confirm HubSpot Crosswalk values are clickable selections and selected values populate the Revenue and Save steps.
+- Confirm the HubSpot Revenue step defaults the Date field to `Close Date`.
+- Confirm selecting `Total Revenue + Pipeline (Proxy)` creates a Pipeline Proxy card in LinkedIn Overview.
+- Confirm open selected-stage deals contribute to Pipeline Proxy only, while closed-won matched deals contribute to Total Revenue after refresh/reprocess.
+- Confirm Pipeline Proxy appears next to `Revenue Attribution Not Configured` when no confirmed revenue is available yet but the proxy source is configured.
+- Confirm the Pipeline Proxy card explains that open CRM value is not counted in Total Revenue, ROI, or ROAS until it closes.
+- Local validation: `npm run check`.
+- Local validation: `npm test -- server/latest-day-revenue-regression.test.ts`.
 
 Status:
 
@@ -262,7 +279,19 @@ Status:
 - [x] Completed locally: LinkedIn HubSpot revenue Crosswalk now uses the same clickable selected-value flow as GA4 so selected HubSpot values populate the downstream Revenue and Save steps.
 - [x] Completed locally: LinkedIn HubSpot revenue now defaults confirmed revenue dating to HubSpot `Close Date`, and LinkedIn Overview shows a display-only `Pipeline Proxy` summary card when a HubSpot/Salesforce proxy source is configured.
 - [x] Completed locally: LinkedIn HubSpot confirmed revenue now uses closed-won HubSpot stages by default while `Pipeline Proxy` remains a separate open-stage signal; the Overview revenue-status area renders the proxy card next to the revenue configuration card when configured.
+- [x] Completed locally: LinkedIn Overview now falls back to the saved LinkedIn-scoped revenue source config for Pipeline Proxy so the card can render next to `Revenue Attribution Not Configured` before the live proxy endpoint succeeds.
+- [x] Completed locally: Pipeline Proxy card now explains the business meaning of the value so users know it is an open CRM pipeline signal, not confirmed revenue.
 - [ ] Pending: full manual parity pass for Back/Cancel behavior across CSV, Google Sheets, CRM, and ecommerce flows.
+
+LinkedIn Pipeline Proxy rule implemented:
+
+- Pipeline Proxy is optional and appears only when a CRM revenue source is saved with `Total Revenue + Pipeline (Proxy)`.
+- Confirmed `Total Revenue` uses closed-won matched records only.
+- Pipeline Proxy uses selected open-stage matched records only.
+- Pipeline Proxy is display-only and must not be included in Total Revenue, ROI, ROAS, Profit, or conversion-value calculations.
+- After refresh/reprocess, a matched deal that closes should stop contributing to Pipeline Proxy and start contributing to Total Revenue.
+- LinkedIn Overview shows Pipeline Proxy as an overview summary card and as a separate card next to the revenue-status card when configured.
+- LinkedIn Overview prefers the live proxy endpoint for fresh values and uses the saved source config as a safe fallback so the configured proxy is not hidden.
 
 ### Commit 4E: Document And Guard The GA4-Flow Rule
 
@@ -284,7 +313,9 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: regression coverage now guards the LinkedIn HubSpot closed-won default and prevents the old non-lost default from being reintroduced into confirmed Total Revenue.
+- [x] Completed locally: regression coverage now guards that LinkedIn Overview can render Pipeline Proxy from saved source config when the live proxy endpoint has not returned.
+- [ ] Pending: keep this tracker current as remaining provider manual parity checks are completed.
 
 ### Commit 4F: LinkedIn Total Revenue Card Source Controls
 

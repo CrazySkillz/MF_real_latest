@@ -691,30 +691,67 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     }
   };
 
-  const activeLinkedInRevenueSource = (() => {
-    const sources = Array.isArray((linkedInRevenueSourcesData as any)?.sources) ? (linkedInRevenueSourcesData as any).sources : [];
-    const active = sources.find((s: any) => (s as any)?.isActive !== false) || sources[0];
-    return active || null;
-  })();
+  const activeLinkedInRevenueSources = Array.isArray((linkedInRevenueSourcesData as any)?.sources)
+    ? (linkedInRevenueSourcesData as any).sources.filter((s: any) => (s as any)?.isActive !== false)
+    : [];
+  const parseSourceConfig = (source: any): any => {
+    try {
+      return source?.mappingConfig
+        ? (typeof source.mappingConfig === 'string' ? JSON.parse(source.mappingConfig) : source.mappingConfig)
+        : {};
+    } catch {
+      return {};
+    }
+  };
+  const activeLinkedInRevenueSource = activeLinkedInRevenueSources[0] || null;
   const linkedInRevenueSourceLabel = getLinkedInRevenueSourceLabel(activeLinkedInRevenueSource);
 
   const activeLinkedInRevenueSourceType = String(activeLinkedInRevenueSource?.sourceType || '').trim().toLowerCase();
-  const pipelineProxyData =
-    activeLinkedInRevenueSourceType === 'salesforce'
+  const pipelineProxySource = activeLinkedInRevenueSources.find((source: any) => {
+    const type = String(source?.sourceType || '').trim().toLowerCase();
+    if (type !== 'hubspot' && type !== 'salesforce') return false;
+    const cfg = parseSourceConfig(source);
+    return cfg?.pipelineEnabled === true && !!(cfg?.pipelineStageId || cfg?.pipelineStageName);
+  }) || null;
+  const pipelineProxySourceType = String(pipelineProxySource?.sourceType || '').trim().toLowerCase();
+  const pipelineProxyFallbackData = (() => {
+    if (!pipelineProxySource) return null;
+    const cfg = parseSourceConfig(pipelineProxySource);
+    return {
+      success: true,
+      pipelineEnabled: true,
+      providerLabel: pipelineProxySourceType === 'salesforce' ? 'Salesforce' : 'HubSpot',
+      pipelineStageLabel: cfg?.pipelineStageLabel || null,
+      totalToDate: Number(cfg?.pipelineTotalToDate || 0),
+      pipelineValueRevenueTotals: Array.isArray(cfg?.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [],
+      warning: cfg?.pipelineWarning || null,
+    };
+  })();
+  const pipelineProxyApiData =
+    pipelineProxySourceType === 'salesforce'
       ? salesforcePipelineProxyData
-      : activeLinkedInRevenueSourceType === 'hubspot'
+      : pipelineProxySourceType === 'hubspot'
         ? hubspotPipelineProxyData
-        : activeLinkedInRevenueSourceType === 'shopify'
-          ? null
-          : (hubspotPipelineProxyData?.success ? hubspotPipelineProxyData : salesforcePipelineProxyData);
+        : activeLinkedInRevenueSourceType === 'salesforce'
+          ? salesforcePipelineProxyData
+          : activeLinkedInRevenueSourceType === 'hubspot'
+            ? hubspotPipelineProxyData
+            : (hubspotPipelineProxyData?.success ? hubspotPipelineProxyData : salesforcePipelineProxyData);
+  const pipelineProxyData =
+    pipelineProxyApiData?.success ? pipelineProxyApiData : pipelineProxyFallbackData;
   const pipelineProxyProviderLabel =
-    activeLinkedInRevenueSourceType === 'salesforce'
+    pipelineProxyData?.providerLabel ||
+    (pipelineProxySourceType === 'salesforce'
+      ? 'Salesforce'
+      : pipelineProxySourceType === 'hubspot'
+        ? 'HubSpot'
+        : activeLinkedInRevenueSourceType === 'salesforce'
       ? 'Salesforce'
       : activeLinkedInRevenueSourceType === 'hubspot'
         ? 'HubSpot'
-        : activeLinkedInRevenueSourceType === 'shopify'
-          ? ''
-          : (hubspotPipelineProxyData?.success ? 'HubSpot' : (salesforcePipelineProxyData?.success ? 'Salesforce' : ''));
+      : activeLinkedInRevenueSourceType === 'shopify'
+        ? ''
+          : (hubspotPipelineProxyData?.success ? 'HubSpot' : (salesforcePipelineProxyData?.success ? 'Salesforce' : '')));
   const pipelineProxyEntityNoun = pipelineProxyProviderLabel === 'Salesforce' ? 'Opportunity' : 'deal';
 
   // Fetch Google Sheets connections to check if mappings exist
@@ -4976,6 +5013,9 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-1">
                                   {pipelineProxyData.pipelineStageLabel || 'Selected stage'} {pipelineProxyEntityNoun} signal
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  Open CRM value only. Not counted in Total Revenue, ROI, or ROAS until it closes.
                                 </p>
                               </CardContent>
                             </Card>

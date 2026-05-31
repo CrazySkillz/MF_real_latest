@@ -48,10 +48,13 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   let linkedinLastImportedAt: any = null;
   let linkedinDailyRows: any[] = [];
   try {
-    const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
+    const linkedInConnection = await storage.getLinkedInConnection(campaignId);
+    const latestSession = linkedInConnection && !(linkedInConnection as any).spendOnly
+      ? await storage.getLatestLinkedInImportSession(campaignId)
+      : null;
     if (latestSession) {
       linkedinConnected = true;
-      linkedinLastImportedAt = (latestSession as any).uploadedAt || (latestSession as any).createdAt || null;
+      linkedinLastImportedAt = (latestSession as any).importedAt || null;
       const metrics = await storage.getLinkedInImportMetrics(latestSession.id);
       linkedinDailyRows = await storage.getLinkedInDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[]);
       

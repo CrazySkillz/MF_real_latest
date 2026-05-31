@@ -282,6 +282,7 @@ Status:
 - [x] Completed locally: missing campaign, missing connection, missing import session, missing token, failed pull, or unmatched LinkedIn campaigns skip downstream KPI/alert recompute.
 - [x] Completed locally: manual LinkedIn refresh does not record a new Campaign DeepDive snapshot when no LinkedIn data was refreshed.
 - [x] Completed locally: regression coverage added for scheduler no-op/failure guardrails and manual refresh snapshot gating.
+- [x] User validation passed for Commit 7 using LinkedIn test data flow.
 
 ### Commit 8: Campaign DeepDive And Custom Report Parity
 
@@ -310,7 +311,10 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: scheduled Campaign DeepDive and Custom Report PDFs now require an active LinkedIn Connected Platforms source before using LinkedIn import-session values.
+- [x] Completed locally: scheduled report LinkedIn freshness uses the latest import session timestamp.
+- [x] Completed locally: browser Campaign DeepDive pages remain on `/outcome-totals`, `/executive-summary`, and `/trend-analysis` connected-source aggregate paths.
+- [x] Completed locally: regression coverage added so scheduled report LinkedIn values cannot be populated from stale import sessions without an active LinkedIn connection.
 
 ### Commit 9: Destructive And Visibility Path Hardening
 

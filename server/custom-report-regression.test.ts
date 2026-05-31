@@ -276,6 +276,19 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("const { campaign, performanceSummary, executiveSummary, trendAnalysis, kpis, benchmarks, aggregateSources } = reportContext;");
   });
 
+  it("keeps scheduled report LinkedIn values tied to an active Connected Platforms source", () => {
+    const metricsScheduler = readFileSync(join(process.cwd(), "server/scheduler.ts"), "utf-8");
+    const linkedInStart = metricsScheduler.indexOf("// Fetch LinkedIn metrics");
+    const linkedInEnd = metricsScheduler.indexOf("// Fetch Custom Integration metrics", linkedInStart);
+    const linkedInBlock = metricsScheduler.slice(linkedInStart, linkedInEnd);
+
+    expect(linkedInBlock).toContain("const linkedInConnection = await storage.getLinkedInConnection(campaignId);");
+    expect(linkedInBlock).toContain("const latestSession = linkedInConnection && !(linkedInConnection as any).spendOnly");
+    expect(linkedInBlock).toContain("await storage.getLatestLinkedInImportSession(campaignId)");
+    expect(linkedInBlock).toContain("linkedinConnected = true;");
+    expect(linkedInBlock).toContain("linkedinLastImportedAt = (latestSession as any).importedAt || null;");
+  });
+
   it("loads scheduled Trend Analysis aggregate only when Trend Analysis tabs are selected", () => {
     const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
     const metricsScheduler = readFileSync(join(process.cwd(), "server/scheduler.ts"), "utf-8");

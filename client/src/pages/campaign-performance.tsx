@@ -678,17 +678,18 @@ export default function CampaignPerformanceSummary() {
 
   const changeData = getChanges();
 
-  const connectedPlatformSources = performanceSources.filter((source: any) => source?.category !== "financial");
+  const connectedPlatformSources = performanceSources.filter((source: any) => source?.connected === true && source?.category !== "financial");
   const dataSources = connectedPlatformSources.length > 0
     ? connectedPlatformSources.map((source: any) => ({
         name: source?.label || source?.id || "Connected source",
         connected: source?.connected === true,
         icon: source?.id === "linkedin" ? SiLinkedin : Activity,
       }))
-    : [
+    : !performanceSummary ? [
         { name: "LinkedIn Ads", connected: !!(effectiveLinkedin), icon: SiLinkedin },
         { name: "Custom Integration", connected: !!(effectiveCI), icon: Activity },
-      ];
+      ].filter((source) => source.connected)
+      : [];
   const getOverviewMetric = (metricName: string, fallbackValue: number) => {
     const metric = performanceSummary?.totals?.[metricName];
     if (performanceSummaryPending) {
@@ -1120,6 +1121,9 @@ export default function CampaignPerformanceSummary() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
+                    {dataSources.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No connected data sources</p>
+                    )}
                     {dataSources.map((source: any) => {
                       const Icon = source.icon;
                       return (

@@ -107,11 +107,14 @@ describe("campaign Performance Summary Overview regression guard", () => {
   it("wires Campaign Health data source status to the aggregate contract", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-performance.tsx"), "utf-8");
 
-    expect(page).toContain('const connectedPlatformSources = performanceSources.filter((source: any) => source?.category !== "financial");');
+    expect(page).toContain('const connectedPlatformSources = performanceSources.filter((source: any) => source?.connected === true && source?.category !== "financial");');
     expect(page).toContain("const dataSources = connectedPlatformSources.length > 0");
     expect(page).toContain("connectedPlatformSources.map((source: any) => ({");
     expect(page).toContain("name: source?.label || source?.id || \"Connected source\"");
     expect(page).toContain("connected: source?.connected === true");
+    expect(page).toContain("!performanceSummary ? [");
+    expect(page).toContain("].filter((source) => source.connected)");
+    expect(page).toContain("No connected data sources");
     expect(page).toContain("{dataSources.map((source: any) => {");
   });
 });

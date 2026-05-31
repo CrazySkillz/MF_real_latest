@@ -428,6 +428,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).not.toContain('<TabsList className="grid w-full grid-cols-2">');
     expect(page).toContain("const performanceSummary = (outcomeTotals as any)?.performanceSummary || (executiveSummary as any).performanceSummary;");
     expect(page).toContain("const aggregateMetric = (metricName: string) => (performanceSummary as any)?.totals?.[metricName];");
+    expect(page).toContain('if ((metricName === "clicks" || metricName === "impressions") && !aggregateMetricAvailable(metricName)) {');
+    expect(page).toContain('return "Unavailable from connected sources";');
     expect(page).toContain("const formatAggregateInteger = (metricName: string) =>");
     expect(page).toContain("aggregateMetricAvailable(metricName) ? Math.round(aggregateMetricValue(metricName)).toLocaleString() : \"Unavailable\";");
     expect(page).toContain("const getRecommendationExpectedImpactItems = (rec: any): string[] => {");

@@ -180,6 +180,9 @@ export default function ExecutiveSummary() {
     return metric?.available === true && metric?.value !== null ? Number(metric.value) || 0 : 0;
   };
   const aggregateMetricReason = (metricName: string): string => {
+    if ((metricName === "clicks" || metricName === "impressions") && !aggregateMetricAvailable(metricName)) {
+      return "Unavailable from connected sources";
+    }
     const reasons = aggregateMetric(metricName)?.unavailableReasons;
     return Array.isArray(reasons) && reasons.length > 0 ? reasons[0] : "Not available from connected sources";
   };

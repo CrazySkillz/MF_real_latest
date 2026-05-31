@@ -243,6 +243,12 @@ export function AddRevenueWizardModal(props: {
   const [crmStatus, setCrmStatus] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
   const [crmHasSource, setCrmHasSource] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
   const [crmConnecting, setCrmConnecting] = useState<string | null>(null);
+  const matchesRevenuePlatformContext = (source: any, sourceType?: string) => {
+    const sourceContext = String(source?.platformContext || 'ga4').trim().toLowerCase();
+    const currentContext = String(platformContext || 'ga4').trim().toLowerCase();
+    const matchesType = sourceType ? String(source?.sourceType || '').trim().toLowerCase() === sourceType : true;
+    return matchesType && sourceContext === currentContext && source?.isActive !== false;
+  };
   useEffect(() => {
     if (!open || hideCrmSources) return;
     let cancelled = false;
@@ -257,7 +263,7 @@ export function AddRevenueWizardModal(props: {
       setCrmOAuth({ hubspot: hubspotOAuth, salesforce: salesforceOAuth, shopify: shopifyOAuth });
       // "Connected" badge only when an active revenue source exists for this platform
       const revSources: any[] = Array.isArray(dsResp?.revenueSources) ? dsResp.revenueSources : [];
-      const hasSource = (type: string) => revSources.some((s: any) => s?.sourceType === type && s?.isActive !== false);
+      const hasSource = (type: string) => revSources.some((s: any) => matchesRevenuePlatformContext(s, type));
       setCrmHasSource({
         hubspot: hasSource("hubspot"),
         salesforce: hasSource("salesforce"),
@@ -270,7 +276,7 @@ export function AddRevenueWizardModal(props: {
       });
     })();
     return () => { cancelled = true; };
-  }, [open, campaignId, hideCrmSources]);
+  }, [open, campaignId, hideCrmSources, platformContext]);
 
   // OAuth gate: connect platform first, then proceed to wizard
   const handleCrmSourceClick = async (platform: "hubspot" | "salesforce" | "shopify") => {
@@ -378,7 +384,7 @@ export function AddRevenueWizardModal(props: {
       const dsResp = await fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include" });
       const dsJson = await dsResp.json().catch(() => ({}));
       const revSources = Array.isArray(dsJson?.revenueSources) ? dsJson.revenueSources : [];
-      const entry = revSources.find((s: any) => s?.sourceType === platform && s?.isActive !== false);
+      const entry = revSources.find((s: any) => matchesRevenuePlatformContext(s, platform));
       if (entry?.id) {
         await apiRequest('DELETE', `/api/campaigns/${campaignId}/revenue-sources/${entry.id}`);
       }

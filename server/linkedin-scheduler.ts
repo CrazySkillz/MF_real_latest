@@ -61,14 +61,14 @@ async function generateMockLinkedInData(
   campaignId: string,
   connection: any,
   opts?: { advanceDay?: boolean }
-): Promise<void> {
+): Promise<boolean> {
   console.log(`[LinkedIn Scheduler] TEST MODE: Generating mock data for campaign ${campaignId}`);
 
   // Get the latest import session to reuse selected campaigns and metrics
   const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
   if (!latestSession) {
     console.log(`[LinkedIn Scheduler] No previous import sessions found for test mode campaign ${campaignId}`);
-    return;
+    return false;
   }
 
   // --- Test-mode truth model ---
@@ -411,6 +411,7 @@ async function generateMockLinkedInData(
   }
 
   console.log(`[LinkedIn Scheduler] ✅ Mock session totals + ads now reconcile to daily to-date for campaign ${campaignId}`);
+  return true;
 }
 
 /**
@@ -420,12 +421,12 @@ async function generateMockLinkedInData(
 async function fetchRealLinkedInData(
   campaignId: string,
   connection: any
-): Promise<void> {
+): Promise<boolean> {
   console.log(`[LinkedIn Scheduler] PRODUCTION MODE: Fetching real data for campaign ${campaignId}`);
 
   if (!connection.accessToken) {
     console.error(`[LinkedIn Scheduler] No access token found for campaign ${campaignId}`);
-    return;
+    return false;
   }
 
   try {
@@ -433,7 +434,7 @@ async function fetchRealLinkedInData(
     const latestSession = await storage.getLatestLinkedInImportSession(campaignId);
     if (!latestSession) {
       console.log(`[LinkedIn Scheduler] No previous import sessions found for campaign ${campaignId} - skipping scheduled refresh`);
-      return;
+      return false;
     }
 
     // Get the campaigns that were previously imported
@@ -447,7 +448,7 @@ async function fetchRealLinkedInData(
 
     if (previousCampaigns.length === 0) {
       console.log(`[LinkedIn Scheduler] No previous campaigns found for campaign ${campaignId}`);
-      return;
+      return false;
     }
 
     // Import LinkedIn client
@@ -459,7 +460,7 @@ async function fetchRealLinkedInData(
 
     if (!allLinkedInCampaigns || allLinkedInCampaigns.length === 0) {
       console.log(`[LinkedIn Scheduler] No campaigns found for ad account ${connection.adAccountId}`);
-      return;
+      return false;
     }
 
     // Match previous campaigns with current LinkedIn campaigns
@@ -477,7 +478,7 @@ async function fetchRealLinkedInData(
 
     if (campaignsToRefresh.length === 0) {
       console.log(`[LinkedIn Scheduler] No matching campaigns found for campaign ${campaignId}`);
-      return;
+      return false;
     }
 
     // Finance-grade correctness:
@@ -703,9 +704,11 @@ async function fetchRealLinkedInData(
     } catch {
       // ignore
     }
+    return true;
   } catch (error: any) {
     console.error(`[LinkedIn Scheduler] Error fetching real LinkedIn data for campaign ${campaignId}:`, error);
     // Don't throw - log and continue with other campaigns
+    return false;
   }
 }
 
@@ -716,8 +719,14 @@ export async function refreshLinkedInDataForCampaign(
   campaignId: string,
   connection?: any,
   opts?: { advanceTestDay?: boolean }
-): Promise<void> {
+): Promise<{ refreshed: boolean }> {
   try {
+    const campaign = await storage.getCampaign(campaignId).catch(() => null);
+    if (!campaign) {
+      console.log(`[LinkedIn Scheduler] No campaign found for LinkedIn refresh ${campaignId}`);
+      return { refreshed: false };
+    }
+
     // Get connection if not provided
     if (!connection) {
       connection = await storage.getLinkedInConnection(campaignId);
@@ -725,7 +734,7 @@ export async function refreshLinkedInDataForCampaign(
 
     if (!connection) {
       console.log(`[LinkedIn Scheduler] No LinkedIn connection found for campaign ${campaignId}`);
-      return;
+      return { refreshed: false };
     }
 
     // Detect test mode (robust): explicit method, explicit env, or known test tokens.
@@ -738,10 +747,13 @@ export async function refreshLinkedInDataForCampaign(
       token.startsWith('test_') ||
       token.startsWith('test-');
 
-    if (isTestMode) {
-      await generateMockLinkedInData(campaignId, connection, { advanceDay: Boolean(opts?.advanceTestDay) });
-    } else {
-      await fetchRealLinkedInData(campaignId, connection);
+    const refreshed = isTestMode
+      ? await generateMockLinkedInData(campaignId, connection, { advanceDay: Boolean(opts?.advanceTestDay) })
+      : await fetchRealLinkedInData(campaignId, connection);
+
+    if (!refreshed) {
+      console.log(`[LinkedIn Scheduler] Skipping downstream refresh for campaign ${campaignId} because LinkedIn data was not updated`);
+      return { refreshed: false };
     }
 
     // After data refresh, refresh KPIs
@@ -760,9 +772,11 @@ export async function refreshLinkedInDataForCampaign(
     }
 
     console.log(`[LinkedIn Scheduler] ✅ Completed refresh for campaign ${campaignId}`);
+    return { refreshed: true };
   } catch (error: any) {
     console.error(`[LinkedIn Scheduler] Error refreshing campaign ${campaignId}:`, error);
     // Don't throw - continue with other campaigns
+    return { refreshed: false };
   }
 }
 

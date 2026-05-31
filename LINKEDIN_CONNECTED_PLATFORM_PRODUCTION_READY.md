@@ -254,6 +254,7 @@ Status:
 - [x] Completed locally: LinkedIn helper returns `null` for revenue, ROI, and ROAS when no LinkedIn-scoped revenue source is available.
 - [x] Completed locally: `/api/linkedin/metrics/:campaignId` now returns `null` revenue-derived values when LinkedIn revenue tracking is unavailable.
 - [x] Completed locally: regression coverage added for spend-only LinkedIn campaigns and LinkedIn campaigns with valid attributed revenue.
+- [x] User validation passed for Commit 6 using LinkedIn test data flow.
 
 ### Commit 7: Scheduler And Freshness Hardening
 
@@ -277,7 +278,10 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: LinkedIn scheduler now returns an explicit refreshed/not-refreshed result.
+- [x] Completed locally: missing campaign, missing connection, missing import session, missing token, failed pull, or unmatched LinkedIn campaigns skip downstream KPI/alert recompute.
+- [x] Completed locally: manual LinkedIn refresh does not record a new Campaign DeepDive snapshot when no LinkedIn data was refreshed.
+- [x] Completed locally: regression coverage added for scheduler no-op/failure guardrails and manual refresh snapshot gating.
 
 ### Commit 8: Campaign DeepDive And Custom Report Parity
 

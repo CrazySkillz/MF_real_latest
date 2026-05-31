@@ -5208,7 +5208,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
       const { refreshLinkedInDataForCampaign } = await import("./linkedin-scheduler.js");
       // In test mode, advance the simulated "day" on every manual refresh click.
-      await refreshLinkedInDataForCampaign(campaignId, undefined, { advanceTestDay: true });
+      const refreshResult = await refreshLinkedInDataForCampaign(campaignId, undefined, { advanceTestDay: true });
+      if (!refreshResult?.refreshed) {
+        return res.status(409).json({ success: false, error: "LinkedIn data was not refreshed" });
+      }
       // Record current metrics so What's Changed can track deltas between syncs
       const { recordCampaignMetrics } = await import("./scheduler.js");
       await recordCampaignMetrics(campaignId);

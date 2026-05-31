@@ -5089,7 +5089,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     {hasRevenueTracking && (() => { const b = getBenchmarkForMetric('totalRevenue'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('totalRevenue', totalRevenue, 'higher-better') : null; })()}
                                   </CardContent>
                                 </Card>
-                                {renderPipelineProxyCard()}
                                 <Card>
                                   <CardContent className="p-4">
                                     <div className="flex items-start justify-between mb-1">
@@ -5134,12 +5133,13 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     {(() => { const b = getBenchmarkForMetric('leads'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('leads', getVal('leads'), 'higher-better') : null; })()}
                                   </CardContent>
                                 </Card>
+                                {renderPipelineProxyCard(true)}
                               </div>
 
                               {/* ═══ SECTION 2: REVENUE TRACKING ═══ */}
-                              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                              <div>
                               {hasRevenueTracking ? (
-                                <Card className="lg:col-span-2 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
+                                <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
                                   <CardContent className="p-6">
                                     <div className="flex items-center justify-between mb-4">
                                       <div className="flex items-center gap-2">
@@ -5178,7 +5178,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   </CardContent>
                                 </Card>
                               ) : (
-                                <Card className="lg:col-span-2 border-border">
+                                <Card className="border-border">
                                   <CardContent className="p-6">
                                     <div className="flex items-center gap-3 mb-3">
                                       <AlertCircle className="w-5 h-5 text-amber-500" />
@@ -5199,8 +5199,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   </CardContent>
                                 </Card>
                               )}
-
-                              {renderPipelineProxyCard(true, "lg:col-span-2")}
                               </div>
 
                               {/* ═══ SECTION 3: PERFORMANCE METRICS ═══ */}

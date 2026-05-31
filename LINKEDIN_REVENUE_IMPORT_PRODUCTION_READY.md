@@ -255,9 +255,8 @@ Changes:
 - Show Pipeline Proxy in LinkedIn Overview only when a proxy source is configured.
 - Render Pipeline Proxy from the saved LinkedIn-scoped revenue source configuration when the live proxy endpoint has not returned yet, while still preferring the live endpoint when it succeeds.
 - Add executive-facing Pipeline Proxy card copy explaining that it is open CRM value only and is excluded from Total Revenue, ROI, and ROAS until the deal closes.
-- Keep a visible Pipeline Proxy card beside `Revenue Attribution Not Configured`; it shows `Not configured` until the user selects `Total Revenue + Pipeline (Proxy)` in the revenue wizard, then it populates from saved/live proxy data.
-- Keep the revenue-status area in a two-column desktop grid even before Pipeline Proxy is configured, so the proxy card appears next to the revenue attribution card instead of underneath it.
-- Use a 4-column desktop grid for the LinkedIn Overview card section; the revenue attribution and Pipeline Proxy cards each span two columns so they remain side by side.
+- Keep a visible Pipeline Proxy card in the top metric-card grid beside `Leads`; it shows `Not configured` until the user selects `Total Revenue + Pipeline (Proxy)` in the revenue wizard, then it populates from saved/live proxy data.
+- Use a 4-column desktop grid for the LinkedIn Overview metric cards so Pipeline Proxy matches the size of Spend, Total Revenue, Impressions, Clicks, Conversions, and Leads.
 
 Validation:
 
@@ -270,11 +269,10 @@ Validation:
 - Confirm the HubSpot Revenue step defaults the Date field to `Close Date`.
 - Confirm selecting `Total Revenue + Pipeline (Proxy)` creates a Pipeline Proxy card in LinkedIn Overview.
 - Confirm open selected-stage deals contribute to Pipeline Proxy only, while closed-won matched deals contribute to Total Revenue after refresh/reprocess.
-- Confirm Pipeline Proxy appears next to `Revenue Attribution Not Configured` when no confirmed revenue is available yet but the proxy source is configured.
+- Confirm Pipeline Proxy appears next to `Leads` in the top metric-card grid.
 - Confirm the Pipeline Proxy card explains that open CRM value is not counted in Total Revenue, ROI, or ROAS until it closes.
 - Confirm the Pipeline Proxy card remains visible as `Not configured` before setup so users know where the proxy signal will appear.
-- Confirm on desktop that Pipeline Proxy appears next to `Revenue Attribution Not Configured`, not beneath it.
-- Confirm the LinkedIn Overview card section uses four desktop columns, with the two revenue cards each spanning half the row.
+- Confirm the LinkedIn Overview metric-card section uses four desktop columns and Pipeline Proxy is the same size as the Leads card.
 - Local validation: `npm run check`.
 - Local validation: `npm test -- server/latest-day-revenue-regression.test.ts`.
 
@@ -287,9 +285,8 @@ Status:
 - [x] Completed locally: LinkedIn HubSpot confirmed revenue now uses closed-won HubSpot stages by default while `Pipeline Proxy` remains a separate open-stage signal; the Overview revenue-status area renders the proxy card next to the revenue configuration card when configured.
 - [x] Completed locally: LinkedIn Overview now falls back to the saved LinkedIn-scoped revenue source config for Pipeline Proxy so the card can render next to `Revenue Attribution Not Configured` before the live proxy endpoint succeeds.
 - [x] Completed locally: Pipeline Proxy card now explains the business meaning of the value so users know it is an open CRM pipeline signal, not confirmed revenue.
-- [x] Completed locally: Pipeline Proxy card now remains visible beside `Revenue Attribution Not Configured`, with `Not configured` copy until proxy setup is selected and saved.
-- [x] Completed locally: the revenue-status area now always uses the two-column desktop layout so Pipeline Proxy renders next to the revenue attribution card.
-- [x] Completed locally: LinkedIn Overview card layout now uses a 4-column desktop grid; the revenue attribution and Pipeline Proxy cards each span two columns.
+- [x] Completed locally: Pipeline Proxy card now remains visible in the top metric-card grid next to `Leads`, with `Not configured` copy until proxy setup is selected and saved.
+- [x] Completed locally: LinkedIn Overview metric cards now use a 4-column desktop grid and Pipeline Proxy uses the same card size as Leads.
 - [ ] Pending: full manual parity pass for Back/Cancel behavior across CSV, Google Sheets, CRM, and ecommerce flows.
 
 LinkedIn Pipeline Proxy rule implemented:
@@ -299,9 +296,9 @@ LinkedIn Pipeline Proxy rule implemented:
 - Pipeline Proxy uses selected open-stage matched records only.
 - Pipeline Proxy is display-only and must not be included in Total Revenue, ROI, ROAS, Profit, or conversion-value calculations.
 - After refresh/reprocess, a matched deal that closes should stop contributing to Pipeline Proxy and start contributing to Total Revenue.
-- LinkedIn Overview shows Pipeline Proxy as an overview summary card and as a separate card next to the revenue-status card when configured.
+- LinkedIn Overview shows Pipeline Proxy as a top metric card next to Leads.
 - LinkedIn Overview prefers the live proxy endpoint for fresh values and uses the saved source config as a safe fallback so the configured proxy is not hidden.
-- The revenue-status area keeps the Pipeline Proxy card visible even before setup, so users can understand the optional signal and where it will populate.
+- The top metric-card area keeps the Pipeline Proxy card visible even before setup, so users can understand the optional signal and where it will populate.
 
 ### Commit 4E: Document And Guard The GA4-Flow Rule
 

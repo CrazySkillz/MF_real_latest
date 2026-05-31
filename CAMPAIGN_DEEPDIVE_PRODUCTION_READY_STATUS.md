@@ -27,9 +27,9 @@ The remaining work is validation hardening and source-specific proof, not a full
 
 Campaign DeepDive is production-ready locally for the implemented connected-source aggregate contract and the current GA4/current-source scope, with the outstanding validation items below.
 
-The remaining items can wait until mock-live historical data and refined integrations such as LinkedIn or Meta are available.
+The remaining validation items can wait until mock-live historical data and future/refined integrations such as Meta are available. LinkedIn source-specific validation passed on 2026-05-31 and is tracked in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
 
-LinkedIn refinement is tracked separately in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. That tracker is the source-specific acceptance plan for bringing LinkedIn to the same production standard as GA4 through both the Create Campaign flow and the campaign Connected Platforms add-source flow.
+LinkedIn refinement is tracked separately in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. That tracker records the source-specific acceptance proof for LinkedIn through both the Create Campaign flow and the campaign Connected Platforms add-source flow.
 
 ## Outstanding Validation Items
 
@@ -55,17 +55,18 @@ Expected proof:
 
 ### 2. Multi-Source Deployed Validation
 
-Status: pending refined multi-source integrations.
+Status: LinkedIn validation passed on 2026-05-31; future/refined source mixes remain source-specific validation work.
 
 Why it remains open:
 
 - The shared aggregate contract is designed to accept future/refined main Connected Platforms.
-- A source such as LinkedIn, Meta, Google Ads, TikTok, or another integration still needs its own source-level readiness proof before its values can be trusted.
+- A source such as Meta, Google Ads, TikTok, or another future/refined integration still needs its own source-level readiness proof before its values can be trusted.
+- LinkedIn has its source-specific validation recorded in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
 
 When to complete:
 
-- After integrations such as LinkedIn or Meta are refined and connected through Connected Platforms.
-- For LinkedIn specifically, follow `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md` before treating LinkedIn values as production-ready connected-source inputs.
+- After integrations such as Meta, Google Ads, TikTok, or other future/refined sources are connected through Connected Platforms.
+- For LinkedIn specifically, use `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md` as the completed source-specific validation record.
 
 Expected proof:
 
@@ -185,7 +186,7 @@ The current Campaign DeepDive implementation is architecturally aligned with the
 The remaining work is:
 
 1. historical validation for Trend Analysis,
-2. deployed multi-source validation after integrations such as LinkedIn or Meta are refined,
+2. source-specific deployed validation for future/refined integrations such as Meta, Google Ads, or TikTok,
 3. deployed scheduled Custom Report email evidence.
 
 These are validation and source-readiness tasks. They do not require a Campaign DeepDive redesign unless a future integration fails the shared aggregate contract.

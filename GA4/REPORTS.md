@@ -110,6 +110,7 @@ Important meaning:
 - actual report values should come from refreshed GA4 tab inputs when the report is generated or sent
 - Campaign DeepDive Custom Report opens the Reports builder with campaign context and should read current campaign aggregate values from `/outcome-totals`
 - campaign-scoped Reports pages should show `Back to main Campaign Overview` and link to `/campaigns/<campaignId>`
+- campaign-scoped Reports pages should show only reports whose saved `campaignId` matches the active campaign across Standard Reports, Scheduled Reports, All Reports, report type filters, and result counts; campaign-scoped pages should not seed global/demo reports
 - for GA4-only Campaign DeepDive Custom Reports, selectable metrics should be limited to available GA4/web outcome metrics; paid-media metrics stay hidden until a connected main paid-media source supplies them
 - for Campaign DeepDive Custom Report, the report type dropdown should show Campaign DeepDive subsection report types and should save selected subsection tabs as report composition
 - KPI and Benchmark report sections should use campaign records for rows and targets, with current values coming from available aggregate metrics
@@ -233,6 +234,9 @@ Deployed scheduled Custom Report validation checklist:
 - confirm the email is received
 - confirm the attached PDF includes selected tab body content, not only section names
 - confirm the attached PDF values match current app values for the same campaign and tabs at send time
+- record the connected-source mix active at send time, such as GA4-only or GA4 + LinkedIn
+
+This validation can be done with the current GA4-only campaign or after another main Connected Platform, such as LinkedIn, is added. In that case, the evidence proves the scheduled Custom Report path for the selected source mix. It does not replace LinkedIn-specific validation that LinkedIn is correctly scoped, refreshed, and participating in the shared aggregate.
 
 ## Backend Report Model
 

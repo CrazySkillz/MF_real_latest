@@ -444,6 +444,8 @@ Scope:
 - Completed follow-up: Unavailable Overview metrics now also show the aggregate unavailable reason, so GA4-only Total Impressions explains that GA4 engagement rate is not an impressions metric.
 - Completed follow-up: Shortened GA4-only Total Impressions card copy to `Sources: Google Analytics - Impressions not available` while preserving the aggregate unavailable reason in the API.
 - Completed follow-up: For mock/test GA4 properties, `outcome-totals` now adds stored GA4 daily rows to the simulated GA4 baseline so Performance Summary matches the GA4 detail Summary totals for sessions, conversions, users, and revenue.
+- Completed follow-up: Overview `Total Impressions` now uses executive-facing unavailable copy, `Unavailable from connected sources`, while preserving detailed aggregate diagnostics in the API.
+- Completed follow-up: `Top Priority Action` no longer treats an empty target set as success. If no connected-source metrics exist, it asks the user to connect a source; if connected-source metrics exist but no campaign KPIs or Benchmarks are configured, it asks the user to add KPI or Benchmark targets before generating a priority action.
 
 Validation:
 
@@ -481,6 +483,7 @@ Scope:
 - Completed partial fix: Top Priority Action now formats count KPI values as comma-separated whole numbers without a `count` suffix.
 - Completed: Campaign Health `Data Sources` now reads connected source status from `performanceSummary.sources` instead of the old LinkedIn/Custom Integration hard-coded list.
 - Completed follow-up: Campaign Health `Data Sources` filters out `financial` child inputs from `performanceSummary.sources` so GA4 revenue/spend imports can feed totals without appearing as separate main Connected Platforms.
+- Completed follow-up: Campaign Health `Data Sources` filters out disconnected source rows. If no main Connected Platform sources are connected, it shows `No connected data sources` instead of listing `Not Connected` rows.
 - Completed: KPI and Benchmark scoring behavior was preserved while wiring source status to the aggregate contract.
 - Completed partial fix: Added a regression guard in `server/campaign-performance-overview-regression.test.ts`.
 
@@ -725,7 +728,7 @@ Root cause:
 
 Tab-by-tab source status:
 
-- Overview: uses `performanceSummary.totals` for impressions, sessions, conversions, and spend. Source labels come from `performanceSummary.sources`. This is aligned for current registered sources.
+- Overview: uses `performanceSummary.totals` for impressions, sessions, conversions, and spend. Source labels come from `performanceSummary.sources`. Unavailable impressions use executive-facing copy while detailed unavailable reasons remain in the aggregate contract. `Top Priority Action` requires connected-source metrics and at least one campaign KPI or Benchmark target before it can say all metrics are on track. This is aligned for current registered sources.
 - Campaign Health: uses campaign-level KPIs and Benchmarks, and resolves current metric values from `performanceSummary.totals` when the KPI/Benchmark metric exists in the aggregate. It preserves KPI/Benchmark behavior for targets, thresholds, health score, and top-priority action. Data Sources filters out financial child inputs and lists only main Connected Platform sources from `performanceSummary.sources`.
 - What's Changed: compares current `performanceSummary.totals` against historical snapshots only when the snapshot contains a compatible `metrics.performanceSummary.version`. Metric Trends also filters to compatible aggregate snapshots and aggregate-available metrics only.
 - Insights: builds recommendations from `performanceSummary.totals` and `performanceSummary.sources`, including source capabilities and source breakdowns. It avoids paid-media recommendations for analytics-only sources such as GA4.

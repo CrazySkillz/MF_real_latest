@@ -211,6 +211,7 @@ Target behavior:
 - The Marketing Funnel Performance chart should make the active path explicit: reach metric -> engagement metric -> conversions -> revenue. For GA4-only campaigns this should read as users/sessions/conversions/revenue; for paid-media campaigns it can read as impressions/clicks/conversions/revenue when those metrics are available.
 - The separate Campaign Story paragraph should not render below the funnel because it duplicates values already shown in the narrative, funnel, and key metric cards.
 - Paid-media Top of Funnel and Mid Funnel blocks appear only when connected sources provide impressions or clicks.
+- Unavailable clicks and impressions use concise executive-facing copy, `Unavailable from connected sources`; detailed source-specific unavailable reasons remain in the aggregate/API for diagnostics.
 - Revenue, spend, ROI, ROAS, CPA, CPC, CTR, and CVR display unavailable when required aggregate inputs are missing.
 - Platform detail belongs in the dedicated Platform Comparison subsection; Executive Summary should not render the duplicate Platform Performance card.
 - Financial child inputs do not appear as separate platform rows.
@@ -420,6 +421,7 @@ Completed:
 - Follow-up completed: Executive Summary now resolves GA4 current values through the same GA4 source-truth path, keeps persisted GA4 daily rows as fallback, and uses to-date spend/revenue financial provenance when building the aggregate.
 - Follow-up correction: the user-facing Connected Platforms GA4 card uses `/api/campaigns/:id/ga4-metrics` and `ga4Service.getMetricsWithAutoRefresh`; Executive Summary now uses that same connected-platform metric source for GA4 users, sessions, and conversions instead of the separate acquisition/simulation path.
 - Source-of-truth correction: the Executive Summary page now fetches `/api/campaigns/:id/outcome-totals` directly and uses `outcomeTotals.performanceSummary` for visible Executive Overview metrics, matching the proven connected-source aggregate consumed by the other Campaign DeepDive subsections.
+- Executive-facing wording correction: unavailable clicks and impressions now render `Unavailable from connected sources` in the compact cards while raw aggregate unavailable reasons remain available for diagnostics.
 - Removed the Executive Summary period dropdown and fixed the page's aggregate request to the daily connected-source `90days` window so visible records are no longer changed by a local subsection date selector.
 - Funnel clarity correction: Marketing Funnel Performance now labels the active connected-source path and asks the business question each stage answers: whether enough people reached the campaign/site, whether they engaged through clicks or sessions, and whether visits became conversions and revenue.
 - User validation passed: Executive Overview conversion display now shows the exact connected-source count and regression coverage proves the value is not hard-coded.

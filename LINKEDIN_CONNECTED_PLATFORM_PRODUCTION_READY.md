@@ -15,11 +15,11 @@ This tracker exists so LinkedIn follows the same connected-source aggregate patt
 
 LinkedIn must be treated as a campaign-scoped main paid-media connected source. Only the selected LinkedIn ad account and selected LinkedIn campaigns should feed the campaign. Campaign DeepDive, KPIs, Benchmarks, Custom Reports, and scheduled reports should consume LinkedIn through the shared connected-source aggregate contract, not through placeholder values or separate one-off calculations.
 
-## Current Root Cause
+## Current Status
 
-LinkedIn has partial implementation, but it is not yet proven production-ready.
+LinkedIn has been refined through the planned source-contract and lifecycle-hardening commits. Commit 10 validation passed on 2026-05-31, so the LinkedIn implementation is documented as production-ready for the validated mock-live/test-data flows.
 
-The current risk is not one isolated UI bug. It is a source-contract and lifecycle-hardening gap:
+The original risk was not one isolated UI bug. It was a source-contract and lifecycle-hardening gap:
 
 - LinkedIn can be connected during campaign creation and from an existing campaign, but both paths need to prove they persist the same campaign-scoped source/import contract.
 - Some UI paths can still risk showing placeholder or derived LinkedIn values instead of source-backed imported values.
@@ -344,6 +344,7 @@ Status:
 - [x] Completed locally: historical import rows are retained after disconnect; they are hidden from LinkedIn visibility paths until LinkedIn is reconnected.
 - [x] Completed locally: regression coverage added for stale import-session visibility after disconnect.
 - [x] User validation passed for Commit 9 using LinkedIn test data flow.
+- [x] Completed follow-up: after LinkedIn is disconnected, Performance Summary source-status rows do not show `LinkedIn Ads Not Connected`; disconnected source rows stay hidden until the source is reconnected.
 
 ### Commit 10: Regression Coverage And Final Evidence
 
@@ -375,46 +376,46 @@ Status:
 
 - [x] Completed locally: regression coverage inventory exists across Create Campaign, Connected Platforms add-source, shared aggregate, LinkedIn financial handling, scheduler refresh, disconnect/reconnect, Custom Report browser PDF output, and scheduled report output.
 - [x] Completed locally: reconnect regression guard proves retained LinkedIn import rows can feed aggregates only after an active campaign-scoped LinkedIn connection exists again.
-- [ ] Pending deployed evidence: mock-live LinkedIn campaign values must be validated against Connected Platforms and Campaign DeepDive after deployment.
+- [x] User validation passed for Commit 10 on 2026-05-31: mock-live/test-data LinkedIn campaign values were validated against Connected Platforms and Campaign DeepDive.
 
 ## Validation Checklist
 
 ### Create Campaign Flow
 
-- [ ] Start a new campaign.
-- [ ] Select LinkedIn during campaign creation.
-- [ ] Authenticate or use approved mock-live test connection.
-- [ ] Select LinkedIn ad account.
-- [ ] Select LinkedIn campaigns.
-- [ ] Complete import.
-- [ ] Finalize campaign.
-- [ ] Confirm LinkedIn appears in Connected Platforms.
-- [ ] Confirm LinkedIn appears in `/api/campaigns/:campaignId/outcome-totals`.
-- [ ] Confirm Campaign DeepDive uses only available LinkedIn metrics.
+- [x] Start a new campaign.
+- [x] Select LinkedIn during campaign creation.
+- [x] Authenticate or use approved mock-live test connection.
+- [x] Select LinkedIn ad account.
+- [x] Select LinkedIn campaigns.
+- [x] Complete import.
+- [x] Finalize campaign.
+- [x] Confirm LinkedIn appears in Connected Platforms.
+- [x] Confirm LinkedIn appears in `/api/campaigns/:campaignId/outcome-totals`.
+- [x] Confirm Campaign DeepDive uses only available LinkedIn metrics.
 
 ### Connected Platforms Flow
 
-- [ ] Open an existing campaign.
-- [ ] Add LinkedIn from Connected Platforms.
-- [ ] Authenticate or use approved mock-live test connection.
-- [ ] Select LinkedIn ad account.
-- [ ] Select LinkedIn campaigns.
-- [ ] Complete import.
-- [ ] Confirm Connected Platforms updates.
-- [ ] Confirm Campaign DeepDive sections update.
-- [ ] Confirm Custom Report output updates.
+- [x] Open an existing campaign.
+- [x] Add LinkedIn from Connected Platforms.
+- [x] Authenticate or use approved mock-live test connection.
+- [x] Select LinkedIn ad account.
+- [x] Select LinkedIn campaigns.
+- [x] Complete import.
+- [x] Confirm Connected Platforms updates.
+- [x] Confirm Campaign DeepDive sections update.
+- [x] Confirm Custom Report output updates.
 
 ### Multi-Source Flow
 
-- [ ] Connect GA4 and LinkedIn to the same campaign.
-- [ ] Confirm GA4 contributes web analytics and outcome metrics.
-- [ ] Confirm LinkedIn contributes paid-media metrics.
-- [ ] Confirm financial child inputs do not appear as separate main platforms.
-- [ ] Confirm no double-counting.
+- [x] Connect GA4 and LinkedIn to the same campaign.
+- [x] Confirm GA4 contributes web analytics and outcome metrics.
+- [x] Confirm LinkedIn contributes paid-media metrics.
+- [x] Confirm financial child inputs do not appear as separate main platforms.
+- [x] Confirm no double-counting.
 
 ## Production-Ready Exit Criteria
 
-LinkedIn can be marked production-ready only after:
+LinkedIn is marked production-ready for the validated mock-live/test-data flows because:
 
 - Create Campaign flow is validated.
 - Connected Platforms add-source flow is validated.

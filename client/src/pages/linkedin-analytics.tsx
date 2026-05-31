@@ -5110,12 +5110,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                       <li>Connect HubSpot, Salesforce, or Shopify in Connected Platforms</li>
                                       <li>Upload a CSV or connect Google Sheets</li>
                                     </ul>
-                                    <Link href={`/campaigns/${campaignId}#overview`}>
-                                      <Button variant="outline" size="sm">
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        Manage in Connected Platforms
-                                      </Button>
-                                    </Link>
+                                    <Button variant="outline" size="sm" onClick={() => void openAddRevenueModal('add')}>
+                                      <Plus className="w-4 h-4 mr-2" />
+                                      Add Revenue Source
+                                    </Button>
                                   </CardContent>
                                 </Card>
                               )}

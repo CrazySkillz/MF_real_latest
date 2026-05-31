@@ -98,6 +98,8 @@ Status:
 - [x] Completed locally: Campaign DeepDive now opens `/reports?campaignId=<campaignId>`.
 - [x] Completed locally: Reports initializes and persists `campaignId` when launched from Campaign DeepDive.
 - [x] Completed locally: campaign-scoped Reports pages show `Back to main Campaign Overview` above the `Reports` heading and link back to `/campaigns/<campaignId>`.
+- [x] Completed locally: campaign-scoped Reports pages filter Standard Reports, Scheduled Reports, All Reports, report type options, and result counts to stored reports whose `campaignId` matches the active campaign.
+- [x] Completed locally: campaign-scoped Reports pages do not seed global/demo reports when launched from Campaign DeepDive.
 - [x] Completed locally: global `/reports` route remains unchanged.
 - [x] User validation passed on 2026-05-28: Campaign DeepDive Custom Report opens with `campaignId` in the URL.
 
@@ -303,6 +305,8 @@ Custom Report is production-ready when:
 
 - it opens in campaign context from Campaign DeepDive
 - campaign-scoped Reports pages expose a `Back to main Campaign Overview` link to `/campaigns/<campaignId>`
+- campaign-scoped Reports tabs, report type filters, and counts show only reports whose saved `campaignId` matches the active Campaign DeepDive campaign
+- campaign-scoped Reports pages do not inject global/demo reports
 - it uses the shared connected-source aggregate contract
 - metric selection is based on available connected-source metrics
 - report output renders only available metrics
@@ -380,13 +384,17 @@ Scheduling delivery status:
 
 This is the final runtime evidence gate for scheduled Custom Report production readiness. Local implementation and regression coverage are complete, but deployed delivery evidence remains pending until a real scheduled send proves the email path and attachment content in a production-like environment.
 
+This checklist can be completed with the current GA4-only campaign or after another main Connected Platform, such as LinkedIn, is added or refined. If validation is done with a GA4 + LinkedIn campaign, the evidence proves scheduled Custom Report behavior for that source mix. It does not, by itself, make LinkedIn production-ready as a Connected Platform source; LinkedIn metric correctness, scoping, freshness, and aggregate participation must still be validated in the LinkedIn/source-specific work.
+
 - [ ] Create a scheduled Campaign DeepDive Custom Report from `/reports?campaignId=<campaignId>`.
 - [ ] Select known Campaign DeepDive tabs in the report builder.
 - [ ] Wait for the scheduled send time in the saved browser time zone.
 - [ ] Confirm the scheduled report email is received by the configured recipient.
 - [ ] Confirm the attached PDF includes real body content for each selected tab, not only selected section names.
 - [ ] Confirm the attached PDF values match the current app values for the same campaign and selected tabs at send time.
+- [ ] Record the connected-source mix active at send time, such as GA4-only or GA4 + LinkedIn.
 - [ ] Record campaign ID, selected report type/tabs, scheduled send time/time zone, receipt time, and any provider delivery evidence.
+- [ ] If more than one main Connected Platform is present, record which sources were connected and confirm each source's values appear only where that source supplies available metrics.
 
 ## Separate Source Work
 
@@ -416,6 +424,7 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Local validation passed on 2026-05-29 for All Reports action cleanup: `npm test -- server/custom-report-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - All Reports Campaign filter removal added on 2026-05-29: Search, Status, Report Type, and Date Range remain; the Campaign dropdown no longer renders.
 - All Reports Status filter removal added on 2026-05-30: Search, Report Type, and Date Range remain; lifecycle state is handled by the Standard Reports and Scheduled Reports tabs.
+- Campaign report isolation fix added on 2026-05-31 and pushed in commit `a059883e`: campaign-scoped Standard Reports, Scheduled Reports, All Reports, report type filters, and result counts now use only reports whose saved `campaignId` matches the active campaign, and campaign-scoped pages no longer seed global/demo reports.
 - Create Report reset fix added on 2026-05-28: top-level create opens a fresh empty form after prior edits.
 - Create Report action split added on 2026-05-28: unscheduled create mode downloads the selected sections, while scheduled create mode saves with `Schedule Automated Report` and `Schedule Report`.
 - Download Report content fix added on 2026-05-28 and pushed in commit `ec6f9234`: Campaign DeepDive subsection exports now print selected tab bodies from the connected-source aggregate instead of only listing selected tab names.
@@ -436,6 +445,7 @@ This tracker future-proofs Custom Report as an aggregate consumer. It does not m
 - Local validation passed on 2026-05-30 for Commit 2 shared scheduled PDF composition: `npm test -- server/custom-report-regression.test.ts`, `npm test -- server/performance-summary-scheduler-regression.test.ts`, `npm test -- server/executive-summary-regression.test.ts server/executive-summary-helpers-regression.test.ts server/trend-analysis-overview-regression.test.ts`, `npm run check`, `git diff --check`, and `npm run build`.
 - Commit 3 scheduled PDF parity regression added on 2026-05-30: targeted regression tests now assert latest aggregate context loading, selected Trend Analysis data loading, selected Executive Summary context loading, all current Campaign DeepDive report type/tab body rendering, and no metadata-only scheduled PDF fallback.
 - Commit 4 final docs and evidence checklist added on 2026-05-30: production-readiness status now separates completed local implementation/regression coverage from the deployed scheduled-email evidence checklist.
+- Deployed evidence clarification added on 2026-05-30: the scheduled-email evidence checklist may be completed after LinkedIn or another main source is added, but that validates the selected source mix and does not replace source-specific production-readiness validation for the new integration.
 - Campaign DeepDive Custom Report scheduled-email backend wiring added on 2026-05-29: scheduled create/update/delete writes through `/api/platforms/campaign_deepdive/reports`, stores time zone and recipients, and the scheduler has a `campaign_deepdive` PDF attachment path.
 - Monthly and Quarterly schedule option cleanup added on 2026-05-29: Monthly exposes day-of-month choices and Quarterly exposes start/end-of-quarter choices.
 - Scheduled Reports card action fix added on 2026-05-29: `Pause` now disables the backend schedule, writes backend status `paused`, keeps paused cards visible without a separate Status field, and exposes `Resume` on paused cards to re-enable the saved backend schedule. `Download latest report` regenerates from latest values.

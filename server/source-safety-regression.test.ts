@@ -11,6 +11,24 @@ function readStorageSource(): string {
 }
 
 describe("source safety regression guards", () => {
+  it("LinkedIn OAuth uses one request-host aware redirect URI helper", () => {
+    const source = readRoutesSource();
+    const helperStart = source.indexOf("const getLinkedInRedirectUri = (req: any): string => {");
+    const connectStart = source.indexOf('app.post("/api/auth/linkedin/connect"', helperStart);
+    const callbackStart = source.indexOf('app.get("/api/auth/linkedin/callback"', connectStart);
+    const metaStart = source.indexOf("// ============================================================================\n  // META/FACEBOOK OAUTH", callbackStart);
+    const helper = source.slice(helperStart, connectStart);
+    const linkedinOAuthBlock = source.slice(connectStart, metaStart);
+
+    expect(helperStart).toBeGreaterThan(-1);
+    expect(helper).toContain("process.env.LINKEDIN_REDIRECT_URI");
+    expect(helper).toContain("process.env.LINKEDIN_APP_BASE_URL");
+    expect(helper).toContain('const requestBase = `${req.protocol}://${req.get("host")}`;');
+    expect(helper).toContain("const baseUrl = (linkedInBase || requestBase || fallbackBase).replace(/\\/+$/, \"\");");
+    expect(linkedinOAuthBlock.match(/getLinkedInRedirectUri\(req\)/g)?.length).toBe(2);
+    expect(linkedinOAuthBlock).not.toContain("process.env.APP_BASE_URL ||\n        process.env.RENDER_EXTERNAL_URL");
+  });
+
   it("CSV revenue process refuses to update non-CSV revenue sources", () => {
     const source = readRoutesSource();
     const routeStart = source.indexOf('"/api/campaigns/:id/revenue/csv/process"');

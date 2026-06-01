@@ -17869,6 +17869,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  const getLinkedInRedirectUri = (req: any): string => {
+    const explicit = String(process.env.LINKEDIN_REDIRECT_URI || "").trim();
+    if (explicit) return explicit.replace(/\/+$/, "");
+
+    const linkedInBase = String(process.env.LINKEDIN_APP_BASE_URL || "").trim();
+    const requestBase = `${req.protocol}://${req.get("host")}`;
+    const fallbackBase = String(process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL || "").trim();
+    const baseUrl = (linkedInBase || requestBase || fallbackBase).replace(/\/+$/, "");
+    return `${baseUrl}/api/auth/linkedin/callback`;
+  };
+
   /**
    * Initiate LinkedIn OAuth flow with centralized credentials
    * Similar to Google Analytics - credentials stored in env vars, not user input
@@ -17898,13 +17909,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Determine base URL
-      const rawBaseUrl = process.env.APP_BASE_URL ||
-        process.env.RENDER_EXTERNAL_URL ||
-        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
-        `${req.protocol}://${req.get('host')}`;
-      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
-      const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
+      const redirectUri = getLinkedInRedirectUri(req);
 
       console.log(`[LinkedIn OAuth] Using redirect URI: ${redirectUri}`);
 
@@ -18026,13 +18031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error('LinkedIn OAuth credentials not configured');
       }
 
-      // Determine redirect URI (must match what was used in authorization)
-      const rawBaseUrl = process.env.APP_BASE_URL ||
-        process.env.RENDER_EXTERNAL_URL ||
-        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
-        `${req.protocol}://${req.get('host')}`;
-      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
-      const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
+      const redirectUri = getLinkedInRedirectUri(req);
 
       console.log(`[LinkedIn OAuth] Using redirect URI for token exchange: ${redirectUri}`);
 

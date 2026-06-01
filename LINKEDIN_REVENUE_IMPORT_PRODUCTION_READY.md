@@ -158,6 +158,14 @@ Status:
 - [x] Corrected locally: the shared revenue modal now scopes CRM/ecommerce source-card status and disconnect actions by `platformContext`, so GA4 HubSpot/Salesforce/Shopify revenue sources cannot appear as LinkedIn revenue sources and LinkedIn disconnect cannot delete a GA4-scoped revenue source.
 - [x] Completed locally: LinkedIn Overview now includes a top-level `Total Revenue` summary card populated from the existing LinkedIn-scoped `aggregated.totalRevenue` value, with `Not connected` shown when no LinkedIn revenue source is configured.
 
+Commit 4 sub-commit index:
+
+- Commit 4A: Normalize LinkedIn CSV to the GA4 revenue flow.
+- Commit 4B: Normalize LinkedIn Google Sheets to the GA4 revenue flow.
+- Commit 4C: Normalize LinkedIn CRM and ecommerce revenue wizards to the GA4 flow.
+- Commit 4D: Align LinkedIn revenue modal navigation with GA4.
+- Commit 4E: Document and guard the GA4-flow rule.
+
 ### Commit 4A: Normalize LinkedIn CSV To GA4 Revenue Flow
 
 Goal:

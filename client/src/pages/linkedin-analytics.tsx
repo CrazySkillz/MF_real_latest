@@ -5145,16 +5145,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                       <div className="flex items-center gap-2">
                                         <DollarSign className="w-5 h-5 text-green-600" />
                                         <h3 className="text-lg font-semibold text-foreground">Revenue Tracking Active</h3>
-                                        <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                          {linkedInRevenueSourceLabel || 'Connected'}
-                                        </Badge>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <Link href={`/campaigns/${campaignId}#overview`}>
-                                          <Button variant="ghost" size="sm" title="Manage in Connected Platforms">
-                                            <Pencil className="w-4 h-4" />
-                                          </Button>
-                                        </Link>
                                       </div>
                                     </div>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">

@@ -339,9 +339,9 @@ Validation:
 
 Status:
 
-- [x] Completed locally: LinkedIn disconnect remains campaign-scoped and deletes only the active LinkedIn connection row.
-- [x] Completed locally: campaign-scoped LinkedIn import sessions, aggregate metrics, daily metrics, coverage, and direct import-session reads now require an active LinkedIn connection before exposing old LinkedIn import data.
-- [x] Completed locally: historical import rows are retained after disconnect; they are hidden from LinkedIn visibility paths until LinkedIn is reconnected.
+- [x] Completed locally: LinkedIn disconnect remains campaign-scoped and requires cleanup to complete before deleting the active LinkedIn connection row.
+- [x] Completed locally: LinkedIn disconnect now clears campaign-scoped LinkedIn import sessions, import metrics, ad performance rows, daily metrics, LinkedIn-labelled spend sources/records, and LinkedIn-scoped revenue sources/records so reconnect cannot resurrect stale metrics or revenue from the previous connection.
+- [x] Completed locally: after reconnect, LinkedIn analytics remain empty until a fresh valid LinkedIn import and any LinkedIn-scoped revenue attribution setup runs.
 - [x] Completed locally: regression coverage added for stale import-session visibility after disconnect.
 - [x] User validation passed for Commit 9 using LinkedIn test data flow.
 - [x] Completed follow-up: after LinkedIn is disconnected, Performance Summary source-status rows do not show `LinkedIn Ads Not Connected`; disconnected source rows stay hidden until the source is reconnected.

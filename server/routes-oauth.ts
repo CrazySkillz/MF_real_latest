@@ -18324,6 +18324,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
       console.log(`[LinkedIn] Deleting connection for campaign ${campaignId}`);
 
+      const existingConnection = await storage.getLinkedInConnection(campaignId);
+      if (!existingConnection) {
+        return res.status(404).json({ success: false, error: "LinkedIn connection not found" });
+      }
+
+      await storage.deleteLinkedInCampaignAnalytics(campaignId);
       const deleted = await storage.deleteLinkedInConnection(campaignId);
       if (!deleted) {
         return res.status(404).json({ success: false, error: "LinkedIn connection not found" });
@@ -21464,6 +21470,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.campaignId;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
+      const existingConnection = await storage.getLinkedInConnection(campaignId);
+      if (!existingConnection) {
+        return res.status(404).json({
+          success: false,
+          error: "LinkedIn connection not found"
+        });
+      }
+
+      await storage.deleteLinkedInCampaignAnalytics(campaignId);
       const deleted = await storage.deleteLinkedInConnection(campaignId);
 
       if (!deleted) {

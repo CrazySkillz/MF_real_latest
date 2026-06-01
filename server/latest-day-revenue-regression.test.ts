@@ -125,6 +125,27 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain("setPreviewKey(reviewPreviewKey);");
   });
 
+  it("LinkedIn disconnect clears stale campaign-scoped analytics before removing the connection", () => {
+    const storageFile = readFileSync(
+      join(process.cwd(), "server", "storage.ts"),
+      "utf-8"
+    );
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    expect(storageFile).toContain("async deleteLinkedInCampaignAnalytics(campaignId: string): Promise<boolean> {");
+    expect(storageFile).toContain("tx.delete(linkedinImportMetrics).where(inArray(linkedinImportMetrics.sessionId, sessionIds))");
+    expect(storageFile).toContain("tx.delete(linkedinAdPerformance).where(inArray(linkedinAdPerformance.sessionId, sessionIds))");
+    expect(storageFile).toContain("tx.delete(linkedinDailyMetrics).where(eq(linkedinDailyMetrics.campaignId, campaignId))");
+    expect(storageFile).toContain('eq(revenueSources.platformContext, "linkedin" as any)');
+    expect(routesFile).toContain("await storage.deleteLinkedInCampaignAnalytics(campaignId);");
+    expect(routesFile.indexOf("await storage.deleteLinkedInCampaignAnalytics(campaignId);")).toBeLessThan(
+      routesFile.indexOf("const deleted = await storage.deleteLinkedInConnection(campaignId);")
+    );
+  });
+
   it("HubSpot edit review uses the saved pipeline proxy amount before live preview", () => {
     const modalFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"),

@@ -124,6 +124,7 @@ export interface IStorage {
   createLinkedInConnection(connection: InsertLinkedInConnection): Promise<LinkedInConnection>;
   updateLinkedInConnection(campaignId: string, connection: Partial<InsertLinkedInConnection>): Promise<LinkedInConnection | undefined>;
   deleteLinkedInConnection(campaignId: string): Promise<boolean>;
+  deleteLinkedInCampaignAnalytics(campaignId: string): Promise<boolean>;
 
   // Meta Connections
   getMetaConnection(campaignId: string): Promise<MetaConnection | undefined>;
@@ -2227,6 +2228,47 @@ export class DatabaseStorage implements IStorage {
       .delete(linkedinConnections)
       .where(eq(linkedinConnections.campaignId, campaignId));
     return (result.rowCount || 0) > 0;
+  }
+
+  async deleteLinkedInCampaignAnalytics(campaignId: string): Promise<boolean> {
+    await db.transaction(async (tx: any) => {
+      const sessions = await tx
+        .select({ id: linkedinImportSessions.id })
+        .from(linkedinImportSessions)
+        .where(eq(linkedinImportSessions.campaignId, campaignId));
+      const sessionIds = sessions.map((s: any) => String(s.id));
+      if (sessionIds.length > 0) {
+        await tx.delete(linkedinImportMetrics).where(inArray(linkedinImportMetrics.sessionId, sessionIds));
+        await tx.delete(linkedinAdPerformance).where(inArray(linkedinAdPerformance.sessionId, sessionIds));
+        await tx.delete(linkedinImportSessions).where(inArray(linkedinImportSessions.id, sessionIds));
+      }
+
+      await tx.delete(linkedinDailyMetrics).where(eq(linkedinDailyMetrics.campaignId, campaignId));
+
+      const linkedInSpendSources = await tx
+        .select({ id: spendSources.id })
+        .from(spendSources)
+        .where(and(
+          eq(spendSources.campaignId, campaignId),
+          or(eq(spendSources.sourceType, "linkedin_api"), sql`lower(${spendSources.displayName}) like '%linkedin%'`)
+        ));
+      for (const source of linkedInSpendSources) {
+        const sourceId = String((source as any).id);
+        await tx.delete(spendRecords).where(eq(spendRecords.spendSourceId, sourceId));
+        await tx.update(spendSources).set({ isActive: false } as any).where(sql`${spendSources.id}::text = ${sourceId}`);
+      }
+
+      const linkedInRevenueSources = await tx
+        .select({ id: revenueSources.id })
+        .from(revenueSources)
+        .where(and(eq(revenueSources.campaignId, campaignId), eq(revenueSources.platformContext, "linkedin" as any)));
+      for (const source of linkedInRevenueSources) {
+        const sourceId = String((source as any).id);
+        await tx.delete(revenueRecords).where(eq(revenueRecords.revenueSourceId, sourceId));
+        await tx.update(revenueSources).set({ isActive: false } as any).where(sql`${revenueSources.id}::text = ${sourceId}`);
+      }
+    });
+    return true;
   }
 
   // Meta Connection methods

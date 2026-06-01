@@ -13995,6 +13995,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch {
         cfg = {};
       }
+      const requestedPlatformContext = String((req.query as any)?.platformContext || "").trim().toLowerCase();
+      const requestedContexts = (["ga4", "linkedin", "meta"] as const).includes(requestedPlatformContext as any)
+        ? [requestedPlatformContext as "ga4" | "linkedin" | "meta"]
+        : ["ga4", "linkedin", "meta"] as const;
+      if (requestedPlatformContext && String(cfg?.platformContext || cfg?.platform || "").trim().toLowerCase() !== requestedPlatformContext) {
+        cfg = {};
+      }
 
       const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
       const scopedGa4CampaignValues = getGA4CampaignFilterValues((campaign as any)?.ga4CampaignFilter);
@@ -14007,7 +14014,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return [...selectedValues, ...revenueTotals.map((item: any) => item?.campaignValue)].some((value: any) => scopedCampaignSet.has(normalizeValue(value)));
       };
       const candidates: Array<{ source: any; cfg: any }> = [];
-      for (const context of ['ga4', 'linkedin', 'meta'] as const) {
+      for (const context of requestedContexts) {
         const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
         for (const source of (Array.isArray(sources) ? sources : [])) {
           if (!source?.mappingConfig || String(source?.sourceType || '').toLowerCase() !== 'salesforce') continue;
@@ -14394,6 +14401,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch {
         cfg = {};
       }
+      const requestedPlatformContext = String((req.query as any)?.platformContext || "").trim().toLowerCase();
+      const requestedContexts = (["ga4", "linkedin", "meta"] as const).includes(requestedPlatformContext as any)
+        ? [requestedPlatformContext as "ga4" | "linkedin" | "meta"]
+        : ["ga4", "linkedin", "meta"] as const;
+      if (requestedPlatformContext && String(cfg?.platformContext || cfg?.platform || "").trim().toLowerCase() !== requestedPlatformContext) {
+        cfg = {};
+      }
 
       const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
       const scopedGa4CampaignValues = getGA4CampaignFilterValues((campaign as any)?.ga4CampaignFilter);
@@ -14406,7 +14420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return [...selectedValues, ...revenueTotals.map((item: any) => item?.campaignValue)].some((value: any) => scopedCampaignSet.has(normalizeValue(value)));
       };
       const candidates: Array<{ source: any; cfg: any }> = [];
-      for (const context of ['ga4', 'linkedin', 'meta'] as const) {
+      for (const context of requestedContexts) {
         const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
         for (const source of (Array.isArray(sources) ? sources : [])) {
           if (!source?.mappingConfig || String(source?.sourceType || '').toLowerCase() !== 'hubspot') continue;

@@ -155,7 +155,7 @@ Status:
 
 - [x] Completed locally: LinkedIn revenue add/edit now invalidates and refetches LinkedIn Overview, LinkedIn KPI, LinkedIn Benchmark, LinkedIn campaign revenue breakdown, Campaign DeepDive aggregate, Executive Summary, Trend Analysis, campaign KPI, campaign Benchmark, and Custom Report aggregate query families where applicable.
 - [x] Completed locally: LinkedIn revenue removal now invalidates the same revenue-dependent consumers so revenue-derived metrics are disabled without requiring a hard reload.
-- [x] Completed locally: main LinkedIn Connected Platforms disconnect now deactivates LinkedIn-scoped revenue sources and deletes their revenue records so reconnect cannot immediately show stale revenue, ROI, or ROAS from the previous LinkedIn connection.
+- [x] Completed locally: main LinkedIn Connected Platforms disconnect now deactivates LinkedIn-scoped revenue sources, deletes their revenue records, clears LinkedIn-tagged Google Sheets/HubSpot/Salesforce/Shopify revenue attribution configs, and scopes Pipeline Proxy lookups to active LinkedIn revenue sources so reconnect cannot immediately show stale revenue, ROI, ROAS, or Pipeline Proxy from the previous LinkedIn connection.
 - [x] Corrected locally: the shared revenue modal now scopes CRM/ecommerce source-card status and disconnect actions by `platformContext`, so GA4 HubSpot/Salesforce/Shopify revenue sources cannot appear as LinkedIn revenue sources and LinkedIn disconnect cannot delete a GA4-scoped revenue source.
 - [x] Completed locally: LinkedIn Overview now includes a top-level `Total Revenue` summary card populated from the existing LinkedIn-scoped `aggregated.totalRevenue` value, with `Not connected` shown when no LinkedIn revenue source is configured.
 

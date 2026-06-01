@@ -2232,6 +2232,30 @@ export class DatabaseStorage implements IStorage {
 
   async deleteLinkedInCampaignAnalytics(campaignId: string): Promise<boolean> {
     await db.transaction(async (tx: any) => {
+      const isLinkedInTaggedConfig = (raw: any): boolean => {
+        if (!raw) return false;
+        try {
+          const cfg = typeof raw === "string" ? JSON.parse(raw) : raw;
+          return String(cfg?.platformContext || cfg?.platform || "").trim().toLowerCase() === "linkedin";
+        } catch {
+          return false;
+        }
+      };
+      const isLinkedInRevenueSheet = (conn: any): boolean => {
+        const purpose = String(conn?.purpose || "").trim().toLowerCase();
+        if (purpose === "linkedin_revenue") return true;
+        if (purpose !== "general") return false;
+        try {
+          const platforms = conn?.platforms ? (typeof conn.platforms === "string" ? JSON.parse(conn.platforms) : conn.platforms) : [];
+          const mappings = conn?.columnMappings ? (typeof conn.columnMappings === "string" ? JSON.parse(conn.columnMappings) : conn.columnMappings) : [];
+          const hasLinkedIn = Array.isArray(platforms) && platforms.some((p: any) => String(p).trim().toLowerCase() === "linkedin");
+          const hasRevenue = Array.isArray(mappings) && mappings.some((m: any) => ["revenue", "conversion_value"].includes(String(m?.targetFieldId || m?.platformField || "").trim().toLowerCase()));
+          return hasLinkedIn && hasRevenue;
+        } catch {
+          return false;
+        }
+      };
+
       const sessions = await tx
         .select({ id: linkedinImportSessions.id })
         .from(linkedinImportSessions)
@@ -2259,13 +2283,38 @@ export class DatabaseStorage implements IStorage {
       }
 
       const linkedInRevenueSources = await tx
-        .select({ id: revenueSources.id })
+        .select({ id: revenueSources.id, platformContext: revenueSources.platformContext, mappingConfig: revenueSources.mappingConfig })
         .from(revenueSources)
-        .where(and(eq(revenueSources.campaignId, campaignId), eq(revenueSources.platformContext, "linkedin" as any)));
-      for (const source of linkedInRevenueSources) {
+        .where(eq(revenueSources.campaignId, campaignId));
+      for (const source of linkedInRevenueSources.filter((s: any) =>
+        String(s?.platformContext || "").trim().toLowerCase() === "linkedin" || isLinkedInTaggedConfig(s?.mappingConfig)
+      )) {
         const sourceId = String((source as any).id);
         await tx.delete(revenueRecords).where(eq(revenueRecords.revenueSourceId, sourceId));
         await tx.update(revenueSources).set({ isActive: false } as any).where(sql`${revenueSources.id}::text = ${sourceId}`);
+      }
+
+      const sheets = await tx
+        .select({ id: googleSheetsConnections.id, purpose: googleSheetsConnections.purpose, platforms: googleSheetsConnections.platforms, columnMappings: googleSheetsConnections.columnMappings })
+        .from(googleSheetsConnections)
+        .where(eq(googleSheetsConnections.campaignId, campaignId));
+      for (const sheet of sheets.filter(isLinkedInRevenueSheet)) {
+        await tx.update(googleSheetsConnections)
+          .set({ isActive: false, columnMappings: null } as any)
+          .where(sql`${googleSheetsConnections.id}::text = ${String((sheet as any).id)}`);
+      }
+
+      const hubspot = await tx.select({ id: hubspotConnections.id, mappingConfig: hubspotConnections.mappingConfig }).from(hubspotConnections).where(eq(hubspotConnections.campaignId, campaignId));
+      for (const conn of hubspot.filter((c: any) => isLinkedInTaggedConfig(c?.mappingConfig))) {
+        await tx.update(hubspotConnections).set({ mappingConfig: null } as any).where(sql`${hubspotConnections.id}::text = ${String((conn as any).id)}`);
+      }
+      const salesforce = await tx.select({ id: salesforceConnections.id, mappingConfig: salesforceConnections.mappingConfig }).from(salesforceConnections).where(eq(salesforceConnections.campaignId, campaignId));
+      for (const conn of salesforce.filter((c: any) => isLinkedInTaggedConfig(c?.mappingConfig))) {
+        await tx.update(salesforceConnections).set({ mappingConfig: null } as any).where(sql`${salesforceConnections.id}::text = ${String((conn as any).id)}`);
+      }
+      const shopify = await tx.select({ id: shopifyConnections.id, mappingConfig: shopifyConnections.mappingConfig }).from(shopifyConnections).where(eq(shopifyConnections.campaignId, campaignId));
+      for (const conn of shopify.filter((c: any) => isLinkedInTaggedConfig(c?.mappingConfig))) {
+        await tx.update(shopifyConnections).set({ mappingConfig: null } as any).where(sql`${shopifyConnections.id}::text = ${String((conn as any).id)}`);
       }
     });
     return true;

@@ -340,7 +340,7 @@ Validation:
 Status:
 
 - [x] Completed locally: LinkedIn disconnect remains campaign-scoped and requires cleanup to complete before deleting the active LinkedIn connection row.
-- [x] Completed locally: LinkedIn disconnect now clears campaign-scoped LinkedIn import sessions, import metrics, ad performance rows, daily metrics, LinkedIn-labelled spend sources/records, and LinkedIn-scoped revenue sources/records so reconnect cannot resurrect stale metrics or revenue from the previous connection.
+- [x] Completed locally: LinkedIn disconnect now clears campaign-scoped LinkedIn import sessions, import metrics, ad performance rows, daily metrics, LinkedIn-labelled spend sources/records, LinkedIn-scoped revenue sources/records, and LinkedIn-tagged Google Sheets, HubSpot, Salesforce, and Shopify revenue/proxy child configs so reconnect cannot resurrect stale metrics, revenue, or Pipeline Proxy values from the previous connection.
 - [x] Completed locally: after reconnect, LinkedIn analytics remain empty until a fresh valid LinkedIn import and any LinkedIn-scoped revenue attribution setup runs.
 - [x] Completed locally: regression coverage added for stale import-session visibility after disconnect.
 - [x] User validation passed for Commit 9 using LinkedIn test data flow.

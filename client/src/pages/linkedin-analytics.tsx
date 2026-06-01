@@ -622,7 +622,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     refetchOnWindowFocus: true,
     retry: false,
     queryFn: async () => {
-      const resp = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy`, {
+      const resp = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=linkedin`, {
         headers: { "Cache-Control": "no-cache" },
       });
       if (!resp.ok) return null;
@@ -639,7 +639,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     refetchOnWindowFocus: true,
     retry: false,
     queryFn: async () => {
-      const resp = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy`, {
+      const resp = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=linkedin`, {
         headers: { "Cache-Control": "no-cache" },
       });
       if (!resp.ok) return null;
@@ -738,7 +738,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
             ? hubspotPipelineProxyData
             : (hubspotPipelineProxyData?.success ? hubspotPipelineProxyData : salesforcePipelineProxyData);
   const pipelineProxyData =
-    pipelineProxyApiData?.success ? pipelineProxyApiData : pipelineProxyFallbackData;
+    pipelineProxySource && pipelineProxyApiData?.success ? pipelineProxyApiData : pipelineProxyFallbackData;
   const pipelineProxyProviderLabel =
     pipelineProxyData?.providerLabel ||
     (pipelineProxySourceType === 'salesforce'

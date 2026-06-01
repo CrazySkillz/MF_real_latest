@@ -139,11 +139,32 @@ describe("Latest Day Revenue regression guard", () => {
     expect(storageFile).toContain("tx.delete(linkedinImportMetrics).where(inArray(linkedinImportMetrics.sessionId, sessionIds))");
     expect(storageFile).toContain("tx.delete(linkedinAdPerformance).where(inArray(linkedinAdPerformance.sessionId, sessionIds))");
     expect(storageFile).toContain("tx.delete(linkedinDailyMetrics).where(eq(linkedinDailyMetrics.campaignId, campaignId))");
-    expect(storageFile).toContain('eq(revenueSources.platformContext, "linkedin" as any)');
+    expect(storageFile).toContain('String(s?.platformContext || "").trim().toLowerCase() === "linkedin" || isLinkedInTaggedConfig(s?.mappingConfig)');
+    expect(storageFile).toContain('purpose === "linkedin_revenue"');
+    expect(storageFile).toContain("tx.update(hubspotConnections).set({ mappingConfig: null } as any)");
+    expect(storageFile).toContain("tx.update(salesforceConnections).set({ mappingConfig: null } as any)");
+    expect(storageFile).toContain("tx.update(shopifyConnections).set({ mappingConfig: null } as any)");
     expect(routesFile).toContain("await storage.deleteLinkedInCampaignAnalytics(campaignId);");
     expect(routesFile.indexOf("await storage.deleteLinkedInCampaignAnalytics(campaignId);")).toBeLessThan(
       routesFile.indexOf("const deleted = await storage.deleteLinkedInConnection(campaignId);")
     );
+  });
+
+  it("LinkedIn Pipeline Proxy is scoped to LinkedIn revenue sources only", () => {
+    const clientFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "linkedin-analytics.tsx"),
+      "utf-8"
+    );
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    expect(clientFile).toContain("/pipeline-proxy?platformContext=linkedin");
+    expect(clientFile).toContain("pipelineProxySource && pipelineProxyApiData?.success ? pipelineProxyApiData : pipelineProxyFallbackData");
+    expect(routesFile).toContain('const requestedPlatformContext = String((req.query as any)?.platformContext || "").trim().toLowerCase();');
+    expect(routesFile).toContain("for (const context of requestedContexts)");
+    expect(routesFile).toContain('String(cfg?.platformContext || cfg?.platform || "").trim().toLowerCase() !== requestedPlatformContext');
   });
 
   it("HubSpot edit review uses the saved pipeline proxy amount before live preview", () => {

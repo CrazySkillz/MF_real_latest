@@ -22,7 +22,7 @@ describe("source safety regression guards", () => {
 
     expect(helperStart).toBeGreaterThan(-1);
     expect(helper).toContain("const explicit = String(process.env.SHOPIFY_REDIRECT_URI || \"\").trim();");
-    expect(helper).toContain('if (explicit) return explicit.replace(/\\/+$/, "");');
+    expect(helper).toContain("if (explicit) return explicit;");
     expect(helper).toContain("const appBase = toOrigin(process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL);");
     expect(helper).toContain('if (appBase) return `${appBase.replace(/\\/+$/, "")}/api/auth/shopify/callback`;');
     expect(helper).toContain("const shopifyBase = toOrigin(process.env.SHOPIFY_APP_BASE_URL);");

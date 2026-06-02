@@ -4386,7 +4386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const getShopifyRedirectUri = (): string | null => {
     const explicit = String(process.env.SHOPIFY_REDIRECT_URI || "").trim();
-    if (explicit) return explicit.replace(/\/+$/, "");
+    if (explicit) return explicit;
 
     const toOrigin = (value?: string): string => {
       try {

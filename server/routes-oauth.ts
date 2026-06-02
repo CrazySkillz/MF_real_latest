@@ -24889,8 +24889,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversionValueSourceRaw = String((rev as any)?.conversionValueSource || "none").toLowerCase();
       const conversionValueSource: "explicit" | "derived" | "none" =
         conversionValueSourceRaw === "derived" ? "derived" : (conversionValue > 0 ? "explicit" : "none");
+      const allocatedAdRevenue = (() => {
+        if (!(totalRevenueAll > 0 && totalAdConversions > 0)) return [] as number[];
+        const totalCents = Math.round(totalRevenueAll * 100);
+        const rows = (ads || []).map((ad: any, index: number) => {
+          const exactCents = totalCents * (parseNum(ad?.conversions) / totalAdConversions);
+          return { index, cents: Math.floor(exactCents), remainder: exactCents - Math.floor(exactCents) };
+        });
+        let remaining = totalCents - rows.reduce((sum, row) => sum + row.cents, 0);
+        rows.slice().sort((a, b) => b.remainder - a.remainder || a.index - b.index).forEach((row) => {
+          if (remaining <= 0) return;
+          rows[row.index].cents += 1;
+          remaining -= 1;
+        });
+        return rows.map((row) => row.cents / 100);
+      })();
 
-      const computeAdRevenue = (conversions: number): number => {
+      const computeAdRevenue = (conversions: number, index: number): number => {
+        if (allocatedAdRevenue.length > 0) return allocatedAdRevenue[index] || 0;
         if (totalRevenueAll > 0 && totalAdConversions > 0) return totalRevenueAll * (conversions / totalAdConversions);
         if (conversionValue > 0) return conversions * conversionValue;
         // If we have revenue-to-date but no conversion value, allocate by conversions share.
@@ -24898,10 +24914,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return 0;
       };
 
-      const enriched = (ads || []).map((ad: any) => {
+      const enriched = (ads || []).map((ad: any, index: number) => {
         const conversions = parseNum(ad?.conversions);
         const spend = parseNum(ad?.spend);
-        const revenue = parseFloat(Number(computeAdRevenue(conversions)).toFixed(2));
+        const revenue = parseFloat(Number(computeAdRevenue(conversions, index)).toFixed(2));
         const profit = parseFloat(Number(revenue - spend).toFixed(2));
         const roas = spend > 0 ? parseFloat((revenue / spend).toFixed(2)) : 0;
         const roi = spend > 0 ? parseFloat((((revenue - spend) / spend) * 100).toFixed(2)) : 0;

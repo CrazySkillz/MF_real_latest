@@ -98,4 +98,13 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain("if (totalRevenueAll > 0 && totalAdConversions > 0) return totalRevenueAll * (conversions / totalAdConversions);\n        if (conversionValue > 0) return conversions * conversionValue;");
     expect(kpiRefresh).toContain("if (totalRevenueAll > 0 && totalConversionsOverall > 0) return totalRevenueAll * (c / totalConversionsOverall);\n      if (conversionValueUsed > 0) return c * conversionValueUsed;");
   });
+
+  it("allocates LinkedIn ad revenue in cents so ad totals match campaign total revenue", () => {
+    const routes = read(ROUTES_FILE);
+
+    expect(routes).toContain("const allocatedAdRevenue = (() => {");
+    expect(routes).toContain("const totalCents = Math.round(totalRevenueAll * 100);");
+    expect(routes).toContain("let remaining = totalCents - rows.reduce((sum, row) => sum + row.cents, 0);");
+    expect(routes).toContain("if (allocatedAdRevenue.length > 0) return allocatedAdRevenue[index] || 0;");
+  });
 });

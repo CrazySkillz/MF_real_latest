@@ -17,16 +17,16 @@ LinkedIn revenue must be optional, explicit, and source-scoped.
 - GA4 revenue must not unlock LinkedIn revenue, ROI, or ROAS unless a validated LinkedIn attribution mapping exists.
 - Revenue, ROI, and ROAS must remain unavailable when no LinkedIn-scoped revenue source exists.
 
-## Current Root Cause
+## Original Root Cause Fixed Through This Plan
 
-The backend already has the right core pattern:
+The backend already had the right core pattern:
 
 - `server/utils/linkedin-revenue.ts` is the canonical LinkedIn revenue rule helper.
 - `AddRevenueWizardModal` supports `platformContext="linkedin"`.
 - LinkedIn-scoped revenue sources are saved separately from GA4 revenue.
 - LinkedIn-scoped revenue can be saved through the shared revenue source infrastructure.
 
-The main gaps are:
+The fixed gaps were:
 
 - The Overview tab shows `Revenue Tracking Not Configured`.
 - The current call to action routes users back to Campaign Overview instead of opening the revenue import flow directly.
@@ -59,13 +59,23 @@ Production-ready behavior:
 - Removing the LinkedIn revenue source disables LinkedIn revenue-derived metrics immediately.
 - GA4 revenue does not make LinkedIn revenue, ROI, or ROAS available.
 
-## Current Implementation Status After Commit 6
+## Current Implementation Status After Commit 7
 
 - Commit 5 validation passed and the source-isolation regression evidence is recorded below.
 - Commit 6 validation passed; it was documentation/evidence only and no app behavior changed.
+- Commit 7 validation passed; provider navigation parity now has runtime/user validation evidence.
 - LinkedIn revenue is documented as attributed revenue from LinkedIn-scoped CRM, ecommerce, CSV, Google Sheets, or webhook inputs, not native LinkedIn revenue.
 - GA4 revenue is documented as unable to unlock LinkedIn revenue, ROI, or ROAS without explicit LinkedIn attribution.
-- Only remaining open item before closing the tracker: the full manual Back/Cancel parity pass across CSV, Google Sheets, CRM, and ecommerce flows remains tracked under Commit 4D and Commit 7.
+- No open LinkedIn revenue-import implementation tasks remain in this tracker. Future work should be opened only if new provider-specific validation finds a real defect.
+
+## Pre-Google Ads Handoff
+
+LinkedIn revenue import is validated as production-ready for the current supported implementation scope before Google Ads refinement begins.
+
+- LinkedIn revenue remains optional, explicit, and LinkedIn-scoped.
+- GA4 revenue remains isolated from LinkedIn revenue, ROI, and ROAS.
+- Source controls, source lists, add/edit/delete, provider navigation, and Campaign DeepDive consumers are validated.
+- Google Ads revenue or attribution work should not reuse LinkedIn-specific assumptions; it should follow the same source-scoped pattern in a Google Ads-specific tracker.
 
 ## Commit Plan
 
@@ -142,7 +152,7 @@ Status:
 - [x] Completed locally: CSV and Google Sheets mappings now persist `mode` as `conversion_value` when Conversion Value is selected and `revenue_to_date` when Revenue is selected, matching the backend source-of-truth modes.
 - [x] User validation passed for the corrected no-manual-entry flow.
 - [x] Reworked locally through Commit 4D: modal navigation, provider reconnect return handling, HubSpot Crosswalk selection, Close Date defaults, and Pipeline Proxy separation have been corrected.
-- [ ] Remaining follow-up: Commit 4E regression/documentation guard work must stay current as the remaining provider parity checks are completed.
+- [x] Completed: Commit 4E regression/documentation guard work stayed current through the Commit 7 provider parity validation.
 
 ### Commit 4: Source-Scoped Refresh And UI Propagation
 
@@ -319,7 +329,7 @@ Status:
 - [x] Completed locally: LinkedIn Analytics `All Campaigns` now normalizes the per-campaign revenue breakdown response and uses exact mapped revenue from saved `campaignValueRevenueTotals` when source values are mapped to LinkedIn campaign rows.
 - [x] Completed locally: when exact row mapping is unavailable, `All Campaigns` keeps the safe conversion-share fallback from LinkedIn Overview `Total Revenue` using imported LinkedIn campaign-row conversions.
 - [x] Completed locally: `All Campaigns` now labels the right-side campaign-row dollar value as `Spend` so users know it is imported LinkedIn spend/test-data spend, not revenue.
-- [ ] Pending validation gate: full manual parity pass for Back/Cancel behavior across CSV, Google Sheets, CRM, and ecommerce flows. No active code defect is identified for this item; code should change only if the parity pass finds a real mismatch.
+- [x] User validation passed: full manual parity pass for Back/Cancel behavior across CSV, Google Sheets, CRM, and ecommerce flows.
 
 Shopify OAuth production rule:
 
@@ -382,7 +392,7 @@ Status:
 - [x] Completed locally: regression coverage now guards the LinkedIn HubSpot closed-won default and prevents the old non-lost default from being reintroduced into confirmed Total Revenue.
 - [x] Completed locally: regression coverage now guards that LinkedIn Overview can render Pipeline Proxy from saved source config when the live proxy endpoint has not returned.
 - [x] Completed locally: regression coverage now guards that LinkedIn Salesforce Crosswalk uses selected Opportunity values instead of the stale LinkedIn campaign dropdown mapping flow.
-- [ ] Pending until Commit 7: keep this tracker current as remaining provider manual parity checks are completed.
+- [x] Completed through Commit 7: this tracker was updated after provider manual parity checks passed.
 
 ### Commit 4F: LinkedIn Total Revenue Card Source Controls
 
@@ -472,7 +482,7 @@ Status:
 - [x] Completed locally: documentation states LinkedIn revenue is attributed revenue, not native LinkedIn revenue.
 - [x] Completed locally: documentation states GA4 revenue cannot unlock LinkedIn ROI/ROAS without explicit LinkedIn attribution.
 - [x] Completed locally: broader LinkedIn documentation references this tracker for revenue-import evidence.
-- [x] Completed locally: remaining manual provider-navigation validation is still explicitly tracked under Commit 4D instead of being overclaimed as complete.
+- [x] Completed locally: provider-navigation validation was explicitly tracked under Commit 4D until Commit 7 user validation passed.
 - [x] User validation passed for Commit 6.
 
 ### Commit 7: Provider Navigation Parity Validation Gate
@@ -502,7 +512,7 @@ Status:
 - [x] Completed locally: Commit 7 is scoped as a validation gate, not a speculative code change.
 - [x] Completed locally: removed unused `openRevenueCsvWizard()` from LinkedIn Analytics so no stale local helper can force the add flow to start at CSV instead of the shared source chooser.
 - [x] Completed locally: LinkedIn now leaves `initialStep` unset when the intended start page is the default source chooser, so Upload CSV and Google Sheets show the shared Back button and return to the source chooser through `handleBack()`.
-- [ ] Pending user/runtime validation: provider navigation parity pass across CSV, Google Sheets, HubSpot, Salesforce, and Shopify.
+- [x] User validation passed: provider navigation parity pass across CSV, Google Sheets, HubSpot, Salesforce, and Shopify.
 
 ## Relevant Files
 

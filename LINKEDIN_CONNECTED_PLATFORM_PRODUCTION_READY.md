@@ -19,7 +19,16 @@ LinkedIn must be treated as a campaign-scoped main paid-media connected source. 
 
 LinkedIn has been refined through the planned source-contract and lifecycle-hardening commits. Commit 10 validation passed on 2026-05-31, so the LinkedIn implementation is documented as production-ready for the validated mock-live/test-data flows.
 
-LinkedIn revenue-import source controls and isolation evidence are tracked separately in `LINKEDIN_REVENUE_IMPORT_PRODUCTION_READY.md`. As of revenue Commit 6, validation passed, regression coverage proves GA4 revenue cannot unlock LinkedIn revenue metrics, and the remaining provider-navigation parity validation is explicitly tracked there under Commit 4D and Commit 7.
+LinkedIn revenue-import source controls and isolation evidence are tracked separately in `LINKEDIN_REVENUE_IMPORT_PRODUCTION_READY.md`. As of revenue Commit 7, validation passed, regression coverage proves GA4 revenue cannot unlock LinkedIn revenue metrics, and provider-navigation parity has user/runtime validation evidence.
+
+## Pre-Google Ads Handoff
+
+LinkedIn is validated as production-ready for the current supported implementation scope before Google Ads refinement begins.
+
+- No open LinkedIn Connected Platform implementation tasks remain in this tracker.
+- No open LinkedIn revenue-import implementation tasks remain in `LINKEDIN_REVENUE_IMPORT_PRODUCTION_READY.md`.
+- Google Ads work should follow the same connected-source aggregate contract proven here, but should be tracked in a separate Google Ads-specific production-ready plan.
+- Do not reopen LinkedIn work during Google Ads refinement unless a new LinkedIn-specific defect is reproduced.
 
 The original risk was not one isolated UI bug. It was a source-contract and lifecycle-hardening gap:
 
@@ -429,6 +438,7 @@ LinkedIn is marked production-ready for the validated mock-live/test-data flows 
 - Custom Report browser and scheduled PDFs include LinkedIn-backed latest values.
 - Scheduler refresh behavior is safe.
 - Disconnect/reconnect behavior is safe.
+- LinkedIn revenue-import source controls, provider navigation, and GA4-to-LinkedIn revenue isolation are validated in `LINKEDIN_REVENUE_IMPORT_PRODUCTION_READY.md`.
 - Regression tests cover the critical lifecycle paths.
 - Deployed mock-live validation evidence is recorded.
 
@@ -445,3 +455,4 @@ LinkedIn is marked production-ready for the validated mock-live/test-data flows 
 - `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`
 - `CAMPAIGN_DEEPDIVE_EXECUTIVE_SUMMARY_PRODUCTION_READY.md`
 - `CAMPAIGN_DEEPDIVE_CUSTOM_REPORT_PRODUCTION_READY.md`
+- `LINKEDIN_REVENUE_IMPORT_PRODUCTION_READY.md`

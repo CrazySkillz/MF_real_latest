@@ -300,6 +300,7 @@ Status:
 - [x] Completed locally: Pipeline Proxy card now explains the business meaning of the value so users know it is an open CRM pipeline signal, not confirmed revenue.
 - [x] Completed locally: Pipeline Proxy card now remains visible in the top metric-card grid next to `Leads`, with `Not configured` copy until proxy setup is selected and saved.
 - [x] Completed locally: LinkedIn Overview metric cards now use a 4-column desktop grid and Pipeline Proxy uses the same card size as Leads.
+- [x] Completed locally: Shopify revenue Crosswalk now uses clickable Shopify value rows as the source of truth for selected values, matching the HubSpot/Salesforce pattern and feeding Revenue/Review from `selectedValues` instead of dropdown-only LinkedIn campaign mappings.
 - [ ] Pending: full manual parity pass for Back/Cancel behavior across CSV, Google Sheets, CRM, and ecommerce flows.
 
 Shopify OAuth production rule:

@@ -65,4 +65,13 @@ describe("Shopify revenue regression guard", () => {
     expect(wizard).toContain("Shopify connected, but this OAuth app is not approved for protected customer data needed to read orders.");
     expect(wizard).not.toContain('if (connectMethod !== "token") setConnectMethod("token");');
   });
+
+  it("uses clickable Shopify value rows as the crosswalk source of truth", () => {
+    const wizard = read(SHOPIFY_WIZARD_FILE);
+
+    expect(wizard).toContain('role="button"');
+    expect(wizard).toContain('(step === "crosswalk" && selectedValues.length === 0)');
+    expect(wizard).not.toContain("Map each Shopify value to a LinkedIn campaign. Unmapped values will be skipped.");
+    expect(wizard).not.toContain('value={existing?.linkedinCampaignUrn || "__none__"}');
+  });
 });

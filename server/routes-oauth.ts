@@ -4389,9 +4389,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (explicit) return explicit.replace(/\/+$/, "");
 
     const shopifyBase = String(process.env.SHOPIFY_APP_BASE_URL || "").trim();
-    const requestBase = `${req.protocol}://${req.get("host")}`;
     const fallbackBase = String(process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL || "").trim();
-    const baseUrl = (shopifyBase || requestBase || fallbackBase).replace(/\/+$/, "");
+    const requestBase = `${req.protocol}://${req.get("host")}`;
+    const baseUrl = (shopifyBase || fallbackBase || requestBase).replace(/\/+$/, "");
     return `${baseUrl}/api/auth/shopify/callback`;
   };
   // Build a Sheets A1 range prefix for a tab name.

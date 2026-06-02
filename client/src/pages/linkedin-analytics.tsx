@@ -731,7 +731,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     }
   };
   const activeLinkedInRevenueSource = activeLinkedInRevenueSources[0] || null;
-  const linkedInRevenueSourceLabel = getLinkedInRevenueSourceLabel(activeLinkedInRevenueSource);
 
   const activeLinkedInRevenueSourceType = String(activeLinkedInRevenueSource?.sourceType || '').trim().toLowerCase();
   const pipelineProxySource = activeLinkedInRevenueSources.find((source: any) => {
@@ -5125,9 +5124,9 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     <p className="text-2xl font-bold text-foreground">
                                       {hasRevenueTracking ? formatCurrency(totalRevenue) : "Not connected"}
                                     </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      {hasRevenueTracking ? (linkedInRevenueSourceLabel || "Connected revenue source") : "Connect attributed revenue"}
-                                    </p>
+                                    {!hasRevenueTracking && (
+                                      <p className="text-xs text-muted-foreground mt-1">Connect attributed revenue</p>
+                                    )}
                                     {activeLinkedInRevenueSources.length > 0 && (
                                       <button
                                         type="button"
@@ -8067,7 +8066,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                       <p className="truncate font-medium text-foreground" title={getLinkedInRevenueSourceLabel(source)}>
                         {getLinkedInRevenueSourceLabel(source)}
                       </p>
-                      <p className="text-xs text-muted-foreground/70">LinkedIn attributed revenue</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium tabular-nums text-foreground">

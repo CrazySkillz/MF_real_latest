@@ -49,4 +49,12 @@ describe("Shopify revenue regression guard", () => {
     expect(wizard).toContain('setConnectMethod("oauth");');
     expect(wizard).not.toContain("Shopify doesn’t store LinkedIn campaign ids directly by default");
   });
+
+  it("switches to Admin API token when Shopify OAuth redirect is not configured", () => {
+    const wizard = read(SHOPIFY_WIZARD_FILE);
+
+    expect(wizard).toContain('json?.code === "SHOPIFY_OAUTH_REDIRECT_NOT_CONFIGURED"');
+    expect(wizard).toContain('setConnectMethod("token");');
+    expect(wizard).toContain("Use an Admin API token to connect Shopify revenue");
+  });
 });

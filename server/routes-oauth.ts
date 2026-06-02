@@ -7578,6 +7578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const redirectUri = getShopifyRedirectUri();
       if (!redirectUri) {
         return res.status(500).json({
+          code: "SHOPIFY_OAUTH_REDIRECT_NOT_CONFIGURED",
           message:
             "Shopify OAuth requires SHOPIFY_REDIRECT_URI or SHOPIFY_APP_BASE_URL to exactly match the callback URL whitelisted in the Shopify app.",
           requiredCallbackPath: "/api/auth/shopify/callback",

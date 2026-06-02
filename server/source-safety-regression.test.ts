@@ -30,6 +30,7 @@ describe("source safety regression guards", () => {
     expect(shopifyConnectRoute).toContain("const { campaignId, shopDomain } = req.body || {};");
     expect(shopifyConnectRoute.match(/getShopifyRedirectUri\(\)/g)?.length).toBe(1);
     expect(shopifyConnectRoute).toContain("Shopify OAuth requires SHOPIFY_REDIRECT_URI or SHOPIFY_APP_BASE_URL");
+    expect(shopifyConnectRoute).toContain('code: "SHOPIFY_OAUTH_REDIRECT_NOT_CONFIGURED"');
     expect(shopifyConnectRoute).toContain('requiredCallbackPath: "/api/auth/shopify/callback"');
     expect(shopifyConnectRoute).toContain('console.log(`[Shopify OAuth] Using redirect URI: ${redirectUri}`);');
     expect(shopifyConnectRoute).toContain('res.json({ authUrl, redirectUri, message: "Shopify OAuth flow initiated" });');

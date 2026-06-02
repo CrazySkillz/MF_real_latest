@@ -182,7 +182,18 @@ export function ShopifyRevenueWizard(props: {
         body: JSON.stringify({ campaignId, shopDomain: domain }),
       });
       const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(json?.message || "Failed to start Shopify OAuth");
+      if (!resp.ok) {
+        if (json?.code === "SHOPIFY_OAUTH_REDIRECT_NOT_CONFIGURED") {
+          setConnectMethod("token");
+          toast({
+            title: "Shopify OAuth is not configured",
+            description: "Use an Admin API token to connect Shopify revenue, or configure the Shopify app callback before using OAuth.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw new Error(json?.message || "Failed to start Shopify OAuth");
+      }
       const authUrl = json?.authUrl;
       if (!authUrl) throw new Error("No auth URL returned");
 

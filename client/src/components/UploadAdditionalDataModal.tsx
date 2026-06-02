@@ -169,7 +169,12 @@ export function UploadAdditionalDataModal({
         body: JSON.stringify({ campaignId, shopDomain: shopifyShopDomain }),
       });
       const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(json?.message || json?.error || `Failed to start Shopify OAuth (HTTP ${resp.status})`);
+      if (!resp.ok) {
+        if (json?.code === "SHOPIFY_OAUTH_REDIRECT_NOT_CONFIGURED") {
+          throw new Error("Shopify OAuth is not configured. Use the Shopify revenue wizard's Admin API token option, or configure the Shopify app callback before using OAuth.");
+        }
+        throw new Error(json?.message || json?.error || `Failed to start Shopify OAuth (HTTP ${resp.status})`);
+      }
       const authUrl = json?.authUrl;
       if (!authUrl) throw new Error("No auth URL returned");
 

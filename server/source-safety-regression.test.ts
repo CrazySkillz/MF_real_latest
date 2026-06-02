@@ -11,26 +11,26 @@ function readStorageSource(): string {
 }
 
 describe("source safety regression guards", () => {
-  it("Shopify OAuth uses request origin before Shopify/app fallback", () => {
+  it("Shopify OAuth requires an explicitly whitelisted Shopify redirect URI", () => {
     const source = readRoutesSource();
-    const helperStart = source.indexOf("const getShopifyRedirectUri = (req: any): string => {");
+    const helperStart = source.indexOf("const getShopifyRedirectUri = (): string | null => {");
+    const helperEnd = source.indexOf("  // Build a Sheets A1 range prefix", helperStart);
     const routeStart = source.indexOf('app.post("/api/auth/shopify/connect"', helperStart);
     const callbackStart = source.indexOf("// Salesforce OAuth callback", routeStart);
-    const helper = source.slice(helperStart, routeStart);
+    const helper = source.slice(helperStart, helperEnd);
     const shopifyConnectRoute = source.slice(routeStart, callbackStart);
 
     expect(helperStart).toBeGreaterThan(-1);
     expect(helper).toContain("process.env.SHOPIFY_REDIRECT_URI");
-    expect(helper).toContain("const browserBase = toOrigin(req.get(\"origin\"));");
-    expect(helper).toContain("const forwardedHost = firstHeader(req.get(\"x-forwarded-host\"));");
-    expect(helper).toContain("const host = forwardedHost || String(req.get(\"host\") || \"\").trim();");
-    expect(helper).toContain("const forwardedProto = firstHeader(req.get(\"x-forwarded-proto\")) || req.protocol;");
-    expect(helper).toContain('const requestBase = host ? toOrigin(`${forwardedProto}://${host}`) : "";');
     expect(helper).toContain("const shopifyBase = toOrigin(process.env.SHOPIFY_APP_BASE_URL);");
-    expect(helper).toContain("const fallbackBase = toOrigin(process.env.APP_BASE_URL) || toOrigin(process.env.RENDER_EXTERNAL_URL);");
-    expect(helper).toContain("const baseUrl = (browserBase || requestBase || shopifyBase || fallbackBase).replace(/\\/+$/, \"\");");
+    expect(helper).not.toContain("req.get(\"origin\")");
+    expect(helper).not.toContain("x-forwarded-host");
+    expect(helper).not.toContain("process.env.APP_BASE_URL");
+    expect(helper).not.toContain("process.env.RENDER_EXTERNAL_URL");
     expect(shopifyConnectRoute).toContain("const { campaignId, shopDomain } = req.body || {};");
-    expect(shopifyConnectRoute.match(/getShopifyRedirectUri\(req\)/g)?.length).toBe(1);
+    expect(shopifyConnectRoute.match(/getShopifyRedirectUri\(\)/g)?.length).toBe(1);
+    expect(shopifyConnectRoute).toContain("Shopify OAuth requires SHOPIFY_REDIRECT_URI or SHOPIFY_APP_BASE_URL");
+    expect(shopifyConnectRoute).toContain('requiredCallbackPath: "/api/auth/shopify/callback"');
     expect(shopifyConnectRoute).toContain('console.log(`[Shopify OAuth] Using redirect URI: ${redirectUri}`);');
     expect(shopifyConnectRoute).toContain('res.json({ authUrl, redirectUri, message: "Shopify OAuth flow initiated" });');
     expect(shopifyConnectRoute).not.toContain("process.env.APP_BASE_URL ||\n        process.env.RENDER_EXTERNAL_URL");

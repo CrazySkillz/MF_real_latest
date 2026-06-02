@@ -4384,7 +4384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
-  const getShopifyRedirectUri = (req: any): string => {
+  const getShopifyRedirectUri = (): string | null => {
     const explicit = String(process.env.SHOPIFY_REDIRECT_URI || "").trim();
     if (explicit) return explicit.replace(/\/+$/, "");
 
@@ -4396,16 +4396,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return "";
       }
     };
-    const firstHeader = (value?: string): string => String(value || "").split(",")[0]?.trim();
-    const browserBase = toOrigin(req.get("origin"));
-    const forwardedHost = firstHeader(req.get("x-forwarded-host"));
-    const host = forwardedHost || String(req.get("host") || "").trim();
-    const forwardedProto = firstHeader(req.get("x-forwarded-proto")) || req.protocol;
-    const requestBase = host ? toOrigin(`${forwardedProto}://${host}`) : "";
     const shopifyBase = toOrigin(process.env.SHOPIFY_APP_BASE_URL);
-    const fallbackBase = toOrigin(process.env.APP_BASE_URL) || toOrigin(process.env.RENDER_EXTERNAL_URL);
-    const baseUrl = (browserBase || requestBase || shopifyBase || fallbackBase).replace(/\/+$/, "");
-    return `${baseUrl}/api/auth/shopify/callback`;
+    return shopifyBase ? `${shopifyBase.replace(/\/+$/, "")}/api/auth/shopify/callback` : null;
   };
   // Build a Sheets A1 range prefix for a tab name.
   // Sheet/tab names with spaces or special characters must be quoted in A1 notation.
@@ -7583,7 +7575,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const redirectUri = getShopifyRedirectUri(req);
+      const redirectUri = getShopifyRedirectUri();
+      if (!redirectUri) {
+        return res.status(500).json({
+          message:
+            "Shopify OAuth requires SHOPIFY_REDIRECT_URI or SHOPIFY_APP_BASE_URL to exactly match the callback URL whitelisted in the Shopify app.",
+          requiredCallbackPath: "/api/auth/shopify/callback",
+        });
+      }
       console.log(`[Shopify OAuth] Using redirect URI: ${redirectUri}`);
 
       cleanupShopifyOauth();

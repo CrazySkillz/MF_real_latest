@@ -10360,10 +10360,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!cfg?.campaignMappings || !Array.isArray(cfg.campaignMappings)) continue;
         if (cfg.platformContext !== 'linkedin') continue;
 
+        const campaignValueRevenueByValue = new Map<string, number>();
+        for (const row of Array.isArray(cfg.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : []) {
+          const value = String(row?.campaignValue || '').trim();
+          if (!value) continue;
+          campaignValueRevenueByValue.set(value, (campaignValueRevenueByValue.get(value) || 0) + (Number(row?.revenue || 0) || 0));
+        }
+
         hasSubCampaignData = true;
         for (const mapping of cfg.campaignMappings) {
           const urn = mapping.linkedinCampaignUrn || '__unattributed__';
-          const rev = Number(mapping.revenue || 0);
+          const crmValue = String(mapping.crmValue || '').trim();
+          const rev = Number(mapping.revenue || 0) || (crmValue ? Number(campaignValueRevenueByValue.get(crmValue) || 0) : 0);
           const existing = breakdownMap.get(urn);
           if (existing) {
             existing.revenue += rev;
@@ -28373,6 +28381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const presentmentCurrencies = new Set<string>();
       const selectedSet = new Set(selected);
       const campaignValueRevenueTotals = new Map<string, number>();
+      const campaignValueOrderCounts = new Map<string, number>();
       for (const o of orders) {
         const values = field === "tags" ? getShopifyOrderTags(o) : [getFieldValue(o).trim()].filter(Boolean);
         const v = values.find((value) => selectedSet.has(value)) || "";
@@ -28382,6 +28391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (amt.shopCurrency) matchedCurrencies.add(amt.shopCurrency);
         totalRevenue += amt.shopAmount;
         campaignValueRevenueTotals.set(v, (campaignValueRevenueTotals.get(v) || 0) + amt.shopAmount);
+        campaignValueOrderCounts.set(v, (campaignValueOrderCounts.get(v) || 0) + 1);
         if (amt.presentmentAmount !== null) {
           presentmentTotal += amt.presentmentAmount;
           if (amt.presentmentCurrency) presentmentCurrencies.add(amt.presentmentCurrency);
@@ -28419,6 +28429,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalConversions,
           latestSessionId,
           currency: matchedCurrency,
+          campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
+            campaignValue,
+            revenue: Number(revenue.toFixed(2)),
+            orderCount: campaignValueOrderCounts.get(campaignValue) || 0,
+          })),
           presentmentTotal: presentmentCurrency ? Number(presentmentTotal.toFixed(2)) : null,
           presentmentCurrency,
         });
@@ -28665,6 +28680,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalConversions: totalConversions,
         matchedOrderCount: matchedOrders.length,
         currency: matchedCurrency,
+        campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map(([campaignValue, revenue]) => ({
+          campaignValue,
+          revenue: Number(revenue.toFixed(2)),
+          orderCount: campaignValueOrderCounts.get(campaignValue) || 0,
+        })),
         presentmentTotal: presentmentCurrency ? Number(presentmentTotal.toFixed(2)) : null,
         presentmentCurrency,
       });

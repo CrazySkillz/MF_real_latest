@@ -650,7 +650,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   // Per-LinkedIn-campaign revenue breakdown from CRM mappings
   const { data: linkedinCampaignRevenueData } = useQuery<{
     hasSubCampaignData: boolean;
-    breakdown: Record<string, number>;
+    breakdown: Array<{ campaignUrn: string; revenue: number; recordCount?: number }> | Record<string, number>;
     totalRevenue: number;
   }>({
     queryKey: ["/api/campaigns", campaignId, "linkedin-campaign-revenue"],
@@ -664,6 +664,26 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       return await resp.json().catch(() => ({ hasSubCampaignData: false, breakdown: {}, totalRevenue: 0 }));
     },
   });
+
+  const linkedinCampaignRevenueByUrn = useMemo(() => {
+    const rawBreakdown = (linkedinCampaignRevenueData as any)?.breakdown;
+    if (Array.isArray(rawBreakdown)) {
+      return rawBreakdown.reduce((acc: Record<string, number>, row: any) => {
+        const urn = String(row?.campaignUrn || "").trim();
+        if (!urn || urn === "__unattributed__") return acc;
+        acc[urn] = Number(acc[urn] || 0) + (Number(row?.revenue || 0) || 0);
+        return acc;
+      }, {});
+    }
+    if (rawBreakdown && typeof rawBreakdown === "object") {
+      return Object.entries(rawBreakdown).reduce((acc: Record<string, number>, [urn, revenue]) => {
+        if (!urn || urn === "__unattributed__") return acc;
+        acc[String(urn)] = Number(revenue || 0) || 0;
+        return acc;
+      }, {});
+    }
+    return {};
+  }, [linkedinCampaignRevenueData]);
 
   const getLinkedInRevenueSourceLabel = (src: any): string => {
     if (!src) return '';
@@ -5277,9 +5297,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                         const campCpa = (m.conversions || 0) > 0 ? (m.spend || 0) / m.conversions : 0;
                                         const campCpl = (m.leads || 0) > 0 ? (m.spend || 0) / m.leads : 0;
                                         // Use actual CRM-mapped revenue when available, fall back to proportional estimate
-                                        const hasCrmRevenue = linkedinCampaignRevenueData?.hasSubCampaignData && campaign.urn && (linkedinCampaignRevenueData.breakdown?.[campaign.urn] ?? null) !== null;
+                                        const mappedCampaignRevenue = campaign.urn ? linkedinCampaignRevenueByUrn[campaign.urn] : undefined;
+                                        const hasCrmRevenue = linkedinCampaignRevenueData?.hasSubCampaignData && mappedCampaignRevenue !== undefined;
                                         const campRevenue = hasCrmRevenue
-                                          ? (linkedinCampaignRevenueData!.breakdown[campaign.urn] || 0)
+                                          ? (mappedCampaignRevenue || 0)
                                           : (hasRevenueTracking ? computeRevenueFromConversions(m.conversions || 0) : 0);
                                         const campRoas = (m.spend || 0) > 0 ? campRevenue / m.spend : 0;
                                         const campRoi = (m.spend || 0) > 0 ? ((campRevenue - m.spend) / m.spend * 100) : 0;

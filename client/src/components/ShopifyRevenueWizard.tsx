@@ -803,6 +803,41 @@ export function ShopifyRevenueWizard(props: {
                         })()}
                       </div>
                       {(() => {
+                        const rows = Array.isArray(preview?.campaignValueRevenueTotals)
+                          ? preview.campaignValueRevenueTotals
+                          : [];
+                        if (rows.length === 0) return null;
+                        const rowByValue = new Map(rows.map((row: any) => [String(row?.campaignValue || ""), row]));
+                        const orderedRows = selectedValues
+                          .map((value) => rowByValue.get(String(value)))
+                          .filter(Boolean);
+                        const currency = String(preview?.currency || "").trim().toUpperCase();
+                        const formatAmount = (amount: number) => {
+                          if (!currency) return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                          try {
+                            return new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+                          } catch {
+                            return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+                          }
+                        };
+                        return (
+                          <div className="mt-3 rounded border border-border bg-background/70 p-2">
+                            <div className="text-xs font-medium text-muted-foreground">Revenue breakdown</div>
+                            <div className="mt-2 space-y-1">
+                              {orderedRows.map((row: any) => (
+                                <div key={String(row?.campaignValue || "")} className="flex items-center justify-between gap-3 text-xs">
+                                  <span className="truncate text-foreground/80">{String(row?.campaignValue || "Unmapped")}</span>
+                                  <span className="shrink-0 font-medium text-foreground">
+                                    {formatAmount(Number(row?.revenue || 0))}
+                                    {Number(row?.orderCount || 0) > 0 ? ` (${Number(row.orderCount)} order${Number(row.orderCount) === 1 ? "" : "s"})` : ""}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      {(() => {
                         const pAmt = preview?.presentmentTotal;
                         const pCur = String(preview?.presentmentCurrency || "").trim().toUpperCase();
                         const shopCur = String(preview?.currency || "").trim().toUpperCase();

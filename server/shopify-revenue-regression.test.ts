@@ -4,6 +4,7 @@ import { join } from "path";
 
 const ROUTES_FILE = join(__dirname, "routes-oauth.ts");
 const SHOPIFY_WIZARD_FILE = join(__dirname, "..", "client", "src", "components", "ShopifyRevenueWizard.tsx");
+const LINKEDIN_ANALYTICS_FILE = join(__dirname, "..", "client", "src", "pages", "linkedin-analytics.tsx");
 const REVENUE_MODAL_FILE = join(__dirname, "..", "client", "src", "components", "AddRevenueWizardModal.tsx");
 const LINKEDIN_REVENUE_FILE = join(__dirname, "utils", "linkedin-revenue.ts");
 const KPI_REFRESH_FILE = join(__dirname, "utils", "kpi-refresh.ts");
@@ -106,5 +107,28 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain("const totalCents = Math.round(totalRevenueAll * 100);");
     expect(routes).toContain("let remaining = totalCents - rows.reduce((sum, row) => sum + row.cents, 0);");
     expect(routes).toContain("if (allocatedAdRevenue.length > 0) return allocatedAdRevenue[index] || 0;");
+  });
+
+  it("shows Shopify review revenue breakdown by selected campaign value", () => {
+    const routes = read(ROUTES_FILE);
+    const wizard = read(SHOPIFY_WIZARD_FILE);
+
+    expect(routes).toContain("const campaignValueOrderCounts = new Map<string, number>();");
+    expect(routes).toContain("campaignValueOrderCounts.set(v, (campaignValueOrderCounts.get(v) || 0) + 1);");
+    expect(routes).toContain("campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map");
+    expect(routes).toContain("orderCount: campaignValueOrderCounts.get(campaignValue) || 0");
+    expect(wizard).toContain("preview?.campaignValueRevenueTotals");
+    expect(wizard).toContain("Revenue breakdown");
+  });
+
+  it("uses exact mapped revenue in the LinkedIn campaign breakdown", () => {
+    const routes = read(ROUTES_FILE);
+    const linkedinAnalytics = read(LINKEDIN_ANALYTICS_FILE);
+
+    expect(routes).toContain("const campaignValueRevenueByValue = new Map<string, number>();");
+    expect(routes).toContain("campaignValueRevenueByValue.get(crmValue)");
+    expect(linkedinAnalytics).toContain("const linkedinCampaignRevenueByUrn = useMemo");
+    expect(linkedinAnalytics).toContain("Array.isArray(rawBreakdown)");
+    expect(linkedinAnalytics).toContain("const mappedCampaignRevenue = campaign.urn ? linkedinCampaignRevenueByUrn[campaign.urn] : undefined;");
   });
 });

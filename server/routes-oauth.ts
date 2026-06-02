@@ -4388,10 +4388,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const explicit = String(process.env.SHOPIFY_REDIRECT_URI || "").trim();
     if (explicit) return explicit.replace(/\/+$/, "");
 
-    const shopifyBase = String(process.env.SHOPIFY_APP_BASE_URL || "").trim();
-    const fallbackBase = String(process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL || "").trim();
-    const requestBase = `${req.protocol}://${req.get("host")}`;
-    const baseUrl = (shopifyBase || fallbackBase || requestBase).replace(/\/+$/, "");
+    const toOrigin = (value?: string): string => {
+      try {
+        const parsed = new URL(String(value || "").trim());
+        return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.origin : "";
+      } catch {
+        return "";
+      }
+    };
+    const browserBase = toOrigin(req.get("origin"));
+    const host = String(req.get("host") || "").trim();
+    const requestBase = host ? toOrigin(`${req.protocol}://${host}`) : "";
+    const shopifyBase = toOrigin(process.env.SHOPIFY_APP_BASE_URL);
+    const fallbackBase = toOrigin(process.env.APP_BASE_URL) || toOrigin(process.env.RENDER_EXTERNAL_URL);
+    const baseUrl = (browserBase || requestBase || shopifyBase || fallbackBase).replace(/\/+$/, "");
     return `${baseUrl}/api/auth/shopify/callback`;
   };
   // Build a Sheets A1 range prefix for a tab name.

@@ -4383,6 +4383,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   };
+
+  const getShopifyRedirectUri = (req: any): string => {
+    const explicit = String(process.env.SHOPIFY_REDIRECT_URI || "").trim();
+    if (explicit) return explicit.replace(/\/+$/, "");
+
+    const shopifyBase = String(process.env.SHOPIFY_APP_BASE_URL || "").trim();
+    const requestBase = `${req.protocol}://${req.get("host")}`;
+    const fallbackBase = String(process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL || "").trim();
+    const baseUrl = (shopifyBase || requestBase || fallbackBase).replace(/\/+$/, "");
+    return `${baseUrl}/api/auth/shopify/callback`;
+  };
   // Build a Sheets A1 range prefix for a tab name.
   // Sheet/tab names with spaces or special characters must be quoted in A1 notation.
   const toA1SheetPrefix = (sheetName?: string | null): string => {
@@ -7559,13 +7570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const rawBaseUrl =
-        process.env.APP_BASE_URL ||
-        process.env.RENDER_EXTERNAL_URL ||
-        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
-        `${req.protocol}://${req.get("host")}`;
-      const baseUrl = rawBaseUrl.replace(/\/+$/, "");
-      const redirectUri = `${baseUrl}/api/auth/shopify/callback`;
+      const redirectUri = getShopifyRedirectUri(req);
 
       cleanupShopifyOauth();
       const nonce = base64Url(randomBytes(16));
@@ -17869,17 +17874,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
-  const getLinkedInRedirectUri = (req: any): string => {
-    const explicit = String(process.env.LINKEDIN_REDIRECT_URI || "").trim();
-    if (explicit) return explicit.replace(/\/+$/, "");
-
-    const linkedInBase = String(process.env.LINKEDIN_APP_BASE_URL || "").trim();
-    const requestBase = `${req.protocol}://${req.get("host")}`;
-    const fallbackBase = String(process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL || "").trim();
-    const baseUrl = (linkedInBase || requestBase || fallbackBase).replace(/\/+$/, "");
-    return `${baseUrl}/api/auth/linkedin/callback`;
-  };
-
   /**
    * Initiate LinkedIn OAuth flow with centralized credentials
    * Similar to Google Analytics - credentials stored in env vars, not user input
@@ -17909,7 +17903,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const redirectUri = getLinkedInRedirectUri(req);
+      // Determine base URL
+      const rawBaseUrl = process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
 
       console.log(`[LinkedIn OAuth] Using redirect URI: ${redirectUri}`);
 
@@ -18031,7 +18031,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error('LinkedIn OAuth credentials not configured');
       }
 
-      const redirectUri = getLinkedInRedirectUri(req);
+      // Determine redirect URI (must match what was used in authorization)
+      const rawBaseUrl = process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        (process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : undefined) ||
+        `${req.protocol}://${req.get('host')}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
 
       console.log(`[LinkedIn OAuth] Using redirect URI for token exchange: ${redirectUri}`);
 

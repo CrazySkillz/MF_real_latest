@@ -27,7 +27,6 @@ The original risk was not one isolated UI bug. It was a source-contract and life
 - LinkedIn paid-media metrics must not be invented when the selected source does not provide them.
 - LinkedIn revenue and ROI/ROAS must only appear when valid LinkedIn-attributed revenue and spend inputs are available.
 - Disconnect, reconnect, failed import, stale data, and scheduler refresh paths need explicit validation.
-- LinkedIn OAuth must generate a callback URL that exactly matches the user-facing host or the LinkedIn-specific override configured in the deployment environment.
 
 ## Existing Relevant Paths
 
@@ -72,7 +71,6 @@ LinkedIn is production-ready only when all of the following are true:
 - Revenue, ROI, and ROAS require valid LinkedIn spend plus valid linked revenue or attributed revenue.
 - Scheduler refresh updates the same source-backed values used by the UI.
 - Disconnect/reconnect only affects the current campaign's LinkedIn source and related LinkedIn-scoped records.
-- OAuth redirect URI generation must use `LINKEDIN_REDIRECT_URI` when explicitly set, otherwise `LINKEDIN_APP_BASE_URL`, otherwise the current request host. This avoids stale `APP_BASE_URL` or Render service URL values being sent to LinkedIn as an unwhitelisted callback.
 
 ## Source Capability Rules
 

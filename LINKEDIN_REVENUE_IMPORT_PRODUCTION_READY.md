@@ -291,6 +291,7 @@ Status:
 
 - [x] Completed locally: HubSpot and Salesforce OAuth return handling now falls through to the selected revenue wizard even when the popup success message is missed, by confirming the provider connection status after the popup closes.
 - [x] Completed locally: Shopify revenue OAuth now listens to the same BroadcastChannel signal already emitted by the callback route, so the wizard remains in the import flow after connection instead of leaving the user at the source chooser.
+- [x] Completed locally: Shopify revenue OAuth now builds its callback URL from `SHOPIFY_REDIRECT_URI`, `SHOPIFY_APP_BASE_URL`, or the current request host before generic app fallbacks so stale app-wide base URLs do not cause Shopify `redirect_uri` whitelist failures.
 - [x] Completed locally: LinkedIn HubSpot revenue Crosswalk now uses the same clickable selected-value flow as GA4 so selected HubSpot values populate the downstream Revenue and Save steps.
 - [x] Completed locally: LinkedIn Salesforce revenue Crosswalk now uses the same clickable selected-value flow as GA4/HubSpot so selected Opportunity values populate the downstream Revenue and Save steps.
 - [x] Completed locally: LinkedIn HubSpot revenue now defaults confirmed revenue dating to HubSpot `Close Date`, and LinkedIn Overview shows a display-only `Pipeline Proxy` summary card when a HubSpot/Salesforce proxy source is configured.

@@ -4385,6 +4385,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const getShopifyRedirectUri = (): string | null => {
+    const explicit = String(process.env.SHOPIFY_REDIRECT_URI || "").trim();
+    if (explicit) return explicit.replace(/\/+$/, "");
+
     const toOrigin = (value?: string): string => {
       try {
         const parsed = new URL(String(value || "").trim());
@@ -4395,9 +4398,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
     const appBase = toOrigin(process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL);
     if (appBase) return `${appBase.replace(/\/+$/, "")}/api/auth/shopify/callback`;
-
-    const explicit = String(process.env.SHOPIFY_REDIRECT_URI || "").trim();
-    if (explicit) return explicit.replace(/\/+$/, "");
 
     const shopifyBase = toOrigin(process.env.SHOPIFY_APP_BASE_URL);
     return shopifyBase ? `${shopifyBase.replace(/\/+$/, "")}/api/auth/shopify/callback` : null;

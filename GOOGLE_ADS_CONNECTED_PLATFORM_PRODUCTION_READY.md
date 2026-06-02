@@ -192,7 +192,7 @@ Status:
 - [x] Completed locally: traced existing Google Ads add-source rendering in `client/src/pages/campaign-detail.tsx`.
 - [x] Completed locally: successful Google Ads add-source now invalidates Connected Platforms, Google Ads connection/metrics, outcome totals, Executive Summary, Trend Analysis, KPI, Benchmark, and Google Ads report queries.
 - [x] Completed locally: selected Google Ads campaigns remain persisted by `GoogleAdsConnectionFlow` through `/api/google-ads/:campaignId/selected-campaigns`.
-- [ ] User validation pending for Commit 3.
+- [x] User validation passed for Commit 3.
 
 ### Commit 4: Remove Placeholder Google Ads Metrics
 
@@ -215,7 +215,10 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: removed placeholder Google Ads percentage-split calculations and hard-coded CTR/CPC from `client/src/pages/campaign-detail.tsx`.
+- [x] Completed locally: Google Ads campaign overview metrics now read from `/api/campaigns/:campaignId/outcome-totals?dateRange=30days` via `performanceSummary.sources[].id === "google_ads"`.
+- [x] Completed locally: when Google Ads is connected but no source-backed aggregate rows exist, the row uses zero values instead of invented campaign-level estimates.
+- [ ] User validation pending for Commit 4.
 
 ### Commit 5: Define Google Ads Revenue Semantics
 

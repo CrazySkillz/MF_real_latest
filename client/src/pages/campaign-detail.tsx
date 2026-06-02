@@ -4212,6 +4212,16 @@ export default function CampaignDetail() {
     },
   });
 
+  const { data: campaignOutcomeTotals } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/outcome-totals`, "30days"],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/outcome-totals?dateRange=30days`);
+      if (!response.ok) return null;
+      return response.json().catch(() => null);
+    },
+  });
+
   const connectedPlatformStatuses: ConnectedPlatformStatus[] =
     connectedPlatformsData?.statuses ?? [];
 
@@ -4558,7 +4568,6 @@ export default function CampaignDetail() {
   // Distribute campaign metrics across connected platforms based on typical performance
   const platformDistribution = {
     "Facebook Ads": { impressions: 0.35, clicks: 0.32, spend: 0.38, conversions: 0.28 },
-    "Google Ads": { impressions: 0.28, clicks: 0.35, spend: 0.32, conversions: 0.42 },
   };
   
   // Debug: Log connection status
@@ -4597,6 +4606,24 @@ export default function CampaignDetail() {
   const linkedInConversions = parseLinkedInMetric(linkedInSourceMetrics.conversions);
   const linkedInCtr = linkedInImpressions > 0 ? formatPct((linkedInClicks / linkedInImpressions) * 100) : "0.00%";
   const linkedInCpc = linkedInClicks > 0 ? `$${(linkedInSpend / linkedInClicks).toFixed(2)}` : "$0.00";
+  const googleAdsSource = useMemo(() => {
+    const sources = Array.isArray(campaignOutcomeTotals?.performanceSummary?.sources)
+      ? campaignOutcomeTotals.performanceSummary.sources
+      : [];
+    return sources.find((source: any) => String(source?.id || "") === "google_ads");
+  }, [campaignOutcomeTotals]);
+  const parseGoogleAdsMetric = (value: any): number => {
+    const parsed = typeof value === "string" ? parseFloat(value.replace(/,/g, "")) : Number(value || 0);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const googleAdsMetrics = googleAdsSource?.metrics || {};
+  const isGoogleAdsConnected = platformStatusMap.get("google-ads")?.connected === true;
+  const googleAdsImpressions = isGoogleAdsConnected ? parseGoogleAdsMetric(googleAdsMetrics.impressions) : 0;
+  const googleAdsClicks = isGoogleAdsConnected ? parseGoogleAdsMetric(googleAdsMetrics.clicks) : 0;
+  const googleAdsSpend = isGoogleAdsConnected ? parseGoogleAdsMetric(googleAdsMetrics.spend) : 0;
+  const googleAdsConversions = isGoogleAdsConnected ? parseGoogleAdsMetric(googleAdsMetrics.conversions) : 0;
+  const googleAdsCtr = googleAdsImpressions > 0 ? formatPct((googleAdsClicks / googleAdsImpressions) * 100) : "0.00%";
+  const googleAdsCpc = googleAdsClicks > 0 ? `$${(googleAdsSpend / googleAdsClicks).toFixed(2)}` : "$0.00";
   
   // Build platformMetrics array dynamically based on connected platforms
   const allPlatformMetrics: PlatformMetrics[] = [
@@ -4638,13 +4665,13 @@ export default function CampaignDetail() {
     },
     {
       platform: "Google Ads",
-      connected: platformStatusMap.get("google-ads")?.connected === true,
-      impressions: platformStatusMap.get("google-ads")?.connected ? Math.round(campaignImpressions * platformDistribution["Google Ads"].impressions) : 0,
-      clicks: platformStatusMap.get("google-ads")?.connected ? Math.round(campaignClicks * platformDistribution["Google Ads"].clicks) : 0,
-      conversions: platformStatusMap.get("google-ads")?.connected ? Math.round(estimatedConversions * platformDistribution["Google Ads"].conversions) : 0,
-      spend: platformStatusMap.get("google-ads")?.connected ? (campaignSpend * platformDistribution["Google Ads"].spend).toFixed(2) : "0.00",
-      ctr: platformStatusMap.get("google-ads")?.connected ? "3.24%" : "0.00%",
-      cpc: platformStatusMap.get("google-ads")?.connected ? "$0.42" : "$0.00",
+      connected: isGoogleAdsConnected,
+      impressions: googleAdsImpressions,
+      clicks: googleAdsClicks,
+      conversions: googleAdsConversions,
+      spend: googleAdsSpend.toFixed(2),
+      ctr: googleAdsCtr,
+      cpc: googleAdsCpc,
       analyticsPath: platformStatusMap.get("google-ads")?.analyticsPath || `/campaigns/${campaign?.id}/google-ads-analytics`
     },
     {

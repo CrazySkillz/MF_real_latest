@@ -22,13 +22,17 @@ describe("source safety regression guards", () => {
     expect(helperStart).toBeGreaterThan(-1);
     expect(helper).toContain("process.env.SHOPIFY_REDIRECT_URI");
     expect(helper).toContain("const browserBase = toOrigin(req.get(\"origin\"));");
-    expect(helper).toContain("const host = String(req.get(\"host\") || \"\").trim();");
-    expect(helper).toContain('const requestBase = host ? toOrigin(`${req.protocol}://${host}`) : "";');
+    expect(helper).toContain("const forwardedHost = firstHeader(req.get(\"x-forwarded-host\"));");
+    expect(helper).toContain("const host = forwardedHost || String(req.get(\"host\") || \"\").trim();");
+    expect(helper).toContain("const forwardedProto = firstHeader(req.get(\"x-forwarded-proto\")) || req.protocol;");
+    expect(helper).toContain('const requestBase = host ? toOrigin(`${forwardedProto}://${host}`) : "";');
     expect(helper).toContain("const shopifyBase = toOrigin(process.env.SHOPIFY_APP_BASE_URL);");
     expect(helper).toContain("const fallbackBase = toOrigin(process.env.APP_BASE_URL) || toOrigin(process.env.RENDER_EXTERNAL_URL);");
     expect(helper).toContain("const baseUrl = (browserBase || requestBase || shopifyBase || fallbackBase).replace(/\\/+$/, \"\");");
     expect(shopifyConnectRoute).toContain("const { campaignId, shopDomain } = req.body || {};");
     expect(shopifyConnectRoute.match(/getShopifyRedirectUri\(req\)/g)?.length).toBe(1);
+    expect(shopifyConnectRoute).toContain('console.log(`[Shopify OAuth] Using redirect URI: ${redirectUri}`);');
+    expect(shopifyConnectRoute).toContain('res.json({ authUrl, redirectUri, message: "Shopify OAuth flow initiated" });');
     expect(shopifyConnectRoute).not.toContain("process.env.APP_BASE_URL ||\n        process.env.RENDER_EXTERNAL_URL");
   });
 

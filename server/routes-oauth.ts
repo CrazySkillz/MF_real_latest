@@ -4396,9 +4396,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return "";
       }
     };
+    const firstHeader = (value?: string): string => String(value || "").split(",")[0]?.trim();
     const browserBase = toOrigin(req.get("origin"));
-    const host = String(req.get("host") || "").trim();
-    const requestBase = host ? toOrigin(`${req.protocol}://${host}`) : "";
+    const forwardedHost = firstHeader(req.get("x-forwarded-host"));
+    const host = forwardedHost || String(req.get("host") || "").trim();
+    const forwardedProto = firstHeader(req.get("x-forwarded-proto")) || req.protocol;
+    const requestBase = host ? toOrigin(`${forwardedProto}://${host}`) : "";
     const shopifyBase = toOrigin(process.env.SHOPIFY_APP_BASE_URL);
     const fallbackBase = toOrigin(process.env.APP_BASE_URL) || toOrigin(process.env.RENDER_EXTERNAL_URL);
     const baseUrl = (browserBase || requestBase || shopifyBase || fallbackBase).replace(/\/+$/, "");
@@ -7581,6 +7584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const redirectUri = getShopifyRedirectUri(req);
+      console.log(`[Shopify OAuth] Using redirect URI: ${redirectUri}`);
 
       cleanupShopifyOauth();
       const nonce = base64Url(randomBytes(16));
@@ -7594,7 +7598,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `state=${encodeURIComponent(state)}`;
 
-      res.json({ authUrl, message: "Shopify OAuth flow initiated" });
+      res.json({ authUrl, redirectUri, message: "Shopify OAuth flow initiated" });
     } catch (error: any) {
       console.error("[Shopify OAuth] Initiation error:", error);
       res.status(500).json({ message: "Failed to initiate Shopify authentication" });

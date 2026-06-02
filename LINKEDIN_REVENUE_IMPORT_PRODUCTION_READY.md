@@ -59,6 +59,14 @@ Production-ready behavior:
 - Removing the LinkedIn revenue source disables LinkedIn revenue-derived metrics immediately.
 - GA4 revenue does not make LinkedIn revenue, ROI, or ROAS available.
 
+## Current Implementation Status After Commit 6
+
+- Commit 5 validation passed and the source-isolation regression evidence is recorded below.
+- Commit 6 is documentation/evidence only; no app behavior changed.
+- LinkedIn revenue is documented as attributed revenue from LinkedIn-scoped CRM, ecommerce, CSV, Google Sheets, or webhook inputs, not native LinkedIn revenue.
+- GA4 revenue is documented as unable to unlock LinkedIn revenue, ROI, or ROAS without explicit LinkedIn attribution.
+- Remaining open validation before closing the tracker: the full manual Back/Cancel parity pass across CSV, Google Sheets, CRM, and ecommerce flows remains tracked under Commit 4D.
+
 ## Commit Plan
 
 ### Commit 1: Direct LinkedIn Overview Revenue Action
@@ -438,7 +446,7 @@ Status:
 - [x] Local validation passed: `npm test -- server/latest-day-revenue-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] Local validation passed: `git diff --check`.
-- [ ] User validation pending.
+- [x] User validation passed for Commit 5.
 
 ### Commit 6: Documentation And Final Production-Ready Evidence
 
@@ -460,7 +468,11 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: this tracker now records Commit 5 user validation and source-isolation evidence.
+- [x] Completed locally: documentation states LinkedIn revenue is attributed revenue, not native LinkedIn revenue.
+- [x] Completed locally: documentation states GA4 revenue cannot unlock LinkedIn ROI/ROAS without explicit LinkedIn attribution.
+- [x] Completed locally: broader LinkedIn documentation references this tracker for revenue-import evidence.
+- [x] Completed locally: remaining manual provider-navigation validation is still explicitly tracked under Commit 4D instead of being overclaimed as complete.
 
 ## Relevant Files
 

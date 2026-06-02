@@ -19,6 +19,8 @@ LinkedIn must be treated as a campaign-scoped main paid-media connected source. 
 
 LinkedIn has been refined through the planned source-contract and lifecycle-hardening commits. Commit 10 validation passed on 2026-05-31, so the LinkedIn implementation is documented as production-ready for the validated mock-live/test-data flows.
 
+LinkedIn revenue-import source controls and isolation evidence are tracked separately in `LINKEDIN_REVENUE_IMPORT_PRODUCTION_READY.md`. As of revenue Commit 6, Commit 5 validation passed, regression coverage proves GA4 revenue cannot unlock LinkedIn revenue metrics, and the remaining provider-navigation parity validation is explicitly tracked there under Commit 4D.
+
 The original risk was not one isolated UI bug. It was a source-contract and lifecycle-hardening gap:
 
 - LinkedIn can be connected during campaign creation and from an existing campaign, but both paths need to prove they persist the same campaign-scoped source/import contract.

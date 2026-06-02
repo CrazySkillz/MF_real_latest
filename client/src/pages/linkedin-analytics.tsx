@@ -5314,7 +5314,10 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                                   {campaign.status}
                                                 </Badge>
                                               </div>
-                                              <span className="text-lg font-bold text-foreground">{formatCurrency(m.spend || 0)}</span>
+                                              <div className="text-right">
+                                                <p className="text-xs text-muted-foreground/70">Spend</p>
+                                                <p className="text-lg font-bold text-foreground">{formatCurrency(m.spend || 0)}</p>
+                                              </div>
                                             </div>
 
                                             {/* Core metrics — prominent */}

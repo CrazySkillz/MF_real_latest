@@ -112,6 +112,12 @@ export async function resolveLinkedInRevenueContext(opts: {
     hasExplicitLinkedInConversionValueSource = false;
   }
 
+  // Revenue-to-date sources (Shopify/CRM/Sheets/CSV) are the source of truth for Total Revenue.
+  // Stored connection/session conversion values may be legacy AOV backfills; ignore them unless an
+  // explicit LinkedIn conversion-value source exists.
+  const shouldIgnoreStoredConversionValue =
+    importedRevenueToDate > 0 && !hasExplicitLinkedInConversionValueSource;
+
   let connCv = 0;
   try {
     const conn = await storage.getLinkedInConnection(campaignId);
@@ -130,6 +136,7 @@ export async function resolveLinkedInRevenueContext(opts: {
   } catch {
     connCv = 0;
   }
+  if (shouldIgnoreStoredConversionValue) connCv = 0;
 
   // Shopify fallback: Shopify is revenue-to-date. We still want a Conversion Value card.
   // Use the Shopify mappingConfig's computed AOV (lastConversionValue), or derive from
@@ -183,9 +190,7 @@ export async function resolveLinkedInRevenueContext(opts: {
   }
 
   const sessionCvRaw = parseNum(opts.sessionConversionValue);
-  const shouldIgnoreSessionCv =
-    importedRevenueToDate > 0 && connCv <= 0 && !hasExplicitLinkedInConversionValueSource;
-  const sessionCv = shouldIgnoreSessionCv ? 0 : sessionCvRaw;
+  const sessionCv = shouldIgnoreStoredConversionValue ? 0 : sessionCvRaw;
 
   let conversionValue = 0;
   let conversionValueSource: LinkedInRevenueContext["conversionValueSource"] = "none";

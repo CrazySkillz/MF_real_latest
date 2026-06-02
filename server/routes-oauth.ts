@@ -4971,15 +4971,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         const hasRevenueTracking = !!(revAll as any)?.hasRevenueTracking;
+        const totalRevenueAll = Number((revAll as any)?.totalRevenue || 0) || 0;
         const conversionValueUsed = Number((revAll as any)?.conversionValue || 0) || 0;
-        const importedRevenueToDate = Number((revAll as any)?.importedRevenueToDate || 0) || 0;
         const totalConversionsAll = Number(baseAll.conversions || 0) || 0;
 
         const computeRevenueForConversions = (conversions: number): number => {
           const conv = Number(conversions || 0) || 0;
           if (!hasRevenueTracking) return 0;
+          if (totalRevenueAll > 0 && totalConversionsAll > 0) return totalRevenueAll * (conv / totalConversionsAll);
           if (conversionValueUsed > 0) return conv * conversionValueUsed;
-          if (importedRevenueToDate > 0 && totalConversionsAll > 0) return importedRevenueToDate * (conv / totalConversionsAll);
           return 0;
         };
 
@@ -22097,15 +22097,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionConversionValue: (resolvedSession as any)?.conversionValue,
       });
       const hasRevenueTracking = revAll.hasRevenueTracking;
+      const totalRevenueAll = Number(revAll.totalRevenue || 0) || 0;
       const conversionValueUsed = Number(revAll.conversionValue || 0) || 0;
-      const importedRevenueToDate = Number(revAll.importedRevenueToDate || 0) || 0;
       const totalConversionsAll = Number(baseAll.conversions || 0) || 0;
 
       const computeRevenueForConversions = (conversions: number): number => {
         const conv = Number(conversions || 0) || 0;
         if (!hasRevenueTracking) return 0;
+        if (totalRevenueAll > 0 && totalConversionsAll > 0) return totalRevenueAll * (conv / totalConversionsAll);
         if (conversionValueUsed > 0) return conv * conversionValueUsed;
-        if (importedRevenueToDate > 0 && totalConversionsAll > 0) return importedRevenueToDate * (conv / totalConversionsAll);
         return 0;
       };
 
@@ -24884,12 +24884,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionConversionValue: (session as any)?.conversionValue,
       });
       const importedRevenueToDate = parseNum((rev as any)?.importedRevenueToDate);
+      const totalRevenueAll = parseNum((rev as any)?.totalRevenue);
       const conversionValue = parseNum((rev as any)?.conversionValue);
       const conversionValueSourceRaw = String((rev as any)?.conversionValueSource || "none").toLowerCase();
       const conversionValueSource: "explicit" | "derived" | "none" =
         conversionValueSourceRaw === "derived" ? "derived" : (conversionValue > 0 ? "explicit" : "none");
 
       const computeAdRevenue = (conversions: number): number => {
+        if (totalRevenueAll > 0 && totalAdConversions > 0) return totalRevenueAll * (conversions / totalAdConversions);
         if (conversionValue > 0) return conversions * conversionValue;
         // If we have revenue-to-date but no conversion value, allocate by conversions share.
         if (importedRevenueToDate > 0 && totalAdConversions > 0) return importedRevenueToDate * (conversions / totalAdConversions);
@@ -27895,13 +27897,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mappingConfig: JSON.stringify(updatedCfg),
       } as any);
 
-      // Also update the LinkedIn connection's conversionValue
-      try {
-        await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedCv as any } as any);
-      } catch {
-        // ignore
-      }
-
       devLog("[Shopify Auto-Recalc] Recalculated conversion value", {
         campaignId,
         totalRevenue,
@@ -28610,21 +28605,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createRevenueRecords(records);
 
         if (platformCtx === "linkedin") {
-          // For Shopify: persist the calculated conversion value (average order value) to the LinkedIn connection
-          try {
-            const updateResult = await storage.updateLinkedInConnection(campaignId, { conversionValue: calculatedConversionValue as any } as any);
-            devLog("[Shopify Save Mappings] Persisted conversion value to LinkedIn connection", {
-              campaignId,
-              conversionValue: calculatedConversionValue,
-              updated: !!updateResult,
-            });
-          } catch (err) {
-            devLog("[Shopify Save Mappings] Failed to persist conversion value to LinkedIn connection", {
-              campaignId,
-              error: (err as any)?.message || String(err),
-            });
-            // ignore
-          }
           await clearLatestLinkedInImportSessionConversionValue(campaignId);
           // Also clear any HubSpot pipeline proxy configuration when a non-CRM (Shopify) revenue source
           // is being saved for LinkedIn. Pipeline proxy is CRM-specific and should not persist.

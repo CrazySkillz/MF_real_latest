@@ -223,14 +223,14 @@ async function getCampaignSpecificMetrics(
       sessionConversionValue: (latestSession as any)?.conversionValue,
     });
     const hasRevenueTracking = revAll.hasRevenueTracking;
+    const totalRevenueAll = Number(revAll.totalRevenue || 0) || 0;
     const conversionValueUsed = Number(revAll.conversionValue || 0) || 0;
-    const importedRevenueToDate = Number(revAll.importedRevenueToDate || 0) || 0;
 
     const computeRevenueForConversions = (conv: number): number => {
       const c = Number(conv || 0) || 0;
       if (!hasRevenueTracking) return 0;
+      if (totalRevenueAll > 0 && totalConversionsOverall > 0) return totalRevenueAll * (c / totalConversionsOverall);
       if (conversionValueUsed > 0) return c * conversionValueUsed;
-      if (importedRevenueToDate > 0 && totalConversionsOverall > 0) return importedRevenueToDate * (c / totalConversionsOverall);
       return 0;
     };
 

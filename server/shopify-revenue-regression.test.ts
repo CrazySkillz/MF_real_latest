@@ -5,6 +5,8 @@ import { join } from "path";
 const ROUTES_FILE = join(__dirname, "routes-oauth.ts");
 const SHOPIFY_WIZARD_FILE = join(__dirname, "..", "client", "src", "components", "ShopifyRevenueWizard.tsx");
 const REVENUE_MODAL_FILE = join(__dirname, "..", "client", "src", "components", "AddRevenueWizardModal.tsx");
+const LINKEDIN_REVENUE_FILE = join(__dirname, "utils", "linkedin-revenue.ts");
+const KPI_REFRESH_FILE = join(__dirname, "utils", "kpi-refresh.ts");
 
 function read(file: string): string {
   return readFileSync(file, "utf-8");
@@ -73,5 +75,27 @@ describe("Shopify revenue regression guard", () => {
     expect(wizard).toContain('(step === "crosswalk" && selectedValues.length === 0)');
     expect(wizard).not.toContain("Map each Shopify value to a LinkedIn campaign. Unmapped values will be skipped.");
     expect(wizard).not.toContain('value={existing?.linkedinCampaignUrn || "__none__"}');
+  });
+
+  it("keeps Shopify revenue-to-date from being multiplied by LinkedIn conversions", () => {
+    const routes = read(ROUTES_FILE);
+    const linkedinRevenue = read(LINKEDIN_REVENUE_FILE);
+
+    expect(routes).not.toContain("[Shopify Save Mappings] Persisted conversion value to LinkedIn connection");
+    expect(routes).not.toContain("Also update the LinkedIn connection's conversionValue");
+    expect(linkedinRevenue).toContain("const shouldIgnoreStoredConversionValue");
+    expect(linkedinRevenue).toContain("importedRevenueToDate > 0 && !hasExplicitLinkedInConversionValueSource");
+    expect(linkedinRevenue).toContain("if (shouldIgnoreStoredConversionValue) connCv = 0;");
+    expect(linkedinRevenue).toContain("const sessionCv = shouldIgnoreStoredConversionValue ? 0 : sessionCvRaw;");
+  });
+
+  it("uses campaign total revenue before conversion value in LinkedIn dependent tabs", () => {
+    const routes = read(ROUTES_FILE);
+    const kpiRefresh = read(KPI_REFRESH_FILE);
+
+    expect(routes).toContain("if (totalRevenueAll > 0 && totalConversionsAll > 0) return totalRevenueAll * (conv / totalConversionsAll);\n          if (conversionValueUsed > 0) return conv * conversionValueUsed;");
+    expect(routes).toContain("if (totalRevenueAll > 0 && totalConversionsAll > 0) return totalRevenueAll * (conv / totalConversionsAll);\n        if (conversionValueUsed > 0) return conv * conversionValueUsed;");
+    expect(routes).toContain("if (totalRevenueAll > 0 && totalAdConversions > 0) return totalRevenueAll * (conversions / totalAdConversions);\n        if (conversionValue > 0) return conversions * conversionValue;");
+    expect(kpiRefresh).toContain("if (totalRevenueAll > 0 && totalConversionsOverall > 0) return totalRevenueAll * (c / totalConversionsOverall);\n      if (conversionValueUsed > 0) return c * conversionValueUsed;");
   });
 });

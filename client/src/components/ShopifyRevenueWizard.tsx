@@ -184,10 +184,9 @@ export function ShopifyRevenueWizard(props: {
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) {
         if (json?.code === "SHOPIFY_OAUTH_REDIRECT_NOT_CONFIGURED") {
-          setConnectMethod("token");
           toast({
-            title: "Shopify OAuth is not configured",
-            description: "Use an Admin API token to connect Shopify revenue, or configure the Shopify app callback before using OAuth.",
+            title: "Shopify OAuth setup is incomplete",
+            description: "Configure the Shopify app callback URL before connecting with OAuth.",
             variant: "destructive",
           });
           return;

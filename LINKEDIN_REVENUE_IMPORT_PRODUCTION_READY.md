@@ -291,7 +291,7 @@ Status:
 
 - [x] Completed locally: HubSpot and Salesforce OAuth return handling now falls through to the selected revenue wizard even when the popup success message is missed, by confirming the provider connection status after the popup closes.
 - [x] Completed locally: Shopify revenue OAuth now listens to the same BroadcastChannel signal already emitted by the callback route, so the wizard remains in the import flow after connection instead of leaving the user at the source chooser.
-- [x] Completed locally: Shopify revenue OAuth now fails closed unless `SHOPIFY_REDIRECT_URI` or `SHOPIFY_APP_BASE_URL` is configured to the exact callback URL/domain whitelisted in the Shopify app; this prevents guessed Render/request URLs from being sent to Shopify and rejected as unwhitelisted.
+- [x] Completed locally: Shopify revenue OAuth now fails closed unless `SHOPIFY_REDIRECT_URI`, `SHOPIFY_APP_BASE_URL`, or the explicit platform `APP_BASE_URL` is configured to the exact callback URL/domain whitelisted in the Shopify app; this prevents guessed request/proxy URLs from being sent to Shopify and rejected as unwhitelisted.
 - [x] Completed locally: LinkedIn HubSpot revenue Crosswalk now uses the same clickable selected-value flow as GA4 so selected HubSpot values populate the downstream Revenue and Save steps.
 - [x] Completed locally: LinkedIn Salesforce revenue Crosswalk now uses the same clickable selected-value flow as GA4/HubSpot so selected Opportunity values populate the downstream Revenue and Save steps.
 - [x] Completed locally: LinkedIn HubSpot revenue now defaults confirmed revenue dating to HubSpot `Close Date`, and LinkedIn Overview shows a display-only `Pipeline Proxy` summary card when a HubSpot/Salesforce proxy source is configured.
@@ -304,9 +304,9 @@ Status:
 
 Shopify OAuth production rule:
 
-- Shopify is strict about OAuth callback whitelisting. The app must not infer the Shopify OAuth callback from request host, browser origin, Render service URL, or generic app base URL.
-- The only production-safe Shopify OAuth callback sources are `SHOPIFY_REDIRECT_URI` or `SHOPIFY_APP_BASE_URL`, and they must match the callback URL/domain configured in the Shopify app.
-- If neither Shopify-specific value is configured, the LinkedIn revenue Shopify path must fail in-app before opening Shopify. Sending a guessed `redirect_uri` to Shopify produces `redirect_uri is not whitelisted` and wastes the user's validation time.
+- Shopify is strict about OAuth callback whitelisting. The app must not infer the Shopify OAuth callback from request host, browser origin, or Render proxy headers.
+- The only production-safe Shopify OAuth callback sources are explicit environment configuration: `SHOPIFY_REDIRECT_URI`, `SHOPIFY_APP_BASE_URL`, or `APP_BASE_URL`. The resolved callback must match the callback URL/domain configured in the Shopify app.
+- If no explicit configured value is available, the LinkedIn revenue Shopify path must fail in-app before opening Shopify. Sending a guessed `redirect_uri` to Shopify produces `redirect_uri is not whitelisted` and wastes the user's validation time.
 - This differs from the GA4 Shopify flow when users choose the Admin API token connection method. The token path uses `/api/shopify/connect` and does not run Shopify OAuth, so it is not affected by Shopify OAuth redirect whitelisting.
 
 LinkedIn Pipeline Proxy rule implemented:

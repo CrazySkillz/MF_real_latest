@@ -4396,7 +4396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return "";
       }
     };
-    const shopifyBase = toOrigin(process.env.SHOPIFY_APP_BASE_URL);
+    const shopifyBase = toOrigin(process.env.SHOPIFY_APP_BASE_URL || process.env.APP_BASE_URL);
     return shopifyBase ? `${shopifyBase.replace(/\/+$/, "")}/api/auth/shopify/callback` : null;
   };
   // Build a Sheets A1 range prefix for a tab name.
@@ -7580,7 +7580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({
           code: "SHOPIFY_OAUTH_REDIRECT_NOT_CONFIGURED",
           message:
-            "Shopify OAuth requires SHOPIFY_REDIRECT_URI or SHOPIFY_APP_BASE_URL to exactly match the callback URL whitelisted in the Shopify app.",
+            "Shopify OAuth requires SHOPIFY_REDIRECT_URI, SHOPIFY_APP_BASE_URL, or APP_BASE_URL to exactly match the callback URL whitelisted in the Shopify app.",
           requiredCallbackPath: "/api/auth/shopify/callback",
         });
       }

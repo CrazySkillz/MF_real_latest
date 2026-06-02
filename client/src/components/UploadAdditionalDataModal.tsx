@@ -171,7 +171,7 @@ export function UploadAdditionalDataModal({
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) {
         if (json?.code === "SHOPIFY_OAUTH_REDIRECT_NOT_CONFIGURED") {
-          throw new Error("Shopify OAuth is not configured. Use the Shopify revenue wizard's Admin API token option, or configure the Shopify app callback before using OAuth.");
+          throw new Error("Shopify OAuth setup is incomplete. Configure the Shopify app callback URL before connecting with OAuth.");
         }
         throw new Error(json?.message || json?.error || `Failed to start Shopify OAuth (HTTP ${resp.status})`);
       }

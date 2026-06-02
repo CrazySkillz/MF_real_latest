@@ -8128,7 +8128,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
               currency={(campaign as any)?.currency || "USD"}
               dateRange={"to_date"}
               platformContext="linkedin"
-              initialStep={revenueWizardInitialStep as any}
+              initialStep={revenueWizardInitialStep === "select" ? undefined : revenueWizardInitialStep as any}
               initialSource={revenueWizardInitialSource || undefined}
               onSuccess={() => {
                 // Recompute LinkedIn metrics after revenue import

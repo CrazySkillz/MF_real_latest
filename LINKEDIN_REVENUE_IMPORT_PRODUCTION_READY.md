@@ -485,6 +485,7 @@ Changes:
 
 - Treat CSV, Google Sheets, HubSpot, Salesforce, and Shopify Back/Cancel parity as a manual runtime validation gate.
 - Remove the unused LinkedIn-only CSV opener so the visible add-revenue entry point cannot bypass the shared source chooser.
+- Do not pass `initialStep="select"` into the shared revenue modal, because `"select"` is the default state and should not suppress the shared Back button.
 - Keep the tracker explicit that this is not a known code defect.
 - Do not alter GA4, LinkedIn, CRM, ecommerce, or revenue aggregation behavior unless validation proves a mismatch.
 
@@ -500,6 +501,7 @@ Status:
 
 - [x] Completed locally: Commit 7 is scoped as a validation gate, not a speculative code change.
 - [x] Completed locally: removed unused `openRevenueCsvWizard()` from LinkedIn Analytics so no stale local helper can force the add flow to start at CSV instead of the shared source chooser.
+- [x] Completed locally: LinkedIn now leaves `initialStep` unset when the intended start page is the default source chooser, so Upload CSV and Google Sheets show the shared Back button and return to the source chooser through `handleBack()`.
 - [ ] Pending user/runtime validation: provider navigation parity pass across CSV, Google Sheets, HubSpot, Salesforce, and Shopify.
 
 ## Relevant Files

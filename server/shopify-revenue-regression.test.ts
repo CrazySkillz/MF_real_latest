@@ -57,4 +57,12 @@ describe("Shopify revenue regression guard", () => {
     expect(wizard).toContain("Shopify OAuth setup is incomplete");
     expect(wizard).toContain("Configure the Shopify app callback URL before connecting with OAuth.");
   });
+
+  it("does not switch Shopify OAuth users to token mode when order reads are blocked", () => {
+    const wizard = read(SHOPIFY_WIZARD_FILE);
+
+    expect(wizard).toContain('json?.code === "SHOPIFY_PROTECTED_CUSTOMER_DATA_APPROVAL_REQUIRED"');
+    expect(wizard).toContain("Shopify connected, but this OAuth app is not approved for protected customer data needed to read orders.");
+    expect(wizard).not.toContain('if (connectMethod !== "token") setConnectMethod("token");');
+  });
 });

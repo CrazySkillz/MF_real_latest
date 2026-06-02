@@ -309,6 +309,7 @@ Shopify OAuth production rule:
 - `SHOPIFY_REDIRECT_URI` must be preserved exactly after whitespace trim. Do not strip or add a trailing slash because Shopify compares the complete `redirect_uri` against the app's allowed redirection URL.
 - The resolved callback must match the callback URL/domain configured in the Shopify app.
 - If no explicit configured value is available, the LinkedIn revenue Shopify path must fail in-app before opening Shopify. Sending a guessed `redirect_uri` to Shopify produces `redirect_uri is not whitelisted` and wastes the user's validation time.
+- OAuth connection success does not prove Shopify Orders API access. If Shopify returns protected-customer-data 403 when reading orders, keep OAuth selected and show a protected-data approval message; do not switch users to Admin API token automatically.
 - This differs from the GA4 Shopify flow when users choose the Admin API token connection method. The token path uses `/api/shopify/connect` and does not run Shopify OAuth, so it is not affected by Shopify OAuth redirect whitelisting.
 
 LinkedIn Pipeline Proxy rule implemented:

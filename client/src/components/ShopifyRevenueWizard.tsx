@@ -314,15 +314,15 @@ export function ShopifyRevenueWizard(props: {
       );
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) {
-        // Enterprise-grade: Shopify may block orders access pending merchant approval for read_orders.
         if (resp.status === 403) {
-          const shopifyRaw = json?.shopifyError ? `\n\nShopify says: ${json.shopifyError}` : "";
+          const protectedDataBlocked = json?.code === "SHOPIFY_PROTECTED_CUSTOMER_DATA_APPROVAL_REQUIRED";
           toast({
-            title: "Shopify access denied",
-            description: `Shopify returned 403 when reading orders. Ensure your app has read_orders scope enabled, then uninstall and reinstall the app to get a fresh token.${shopifyRaw}`,
+            title: protectedDataBlocked ? "Shopify order access blocked" : "Shopify order access denied",
+            description: protectedDataBlocked
+              ? "Shopify connected, but this OAuth app is not approved for protected customer data needed to read orders. Approve protected customer data for Orders in Shopify, then reconnect."
+              : "Shopify connected, but order reads are not approved for this app. Approve the Orders scope in Shopify, then reconnect.",
             variant: "destructive",
           });
-          if (connectMethod !== "token") setConnectMethod("token");
         }
         throw new Error(json?.error || "Failed to load values");
       }

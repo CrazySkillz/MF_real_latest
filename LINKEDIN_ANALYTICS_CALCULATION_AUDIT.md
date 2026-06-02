@@ -1,7 +1,7 @@
 # LinkedIn Analytics Calculation Audit
 ## Enterprise-Grade Accuracy Validation
 
-**Last Updated:** November 23, 2025  
+**Last Updated:** June 2, 2026
 **Status:** ✅ PRODUCTION READY  
 **Confidence Level:** 100%
 
@@ -127,19 +127,19 @@ if (totalImpressions > 0) {
 ### 1.3 Revenue Analytics Metrics
 
 #### 1.3.1 Total Revenue
-**Formula:** `Conversions × Conversion Value`  
-**Location:** Line 5843
+**Formula:** source-dependent LinkedIn-attributed revenue
+**Location:** `server/utils/linkedin-revenue.ts`, `server/routes-oauth.ts`
 
-```typescript
-const totalRevenue = totalConversions * conversionValue;
-aggregated.totalRevenue = parseFloat(totalRevenue.toFixed(2));
-```
+Current source priority:
+
+- Use active LinkedIn-scoped imported revenue-to-date when a revenue source is connected.
+- Use explicit LinkedIn conversion value times LinkedIn conversions only for legacy/supported conversion-value sources.
+- Keep revenue unavailable when no LinkedIn-scoped revenue source or valid conversion-value source exists.
 
 **✅ VALIDATED:**
-- Correct formula
-- Uses campaign-level conversion value (prioritized correctly)
-- Rounds to 2 decimal places
-- **Industry Standard:** ✅ Correct
+- GA4 revenue does not unlock LinkedIn revenue.
+- LinkedIn revenue-to-date is not multiplied by LinkedIn conversions.
+- Revenue is rounded to cents at display/materialization boundaries.
 
 #### 1.3.2 Profit
 **Formula:** `Revenue - Spend`  
@@ -259,27 +259,28 @@ const engagementRate = impressions > 0 ? (engagements / impressions) * 100 : 0;
 ---
 
 ### 2.2 Campaign Breakdown - Revenue Metrics
-**Location:** Lines 1989-2006
+**Location:** `client/src/pages/linkedin-analytics.tsx`, `server/routes-oauth.ts`
+
+Current source rules:
+
+- Campaign names, status, spend, impressions, clicks, conversions, and leads come from imported LinkedIn campaign-row metrics. In test-data flow, these are the LinkedIn test campaign rows.
+- The right-side dollar value in each campaign row is `Spend`.
+- Exact row revenue is used when `/api/campaigns/:campaignId/linkedin-campaign-revenue` returns a saved source-to-LinkedIn-campaign mapping.
+- The server derives mapped row revenue from saved `campaignValueRevenueTotals` when the source stores exact value-level totals.
+- If no exact row mapping exists, row revenue is allocated from LinkedIn Overview `Total Revenue` by imported LinkedIn conversion share.
 
 ```typescript
-const campaignConversions = linkedInCampaign.metrics.conversions || 0;
-const campaignSpend = linkedInCampaign.metrics.spend || 0;
-const campaignLeads = linkedInCampaign.metrics.leads || 0;
-const conversionValue = aggregated.conversionValue || 0;
-
-const campaignRevenue = campaignConversions * conversionValue;
-const campaignProfit = campaignRevenue - campaignSpend;
-const campaignROAS = campaignSpend > 0 ? campaignRevenue / campaignSpend : 0;
-const campaignROI = campaignSpend > 0 ? ((campaignRevenue - campaignSpend) / campaignSpend) * 100 : 0;
-const campaignProfitMargin = campaignRevenue > 0 ? (campaignProfit / campaignRevenue) * 100 : 0;
-const campaignRevenuePerLead = campaignLeads > 0 ? campaignRevenue / campaignLeads : 0;
+rowRevenue = overviewTotalRevenue * (rowConversions / totalLinkedInConversions)
+rowProfit = rowRevenue - rowSpend
+rowROAS = rowSpend > 0 ? rowRevenue / rowSpend : 0
+rowROI = rowSpend > 0 ? ((rowRevenue - rowSpend) / rowSpend) * 100 : 0
 ```
 
 **✅ VALIDATED:**
-- All formulas match backend calculations
-- Zero-division protection
-- Consistent with aggregated metrics
-- **CRITICAL:** Uses correct conversion value from aggregated data
+- Exact mapped revenue is preferred when available
+- Conversion-share fallback keeps row revenue totals reconciled to Overview `Total Revenue`
+- Zero-division protection is retained
+- Spend remains imported LinkedIn campaign-row spend, not revenue
 
 ---
 
@@ -307,26 +308,18 @@ const engagementRate = impressions > 0 ? (engagements / impressions) * 100 : 0;
 ---
 
 ### 2.4 View Details Modal - Revenue Analytics
-**Location:** Lines 4108-4118
+**Location:** current LinkedIn detail consumers should use the same source rules as campaign breakdown
 
-```typescript
-const campaignConversions = selectedCampaignDetails.metrics.conversions || 0;
-const campaignSpend = selectedCampaignDetails.metrics.spend || 0;
-const campaignLeads = selectedCampaignDetails.metrics.leads || 0;
-const conversionValue = aggregated.conversionValue || 0;
+Rule:
 
-const campaignRevenue = campaignConversions * conversionValue;
-const campaignProfit = campaignRevenue - campaignSpend;
-const campaignROAS = campaignSpend > 0 ? campaignRevenue / campaignSpend : 0;
-const campaignROI = campaignSpend > 0 ? ((campaignRevenue - campaignSpend) / campaignSpend) * 100 : 0;
-const campaignProfitMargin = campaignRevenue > 0 ? (campaignProfit / campaignRevenue) * 100 : 0;
-const campaignRevenuePerLead = campaignLeads > 0 ? campaignRevenue / campaignLeads : 0;
-```
+- Revenue details must prefer exact mapped LinkedIn-scoped revenue when available.
+- If no exact mapping exists, details must use the same conversion-share allocation as `All Campaigns`.
+- Details must not multiply imported revenue-to-date by conversions.
 
 **✅ VALIDATED:**
-- Identical to campaign breakdown calculations
-- All formulas correct
-- Consistent across all views
+- Consistent with the updated campaign breakdown source rules
+- Zero-division protection retained
+- GA4 revenue remains excluded from LinkedIn revenue-derived values
 
 ---
 
@@ -641,7 +634,7 @@ For quick reference by marketing executives:
 | **CPA** | Spend / Conversions | $1,000 / 50 conversions = $20.00 |
 | **CPL** | Spend / Leads | $1,000 / 100 leads = $10.00 |
 | **ER** | (Engagements / Impressions) × 100 | 200 engagements / 10,000 impressions = 2% |
-| **Revenue** | Conversions × Conversion Value | 50 × $75 = $3,750 |
+| **Revenue** | LinkedIn-scoped attributed revenue source, or explicit conversion value mode where supported | Imported source total = $3,750 |
 | **Profit** | Revenue - Spend | $3,750 - $1,000 = $2,750 |
 | **ROI** | ((Revenue - Spend) / Spend) × 100 | (($3,750 - $1,000) / $1,000) × 100 = 275% |
 | **ROAS** | Revenue / Spend | $3,750 / $1,000 = 3.75x |

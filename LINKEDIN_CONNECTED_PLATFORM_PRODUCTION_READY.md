@@ -69,6 +69,7 @@ LinkedIn is production-ready only when all of the following are true:
 - Campaign DeepDive consumes LinkedIn through the shared aggregate contract.
 - Missing LinkedIn metrics render as unavailable with a reason, not as zero unless zero is a real source value.
 - Revenue, ROI, and ROAS require valid LinkedIn spend plus valid linked revenue or attributed revenue.
+- LinkedIn Analytics `All Campaigns` campaign rows use imported LinkedIn campaign-row metrics for activity and spend. Revenue is exact only when a LinkedIn-scoped revenue source maps source values to LinkedIn campaign rows; otherwise row revenue is allocated from LinkedIn Overview `Total Revenue` by LinkedIn conversion share.
 - Scheduler refresh updates the same source-backed values used by the UI.
 - Disconnect/reconnect only affects the current campaign's LinkedIn source and related LinkedIn-scoped records.
 
@@ -255,6 +256,8 @@ Status:
 - [x] Completed locally: `/api/linkedin/metrics/:campaignId` now returns `null` revenue-derived values when LinkedIn revenue tracking is unavailable.
 - [x] Completed locally: regression coverage added for spend-only LinkedIn campaigns and LinkedIn campaigns with valid attributed revenue.
 - [x] User validation passed for Commit 6 using LinkedIn test data flow.
+- [x] Completed follow-up: LinkedIn Analytics `All Campaigns` campaign-row revenue now uses exact mapped revenue when available and conversion-share allocation from Overview `Total Revenue` when only campaign-level revenue exists.
+- [x] Completed follow-up: the right-side campaign-row dollar value in `All Campaigns` is now labelled `Spend` to make clear it comes from the imported LinkedIn campaign-row spend/test-data spend.
 
 ### Commit 7: Scheduler And Freshness Hardening
 

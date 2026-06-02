@@ -188,6 +188,8 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   const [isRevenueWizardOpen, setIsRevenueWizardOpen] = useState(false);
   const [revenueWizardInitialStep, setRevenueWizardInitialStep] = useState<any>("select");
   const [revenueWizardInitialSource, setRevenueWizardInitialSource] = useState<any>(null);
+  const [showLinkedInRevenueSourcesDialog, setShowLinkedInRevenueSourcesDialog] = useState(false);
+  const [deletingLinkedInRevenueSourceId, setDeletingLinkedInRevenueSourceId] = useState<string | null>(null);
   const [isSalesforceViewerOpen, setIsSalesforceViewerOpen] = useState(false);
   const [salesforceViewerSourceId, setSalesforceViewerSourceId] = useState<string | null>(null);
   const [isHubspotRevenueWizardOpen, setIsHubspotRevenueWizardOpen] = useState(false);
@@ -209,10 +211,15 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
   const [revenueModalIntent, setRevenueModalIntent] = useState<'add' | 'edit'>('add');
 
   // LinkedIn Add revenue uses the standard wizard flow (select source -> Google Sheets -> choose tab -> map columns)
-  const openAddRevenueModal = async (intent: 'add' | 'edit' = 'add') => {
+  const openAddRevenueModal = async (intent: 'add' | 'edit' = 'add', sourceOverride: any = null) => {
     setRevenueModalIntent(intent);
     setRevenueWizardInitialStep("select");
     if (intent === 'edit') {
+      if (sourceOverride) {
+        setRevenueWizardInitialSource(sourceOverride);
+        setIsRevenueWizardOpen(true);
+        return;
+      }
       // Prefer the already-fetched active source (prevents flashing/mismatches).
       if (activeLinkedInRevenueSource) {
         setRevenueWizardInitialSource(activeLinkedInRevenueSource);
@@ -1557,14 +1564,20 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
 
   // LinkedIn revenue source removal (clears conversion value mappings so ROI/ROAS/etc recompute immediately)
   const deleteLinkedInRevenueSourceMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest('DELETE', `/api/campaigns/${campaignId}/linkedin/revenue-source`);
+    mutationFn: async (sourceId?: string) => {
+      const endpoint = sourceId
+        ? `/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`
+        : `/api/campaigns/${campaignId}/linkedin/revenue-source`;
+      const res = await apiRequest('DELETE', endpoint);
       return res.json();
     },
-    onSuccess: async () => {
+    onSuccess: async (result: any) => {
+      setDeletingLinkedInRevenueSourceId(null);
       toast({
         title: "Revenue source removed",
-        description: "Revenue tracking has been disabled. ROI/ROAS and other revenue metrics will update immediately.",
+        description: result?.revenueTrackingDisabled
+          ? "Revenue tracking has been disabled. ROI/ROAS and other revenue metrics will update immediately."
+          : "Total Revenue has been recalculated.",
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
@@ -1598,6 +1611,7 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
       await queryClient.refetchQueries({ queryKey: ['/api/platforms/linkedin/kpis', campaignId], exact: true });
     },
     onError: (error: any) => {
+      setDeletingLinkedInRevenueSourceId(null);
       toast({
         title: "Error",
         description: error.message || "Failed to remove revenue source",
@@ -5098,7 +5112,15 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                   <CardContent className="p-4">
                                     <div className="flex items-start justify-between mb-1">
                                       <p className="text-sm text-muted-foreground/70">Total Revenue</p>
-                                      <DollarSign className="w-4 h-4 text-muted-foreground/70" />
+                                      <button
+                                        type="button"
+                                        onClick={() => void openAddRevenueModal('add')}
+                                        className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
+                                        title="Add LinkedIn revenue source"
+                                        aria-label="Add LinkedIn revenue source"
+                                      >
+                                        <Plus className="w-4 h-4" />
+                                      </button>
                                     </div>
                                     <p className="text-2xl font-bold text-foreground">
                                       {hasRevenueTracking ? formatCurrency(totalRevenue) : "Not connected"}
@@ -5106,6 +5128,15 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
                                     <p className="text-xs text-muted-foreground mt-1">
                                       {hasRevenueTracking ? (linkedInRevenueSourceLabel || "Connected revenue source") : "Connect attributed revenue"}
                                     </p>
+                                    {activeLinkedInRevenueSources.length > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowLinkedInRevenueSourcesDialog(true)}
+                                        className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+                                      >
+                                        Sources ({activeLinkedInRevenueSources.length})
+                                      </button>
+                                    )}
                                     {hasRevenueTracking && (() => { const b = getBenchmarkForMetric('totalRevenue'); return b && !b.linkedInCampaignName ? renderPerformanceBadge('totalRevenue', totalRevenue, 'higher-better') : null; })()}
                                   </CardContent>
                                 </Card>
@@ -8020,6 +8051,81 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
           {/* Campaign Details Modal (disabled - duplicate; canonical modal is `LinkedInCampaignDetailsModal`) */}
           {false && null}
           {/* Duplicate Campaign Details modal removed (canonical modal is `LinkedInCampaignDetailsModal`). */}
+
+          <Dialog open={showLinkedInRevenueSourcesDialog} onOpenChange={setShowLinkedInRevenueSourcesDialog}>
+            <DialogContent className="bg-card border-border max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="text-foreground">LinkedIn Revenue Sources</DialogTitle>
+                <DialogDescription className="text-muted-foreground/70">
+                  Sources contributing to LinkedIn Total Revenue.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+                {activeLinkedInRevenueSources.length > 0 ? activeLinkedInRevenueSources.map((source: any) => (
+                  <div key={source.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground" title={getLinkedInRevenueSourceLabel(source)}>
+                        {getLinkedInRevenueSourceLabel(source)}
+                      </p>
+                      <p className="text-xs text-muted-foreground/70">LinkedIn attributed revenue</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium tabular-nums text-foreground">
+                        {formatCurrency(Number(source.lastTotalRevenue || 0))}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowLinkedInRevenueSourcesDialog(false);
+                          void openAddRevenueModal('edit', source);
+                        }}
+                        className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                        title="Edit revenue source"
+                        aria-label="Edit revenue source"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingLinkedInRevenueSourceId(String(source.id))}
+                        className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
+                        title="Remove revenue source"
+                        aria-label="Remove revenue source"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )) : (
+                  <p className="text-sm text-muted-foreground/70">No LinkedIn revenue sources connected.</p>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <AlertDialog open={!!deletingLinkedInRevenueSourceId} onOpenChange={(open) => { if (!open) setDeletingLinkedInRevenueSourceId(null); }}>
+            <AlertDialogContent className="bg-card border-border">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-foreground">Remove revenue source?</AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground/70">
+                  This removes only the selected LinkedIn revenue source. Total Revenue will be recalculated.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => {
+                    if (deletingLinkedInRevenueSourceId) {
+                      deleteLinkedInRevenueSourceMutation.mutate(deletingLinkedInRevenueSourceId);
+                    }
+                  }}
+                >
+                  Remove
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* LinkedIn revenue CSV wizard (standard flow) */}
           {campaignId && (

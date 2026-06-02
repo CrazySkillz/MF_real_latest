@@ -32,9 +32,13 @@ The main gaps are:
 - The current call to action routes users back to Campaign Overview instead of opening the revenue import flow directly.
 - The wording does not clearly explain that users are connecting revenue attribution for LinkedIn, not importing native LinkedIn revenue.
 - The LinkedIn revenue modal still contains older LinkedIn-only flow branches for CSV, Google Sheets, and some CRM/ecommerce paths instead of matching the GA4 revenue-source flow and changing only `platformContext`.
-- The LinkedIn `Total Revenue` summary card is display-only today; unlike GA4, it does not expose a `+` action or `Sources (n)` link for managing multiple LinkedIn-scoped revenue sources.
+- Before Commit 4F, the LinkedIn `Total Revenue` summary card was display-only and did not expose the GA4-style `+` action or `Sources (n)` link for managing multiple LinkedIn-scoped revenue sources.
 - LinkedIn Overview revenue totals previously read imported revenue through a 30-day window even though LinkedIn revenue imports are treated as campaign-lifetime revenue-to-date. Sources that materialized older daily rows could therefore be undercounted.
 - CRM imports can materialize both aggregate revenue rows and per-LinkedIn-campaign rows for attribution. Totals must not double-count those sub-campaign rows when an aggregate row exists for the same source.
+- LinkedIn Analytics `All Campaigns` campaign-row revenue needs two safe modes:
+  - exact mapped revenue when a revenue source value is explicitly mapped to a LinkedIn campaign row
+  - conversion-share allocation from LinkedIn Overview `Total Revenue` when only campaign-level revenue is available
+- Shopify revenue review previously showed only one total, making it hard to verify which selected Shopify campaign value contributed which amount before saving.
 - The production-ready path needs regression coverage proving GA4 revenue cannot leak into LinkedIn revenue.
 
 ## Production-Ready Target
@@ -48,6 +52,7 @@ Production-ready behavior:
 - Each LinkedIn revenue source follows the same user flow as the matching GA4 revenue source. LinkedIn-specific behavior should be limited to platform scoping with `platformContext="linkedin"` and source-specific attribution copy where needed.
 - LinkedIn revenue imports use revenue-to-date style revenue inputs like GA4. The UI should not expose a separate LinkedIn-only `Conversion Value` source-of-truth selector.
 - Imported LinkedIn revenue updates LinkedIn Overview, KPI, Benchmark, Campaign DeepDive, and Custom Report consumers through the existing cache/refetch pattern.
+- LinkedIn Analytics `All Campaigns` uses imported LinkedIn campaign-row metrics for names, status, spend, impressions, clicks, conversions, and leads. Revenue is exact when a CRM/ecommerce value is mapped to a LinkedIn campaign row; otherwise it is allocated from the Overview `Total Revenue` by each row's share of LinkedIn conversions.
 - LinkedIn Overview shows a top-level `Total Revenue` summary card; when no LinkedIn-scoped revenue source exists, the card says `Not connected` instead of showing a misleading zero.
 - LinkedIn Overview `Total Revenue` sums all active LinkedIn-scoped imported revenue sources using campaign-lifetime revenue-to-date semantics.
 - LinkedIn Overview `Total Revenue` follows the GA4 card pattern: `+` opens the LinkedIn-scoped add-revenue flow, and `Sources (n)` opens the LinkedIn-scoped source list for multiple active sources.
@@ -166,6 +171,7 @@ Commit 4 sub-commit index:
 - Commit 4C: Normalize LinkedIn CRM and ecommerce revenue wizards to the GA4 flow.
 - Commit 4D: Align LinkedIn revenue modal navigation with GA4.
 - Commit 4E: Document and guard the GA4-flow rule.
+- Commit 4F: Add LinkedIn Total Revenue card source controls.
 
 ### Commit 4A: Normalize LinkedIn CSV To GA4 Revenue Flow
 
@@ -301,6 +307,10 @@ Status:
 - [x] Completed locally: Pipeline Proxy card now remains visible in the top metric-card grid next to `Leads`, with `Not configured` copy until proxy setup is selected and saved.
 - [x] Completed locally: LinkedIn Overview metric cards now use a 4-column desktop grid and Pipeline Proxy uses the same card size as Leads.
 - [x] Completed locally: Shopify revenue Crosswalk now uses clickable Shopify value rows as the source of truth for selected values, matching the HubSpot/Salesforce pattern and feeding Revenue/Review from `selectedValues` instead of dropdown-only LinkedIn campaign mappings.
+- [x] Completed locally: Shopify revenue Review now shows a selected-value revenue breakdown so users can verify which Shopify campaign values contribute which revenue amount before saving.
+- [x] Completed locally: LinkedIn Analytics `All Campaigns` now normalizes the per-campaign revenue breakdown response and uses exact mapped revenue from saved `campaignValueRevenueTotals` when source values are mapped to LinkedIn campaign rows.
+- [x] Completed locally: when exact row mapping is unavailable, `All Campaigns` keeps the safe conversion-share fallback from LinkedIn Overview `Total Revenue` using imported LinkedIn campaign-row conversions.
+- [x] Completed locally: `All Campaigns` now labels the right-side campaign-row dollar value as `Spend` so users know it is imported LinkedIn spend/test-data spend, not revenue.
 - [ ] Pending: full manual parity pass for Back/Cancel behavior across CSV, Google Sheets, CRM, and ecommerce flows.
 
 Shopify OAuth production rule:
@@ -323,6 +333,23 @@ LinkedIn Pipeline Proxy rule implemented:
 - LinkedIn Overview shows Pipeline Proxy as a top metric card next to Leads.
 - LinkedIn Overview prefers the live proxy endpoint for fresh values and uses the saved source config as a safe fallback so the configured proxy is not hidden.
 - The top metric-card area keeps the Pipeline Proxy card visible even before setup, so users can understand the optional signal and where it will populate.
+
+LinkedIn All Campaigns breakdown rule implemented:
+
+- Campaign-row activity values come from the imported LinkedIn metrics for that campaign row. In test-data flow, these are the LinkedIn test campaign rows.
+- The right-side dollar value in each campaign row is `Spend`.
+- Derived paid-media values use standard row formulas:
+  - `CTR = clicks / impressions`
+  - `CPC = spend / clicks`
+  - `CPA = spend / conversions`
+  - `CPL = spend / leads`
+- Revenue uses exact source-to-LinkedIn campaign mapping when available.
+- If only total campaign revenue is available, row revenue is allocated by LinkedIn conversion share:
+  - `row revenue = Overview Total Revenue * (row conversions / total LinkedIn conversions)`
+- `ROAS = row revenue / row spend`.
+- `ROI = (row revenue - row spend) / row spend`.
+- `Profit = row revenue - row spend`.
+- CSV/Google Sheets/CRM/ecommerce source values do not have to match LinkedIn campaign names when the UI provides a crosswalk/selection step. Exact row attribution requires a mapping; otherwise the conversion-share fallback is used.
 
 ### Commit 4E: Document And Guard The GA4-Flow Rule
 
@@ -375,7 +402,10 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: the LinkedIn Overview `Total Revenue` card now exposes a `+` action that opens the LinkedIn-scoped add-revenue wizard.
+- [x] Completed locally: the `Sources (n)` link uses only active LinkedIn-scoped revenue sources from `/api/campaigns/:campaignId/revenue-sources?platformContext=linkedin`.
+- [x] Completed locally: the source list opens a LinkedIn revenue-source dialog with source-specific edit and delete actions; delete uses the existing guarded `/api/campaigns/:campaignId/revenue-sources/:sourceId` route.
+- [ ] User validation pending.
 
 ### Commit 5: Regression Coverage For Revenue Isolation
 

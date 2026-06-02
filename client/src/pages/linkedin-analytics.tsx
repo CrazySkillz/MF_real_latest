@@ -240,12 +240,6 @@ function LinkedInAnalyticsCampaign({ campaignId }: { campaignId: string }) {
     setIsRevenueWizardOpen(true);
   };
 
-  const openRevenueCsvWizard = () => {
-    setRevenueWizardInitialSource(null);
-    setRevenueWizardInitialStep("csv");
-    setIsRevenueWizardOpen(true);
-  };
-
   const [selectedCampaignDetails, setSelectedCampaignDetails] = useState<any>(null);
   const [modalStep, setModalStep] = useState<'templates' | 'configuration'>('configuration');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);

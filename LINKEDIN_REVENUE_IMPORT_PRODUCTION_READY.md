@@ -62,10 +62,10 @@ Production-ready behavior:
 ## Current Implementation Status After Commit 6
 
 - Commit 5 validation passed and the source-isolation regression evidence is recorded below.
-- Commit 6 is documentation/evidence only; no app behavior changed.
+- Commit 6 validation passed; it was documentation/evidence only and no app behavior changed.
 - LinkedIn revenue is documented as attributed revenue from LinkedIn-scoped CRM, ecommerce, CSV, Google Sheets, or webhook inputs, not native LinkedIn revenue.
 - GA4 revenue is documented as unable to unlock LinkedIn revenue, ROI, or ROAS without explicit LinkedIn attribution.
-- Remaining open validation before closing the tracker: the full manual Back/Cancel parity pass across CSV, Google Sheets, CRM, and ecommerce flows remains tracked under Commit 4D.
+- Only remaining open item before closing the tracker: the full manual Back/Cancel parity pass across CSV, Google Sheets, CRM, and ecommerce flows remains tracked under Commit 4D and Commit 7.
 
 ## Commit Plan
 
@@ -319,7 +319,7 @@ Status:
 - [x] Completed locally: LinkedIn Analytics `All Campaigns` now normalizes the per-campaign revenue breakdown response and uses exact mapped revenue from saved `campaignValueRevenueTotals` when source values are mapped to LinkedIn campaign rows.
 - [x] Completed locally: when exact row mapping is unavailable, `All Campaigns` keeps the safe conversion-share fallback from LinkedIn Overview `Total Revenue` using imported LinkedIn campaign-row conversions.
 - [x] Completed locally: `All Campaigns` now labels the right-side campaign-row dollar value as `Spend` so users know it is imported LinkedIn spend/test-data spend, not revenue.
-- [ ] Pending: full manual parity pass for Back/Cancel behavior across CSV, Google Sheets, CRM, and ecommerce flows.
+- [ ] Pending validation gate: full manual parity pass for Back/Cancel behavior across CSV, Google Sheets, CRM, and ecommerce flows. No active code defect is identified for this item; code should change only if the parity pass finds a real mismatch.
 
 Shopify OAuth production rule:
 
@@ -382,7 +382,7 @@ Status:
 - [x] Completed locally: regression coverage now guards the LinkedIn HubSpot closed-won default and prevents the old non-lost default from being reintroduced into confirmed Total Revenue.
 - [x] Completed locally: regression coverage now guards that LinkedIn Overview can render Pipeline Proxy from saved source config when the live proxy endpoint has not returned.
 - [x] Completed locally: regression coverage now guards that LinkedIn Salesforce Crosswalk uses selected Opportunity values instead of the stale LinkedIn campaign dropdown mapping flow.
-- [ ] Pending: keep this tracker current as remaining provider manual parity checks are completed.
+- [ ] Pending until Commit 7: keep this tracker current as remaining provider manual parity checks are completed.
 
 ### Commit 4F: LinkedIn Total Revenue Card Source Controls
 
@@ -473,6 +473,34 @@ Status:
 - [x] Completed locally: documentation states GA4 revenue cannot unlock LinkedIn ROI/ROAS without explicit LinkedIn attribution.
 - [x] Completed locally: broader LinkedIn documentation references this tracker for revenue-import evidence.
 - [x] Completed locally: remaining manual provider-navigation validation is still explicitly tracked under Commit 4D instead of being overclaimed as complete.
+- [x] User validation passed for Commit 6.
+
+### Commit 7: Provider Navigation Parity Validation Gate
+
+Goal:
+
+- Close the last validation-only gap without changing production behavior unless a real provider navigation mismatch is found.
+
+Changes:
+
+- Treat CSV, Google Sheets, HubSpot, Salesforce, and Shopify Back/Cancel parity as a manual runtime validation gate.
+- Remove the unused LinkedIn-only CSV opener so the visible add-revenue entry point cannot bypass the shared source chooser.
+- Keep the tracker explicit that this is not a known code defect.
+- Do not alter GA4, LinkedIn, CRM, ecommerce, or revenue aggregation behavior unless validation proves a mismatch.
+
+Validation:
+
+- Open LinkedIn Analytics -> Overview -> `+` on Total Revenue.
+- Check CSV, Google Sheets, HubSpot, Salesforce, and Shopify source paths.
+- Confirm Back returns to the previous expected wizard step.
+- Confirm Cancel closes the wizard without saving a partial source.
+- Confirm provider reconnect returns to the selected provider wizard where applicable.
+
+Status:
+
+- [x] Completed locally: Commit 7 is scoped as a validation gate, not a speculative code change.
+- [x] Completed locally: removed unused `openRevenueCsvWizard()` from LinkedIn Analytics so no stale local helper can force the add flow to start at CSV instead of the shared source chooser.
+- [ ] Pending user/runtime validation: provider navigation parity pass across CSV, Google Sheets, HubSpot, Salesforce, and Shopify.
 
 ## Relevant Files
 

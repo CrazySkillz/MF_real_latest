@@ -164,7 +164,7 @@ Status:
 - [x] Completed locally: Create Campaign step 3 now reuses `GoogleAdsConnectionFlow`.
 - [x] Completed locally: Google Ads is added to the draft campaign's connected platform list only after `GoogleAdsConnectionFlow` reports connection success.
 - [x] Completed locally: Google Ads campaign selection now defaults to no selected campaigns and removes the unsafe import-all skip action.
-- [ ] User validation pending for Commit 2.
+- [x] User validation passed for Commit 2.
 
 ### Commit 3: Connected Platforms Add-Source Hardening
 
@@ -189,7 +189,10 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: traced existing Google Ads add-source rendering in `client/src/pages/campaign-detail.tsx`.
+- [x] Completed locally: successful Google Ads add-source now invalidates Connected Platforms, Google Ads connection/metrics, outcome totals, Executive Summary, Trend Analysis, KPI, Benchmark, and Google Ads report queries.
+- [x] Completed locally: selected Google Ads campaigns remain persisted by `GoogleAdsConnectionFlow` through `/api/google-ads/:campaignId/selected-campaigns`.
+- [ ] User validation pending for Commit 3.
 
 ### Commit 4: Remove Placeholder Google Ads Metrics
 

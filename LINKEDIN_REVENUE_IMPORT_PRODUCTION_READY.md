@@ -405,7 +405,7 @@ Status:
 - [x] Completed locally: the LinkedIn Overview `Total Revenue` card now exposes a `+` action that opens the LinkedIn-scoped add-revenue wizard.
 - [x] Completed locally: the `Sources (n)` link uses only active LinkedIn-scoped revenue sources from `/api/campaigns/:campaignId/revenue-sources?platformContext=linkedin`.
 - [x] Completed locally: the source list opens a LinkedIn revenue-source dialog with source-specific edit and delete actions; delete uses the existing guarded `/api/campaigns/:campaignId/revenue-sources/:sourceId` route.
-- [ ] User validation pending.
+- [x] User validation passed.
 
 ### Commit 5: Regression Coverage For Revenue Isolation
 
@@ -429,7 +429,16 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: added `server/linkedin-revenue-isolation.test.ts` around the canonical `resolveLinkedInRevenueContext` helper.
+- [x] Completed locally: regression coverage proves LinkedIn revenue remains unavailable without a LinkedIn-scoped revenue source.
+- [x] Completed locally: regression coverage proves GA4 revenue is not queried and cannot unlock LinkedIn revenue metrics.
+- [x] Completed locally: regression coverage proves a LinkedIn-scoped imported revenue source enables LinkedIn revenue with source-derived conversion value.
+- [x] Completed locally: regression coverage proves stale LinkedIn conversion values are cleared after the final LinkedIn revenue source is removed.
+- [x] Local validation passed: `npm test -- server/linkedin-revenue-isolation.test.ts`.
+- [x] Local validation passed: `npm test -- server/latest-day-revenue-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [x] Local validation passed: `git diff --check`.
+- [ ] User validation pending.
 
 ### Commit 6: Documentation And Final Production-Ready Evidence
 

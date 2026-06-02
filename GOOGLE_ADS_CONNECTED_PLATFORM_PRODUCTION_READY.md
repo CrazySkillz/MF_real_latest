@@ -134,6 +134,7 @@ Status:
 - [x] Tracker created.
 - [x] Linked from `CAMPAIGN_DEEPDIVE_PRODUCTION_READY_STATUS.md`.
 - [x] Validation evidence required for both Create Campaign and Connected Platforms flows documented below.
+- [x] User validation passed for Commit 1.
 
 ### Commit 2: Enable Google Ads In Create Campaign Flow
 
@@ -159,7 +160,10 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: Google Ads removed from the Create Campaign `Coming Soon` gate.
+- [x] Completed locally: Create Campaign step 3 now reuses `GoogleAdsConnectionFlow`.
+- [x] Completed locally: Google Ads is added to the draft campaign's connected platform list only after `GoogleAdsConnectionFlow` reports connection success.
+- [ ] User validation pending for Commit 2.
 
 ### Commit 3: Connected Platforms Add-Source Hardening
 
@@ -384,4 +388,3 @@ Before Google Ads is marked production-ready, record evidence for:
 ## Latest Validation
 
 No Google Ads production-ready validation has been recorded yet.
-

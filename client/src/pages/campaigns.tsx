@@ -26,6 +26,7 @@ import { IntegratedGA4Auth } from "@/components/IntegratedGA4Auth";
 import { SimpleGoogleSheetsAuth } from "@/components/SimpleGoogleSheetsAuth";
 import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
+import { GoogleAdsConnectionFlow } from "@/components/GoogleAdsConnectionFlow";
 
 const campaignFormSchema = insertCampaignSchema.extend({
   name: z.string().min(1, "Campaign name is required"),
@@ -943,7 +944,7 @@ export default function Campaigns() {
                         {platforms.map((platform) => {
                           const Icon = platform.icon;
                           const isConnected = connectedPlatformsInDialog.includes(platform.id);
-                          const isComingSoon = ['google-ads', 'twitter'].includes(platform.id);
+                          const isComingSoon = ['twitter'].includes(platform.id);
                           return (
                             <button
                               key={platform.id}
@@ -1076,6 +1077,19 @@ export default function Campaigns() {
                             onImportComplete={() => {
                               setLinkedInImportComplete(true);
                               setWizardStep(5);
+                            }}
+                          />
+                        )}
+                        {selectedWizardPlatform === 'google-ads' && (
+                          <GoogleAdsConnectionFlow
+                            campaignId={draftCampaignId || ""}
+                            onConnectionSuccess={() => {
+                              setConnectedPlatformsInDialog(prev => prev.includes('google-ads') ? prev : [...prev, 'google-ads']);
+                              setWizardPlatformConnected(true);
+                              setWizardStep(5);
+                            }}
+                            onError={(error) => {
+                              toast({ title: "Connection Failed", description: error, variant: "destructive" });
                             }}
                           />
                         )}

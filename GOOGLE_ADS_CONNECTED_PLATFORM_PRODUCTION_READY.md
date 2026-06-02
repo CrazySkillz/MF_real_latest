@@ -163,6 +163,7 @@ Status:
 - [x] Completed locally: Google Ads removed from the Create Campaign `Coming Soon` gate.
 - [x] Completed locally: Create Campaign step 3 now reuses `GoogleAdsConnectionFlow`.
 - [x] Completed locally: Google Ads is added to the draft campaign's connected platform list only after `GoogleAdsConnectionFlow` reports connection success.
+- [x] Completed locally: Google Ads campaign selection now defaults to no selected campaigns and removes the unsafe import-all skip action.
 - [ ] User validation pending for Commit 2.
 
 ### Commit 3: Connected Platforms Add-Source Hardening

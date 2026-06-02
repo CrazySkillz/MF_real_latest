@@ -180,7 +180,10 @@ export function GoogleAdsConnectionFlow({
         const res = await fetch(`/api/google-ads/${campaignId}/campaigns`);
         const json = await res.json().catch(() => ({}));
         if (json?.success && Array.isArray(json.campaigns)) {
-          setAdsCampaigns(json.campaigns.map((c: any) => ({ ...c, selected: c.selected !== false })));
+          const selectedCampaignIds = Array.isArray(json.selectedCampaignIds)
+            ? new Set(json.selectedCampaignIds.map((id: any) => String(id)))
+            : new Set<string>();
+          setAdsCampaigns(json.campaigns.map((c: any) => ({ ...c, selected: selectedCampaignIds.has(String(c.id)) })));
         }
       } catch {
         // If campaigns can't be loaded, still complete successfully
@@ -317,9 +320,6 @@ export function GoogleAdsConnectionFlow({
                 <Button onClick={handleSaveSelection} disabled={selectedCount === 0 || savingSelection}>
                   {savingSelection && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
                   Connect {selectedCount} Campaign{selectedCount !== 1 ? 's' : ''}
-                </Button>
-                <Button variant="ghost" onClick={() => { toast({ title: 'Google Ads Connected!' }); onConnectionSuccess?.(); }}>
-                  Skip (import all)
                 </Button>
               </div>
             </div>

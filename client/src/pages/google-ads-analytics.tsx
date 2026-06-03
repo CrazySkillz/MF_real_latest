@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ArrowUpDown, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Target, Video, Search, Activity, Plus, Pencil, Trash2, CheckCircle2, AlertCircle, AlertTriangle, Filter, RefreshCw, Loader2, BarChart3 } from "lucide-react";
+import { ArrowLeft, ArrowUpDown, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Target, Video, Search, Activity, Plus, Pencil, Trash2, CheckCircle2, AlertCircle, AlertTriangle, Filter, BarChart3 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -163,37 +163,6 @@ export default function GoogleAdsAnalytics() {
       return res.json();
     },
     enabled: !!campaignId,
-  });
-
-  // Refresh data mutation
-  const refreshMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/google-ads/${campaignId}/refresh`, { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to refresh');
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/google-ads", campaignId] });
-      toast({ title: 'Data Refreshed', description: 'Google Ads metrics updated.' });
-    },
-    onError: (err: any) => {
-      toast({ title: 'Refresh Failed', description: err.message, variant: 'destructive' });
-    },
-  });
-
-  const enrichGa4Mutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/google-ads/${campaignId}/enrich-ga4-revenue`, { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to match GA4 revenue');
-      return res.json();
-    },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/google-ads", campaignId, "daily-metrics"] });
-      toast({ title: 'GA4 Revenue Matched', description: `${data.matched} of ${data.matched + (data.unmatched?.length || 0)} campaigns matched.` });
-    },
-    onError: (err: any) => {
-      toast({ title: 'GA4 Match Failed', description: err.message, variant: 'destructive' });
-    },
   });
 
   // Fetch daily metrics (hardcoded 90-day window)
@@ -623,7 +592,7 @@ export default function GoogleAdsAnalytics() {
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 <p className="text-lg font-medium">No data yet</p>
-                <p className="text-sm mt-1">Click "Refresh Data" to generate initial metrics.</p>
+                <p className="text-sm mt-1">Metrics will appear after the connected Google Ads source refreshes.</p>
               </CardContent>
             </Card>
           </main>
@@ -1176,16 +1145,6 @@ export default function GoogleAdsAnalytics() {
                 {connection.method === "test_mode" && " (Test)"}
               </Badge>
             )}
-            <div className="ml-auto flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => enrichGa4Mutation.mutate()} disabled={enrichGa4Mutation.isPending}>
-                {enrichGa4Mutation.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <BarChart3 className="w-3 h-3 mr-1" />}
-                Match GA4 Revenue
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending}>
-                {refreshMutation.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
-                Refresh Data
-              </Button>
-            </div>
           </div>
 
           {/* 6-Tab Layout */}

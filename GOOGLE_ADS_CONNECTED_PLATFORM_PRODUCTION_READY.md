@@ -244,7 +244,7 @@ Status:
 - [x] Completed locally: Google Ads analytics labels now distinguish native Google Ads conversion value from verified business revenue.
 - [x] Completed locally: shared aggregate and scheduler Google Ads source rows expose `conversionValue`, `ga4AttributedRevenue`, `attributedRevenue`, and preserved `revenueSemantics.attributedRevenueSource` without changing existing response fields.
 - [x] Completed locally: `attributedRevenue` now uses one source consistently: GA4-attributed revenue when present, otherwise native Google Ads conversion value, otherwise zero/unavailable.
-- [ ] User validation pending for Commit 5.
+- [x] User validation passed for Commit 5.
 
 ### Commit 6: Campaign DeepDive Aggregate Parity
 
@@ -267,7 +267,10 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: `/api/campaigns/:campaignId/outcome-totals` builds Google Ads through `buildGoogleAdsPlatformSourceForAggregate(...)` and passes it into the shared `performanceSummary` aggregate via `mainPlatformSources: { googleAds }`.
+- [x] Completed locally: `/api/campaigns/:campaignId/executive-summary` uses the same Google Ads source helper and shared `performanceSummary` aggregate composition.
+- [x] Completed locally: added regression coverage proving Google Ads aggregates as one source-backed paid-media platform with impressions, clicks, spend, conversions, attributed revenue, ROAS, ROI, CTR, and CVR derived from the shared aggregate contract.
+- [ ] User validation pending for Commit 6.
 
 ### Commit 7: Disconnect And Reconnect Cleanup
 
@@ -397,4 +400,9 @@ Before Google Ads is marked production-ready, record evidence for:
 
 ## Latest Validation
 
-No Google Ads production-ready validation has been recorded yet.
+- User validation passed for Commit 1.
+- User validation passed for Commit 2.
+- User validation passed for Commit 3.
+- User validation passed for Commit 4.
+- User validation passed for Commit 5.
+- Commit 6 is locally implemented and awaiting user validation.

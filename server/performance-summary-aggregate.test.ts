@@ -132,6 +132,68 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.cpm).toMatchObject({ available: true, value: 30, sources: ["spend", "impressions"] });
   });
 
+  it("aggregates Google Ads as a source-backed paid-media platform", () => {
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-google-ads",
+      dateRange: "30days",
+      ga4: { connected: false },
+      webAnalytics: { connected: false, provider: null },
+      spend: { unifiedSpend: 250, spendSource: "platform_spend_fallback" },
+      platforms: {},
+      platformSources: [{
+        id: "google_ads",
+        label: "Google Ads",
+        category: "paid_media",
+        connected: true,
+        capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+        ],
+        metrics: {
+          impressions: 10000,
+          clicks: 500,
+          spend: 250,
+          conversions: 25,
+          conversionValue: 700,
+          ga4AttributedRevenue: 750,
+          attributedRevenue: 750,
+        },
+        revenueSemantics: { attributedRevenueSource: "ga4_attributed_revenue" },
+        freshness: { selectedCampaignIds: ["google-campaign-1"] },
+      }],
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 750, totalRevenue: 750 },
+      revenueSources: [],
+    });
+
+    expect(aggregate.sources).toHaveLength(1);
+    expect(aggregate.sources[0]).toMatchObject({
+      id: "google_ads",
+      label: "Google Ads",
+      category: "paid_media",
+      includedMetrics: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+      metrics: {
+        impressions: 10000,
+        clicks: 500,
+        spend: 250,
+        conversions: 25,
+        attributedRevenue: 750,
+      },
+      revenueSemantics: { attributedRevenueSource: "ga4_attributed_revenue" },
+      freshness: { selectedCampaignIds: ["google-campaign-1"] },
+    });
+    expect(aggregate.totals.impressions).toMatchObject({ available: true, value: 10000, sources: ["google_ads"] });
+    expect(aggregate.totals.clicks).toMatchObject({ available: true, value: 500, sources: ["google_ads"] });
+    expect(aggregate.totals.spend).toMatchObject({ available: true, value: 250, sources: ["google_ads"] });
+    expect(aggregate.totals.conversions).toMatchObject({ available: true, value: 25, sources: ["google_ads"] });
+    expect(aggregate.totals.revenue).toMatchObject({ available: true, value: 750, sources: ["google_ads"] });
+    expect(aggregate.totals.roas).toMatchObject({ available: true, value: 3, sources: ["revenue", "spend"] });
+    expect(aggregate.totals.roi).toMatchObject({ available: true, value: 200, sources: ["revenue", "spend"] });
+    expect(aggregate.totals.ctr).toMatchObject({ available: true, value: 5, sources: ["clicks", "impressions"] });
+    expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 5, sources: ["conversions", "clicks"] });
+  });
+
   it("marks canonical spend and revenue-derived ratios available only when required inputs exist", () => {
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "campaign-3",

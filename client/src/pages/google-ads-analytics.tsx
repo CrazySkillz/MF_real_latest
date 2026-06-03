@@ -300,9 +300,9 @@ export default function GoogleAdsAnalytics() {
 
   // Fetch Reports
   const { data: reportsData, isLoading: reportsLoading } = useQuery({
-    queryKey: ['/api/meta/reports', campaignId, 'google_ads'],
+    queryKey: ['/api/platforms/google_ads/reports', campaignId],
     queryFn: async () => {
-      const res = await fetch(`/api/meta/reports?campaignId=${campaignId}&platformType=google_ads`);
+      const res = await fetch(`/api/platforms/google_ads/reports?campaignId=${encodeURIComponent(String(campaignId))}`);
       if (!res.ok) throw new Error('Failed to fetch Reports');
       return res.json();
     },
@@ -312,44 +312,46 @@ export default function GoogleAdsAnalytics() {
   // Report mutations
   const createReportMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch('/api/meta/reports', {
+      const res = await fetch('/api/platforms/google_ads/reports', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, campaignId, platformType: 'google_ads' }),
+        credentials: 'include',
+        body: JSON.stringify({ ...data, campaignId }),
       });
       if (!res.ok) throw new Error('Failed to create report');
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/meta/reports', campaignId, 'google_ads'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_ads/reports', campaignId] });
       setIsReportModalOpen(false); setEditingReport(null);
       toast({ title: 'Report created successfully' });
     },
   });
 
   const updateReportMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const res = await fetch(`/api/meta/reports/${id}`, {
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await fetch(`/api/platforms/google_ads/reports/${encodeURIComponent(String(id))}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error('Failed to update report');
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/meta/reports', campaignId, 'google_ads'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_ads/reports', campaignId] });
       setIsReportModalOpen(false); setEditingReport(null);
       toast({ title: 'Report updated successfully' });
     },
   });
 
   const deleteReportMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/meta/reports/${id}`, { method: 'DELETE' });
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/platforms/google_ads/reports/${encodeURIComponent(String(id))}`, { method: 'DELETE', credentials: 'include' });
       if (!res.ok) throw new Error('Failed to delete report');
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/meta/reports', campaignId, 'google_ads'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/google_ads/reports', campaignId] });
       toast({ title: 'Report deleted' });
     },
   });
@@ -1097,12 +1099,59 @@ export default function GoogleAdsAnalytics() {
     setReportForm((prev: any) => ({ ...prev, reportType: type, name: prev.name || nameMap[type] || 'Google Ads Report' }));
   };
 
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const dayOfWeekKeyToInt = (v: any): number | null => {
+    const map: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+    return map[String(v || '').trim().toLowerCase()] ?? null;
+  };
+  const dayOfWeekIntToKey = (v: any): string => {
+    const map: Record<number, string> = { 0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday' };
+    return map[Number(v)] || 'monday';
+  };
+  const dayOfMonthToInt = (v: any): number | null => {
+    const raw = String(v || '').trim().toLowerCase();
+    if (raw === 'last') return 0;
+    if (raw === 'first') return 1;
+    if (raw === 'mid') return 15;
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) ? Math.max(0, Math.min(31, n)) : null;
+  };
+  const to24HourHHMM = (v: any): string => {
+    const s = String(v || '').trim();
+    const match = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return /^\d{1,2}:\d{2}$/.test(s) ? s : '09:00';
+    let hh = parseInt(match[1], 10);
+    if (match[3].toUpperCase() === 'AM') { if (hh === 12) hh = 0; } else if (hh !== 12) hh += 12;
+    return `${String(hh).padStart(2, '0')}:${match[2]}`;
+  };
+  const from24HourTo12Hour = (v: any): string => {
+    const match = String(v || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return '9:00 AM';
+    let hh = parseInt(match[1], 10);
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    if (hh === 0) hh = 12;
+    if (hh > 12) hh -= 12;
+    return `${hh}:${match[2]} ${ampm}`;
+  };
+  const buildGoogleAdsReportPayload = (overrides: Record<string, any> = {}) => ({
+    ...reportForm,
+    ...overrides,
+    status: 'active',
+    scheduleFrequency: reportForm.scheduleEnabled ? reportForm.scheduleFrequency : undefined,
+    scheduleDayOfWeek: reportForm.scheduleEnabled && reportForm.scheduleFrequency === 'weekly' ? dayOfWeekKeyToInt(reportForm.scheduleDayOfWeek) : undefined,
+    scheduleDayOfMonth: reportForm.scheduleEnabled && (reportForm.scheduleFrequency === 'monthly' || reportForm.scheduleFrequency === 'quarterly') ? dayOfMonthToInt(reportForm.scheduleDayOfMonth) : undefined,
+    scheduleTime: reportForm.scheduleEnabled ? to24HourHHMM(reportForm.scheduleTime) : undefined,
+    scheduleTimeZone: reportForm.scheduleEnabled ? userTimeZone : undefined,
+    quarterTiming: reportForm.scheduleEnabled && reportForm.scheduleFrequency === 'quarterly' ? reportForm.quarterTiming : undefined,
+    scheduleRecipients: reportForm.scheduleEnabled ? String(reportForm.emailRecipients || '').split(',').map((e) => e.trim()).filter(Boolean) : undefined,
+  });
+
   const handleCreateReport = () => {
     if (reportForm.scheduleEnabled && !String(reportForm.emailRecipients || '').trim()) {
       setReportFormErrors({ emailRecipients: 'Email recipients are required for scheduled reports' });
       return;
     }
-    const payload = { ...reportForm, status: 'active', platformType: 'google_ads' };
+    const payload = buildGoogleAdsReportPayload();
     if (editingReport) {
       updateReportMutation.mutate({ id: editingReport.id, data: payload });
     } else {
@@ -1113,7 +1162,11 @@ export default function GoogleAdsAnalytics() {
   const handleUpdateReport = handleCreateReport;
 
   const handleCustomReport = () => {
-    const payload = { ...reportForm, reportType: 'custom', customConfig: customReportConfig, status: 'active', platformType: 'google_ads' };
+    if (reportForm.scheduleEnabled && !String(reportForm.emailRecipients || '').trim()) {
+      setReportFormErrors({ emailRecipients: 'Email recipients are required for scheduled reports' });
+      return;
+    }
+    const payload = buildGoogleAdsReportPayload({ reportType: 'custom', configuration: customReportConfig });
     if (editingReport) {
       updateReportMutation.mutate({ id: editingReport.id, data: payload });
     } else {
@@ -1121,7 +1174,6 @@ export default function GoogleAdsAnalytics() {
     }
   };
 
-  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const getTimeZoneDisplay = () => userTimeZone.replace(/_/g, ' ');
   const normalizeGoogleAdsReportType = (type: any) => {
     const value = String(type || '').trim();
@@ -2186,7 +2238,7 @@ export default function GoogleAdsAnalytics() {
                             {report.description && <p className="text-sm text-muted-foreground/70 mb-3">{report.description}</p>}
                             <div className="flex items-center gap-4 text-sm">
                               <Badge variant="outline">{normalizeGoogleAdsReportType(report.reportType)}</Badge>
-                              {report.scheduleEnabled && report.scheduleFrequency && <span className="text-muted-foreground">{report.scheduleFrequency}{report.scheduleTime ? ` at ${report.scheduleTime}` : ''}</span>}
+                              {report.scheduleEnabled && report.scheduleFrequency && <span className="text-muted-foreground">{report.scheduleFrequency}{report.scheduleTime ? ` at ${from24HourTo12Hour(report.scheduleTime)}` : ''}</span>}
                               <span className="text-muted-foreground/70">Created {new Date(report.createdAt).toLocaleDateString()}</span>
                             </div>
                           </div>
@@ -2195,7 +2247,19 @@ export default function GoogleAdsAnalytics() {
                               const reportType = normalizeGoogleAdsReportType(report.reportType);
                               setEditingReport(report);
                               setReportModalStep(reportType === 'custom' ? 'custom' : 'standard');
-                              setReportForm({ name: report.name || '', description: report.description || '', reportType, scheduleFrequency: report.scheduleFrequency || 'weekly', scheduleTime: report.scheduleTime || '9:00 AM', emailRecipients: report.emailRecipients || '', scheduleEnabled: report.scheduleEnabled || false });
+                              const emailRecipients = Array.isArray(report.scheduleRecipients) ? report.scheduleRecipients.join(', ') : '';
+                              setReportForm({
+                                name: report.name || '',
+                                description: report.description || '',
+                                reportType,
+                                scheduleFrequency: report.scheduleFrequency || 'weekly',
+                                scheduleTime: from24HourTo12Hour(report.scheduleTime) || '9:00 AM',
+                                emailRecipients,
+                                scheduleEnabled: report.scheduleEnabled || false,
+                                scheduleDayOfWeek: dayOfWeekIntToKey(report.scheduleDayOfWeek),
+                                scheduleDayOfMonth: report.scheduleDayOfMonth === 0 ? 'last' : String(report.scheduleDayOfMonth || 'first'),
+                                quarterTiming: report.quarterTiming || 'end',
+                              });
                               setIsReportModalOpen(true);
                             }}>
                               <Pencil className="w-4 h-4" />

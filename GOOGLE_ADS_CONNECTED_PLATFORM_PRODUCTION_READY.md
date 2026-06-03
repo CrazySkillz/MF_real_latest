@@ -359,7 +359,11 @@ Status:
 - [x] Completed locally: audited Overview, KPI, Benchmark, Ad Comparison, Insights, and Reports entry points in `client/src/pages/google-ads-analytics.tsx`.
 - [x] Completed locally: removed the Overview header actions `Match GA4 Revenue` and `Refresh Data`; Google Ads Overview now relies on source-backed daily metrics and scheduled/manual source refresh paths instead of ad-hoc tab buttons.
 - [x] Completed locally: Google Ads report cards and edit mode now normalize missing or legacy report types to valid Google Ads report types instead of falling back to Campaign DeepDive `performance_summary`.
+- [x] Completed locally: Google Ads Reports now save, list, update, and delete through `/api/platforms/google_ads/reports`, matching the GA4 platform-report pattern instead of the legacy Meta report route.
+- [x] Completed locally: scheduled Google Ads report payloads now persist `scheduleRecipients`, 24-hour `scheduleTime`, and browser `scheduleTimeZone`, so clicking `Schedule Report` creates a real report card and backend scheduled-report record.
+- [x] Completed locally: the report scheduler now discovers `google_ads` platform reports alongside LinkedIn and GA4 reports.
 - [x] Completed locally: added regression coverage preventing Google Ads Reports from reintroducing Campaign DeepDive report-type fallbacks.
+- [x] Completed locally: added regression coverage preventing Google Ads Reports from falling back to legacy Meta report storage and preventing scheduled Google Ads reports from being omitted by scheduler discovery.
 - [ ] User validation pending for Commit 9.
 
 ### Commit 10: Regression Coverage And Final Docs

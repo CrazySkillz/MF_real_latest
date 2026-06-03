@@ -1047,6 +1047,14 @@ export async function checkScheduledReports(): Promise<void> {
       console.log('[Report Scheduler] No GA4 platform reports found');
     }
 
+    try {
+      const googleAdsReports = await storage.getPlatformReports('google_ads');
+      allReports = allReports.concat(googleAdsReports);
+      console.log(`[Report Scheduler] Found ${googleAdsReports.length} Google Ads platform reports`);
+    } catch (error) {
+      console.log('[Report Scheduler] No Google Ads platform reports found');
+    }
+
     if (allReports.length === 0) {
       console.log('[Report Scheduler] No reports found in either storage');
       return;
@@ -1335,7 +1343,7 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
 
     // If not found, try platform reports
     if (!report) {
-      for (const platformType of ['linkedin', 'google_analytics']) {
+      for (const platformType of ['linkedin', 'google_analytics', 'google_ads']) {
         const allReports = await storage.getPlatformReports(platformType);
         report = allReports.find(r => r.id === reportId);
         if (report) break;
@@ -1352,6 +1360,7 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
         const platformReports = [
           ...(await storage.getPlatformReports('linkedin')),
           ...(await storage.getPlatformReports('google_analytics')),
+          ...(await storage.getPlatformReports('google_ads')),
         ];
         console.log(`[Report Scheduler] DEBUG - Available LinkedIn reports: ${linkedInReports.length}`);
         console.log(`[Report Scheduler] DEBUG - Available platform reports: ${platformReports.length}`);

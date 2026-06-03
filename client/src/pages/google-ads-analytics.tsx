@@ -85,6 +85,10 @@ function formatGoogleAdsMetricValue(metricKey: string, value: number): string {
   return getGoogleAdsMetricDef(metricKey).format(value);
 }
 
+function stripNumberFormatting(value: any): any {
+  return typeof value === 'string' ? value.replace(/,/g, '') : value;
+}
+
 interface DailyMetric {
   date: string;
   impressions: number;
@@ -1170,7 +1174,7 @@ export default function GoogleAdsAnalytics() {
     const payload = {
       name: kpiForm.name, metric: kpiForm.metric, metricKey: kpiForm.metric,
       targetValue: kpiForm.targetValue,
-      currentValue: kpiForm.currentValue || String(getLiveMetricValue(kpiForm.metric)),
+      currentValue: stripNumberFormatting(kpiForm.currentValue) || String(getLiveMetricValue(kpiForm.metric)),
       description: kpiForm.description,
       unit: kpiForm.unit || getGoogleAdsMetricDef(kpiForm.metric).unit,
       priority: kpiForm.priority, status: 'active', category: kpiForm.category,
@@ -1205,7 +1209,7 @@ export default function GoogleAdsAnalytics() {
     const payload = {
       name: benchmarkForm.name, metric: benchmarkForm.metric,
       benchmarkValue: benchmarkForm.benchmarkValue, targetValue: benchmarkForm.benchmarkValue,
-      currentValue: benchmarkForm.currentValue || String(getLiveMetricValue(benchmarkForm.metric)),
+      currentValue: stripNumberFormatting(benchmarkForm.currentValue) || String(getLiveMetricValue(benchmarkForm.metric)),
       description: benchmarkForm.description, industry: benchmarkForm.industry,
       unit: benchmarkForm.unit || getGoogleAdsMetricDef(benchmarkForm.metric).unit,
       benchmarkType: benchmarkForm.benchmarkType || 'custom',
@@ -1565,7 +1569,29 @@ export default function GoogleAdsAnalytics() {
                             </div>
                             <div className="flex items-center gap-2">
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
-                                onClick={() => { setEditingKPI(kpi); setKpiForm({ name: kpi.name || '', metric: metricKey, targetValue: kpi.targetValue || '', description: kpi.description || '' } as any); setIsKPIModalOpen(true); }}>
+                                onClick={() => {
+                                  setEditingKPI(kpi);
+                                  setKpiForm({
+                                    name: kpi.name || '',
+                                    metric: metricKey,
+                                    targetValue: kpi.targetValue || '',
+                                    description: kpi.description || '',
+                                    currentValue: String(currentVal),
+                                    unit: kpi.unit || metricDef.unit || '',
+                                    priority: kpi.priority || 'high',
+                                    status: kpi.status || 'active',
+                                    category: kpi.category || '',
+                                    timeframe: kpi.timeframe || 'monthly',
+                                    trackingPeriod: String(kpi.trackingPeriod || 30),
+                                    alertsEnabled: !!kpi.alertsEnabled,
+                                    emailNotifications: !!kpi.emailNotifications,
+                                    alertFrequency: kpi.alertFrequency || 'daily',
+                                    alertThreshold: kpi.alertThreshold || '',
+                                    alertCondition: kpi.alertCondition || 'below',
+                                    emailRecipients: kpi.emailRecipients || '',
+                                  });
+                                  setIsKPIModalOpen(true);
+                                }}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
                               <AlertDialog>
@@ -1668,7 +1694,26 @@ export default function GoogleAdsAnalytics() {
                             </div>
                             <div className="flex items-center gap-2">
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
-                                onClick={() => { setEditingBenchmark(b); setBenchmarkForm({ name: b.name || '', metric: metricKey, benchmarkValue: b.benchmarkValue || b.targetValue || '', description: b.description || '', industry: b.industry || '', currentValue: '', unit: '', benchmarkType: b.benchmarkType || 'custom', alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily', alertThreshold: '', alertCondition: 'below', emailRecipients: '' }); setIsBenchmarkModalOpen(true); }}>
+                                onClick={() => {
+                                  setEditingBenchmark(b);
+                                  setBenchmarkForm({
+                                    name: b.name || '',
+                                    metric: metricKey,
+                                    benchmarkValue: b.benchmarkValue || b.targetValue || '',
+                                    description: b.description || '',
+                                    industry: b.industry || '',
+                                    currentValue: String(currentVal),
+                                    unit: b.unit || metricDef.unit || '',
+                                    benchmarkType: b.benchmarkType || 'custom',
+                                    alertsEnabled: !!b.alertsEnabled,
+                                    emailNotifications: !!b.emailNotifications,
+                                    alertFrequency: b.alertFrequency || 'daily',
+                                    alertThreshold: b.alertThreshold || '',
+                                    alertCondition: b.alertCondition || 'below',
+                                    emailRecipients: b.emailRecipients || '',
+                                  });
+                                  setIsBenchmarkModalOpen(true);
+                                }}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
                               <AlertDialog>

@@ -165,7 +165,7 @@ function getMaxDecimalsForMetric(metric: string): number {
 }
 
 /** Format a number string while the user types, respecting max decimals. */
-function formatNumberAsYouType(raw: string, opts?: { maxDecimals?: number }): string {
+function formatNumberAsYouType(raw: string, opts?: { maxDecimals?: number; useGrouping?: boolean }): string {
   const maxDec = opts?.maxDecimals ?? 2;
   // Strip everything except digits, dots, and leading minus
   let cleaned = raw.replace(/[^0-9.\-]/g, "");
@@ -177,6 +177,15 @@ function formatNumberAsYouType(raw: string, opts?: { maxDecimals?: number }): st
     const [intPart, decPart] = cleaned.split(".");
     cleaned = intPart + "." + (decPart || "").slice(0, maxDec);
   }
+  if (opts?.useGrouping) {
+    const hasDecimal = cleaned.includes(".");
+    const [integerPart, decimalPart = ""] = cleaned.split(".");
+    const sign = integerPart.startsWith("-") ? "-" : "";
+    const digits = sign ? integerPart.slice(1) : integerPart;
+    const groupedInteger = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    cleaned = `${sign}${groupedInteger}`;
+    if (hasDecimal) cleaned += `.${decimalPart}`;
+  }
   return cleaned;
 }
 
@@ -184,7 +193,8 @@ function formatMetricValueForInput(metric: string, raw: string): string {
   const num = parseFloat(raw);
   if (isNaN(num)) return "";
   const maxDec = getMaxDecimalsForMetric(metric);
-  return maxDec === 0 ? String(Math.round(num)) : num.toFixed(maxDec);
+  const formatted = maxDec === 0 ? String(Math.round(num)) : num.toFixed(maxDec);
+  return formatNumberAsYouType(formatted, { maxDecimals: maxDec, useGrouping: true });
 }
 
 function getDefaultBenchmarkDescription(metric: string): string {
@@ -336,7 +346,12 @@ export function GoogleAdsBenchmarkModal(props: any) {
 
   return (
     <Dialog open={isBenchmarkModalOpen} onOpenChange={setIsBenchmarkModalOpen}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-3xl max-h-[90vh] overflow-y-auto"
+        onOpenAutoFocus={(event) => {
+          if (editingBenchmark) event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{editingBenchmark ? "Edit Benchmark" : "Create New Benchmark"}</DialogTitle>
           <DialogDescription>
@@ -438,7 +453,7 @@ export function GoogleAdsBenchmarkModal(props: any) {
                 inputMode="decimal"
                 value={benchmarkForm.currentValue}
                 onChange={(e) => {
-                  const formatted = formatNumberAsYouType(e.target.value, { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) });
+                  const formatted = formatNumberAsYouType(e.target.value, { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric), useGrouping: true });
                   setBenchmarkForm({ ...benchmarkForm, currentValue: formatted });
                 }}
                 data-testid="input-benchmark-current"

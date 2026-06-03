@@ -43,6 +43,17 @@ describe("Google Ads revenue KPI and Benchmark UI semantics", () => {
     expect(page).toContain("title: 'Failed to create KPI'");
   });
 
+  it("prefills Google Ads KPI edit mode from live values without selecting the name field", () => {
+    const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
+    const kpiModal = readSource("client", "src", "pages", "google-ads-analytics", "GoogleAdsKpiModal.tsx");
+
+    expect(page).toContain("currentValue: String(currentVal)");
+    expect(page).toContain("unit: kpi.unit || metricDef.unit || ''");
+    expect(page).toContain("trackingPeriod: String(kpi.trackingPeriod || 30)");
+    expect(kpiModal).toContain("onOpenAutoFocus={(event) => {");
+    expect(kpiModal).toContain("if (editingKPI) event.preventDefault();");
+  });
+
   it("uses platform-scoped Google Ads benchmark create and read routes", () => {
     const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
 
@@ -64,6 +75,29 @@ describe("Google Ads revenue KPI and Benchmark UI semantics", () => {
     expect(benchmarkModal).not.toContain('Label htmlFor="benchmark-industry">Select Industry</Label>');
     expect(benchmarkModal).not.toContain('data-testid="select-benchmark-industry"');
     expect(benchmarkModal).not.toContain('benchmarkForm.benchmarkType === "industry"');
+  });
+
+  it("prefills Google Ads benchmark edit mode from live values without selecting the name field", () => {
+    const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
+    const benchmarkModal = readSource("client", "src", "pages", "google-ads-analytics", "GoogleAdsBenchmarkModal.tsx");
+
+    expect(page).toContain("currentValue: String(currentVal)");
+    expect(page).toContain("unit: b.unit || metricDef.unit || ''");
+    expect(page).toContain("benchmarkType: b.benchmarkType || 'custom'");
+    expect(benchmarkModal).toContain("onOpenAutoFocus={(event) => {");
+    expect(benchmarkModal).toContain("if (editingBenchmark) event.preventDefault();");
+  });
+
+  it("formats Google Ads KPI and Benchmark current values while keeping numeric payloads unformatted", () => {
+    const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
+    const kpiModal = readSource("client", "src", "pages", "google-ads-analytics", "GoogleAdsKpiModal.tsx");
+    const benchmarkModal = readSource("client", "src", "pages", "google-ads-analytics", "GoogleAdsBenchmarkModal.tsx");
+
+    expect(kpiModal).toContain("useGrouping: true");
+    expect(benchmarkModal).toContain("useGrouping: true");
+    expect(page).toContain("function stripNumberFormatting(value: any): any");
+    expect(page).toContain("currentValue: stripNumberFormatting(kpiForm.currentValue) || String(getLiveMetricValue(kpiForm.metric))");
+    expect(page).toContain("currentValue: stripNumberFormatting(benchmarkForm.currentValue) || String(getLiveMetricValue(benchmarkForm.metric))");
   });
 
   it("exposes attributed revenue metrics in Google Ads KPI and Benchmark pickers", () => {

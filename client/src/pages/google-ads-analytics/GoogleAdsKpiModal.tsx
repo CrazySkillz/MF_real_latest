@@ -83,7 +83,7 @@ function getMaxDecimalsForMetric(metricKey: string): number {
  * Format a numeric string while the user types, respecting maxDecimals.
  * Allows intermediate states like "" and "1." for a fluid typing experience.
  */
-function formatNumberAsYouType(raw: string, opts?: { maxDecimals?: number }): string {
+function formatNumberAsYouType(raw: string, opts?: { maxDecimals?: number; useGrouping?: boolean }): string {
   const maxDecimals = opts?.maxDecimals ?? 2;
   // Strip everything except digits, dots, and leading minus
   let cleaned = raw.replace(/[^0-9.\-]/g, "");
@@ -97,6 +97,15 @@ function formatNumberAsYouType(raw: string, opts?: { maxDecimals?: number }): st
   // Truncate decimal places
   if (parts.length === 2 && parts[1].length > maxDecimals) {
     cleaned = parts[0] + "." + parts[1].slice(0, maxDecimals);
+  }
+  if (opts?.useGrouping) {
+    const hasDecimal = cleaned.includes(".");
+    const [integerPart, decimalPart = ""] = cleaned.split(".");
+    const sign = integerPart.startsWith("-") ? "-" : "";
+    const digits = sign ? integerPart.slice(1) : integerPart;
+    const groupedInteger = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    cleaned = `${sign}${groupedInteger}`;
+    if (hasDecimal) cleaned += `.${decimalPart}`;
   }
   return cleaned;
 }
@@ -192,7 +201,7 @@ export function GoogleAdsKpiModal(props: any) {
   const recalculateCurrentValue = (metricKey: string) => {
     const result = getMetricValue(metricKey);
     const formattedCurrentValue = result.value
-      ? formatNumberAsYouType(String(result.value), { maxDecimals: getMaxDecimalsForMetric(metricKey) })
+      ? formatNumberAsYouType(String(result.value), { maxDecimals: getMaxDecimalsForMetric(metricKey), useGrouping: true })
       : "";
     return { currentValue: formattedCurrentValue, unit: result.unit };
   };
@@ -226,7 +235,12 @@ export function GoogleAdsKpiModal(props: any) {
         }
       }}
     >
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        onOpenAutoFocus={(event) => {
+          if (editingKPI) event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{editingKPI ? "Edit KPI" : "Create New KPI"}</DialogTitle>
           <DialogDescription>
@@ -318,7 +332,7 @@ export function GoogleAdsKpiModal(props: any) {
                 inputMode="decimal"
                 value={kpiForm.currentValue || ""}
                 onChange={(e) => {
-                  const formatted = formatNumberAsYouType(e.target.value, { maxDecimals: getMaxDecimalsForMetric(kpiForm.metric) });
+                  const formatted = formatNumberAsYouType(e.target.value, { maxDecimals: getMaxDecimalsForMetric(kpiForm.metric), useGrouping: true });
                   setKpiForm({ ...kpiForm, currentValue: formatted });
                 }}
                 data-testid="input-kpi-current"

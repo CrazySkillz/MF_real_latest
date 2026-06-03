@@ -20091,7 +20091,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { startDate, endDate } = req.query;
       const end = (endDate as string) || new Date().toISOString().slice(0, 10);
       const start = (startDate as string) || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-      const metrics = await storage.getGoogleAdsDailyMetrics(campaignId, start, end);
+      const selectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      const selectedSet = new Set(selectedCampaignIds);
+      const metrics = (await storage.getGoogleAdsDailyMetrics(campaignId, start, end))
+        .filter((row: any) => selectedSet.size === 0 || selectedSet.has(String(row?.googleCampaignId || "")));
       res.json({ success: true, metrics });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to get metrics' });

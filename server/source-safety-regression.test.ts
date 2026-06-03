@@ -358,6 +358,10 @@ describe("source safety regression guards", () => {
     expect(dailyRoute).toContain("ensureCampaignAccess");
     expect(dailyRoute).toContain("const connection = await storage.getGoogleAdsConnection(campaignId);");
     expect(dailyRoute.indexOf("storage.getGoogleAdsConnection(campaignId)")).toBeLessThan(dailyRoute.indexOf("storage.getGoogleAdsDailyMetrics"));
+    expect(dailyRoute).toContain("const selectedCampaignIds = (() => {");
+    expect(dailyRoute).toContain("const selectedSet = new Set(selectedCampaignIds);");
+    expect(dailyRoute.indexOf("const selectedSet = new Set(selectedCampaignIds);")).toBeLessThan(dailyRoute.indexOf("res.json({ success: true, metrics })"));
+    expect(dailyRoute).toContain('selectedSet.size === 0 || selectedSet.has(String(row?.googleCampaignId || ""))');
     expect(dailyRoute).toContain("return res.json({ success: true, metrics: [] });");
 
     const storageSource = readStorageSource();

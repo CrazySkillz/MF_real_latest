@@ -301,6 +301,7 @@ Status:
 - [x] Completed locally: deleting a Google Ads connection now also removes only that campaign's Google Ads daily metric rows.
 - [x] Completed locally: reconnect paths clear campaign-scoped Google Ads daily metric rows before creating the new source connection, so old rows cannot seed the new source contract.
 - [x] Completed locally: Google Ads daily metrics route now returns an empty metrics list when no active Google Ads connection exists.
+- [x] Completed locally: Google Ads daily metrics route now applies the active connection's selected-campaign filter, matching the Performance Summary aggregate after disconnect/reconnect.
 - [x] Completed locally: added regression coverage for disconnect cleanup, reconnect cleanup, and stale-row exclusion in the daily metrics route.
 - [ ] User validation pending for Commit 7.
 

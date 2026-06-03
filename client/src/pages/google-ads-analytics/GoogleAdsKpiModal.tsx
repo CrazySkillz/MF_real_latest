@@ -26,6 +26,14 @@ function getDefaultKpiDescription(metricKey: string): string {
       return "Track conversion actions completed from Google Ads traffic to measure campaign effectiveness at driving desired outcomes.";
     case "spend":
       return "Monitor total advertising spend across Google Ads campaigns to control budget allocation and optimize cost efficiency.";
+    case "totalRevenue":
+      return "Track imported Google Ads attributed revenue from connected revenue sources.";
+    case "profit":
+      return "Track imported Google Ads attributed revenue minus Google Ads spend.";
+    case "roas":
+      return "Track return on ad spend using imported Google Ads attributed revenue divided by Google Ads spend.";
+    case "roi":
+      return "Track return on investment using imported Google Ads attributed revenue and Google Ads spend.";
     case "videoViews":
       return "Monitor total video views from Google Ads to measure video content engagement and brand storytelling reach.";
     case "ctr":
@@ -61,6 +69,10 @@ function getMaxDecimalsForMetric(metricKey: string): number {
     case "cpm":
     case "costPerConversion":
     case "spend":
+    case "totalRevenue":
+    case "profit":
+    case "roas":
+    case "roi":
       return 2;
     default:
       return 2;
@@ -124,6 +136,22 @@ export function GoogleAdsKpiModal(props: any) {
         case "spend":
           currentValue = String(summary.spend || 0);
           unit = "$";
+          break;
+        case "totalRevenue":
+          currentValue = String(summary.totalRevenue || 0);
+          unit = "$";
+          break;
+        case "profit":
+          currentValue = String(summary.profit || 0);
+          unit = "$";
+          break;
+        case "roas":
+          currentValue = String(summary.roas || 0);
+          unit = "x";
+          break;
+        case "roi":
+          currentValue = String(summary.roi || 0);
+          unit = "%";
           break;
         case "videoViews":
           currentValue = String(summary.videoViews || 0);
@@ -248,6 +276,10 @@ export function GoogleAdsKpiModal(props: any) {
                   <SelectItem value="clicks">Clicks</SelectItem>
                   <SelectItem value="conversions">Conversions</SelectItem>
                   <SelectItem value="spend">Spend</SelectItem>
+                  <SelectItem value="totalRevenue">Total Revenue</SelectItem>
+                  <SelectItem value="profit">Profit</SelectItem>
+                  <SelectItem value="roas">ROAS</SelectItem>
+                  <SelectItem value="roi">ROI</SelectItem>
                   <SelectItem value="videoViews">Video Views</SelectItem>
                   <SelectItem value="ctr">Click-Through Rate (CTR)</SelectItem>
                   <SelectItem value="cpc">Cost Per Click (CPC)</SelectItem>

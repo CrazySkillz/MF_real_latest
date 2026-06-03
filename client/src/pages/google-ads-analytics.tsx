@@ -35,7 +35,10 @@ const GOOGLE_ADS_METRICS = [
   { key: 'conversionRate', label: 'Conversion Rate', unit: '%', format: (v: number) => `${formatPct(v)}` },
   { key: 'costPerConversion', label: 'Cost per Conversion', unit: '$', format: (v: number) => `$${v.toFixed(2)}` },
   { key: 'searchImpressionShare', label: 'Search Imp. Share', unit: '%', format: (v: number) => `${formatPct(v)}` },
+  { key: 'totalRevenue', label: 'Total Revenue', unit: '$', format: (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+  { key: 'profit', label: 'Profit', unit: '$', format: (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
   { key: 'roas', label: 'ROAS', unit: 'x', format: (v: number) => `${v.toFixed(2)}x` },
+  { key: 'roi', label: 'ROI', unit: '%', format: (v: number) => `${formatPct(v)}` },
 ];
 
 const LOWER_IS_BETTER_METRICS = ['cpc', 'cpm', 'costPerConversion', 'spend'];
@@ -75,7 +78,7 @@ const METRIC_OPTIONS = [
 ];
 
 function getGoogleAdsMetricDef(metricKey: string) {
-  return GOOGLE_ADS_METRICS.find(m => m.key === metricKey) || { key: metricKey, label: metricKey, unit: '', format: (v: number) => String(v) };
+  return GOOGLE_ADS_METRICS.find(m => m.key === metricKey || m.key.toLowerCase() === String(metricKey || '').toLowerCase()) || { key: metricKey, label: metricKey, unit: '', format: (v: number) => String(v) };
 }
 
 function formatGoogleAdsMetricValue(metricKey: string, value: number): string {
@@ -726,6 +729,12 @@ export default function GoogleAdsAnalytics() {
 
   // Helper: get live metric value from summary
   const getLiveMetricValue = (metricKey: string): number => {
+    const key = String(metricKey || '').trim();
+    const normalizedKey = key.toLowerCase();
+    if (normalizedKey === 'totalrevenue' || normalizedKey === 'revenue') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRevenue : 0;
+    if (normalizedKey === 'profit') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedProfit : 0;
+    if (normalizedKey === 'roas') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoas : 0;
+    if (normalizedKey === 'roi') return hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoi : 0;
     const map: Record<string, number> = {
       impressions: summary.impressions || 0,
       clicks: summary.clicks || 0,
@@ -739,10 +748,8 @@ export default function GoogleAdsAnalytics() {
       costPerConversion: summary.costPerConv || 0,
       searchImpressionShare: summary.searchImpressionShare || 0,
       conversionValue: summary.conversionValue || 0,
-      roas: summary.roas || 0,
-      roi: summary.roi || 0,
     };
-    return map[metricKey] ?? 0;
+    return map[key] ?? 0;
   };
 
   // Helper: compute KPI/Benchmark progress
@@ -2483,7 +2490,13 @@ export default function GoogleAdsAnalytics() {
             setEditingKPI={setEditingKPI}
             kpiForm={kpiForm}
             setKpiForm={setKpiForm}
-            summary={summary}
+            summary={{
+              ...summary,
+              totalRevenue: hasGoogleAdsAttributedRevenue ? googleAdsAttributedRevenue : 0,
+              profit: hasGoogleAdsAttributedRevenue ? googleAdsAttributedProfit : 0,
+              roas: hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoas : 0,
+              roi: hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoi : 0,
+            }}
             toast={toast}
             handleCreateKPI={handleCreateKPI}
           />
@@ -2496,7 +2509,13 @@ export default function GoogleAdsAnalytics() {
             setEditingBenchmark={setEditingBenchmark}
             benchmarkForm={benchmarkForm}
             setBenchmarkForm={setBenchmarkForm}
-            summary={summary}
+            summary={{
+              ...summary,
+              totalRevenue: hasGoogleAdsAttributedRevenue ? googleAdsAttributedRevenue : 0,
+              profit: hasGoogleAdsAttributedRevenue ? googleAdsAttributedProfit : 0,
+              roas: hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoas : 0,
+              roi: hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoi : 0,
+            }}
             toast={toast}
             handleCreateBenchmark={handleCreateBenchmark}
           />

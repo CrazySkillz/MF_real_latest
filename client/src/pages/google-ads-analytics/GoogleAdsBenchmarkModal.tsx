@@ -138,10 +138,13 @@ const INDUSTRIES = [
 /* ------------------------------------------------------------------ */
 
 /** Metrics that represent currency amounts. */
-const CURRENCY_METRICS = new Set(["spend", "cpc", "cpm", "costPerConversion"]);
+const CURRENCY_METRICS = new Set(["spend", "cpc", "cpm", "costPerConversion", "totalRevenue", "profit"]);
 
 /** Metrics that are expressed as percentages. */
-const PERCENTAGE_METRICS = new Set(["ctr", "conversionRate", "searchImpressionShare"]);
+const PERCENTAGE_METRICS = new Set(["ctr", "conversionRate", "searchImpressionShare", "roi"]);
+
+/** Metrics that are expressed as a multiplier. */
+const RATIO_METRICS = new Set(["roas"]);
 
 function isCurrencyLikeMetric(metric: string): boolean {
   return CURRENCY_METRICS.has(metric);
@@ -150,12 +153,14 @@ function isCurrencyLikeMetric(metric: string): boolean {
 function getMetricUnit(metric: string, currencySymbol = "$"): string {
   if (CURRENCY_METRICS.has(metric)) return currencySymbol;
   if (PERCENTAGE_METRICS.has(metric)) return "%";
+  if (RATIO_METRICS.has(metric)) return "x";
   return "";
 }
 
 function getMaxDecimalsForMetric(metric: string): number {
   if (PERCENTAGE_METRICS.has(metric)) return 2;
   if (CURRENCY_METRICS.has(metric)) return 2;
+  if (RATIO_METRICS.has(metric)) return 2;
   return 0; // counts like impressions, clicks, etc.
 }
 
@@ -188,6 +193,10 @@ function getDefaultBenchmarkDescription(metric: string): string {
     clicks: "Measure click volume from Google Ads to gauge audience interest and keyword relevance.",
     conversions: "Track conversion events to evaluate how effectively Google Ads drive desired actions.",
     spend: "Monitor Google Ads spend to ensure budget is being utilised efficiently.",
+    totalRevenue: "Track imported Google Ads attributed revenue from connected revenue sources.",
+    profit: "Track imported Google Ads attributed revenue minus Google Ads spend.",
+    roas: "Track return on ad spend using imported Google Ads attributed revenue divided by Google Ads spend.",
+    roi: "Track return on investment using imported Google Ads attributed revenue and Google Ads spend.",
     videoViews: "Measure video view volume to assess video content engagement on Google Ads (YouTube).",
     ctr: "Compare click-through rate against the benchmark to assess ad copy and keyword effectiveness on Google Ads.",
     cpc: "Track cost per click to optimise Google Ads bidding strategy and budget allocation.",
@@ -246,6 +255,22 @@ export function GoogleAdsBenchmarkModal(props: any) {
       case "spend":
         currentValue = String(summary.spend || 0);
         unit = "$";
+        break;
+      case "totalRevenue":
+        currentValue = String(summary.totalRevenue || 0);
+        unit = "$";
+        break;
+      case "profit":
+        currentValue = String(summary.profit || 0);
+        unit = "$";
+        break;
+      case "roas":
+        currentValue = String(summary.roas || 0);
+        unit = "x";
+        break;
+      case "roi":
+        currentValue = String(summary.roi || 0);
+        unit = "%";
         break;
       case "conversionValue":
         currentValue = String(summary.conversionValue || 0);
@@ -371,6 +396,10 @@ export function GoogleAdsBenchmarkModal(props: any) {
                   <SelectItem value="clicks">Clicks</SelectItem>
                   <SelectItem value="conversions">Conversions</SelectItem>
                   <SelectItem value="spend">Spend</SelectItem>
+                  <SelectItem value="totalRevenue">Total Revenue</SelectItem>
+                  <SelectItem value="profit">Profit</SelectItem>
+                  <SelectItem value="roas">ROAS</SelectItem>
+                  <SelectItem value="roi">ROI</SelectItem>
                   <SelectItem value="videoViews">Video Views</SelectItem>
                   <SelectItem value="ctr">Click-Through Rate (CTR)</SelectItem>
                   <SelectItem value="cpc">Cost Per Click (CPC)</SelectItem>

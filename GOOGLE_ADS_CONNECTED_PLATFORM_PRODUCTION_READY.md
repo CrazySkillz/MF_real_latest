@@ -437,7 +437,7 @@ Use this checklist as the source of truth for what is complete. A checked item i
 - [x] Commit 19: Shopify Google Ads attributed revenue flow.
   Validation: local regression and type check passed.
 - [x] Commit 20: Google Ads Overview `Total Revenue` card, `+` action, and `Sources` modal.
-  Validation: focused local UI regression and type check passed; manual browser add/edit/delete validation remains pending.
+  Validation: focused local UI regression and type check passed; user validation passed.
 - [ ] Commit 21: KPI, Benchmark, Insights, and report semantics.
 - [ ] Commit 22: Scheduler, refresh, snapshot, disconnect/reconnect, and selected-campaign safety.
 - [ ] Commit 23: Final regression coverage and production-ready evidence.
@@ -460,6 +460,7 @@ Confirmed current gaps:
 - Before Commit 19, the shared Shopify revenue wizard could carry `platformContext="google_ads"`, but `/api/campaigns/:id/shopify/save-mappings` still used the general write validator; Commit 19 adds a Shopify-only validator while preserving Shopify revenue-only semantics, additive source behavior, and stable source-ID update behavior.
 - After Commit 20, the shared wizard's Google Ads post-import invalidation still targeted the no-dateRange totals key and did not target the Google Ads Overview source key, while the Overview card reads the active `["/api/campaigns", campaignId, "revenue-sources", "google_ads"]` key and the 90-day `revenue-totals?platformContext=google_ads&dateRange=90days` key. The refresh fix targets and refetches those exact keys.
 - After the refresh-key fix, the Google Ads Overview card still displayed `$0.00` when `Sources (1)` existed because the card value used only the 90-day `revenue-totals` response. The source list uses `lastTotalRevenue` from the active Google Ads source definition, populated from all-time source records or exact mapping-config totals. The card now sums active Google Ads source `lastTotalRevenue` values first, then falls back to the totals endpoint only when source totals are unavailable.
+- Before the first Commit 21 slice, Google Ads KPI/Benchmark card current values used `getLiveMetricValue("roas" | "roi")`, which still mapped to native Google Ads conversion-value efficiency from `summary.roas` and `summary.roi`. KPI/Benchmark creation/edit modals also did not expose imported-revenue `Total Revenue`, `Profit`, `ROAS`, or `ROI` as Google Ads attributed-revenue metrics.
 - Before Commit 12, `server/storage.ts` supported `getRevenueSources(..., platformContext)` and `getRevenueBreakdownBySource(..., platformContext)` mostly generically, but `getRevenueTotalForRange(...)` hard-coded the non-GA4 branch to `linkedin`; Commit 12 fixes this storage/read-side gap.
 - `server/auto-refresh-scheduler.ts` reprocesses Shopify and Google Sheets across `ga4`, `linkedin`, and `meta`, while the source loop for HubSpot and Salesforce currently reprocesses only `ga4`; Commits 17, 18, and 19 confirm the HubSpot/Salesforce/Shopify reprocess payloads can carry `platformContext` and stable `sourceId`, but scheduler context selection remains deferred to Commit 22.
 - `shared/schema.ts` has `revenue_sources.platform_context` as free text, so a table migration is not expected just to store `google_ads`; however TypeScript unions, zod validation, route filters, UI props, and scheduler context lists must be updated consistently.
@@ -913,7 +914,7 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-overview-ui.test.ts server/google-ads-revenue-wizard-context.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] Commit 20 validated for the implemented local automated scope.
-- [ ] Manual browser validation pending: add/edit/delete CSV, Google Sheets, HubSpot, Salesforce, and Shopify through the visible Google Ads `Total Revenue` card and confirm source counts/totals update.
+- [x] User validation passed: add revenue source through the visible Google Ads `Total Revenue` card and confirm source count/totals update.
 
 #### Commit 21: KPIs, Benchmarks, Insights, And Reports
 
@@ -937,7 +938,15 @@ Validation:
 
 Status:
 
-- [ ] Pending implementation.
+- [x] Completed locally: Google Ads KPI/Benchmark card current values now use imported Google Ads attributed revenue for `totalRevenue`, `profit`, `roas`, and `roi`.
+- [x] Completed locally: without active imported Google Ads attributed revenue, those revenue-dependent KPI/Benchmark current values return `0` instead of native Google Ads conversion value.
+- [x] Completed locally: Google Ads KPI and Benchmark creation/edit modals now expose `Total Revenue`, `Profit`, `ROAS`, and `ROI` with current values populated from imported Google Ads attributed revenue.
+- [x] Completed locally: focused regression coverage added in `server/google-ads-revenue-kpi-benchmark-ui.test.ts`.
+- [x] Local validation passed: `npm test -- server/google-ads-revenue-kpi-benchmark-ui.test.ts server/google-ads-revenue-overview-ui.test.ts`.
+- [x] Local validation passed: full Google Ads revenue regression group including KPI/Benchmark UI coverage.
+- [x] Local validation passed: `npm run check`.
+- [ ] Pending implementation: Insights financial copy/rules.
+- [ ] Pending implementation: standard/custom/scheduled report semantics and source provenance.
 - [ ] Validation pending.
 
 #### Commit 22: Scheduler, Refresh, Snapshot, And Disconnect/Reconnect Safety
@@ -1047,3 +1056,4 @@ Before Google Ads is marked production-ready, record evidence for:
 - Commit 18 validated for the Salesforce Google Ads attributed revenue parser/import-path guard local automated scope.
 - Commit 19 validated for the Shopify Google Ads attributed revenue parser/import-path guard local automated scope.
 - Commit 20 validated for the Google Ads Overview Total Revenue card/source-management UI local automated scope.
+- User validation passed for Commit 20 visible Google Ads Total Revenue source-management behavior.

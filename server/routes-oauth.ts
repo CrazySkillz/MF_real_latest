@@ -1533,7 +1533,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Request validation helpers (enterprise-grade consistency)
   const zPlatformContext = z.enum(["ga4", "linkedin", "meta"]);
+  const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
   const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
+  type CsvRevenuePlatformContext = z.infer<typeof zCsvRevenuePlatformContext>;
   type RevenueReadPlatformContext = z.infer<typeof zRevenueReadPlatformContext>;
   const zValueSource = z.enum(["revenue", "conversion_value"]);
 
@@ -1566,6 +1568,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const s = raw === null || typeof raw === "undefined" ? "" : String(raw).trim().toLowerCase();
     if (!s) return fallback;
     const parsed = zPlatformContext.safeParse(s);
+    if (!parsed.success) {
+      sendBadRequest(res, "Invalid platformContext", parsed.error.errors);
+      return null;
+    }
+    return parsed.data;
+  };
+
+  const parseCsvRevenuePlatformContext = (
+    raw: any,
+    fallback: CsvRevenuePlatformContext,
+    res: any
+  ): CsvRevenuePlatformContext | null => {
+    const s = raw === null || typeof raw === "undefined" ? "" : String(raw).trim().toLowerCase();
+    if (!s) return fallback;
+    const parsed = zCsvRevenuePlatformContext.safeParse(s);
     if (!parsed.success) {
       sendBadRequest(res, "Invalid platformContext", parsed.error.errors);
       return null;
@@ -2553,7 +2570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const campaignId = req.params.id;
-        const platformContext = parsePlatformContext((req.body as any)?.platformContext, "ga4", res);
+        const platformContext = parseCsvRevenuePlatformContext((req.body as any)?.platformContext, "ga4", res);
         if (!platformContext) return;
 
         let mappingRaw: any = null;

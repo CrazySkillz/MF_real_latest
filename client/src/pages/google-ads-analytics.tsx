@@ -1123,6 +1123,10 @@ export default function GoogleAdsAnalytics() {
 
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const getTimeZoneDisplay = () => userTimeZone.replace(/_/g, ' ');
+  const normalizeGoogleAdsReportType = (type: any) => {
+    const value = String(type || '').trim();
+    return ['overview', 'kpis', 'benchmarks', 'ads', 'insights', 'custom'].includes(value) ? value : 'overview';
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -2181,15 +2185,17 @@ export default function GoogleAdsAnalytics() {
                             <h3 className="font-semibold text-foreground mb-1">{report.name}</h3>
                             {report.description && <p className="text-sm text-muted-foreground/70 mb-3">{report.description}</p>}
                             <div className="flex items-center gap-4 text-sm">
-                              <Badge variant="outline">{report.reportType || 'performance_summary'}</Badge>
+                              <Badge variant="outline">{normalizeGoogleAdsReportType(report.reportType)}</Badge>
                               {report.scheduleEnabled && report.scheduleFrequency && <span className="text-muted-foreground">{report.scheduleFrequency}{report.scheduleTime ? ` at ${report.scheduleTime}` : ''}</span>}
                               <span className="text-muted-foreground/70">Created {new Date(report.createdAt).toLocaleDateString()}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <Button variant="ghost" size="sm" onClick={() => {
+                              const reportType = normalizeGoogleAdsReportType(report.reportType);
                               setEditingReport(report);
-                              setReportForm({ name: report.name || '', description: report.description || '', reportType: report.reportType || 'performance_summary', scheduleFrequency: report.scheduleFrequency || 'weekly', scheduleTime: report.scheduleTime || '9:00 AM', emailRecipients: report.emailRecipients || '', scheduleEnabled: report.scheduleEnabled || false });
+                              setReportModalStep(reportType === 'custom' ? 'custom' : 'standard');
+                              setReportForm({ name: report.name || '', description: report.description || '', reportType, scheduleFrequency: report.scheduleFrequency || 'weekly', scheduleTime: report.scheduleTime || '9:00 AM', emailRecipients: report.emailRecipients || '', scheduleEnabled: report.scheduleEnabled || false });
                               setIsReportModalOpen(true);
                             }}>
                               <Pencil className="w-4 h-4" />

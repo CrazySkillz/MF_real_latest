@@ -389,6 +389,15 @@ describe("source safety regression guards", () => {
     expect(refreshRoute.indexOf("storage.getCampaign(campaignId)")).toBeLessThan(refreshRoute.indexOf("fetchRealGoogleAdsData"));
   });
 
+  it("Google Ads analytics reports do not fall back to Campaign DeepDive report types", () => {
+    const pageSource = fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "google-ads-analytics.tsx"), "utf8");
+
+    expect(pageSource).toContain("const normalizeGoogleAdsReportType = (type: any) => {");
+    expect(pageSource).toContain("['overview', 'kpis', 'benchmarks', 'ads', 'insights', 'custom']");
+    expect(pageSource).not.toContain("'performance_summary'");
+    expect(pageSource).not.toContain('"performance_summary"');
+  });
+
   it("Custom Integration UI routes require campaign access before read or mutation", () => {
     const routesSource = readRoutesSource();
     const bodyConnectStart = routesSource.indexOf('app.post("/api/custom-integration/connect"');

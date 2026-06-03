@@ -332,7 +332,7 @@ Status:
 - [x] Completed locally: Google Ads scheduler now skips spend-only helper connections and missing campaign rows before any mock or live refresh can write daily metrics.
 - [x] Completed locally: traced `server/scheduler.ts`; snapshots filter Google Ads daily rows by selected campaign IDs and mark Google Ads connected only when the active source is not spend-only.
 - [x] Completed locally: added regression coverage for scheduler fail-closed behavior before Google Ads refresh writes.
-- [ ] User validation pending for Commit 8.
+- [x] User validation passed for Commit 8.
 
 ### Commit 9: Google Ads Analytics Page Parity
 
@@ -356,7 +356,11 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: audited Overview, KPI, Benchmark, Ad Comparison, Insights, and Reports entry points in `client/src/pages/google-ads-analytics.tsx`.
+- [x] Completed locally: removed the Overview header actions `Match GA4 Revenue` and `Refresh Data`; Google Ads Overview now relies on source-backed daily metrics and scheduled/manual source refresh paths instead of ad-hoc tab buttons.
+- [x] Completed locally: Google Ads report cards and edit mode now normalize missing or legacy report types to valid Google Ads report types instead of falling back to Campaign DeepDive `performance_summary`.
+- [x] Completed locally: added regression coverage preventing Google Ads Reports from reintroducing Campaign DeepDive report-type fallbacks.
+- [ ] User validation pending for Commit 9.
 
 ### Commit 10: Regression Coverage And Final Docs
 
@@ -418,4 +422,5 @@ Before Google Ads is marked production-ready, record evidence for:
 - User validation passed for Commit 5.
 - User validation passed for Commit 6.
 - User validation passed for Commit 7.
-- Commit 8 is locally implemented and awaiting user validation.
+- User validation passed for Commit 8.
+- Commit 9 is locally implemented and awaiting user validation.

@@ -414,6 +414,31 @@ Goal:
 - Treat imported Google Ads revenue as explicit Google Ads-attributed revenue, not generic campaign revenue and not native Google Ads conversion value.
 - Preserve the existing source/import/storage architecture and avoid creating a new reporting or revenue framework.
 
+### Production-Ready Checklist
+
+Use this checklist as the source of truth for what is complete. A checked item is complete for the scope written on that line. Unchecked items are the next implementation work.
+
+- [x] Commit 11: Revenue import documentation and acceptance contract.
+  Validation: user validation passed.
+- [x] Commit 12: Revenue platform context and storage/read-side isolation.
+  Validation: local regression passed; user validation passed for the implemented read-side scope.
+- [x] Commit 13: Google Ads backend revenue semantics read model.
+  Validation: local regression and type check passed; user validated the no-imported-revenue backend response.
+- [x] Commit 14: Shared revenue wizard support for Google Ads context.
+  Validation: local regression and type check passed; user validation passed for the implemented wizard-context scope.
+- [x] Commit 15: CSV Google Ads attributed revenue import context.
+  Validation: local regression and type check passed.
+- [ ] Commit 16: Google Sheets Google Ads attributed revenue flow.
+- [ ] Commit 17: HubSpot Google Ads attributed revenue flow.
+- [ ] Commit 18: Salesforce Google Ads attributed revenue flow.
+- [ ] Commit 19: Shopify Google Ads attributed revenue flow.
+- [ ] Commit 20: Google Ads Overview `Total Revenue` card, `+` action, and `Sources` modal.
+- [ ] Commit 21: KPI, Benchmark, Insights, and report semantics.
+- [ ] Commit 22: Scheduler, refresh, snapshot, disconnect/reconnect, and selected-campaign safety.
+- [ ] Commit 23: Final regression coverage and production-ready evidence.
+
+Deferred validation is not a failed validation. For example, CSV add/edit/delete browser validation belongs to Commit 20 because the visible Google Ads `Total Revenue` entry point does not exist yet.
+
 ### Root Cause Analysis
 
 Current Google Ads revenue behavior is source-backed for Google Ads daily rows, but it is not yet source-backed for optional imported business revenue.
@@ -560,7 +585,7 @@ Validation:
 Status:
 
 - [x] Completed locally: this tracker now records the Google Ads attributed revenue import strategy and corrected commit sequence.
-- [ ] User validation pending.
+- [x] User validation passed.
 
 #### Commit 12: Revenue Platform Context And Storage Isolation
 
@@ -591,8 +616,8 @@ Status:
 - [x] Completed locally: `/api/campaigns/:id/all-data-sources` includes Google Ads revenue sources when they exist, and last-source cleanup maps Google Ads sheets cleanup to `google_ads_revenue`.
 - [x] Completed locally: focused regression coverage added in `server/google-ads-revenue-platform-context.test.ts`.
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-platform-context.test.ts`.
-- [ ] Runtime API validation with seeded Google Ads revenue rows pending.
-- [ ] User validation pending.
+- [x] User validation passed for the implemented storage/read-side isolation scope.
+- [ ] Future/deferred validation: seeded Google Ads revenue rows in a runtime API flow after source write paths are enabled.
 
 #### Commit 13: Google Ads Revenue Semantics Read Model
 
@@ -626,8 +651,8 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-production-regression.test.ts server/performance-summary-aggregate.test.ts server/google-ads-revenue-platform-context.test.ts server/campaign-financial-analysis-regression.test.ts server/executive-summary-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] User validation passed: `/api/campaigns/:id/outcome-totals?dateRange=30days` showed Google Ads connected with `attributedRevenue: 0`, `importedAttributedRevenue: 0`, and `revenueSemantics.attributedRevenueSource: "unavailable"` when no Google Ads-scoped imported revenue source exists.
-- [ ] Runtime API validation with seeded Google Ads revenue rows pending.
-- [ ] Scheduler/report/KPI/Benchmark semantic updates pending in later commits.
+- [ ] Future/deferred validation: seeded Google Ads revenue rows in a runtime API flow after source write paths are enabled.
+- [ ] Future/deferred work: Scheduler/report/KPI/Benchmark semantic updates are covered in later commits.
 
 #### Commit 14: Shared Revenue Wizard Support For Google Ads Context
 
@@ -660,8 +685,8 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-platform-context.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] User validation passed for the implemented Commit 14 scope.
-- [ ] Runtime UI validation pending when a Google Ads `Total Revenue` entry point is added.
-- [ ] Remaining source-family write/import validation pending in Commits 16-19.
+- [ ] Future/deferred validation: runtime UI validation when the Google Ads `Total Revenue` entry point is added in Commit 20.
+- [ ] Future/deferred work: remaining source-family write/import validation is covered in Commits 16-19.
 
 #### Commit 15: CSV Google Ads Attributed Revenue Flow
 
@@ -691,7 +716,8 @@ Status:
 - [x] Completed locally: focused regression coverage added in `server/google-ads-revenue-csv-flow.test.ts`.
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-platform-context.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] Runtime add/edit/delete CSV validation pending because the visible Google Ads `Total Revenue` entry point is still planned for Commit 20.
+- [x] Commit 15 validated for the implemented local automated scope.
+- [ ] Future/deferred validation: CSV add/edit/delete browser validation through the Google Ads `Total Revenue` card is covered in Commit 20.
 
 #### Commit 16: Google Sheets Google Ads Attributed Revenue Flow
 
@@ -948,6 +974,8 @@ Before Google Ads is marked production-ready, record evidence for:
 - User validation passed for Commit 8.
 - User validation passed for Commit 9.
 - User validation passed for Commit 10.
+- User validation passed for Commit 11 documentation and acceptance contract.
+- User validation passed for Commit 12 implemented storage/read-side isolation scope.
 - User validation passed for Commit 13 no-imported-revenue backend read semantics path.
 - User validation passed for Commit 14 implemented wizard-context scope.
-- Local validation passed for Commit 15 CSV Google Ads attributed revenue parser/import-path guard.
+- Commit 15 validated for the CSV Google Ads attributed revenue parser/import-path guard local automated scope.

@@ -4354,7 +4354,7 @@ export default function CampaignDetail() {
     queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`], exact: false });
     queryClientHook.invalidateQueries({ queryKey: ['/api/platforms/google_ads/kpis'], exact: false });
     queryClientHook.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'google_ads'], exact: false });
-    queryClientHook.invalidateQueries({ queryKey: ['/api/meta/reports', campaignId, 'google_ads'], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: ['/api/platforms/google_ads/reports', campaignId], exact: false });
   };
 
   // Mutation to set primary connection

@@ -17,28 +17,30 @@ Google Ads must be treated as a campaign-scoped main paid-media connected source
 
 ## Current Status
 
-Not production-ready yet.
+Commit 9 user validation passed.
 
-Google Ads is partially scaffolded:
+Google Ads is locally production-ready for the implemented source-backed test-mode path after Commit 10 regression coverage. Live OAuth should still be validated in a deployed or production-like environment before calling the live OAuth path production-ready.
+
+Implemented foundations:
 
 - OAuth and test-mode connection routes exist.
 - Google Ads daily metric storage exists.
-- A Google Ads analytics page exists.
+- Google Ads is available in both Create Campaign and Connected Platforms.
+- Google Ads analytics tabs use source-backed daily rows or validated aggregate values.
 - A Google Ads aggregate helper exists in `server/routes-oauth.ts`.
-- Scheduler snapshot support already includes Google Ads source rows.
-
-However, production readiness is blocked until the implementation removes placeholder metrics, enables both user connection paths safely, defines revenue semantics, proves disconnect/reconnect cleanup, and adds source-specific regression coverage.
+- Scheduler snapshot support includes selected Google Ads source rows.
+- Google Ads Reports use the platform-report path and scheduled reports are discoverable by `server/report-scheduler.ts`.
 
 ## Root Cause Analysis
 
-The current risk is not one isolated bug. It is a source-contract and lifecycle-hardening gap:
+The original risk was not one isolated bug. It was a source-contract and lifecycle-hardening gap:
 
-- The Create Campaign flow still treats Google Ads as `Coming Soon`, so users cannot connect Google Ads during initial campaign creation.
-- The existing Connected Platforms flow can render `GoogleAdsConnectionFlow`, but it still needs the same production hardening now proven for LinkedIn.
-- Some visible Google Ads campaign overview values are generated from generic campaign-level percentage splits instead of source-backed Google Ads rows.
-- Google Ads revenue has two possible inputs, native Google Ads `conversionValue` and optional GA4-attributed `ga4Revenue`; the production rules need to be explicit so ROI/ROAS do not mix incompatible meanings.
-- Scheduler and aggregate paths already include Google Ads, but they need source-specific validation for selected-campaign filtering, freshness, unavailable metrics, disconnect/reconnect safety, and report parity.
-- Google Ads must not be marked production-ready just because the shared Campaign DeepDive architecture is ready for future sources.
+- Create Campaign originally treated Google Ads as `Coming Soon`, so users could not connect Google Ads during initial campaign creation. This was fixed in Commit 2.
+- Connected Platforms could render `GoogleAdsConnectionFlow`, but it needed source-contract hardening and cache invalidation parity. This was fixed through Commits 3 and 10.
+- Some visible Google Ads campaign overview values were generated from generic campaign-level percentage splits instead of source-backed Google Ads rows. This was fixed in Commit 4.
+- Google Ads revenue has two possible inputs, native Google Ads `conversionValue` and optional GA4-attributed `ga4Revenue`; the production rules had to be explicit so ROI/ROAS do not mix incompatible meanings. This was fixed in Commit 5.
+- Scheduler and aggregate paths needed source-specific validation for selected-campaign filtering, freshness, unavailable metrics, disconnect/reconnect safety, and report parity. This was covered through Commits 6, 7, 8, 9, and 10.
+- Google Ads must not be marked production-ready just because the shared Campaign DeepDive architecture is ready for future sources; it needs its own source-level proof, tracked here.
 
 ## Existing Relevant Paths
 
@@ -361,10 +363,11 @@ Status:
 - [x] Completed locally: Google Ads report cards and edit mode now normalize missing or legacy report types to valid Google Ads report types instead of falling back to Campaign DeepDive `performance_summary`.
 - [x] Completed locally: Google Ads Reports now save, list, update, and delete through `/api/platforms/google_ads/reports`, matching the GA4 platform-report pattern instead of the legacy Meta report route.
 - [x] Completed locally: scheduled Google Ads report payloads now persist `scheduleRecipients`, 24-hour `scheduleTime`, and browser `scheduleTimeZone`, so clicking `Schedule Report` creates a real report card and backend scheduled-report record.
+- [x] Completed locally: in the Google Ads Reports tab, enabling scheduling changes the modal action to `Schedule Report`; submitting it saves the report through `/api/platforms/google_ads/reports` with recipients, time, and time zone for scheduler processing.
 - [x] Completed locally: the report scheduler now discovers `google_ads` platform reports alongside LinkedIn and GA4 reports.
 - [x] Completed locally: added regression coverage preventing Google Ads Reports from reintroducing Campaign DeepDive report-type fallbacks.
 - [x] Completed locally: added regression coverage preventing Google Ads Reports from falling back to legacy Meta report storage and preventing scheduled Google Ads reports from being omitted by scheduler discovery.
-- [ ] User validation pending for Commit 9.
+- [x] User validation passed for Commit 9.
 
 ### Commit 10: Regression Coverage And Final Docs
 
@@ -390,7 +393,13 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: added regression coverage for Create Campaign and Connected Platforms Google Ads entry points.
+- [x] Completed locally: fixed the Connected Platforms success invalidation to refresh `/api/platforms/google_ads/reports` instead of the old Meta report query.
+- [x] Completed locally: added regression coverage for selected-campaign filtering across UI, API, aggregate, scheduler, and snapshot paths.
+- [x] Completed locally: added regression coverage for disconnect/reconnect stale-data safety.
+- [x] Completed locally: added regression coverage for Google Ads revenue semantics.
+- [x] Completed locally: updated final production-readiness documentation.
+- [ ] User validation pending for Commit 10.
 
 ## Validation Evidence Required
 
@@ -427,4 +436,5 @@ Before Google Ads is marked production-ready, record evidence for:
 - User validation passed for Commit 6.
 - User validation passed for Commit 7.
 - User validation passed for Commit 8.
-- Commit 9 is locally implemented and awaiting user validation.
+- User validation passed for Commit 9.
+- Commit 10 is locally implemented and awaiting user validation.

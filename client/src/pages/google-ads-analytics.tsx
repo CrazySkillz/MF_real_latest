@@ -857,9 +857,9 @@ export default function GoogleAdsAnalytics() {
       all.push({
         id: 'integrity:conv-value-zero', severity: 'high', group: 'integrity', reliability: 'high',
         title: 'Conversions tracked but conversion value is $0',
-        description: `${Math.round(summary.conversions)} conversions recorded, but total conversion value is $0. ROAS (${summary.roas.toFixed(2)}x) and ROI (${summary.roi.toFixed(1)}%) cannot be trusted until values are assigned.`,
-        recommendation: 'Assign conversion values in Google Ads > Goals > Conversions > Settings. For e-commerce, use dynamic values from your checkout. For lead gen, assign estimated values per lead type. Without this, all ROAS/ROI insights are unreliable.',
-        evidence: [Math.round(summary.conversions) + ' conversions', '$0 conversion value', 'ROAS: ' + summary.roas.toFixed(2) + 'x (unreliable)'],
+        description: `${Math.round(summary.conversions)} conversions recorded, but native Google Ads conversion value is $0. Conversion-value ROAS (${summary.roas.toFixed(2)}x) and conversion-value ROI (${summary.roi.toFixed(1)}%) cannot be trusted until values are assigned in Google Ads.`,
+        recommendation: 'Assign conversion values in Google Ads > Goals > Conversions > Settings. For e-commerce, use dynamic values from your checkout. For lead gen, assign estimated values per lead type. Imported Google Ads attributed revenue remains separate when connected.',
+        evidence: [Math.round(summary.conversions) + ' conversions', '$0 conversion value', 'Conversion-value ROAS: ' + summary.roas.toFixed(2) + 'x (unreliable)'],
       });
     }
 
@@ -887,25 +887,35 @@ export default function GoogleAdsAnalytics() {
 
     // ─── TIER 2: FINANCIAL PERFORMANCE ────────────────────────────────
 
+    const insightsRevenueValue = hasGoogleAdsAttributedRevenue ? googleAdsAttributedRevenue : summary.conversionValue;
+    const insightsRoasValue = hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoas : summary.roas;
+    const insightsRoiValue = hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoi : summary.roi;
+    const insightsRevenueLabel = hasGoogleAdsAttributedRevenue ? 'imported Google Ads attributed revenue' : 'native Google Ads conversion value';
+    const insightsRevenueEvidenceLabel = hasGoogleAdsAttributedRevenue ? 'Imported revenue' : 'Conversion value';
+    const insightsRoasTitlePrefix = hasGoogleAdsAttributedRevenue ? 'Attributed-revenue' : 'Conversion-value';
+    const insightsRevenueRecommendation = hasGoogleAdsAttributedRevenue
+      ? 'This uses imported Google Ads attributed revenue, not native Google Ads conversion value.'
+      : 'This is conversion-value efficiency, not business revenue. Connect a Google Ads attributed revenue source before using ROI/ROAS as business revenue metrics.';
+
     // Rule 5: Negative ROI
-    if (summary.conversionValue > 0 && summary.spend > 0 && summary.roi < 0 && summary.conversions >= 5) {
+    if (insightsRevenueValue > 0 && summary.spend > 0 && insightsRoiValue < 0 && summary.conversions >= 5) {
       all.push({
-        id: 'financial:negative-roi', severity: summary.roi <= -20 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('roi'),
-        title: `ROI is ${summary.roi.toFixed(1)}% based on conversion value`,
-        description: `Spend of ${fmtCurrency(summary.spend)} is higher than ${fmtCurrency(summary.conversionValue)} in Google Ads conversion value (ROI: ${summary.roi.toFixed(1)}%).`,
-        recommendation: `Review the ${campaignBreakdown.length} active campaign(s). Consider pausing campaigns with CPA above target and reallocating budget to highest-ROAS campaigns. Check the Ad Comparison tab to identify which campaigns have the strongest conversion-value efficiency.`,
-        evidence: ['Spend: ' + fmtCurrency(summary.spend), 'Conversion value: ' + fmtCurrency(summary.conversionValue), 'ROI: ' + summary.roi.toFixed(1) + '%'],
+        id: 'financial:negative-roi', severity: insightsRoiValue <= -20 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('roi'),
+        title: `${insightsRoasTitlePrefix} ROI is ${insightsRoiValue.toFixed(1)}%`,
+        description: `Spend of ${fmtCurrency(summary.spend)} is higher than ${fmtCurrency(insightsRevenueValue)} in ${insightsRevenueLabel} (ROI: ${insightsRoiValue.toFixed(1)}%).`,
+        recommendation: `${insightsRevenueRecommendation} Review the ${campaignBreakdown.length} active campaign(s). Consider pausing campaigns with CPA above target and reallocating budget to campaigns with the strongest efficiency.`,
+        evidence: ['Spend: ' + fmtCurrency(summary.spend), insightsRevenueEvidenceLabel + ': ' + fmtCurrency(insightsRevenueValue), 'ROI: ' + insightsRoiValue.toFixed(1) + '%'],
       });
     }
 
     // Rule 6: ROAS below breakeven
-    if (summary.conversionValue > 0 && summary.spend > 0 && summary.roas > 0 && summary.roas < 1 && summary.conversions >= 5) {
+    if (insightsRevenueValue > 0 && summary.spend > 0 && insightsRoasValue > 0 && insightsRoasValue < 1 && summary.conversions >= 5) {
       all.push({
-        id: 'financial:roas-below-1', severity: summary.roas < 0.5 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('roas'),
-        title: `ROAS is ${summary.roas.toFixed(2)}x based on conversion value`,
-        description: `Every $1 spent returns ${fmtCurrency(summary.roas)} in configured Google Ads conversion value. This is below a 1.0x value-to-spend ratio.`,
-        recommendation: 'Audit campaign-level ROAS in the Ad Comparison tab. Focus budget on campaigns returning above 1.0x. For underperforming campaigns, review: keyword match types, negative keywords, audience segments, and bid strategy.',
-        evidence: ['ROAS: ' + summary.roas.toFixed(2) + 'x', 'Spend: ' + fmtCurrency(summary.spend), 'Conversion value: ' + fmtCurrency(summary.conversionValue)],
+        id: 'financial:roas-below-1', severity: insightsRoasValue < 0.5 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('roas'),
+        title: `${insightsRoasTitlePrefix} ROAS is ${insightsRoasValue.toFixed(2)}x`,
+        description: `Every $1 spent returns ${fmtCurrency(insightsRoasValue)} in ${insightsRevenueLabel}. This is below a 1.0x value-to-spend ratio.`,
+        recommendation: `${insightsRevenueRecommendation} Audit campaign-level efficiency in the Ad Comparison tab. For underperforming campaigns, review keyword match types, negative keywords, audience segments, and bid strategy.`,
+        evidence: ['ROAS: ' + insightsRoasValue.toFixed(2) + 'x', 'Spend: ' + fmtCurrency(summary.spend), insightsRevenueEvidenceLabel + ': ' + fmtCurrency(insightsRevenueValue)],
       });
     }
 
@@ -997,7 +1007,7 @@ export default function GoogleAdsAnalytics() {
       if (d.roas7 <= -GADS_THRESHOLDS.roasDropPct && p7.roas > 0 && p7.conversions >= GADS_THRESHOLDS.minConversions7d && p7.spend >= GADS_THRESHOLDS.minSpend7d) {
         all.push({
           id: 'anomaly:roas-drop', severity: l7.roas < 1 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('roas'),
-          title: `ROAS declined ${Math.abs(d.roas7).toFixed(0)}% week-over-week`,
+          title: `Conversion-value ROAS declined ${Math.abs(d.roas7).toFixed(0)}% week-over-week`,
           description: `ROAS dropped from ${p7.roas.toFixed(2)}x to ${l7.roas.toFixed(2)}x (${d.roas7.toFixed(1)}%). Each dollar of ad spend is now returning ${fmtCurrency(l7.roas)} in conversion value, down from ${fmtCurrency(p7.roas)}.`,
           recommendation: 'Decompose the ROAS decline: Is conversion volume down, conversion value per conversion down, or CPC up? Use the Ad Comparison tab to identify which campaigns\' ROAS degraded most and prioritize those for review.',
           evidence: ['ROAS: ' + p7.roas.toFixed(2) + 'x → ' + l7.roas.toFixed(2) + 'x', 'Spend: ' + fmtCurrency(p7.spend) + ' → ' + fmtCurrency(l7.spend), 'Conv value: ' + fmtCurrency(p7.conversionValue) + ' → ' + fmtCurrency(l7.conversionValue)],
@@ -1966,11 +1976,11 @@ export default function GoogleAdsAnalytics() {
                 <CardHeader>
                   <CardTitle>Executive value metrics</CardTitle>
                   <CardDescription>
-                    Spend, native conversion value, and derived efficiency from Google Ads imports.
+                    Spend, native conversion value, and imported Google Ads attributed revenue when connected.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-4 md:grid-cols-4">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                     <Card>
                       <CardContent className="p-5">
                         <div className="text-sm font-medium text-muted-foreground/70">Spend</div>
@@ -1987,16 +1997,23 @@ export default function GoogleAdsAnalytics() {
                     </Card>
                     <Card>
                       <CardContent className="p-5">
+                        <div className="text-sm font-medium text-muted-foreground/70">Total Revenue</div>
+                        <div className="text-2xl font-bold text-foreground">{hasGoogleAdsAttributedRevenue ? fmtCurrency(googleAdsAttributedRevenue) : 'N/A'}</div>
+                        <div className="text-xs text-muted-foreground/70 mt-1">{hasGoogleAdsAttributedRevenue ? 'Imported Google Ads attributed revenue' : 'Connect attributed revenue'}</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-5">
                         <div className="text-sm font-medium text-muted-foreground/70">ROAS</div>
-                        <div className="text-2xl font-bold text-foreground">{summary.roas.toFixed(2)}x</div>
-                        <div className="text-xs text-muted-foreground/70 mt-1">Conversion value / spend</div>
+                        <div className="text-2xl font-bold text-foreground">{hasGoogleAdsAttributedRevenue ? `${googleAdsAttributedRoas.toFixed(2)}x` : 'N/A'}</div>
+                        <div className="text-xs text-muted-foreground/70 mt-1">{hasGoogleAdsAttributedRevenue ? 'Attributed revenue / spend' : 'Connect attributed revenue'}</div>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-5">
                         <div className="text-sm font-medium text-muted-foreground/70">ROI</div>
-                        <div className="text-2xl font-bold text-foreground">{fmtPct(summary.roi)}</div>
-                        <div className="text-xs text-muted-foreground/70 mt-1">((Conversion value - spend) / spend)</div>
+                        <div className="text-2xl font-bold text-foreground">{hasGoogleAdsAttributedRevenue ? fmtPct(googleAdsAttributedRoi) : 'N/A'}</div>
+                        <div className="text-xs text-muted-foreground/70 mt-1">{hasGoogleAdsAttributedRevenue ? 'Attributed revenue ROI' : 'Connect attributed revenue'}</div>
                       </CardContent>
                     </Card>
                   </div>
@@ -2004,6 +2021,8 @@ export default function GoogleAdsAnalytics() {
                     <div className="font-medium mb-1">Sources used</div>
                     <div className="grid gap-1">
                       <div><span className="font-medium">Spend</span>: Google Ads import session</div>
+                      <div><span className="font-medium">Total Revenue</span>: {hasGoogleAdsAttributedRevenue ? 'Imported Google Ads attributed revenue' : 'Not connected'}</div>
+                      <div><span className="font-medium">ROAS/ROI</span>: {hasGoogleAdsAttributedRevenue ? 'Imported Google Ads attributed revenue / spend' : 'Not available until attributed revenue is connected'}</div>
                       <div><span className="font-medium">Conversion Value</span>: {summary.conversionValue > 0 ? 'Native Google Ads conversion tracking' : 'Not available — no conversion value recorded'}</div>
                     </div>
                   </div>
@@ -2039,7 +2058,7 @@ export default function GoogleAdsAnalytics() {
                             <SelectItem value="cpm">CPM</SelectItem>
                             <SelectItem value="conversionRate">Conversion Rate</SelectItem>
                             <SelectItem value="costPerConversion">Cost/Conversion</SelectItem>
-                            <SelectItem value="roas">ROAS</SelectItem>
+                            <SelectItem value="roas">Conversion Value ROAS</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -2064,7 +2083,7 @@ export default function GoogleAdsAnalytics() {
                       return n.toLocaleString();
                     };
 
-                    const labels: Record<string, string> = { spend: 'Spend', impressions: 'Impressions', clicks: 'Clicks', conversions: 'Conversions', ctr: 'CTR', cpc: 'CPC', cpm: 'CPM', conversionRate: 'Conv Rate', costPerConversion: 'Cost/Conv', roas: 'ROAS' };
+                    const labels: Record<string, string> = { spend: 'Spend', impressions: 'Impressions', clicks: 'Clicks', conversions: 'Conversions', ctr: 'CTR', cpc: 'CPC', cpm: 'CPM', conversionRate: 'Conv Rate', costPerConversion: 'Cost/Conv', roas: 'Conversion Value ROAS' };
 
                     return (
                       <>

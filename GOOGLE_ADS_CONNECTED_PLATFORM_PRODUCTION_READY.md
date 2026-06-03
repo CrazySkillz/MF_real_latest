@@ -467,6 +467,7 @@ Confirmed current gaps:
 - The Google Ads Create Benchmark modal still defaulted to `benchmarkType="industry"` and showed `Benchmark Type` / `Select Industry` controls even though the Google Ads benchmark value path is custom user input. The create/read path also used the campaign benchmark/evaluated route instead of the existing platform benchmark route, so Google Ads benchmark cards were not reliably created and read back from the Google Ads platform-scoped list. The safe fix defaults Google Ads benchmarks to `custom`, removes the industry controls, and uses `/api/platforms/google_ads/benchmarks?campaignId=...` plus `POST /api/platforms/google_ads/benchmarks`.
 - Google Ads Benchmark edit mode opened the modal with a partial form object and explicitly set `currentValue` and `unit` to empty strings. That omitted the live current value already shown on the benchmark card and caused edit mode to show a blank or stale current value. The dialog also auto-focused the first input, causing the benchmark name to be selected by default. The safe fix hydrates edit mode from the live benchmark card values and suppresses edit-mode auto-focus selection.
 - Google Ads KPI and Benchmark Current Value inputs stripped invalid characters and limited decimals, but did not add thousands separators while typing. Adding display grouping directly to the field would send comma-formatted strings to the shared KPI/Benchmark API unless the payload was cleaned. The safe fix applies grouping only to the Current Value display and strips commas before submit so storage still receives plain numeric strings.
+- Before the Insights slice of Commit 21, the Google Ads Insights executive value cards and financial rules still centered on `summary.roas` and `summary.roi`, which are native Google Ads conversion-value efficiency values. The safe fix keeps native `Conversion Value` separate, uses imported Google Ads attributed revenue for business `Total Revenue`, `ROAS`, and `ROI` when connected, and clearly labels remaining conversion-value trend/rule output.
 - Before Commit 12, `server/storage.ts` supported `getRevenueSources(..., platformContext)` and `getRevenueBreakdownBySource(..., platformContext)` mostly generically, but `getRevenueTotalForRange(...)` hard-coded the non-GA4 branch to `linkedin`; Commit 12 fixes this storage/read-side gap.
 - `server/auto-refresh-scheduler.ts` reprocesses Shopify and Google Sheets across `ga4`, `linkedin`, and `meta`, while the source loop for HubSpot and Salesforce currently reprocesses only `ga4`; Commits 17, 18, and 19 confirm the HubSpot/Salesforce/Shopify reprocess payloads can carry `platformContext` and stable `sourceId`, but scheduler context selection remains deferred to Commit 22.
 - `shared/schema.ts` has `revenue_sources.platform_context` as free text, so a table migration is not expected just to store `google_ads`; however TypeScript unions, zod validation, route filters, UI props, and scheduler context lists must be updated consistently.
@@ -953,13 +954,18 @@ Status:
 - [x] Completed locally: Google Ads Create Benchmark now defaults to custom benchmark values, hides `Benchmark Type` / `Select Industry`, and creates/reads benchmark cards through the existing Google Ads platform benchmark route.
 - [x] Completed locally: Google Ads Benchmark edit mode now pre-fills current value from the live card metric, restores missing form fields, and prevents the benchmark name from being selected by default.
 - [x] Completed locally: Google Ads KPI and Benchmark Current Value inputs now add thousands separators while typing and submit unformatted numeric strings.
+- [x] User validation passed: Google Ads KPI/Benchmark edit modal prefill, edit-mode name focus, and Current Value auto-formatting.
+- [x] Completed locally: Google Ads Insights executive value cards now keep native `Conversion Value` separate and show business `Total Revenue`, `ROAS`, and `ROI` from imported Google Ads attributed revenue only.
+- [x] Completed locally: without active imported Google Ads attributed revenue, Google Ads Insights business `Total Revenue`, `ROAS`, and `ROI` show as unavailable/not connected instead of using native conversion value.
+- [x] Completed locally: Google Ads Insights financial rules now use imported Google Ads attributed revenue when connected and clearly label conversion-value efficiency when no attributed revenue source exists.
+- [x] Completed locally: Google Ads Insights trend labels now call the native daily/rolling ROAS series `Conversion Value ROAS`.
 - [x] Completed locally: focused regression coverage added in `server/google-ads-revenue-kpi-benchmark-ui.test.ts`.
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-kpi-benchmark-ui.test.ts server/google-ads-revenue-overview-ui.test.ts`.
 - [x] Local validation passed: full Google Ads revenue regression group including KPI/Benchmark UI coverage.
 - [x] Local validation passed: `npm run check`.
-- [ ] Pending implementation: Insights financial copy/rules.
 - [ ] Pending implementation: standard/custom/scheduled report semantics and source provenance.
-- [ ] Validation pending.
+- [x] Local validation passed: Insights financial semantics regression and type check for this slice.
+- [ ] Pending user validation: Insights financial semantics.
 
 #### Commit 22: Scheduler, Refresh, Snapshot, And Disconnect/Reconnect Safety
 

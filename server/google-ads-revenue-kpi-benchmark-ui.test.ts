@@ -115,4 +115,21 @@ describe("Google Ads revenue KPI and Benchmark UI semantics", () => {
       expect(source).toContain("case \"roi\":");
     }
   });
+
+  it("keeps Google Ads Insights financial semantics source-aware", () => {
+    const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
+
+    expect(page).toContain("const insightsRevenueValue = hasGoogleAdsAttributedRevenue ? googleAdsAttributedRevenue : summary.conversionValue;");
+    expect(page).toContain("const insightsRoasValue = hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoas : summary.roas;");
+    expect(page).toContain("const insightsRoiValue = hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoi : summary.roi;");
+    expect(page).toContain("This uses imported Google Ads attributed revenue, not native Google Ads conversion value.");
+    expect(page).toContain("This is conversion-value efficiency, not business revenue.");
+    expect(page).toContain("Conversion-value ROAS (${summary.roas.toFixed(2)}x) and conversion-value ROI");
+    expect(page).toContain("Spend, native conversion value, and imported Google Ads attributed revenue when connected.");
+    expect(page).toContain("{hasGoogleAdsAttributedRevenue ? fmtCurrency(googleAdsAttributedRevenue) : 'N/A'}");
+    expect(page).toContain("{hasGoogleAdsAttributedRevenue ? `${googleAdsAttributedRoas.toFixed(2)}x` : 'N/A'}");
+    expect(page).toContain("{hasGoogleAdsAttributedRevenue ? fmtPct(googleAdsAttributedRoi) : 'N/A'}");
+    expect(page).toContain("Conversion Value ROAS");
+    expect(page).toContain("Conversion-value ROAS declined");
+  });
 });

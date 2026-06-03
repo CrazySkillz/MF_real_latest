@@ -436,12 +436,13 @@ Use this checklist as the source of truth for what is complete. A checked item i
   Validation: local regression and type check passed.
 - [x] Commit 19: Shopify Google Ads attributed revenue flow.
   Validation: local regression and type check passed.
-- [ ] Commit 20: Google Ads Overview `Total Revenue` card, `+` action, and `Sources` modal.
+- [x] Commit 20: Google Ads Overview `Total Revenue` card, `+` action, and `Sources` modal.
+  Validation: focused local UI regression and type check passed; manual browser add/edit/delete validation remains pending.
 - [ ] Commit 21: KPI, Benchmark, Insights, and report semantics.
 - [ ] Commit 22: Scheduler, refresh, snapshot, disconnect/reconnect, and selected-campaign safety.
 - [ ] Commit 23: Final regression coverage and production-ready evidence.
 
-Deferred validation is not a failed validation. For example, CSV add/edit/delete browser validation belongs to Commit 20 because the visible Google Ads `Total Revenue` entry point does not exist yet.
+Deferred validation is not a failed validation. Browser add/edit/delete validation for the visible Google Ads `Total Revenue` entry point is tracked explicitly under Commit 20 and final production-ready evidence.
 
 ### Root Cause Analysis
 
@@ -449,7 +450,7 @@ Current Google Ads revenue behavior is source-backed for Google Ads daily rows, 
 
 Confirmed current gaps:
 
-- `client/src/pages/google-ads-analytics.tsx` calculates Google Ads Overview `summary.roas` and `summary.roi` from native Google Ads `conversionValue / spend`; it has no Google Ads-scoped `Total Revenue` source card, `+` action, `Sources` link, or source-provenance modal.
+- Before Commit 20, `client/src/pages/google-ads-analytics.tsx` calculated Google Ads Overview `summary.roas` and `summary.roi` from native Google Ads `conversionValue / spend`; it had no Google Ads-scoped `Total Revenue` source card, `+` action, `Sources` link, or source-provenance modal. Commit 20 adds the visible Google Ads-scoped source-management UI while keeping native Google Ads `Conversion Value` labeled separately.
 - Before Commit 13, `buildGoogleAdsPlatformSourceForAggregate(...)` in `server/routes-oauth.ts` set `attributedRevenue` from GA4-attributed revenue when present, otherwise native Google Ads `conversionValue`; Commit 13 replaces that backend aggregate behavior with imported Google Ads-scoped attributed revenue only.
 - Before Commit 14, the shared revenue-source frontend context plumbing allowed `ga4`, `linkedin`, and `meta`, not `google_ads`; Commit 14 extends the shared modal/provider wizard prop path and Google Sheets purpose plumbing while leaving backend write/import validation deferred to the source-family commits.
 - Before Commit 15, the shared CSV revenue wizard submitted `platformContext="google_ads"`, but `/api/campaigns/:id/revenue/csv/process` still used the general write parser that accepts only `ga4`, `linkedin`, and `meta`; Commit 15 adds a CSV-only parser that accepts `google_ads` without opening the other source-family write paths.
@@ -464,7 +465,7 @@ Confirmed current gaps:
 
 Exact root cause:
 
-- The reusable GA4/LinkedIn revenue import system is present. Commit 12 admits Google Ads on the storage/read side, Commit 13 makes the shared backend aggregate read model use only Google Ads-scoped imported revenue for Google Ads business `attributedRevenue`, Commit 14 adds shared wizard context plumbing, Commit 15 admits Google Ads only on the CSV import write path, Commit 16 admits Google Ads only on the Google Sheets revenue import path, Commit 17 admits Google Ads only on the HubSpot import write path, Commit 18 admits Google Ads only on the Salesforce import write path, and Commit 19 admits Google Ads only on the Shopify import write path. The remaining root cause is that the visible financial UI, scheduler downstream semantics, KPIs, Benchmarks, and reports still have not been made Google Ads-attributed-revenue aware.
+- The reusable GA4/LinkedIn revenue import system is present. Commit 12 admits Google Ads on the storage/read side, Commit 13 makes the shared backend aggregate read model use only Google Ads-scoped imported revenue for Google Ads business `attributedRevenue`, Commit 14 adds shared wizard context plumbing, Commit 15 admits Google Ads only on the CSV import write path, Commit 16 admits Google Ads only on the Google Sheets revenue import path, Commit 17 admits Google Ads only on the HubSpot import write path, Commit 18 admits Google Ads only on the Salesforce import write path, Commit 19 admits Google Ads only on the Shopify import write path, and Commit 20 exposes the visible Google Ads `Total Revenue` card, `+` wizard action, and source-provenance modal. The remaining root cause is that scheduler downstream semantics, KPIs, Benchmarks, Insights, and reports still have not been made fully Google Ads-attributed-revenue aware.
 
 ### Required GA4/LinkedIn Pattern For Google Ads
 
@@ -693,7 +694,7 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-platform-context.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] User validation passed for the implemented Commit 14 scope.
-- [ ] Future/deferred validation: runtime UI validation when the Google Ads `Total Revenue` entry point is added in Commit 20.
+- [ ] Manual browser validation: validate the Google Ads `Total Revenue` entry point through the Commit 20 source-management UI.
 - [ ] Future/deferred work: remaining source-family write/import validation is covered in Commits 16-19.
 
 #### Commit 15: CSV Google Ads Attributed Revenue Flow
@@ -725,7 +726,7 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-platform-context.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] Commit 15 validated for the implemented local automated scope.
-- [ ] Future/deferred validation: CSV add/edit/delete browser validation through the Google Ads `Total Revenue` card is covered in Commit 20.
+- [ ] Manual browser validation: CSV add/edit/delete through the Google Ads `Total Revenue` card is tracked under Commit 20.
 
 #### Commit 16: Google Sheets Google Ads Attributed Revenue Flow
 
@@ -759,7 +760,7 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-platform-context.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] Commit 16 validated for the implemented local automated scope.
-- [ ] Future/deferred validation: Google Ads Sheets add/edit/delete browser validation through the Google Ads `Total Revenue` card is covered in Commit 20.
+- [ ] Manual browser validation: Google Ads Sheets add/edit/delete through the Google Ads `Total Revenue` card is tracked under Commit 20.
 
 #### Commit 17: HubSpot Google Ads Attributed Revenue Flow
 
@@ -794,7 +795,7 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-platform-context.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] Commit 17 validated for the implemented local automated scope.
-- [ ] Future/deferred validation: HubSpot add/edit/delete browser validation through the Google Ads `Total Revenue` card is covered in Commit 20.
+- [ ] Manual browser validation: HubSpot add/edit/delete through the Google Ads `Total Revenue` card is tracked under Commit 20.
 - [ ] Future/deferred validation: HubSpot scheduler context-loop validation is covered in Commit 22.
 
 #### Commit 18: Salesforce Google Ads Attributed Revenue Flow
@@ -831,7 +832,7 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-salesforce-flow.test.ts server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-platform-context.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] Commit 18 validated for the implemented local automated scope.
-- [ ] Future/deferred validation: Salesforce add/edit/delete browser validation through the Google Ads `Total Revenue` card is covered in Commit 20.
+- [ ] Manual browser validation: Salesforce add/edit/delete through the Google Ads `Total Revenue` card is tracked under Commit 20.
 - [ ] Future/deferred validation: Salesforce scheduler context-loop validation is covered in Commit 22.
 
 #### Commit 19: Shopify Google Ads Attributed Revenue Flow
@@ -868,7 +869,7 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-shopify-flow.test.ts server/google-ads-revenue-salesforce-flow.test.ts server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-platform-context.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] Commit 19 validated for the implemented local automated scope.
-- [ ] Future/deferred validation: Shopify add/edit/delete browser validation through the Google Ads `Total Revenue` card is covered in Commit 20.
+- [ ] Manual browser validation: Shopify add/edit/delete through the Google Ads `Total Revenue` card is tracked under Commit 20.
 - [ ] Future/deferred validation: Shopify scheduler context-loop validation is covered in Commit 22.
 
 #### Commit 20: Google Ads Overview Total Revenue Card And Sources Modal
@@ -896,8 +897,19 @@ Validation:
 
 Status:
 
-- [ ] Pending implementation.
-- [ ] Validation pending.
+- [x] Completed locally: Google Ads Overview now fetches active `platformContext=google_ads` revenue sources.
+- [x] Completed locally: Google Ads Overview now fetches 90-day `platformContext=google_ads` revenue totals to match the page's 90-day Google Ads metric window.
+- [x] Completed locally: `Total Revenue` shows `Not connected` when no active Google Ads attributed revenue source exists.
+- [x] Completed locally: the `+` action opens the existing `AddRevenueWizardModal` with `platformContext="google_ads"`, `dateRange="90days"`, and the current source when editing.
+- [x] Completed locally: `Sources (n)` counts only active Google Ads-scoped revenue sources and lists source labels, source type, selected attribution-value count when present, and `lastTotalRevenue`.
+- [x] Completed locally: source edit opens the shared wizard with the selected source; source delete uses the existing guarded `DELETE /api/campaigns/:id/revenue-sources/:sourceId` route.
+- [x] Completed locally: imported attributed revenue `Total Revenue`, `ROAS`, `ROI`, and `Profit` are displayed only when active Google Ads revenue sources exist.
+- [x] Completed locally: native Google Ads `Conversion Value`, `Conversion Value ROAS`, and `Conversion Value ROI` remain labeled separately and are not added to imported attributed revenue.
+- [x] Completed locally: focused regression coverage added in `server/google-ads-revenue-overview-ui.test.ts`.
+- [x] Local validation passed: `npm test -- server/google-ads-revenue-overview-ui.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [x] Commit 20 validated for the implemented local automated scope.
+- [ ] Manual browser validation pending: add/edit/delete CSV, Google Sheets, HubSpot, Salesforce, and Shopify through the visible Google Ads `Total Revenue` card and confirm source counts/totals update.
 
 #### Commit 21: KPIs, Benchmarks, Insights, And Reports
 
@@ -1030,3 +1042,4 @@ Before Google Ads is marked production-ready, record evidence for:
 - Commit 17 validated for the HubSpot Google Ads attributed revenue parser/import-path guard local automated scope.
 - Commit 18 validated for the Salesforce Google Ads attributed revenue parser/import-path guard local automated scope.
 - Commit 19 validated for the Shopify Google Ads attributed revenue parser/import-path guard local automated scope.
+- Commit 20 validated for the Google Ads Overview Total Revenue card/source-management UI local automated scope.

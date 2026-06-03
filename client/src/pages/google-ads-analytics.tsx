@@ -9,12 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, ArrowUpDown, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Target, Video, Search, Activity, Plus, Pencil, Trash2, CheckCircle2, AlertCircle, AlertTriangle, Filter, BarChart3 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { GoogleAdsKpiModal } from "./google-ads-analytics/GoogleAdsKpiModal";
 import { GoogleAdsBenchmarkModal } from "./google-ads-analytics/GoogleAdsBenchmarkModal";
 import { GoogleAdsReportModal } from "./google-ads-analytics/GoogleAdsReportModal";
@@ -148,6 +150,10 @@ export default function GoogleAdsAnalytics() {
     coreMetrics: [], derivedMetrics: [], campaignBreakdown: [],
     kpis: [], benchmarks: [], insights: [],
   });
+  const [isRevenueWizardOpen, setIsRevenueWizardOpen] = useState(false);
+  const [revenueWizardInitialSource, setRevenueWizardInitialSource] = useState<any>(null);
+  const [showRevenueSourcesDialog, setShowRevenueSourcesDialog] = useState(false);
+  const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState<string | null>(null);
   const [reportForm, setReportForm] = useState<any>({
     name: '', description: '', reportType: 'overview', scheduleFrequency: 'weekly',
     scheduleTime: '9:00 AM', emailRecipients: '', scheduleEnabled: false,
@@ -309,6 +315,47 @@ export default function GoogleAdsAnalytics() {
     enabled: !!campaignId,
   });
 
+  const { data: googleAdsRevenueSourcesData } = useQuery<{ success: boolean; sources: any[] }>({
+    queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const res = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=google_ads`);
+      if (!res.ok) return { success: false, sources: [] };
+      const json = await res.json().catch(() => ({}));
+      return { success: !!json?.success, sources: Array.isArray(json?.sources) ? json.sources : [] };
+    },
+  });
+
+  const { data: googleAdsRevenueTotalsData } = useQuery<{ success: boolean; totalRevenue: number }>({
+    queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const res = await fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`);
+      if (!res.ok) return { success: false, totalRevenue: 0 };
+      const json = await res.json().catch(() => ({}));
+      return { success: !!json?.success, totalRevenue: Number(json?.totalRevenue || 0) };
+    },
+  });
+
+  const activeGoogleAdsRevenueSources = Array.isArray(googleAdsRevenueSourcesData?.sources)
+    ? googleAdsRevenueSourcesData.sources.filter((source: any) => source?.isActive !== false)
+    : [];
+
+  const refreshGoogleAdsRevenueQueries = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"] });
+    await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/google-ads", campaignId, "daily-metrics"], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_ads/kpis", campaignId], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "google_ads"], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_ads/reports", campaignId], exact: false });
+  };
+
   // Report mutations
   const createReportMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -356,6 +403,33 @@ export default function GoogleAdsAnalytics() {
     },
   });
 
+  const deleteGoogleAdsRevenueSourceMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const res = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.success === false) {
+        throw new Error(json?.error || 'Failed to remove revenue source');
+      }
+      return json;
+    },
+    onSuccess: async () => {
+      setDeletingRevenueSourceId(null);
+      toast({ title: 'Revenue source removed', description: 'Google Ads Total Revenue has been recalculated.' });
+      await refreshGoogleAdsRevenueQueries();
+    },
+    onError: (error: any) => {
+      setDeletingRevenueSourceId(null);
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to remove revenue source',
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Aggregate summary (useMemo MUST be before conditional returns)
   const summary = useMemo(() => {
     if (!metrics.length) return null;
@@ -382,6 +456,12 @@ export default function GoogleAdsAnalytics() {
     const roi = totals.spend > 0 ? ((totals.conversionValue - totals.spend) / totals.spend) * 100 : 0;
     return { ...totals, ctr, cpc, cpm, convRate, costPerConv, searchImpressionShare, roas, roi };
   }, [metrics]);
+
+  const hasGoogleAdsAttributedRevenue = activeGoogleAdsRevenueSources.length > 0;
+  const googleAdsAttributedRevenue = Number(googleAdsRevenueTotalsData?.totalRevenue || 0);
+  const googleAdsAttributedProfit = summary ? googleAdsAttributedRevenue - summary.spend : 0;
+  const googleAdsAttributedRoas = summary && summary.spend > 0 ? googleAdsAttributedRevenue / summary.spend : 0;
+  const googleAdsAttributedRoi = summary && summary.spend > 0 ? ((googleAdsAttributedRevenue - summary.spend) / summary.spend) * 100 : 0;
 
   // Chart data (aggregated by date)
   const chartData = useMemo(() => {
@@ -561,6 +641,39 @@ export default function GoogleAdsAnalytics() {
   const fmt = (v: number) => v.toLocaleString();
   const fmtCurrency = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const fmtPct = formatPct;
+
+  const parseRevenueSourceConfig = (source: any): any => {
+    try {
+      return source?.mappingConfig
+        ? (typeof source.mappingConfig === 'string' ? JSON.parse(source.mappingConfig) : source.mappingConfig)
+        : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const revenueSourceTypeLabel = (type: any) => {
+    const map: Record<string, string> = {
+      csv: 'CSV',
+      google_sheets: 'Google Sheets',
+      hubspot: 'HubSpot',
+      salesforce: 'Salesforce',
+      shopify: 'Shopify',
+      manual: 'Manual',
+      connector_derived: 'Imported',
+    };
+    return map[String(type || '').trim().toLowerCase()] || 'Imported';
+  };
+
+  const googleAdsRevenueSourceLabel = (source: any) => {
+    const displayName = String(source?.displayName || '').trim();
+    return displayName || revenueSourceTypeLabel(source?.sourceType);
+  };
+
+  const openGoogleAdsRevenueModal = (source?: any) => {
+    setRevenueWizardInitialSource(source || null);
+    setIsRevenueWizardOpen(true);
+  };
 
   // Loading state
   if (isLoading) {
@@ -1225,12 +1338,73 @@ export default function GoogleAdsAnalytics() {
                 <SummaryCard icon={<Video className="w-4 h-4" />} label="Video Views" value={fmt(summary.videoViews)} />
               </div>
 
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-1">
+                    <p className="text-sm text-muted-foreground/70">Total Revenue</p>
+                    <button
+                      type="button"
+                      onClick={() => openGoogleAdsRevenueModal()}
+                      className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
+                      title="Add Google Ads revenue source"
+                      aria-label="Add Google Ads revenue source"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">
+                    {hasGoogleAdsAttributedRevenue ? fmtCurrency(googleAdsAttributedRevenue) : "Not connected"}
+                  </p>
+                  {!hasGoogleAdsAttributedRevenue && (
+                    <p className="text-xs text-muted-foreground mt-1">Connect attributed revenue</p>
+                  )}
+                  {activeGoogleAdsRevenueSources.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowRevenueSourcesDialog(true)}
+                      className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+                    >
+                      Sources ({activeGoogleAdsRevenueSources.length})
+                    </button>
+                  )}
+                </CardContent>
+              </Card>
+
+              {hasGoogleAdsAttributedRevenue && (
+                <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
+                  <CardContent className="p-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                      <div>
+                        <p className="text-sm text-muted-foreground/70">Total Revenue</p>
+                        <p className="text-2xl font-bold text-green-700 dark:text-green-400">{fmtCurrency(googleAdsAttributedRevenue)}</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Imported Google Ads attributed revenue</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground/70">ROAS</p>
+                        <p className="text-2xl font-bold text-foreground">{googleAdsAttributedRoas.toFixed(2)}x</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Attributed revenue / spend</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground/70">ROI</p>
+                        <p className="text-2xl font-bold text-foreground">{googleAdsAttributedRoi.toFixed(1)}%</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Attributed revenue ROI</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground/70">Profit</p>
+                        <p className={`text-2xl font-bold ${googleAdsAttributedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtCurrency(googleAdsAttributedProfit)}</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Attributed revenue - spend</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Google Ads conversion value metrics */}
               {summary.conversionValue > 0 && (
                 <Card className="border-border">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Conversion Value & Efficiency</CardTitle>
-                    <CardDescription>Google Ads conversion value and derived efficiency metrics. GA4-attributed revenue is shown separately where matched.</CardDescription>
+                    <CardTitle className="text-base">Native Conversion Value & Efficiency</CardTitle>
+                    <CardDescription>Native Google Ads conversion value and derived conversion-value efficiency. Imported attributed revenue is shown separately.</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1245,12 +1419,12 @@ export default function GoogleAdsAnalytics() {
                         <p className="text-xs text-muted-foreground/70 mt-1">Native Google Ads conversion value</p>
                       </div>
                       <div className="p-4 bg-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground/70 mb-1">ROAS</p>
+                        <p className="text-sm text-muted-foreground/70 mb-1">Conversion Value ROAS</p>
                         <p className="text-2xl font-bold text-foreground">{summary.roas.toFixed(2)}x</p>
                         <p className="text-xs text-muted-foreground/70 mt-1">Conversion value / spend</p>
                       </div>
                       <div className="p-4 bg-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground/70 mb-1">ROI</p>
+                        <p className="text-sm text-muted-foreground/70 mb-1">Conversion Value ROI</p>
                         <p className="text-2xl font-bold text-foreground">{summary.roi.toFixed(1)}%</p>
                         <p className="text-xs text-muted-foreground/70 mt-1">(Conversion value - spend) / spend</p>
                       </div>
@@ -2345,6 +2519,105 @@ export default function GoogleAdsAnalytics() {
             userTimeZone={userTimeZone}
             getTimeZoneDisplay={getTimeZoneDisplay}
           />
+
+          {campaignId && (
+            <AddRevenueWizardModal
+              open={isRevenueWizardOpen}
+              onOpenChange={(open) => {
+                setIsRevenueWizardOpen(open);
+                if (!open) setRevenueWizardInitialSource(null);
+              }}
+              campaignId={campaignId}
+              currency={(connection as any)?.currency || "USD"}
+              dateRange="90days"
+              platformContext="google_ads"
+              initialSource={revenueWizardInitialSource || undefined}
+              onSuccess={() => {
+                void refreshGoogleAdsRevenueQueries();
+              }}
+            />
+          )}
+
+          <Dialog open={showRevenueSourcesDialog} onOpenChange={setShowRevenueSourcesDialog}>
+            <DialogContent className="bg-card border-border max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="text-foreground">Google Ads Revenue Sources</DialogTitle>
+                <DialogDescription className="text-muted-foreground/70">
+                  Sources contributing to Google Ads Total Revenue.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+                {activeGoogleAdsRevenueSources.length > 0 ? activeGoogleAdsRevenueSources.map((source: any) => {
+                  const cfg = parseRevenueSourceConfig(source);
+                  const selectedCount = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.length : 0;
+                  return (
+                    <div key={source.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground" title={googleAdsRevenueSourceLabel(source)}>
+                          {googleAdsRevenueSourceLabel(source)}
+                        </p>
+                        <p className="text-xs text-muted-foreground/70">
+                          {revenueSourceTypeLabel(source.sourceType)}{selectedCount > 0 ? ` - ${selectedCount} selected attribution value${selectedCount === 1 ? '' : 's'}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium tabular-nums text-foreground">
+                          {fmtCurrency(Number(source.lastTotalRevenue || 0))}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowRevenueSourcesDialog(false);
+                            openGoogleAdsRevenueModal(source);
+                          }}
+                          className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                          title="Edit revenue source"
+                          aria-label="Edit revenue source"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingRevenueSourceId(String(source.id))}
+                          className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
+                          title="Remove revenue source"
+                          aria-label="Remove revenue source"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <p className="text-sm text-muted-foreground/70">No Google Ads revenue sources connected.</p>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <AlertDialog open={!!deletingRevenueSourceId} onOpenChange={(open) => { if (!open) setDeletingRevenueSourceId(null); }}>
+            <AlertDialogContent className="bg-card border-border">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-foreground">Remove revenue source?</AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground/70">
+                  This removes only the selected Google Ads revenue source. Total Revenue will be recalculated.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => {
+                    if (deletingRevenueSourceId) {
+                      deleteGoogleAdsRevenueSourceMutation.mutate(deletingRevenueSourceId);
+                    }
+                  }}
+                >
+                  Remove
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </main>
       </div>
     </div>

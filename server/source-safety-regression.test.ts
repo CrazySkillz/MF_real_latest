@@ -375,6 +375,20 @@ describe("source safety regression guards", () => {
     expect(method.indexOf("tx.delete(googleAdsConnections)")).toBeLessThan(method.indexOf("tx.delete(googleAdsDailyMetrics)"));
   });
 
+  it("Google Ads scheduler fails closed before refreshing stale or spend-only connections", () => {
+    const schedulerSource = fs.readFileSync(path.join(process.cwd(), "server", "google-ads-scheduler.ts"), "utf8");
+    const refreshStart = schedulerSource.indexOf("export async function refreshGoogleAdsForCampaign");
+    const refreshEnd = schedulerSource.indexOf("/**\n * Start the Google Ads scheduler", refreshStart);
+    const refreshRoute = schedulerSource.slice(refreshStart, refreshEnd);
+
+    expect(refreshRoute).toContain("if ((connection as any).spendOnly) return;");
+    expect(refreshRoute).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => null);");
+    expect(refreshRoute).toContain("Skipping refresh for missing campaign");
+    expect(refreshRoute.indexOf("if ((connection as any).spendOnly) return;")).toBeLessThan(refreshRoute.indexOf("generateMockGoogleAdsData"));
+    expect(refreshRoute.indexOf("storage.getCampaign(campaignId)")).toBeLessThan(refreshRoute.indexOf("generateMockGoogleAdsData"));
+    expect(refreshRoute.indexOf("storage.getCampaign(campaignId)")).toBeLessThan(refreshRoute.indexOf("fetchRealGoogleAdsData"));
+  });
+
   it("Custom Integration UI routes require campaign access before read or mutation", () => {
     const routesSource = readRoutesSource();
     const bodyConnectStart = routesSource.indexOf('app.post("/api/custom-integration/connect"');

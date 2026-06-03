@@ -303,7 +303,7 @@ Status:
 - [x] Completed locally: Google Ads daily metrics route now returns an empty metrics list when no active Google Ads connection exists.
 - [x] Completed locally: Google Ads daily metrics route now applies the active connection's selected-campaign filter, matching the Performance Summary aggregate after disconnect/reconnect.
 - [x] Completed locally: added regression coverage for disconnect cleanup, reconnect cleanup, and stale-row exclusion in the daily metrics route.
-- [ ] User validation pending for Commit 7.
+- [x] User validation passed for Commit 7.
 
 ### Commit 8: Scheduler And Refresh Hardening
 
@@ -327,7 +327,12 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: traced `server/google-ads-scheduler.ts`; test-mode and live refresh both preserve selected Google Ads campaign filtering.
+- [x] Completed locally: confirmed Google Ads daily metric writes use upsert conflict handling on `campaign_id`, `google_campaign_id`, and `date`.
+- [x] Completed locally: Google Ads scheduler now skips spend-only helper connections and missing campaign rows before any mock or live refresh can write daily metrics.
+- [x] Completed locally: traced `server/scheduler.ts`; snapshots filter Google Ads daily rows by selected campaign IDs and mark Google Ads connected only when the active source is not spend-only.
+- [x] Completed locally: added regression coverage for scheduler fail-closed behavior before Google Ads refresh writes.
+- [ ] User validation pending for Commit 8.
 
 ### Commit 9: Google Ads Analytics Page Parity
 
@@ -412,4 +417,5 @@ Before Google Ads is marked production-ready, record evidence for:
 - User validation passed for Commit 4.
 - User validation passed for Commit 5.
 - User validation passed for Commit 6.
-- Commit 7 is locally implemented and awaiting user validation.
+- User validation passed for Commit 7.
+- Commit 8 is locally implemented and awaiting user validation.

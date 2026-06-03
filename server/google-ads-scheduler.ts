@@ -268,6 +268,13 @@ export async function refreshGoogleAdsForCampaign(
     connection = await storage.getGoogleAdsConnection(campaignId);
   }
   if (!connection) return;
+  if ((connection as any).spendOnly) return;
+
+  const campaign = await storage.getCampaign(campaignId).catch(() => null);
+  if (!campaign) {
+    console.warn(`[Google Ads Scheduler] Skipping refresh for missing campaign ${campaignId}`);
+    return;
+  }
 
   if (connection.method === 'test_mode') {
     await generateMockGoogleAdsData(campaignId, connection, { advanceDay: opts?.advanceTestDay });

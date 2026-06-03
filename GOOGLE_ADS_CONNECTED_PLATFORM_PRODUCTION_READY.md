@@ -430,7 +430,8 @@ Use this checklist as the source of truth for what is complete. A checked item i
   Validation: local regression and type check passed.
 - [x] Commit 16: Google Sheets Google Ads attributed revenue flow.
   Validation: local regression and type check passed.
-- [ ] Commit 17: HubSpot Google Ads attributed revenue flow.
+- [x] Commit 17: HubSpot Google Ads attributed revenue flow.
+  Validation: local regression and type check passed.
 - [ ] Commit 18: Salesforce Google Ads attributed revenue flow.
 - [ ] Commit 19: Shopify Google Ads attributed revenue flow.
 - [ ] Commit 20: Google Ads Overview `Total Revenue` card, `+` action, and `Sources` modal.
@@ -451,14 +452,15 @@ Confirmed current gaps:
 - Before Commit 14, the shared revenue-source frontend context plumbing allowed `ga4`, `linkedin`, and `meta`, not `google_ads`; Commit 14 extends the shared modal/provider wizard prop path and Google Sheets purpose plumbing while leaving backend write/import validation deferred to the source-family commits.
 - Before Commit 15, the shared CSV revenue wizard submitted `platformContext="google_ads"`, but `/api/campaigns/:id/revenue/csv/process` still used the general write parser that accepts only `ga4`, `linkedin`, and `meta`; Commit 15 adds a CSV-only parser that accepts `google_ads` without opening the other source-family write paths.
 - Before Commit 16, the shared Google Sheets revenue wizard could carry `platformContext="google_ads"` and purpose `google_ads_revenue`, but `/api/campaigns/:id/revenue/sheets/preview` and `/api/campaigns/:id/revenue/sheets/process` still used the general write validator and mapped Google Ads to the GA4 `revenue` Sheets purpose; Commit 16 adds a Sheets-only validator/purpose mapping and fail-closed source-ID handling.
+- Before Commit 17, the shared HubSpot revenue wizard could carry `platformContext="google_ads"`, but `/api/campaigns/:id/hubspot/save-mappings` still used the general write validator and collapsed every non-LinkedIn context to GA4; Commit 17 adds a HubSpot-only validator/context mapping and keeps HubSpot Pipeline Proxy Google Ads lookup explicit-only.
 - Before Commit 12, `server/storage.ts` supported `getRevenueSources(..., platformContext)` and `getRevenueBreakdownBySource(..., platformContext)` mostly generically, but `getRevenueTotalForRange(...)` hard-coded the non-GA4 branch to `linkedin`; Commit 12 fixes this storage/read-side gap.
-- `server/auto-refresh-scheduler.ts` reprocesses Shopify and Google Sheets across `ga4`, `linkedin`, and `meta`, while HubSpot and Salesforce currently reprocess only `ga4`; Google Ads CRM/ecommerce/sheets revenue refresh would remain incomplete until explicitly extended and validated.
+- `server/auto-refresh-scheduler.ts` reprocesses Shopify and Google Sheets across `ga4`, `linkedin`, and `meta`, while the source loop for HubSpot and Salesforce currently reprocesses only `ga4`; Commit 17 confirms the HubSpot reprocess payload can carry `platformContext` and stable `sourceId`, but scheduler context selection remains deferred to Commit 22.
 - `shared/schema.ts` has `revenue_sources.platform_context` as free text, so a table migration is not expected just to store `google_ads`; however TypeScript unions, zod validation, route filters, UI props, and scheduler context lists must be updated consistently.
 - Existing `revenue_records.subCampaignUrn` is LinkedIn-named. It may be reusable for provider campaign IDs, but using it for Google Ads campaign IDs is unverified. The first implementation should support campaign-level Google Ads attributed revenue before attempting Google Ads campaign-row revenue attribution.
 
 Exact root cause:
 
-- The reusable GA4/LinkedIn revenue import system is present. Commit 12 admits Google Ads on the storage/read side, Commit 13 makes the shared backend aggregate read model use only Google Ads-scoped imported revenue for Google Ads business `attributedRevenue`, Commit 14 adds shared wizard context plumbing, Commit 15 admits Google Ads only on the CSV import write path, and Commit 16 admits Google Ads only on the Google Sheets revenue import path. The remaining root cause is that the Google Ads CRM/ecommerce write/import flows, visible financial UI, scheduler downstream semantics, KPIs, Benchmarks, and reports still have not been made Google Ads-attributed-revenue aware.
+- The reusable GA4/LinkedIn revenue import system is present. Commit 12 admits Google Ads on the storage/read side, Commit 13 makes the shared backend aggregate read model use only Google Ads-scoped imported revenue for Google Ads business `attributedRevenue`, Commit 14 adds shared wizard context plumbing, Commit 15 admits Google Ads only on the CSV import write path, Commit 16 admits Google Ads only on the Google Sheets revenue import path, and Commit 17 admits Google Ads only on the HubSpot import write path. The remaining root cause is that the Salesforce and Shopify write/import flows, visible financial UI, scheduler downstream semantics, KPIs, Benchmarks, and reports still have not been made Google Ads-attributed-revenue aware.
 
 ### Required GA4/LinkedIn Pattern For Google Ads
 
@@ -778,8 +780,18 @@ Validation:
 
 Status:
 
-- [ ] Pending implementation.
-- [ ] Validation pending.
+- [x] Completed locally: `/api/campaigns/:id/hubspot/save-mappings` now uses a HubSpot-revenue-specific platform-context validator that accepts `google_ads`.
+- [x] Completed locally: HubSpot save mapping now maps `platformContext="google_ads"` to persisted `platformContext="google_ads"` instead of falling back to GA4.
+- [x] Completed locally: Google Ads HubSpot imports remain revenue-only; native Google Ads conversion value is not used as imported attributed revenue.
+- [x] Completed locally: edit mode still fails closed when a supplied `sourceId` does not resolve to a HubSpot revenue source for the requested campaign/platform context.
+- [x] Completed locally: HubSpot Pipeline Proxy remains separate from confirmed revenue and includes Google Ads sources only when `platformContext=google_ads` is explicitly requested.
+- [x] Completed locally: frontend modal/wizard payloads and scheduler reprocess helper payloads were traced for `platformContext`, `sourceId`, selected values, and Pipeline Proxy fields.
+- [x] Completed locally: focused regression coverage added in `server/google-ads-revenue-hubspot-flow.test.ts`.
+- [x] Local validation passed: `npm test -- server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-platform-context.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [x] Commit 17 validated for the implemented local automated scope.
+- [ ] Future/deferred validation: HubSpot add/edit/delete browser validation through the Google Ads `Total Revenue` card is covered in Commit 20.
+- [ ] Future/deferred validation: HubSpot scheduler context-loop validation is covered in Commit 22.
 
 #### Commit 18: Salesforce Google Ads Attributed Revenue Flow
 
@@ -990,3 +1002,4 @@ Before Google Ads is marked production-ready, record evidence for:
 - User validation passed for Commit 14 implemented wizard-context scope.
 - Commit 15 validated for the CSV Google Ads attributed revenue parser/import-path guard local automated scope.
 - Commit 16 validated for the Google Sheets Google Ads attributed revenue parser/import-path guard local automated scope.
+- Commit 17 validated for the HubSpot Google Ads attributed revenue parser/import-path guard local automated scope.

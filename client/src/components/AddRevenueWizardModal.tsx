@@ -94,6 +94,8 @@ export function AddRevenueWizardModal(props: {
     if (platformContext === 'google_ads') {
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date?platformContext=google_ads`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_ads/kpis"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_ads/kpis", campaignId], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "google_ads"], exact: false });
@@ -126,6 +128,8 @@ export function AddRevenueWizardModal(props: {
     } else if (platformContext === 'meta') {
       void queryClient.refetchQueries({ queryKey: ["/api/meta", campaignId], exact: false });
     } else if (platformContext === 'google_ads') {
+      void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_ads/kpis", campaignId], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "google_ads"], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_ads/reports", campaignId], exact: false });

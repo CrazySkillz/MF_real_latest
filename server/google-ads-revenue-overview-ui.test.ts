@@ -12,6 +12,8 @@ describe("Google Ads revenue Overview UI", () => {
     expect(page).toContain('import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";');
     expect(page).toContain('revenue-sources?platformContext=google_ads');
     expect(page).toContain('revenue-totals?platformContext=google_ads&dateRange=90days');
+    expect(page).toContain('await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"], exact: true });');
+    expect(page).toContain('await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`], exact: true });');
     expect(page).toContain('platformContext="google_ads"');
     expect(page).toContain('dateRange="90days"');
   });

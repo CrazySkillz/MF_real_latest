@@ -14,6 +14,10 @@ describe("Google Ads revenue wizard context", () => {
     expect(modal).toContain('platformContext === \'google_ads\' ? "Add Google Ads attributed revenue"');
     expect(modal).toContain("Choose the source that attributes revenue back to Google Ads activity.");
     expect(modal).toContain('`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads`');
+    expect(modal).toContain('`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`');
+    expect(modal).toContain('queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"]');
+    expect(modal).toContain('void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`], exact: false });');
+    expect(modal).toContain('void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"], exact: false });');
     expect(modal).toContain('queryKey: ["/api/platforms/google_ads/kpis", campaignId]');
   });
 

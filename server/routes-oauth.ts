@@ -1537,6 +1537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
   const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
   const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
+  const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
   const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
   type CsvRevenuePlatformContext = z.infer<typeof zCsvRevenuePlatformContext>;
   type RevenueReadPlatformContext = z.infer<typeof zRevenueReadPlatformContext>;
@@ -28381,7 +28382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           revenueMetric: z.string().trim().optional(),
           revenueClassification: z.string().trim().optional(),
           days: zNumberLike.optional(),
-          platformContext: zPlatformContext.optional(),
+          platformContext: zShopifyRevenuePlatformContext.optional(),
           dryRun: z.boolean().optional(),
           campaignMappings: z.array(z.object({
             crmValue: z.string(),

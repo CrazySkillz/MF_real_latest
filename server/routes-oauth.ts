@@ -1536,6 +1536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
   const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
   const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
+  const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
   const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
   type CsvRevenuePlatformContext = z.infer<typeof zCsvRevenuePlatformContext>;
   type RevenueReadPlatformContext = z.infer<typeof zRevenueReadPlatformContext>;
@@ -13423,7 +13424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           valueSource: zValueSource.optional(),
           days: zNumberLike.optional(),
           revenueClassification: z.string().trim().optional(),
-          platformContext: zPlatformContext.optional(),
+          platformContext: zSalesforceRevenuePlatformContext.optional(),
           dateField: z.enum(["CloseDate", "CreatedDate", "LastModifiedDate"]).optional(),
           salesforceCurrencyOverride: z.string().trim().optional(),
           pipelineEnabled: z.boolean().optional(),
@@ -13454,7 +13455,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pipelineStageLabel = String(body.data.pipelineStageLabel || "").trim();
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
       const dateFieldChoice = body.data.dateField || "CloseDate";
-      const platformCtx = String(platformContext || "ga4").trim().toLowerCase() === "linkedin" ? "linkedin" : "ga4";
+      const platformContextRaw = String(platformContext || "ga4").trim().toLowerCase();
+      const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "google_ads" ? "google_ads" : "ga4";
       if (existingSourceIdOrNull) {
         const existingSource = await storage.getRevenueSource(campaignId, existingSourceIdOrNull);
         const existingCtx = String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase();
@@ -14097,8 +14099,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfg = {};
       }
       const requestedPlatformContext = String((req.query as any)?.platformContext || "").trim().toLowerCase();
-      const requestedContexts = (["ga4", "linkedin", "meta"] as const).includes(requestedPlatformContext as any)
-        ? [requestedPlatformContext as "ga4" | "linkedin" | "meta"]
+      const requestedContexts = (["ga4", "linkedin", "meta", "google_ads"] as const).includes(requestedPlatformContext as any)
+        ? [requestedPlatformContext as "ga4" | "linkedin" | "meta" | "google_ads"]
         : ["ga4", "linkedin", "meta"] as const;
       if (requestedPlatformContext && String(cfg?.platformContext || cfg?.platform || "").trim().toLowerCase() !== requestedPlatformContext) {
         cfg = {};

@@ -36,6 +36,13 @@ describe("Google Ads revenue KPI and Benchmark UI semantics", () => {
     expect(page).not.toContain("fetch(`/api/platforms/google_ads/kpis/${campaignId}`)");
   });
 
+  it("sends Google Ads KPI trackingPeriod as a number and surfaces create errors", () => {
+    const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
+
+    expect(page).toContain("trackingPeriod: Number(kpiForm.trackingPeriod || 30)");
+    expect(page).toContain("title: 'Failed to create KPI'");
+  });
+
   it("uses platform-scoped Google Ads benchmark create and read routes", () => {
     const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
 

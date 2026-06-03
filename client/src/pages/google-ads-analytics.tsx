@@ -227,6 +227,9 @@ export default function GoogleAdsAnalytics() {
       setIsKPIModalOpen(false); setEditingKPI(null);
       toast({ title: 'KPI created successfully' });
     },
+    onError: (error: any) => {
+      toast({ title: 'Failed to create KPI', description: error?.message || 'Check the KPI values and try again.', variant: 'destructive' });
+    },
   });
 
   const updateKpiMutation = useMutation({
@@ -1171,7 +1174,7 @@ export default function GoogleAdsAnalytics() {
       description: kpiForm.description,
       unit: kpiForm.unit || getGoogleAdsMetricDef(kpiForm.metric).unit,
       priority: kpiForm.priority, status: 'active', category: kpiForm.category,
-      timeframe: kpiForm.timeframe, trackingPeriod: kpiForm.trackingPeriod,
+      timeframe: kpiForm.timeframe, trackingPeriod: Number(kpiForm.trackingPeriod || 30),
       alertsEnabled: kpiForm.alertsEnabled, emailNotifications: kpiForm.emailNotifications,
       alertFrequency: kpiForm.alertFrequency, alertThreshold: kpiForm.alertThreshold,
       alertCondition: kpiForm.alertCondition, emailRecipients: kpiForm.emailRecipients,

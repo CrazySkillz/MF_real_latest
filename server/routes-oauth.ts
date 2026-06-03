@@ -1534,6 +1534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request validation helpers (enterprise-grade consistency)
   const zPlatformContext = z.enum(["ga4", "linkedin", "meta"]);
   const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
+  const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
   const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
   type CsvRevenuePlatformContext = z.infer<typeof zCsvRevenuePlatformContext>;
   type RevenueReadPlatformContext = z.infer<typeof zRevenueReadPlatformContext>;
@@ -2900,12 +2901,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
       const body = z.object({
         connectionId: z.string().trim().min(1),
-        platformContext: zPlatformContext.optional(),
+        platformContext: zSheetsRevenuePlatformContext.optional(),
       }).passthrough().safeParse(req.body || {});
       if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
       const connectionId = body.data.connectionId;
       const platformContext = body.data.platformContext || "ga4";
-      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : 'revenue';
+      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : 'revenue';
 
       let connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
@@ -3046,7 +3047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const body = z.object({
         connectionId: z.string().trim().min(1),
         mapping: z.unknown(),
-        platformContext: zPlatformContext.optional(),
+        platformContext: zSheetsRevenuePlatformContext.optional(),
       }).passthrough().safeParse(req.body || {});
       if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
       const connectionId = body.data.connectionId;
@@ -3070,7 +3071,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : 'revenue';
+      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : 'revenue';
       let connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       // Fall back to purpose-agnostic lookup — the connection may have a different purpose value
@@ -3284,6 +3285,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return String((s as any).id || "") === existingSourceId;
           })
         : null;
+      if (existingSourceId && !existingSheetsSource) {
+        return res.status(404).json({ success: false, error: "Revenue source not found" });
+      }
 
       let source: any = existingSheetsSource || null;
       if (!source) {

@@ -382,10 +382,6 @@ export function GoogleAdsBenchmarkModal(props: any) {
                   };
                   setBenchmarkForm(updatedForm);
 
-                  // If industry is already selected, also auto-fill benchmark value
-                  if (benchmarkForm.benchmarkType === "industry" && benchmarkForm.industry && benchmarkForm.industry !== "none" && benchmarkForm.industry !== "other") {
-                    fetchIndustryBenchmark(benchmarkForm.industry, value);
-                  }
                 }}
               >
                 <SelectTrigger id="benchmark-metric" data-testid="select-benchmark-metric">
@@ -474,60 +470,6 @@ export function GoogleAdsBenchmarkModal(props: any) {
               />
             </div>
           </div>
-
-          {/* Benchmark Type */}
-          <div className="space-y-2">
-            <Label htmlFor="benchmark-type">Benchmark Type</Label>
-            <Select
-              value={benchmarkForm.benchmarkType || "custom"}
-              onValueChange={(value) => {
-                setBenchmarkForm({
-                  ...benchmarkForm,
-                  benchmarkType: value,
-                  industry: value === "custom" ? "" : benchmarkForm.industry,
-                  benchmarkValue: "",
-                });
-              }}
-            >
-              <SelectTrigger id="benchmark-type" data-testid="select-benchmark-type">
-                <SelectValue placeholder="Select benchmark type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="industry">Industry Standard</SelectItem>
-                <SelectItem value="custom">Custom Value</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Industry Selection - Only shown when "Industry Standard" is selected */}
-          {benchmarkForm.benchmarkType === "industry" && (
-            <div className="space-y-2">
-              <Label htmlFor="benchmark-industry">Select Industry</Label>
-              <Select
-                value={benchmarkForm.industry}
-                onValueChange={async (value) => {
-                  setBenchmarkForm({ ...benchmarkForm, industry: value });
-
-                  // Auto-fill benchmark value if metric is selected
-                  if (value && benchmarkForm.metric) {
-                    await fetchIndustryBenchmark(value, benchmarkForm.metric);
-                  }
-                }}
-              >
-                <SelectTrigger id="benchmark-industry" data-testid="select-benchmark-industry">
-                  <SelectValue placeholder="Choose an industry" />
-                </SelectTrigger>
-                <SelectContent>
-                  {INDUSTRIES.map((industry) => (
-                    <SelectItem key={industry.value} value={industry.value}>
-                      {industry.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground/70">Benchmark value will be auto-filled based on Google Ads industry standards</p>
-            </div>
-          )}
 
           {/* Alert Settings Section */}
           <div className="space-y-4 pt-4 border-t">

@@ -129,7 +129,7 @@ export default function GoogleAdsAnalytics() {
   const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
   const [benchmarkForm, setBenchmarkForm] = useState({
     name: '', metric: '', benchmarkValue: '', description: '', industry: '', currentValue: '', unit: '',
-    benchmarkType: 'industry' as 'industry' | 'custom',
+    benchmarkType: 'custom' as 'industry' | 'custom',
     alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily',
     alertThreshold: '', alertCondition: 'below', emailRecipients: '',
   });
@@ -193,7 +193,7 @@ export default function GoogleAdsAnalytics() {
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
     queryKey: ['/api/platforms/google_ads/kpis', campaignId],
     queryFn: async () => {
-      const res = await fetch(`/api/platforms/google_ads/kpis/${campaignId}`);
+      const res = await fetch(`/api/platforms/google_ads/kpis?campaignId=${encodeURIComponent(String(campaignId))}`);
       if (!res.ok) throw new Error('Failed to fetch KPIs');
       return res.json();
     },
@@ -204,7 +204,7 @@ export default function GoogleAdsAnalytics() {
   const { data: benchmarksData, isLoading: benchmarksLoading } = useQuery({
     queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'google_ads'],
     queryFn: async () => {
-      const res = await fetch(`/api/campaigns/${campaignId}/benchmarks/evaluated?platform=google_ads`);
+      const res = await fetch(`/api/platforms/google_ads/benchmarks?campaignId=${encodeURIComponent(String(campaignId))}`);
       if (!res.ok) throw new Error('Failed to fetch Benchmarks');
       return res.json();
     },
@@ -262,9 +262,9 @@ export default function GoogleAdsAnalytics() {
   // Benchmark mutations
   const createBenchmarkMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch(`/api/campaigns/${campaignId}/benchmarks`, {
+      const res = await fetch('/api/platforms/google_ads/benchmarks', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, campaignId, platform: 'google_ads' }),
+        body: JSON.stringify({ ...data, campaignId }),
       });
       if (!res.ok) throw new Error('Failed to create benchmark');
       return res.json();
@@ -1205,7 +1205,8 @@ export default function GoogleAdsAnalytics() {
       currentValue: benchmarkForm.currentValue || String(getLiveMetricValue(benchmarkForm.metric)),
       description: benchmarkForm.description, industry: benchmarkForm.industry,
       unit: benchmarkForm.unit || getGoogleAdsMetricDef(benchmarkForm.metric).unit,
-      benchmarkType: benchmarkForm.benchmarkType,
+      benchmarkType: benchmarkForm.benchmarkType || 'custom',
+      category: 'performance',
       alertsEnabled: benchmarkForm.alertsEnabled, emailNotifications: benchmarkForm.emailNotifications,
       alertFrequency: benchmarkForm.alertFrequency, alertThreshold: benchmarkForm.alertThreshold,
       alertCondition: benchmarkForm.alertCondition, emailRecipients: benchmarkForm.emailRecipients,
@@ -1618,7 +1619,7 @@ export default function GoogleAdsAnalytics() {
                 <Button
                   onClick={() => {
                     setEditingBenchmark(null);
-                    setBenchmarkForm({ name: '', metric: '', benchmarkValue: '', description: '', industry: '', currentValue: '', unit: '', benchmarkType: 'industry', alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily', alertThreshold: '', alertCondition: 'below', emailRecipients: '' });
+                    setBenchmarkForm({ name: '', metric: '', benchmarkValue: '', description: '', industry: '', currentValue: '', unit: '', benchmarkType: 'custom', alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily', alertThreshold: '', alertCondition: 'below', emailRecipients: '' });
                     setIsBenchmarkModalOpen(true);
                   }}
                   variant="outline" size="sm" className="border-border"
@@ -1664,7 +1665,7 @@ export default function GoogleAdsAnalytics() {
                             </div>
                             <div className="flex items-center gap-2">
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
-                                onClick={() => { setEditingBenchmark(b); setBenchmarkForm({ name: b.name || '', metric: metricKey, benchmarkValue: b.benchmarkValue || b.targetValue || '', description: b.description || '', industry: b.industry || '', currentValue: '', unit: '', benchmarkType: b.benchmarkType || 'industry', alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily', alertThreshold: '', alertCondition: 'below', emailRecipients: '' }); setIsBenchmarkModalOpen(true); }}>
+                                onClick={() => { setEditingBenchmark(b); setBenchmarkForm({ name: b.name || '', metric: metricKey, benchmarkValue: b.benchmarkValue || b.targetValue || '', description: b.description || '', industry: b.industry || '', currentValue: '', unit: '', benchmarkType: b.benchmarkType || 'custom', alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily', alertThreshold: '', alertCondition: 'below', emailRecipients: '' }); setIsBenchmarkModalOpen(true); }}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
                               <AlertDialog>

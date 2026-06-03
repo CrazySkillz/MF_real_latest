@@ -29,6 +29,36 @@ describe("Google Ads revenue KPI and Benchmark UI semantics", () => {
     expect(page).toContain("roi: hasGoogleAdsAttributedRevenue ? googleAdsAttributedRoi : 0");
   });
 
+  it("fetches Google Ads KPIs through the implemented campaign-scoped platform route", () => {
+    const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
+
+    expect(page).toContain("fetch(`/api/platforms/google_ads/kpis?campaignId=${encodeURIComponent(String(campaignId))}`)");
+    expect(page).not.toContain("fetch(`/api/platforms/google_ads/kpis/${campaignId}`)");
+  });
+
+  it("uses platform-scoped Google Ads benchmark create and read routes", () => {
+    const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
+
+    expect(page).toContain("fetch(`/api/platforms/google_ads/benchmarks?campaignId=${encodeURIComponent(String(campaignId))}`)");
+    expect(page).toContain("fetch('/api/platforms/google_ads/benchmarks'");
+    expect(page).toContain("category: 'performance'");
+    expect(page).not.toContain("benchmarks/evaluated?platform=google_ads");
+    expect(page).not.toContain("fetch(`/api/campaigns/${campaignId}/benchmarks`");
+  });
+
+  it("keeps Google Ads benchmark creation on custom values without industry controls", () => {
+    const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
+    const benchmarkModal = readSource("client", "src", "pages", "google-ads-analytics", "GoogleAdsBenchmarkModal.tsx");
+
+    expect(page).toContain("benchmarkType: 'custom' as 'industry' | 'custom'");
+    expect(page).toContain("benchmarkType: 'custom'");
+    expect(benchmarkModal).not.toContain('Label htmlFor="benchmark-type">Benchmark Type</Label>');
+    expect(benchmarkModal).not.toContain('data-testid="select-benchmark-type"');
+    expect(benchmarkModal).not.toContain('Label htmlFor="benchmark-industry">Select Industry</Label>');
+    expect(benchmarkModal).not.toContain('data-testid="select-benchmark-industry"');
+    expect(benchmarkModal).not.toContain('benchmarkForm.benchmarkType === "industry"');
+  });
+
   it("exposes attributed revenue metrics in Google Ads KPI and Benchmark pickers", () => {
     const kpiModal = readSource("client", "src", "pages", "google-ads-analytics", "GoogleAdsKpiModal.tsx");
     const benchmarkModal = readSource("client", "src", "pages", "google-ads-analytics", "GoogleAdsBenchmarkModal.tsx");

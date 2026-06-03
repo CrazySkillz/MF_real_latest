@@ -22,6 +22,9 @@ describe("Google Ads revenue Overview UI", () => {
     const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
 
     expect(page).toContain('Total Revenue');
+    expect(page).toContain('const googleAdsAttributedRevenueFromSources = activeGoogleAdsRevenueSources.reduce');
+    expect(page).toContain('sum + Number(source?.lastTotalRevenue || 0)');
+    expect(page).toContain('googleAdsAttributedRevenueFromSources > 0');
     expect(page).toContain('hasGoogleAdsAttributedRevenue ? fmtCurrency(googleAdsAttributedRevenue) : "Not connected"');
     expect(page).toContain('Imported Google Ads attributed revenue');
     expect(page).toContain('Attributed revenue / spend');

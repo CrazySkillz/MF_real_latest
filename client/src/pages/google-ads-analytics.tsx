@@ -460,7 +460,13 @@ export default function GoogleAdsAnalytics() {
   }, [metrics]);
 
   const hasGoogleAdsAttributedRevenue = activeGoogleAdsRevenueSources.length > 0;
-  const googleAdsAttributedRevenue = Number(googleAdsRevenueTotalsData?.totalRevenue || 0);
+  const googleAdsAttributedRevenueFromSources = activeGoogleAdsRevenueSources.reduce(
+    (sum: number, source: any) => sum + Number(source?.lastTotalRevenue || 0),
+    0
+  );
+  const googleAdsAttributedRevenue = googleAdsAttributedRevenueFromSources > 0
+    ? googleAdsAttributedRevenueFromSources
+    : Number(googleAdsRevenueTotalsData?.totalRevenue || 0);
   const googleAdsAttributedProfit = summary ? googleAdsAttributedRevenue - summary.spend : 0;
   const googleAdsAttributedRoas = summary && summary.spend > 0 ? googleAdsAttributedRevenue / summary.spend : 0;
   const googleAdsAttributedRoi = summary && summary.spend > 0 ? ((googleAdsAttributedRevenue - summary.spend) / summary.spend) * 100 : 0;

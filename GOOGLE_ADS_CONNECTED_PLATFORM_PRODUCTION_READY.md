@@ -218,7 +218,7 @@ Status:
 - [x] Completed locally: removed placeholder Google Ads percentage-split calculations and hard-coded CTR/CPC from `client/src/pages/campaign-detail.tsx`.
 - [x] Completed locally: Google Ads campaign overview metrics now read from `/api/campaigns/:campaignId/outcome-totals?dateRange=30days` via `performanceSummary.sources[].id === "google_ads"`.
 - [x] Completed locally: when Google Ads is connected but no source-backed aggregate rows exist, the row uses zero values instead of invented campaign-level estimates.
-- [ ] User validation pending for Commit 4.
+- [x] User validation passed for Commit 4.
 
 ### Commit 5: Define Google Ads Revenue Semantics
 
@@ -241,7 +241,10 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: Google Ads analytics labels now distinguish native Google Ads conversion value from verified business revenue.
+- [x] Completed locally: shared aggregate and scheduler Google Ads source rows expose `conversionValue`, `ga4AttributedRevenue`, `attributedRevenue`, and preserved `revenueSemantics.attributedRevenueSource` without changing existing response fields.
+- [x] Completed locally: `attributedRevenue` now uses one source consistently: GA4-attributed revenue when present, otherwise native Google Ads conversion value, otherwise zero/unavailable.
+- [ ] User validation pending for Commit 5.
 
 ### Commit 6: Campaign DeepDive Aggregate Parity
 

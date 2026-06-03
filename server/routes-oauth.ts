@@ -112,8 +112,17 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
         clicks: sum.clicks + parseNum(row?.clicks),
         spend: sum.spend + parseNum(row?.spend),
         conversions: sum.conversions + parseNum(row?.conversions),
-        attributedRevenue: sum.attributedRevenue + parseNum(row?.ga4Revenue || row?.conversionValue),
-      }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, attributedRevenue: 0 });
+        conversionValue: sum.conversionValue + parseNum(row?.conversionValue),
+        ga4AttributedRevenue: sum.ga4AttributedRevenue + parseNum(row?.ga4Revenue),
+      }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, conversionValue: 0, ga4AttributedRevenue: 0 });
+      const ga4AttributedRevenue = parseNum(totals.ga4AttributedRevenue);
+      const conversionValue = parseNum(totals.conversionValue);
+      const attributedRevenueSource = ga4AttributedRevenue > 0
+        ? "ga4_attributed_revenue"
+        : conversionValue > 0 ? "google_ads_conversion_value" : "unavailable";
+      const attributedRevenue = attributedRevenueSource === "ga4_attributed_revenue"
+        ? ga4AttributedRevenue
+        : attributedRevenueSource === "google_ads_conversion_value" ? conversionValue : 0;
       googleAdsSpend = parseNum(totals.spend);
       const lastRow = googleAdsRows[googleAdsRows.length - 1];
       googleAdsLastUpdate = (lastRow as any)?.date || null;
@@ -133,7 +142,15 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
           clicks: parseNum(totals.clicks),
           spend: googleAdsSpend,
           conversions: parseNum(totals.conversions),
-          attributedRevenue: parseNum(totals.attributedRevenue),
+          conversionValue,
+          ga4AttributedRevenue,
+          attributedRevenue,
+        },
+        revenueSemantics: {
+          attributedRevenueSource,
+          attributedRevenueLabel: attributedRevenueSource === "ga4_attributed_revenue"
+            ? "GA4-attributed revenue"
+            : attributedRevenueSource === "google_ads_conversion_value" ? "Google Ads conversion value" : "Unavailable",
         },
         freshness: { selectedCampaignIds },
       };
@@ -1434,16 +1451,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
               { metric: "sessions", reason: "Sessions are web analytics metrics" },
               { metric: "users", reason: "Users are web analytics metrics" },
             ],
-            dailyRows: googleAdsRows.map((row: any) => ({
-              date: row.date,
-              metrics: {
-                impressions: row.impressions,
-                clicks: row.clicks,
-                spend: row.spend,
-                conversions: row.conversions,
-                attributedRevenue: row.ga4Revenue || row.conversionValue,
-              },
-            })),
+            dailyRows: googleAdsRows.map((row: any) => {
+              const ga4AttributedRevenue = parseNum(row.ga4Revenue);
+              const conversionValue = parseNum(row.conversionValue);
+              const attributedRevenueSource = ga4AttributedRevenue > 0 ? "ga4_attributed_revenue" : conversionValue > 0 ? "google_ads_conversion_value" : "unavailable";
+              return {
+                date: row.date,
+                metrics: {
+                  impressions: row.impressions,
+                  clicks: row.clicks,
+                  spend: row.spend,
+                  conversions: row.conversions,
+                  conversionValue,
+                  ga4AttributedRevenue,
+                  attributedRevenue: attributedRevenueSource === "ga4_attributed_revenue" ? ga4AttributedRevenue : attributedRevenueSource === "google_ads_conversion_value" ? conversionValue : 0,
+                },
+              };
+            }),
             freshness: selectedGoogleAdsIds.size > 0 ? { selectedCampaignIds: Array.from(selectedGoogleAdsIds) } : undefined,
           },
           {

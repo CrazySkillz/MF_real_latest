@@ -157,13 +157,23 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   const linkedinEngagement = parseNum(linkedinMetrics.engagement);
   const ciEngagements = parseNum(customIntegrationData.engagements);
   const ciSessions = parseNum(customIntegrationData.sessions);
-  const googleAdsData = googleAdsDailyRows.reduce((totals: any, row: any) => ({
+  const googleAdsRawData = googleAdsDailyRows.reduce((totals: any, row: any) => ({
     impressions: totals.impressions + parseNum(row?.impressions),
     clicks: totals.clicks + parseNum(row?.clicks),
     spend: totals.spend + parseNum(row?.spend),
     conversions: totals.conversions + parseNum(row?.conversions),
-    attributedRevenue: totals.attributedRevenue + parseNum(row?.ga4Revenue || row?.conversionValue),
-  }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, attributedRevenue: 0 });
+    conversionValue: totals.conversionValue + parseNum(row?.conversionValue),
+    ga4AttributedRevenue: totals.ga4AttributedRevenue + parseNum(row?.ga4Revenue),
+  }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, conversionValue: 0, ga4AttributedRevenue: 0 });
+  const googleAdsAttributedRevenueSource = googleAdsRawData.ga4AttributedRevenue > 0
+    ? "ga4_attributed_revenue"
+    : googleAdsRawData.conversionValue > 0 ? "google_ads_conversion_value" : "unavailable";
+  const googleAdsData = {
+    ...googleAdsRawData,
+    attributedRevenue: googleAdsAttributedRevenueSource === "ga4_attributed_revenue"
+      ? googleAdsRawData.ga4AttributedRevenue
+      : googleAdsAttributedRevenueSource === "google_ads_conversion_value" ? googleAdsRawData.conversionValue : 0,
+  };
 
   // Double-counting prevention: GA4 and CI both track website analytics.
   // When GA4 is connected, prefer GA4 for web metrics; otherwise use CI.
@@ -270,6 +280,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
         { metric: "users", reason: "Users are web analytics metrics" },
       ],
       metrics: googleAdsData,
+      revenueSemantics: { attributedRevenueSource: googleAdsAttributedRevenueSource },
       freshness: { selectedCampaignIds: googleAdsSelectedCampaignIds },
     }],
     revenue: {
@@ -369,16 +380,23 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
           { metric: "sessions", reason: "Sessions are web analytics metrics" },
           { metric: "users", reason: "Users are web analytics metrics" },
         ],
-        dailyRows: googleAdsDailyRows.map((row: any) => ({
-          date: row.date,
-          metrics: {
-            impressions: row.impressions,
-            clicks: row.clicks,
-            spend: row.spend,
-            conversions: row.conversions,
-            attributedRevenue: row.ga4Revenue || row.conversionValue,
-          },
-        })),
+        dailyRows: googleAdsDailyRows.map((row: any) => {
+          const ga4AttributedRevenue = parseNum(row.ga4Revenue);
+          const conversionValue = parseNum(row.conversionValue);
+          const attributedRevenueSource = ga4AttributedRevenue > 0 ? "ga4_attributed_revenue" : conversionValue > 0 ? "google_ads_conversion_value" : "unavailable";
+          return {
+            date: row.date,
+            metrics: {
+              impressions: row.impressions,
+              clicks: row.clicks,
+              spend: row.spend,
+              conversions: row.conversions,
+              conversionValue,
+              ga4AttributedRevenue,
+              attributedRevenue: attributedRevenueSource === "ga4_attributed_revenue" ? ga4AttributedRevenue : attributedRevenueSource === "google_ads_conversion_value" ? conversionValue : 0,
+            },
+          };
+        }),
       },
       {
         id: "custom_integration",

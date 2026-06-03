@@ -18,6 +18,7 @@ type SourceBreakdown = {
   includedMetrics: string[];
   excludedMetrics: { metric: string; reason: string }[];
   metrics: Record<string, SourceMetric>;
+  revenueSemantics?: Record<string, any>;
   freshness?: Record<string, any>;
 };
 
@@ -89,6 +90,7 @@ const normalizeMainPlatformSource = (source: any): SourceBreakdown | null => {
     metrics: Object.fromEntries(
       Object.entries(metrics).map(([key, value]) => [key, value === null ? null : parseNum(value)]),
     ),
+    revenueSemantics: source?.revenueSemantics && typeof source.revenueSemantics === "object" ? source.revenueSemantics : undefined,
     freshness: source?.freshness && typeof source.freshness === "object" ? source.freshness : undefined,
   };
 };

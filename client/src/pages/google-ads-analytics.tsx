@@ -793,10 +793,10 @@ export default function GoogleAdsAnalytics() {
     if (summary.conversionValue > 0 && summary.spend > 0 && summary.roi < 0 && summary.conversions >= 5) {
       all.push({
         id: 'financial:negative-roi', severity: summary.roi <= -20 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('roi'),
-        title: `ROI is ${summary.roi.toFixed(1)}% — losing money`,
-        description: `Spending ${fmtCurrency(summary.spend)} to generate ${fmtCurrency(summary.conversionValue)} in conversion value (ROI: ${summary.roi.toFixed(1)}%). Net loss: ${fmtCurrency(summary.spend - summary.conversionValue)}.`,
-        recommendation: `Review the ${campaignBreakdown.length} active campaign(s). Consider pausing campaigns with CPA above target and reallocating budget to highest-ROAS campaigns. Check the Ad Comparison tab to identify which campaigns are profitable.`,
-        evidence: ['Spend: ' + fmtCurrency(summary.spend), 'Value: ' + fmtCurrency(summary.conversionValue), 'ROI: ' + summary.roi.toFixed(1) + '%', 'Net loss: ' + fmtCurrency(summary.spend - summary.conversionValue)],
+        title: `ROI is ${summary.roi.toFixed(1)}% based on conversion value`,
+        description: `Spend of ${fmtCurrency(summary.spend)} is higher than ${fmtCurrency(summary.conversionValue)} in Google Ads conversion value (ROI: ${summary.roi.toFixed(1)}%).`,
+        recommendation: `Review the ${campaignBreakdown.length} active campaign(s). Consider pausing campaigns with CPA above target and reallocating budget to highest-ROAS campaigns. Check the Ad Comparison tab to identify which campaigns have the strongest conversion-value efficiency.`,
+        evidence: ['Spend: ' + fmtCurrency(summary.spend), 'Conversion value: ' + fmtCurrency(summary.conversionValue), 'ROI: ' + summary.roi.toFixed(1) + '%'],
       });
     }
 
@@ -804,8 +804,8 @@ export default function GoogleAdsAnalytics() {
     if (summary.conversionValue > 0 && summary.spend > 0 && summary.roas > 0 && summary.roas < 1 && summary.conversions >= 5) {
       all.push({
         id: 'financial:roas-below-1', severity: summary.roas < 0.5 ? 'high' : 'medium', group: 'performance', reliability: computeGadsReliability('roas'),
-        title: `ROAS is ${summary.roas.toFixed(2)}x — below breakeven`,
-        description: `Every $1 spent returns only ${fmtCurrency(summary.roas)} in conversion value. To break even, ROAS must be at least 1.0x. Current gap: ${fmtCurrency(1 - summary.roas)} per dollar spent.`,
+        title: `ROAS is ${summary.roas.toFixed(2)}x based on conversion value`,
+        description: `Every $1 spent returns ${fmtCurrency(summary.roas)} in configured Google Ads conversion value. This is below a 1.0x value-to-spend ratio.`,
         recommendation: 'Audit campaign-level ROAS in the Ad Comparison tab. Focus budget on campaigns returning above 1.0x. For underperforming campaigns, review: keyword match types, negative keywords, audience segments, and bid strategy.',
         evidence: ['ROAS: ' + summary.roas.toFixed(2) + 'x', 'Spend: ' + fmtCurrency(summary.spend), 'Conversion value: ' + fmtCurrency(summary.conversionValue)],
       });
@@ -1218,12 +1218,12 @@ export default function GoogleAdsAnalytics() {
                 <SummaryCard icon={<Video className="w-4 h-4" />} label="Video Views" value={fmt(summary.videoViews)} />
               </div>
 
-              {/* Financial Metrics */}
+              {/* Google Ads conversion value metrics */}
               {summary.conversionValue > 0 && (
                 <Card className="border-border">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Financial Metrics</CardTitle>
-                    <CardDescription>Revenue and efficiency metrics from Google Ads conversion tracking</CardDescription>
+                    <CardTitle className="text-base">Conversion Value & Efficiency</CardTitle>
+                    <CardDescription>Google Ads conversion value and derived efficiency metrics. GA4-attributed revenue is shown separately where matched.</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1235,17 +1235,17 @@ export default function GoogleAdsAnalytics() {
                       <div className="p-4 bg-muted rounded-lg">
                         <p className="text-sm text-muted-foreground/70 mb-1">Conversion Value</p>
                         <p className="text-2xl font-bold text-foreground">{fmtCurrency(summary.conversionValue)}</p>
-                        <p className="text-xs text-muted-foreground/70 mt-1">Total value from conversions</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Native Google Ads conversion value</p>
                       </div>
                       <div className="p-4 bg-muted rounded-lg">
                         <p className="text-sm text-muted-foreground/70 mb-1">ROAS</p>
                         <p className="text-2xl font-bold text-foreground">{summary.roas.toFixed(2)}x</p>
-                        <p className="text-xs text-muted-foreground/70 mt-1">Conv. Value / Spend</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Conversion value / spend</p>
                       </div>
                       <div className="p-4 bg-muted rounded-lg">
                         <p className="text-sm text-muted-foreground/70 mb-1">ROI</p>
                         <p className="text-2xl font-bold text-foreground">{summary.roi.toFixed(1)}%</p>
-                        <p className="text-xs text-muted-foreground/70 mt-1">(Value - Spend) / Spend</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">(Conversion value - spend) / spend</p>
                       </div>
                     </div>
                   </CardContent>
@@ -1719,9 +1719,9 @@ export default function GoogleAdsAnalytics() {
               {/* Executive Financials */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Executive financials</CardTitle>
+                  <CardTitle>Executive value metrics</CardTitle>
                   <CardDescription>
-                    Spend and conversion metrics from Google Ads imports.
+                    Spend, native conversion value, and derived efficiency from Google Ads imports.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1737,21 +1737,21 @@ export default function GoogleAdsAnalytics() {
                       <CardContent className="p-5">
                         <div className="text-sm font-medium text-muted-foreground/70">Conversion Value</div>
                         <div className="text-2xl font-bold text-foreground">{fmtCurrency(summary.conversionValue)}</div>
-                        <div className="text-xs text-muted-foreground/70 mt-1">Total value from conversions</div>
+                        <div className="text-xs text-muted-foreground/70 mt-1">Native Google Ads conversion value</div>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-5">
                         <div className="text-sm font-medium text-muted-foreground/70">ROAS</div>
                         <div className="text-2xl font-bold text-foreground">{summary.roas.toFixed(2)}x</div>
-                        <div className="text-xs text-muted-foreground/70 mt-1">Conv. Value / Spend</div>
+                        <div className="text-xs text-muted-foreground/70 mt-1">Conversion value / spend</div>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="p-5">
                         <div className="text-sm font-medium text-muted-foreground/70">ROI</div>
                         <div className="text-2xl font-bold text-foreground">{fmtPct(summary.roi)}</div>
-                        <div className="text-xs text-muted-foreground/70 mt-1">((Value - Spend) / Spend)</div>
+                        <div className="text-xs text-muted-foreground/70 mt-1">((Conversion value - spend) / spend)</div>
                       </CardContent>
                     </Card>
                   </div>
@@ -1759,7 +1759,7 @@ export default function GoogleAdsAnalytics() {
                     <div className="font-medium mb-1">Sources used</div>
                     <div className="grid gap-1">
                       <div><span className="font-medium">Spend</span>: Google Ads import session</div>
-                      <div><span className="font-medium">Conversion Value</span>: {summary.conversionValue > 0 ? 'Google Ads conversion tracking' : 'Not available — no conversion value recorded'}</div>
+                      <div><span className="font-medium">Conversion Value</span>: {summary.conversionValue > 0 ? 'Native Google Ads conversion tracking' : 'Not available — no conversion value recorded'}</div>
                     </div>
                   </div>
                 </CardContent>

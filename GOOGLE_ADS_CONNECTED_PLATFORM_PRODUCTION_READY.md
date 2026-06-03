@@ -624,9 +624,9 @@ Status:
 - [x] Completed locally: focused regression coverage updated for Google Ads backend revenue semantics and aggregate availability behavior.
 - [x] Local validation passed: `npm test -- server/google-ads-production-regression.test.ts server/performance-summary-aggregate.test.ts server/google-ads-revenue-platform-context.test.ts server/campaign-financial-analysis-regression.test.ts server/executive-summary-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
+- [x] User validation passed: `/api/campaigns/:id/outcome-totals?dateRange=30days` showed Google Ads connected with `attributedRevenue: 0`, `importedAttributedRevenue: 0`, and `revenueSemantics.attributedRevenueSource: "unavailable"` when no Google Ads-scoped imported revenue source exists.
 - [ ] Runtime API validation with seeded Google Ads revenue rows pending.
 - [ ] Scheduler/report/KPI/Benchmark semantic updates pending in later commits.
-- [ ] User validation pending.
 
 #### Commit 14: Shared Revenue Wizard Support For Google Ads Context
 

@@ -19968,6 +19968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Delete existing connection if any
       await storage.deleteGoogleAdsConnection(campaignId).catch(() => {});
+      await storage.deleteGoogleAdsDailyMetrics(campaignId).catch(() => {});
 
       const spendOnly = !!(req.body as any)?.spendOnly;
       await storage.createGoogleAdsConnection({
@@ -20004,6 +20005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { customerId, customerName } = req.body;
 
       await storage.deleteGoogleAdsConnection(campaignId).catch(() => {});
+      await storage.deleteGoogleAdsDailyMetrics(campaignId).catch(() => {});
 
       const spendOnly = !!(req.body as any)?.spendOnly;
       await storage.createGoogleAdsConnection({
@@ -20084,6 +20086,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId } = req.params;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
+      const connection = await storage.getGoogleAdsConnection(campaignId);
+      if (!connection || (connection as any).spendOnly) return res.json({ success: true, metrics: [] });
       const { startDate, endDate } = req.query;
       const end = (endDate as string) || new Date().toISOString().slice(0, 10);
       const start = (startDate as string) || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);

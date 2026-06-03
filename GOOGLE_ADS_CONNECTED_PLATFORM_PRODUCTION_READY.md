@@ -270,7 +270,7 @@ Status:
 - [x] Completed locally: `/api/campaigns/:campaignId/outcome-totals` builds Google Ads through `buildGoogleAdsPlatformSourceForAggregate(...)` and passes it into the shared `performanceSummary` aggregate via `mainPlatformSources: { googleAds }`.
 - [x] Completed locally: `/api/campaigns/:campaignId/executive-summary` uses the same Google Ads source helper and shared `performanceSummary` aggregate composition.
 - [x] Completed locally: added regression coverage proving Google Ads aggregates as one source-backed paid-media platform with impressions, clicks, spend, conversions, attributed revenue, ROAS, ROI, CTR, and CVR derived from the shared aggregate contract.
-- [ ] User validation pending for Commit 6.
+- [x] User validation passed for Commit 6.
 
 ### Commit 7: Disconnect And Reconnect Cleanup
 
@@ -297,7 +297,12 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally: traced `DELETE /api/google-ads/:campaignId/connection`; it remains campaign-access guarded and fails closed when no Google Ads connection row is deleted.
+- [x] Completed locally: deleting a Google Ads connection now also removes only that campaign's Google Ads daily metric rows.
+- [x] Completed locally: reconnect paths clear campaign-scoped Google Ads daily metric rows before creating the new source connection, so old rows cannot seed the new source contract.
+- [x] Completed locally: Google Ads daily metrics route now returns an empty metrics list when no active Google Ads connection exists.
+- [x] Completed locally: added regression coverage for disconnect cleanup, reconnect cleanup, and stale-row exclusion in the daily metrics route.
+- [ ] User validation pending for Commit 7.
 
 ### Commit 8: Scheduler And Refresh Hardening
 
@@ -405,4 +410,5 @@ Before Google Ads is marked production-ready, record evidence for:
 - User validation passed for Commit 3.
 - User validation passed for Commit 4.
 - User validation passed for Commit 5.
-- Commit 6 is locally implemented and awaiting user validation.
+- User validation passed for Commit 6.
+- Commit 7 is locally implemented and awaiting user validation.

@@ -336,17 +336,39 @@ describe("source safety regression guards", () => {
     const routeStart = routesSource.indexOf('app.delete("/api/google-ads/:campaignId/connection"');
     const routeEnd = routesSource.indexOf("/**\n   * Get Google Ads daily metrics", routeStart);
     const route = routesSource.slice(routeStart, routeEnd);
+    const dailyStart = routesSource.indexOf('app.get("/api/google-ads/:campaignId/daily-metrics"');
+    const dailyEnd = routesSource.indexOf('app.post("/api/google-ads/:campaignId/refresh"', dailyStart);
+    const dailyRoute = routesSource.slice(dailyStart, dailyEnd);
+    const selectStart = routesSource.indexOf('app.post("/api/google-ads/:campaignId/select-customer"');
+    const selectEnd = routesSource.indexOf('app.post("/api/google-ads/:campaignId/connect-test"', selectStart);
+    const selectRoute = routesSource.slice(selectStart, selectEnd);
+    const testStart = selectEnd;
+    const testEnd = routesSource.indexOf('app.get("/api/google-ads/:campaignId/connection"', testStart);
+    const testRoute = routesSource.slice(testStart, testEnd);
 
     expect(route).toContain("ensureCampaignAccess");
     expect(route.indexOf("ensureCampaignAccess")).toBeLessThan(route.indexOf("storage.deleteGoogleAdsConnection(campaignId)"));
     expect(route).toContain("Google Ads connection not found");
+    expect(selectRoute).toContain("ensureCampaignAccess");
+    expect(selectRoute).toContain("storage.deleteGoogleAdsDailyMetrics(campaignId)");
+    expect(selectRoute.indexOf("storage.deleteGoogleAdsDailyMetrics(campaignId)")).toBeLessThan(selectRoute.indexOf("storage.createGoogleAdsConnection"));
+    expect(testRoute).toContain("ensureCampaignAccess");
+    expect(testRoute).toContain("storage.deleteGoogleAdsDailyMetrics(campaignId)");
+    expect(testRoute.indexOf("storage.deleteGoogleAdsDailyMetrics(campaignId)")).toBeLessThan(testRoute.indexOf("storage.createGoogleAdsConnection"));
+    expect(dailyRoute).toContain("ensureCampaignAccess");
+    expect(dailyRoute).toContain("const connection = await storage.getGoogleAdsConnection(campaignId);");
+    expect(dailyRoute.indexOf("storage.getGoogleAdsConnection(campaignId)")).toBeLessThan(dailyRoute.indexOf("storage.getGoogleAdsDailyMetrics"));
+    expect(dailyRoute).toContain("return res.json({ success: true, metrics: [] });");
 
     const storageSource = readStorageSource();
     const methodStart = storageSource.indexOf("async deleteGoogleAdsConnection(campaignId: string)");
     const methodEnd = storageSource.indexOf("async getGoogleAdsDailyMetrics", methodStart);
     const method = storageSource.slice(methodStart, methodEnd);
 
+    expect(method).toContain("db.transaction");
     expect(method).toContain("eq(googleAdsConnections.campaignId, campaignId)");
+    expect(method).toContain("tx.delete(googleAdsDailyMetrics).where(eq(googleAdsDailyMetrics.campaignId, campaignId))");
+    expect(method.indexOf("tx.delete(googleAdsConnections)")).toBeLessThan(method.indexOf("tx.delete(googleAdsDailyMetrics)"));
   });
 
   it("Custom Integration UI routes require campaign access before read or mutation", () => {

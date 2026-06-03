@@ -137,6 +137,7 @@ export interface IStorage {
   createGoogleAdsConnection(connection: InsertGoogleAdsConnection): Promise<GoogleAdsConnection>;
   updateGoogleAdsConnection(campaignId: string, connection: Partial<InsertGoogleAdsConnection>): Promise<GoogleAdsConnection | undefined>;
   deleteGoogleAdsConnection(campaignId: string): Promise<boolean>;
+  deleteGoogleAdsDailyMetrics(campaignId: string): Promise<boolean>;
 
   // Google Ads Daily Metrics
   getGoogleAdsDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<GoogleAdsDailyMetric[]>;
@@ -2470,9 +2471,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteGoogleAdsConnection(campaignId: string): Promise<boolean> {
+    return await db.transaction(async (tx: any) => {
+      const result = await tx
+        .delete(googleAdsConnections)
+        .where(eq(googleAdsConnections.campaignId, campaignId));
+      const deleted = (result.rowCount || 0) > 0;
+      if (deleted) {
+        await tx.delete(googleAdsDailyMetrics).where(eq(googleAdsDailyMetrics.campaignId, campaignId));
+      }
+      return deleted;
+    });
+  }
+
+  async deleteGoogleAdsDailyMetrics(campaignId: string): Promise<boolean> {
     const result = await db
-      .delete(googleAdsConnections)
-      .where(eq(googleAdsConnections.campaignId, campaignId));
+      .delete(googleAdsDailyMetrics)
+      .where(eq(googleAdsDailyMetrics.campaignId, campaignId));
     return (result.rowCount || 0) > 0;
   }
 

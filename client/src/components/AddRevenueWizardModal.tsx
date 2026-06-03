@@ -19,6 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify";
 const SELECT_NONE = "__none__";
+type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads';
 
 type Preview = {
   fileName?: string;
@@ -35,7 +36,7 @@ export function AddRevenueWizardModal(props: {
   dateRange: string;
   initialSource?: any;
   onSuccess?: () => void;
-  platformContext?: 'ga4' | 'linkedin' | 'meta';
+  platformContext?: RevenuePlatformContext;
   initialStep?: Step;
   hideCrmSources?: boolean;
   connectedPlatforms?: Array<{ label: string; value: string }>;
@@ -90,6 +91,15 @@ export function AddRevenueWizardModal(props: {
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/meta/kpis"], exact: false });
     }
 
+    if (platformContext === 'google_ads') {
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date?platformContext=google_ads`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_ads/kpis"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_ads/kpis", campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "google_ads"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_ads/reports", campaignId], exact: false });
+    }
+
     // GA4 KPI tab caches (revenue-to-date affects financial KPIs when GA4 revenue is missing).
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
@@ -115,6 +125,10 @@ export function AddRevenueWizardModal(props: {
       void queryClient.refetchQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
     } else if (platformContext === 'meta') {
       void queryClient.refetchQueries({ queryKey: ["/api/meta", campaignId], exact: false });
+    } else if (platformContext === 'google_ads') {
+      void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_ads/kpis", campaignId], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "google_ads"], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_ads/reports", campaignId], exact: false });
     } else {
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_analytics/kpis", campaignId], exact: false });
     }
@@ -125,7 +139,7 @@ export function AddRevenueWizardModal(props: {
 
   const [step, setStep] = useState<Step>("select");
   const isEditing = !!initialSource;
-  const sheetsPurpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'meta' ? 'meta_revenue' : 'revenue';
+  const sheetsPurpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'meta' ? 'meta_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : 'revenue';
   const [salesforceInitialMappingConfig, setSalesforceInitialMappingConfig] = useState<null | {
     campaignField?: string;
     selectedValues?: string[];
@@ -1244,7 +1258,7 @@ export function AddRevenueWizardModal(props: {
     }
   };
 
-  const title = step === "select" ? (platformContext === 'linkedin' ? "Add LinkedIn revenue attribution" : "Add revenue source") :
+  const title = step === "select" ? (platformContext === 'linkedin' ? "Add LinkedIn revenue attribution" : platformContext === 'google_ads' ? "Add Google Ads attributed revenue" : "Add revenue source") :
     step === "manual" ? (isEditing ? "Edit manual revenue" : "Manual revenue") :
       step === "csv" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
         step === "csv_map" ? (isEditing ? "Edit CSV revenue" : "Map CSV columns") :
@@ -1256,7 +1270,7 @@ export function AddRevenueWizardModal(props: {
                     "Add revenue source";
 
   const description = step === "select"
-    ? (platformContext === 'linkedin' ? "Choose the source that attributes revenue back to LinkedIn ad activity." : "Choose where your revenue data comes from.")
+    ? (platformContext === 'linkedin' ? "Choose the source that attributes revenue back to LinkedIn ad activity." : platformContext === 'google_ads' ? "Choose the source that attributes revenue back to Google Ads activity." : "Choose where your revenue data comes from.")
     : `Currency: ${currency} • Revenue is treated as “to date” (campaign lifetime)`;
 
   const isEmbeddedWizardStep = step === "hubspot" || step === "salesforce" || step === "shopify";

@@ -405,7 +405,7 @@ Status:
 
 ### Scope
 
-This section tracks the optional Google Ads attributed revenue import implementation. Commits 12 and 13 are now implemented locally for storage/read-side isolation and backend aggregate revenue semantics; the visible `Total Revenue` card, wizard write paths, source imports, downstream KPI/Benchmark/report consumers, scheduler behavior, and runtime seeded-data API validation remain pending.
+This section tracks the optional Google Ads attributed revenue import implementation. Commits 12, 13, and 14 are now implemented locally for storage/read-side isolation, backend aggregate revenue semantics, and shared revenue wizard context plumbing; the visible `Total Revenue` card, provider/source write paths, source imports, downstream KPI/Benchmark/report consumers, scheduler behavior, and runtime seeded-data API validation remain pending.
 
 Goal:
 
@@ -422,7 +422,7 @@ Confirmed current gaps:
 
 - `client/src/pages/google-ads-analytics.tsx` calculates Google Ads Overview `summary.roas` and `summary.roi` from native Google Ads `conversionValue / spend`; it has no Google Ads-scoped `Total Revenue` source card, `+` action, `Sources` link, or source-provenance modal.
 - Before Commit 13, `buildGoogleAdsPlatformSourceForAggregate(...)` in `server/routes-oauth.ts` set `attributedRevenue` from GA4-attributed revenue when present, otherwise native Google Ads `conversionValue`; Commit 13 replaces that backend aggregate behavior with imported Google Ads-scoped attributed revenue only.
-- The shared revenue-source infrastructure exists, but `zPlatformContext`, `parsePlatformContext`, `AddRevenueWizardModal`, `HubSpotRevenueWizard`, `SalesforceRevenueWizard`, and `ShopifyRevenueWizard` currently allow `ga4`, `linkedin`, and `meta`, not `google_ads`.
+- Before Commit 14, the shared revenue-source frontend context plumbing allowed `ga4`, `linkedin`, and `meta`, not `google_ads`; Commit 14 extends the shared modal/provider wizard prop path and Google Sheets purpose plumbing while leaving backend write/import validation deferred to the source-family commits.
 - Before Commit 12, `server/storage.ts` supported `getRevenueSources(..., platformContext)` and `getRevenueBreakdownBySource(..., platformContext)` mostly generically, but `getRevenueTotalForRange(...)` hard-coded the non-GA4 branch to `linkedin`; Commit 12 fixes this storage/read-side gap.
 - `server/auto-refresh-scheduler.ts` reprocesses Shopify and Google Sheets across `ga4`, `linkedin`, and `meta`, while HubSpot and Salesforce currently reprocess only `ga4`; Google Ads CRM/ecommerce/sheets revenue refresh would remain incomplete until explicitly extended and validated.
 - `shared/schema.ts` has `revenue_sources.platform_context` as free text, so a table migration is not expected just to store `google_ads`; however TypeScript unions, zod validation, route filters, UI props, and scheduler context lists must be updated consistently.
@@ -430,7 +430,7 @@ Confirmed current gaps:
 
 Exact root cause:
 
-- The reusable GA4/LinkedIn revenue import system is present. Commit 12 admits Google Ads on the storage/read side, and Commit 13 makes the shared backend aggregate read model use only Google Ads-scoped imported revenue for Google Ads business `attributedRevenue`. The remaining root cause is that Google Ads write/import flows, financial UI, scheduler paths, KPIs, Benchmarks, and reports still have not been made Google Ads-attributed-revenue aware.
+- The reusable GA4/LinkedIn revenue import system is present. Commit 12 admits Google Ads on the storage/read side, Commit 13 makes the shared backend aggregate read model use only Google Ads-scoped imported revenue for Google Ads business `attributedRevenue`, and Commit 14 adds shared wizard context plumbing. The remaining root cause is that Google Ads write/import flows, visible financial UI, scheduler paths, KPIs, Benchmarks, and reports still have not been made Google Ads-attributed-revenue aware.
 
 ### Required GA4/LinkedIn Pattern For Google Ads
 
@@ -651,8 +651,15 @@ Validation:
 
 Status:
 
-- [ ] Pending implementation.
-- [ ] Validation pending.
+- [x] Completed locally: `AddRevenueWizardModal` now accepts `platformContext="google_ads"` and uses Google Ads-specific select-step title/copy.
+- [x] Completed locally: HubSpot, Salesforce, and Shopify revenue wizard prop types now accept `google_ads` so the shared modal can pass context through without TypeScript failure.
+- [x] Completed locally: Google Ads-specific revenue cache invalidation/refetch keys were added to the shared revenue change path.
+- [x] Completed locally: Google Sheets revenue setup can carry `google_ads_revenue` purpose through the frontend helper and existing backend Google Sheets purpose allowlists.
+- [x] Completed locally: focused regression coverage added in `server/google-ads-revenue-wizard-context.test.ts`.
+- [x] Local validation passed: `npm test -- server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-platform-context.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] Runtime UI validation pending when a Google Ads `Total Revenue` entry point is added.
+- [ ] Source-family write/import validation pending in Commits 15-19.
 
 #### Commit 15: CSV Google Ads Attributed Revenue Flow
 
@@ -934,3 +941,4 @@ Before Google Ads is marked production-ready, record evidence for:
 - User validation passed for Commit 8.
 - User validation passed for Commit 9.
 - User validation passed for Commit 10.
+- User validation passed for Commit 13 no-imported-revenue backend read semantics path.

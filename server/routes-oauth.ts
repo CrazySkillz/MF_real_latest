@@ -7117,7 +7117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId, purpose } = req.body;
       const sheetsPurpose =
-        (purpose === "spend" || purpose === "revenue" || purpose === "general" || purpose === "linkedin_revenue")
+        (purpose === "spend" || purpose === "revenue" || purpose === "general" || purpose === "linkedin_revenue" || purpose === "google_ads_revenue")
           ? purpose
           : undefined;
 
@@ -7361,7 +7361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ---- Google Sheets OAuth flow ----
       const [campaignId, sheetsPurpose] = rawState.includes(':') ? rawState.split(':') : [rawState, undefined];
       const purpose =
-        sheetsPurpose === 'spend' || sheetsPurpose === 'revenue' || sheetsPurpose === 'general' || sheetsPurpose === 'linkedin_revenue'
+        sheetsPurpose === 'spend' || sheetsPurpose === 'revenue' || sheetsPurpose === 'general' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue'
           ? sheetsPurpose
           : null;
       devLog(`[Google Sheets OAuth] Processing callback for campaign ${campaignId}`);
@@ -11809,7 +11809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId, spreadsheetId, sheetNames, selectionMode, purpose } = req.body;
       const mode: 'replace' | 'append' = (selectionMode === 'append' || selectionMode === 'replace') ? selectionMode : 'replace';
       const sheetsPurpose =
-        (purpose === 'spend' || purpose === 'revenue' || purpose === 'general' || purpose === 'linkedin_revenue')
+        (purpose === 'spend' || purpose === 'revenue' || purpose === 'general' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue')
           ? purpose
           : undefined;
 
@@ -11829,7 +11829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Enterprise-grade guardrail: revenue connectors must be single-tab to avoid ambiguity/double-counting.
-      if ((sheetsPurpose === 'revenue' || sheetsPurpose === 'linkedin_revenue') && Array.isArray(sheetNames) && sheetNames.length > 1) {
+      if ((sheetsPurpose === 'revenue' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue') && Array.isArray(sheetNames) && sheetNames.length > 1) {
         return res.status(400).json({ error: 'Revenue connections support 1 tab only. Please select a single tab.' });
       }
 

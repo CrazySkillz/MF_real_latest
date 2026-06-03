@@ -64,10 +64,21 @@ describe("Google Ads production readiness regression guard", () => {
     const routes = read("server", "routes-oauth.ts");
     const campaignScheduler = read("server", "scheduler.ts");
     const analytics = read("client", "src", "pages", "google-ads-analytics.tsx");
+    const helper = sliceBetween(
+      routes,
+      "async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string)",
+      "async function buildLinkedInPlatformSourceForAggregate"
+    );
 
-    expect(routes).toContain('const attributedRevenueSource = ga4AttributedRevenue > 0');
-    expect(routes).toContain(': conversionValue > 0 ? "google_ads_conversion_value" : "unavailable"');
-    expect(routes).toContain('attributedRevenueLabel: attributedRevenueSource === "ga4_attributed_revenue"');
+    expect(helper).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "google_ads")');
+    expect(helper).toContain('const attributedRevenueSource = hasImportedAttributedRevenue ? "google_ads_imported_attributed_revenue" : "unavailable";');
+    expect(helper).toContain('includedMetrics: ["impressions", "clicks", "spend", "conversions", ...(hasImportedAttributedRevenue ? ["attributedRevenue"] : [])]');
+    expect(helper).toContain('Google Ads Total Revenue requires a Google Ads-scoped imported revenue source');
+    expect(helper).toContain('importedAttributedRevenue');
+    expect(helper).toContain('conversionValueLabel: "Native Google Ads conversion value"');
+    expect(helper).toContain('ga4AttributedRevenueLabel: "GA4-matched revenue; not used as Google Ads Total Revenue"');
+    expect(helper).not.toContain('"google_ads_conversion_value"');
+    expect(helper).not.toContain('"ga4_attributed_revenue"');
     expect(campaignScheduler).toContain('const googleAdsAttributedRevenueSource = googleAdsRawData.ga4AttributedRevenue > 0');
     expect(campaignScheduler).toContain('googleAdsRawData.conversionValue > 0 ? "google_ads_conversion_value" : "unavailable"');
     expect(analytics).toContain("Google Ads conversion value and derived efficiency metrics. GA4-attributed revenue is shown separately where matched.");

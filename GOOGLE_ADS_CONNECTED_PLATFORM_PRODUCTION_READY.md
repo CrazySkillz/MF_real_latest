@@ -17,7 +17,7 @@ Google Ads must be treated as a campaign-scoped main paid-media connected source
 
 ## Current Status
 
-Commit 9 user validation passed.
+Commit 10 user validation passed.
 
 Google Ads is locally production-ready for the implemented source-backed test-mode path after Commit 10 regression coverage. Live OAuth should still be validated in a deployed or production-like environment before calling the live OAuth path production-ready.
 
@@ -399,7 +399,497 @@ Status:
 - [x] Completed locally: added regression coverage for disconnect/reconnect stale-data safety.
 - [x] Completed locally: added regression coverage for Google Ads revenue semantics.
 - [x] Completed locally: updated final production-readiness documentation.
-- [ ] User validation pending for Commit 10.
+- [x] User validation passed for Commit 10.
+
+## Optional Google Ads Attributed Revenue Import Plan
+
+### Scope
+
+This section tracks the optional Google Ads attributed revenue import implementation. Commits 12 and 13 are now implemented locally for storage/read-side isolation and backend aggregate revenue semantics; the visible `Total Revenue` card, wizard write paths, source imports, downstream KPI/Benchmark/report consumers, scheduler behavior, and runtime seeded-data API validation remain pending.
+
+Goal:
+
+- Add a Google Ads Analytics `Total Revenue` card that follows the GA4 and LinkedIn source-management pattern.
+- Reuse the existing GA4/LinkedIn revenue import wizard pattern for HubSpot, Salesforce, Shopify, Google Sheets, and CSV upload.
+- Treat imported Google Ads revenue as explicit Google Ads-attributed revenue, not generic campaign revenue and not native Google Ads conversion value.
+- Preserve the existing source/import/storage architecture and avoid creating a new reporting or revenue framework.
+
+### Root Cause Analysis
+
+Current Google Ads revenue behavior is source-backed for Google Ads daily rows, but it is not yet source-backed for optional imported business revenue.
+
+Confirmed current gaps:
+
+- `client/src/pages/google-ads-analytics.tsx` calculates Google Ads Overview `summary.roas` and `summary.roi` from native Google Ads `conversionValue / spend`; it has no Google Ads-scoped `Total Revenue` source card, `+` action, `Sources` link, or source-provenance modal.
+- Before Commit 13, `buildGoogleAdsPlatformSourceForAggregate(...)` in `server/routes-oauth.ts` set `attributedRevenue` from GA4-attributed revenue when present, otherwise native Google Ads `conversionValue`; Commit 13 replaces that backend aggregate behavior with imported Google Ads-scoped attributed revenue only.
+- The shared revenue-source infrastructure exists, but `zPlatformContext`, `parsePlatformContext`, `AddRevenueWizardModal`, `HubSpotRevenueWizard`, `SalesforceRevenueWizard`, and `ShopifyRevenueWizard` currently allow `ga4`, `linkedin`, and `meta`, not `google_ads`.
+- Before Commit 12, `server/storage.ts` supported `getRevenueSources(..., platformContext)` and `getRevenueBreakdownBySource(..., platformContext)` mostly generically, but `getRevenueTotalForRange(...)` hard-coded the non-GA4 branch to `linkedin`; Commit 12 fixes this storage/read-side gap.
+- `server/auto-refresh-scheduler.ts` reprocesses Shopify and Google Sheets across `ga4`, `linkedin`, and `meta`, while HubSpot and Salesforce currently reprocess only `ga4`; Google Ads CRM/ecommerce/sheets revenue refresh would remain incomplete until explicitly extended and validated.
+- `shared/schema.ts` has `revenue_sources.platform_context` as free text, so a table migration is not expected just to store `google_ads`; however TypeScript unions, zod validation, route filters, UI props, and scheduler context lists must be updated consistently.
+- Existing `revenue_records.subCampaignUrn` is LinkedIn-named. It may be reusable for provider campaign IDs, but using it for Google Ads campaign IDs is unverified. The first implementation should support campaign-level Google Ads attributed revenue before attempting Google Ads campaign-row revenue attribution.
+
+Exact root cause:
+
+- The reusable GA4/LinkedIn revenue import system is present. Commit 12 admits Google Ads on the storage/read side, and Commit 13 makes the shared backend aggregate read model use only Google Ads-scoped imported revenue for Google Ads business `attributedRevenue`. The remaining root cause is that Google Ads write/import flows, financial UI, scheduler paths, KPIs, Benchmarks, and reports still have not been made Google Ads-attributed-revenue aware.
+
+### Required GA4/LinkedIn Pattern For Google Ads
+
+The Google Ads implementation should copy the GA4/LinkedIn source pattern, changing only the platform context and Google Ads-specific labels/semantics:
+
+- `Total Revenue` is a source-management card, not a manual value editor.
+- The `+` action opens the existing shared revenue wizard with `platformContext="google_ads"`.
+- The source picker supports the same relevant options:
+  - `Shopify`
+  - `HubSpot`
+  - `Salesforce`
+  - `Google Sheets`
+  - `Upload CSV`
+- New direct `Manual` revenue creation should not be exposed.
+- Existing stored manual revenue rows, if any are later found with `platformContext="google_ads"`, should be treated as legacy continuity data and not silently deleted.
+- Each source saves a source definition in `revenue_sources` with `platformContext="google_ads"` and materializes normalized rows in `revenue_records`.
+- Multiple active Google Ads revenue sources are additive.
+- The `Sources (n)` link counts and lists only active `platformContext="google_ads"` revenue sources.
+- Source edit/delete actions operate on source definitions and their materialized records, not directly on the card value.
+- Add/edit/delete must preserve campaign access and source ownership checks.
+- Stable `sourceId` must survive edit and scheduler refresh so refresh updates the existing source instead of creating duplicates.
+- Google Ads imported revenue must remain scoped to the current MimoSaaS campaign and the selected Google Ads source context. It must not broaden to unrelated Google Ads account/campaign data.
+- HubSpot/Salesforce Pipeline Proxy, if carried through the shared CRM wizard, remains a separate early-signal card/value and must not be added to `Total Revenue`, `ROAS`, `ROI`, or `Profit`.
+
+### Required Revenue Semantics
+
+- Without imported Google Ads-attributed revenue:
+  - show native Google Ads `Conversion Value` separately
+  - do not label native conversion value as `Total Revenue`
+  - business `Total Revenue`, `ROAS`, `ROI`, and `Profit` should be unavailable/not connected
+  - any conversion-value efficiency display must be labeled as conversion-value efficiency, not business revenue
+- With imported Google Ads-attributed revenue:
+  - `Total Revenue`, `ROAS`, `ROI`, and `Profit` use imported Google Ads-attributed revenue
+  - native Google Ads `Conversion Value` remains visible separately
+  - imported attributed revenue and native conversion value must not be added together
+
+### Likely Files And Endpoints
+
+Frontend:
+
+- `client/src/pages/google-ads-analytics.tsx`
+  - Add `Total Revenue` card, `+` action, `Sources (n)` link, source dialog, and imported-revenue-aware ROAS/ROI/Profit display.
+  - Keep native `Conversion Value` card/copy separate.
+- `client/src/components/AddRevenueWizardModal.tsx`
+  - Add `platformContext="google_ads"` support, Google Ads-specific title/copy, invalidation/refetch keys, and `google_ads_revenue` Google Sheets purpose.
+- `client/src/components/HubSpotRevenueWizard.tsx`
+- `client/src/components/SalesforceRevenueWizard.tsx`
+- `client/src/components/ShopifyRevenueWizard.tsx`
+  - Extend platform-context types and preserve GA4/LinkedIn behavior.
+
+Backend/API:
+
+- `server/routes-oauth.ts`
+  - Keep the completed read-side Google Ads revenue parser separate from write/import validation until provider-specific Google Ads source commits are implemented.
+  - Extend write/import validation to include `google_ads` only after each source family no longer falls back to GA4 semantics.
+  - Existing shared endpoints likely involved:
+    - `GET /api/campaigns/:id/revenue-sources?platformContext=google_ads`
+    - `DELETE /api/campaigns/:id/revenue-sources/:sourceId`
+    - `DELETE /api/campaigns/:id/revenue-sources?platformContext=google_ads`
+    - `GET /api/campaigns/:id/revenue-totals?platformContext=google_ads`
+    - CSV preview/process endpoints using `platformContext`
+    - Google Sheets revenue preview/process endpoints using `platformContext`
+    - HubSpot/Salesforce/Shopify save-mapping endpoints using `platformContext`
+  - Add a Google Ads revenue context helper or localized equivalent for aggregate/KPI/Benchmark/report consumers.
+  - Update `buildGoogleAdsPlatformSourceForAggregate(...)` so imported Google Ads attributed revenue is preferred for business `attributedRevenue`, while native `conversionValue` remains separate.
+- `server/storage.ts`
+  - Extend revenue-source platform-context types to `ga4 | linkedin | meta | google_ads`.
+  - Fix `getRevenueTotalForRange(...)` so non-GA4 contexts filter by the requested context, not only `linkedin`.
+- `server/auto-refresh-scheduler.ts`
+  - Include `google_ads` in refreshable revenue source context loops.
+  - Confirm HubSpot/Salesforce reprocess no longer skips non-GA4 contexts when Google Ads CRM sources are enabled.
+- `server/scheduler.ts`
+  - Update scheduled snapshot Google Ads revenue semantics to use imported Google Ads revenue when available and keep `conversionValue` separate.
+- `server/google-ads-scheduler.ts`
+  - Preserve selected-campaign daily metric refresh behavior. Do not write imported business revenue into native Google Ads `conversionValue`.
+- `shared/schema.ts`
+  - Update TypeScript/zod contracts if needed; no table change is expected unless a provider-campaign ID column beyond `subCampaignUrn` is required.
+
+Unverified:
+
+- Per-Google-Ads-campaign revenue breakdown support is unverified. The first implementation should support campaign-level Google Ads attributed revenue before adding Google Ads campaign-row revenue attribution.
+- Existing production data cleanup is unverified. Do not deactivate, delete, or rewrite any Google Ads-scoped revenue records unless a separate inspector proves the damaged-record boundary.
+- Live OAuth remains unverified in a deployed/production-like environment and is separate from this optional revenue-import plan.
+
+### Safe Reuse From GA4 And LinkedIn
+
+Safe to reuse:
+
+- `AddRevenueWizardModal` as the shared source chooser and flow host.
+- Existing source types: HubSpot, Salesforce, Shopify, Google Sheets, Upload CSV.
+- Existing `revenue_sources` and `revenue_records` persistence model.
+- Existing guarded revenue source delete route after confirming it remains campaign-scoped for `google_ads`.
+- Existing source list/provenance modal pattern from LinkedIn `Total Revenue`.
+- Existing provider-specific save/materialization routes, if extended only by `platformContext="google_ads"` and validated end to end.
+- Existing Campaign DeepDive aggregate contract, with Google Ads still represented as one main paid-media source.
+
+Must be Google Ads-specific:
+
+- UI labels and copy: `Google Ads attributed revenue`, not generic revenue and not native conversion value.
+- Revenue semantics in Google Ads Overview, Insights, KPIs, Benchmarks, reports, aggregate, and scheduler snapshots.
+- Selected Google Ads campaign scoping.
+- Source invalidation keys for Google Ads analytics, Google Ads KPIs, Google Ads Benchmarks, Google Ads reports, Campaign DeepDive, Executive Summary, Trend Analysis, and Connected Platforms.
+- Disconnect/reconnect and selected-campaign replacement handling for Google Ads-scoped child revenue sources.
+
+### Follow-On Implementation Commits
+
+These commits are the proposed implementation track after completed Google Ads Commit 10. They are not implemented yet unless their status is later marked complete.
+
+#### Commit 11: Revenue Import Documentation And Acceptance Contract
+
+Goal:
+
+- Record the Google Ads attributed revenue import root cause, implementation strategy, source semantics, and validation plan before code changes.
+
+Tasks:
+
+- Update this tracker with the corrected GA4/LinkedIn-template implementation sequence.
+- Mark optional Google Ads revenue import as not yet implemented.
+- Keep Commit 10 source-backed test-mode readiness separate from live OAuth and optional imported revenue readiness.
+
+Validation:
+
+- Confirm this tracker clearly separates native Google Ads conversion value from imported Google Ads attributed revenue.
+- Confirm no code behavior changed.
+
+Status:
+
+- [x] Completed locally: this tracker now records the Google Ads attributed revenue import strategy and corrected commit sequence.
+- [ ] User validation pending.
+
+#### Commit 12: Revenue Platform Context And Storage Isolation
+
+Goal:
+
+- Let the existing source system safely store and read Google Ads-scoped revenue sources without leaking GA4, LinkedIn, or Meta revenue.
+
+Tasks:
+
+- Extend storage platform-context typing and read-side backend validation to include `google_ads`.
+- Do not globally enable write/import validators yet; HubSpot and Salesforce save routes currently collapse non-LinkedIn contexts to GA4 and must be made Google Ads-specific in their later provider commits.
+- Update `server/storage.ts` revenue methods so `getRevenueSources`, `getRevenueTotalForRange`, and `getRevenueBreakdownBySource` all filter by `google_ads` correctly.
+- Confirm `/api/campaigns/:id/revenue-sources?platformContext=google_ads` and `/api/campaigns/:id/revenue-totals?platformContext=google_ads` are campaign-access guarded through the existing route pattern.
+- Include Google Ads-scoped revenue sources in `/api/campaigns/:id/all-data-sources` without changing GA4, LinkedIn, or Meta behavior.
+- Preserve Google Ads delete cleanup isolation by using `google_ads_revenue` instead of falling back to GA4 `revenue` Google Sheets purpose.
+- Add focused regression coverage proving GA4, LinkedIn, Meta, and Google Ads revenue sources remain isolated.
+
+Validation:
+
+- `GET /api/campaigns/:id/revenue-sources?platformContext=google_ads` returns only Google Ads-scoped sources.
+- `GET /api/campaigns/:id/revenue-totals?platformContext=google_ads` sums only Google Ads-scoped records.
+- GA4, LinkedIn, and Meta revenue totals remain unchanged with the same seeded data.
+
+Status:
+
+- [x] Completed locally: `server/storage.ts` now supports `google_ads` as a revenue platform context and `getRevenueTotalForRange` filters non-GA4 totals by the requested context instead of hard-coding LinkedIn.
+- [x] Completed locally: revenue read endpoints now accept `platformContext=google_ads` through a read-only parser; mutating import/write validators remain deferred to the later Google Ads-specific source commits.
+- [x] Completed locally: `/api/campaigns/:id/all-data-sources` includes Google Ads revenue sources when they exist, and last-source cleanup maps Google Ads sheets cleanup to `google_ads_revenue`.
+- [x] Completed locally: focused regression coverage added in `server/google-ads-revenue-platform-context.test.ts`.
+- [x] Local validation passed: `npm test -- server/google-ads-revenue-platform-context.test.ts`.
+- [ ] Runtime API validation with seeded Google Ads revenue rows pending.
+- [ ] User validation pending.
+
+#### Commit 13: Google Ads Revenue Semantics Read Model
+
+Goal:
+
+- Add the backend read semantics before exposing a visible `Total Revenue` action.
+
+Tasks:
+
+- Add a Google Ads revenue context helper or localized equivalent using `getRevenueTotalForRange(..., "google_ads")`.
+- Update `buildGoogleAdsPlatformSourceForAggregate(...)` so:
+  - `conversionValue` remains native Google Ads conversion value.
+  - `importedAttributedRevenue` or equivalent records the Google Ads-scoped imported revenue total.
+  - business `attributedRevenue` uses imported Google Ads revenue when present.
+  - native conversion value is not mixed into imported revenue.
+- Preserve response compatibility where existing consumers expect Google Ads `conversionValue`, `ga4AttributedRevenue`, or `revenueSemantics`.
+
+Validation:
+
+- Google Ads with spend and no imported revenue keeps business revenue unavailable while preserving native conversion value separately.
+- Google Ads with imported attributed revenue uses imported revenue for business revenue semantics.
+- Imported revenue plus native conversion value are not added together.
+- Campaign DeepDive aggregate includes Google Ads once.
+
+Status:
+
+- [x] Completed locally: `buildGoogleAdsPlatformSourceForAggregate(...)` now reads `getRevenueTotalForRange(..., "google_ads")` for imported Google Ads-attributed revenue.
+- [x] Completed locally: native Google Ads `conversionValue` and GA4-matched revenue remain separate diagnostic fields and no longer populate business `attributedRevenue`.
+- [x] Completed locally: Google Ads aggregate `includedMetrics` includes `attributedRevenue` only when imported Google Ads-scoped revenue exists; otherwise the source exposes an explicit unavailable reason.
+- [x] Completed locally: focused regression coverage updated for Google Ads backend revenue semantics and aggregate availability behavior.
+- [x] Local validation passed: `npm test -- server/google-ads-production-regression.test.ts server/performance-summary-aggregate.test.ts server/google-ads-revenue-platform-context.test.ts server/campaign-financial-analysis-regression.test.ts server/executive-summary-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] Runtime API validation with seeded Google Ads revenue rows pending.
+- [ ] Scheduler/report/KPI/Benchmark semantic updates pending in later commits.
+- [ ] User validation pending.
+
+#### Commit 14: Shared Revenue Wizard Support For Google Ads Context
+
+Goal:
+
+- Make the existing GA4/LinkedIn revenue wizard capable of opening in Google Ads context without changing visible Google Ads Overview behavior yet.
+
+Tasks:
+
+- Extend `AddRevenueWizardModal` and provider wizard platform-context types to include `google_ads`.
+- Add Google Ads-specific wizard title/copy where the shared modal already supports contextual copy.
+- Add Google Ads-specific cache invalidation/refetch keys.
+- Add `google_ads_revenue` as the Google Sheets revenue purpose.
+- Preserve GA4, LinkedIn, and Meta modal behavior.
+
+Validation:
+
+- Type check passes.
+- GA4 revenue wizard copy and behavior remain unchanged.
+- LinkedIn revenue wizard copy, source chooser, and Back behavior remain unchanged.
+- Google Ads context can be passed through the modal and provider wizards without type or validation failure.
+
+Status:
+
+- [ ] Pending implementation.
+- [ ] Validation pending.
+
+#### Commit 15: CSV Google Ads Attributed Revenue Flow
+
+Goal:
+
+- Prove the simplest manual import source family end to end before adding broader provider complexity.
+
+Tasks:
+
+- Extend/validate CSV revenue preview and process paths with `platformContext="google_ads"`.
+- Ensure CSV creates or updates a Google Ads-scoped revenue source by stable `sourceId`.
+- Ensure CSV materializes only Google Ads-scoped revenue records for the current campaign.
+- Preserve the GA4/LinkedIn CSV flow and no-manual-source rule.
+
+Validation:
+
+- Add a CSV Google Ads revenue source.
+- Edit the same CSV source and confirm the same source ID updates.
+- Delete the CSV source and confirm only that source's records are removed/deactivated.
+- Confirm GA4 and LinkedIn revenue totals do not change.
+
+Status:
+
+- [ ] Pending implementation.
+- [ ] Validation pending.
+
+#### Commit 16: Google Sheets Google Ads Attributed Revenue Flow
+
+Goal:
+
+- Add the refreshable Google Sheets revenue source path for Google Ads.
+
+Tasks:
+
+- Extend/validate Google Sheets chooser, preview, mapping, process, edit, and delete paths with `platformContext="google_ads"` and purpose `google_ads_revenue`.
+- Preserve stable source identity in edit/refresh mode.
+- Preserve stable modal content during Google Sheets connection checks.
+- Ensure dated rows populate daily records only when a date column is mapped.
+
+Validation:
+
+- Add a Google Sheets Google Ads revenue source.
+- Edit the same source and confirm the same source ID updates.
+- Delete the source and confirm only that source's records are removed/deactivated.
+- Confirm GA4, LinkedIn, and Meta Google Sheets revenue sources do not appear in Google Ads `Sources`.
+- Confirm no transient Google Sheets loading text causes modal body jumps.
+
+Status:
+
+- [ ] Pending implementation.
+- [ ] Validation pending.
+
+#### Commit 17: HubSpot Google Ads Attributed Revenue Flow
+
+Goal:
+
+- Add HubSpot deal revenue attribution for Google Ads using the existing GA4/LinkedIn CRM pattern.
+
+Tasks:
+
+- Extend/validate HubSpot connect/status, Crosswalk, revenue mapping, save, edit, delete, and reprocess payloads with `platformContext="google_ads"`.
+- Preserve selected HubSpot campaign values as the campaign attribution boundary.
+- If Pipeline Proxy is exposed, keep it separate from confirmed Total Revenue and revenue-derived metrics.
+- Preserve stable `sourceId` in edit and scheduler refresh mode.
+
+Validation:
+
+- Add a HubSpot Google Ads revenue source.
+- Edit the same source and confirm the same source ID updates.
+- Delete the source and confirm only Google Ads-scoped HubSpot revenue records are removed/deactivated.
+- Confirm GA4 and LinkedIn HubSpot revenue sources remain isolated.
+- Confirm Pipeline Proxy, if configured, is not included in Total Revenue, ROAS, ROI, or Profit.
+
+Status:
+
+- [ ] Pending implementation.
+- [ ] Validation pending.
+
+#### Commit 18: Salesforce Google Ads Attributed Revenue Flow
+
+Goal:
+
+- Add Salesforce opportunity revenue attribution for Google Ads using the existing GA4/LinkedIn CRM pattern.
+
+Tasks:
+
+- Extend/validate Salesforce connect/status, Crosswalk, revenue mapping, save, edit, delete, and reprocess payloads with `platformContext="google_ads"`.
+- Preserve selected Salesforce opportunity values as the campaign attribution boundary.
+- Preserve selected Salesforce date field through preview, save, and refresh.
+- If Pipeline Proxy is exposed, keep it separate from confirmed Total Revenue and revenue-derived metrics.
+- Preserve stable `sourceId` in edit and scheduler refresh mode.
+
+Validation:
+
+- Add a Salesforce Google Ads revenue source.
+- Edit the same source and confirm the same source ID updates.
+- Delete the source and confirm only Google Ads-scoped Salesforce revenue records are removed/deactivated.
+- Confirm GA4 and LinkedIn Salesforce revenue sources remain isolated.
+- Confirm Pipeline Proxy, if configured, is not included in Total Revenue, ROAS, ROI, or Profit.
+
+Status:
+
+- [ ] Pending implementation.
+- [ ] Validation pending.
+
+#### Commit 19: Shopify Google Ads Attributed Revenue Flow
+
+Goal:
+
+- Add Shopify order revenue attribution for Google Ads using the existing GA4/LinkedIn ecommerce pattern.
+
+Tasks:
+
+- Extend/validate Shopify connection method handling, attribution field/value selection, revenue review, save, edit, delete, and reprocess payloads with `platformContext="google_ads"`.
+- Preserve Shopify OAuth callback rules and Admin API token behavior.
+- Preserve stable `sourceId` in edit and scheduler refresh mode.
+- Keep Shopify revenue-to-date semantics and do not expose conversion-value source selection.
+
+Validation:
+
+- Add a Shopify Google Ads revenue source.
+- Edit the same source and confirm the same source ID updates.
+- Delete the source and confirm only Google Ads-scoped Shopify revenue records are removed/deactivated.
+- Confirm GA4 and LinkedIn Shopify revenue sources remain isolated.
+- Confirm Shopify Review shows enough source-value revenue detail to verify attribution before saving.
+
+Status:
+
+- [ ] Pending implementation.
+- [ ] Validation pending.
+
+#### Commit 20: Google Ads Overview Total Revenue Card And Sources Modal
+
+Goal:
+
+- Expose the visible Google Ads `Total Revenue` card only after the source context, read semantics, wizard support, and source families have been proven.
+
+Tasks:
+
+- Add `Total Revenue` to Google Ads Overview.
+- Add `+` action that opens `AddRevenueWizardModal` with `platformContext="google_ads"`.
+- Add `Sources (n)` link based only on active Google Ads-scoped revenue sources.
+- Add a Google Ads source dialog with edit/delete actions using existing guarded source routes.
+- Show native Google Ads `Conversion Value` separately.
+- Add `Profit`, `ROAS`, and `ROI` display only when imported Google Ads attributed revenue is present.
+
+Validation:
+
+- Google Ads Overview with no imported revenue shows `Total Revenue` as not connected/unavailable, not `$0` business revenue.
+- Clicking `+` opens the shared source chooser scoped to Google Ads.
+- `Sources (n)` lists only Google Ads-scoped active revenue sources.
+- Multiple active Google Ads revenue sources sum additively.
+- Editing/deleting one source updates the count and Total Revenue without affecting GA4, LinkedIn, or Meta sources.
+
+Status:
+
+- [ ] Pending implementation.
+- [ ] Validation pending.
+
+#### Commit 21: KPIs, Benchmarks, Insights, And Reports
+
+Goal:
+
+- Align downstream Google Ads consumers with the new source semantics.
+
+Tasks:
+
+- Update Google Ads KPI and Benchmark current-value mapping so revenue-dependent metrics use imported Google Ads attributed revenue only.
+- Update Google Ads Insights financial copy and rules to distinguish native conversion value from imported-revenue business efficiency.
+- Update Google Ads report payloads/PDF/scheduled report paths to include the same revenue semantics and source provenance.
+- Preserve report response shapes.
+
+Validation:
+
+- Google Ads ROI/ROAS KPIs remain unavailable or blocked without imported attributed revenue.
+- After importing Google Ads revenue, KPI/Benchmark current values match the Overview cards.
+- Google Ads Insights does not describe conversion value as business revenue.
+- Standard and scheduled Google Ads reports show Total Revenue only when Google Ads attributed revenue exists.
+
+Status:
+
+- [ ] Pending implementation.
+- [ ] Validation pending.
+
+#### Commit 22: Scheduler, Refresh, Snapshot, And Disconnect/Reconnect Safety
+
+Goal:
+
+- Keep imported Google Ads revenue fresh and prevent stale revenue after source lifecycle changes.
+
+Tasks:
+
+- Extend `server/auto-refresh-scheduler.ts` context loops to include Google Ads for refreshable source families.
+- Confirm HubSpot, Salesforce, Shopify, and eligible Google Sheets refresh pass stable `sourceId` and `platformContext="google_ads"`.
+- Update `server/scheduler.ts` snapshots to store the same Google Ads revenue semantics used by the aggregate.
+- On Google Ads disconnect/reconnect or selected-campaign replacement, fail closed for existing Google Ads-scoped child revenue sources until the attribution boundary is revalidated.
+- Deactivate/delete only the current campaign's Google Ads-scoped revenue sources/records when cleanup is explicitly required and the boundary is proven.
+
+Validation:
+
+- Auto-refresh updates the same Google Ads revenue source ID instead of creating duplicates.
+- Scheduler snapshots show Google Ads imported attributed revenue only when an active Google Ads revenue source exists.
+- Disconnect Google Ads and confirm Google Ads revenue, ROI, ROAS, and Profit disappear without affecting GA4/LinkedIn/Meta revenue.
+- Reconnect Google Ads and confirm stale prior Google Ads revenue does not reappear until a valid source is added/refreshed.
+- Changing selected Google Ads campaigns does not silently reuse revenue from an invalid prior attribution boundary.
+
+Status:
+
+- [ ] Pending implementation.
+- [ ] Validation pending.
+
+#### Commit 23: Regression Coverage And Final Evidence
+
+Goal:
+
+- Prove Google Ads attributed revenue import is isolated and production-safe for the implemented local/test-mode path.
+
+Tasks:
+
+- Add or confirm regression coverage for platform-context isolation.
+- Add or confirm regression coverage for each source family: CSV, Google Sheets, HubSpot, Salesforce, Shopify.
+- Add or confirm regression coverage for multiple Google Ads revenue sources.
+- Add or confirm regression coverage for native conversion value versus imported attributed revenue semantics.
+- Add or confirm regression coverage for source delete, disconnect/reconnect, selected-campaign replacement, scheduler refresh, aggregate, KPI/Benchmark, Insights, and Reports.
+- Update this tracker with validation evidence.
+
+Validation:
+
+- Targeted tests pass.
+- Type check passes if touched code requires it.
+- Manual UI validation passes for source add/edit/delete and downstream Google Ads cards.
+- Live OAuth remains separate and still needs deployed/production-like evidence.
+
+Status:
+
+- [ ] Pending implementation.
+- [ ] Validation pending.
 
 ## Validation Evidence Required
 
@@ -415,6 +905,11 @@ Before Google Ads is marked production-ready, record evidence for:
 - Google Ads scheduler refresh.
 - Custom Report PDF values.
 - Revenue, ROI, and ROAS behavior with and without valid revenue inputs.
+- Google Ads `Total Revenue` card `+` action opens the Google Ads-scoped revenue wizard.
+- Google Ads `Sources (n)` lists only Google Ads-scoped sources.
+- CSV, Google Sheets, HubSpot, Salesforce, and Shopify Google Ads revenue add/edit/delete flows.
+- Multiple Google Ads revenue sources sum additively without changing GA4, LinkedIn, or Meta revenue.
+- Native Google Ads conversion value remains separate from imported Google Ads attributed revenue.
 
 ## Relevant Documentation
 
@@ -425,6 +920,7 @@ Before Google Ads is marked production-ready, record evidence for:
 - `GA4_DEVELOPMENT_WORKFLOW.md`
 - `CAMPAIGN_DEEPDIVE_PRODUCTION_READY_STATUS.md`
 - `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`
+- `LINKEDIN_REVENUE_IMPORT_PRODUCTION_READY.md`
 
 ## Latest Validation
 
@@ -437,4 +933,4 @@ Before Google Ads is marked production-ready, record evidence for:
 - User validation passed for Commit 7.
 - User validation passed for Commit 8.
 - User validation passed for Commit 9.
-- Commit 10 is locally implemented and awaiting user validation.
+- User validation passed for Commit 10.

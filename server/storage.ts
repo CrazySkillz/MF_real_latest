@@ -12,6 +12,8 @@ const devLog = (...args: any[]) => {
   }
 };
 
+export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads';
+
 function hydrateDecryptedTokens<T extends Record<string, any>>(row: T): T {
   const enc = (row as any)?.encryptedTokens as EncryptedTokens | undefined;
   const dec = decryptTokens(enc);
@@ -79,15 +81,15 @@ export interface IStorage {
   getSpendBreakdownBySource(campaignId: string, startDate: string, endDate: string): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; spend: number; currency?: string }>>;
 
   // Revenue (generic; platform-scoped to avoid GA4/LinkedIn leakage)
-  getRevenueSources(campaignId: string, platformContext?: 'ga4' | 'linkedin' | 'meta'): Promise<RevenueSource[]>;
+  getRevenueSources(campaignId: string, platformContext?: RevenuePlatformContext): Promise<RevenueSource[]>;
   getRevenueSource(campaignId: string, sourceId: string): Promise<RevenueSource | undefined>;
   createRevenueSource(source: InsertRevenueSource): Promise<RevenueSource>;
   updateRevenueSource(sourceId: string, source: Partial<InsertRevenueSource>): Promise<RevenueSource | undefined>;
   deleteRevenueSource(sourceId: string): Promise<boolean>;
   deleteRevenueRecordsBySource(sourceId: string): Promise<boolean>;
   createRevenueRecords(records: InsertRevenueRecord[]): Promise<RevenueRecord[]>;
-  getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: 'ga4' | 'linkedin'): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }>;
-  getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: 'ga4' | 'linkedin' | 'meta'): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>>;
+  getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }>;
+  getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>>;
 
   // Google Sheets Connections
   getGoogleSheetsConnections(campaignId: string, purpose?: string): Promise<GoogleSheetsConnection[]>;
@@ -1069,7 +1071,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Revenue methods
-  async getRevenueSources(campaignId: string, platformContext: 'ga4' | 'linkedin' | 'meta' = 'ga4'): Promise<RevenueSource[]> {
+  async getRevenueSources(campaignId: string, platformContext: RevenuePlatformContext = 'ga4'): Promise<RevenueSource[]> {
     const ctx = platformContext;
     return db.select().from(revenueSources)
       .where(and(
@@ -1136,7 +1138,7 @@ export class DatabaseStorage implements IStorage {
     return results;
   }
 
-  async getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext: 'ga4' | 'linkedin' = 'ga4'): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }> {
+  async getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext: RevenuePlatformContext = 'ga4'): Promise<{ totalRevenue: number; currency?: string; sourceIds: string[] }> {
     const rows = await db
       .select({
         revenue: revenueRecords.revenue,
@@ -1151,7 +1153,7 @@ export class DatabaseStorage implements IStorage {
         eq(revenueSources.isActive, true),
         platformContext === 'ga4'
           ? or(eq(revenueSources.platformContext, 'ga4' as any), isNull(revenueSources.platformContext))
-          : eq(revenueSources.platformContext, 'linkedin' as any),
+          : eq(revenueSources.platformContext, platformContext as any),
         sql`${revenueRecords.date} >= ${startDate}`,
         sql`${revenueRecords.date} <= ${endDate}`
       ));
@@ -1175,7 +1177,7 @@ export class DatabaseStorage implements IStorage {
     return { totalRevenue: Number(total.toFixed(2)), currency, sourceIds: Array.from(sourceIds) };
   }
 
-  async getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext: 'ga4' | 'linkedin' | 'meta' = 'ga4'): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>> {
+  async getRevenueBreakdownBySource(campaignId: string, startDate: string, endDate: string, platformContext: RevenuePlatformContext = 'ga4'): Promise<Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number; currency?: string }>> {
     const rows = await db
       .select({
         revenueSourceId: revenueRecords.revenueSourceId,

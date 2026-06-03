@@ -115,14 +115,17 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
         conversionValue: sum.conversionValue + parseNum(row?.conversionValue),
         ga4AttributedRevenue: sum.ga4AttributedRevenue + parseNum(row?.ga4Revenue),
       }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, conversionValue: 0, ga4AttributedRevenue: 0 });
+      const importedRevenueTotals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, "google_ads")
+        .catch(() => ({ totalRevenue: 0, sourceIds: [] as string[] }));
+      const importedAttributedRevenue = parseNum((importedRevenueTotals as any)?.totalRevenue);
+      const importedRevenueSourceIds = Array.isArray((importedRevenueTotals as any)?.sourceIds)
+        ? (importedRevenueTotals as any).sourceIds.map((id: any) => String(id)).filter(Boolean)
+        : [];
+      const hasImportedAttributedRevenue = importedAttributedRevenue > 0;
       const ga4AttributedRevenue = parseNum(totals.ga4AttributedRevenue);
       const conversionValue = parseNum(totals.conversionValue);
-      const attributedRevenueSource = ga4AttributedRevenue > 0
-        ? "ga4_attributed_revenue"
-        : conversionValue > 0 ? "google_ads_conversion_value" : "unavailable";
-      const attributedRevenue = attributedRevenueSource === "ga4_attributed_revenue"
-        ? ga4AttributedRevenue
-        : attributedRevenueSource === "google_ads_conversion_value" ? conversionValue : 0;
+      const attributedRevenueSource = hasImportedAttributedRevenue ? "google_ads_imported_attributed_revenue" : "unavailable";
+      const attributedRevenue = hasImportedAttributedRevenue ? importedAttributedRevenue : 0;
       googleAdsSpend = parseNum(totals.spend);
       const lastRow = googleAdsRows[googleAdsRows.length - 1];
       googleAdsLastUpdate = (lastRow as any)?.date || null;
@@ -132,10 +135,11 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
         category: "paid_media",
         connected: true,
         capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
-        includedMetrics: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions", ...(hasImportedAttributedRevenue ? ["attributedRevenue"] : [])],
         excludedMetrics: [
           { metric: "sessions", reason: "Sessions are web analytics metrics" },
           { metric: "users", reason: "Users are web analytics metrics" },
+          ...(hasImportedAttributedRevenue ? [] : [{ metric: "attributedRevenue", reason: "Google Ads Total Revenue requires a Google Ads-scoped imported revenue source" }]),
         ],
         metrics: {
           impressions: parseNum(totals.impressions),
@@ -144,13 +148,15 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
           conversions: parseNum(totals.conversions),
           conversionValue,
           ga4AttributedRevenue,
+          importedAttributedRevenue,
           attributedRevenue,
         },
         revenueSemantics: {
           attributedRevenueSource,
-          attributedRevenueLabel: attributedRevenueSource === "ga4_attributed_revenue"
-            ? "GA4-attributed revenue"
-            : attributedRevenueSource === "google_ads_conversion_value" ? "Google Ads conversion value" : "Unavailable",
+          attributedRevenueLabel: hasImportedAttributedRevenue ? "Google Ads imported attributed revenue" : "Unavailable",
+          importedRevenueSourceIds,
+          conversionValueLabel: "Native Google Ads conversion value",
+          ga4AttributedRevenueLabel: "GA4-matched revenue; not used as Google Ads Total Revenue",
         },
         freshness: { selectedCampaignIds },
       };
@@ -1527,6 +1533,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Request validation helpers (enterprise-grade consistency)
   const zPlatformContext = z.enum(["ga4", "linkedin", "meta"]);
+  const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
+  type RevenueReadPlatformContext = z.infer<typeof zRevenueReadPlatformContext>;
   const zValueSource = z.enum(["revenue", "conversion_value"]);
 
   const zNumberLike = z.preprocess((v) => {
@@ -1558,6 +1566,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const s = raw === null || typeof raw === "undefined" ? "" : String(raw).trim().toLowerCase();
     if (!s) return fallback;
     const parsed = zPlatformContext.safeParse(s);
+    if (!parsed.success) {
+      sendBadRequest(res, "Invalid platformContext", parsed.error.errors);
+      return null;
+    }
+    return parsed.data;
+  };
+
+  const parseRevenueReadPlatformContext = (
+    raw: any,
+    fallback: RevenueReadPlatformContext,
+    res: any
+  ): RevenueReadPlatformContext | null => {
+    const s = raw === null || typeof raw === "undefined" ? "" : String(raw).trim().toLowerCase();
+    if (!s) return fallback;
+    const parsed = zRevenueReadPlatformContext.safeParse(s);
     if (!parsed.success) {
       sendBadRequest(res, "Invalid platformContext", parsed.error.errors);
       return null;
@@ -1774,7 +1797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
-      const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
+      const platformContext = parseRevenueReadPlatformContext((req.query as any)?.platformContext, "ga4", res);
       if (!platformContext) return;
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
@@ -1783,7 +1806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDate = "1900-01-01";
       const endDate = new Date().toISOString().slice(0, 10);
 
-      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext as "ga4" | "linkedin");
+      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext);
       res.json({ success: true, platformContext, startDate, endDate, ...totals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue-to-date" });
@@ -1795,7 +1818,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
-      const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
+      const platformContext = parseRevenueReadPlatformContext((req.query as any)?.platformContext, "ga4", res);
       if (!platformContext) return;
       const campaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!campaign) return;
@@ -1908,7 +1931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/campaigns/:id/revenue-sources", async (req, res) => {
     try {
       const campaignId = req.params.id;
-      const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
+      const platformContext = parseRevenueReadPlatformContext((req.query as any)?.platformContext, "ga4", res);
       if (!platformContext) return;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
@@ -1938,15 +1961,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
 
       // Fetch revenue sources across all platform contexts
-      const [ga4Rev, linkedinRev, metaRev] = await Promise.all([
+      const [ga4Rev, linkedinRev, metaRev, googleAdsRev] = await Promise.all([
         storage.getRevenueSources(campaignId, 'ga4').catch(() => [] as any[]),
         storage.getRevenueSources(campaignId, 'linkedin').catch(() => [] as any[]),
         storage.getRevenueSources(campaignId, 'meta').catch(() => [] as any[]),
+        storage.getRevenueSources(campaignId, 'google_ads').catch(() => [] as any[]),
       ]);
       const revenueSources = [
         ...ga4Rev.map((s: any) => ({ ...s, platformContext: (s as any).platformContext || 'ga4' })),
         ...linkedinRev.map((s: any) => ({ ...s, platformContext: 'linkedin' })),
         ...metaRev.map((s: any) => ({ ...s, platformContext: 'meta' })),
+        ...googleAdsRev.map((s: any) => ({ ...s, platformContext: 'google_ads' })),
       ];
 
       // Fetch spend sources
@@ -2122,7 +2147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteRevenueRecordsBySource(sourceId);
 
       if ((sourceType === 'hubspot' || sourceType === 'salesforce') && sourceCfg?.pipelineEnabled === true) {
-        const contexts: Array<'ga4' | 'linkedin' | 'meta'> = ['ga4', 'linkedin', 'meta'];
+        const contexts: RevenueReadPlatformContext[] = ['ga4', 'linkedin', 'meta', 'google_ads'];
         const candidates: Array<{ source: any; cfg: any }> = [];
         for (const context of contexts) {
           const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
@@ -2162,7 +2187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Deactivate Google Sheets connections for this platform
         try {
           const conns = await storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]);
-          const purposeKey = sourcePlatformContext === 'linkedin' ? 'linkedin_revenue' : sourcePlatformContext === 'meta' ? 'meta_revenue' : 'revenue';
+          const purposeKey = sourcePlatformContext === 'linkedin' ? 'linkedin_revenue' : sourcePlatformContext === 'meta' ? 'meta_revenue' : sourcePlatformContext === 'google_ads' ? 'google_ads_revenue' : 'revenue';
           const platformConns = (Array.isArray(conns) ? conns : []).filter((c: any) => {
             const purpose = String(c?.purpose || '').toLowerCase();
             return purpose === purposeKey;
@@ -2266,11 +2291,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const dateRange = String(req.query.dateRange || "30days");
       const { startDate, endDate } = getDateRangeBounds(dateRange);
-      const platformContext = parsePlatformContext((req.query as any)?.platformContext, "ga4", res);
+      const platformContext = parseRevenueReadPlatformContext((req.query as any)?.platformContext, "ga4", res);
       if (!platformContext) return;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
-      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext as "ga4" | "linkedin");
+      const totals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, platformContext);
       res.json({ success: true, platformContext, dateRange, startDate, endDate, ...totals });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to fetch revenue totals" });
@@ -2281,7 +2306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const deactivateRevenueSourcesForCampaign = async (
     campaignId: string,
-    opts?: { keepSourceId?: string; platformContext?: 'ga4' | 'linkedin' }
+    opts?: { keepSourceId?: string; platformContext?: RevenueReadPlatformContext }
   ) => {
     try {
       const keep = opts?.keepSourceId ? String(opts.keepSourceId) : "";

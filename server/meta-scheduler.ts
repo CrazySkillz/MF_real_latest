@@ -14,7 +14,7 @@ import { desc, eq } from "drizzle-orm";
 import { enrichPlatformWithGA4Revenue } from "./utils/ga4RevenueEnrichment";
 
 // Mock campaign profiles with distinct metric characteristics
-const META_MOCK_CAMPAIGNS = [
+export const META_MOCK_CAMPAIGNS = [
   { id: 'meta_brand_awareness',  name: 'Brand Awareness Campaign',  impressionBase: 15000, ctrBase: 0.015, spendBase: 300, convRateBase: 0.03 },
   { id: 'meta_lead_gen',         name: 'Lead Generation Campaign',  impressionBase: 10000, ctrBase: 0.025, spendBase: 450, convRateBase: 0.05 },
   { id: 'meta_retargeting',      name: 'Retargeting Campaign',      impressionBase: 6000,  ctrBase: 0.035, spendBase: 150, convRateBase: 0.08 },

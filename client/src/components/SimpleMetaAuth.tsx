@@ -74,6 +74,7 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
       await apiRequest("POST", `/api/meta/${campaignId}/connect-test`, {
         adAccountId: selectedAdAccount,
         adAccountName: selectedAccount?.name || "Test Ad Account",
+        deferSeedUntilSelection: true,
       });
 
       // Move to campaign selection
@@ -81,15 +82,16 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
       setLoadingCampaigns(true);
       try {
         const res = await fetch(`/api/meta/${campaignId}/campaigns`);
+        if (!res.ok) throw new Error("Failed to load Meta campaigns");
         const json = await res.json().catch(() => ({}));
         if (Array.isArray(json?.campaigns)) {
-          setMetaCampaigns(json.campaigns.map((c: any) => ({ id: c.id, name: c.name, status: c.status, selected: true })));
+          const selectedCampaignIds = Array.isArray(json.selectedCampaignIds)
+            ? new Set(json.selectedCampaignIds.map((id: any) => String(id)))
+            : new Set<string>();
+          setMetaCampaigns(json.campaigns.map((c: any) => ({ id: c.id, name: c.name, status: c.status, selected: selectedCampaignIds.has(String(c.id)) })));
         }
-      } catch {
-        // If can't load campaigns, still complete
-        toast({ title: "Meta Connected!", description: "Campaign selection available later." });
-        onSuccess();
-        return;
+      } catch (err: any) {
+        toast({ title: "Campaigns not loaded", description: err.message || "Select campaigns after reconnecting Meta.", variant: "destructive" as const });
       } finally {
         setLoadingCampaigns(false);
       }
@@ -108,6 +110,7 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
       setSavingSelection(true);
       try {
         const selectedIds = metaCampaigns.filter(c => c.selected).map(c => c.id);
+        if (selectedIds.length === 0) throw new Error('Select at least one Meta campaign');
         const res = await fetch(`/api/meta/${campaignId}/selected-campaigns`, {
           method: 'PATCH', credentials: "include",
           headers: { 'Content-Type': 'application/json' },
@@ -141,10 +144,7 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
             </div>
           ) : metaCampaigns.length === 0 ? (
             <div className="text-sm text-muted-foreground py-4">
-              <p>No campaigns found yet. Data will be available after the first import.</p>
-              <Button className="mt-3" onClick={() => { toast({ title: 'Meta Connected!' }); onSuccess(); }}>
-                Continue
-              </Button>
+              <p>No Meta campaigns were found. Meta cannot be finalized until at least one campaign is available and selected.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -175,9 +175,6 @@ export function SimpleMetaAuth({ campaignId, onSuccess, onError }: SimpleMetaAut
                 <Button onClick={handleSaveSelection} disabled={selectedCount === 0 || savingSelection}>
                   {savingSelection && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
                   Connect {selectedCount} Campaign{selectedCount !== 1 ? 's' : ''}
-                </Button>
-                <Button variant="ghost" onClick={() => { toast({ title: 'Meta Connected!' }); onSuccess(); }}>
-                  Skip (import all)
                 </Button>
               </div>
             </div>

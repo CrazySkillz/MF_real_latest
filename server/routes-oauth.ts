@@ -19271,14 +19271,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate initial mock data so spend preview has data immediately.
       // Use generateMockMetaData directly to avoid KPI/alert overhead per iteration.
-      try {
-        const { generateMockMetaData } = await import('./meta-scheduler');
-        for (let i = 0; i < 30; i++) {
-          await generateMockMetaData(campaignId, { method: 'test_mode' }, { advanceDay: true });
+      const deferSeedUntilSelection = !!(req.body as any)?.deferSeedUntilSelection;
+      if (!deferSeedUntilSelection) {
+        try {
+          const { generateMockMetaData } = await import('./meta-scheduler');
+          for (let i = 0; i < 30; i++) {
+            await generateMockMetaData(campaignId, { method: 'test_mode' }, { advanceDay: true });
+          }
+          console.log(`[Meta] Generated initial mock data for campaign ${campaignId}`);
+        } catch (mockErr) {
+          console.warn('[Meta] Failed to generate initial mock data:', mockErr);
         }
-        console.log(`[Meta] Generated initial mock data for campaign ${campaignId}`);
-      } catch (mockErr) {
-        console.warn('[Meta] Failed to generate initial mock data:', mockErr);
       }
 
       console.log(`[Meta] Test connection created successfully`);
@@ -19639,6 +19642,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connection = await storage.getMetaConnection(parsedId.data);
       if (!connection) {
         return res.status(404).json({ error: "Meta connection not found" });
+      }
+
+      if (String((connection as any).method || "") === "test_mode") {
+        const { META_MOCK_CAMPAIGNS } = await import('./meta-scheduler');
+        const selectedCampaignIds = (() => {
+          try {
+            const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+            return Array.isArray(parsed) ? parsed.map((id: any) => String(id)) : [];
+          } catch {
+            return [];
+          }
+        })();
+        const campaigns = META_MOCK_CAMPAIGNS.map((campaign) => ({
+          id: campaign.id,
+          name: campaign.name,
+          status: "ACTIVE",
+        }));
+        return res.json({ campaigns, selectedCampaignIds, adAccountName: connection.adAccountName });
       }
 
       const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
@@ -20784,6 +20805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
       const { selectedCampaignIds } = req.body as { selectedCampaignIds: string[] };
       if (!Array.isArray(selectedCampaignIds)) return res.status(400).json({ error: 'selectedCampaignIds must be an array' });
+      if (selectedCampaignIds.length === 0) return res.status(400).json({ error: 'At least one Meta campaign must be selected' });
 
       const connection: any = await storage.getMetaConnection(campaignId);
       if (!connection) return res.status(404).json({ error: 'No Meta connection found' });
@@ -20791,6 +20813,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateMetaConnection(campaignId, {
         selectedCampaignIds: JSON.stringify(selectedCampaignIds),
       } as any);
+
+      if (String(connection.method || "") === "test_mode") {
+        const { generateMockMetaData } = await import('./meta-scheduler');
+        const nextConnection = { ...connection, selectedCampaignIds: JSON.stringify(selectedCampaignIds) };
+        for (let i = 0; i < 30; i++) {
+          await generateMockMetaData(campaignId, nextConnection, { advanceDay: true });
+        }
+      }
 
       res.json({ success: true, selectedCampaignIds });
     } catch (error: any) {

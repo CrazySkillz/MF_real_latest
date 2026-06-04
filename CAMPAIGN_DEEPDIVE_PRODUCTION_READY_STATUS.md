@@ -27,7 +27,7 @@ The remaining work is validation hardening and source-specific proof, not a full
 
 Campaign DeepDive is production-ready locally for the implemented connected-source aggregate contract and the current GA4/current-source scope, with the outstanding validation items below.
 
-The remaining validation items can wait until mock-live historical data and future/refined integrations such as Meta or live/deployed Google Ads evidence are available. LinkedIn source-specific validation passed on 2026-05-31 and is tracked in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Google Ads local source-specific validation passed through Commit 26 on 2026-06-04 and is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
+The remaining validation items can wait until mock-live historical data and future/refined integrations such as Meta or live/deployed Google Ads evidence are available. LinkedIn source-specific validation passed on 2026-05-31 and is tracked in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Google Ads local source-specific validation passed through Commit 27 on 2026-06-04 and is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
 
 LinkedIn refinement is tracked separately in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. That tracker records the source-specific acceptance proof for LinkedIn through both the Create Campaign flow and the campaign Connected Platforms add-source flow. LinkedIn revenue-import validation is complete in `LINKEDIN_REVENUE_IMPORT_PRODUCTION_READY.md`.
 
@@ -37,7 +37,7 @@ LinkedIn is validated as production-ready for the current supported implementati
 
 - LinkedIn is not an open Campaign DeepDive blocker.
 - LinkedIn should remain the reference pattern for source-scoped paid-media aggregation, unavailable-metric handling, disconnect/reconnect cleanup, and attributed-revenue isolation.
-- Google Ads local refinement is tracked separately in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md` and has passed local source-specific proof through Commit 26.
+- Google Ads local refinement is tracked separately in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md` and has passed local source-specific proof through Commit 27.
 - Do not treat the Google Ads live OAuth path as production-ready until deployed or production-like OAuth connect/select/refresh evidence is recorded.
 
 ## Outstanding Validation Items

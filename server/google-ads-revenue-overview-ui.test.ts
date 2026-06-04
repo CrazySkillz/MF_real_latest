@@ -50,6 +50,19 @@ describe("Google Ads revenue Overview UI", () => {
     expect(page).not.toContain(">GA4 ROAS</th>");
   });
 
+  it("renders a Google Ads Overview campaign breakdown from existing campaign metrics", () => {
+    const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
+
+    expect(page).toContain("const overviewCampaignBreakdown = useMemo(() =>");
+    expect(page).toContain("Google Ads metrics aggregated by selected Google Ads campaign");
+    expect(page).toContain("overviewCampaignBreakdown.map((c: any, idx: number)");
+    expect(page).toContain("<th className=\"text-right font-medium px-2 py-2 w-[100px]\">Impressions</th>");
+    expect(page).toContain("<th className=\"text-right font-medium px-2 py-2 w-[110px]\">Conv. Value</th>");
+    expect(page).toContain("<th className=\"text-right font-medium px-2 py-2 w-[110px]\">Total Revenue</th>");
+    expect(page).toContain("c.hasAttributedRevenue ? fmtCurrency(c.attributedRevenue)");
+    expect(page).not.toContain("/api/campaigns/${campaignId}/google-ads-overview-campaign-breakdown");
+  });
+
   it("exposes source provenance plus edit and delete behavior through the guarded source route", () => {
     const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
 

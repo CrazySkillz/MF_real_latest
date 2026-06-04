@@ -585,6 +585,10 @@ export default function GoogleAdsAnalytics() {
     return [...campaignBreakdown].sort((a: any, b: any) => (b[sortBy] || 0) - (a[sortBy] || 0));
   }, [campaignBreakdown, sortBy]);
 
+  const overviewCampaignBreakdown = useMemo(() => {
+    return [...campaignBreakdown].sort((a: any, b: any) => b.spend - a.spend);
+  }, [campaignBreakdown]);
+
   // Daily series for Insights tab (Daily/7d/30d)
   const dailySeries = useMemo(() => {
     const byDate = chartData;
@@ -1586,6 +1590,57 @@ export default function GoogleAdsAnalytics() {
                   </div>
                 </CardContent>
               </Card>
+
+              <div>
+                <div className="mb-3">
+                  <h3 className="text-base font-semibold text-foreground">Campaign Breakdown</h3>
+                  <p className="text-sm text-muted-foreground/70">Google Ads metrics aggregated by selected Google Ads campaign</p>
+                </div>
+                <Card>
+                  <CardContent className="p-6">
+                    {overviewCampaignBreakdown.length > 0 ? (
+                      <div className="overflow-hidden border rounded-md">
+                        <div className="max-h-[420px] overflow-y-auto">
+                          <table className="w-full text-sm table-fixed">
+                            <thead className="sticky top-0 z-10 bg-muted border-b">
+                              <tr>
+                                <th className="text-left font-medium px-2 py-2">Campaign</th>
+                                <th className="text-right font-medium px-2 py-2 w-[100px]">Impressions</th>
+                                <th className="text-right font-medium px-2 py-2 w-[80px]">Clicks</th>
+                                <th className="text-right font-medium px-2 py-2 w-[90px]">Spend</th>
+                                <th className="text-right font-medium px-2 py-2 w-[100px]">Conversions</th>
+                                <th className="text-right font-medium px-2 py-2 w-[90px]">CTR</th>
+                                <th className="text-right font-medium px-2 py-2 w-[80px]">CPC</th>
+                                <th className="text-right font-medium px-2 py-2 w-[110px]">Conv. Value</th>
+                                <th className="text-right font-medium px-2 py-2 w-[110px]">Total Revenue</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {overviewCampaignBreakdown.map((c: any, idx: number) => (
+                                <tr key={c.id || c.name || idx} className="border-b last:border-b-0">
+                                  <td className="px-2 py-2 truncate font-medium text-foreground" title={c.name}>{c.name}</td>
+                                  <td className="px-2 py-2 text-right tabular-nums">{fmt(c.impressions)}</td>
+                                  <td className="px-2 py-2 text-right tabular-nums">{fmt(c.clicks)}</td>
+                                  <td className="px-2 py-2 text-right tabular-nums">{fmtCurrency(c.spend)}</td>
+                                  <td className="px-2 py-2 text-right tabular-nums">{fmt(Math.round(c.conversions))}</td>
+                                  <td className="px-2 py-2 text-right tabular-nums">{fmtPct(c.ctr)}</td>
+                                  <td className="px-2 py-2 text-right tabular-nums">{fmtCurrency(c.cpc)}</td>
+                                  <td className="px-2 py-2 text-right tabular-nums">{fmtCurrency(c.conversionValue)}</td>
+                                  <td className="px-2 py-2 text-right tabular-nums">{c.hasAttributedRevenue ? fmtCurrency(c.attributedRevenue) : <span className="text-muted-foreground/70">—</span>}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground/70">
+                        No campaign breakdown data available for this date range.
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
             {/* ==================== KPIS TAB ==================== */}

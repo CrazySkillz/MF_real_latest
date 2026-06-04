@@ -471,6 +471,7 @@ Confirmed current gaps:
 - Before the Insights slice of Commit 21, the Google Ads Insights executive value cards and financial rules still centered on `summary.roas` and `summary.roi`, which are native Google Ads conversion-value efficiency values. The safe fix keeps native `Conversion Value` separate, uses imported Google Ads attributed revenue for business `Total Revenue`, `ROAS`, and `ROI` when connected, and clearly labels remaining conversion-value trend/rule output.
 - Before the report semantics slice of Commit 21, Google Ads standard/custom/scheduled report payloads saved only the report type, schedule fields, and optional custom composition. They did not persist the current Google Ads revenue interpretation or source provenance, and scheduled snapshot JSON did not include report configuration. The safe fix stores Google Ads revenue semantics and active source provenance in the existing report `configuration`, adds the same configuration to Google Ads scheduled snapshot JSON, and renders a short Google Ads-only revenue semantics section in generated platform PDFs.
 - Before the first Commit 22 scheduler slice, `server/auto-refresh-scheduler.ts` skipped Google Ads imported revenue sources during provider reprocess: HubSpot and Salesforce scanned only `ga4`, while Shopify and Google Sheets scanned `ga4`, `linkedin`, and `meta`. That meant a Google Ads revenue source could exist and display in the UI but still be skipped by daily source refresh. The safe fix adds `google_ads` to the existing refresh context loops and preserves each source's existing `sourceId` and platform context.
+- Before the second Commit 22 scheduler slice, `server/scheduler.ts` still stored Google Ads snapshot `attributedRevenue` from GA4-matched revenue or native Google Ads `conversionValue`. That diverged from the API aggregate path, where Google Ads business attributed revenue is available only from active Google Ads-scoped imported revenue sources. The safe fix makes scheduled snapshots read `platformContext="google_ads"` imported revenue totals and keeps native conversion value and GA4-matched revenue as separate fields.
 - Before Commit 12, `server/storage.ts` supported `getRevenueSources(..., platformContext)` and `getRevenueBreakdownBySource(..., platformContext)` mostly generically, but `getRevenueTotalForRange(...)` hard-coded the non-GA4 branch to `linkedin`; Commit 12 fixes this storage/read-side gap.
 - Before the first Commit 22 scheduler slice, `server/auto-refresh-scheduler.ts` reprocessed Shopify and Google Sheets across `ga4`, `linkedin`, and `meta`, while HubSpot and Salesforce reprocessed only `ga4`; Commits 17, 18, and 19 confirmed the HubSpot/Salesforce/Shopify reprocess payloads could carry `platformContext` and stable `sourceId`, and the first Commit 22 scheduler slice extends those existing loops to include Google Ads.
 - `shared/schema.ts` has `revenue_sources.platform_context` as free text, so a table migration is not expected just to store `google_ads`; however TypeScript unions, zod validation, route filters, UI props, and scheduler context lists must be updated consistently.
@@ -478,7 +479,7 @@ Confirmed current gaps:
 
 Exact root cause:
 
-- The reusable GA4/LinkedIn revenue import system is present. Commit 12 admits Google Ads on the storage/read side, Commit 13 makes the shared backend aggregate read model use only Google Ads-scoped imported revenue for Google Ads business `attributedRevenue`, Commit 14 adds shared wizard context plumbing, Commit 15 admits Google Ads only on the CSV import write path, Commit 16 admits Google Ads only on the Google Sheets revenue import path, Commit 17 admits Google Ads only on the HubSpot import write path, Commit 18 admits Google Ads only on the Salesforce import write path, Commit 19 admits Google Ads only on the Shopify import write path, Commit 20 exposes the visible Google Ads `Total Revenue` card, `+` wizard action, and source-provenance modal, and Commit 21 aligns KPI/Benchmark/Insights/report semantics. The remaining root cause is scheduler lifecycle safety, selected-campaign revenue-boundary safety, disconnect/reconnect cleanup safety, and final production evidence.
+- The reusable GA4/LinkedIn revenue import system is present. Commit 12 admits Google Ads on the storage/read side, Commit 13 makes the shared backend aggregate read model use only Google Ads-scoped imported revenue for Google Ads business `attributedRevenue`, Commit 14 adds shared wizard context plumbing, Commit 15 admits Google Ads only on the CSV import write path, Commit 16 admits Google Ads only on the Google Sheets revenue import path, Commit 17 admits Google Ads only on the HubSpot import write path, Commit 18 admits Google Ads only on the Salesforce import write path, Commit 19 admits Google Ads only on the Shopify import write path, Commit 20 exposes the visible Google Ads `Total Revenue` card, `+` wizard action, and source-provenance modal, Commit 21 aligns KPI/Benchmark/Insights/report semantics, and Commit 22 now covers auto-refresh provider context loops plus scheduled snapshot revenue semantics. The remaining root cause is selected-campaign revenue-boundary safety, disconnect/reconnect cleanup safety, and final production evidence.
 
 ### Required GA4/LinkedIn Pattern For Google Ads
 
@@ -1000,12 +1001,18 @@ Status:
 
 - [x] Completed locally: `server/auto-refresh-scheduler.ts` now includes `google_ads` in existing refreshable revenue context loops for HubSpot, Salesforce, Shopify, and Google Sheets revenue sources.
 - [x] Completed locally: scheduler reprocess still passes stable source IDs and uses saved/source `platformContext` fallback so Google Ads imported revenue refreshes in place instead of creating duplicate sources.
-- [ ] Pending implementation: scheduled snapshot revenue semantics outside the report configuration path.
+- [x] User validation passed: scheduler-context slice.
+- [x] Completed locally: scheduled `performanceSummary` snapshots now use only active Google Ads-scoped imported revenue sources for Google Ads `attributedRevenue`.
+- [x] Completed locally: scheduled snapshots keep native Google Ads `conversionValue` and GA4-matched revenue separate from imported Google Ads attributed revenue.
+- [x] Completed locally: Google Ads trend snapshot rows no longer derive `attributedRevenue` from native conversion value or GA4-matched revenue.
 - [ ] Pending implementation: disconnect/reconnect and selected-campaign revenue-boundary safety.
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-scheduler-flow.test.ts server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-salesforce-flow.test.ts server/google-ads-revenue-shopify-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/ga4-auto-refresh-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] Local validation passed: `git diff --check`.
-- [ ] User validation pending for this scheduler-context slice.
+- [x] Local validation passed: `npm test -- server/google-ads-production-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/performance-summary-aggregate.test.ts server/google-ads-revenue-scheduler-flow.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [x] Local validation passed: `git diff --check`.
+- [ ] User validation pending for this scheduled snapshot semantics slice.
 
 #### Commit 23: Regression Coverage And Final Evidence
 
@@ -1090,3 +1097,5 @@ Before Google Ads is marked production-ready, record evidence for:
 - User validation passed for Commit 20 visible Google Ads Total Revenue source-management behavior.
 - User validation passed for Commit 21 report semantics/source provenance.
 - Commit 22 scheduler-context slice validated locally for auto-refresh provider context loops.
+- User validation passed for Commit 22 scheduler-context slice.
+- Commit 22 scheduled snapshot semantics slice validated locally.

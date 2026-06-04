@@ -165,14 +165,51 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     conversionValue: totals.conversionValue + parseNum(row?.conversionValue),
     ga4AttributedRevenue: totals.ga4AttributedRevenue + parseNum(row?.ga4Revenue),
   }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, conversionValue: 0, ga4AttributedRevenue: 0 });
-  const googleAdsAttributedRevenueSource = googleAdsRawData.ga4AttributedRevenue > 0
-    ? "ga4_attributed_revenue"
-    : googleAdsRawData.conversionValue > 0 ? "google_ads_conversion_value" : "unavailable";
+  let googleAdsImportedAttributedRevenue = 0;
+  let googleAdsImportedRevenueSourceIds: string[] = [];
+  const googleAdsImportedRevenueByDate = new Map<string, number>();
+  try {
+    const googleAdsImportedRevenueTotals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, "google_ads");
+    googleAdsImportedAttributedRevenue = parseNum((googleAdsImportedRevenueTotals as any)?.totalRevenue);
+    googleAdsImportedRevenueSourceIds = Array.isArray((googleAdsImportedRevenueTotals as any)?.sourceIds)
+      ? (googleAdsImportedRevenueTotals as any).sourceIds.map((id: any) => String(id)).filter(Boolean)
+      : [];
+    const googleAdsDailyRevenueRows = await db.execute(sql`
+      SELECT rr.date, rr.revenue_source_id as source_id, rr.revenue, rr.sub_campaign_urn
+      FROM revenue_records rr
+      INNER JOIN revenue_sources rs ON rs.id::text = rr.revenue_source_id
+      WHERE rr.campaign_id = ${campaignId}
+        AND rs.is_active = true
+        AND rs.platform_context = 'google_ads'
+        AND rr.date >= ${startDate}
+        AND rr.date <= ${endDate}
+    `);
+    const totalsByDateAndSource = new Map<string, { aggregate: number; subCampaign: number }>();
+    for (const row of (googleAdsDailyRevenueRows.rows as any[])) {
+      const date = String(row.date || "").slice(0, 10);
+      const sourceId = String(row.source_id || "");
+      if (!date || !sourceId) continue;
+      const key = `${date}::${sourceId}`;
+      const current = totalsByDateAndSource.get(key) || { aggregate: 0, subCampaign: 0 };
+      const value = parseNum(row.revenue);
+      if (row.sub_campaign_urn) current.subCampaign += value;
+      else current.aggregate += value;
+      totalsByDateAndSource.set(key, current);
+    }
+    for (const [key, totals] of Array.from(totalsByDateAndSource.entries())) {
+      const date = key.split("::")[0];
+      const value = totals.aggregate > 0 ? totals.aggregate : totals.subCampaign;
+      googleAdsImportedRevenueByDate.set(date, parseFloat(((googleAdsImportedRevenueByDate.get(date) || 0) + value).toFixed(2)));
+    }
+  } catch {
+    // Keep Google Ads revenue unavailable if imported attributed revenue cannot be resolved.
+  }
+  const hasGoogleAdsImportedAttributedRevenue = googleAdsImportedAttributedRevenue > 0;
+  const googleAdsAttributedRevenueSource = hasGoogleAdsImportedAttributedRevenue ? "google_ads_imported_attributed_revenue" : "unavailable";
   const googleAdsData = {
     ...googleAdsRawData,
-    attributedRevenue: googleAdsAttributedRevenueSource === "ga4_attributed_revenue"
-      ? googleAdsRawData.ga4AttributedRevenue
-      : googleAdsAttributedRevenueSource === "google_ads_conversion_value" ? googleAdsRawData.conversionValue : 0,
+    importedAttributedRevenue: googleAdsImportedAttributedRevenue,
+    attributedRevenue: hasGoogleAdsImportedAttributedRevenue ? googleAdsImportedAttributedRevenue : 0,
   };
 
   // Double-counting prevention: GA4 and CI both track website analytics.
@@ -274,19 +311,26 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
       category: "paid_media",
       connected: Boolean(googleAdsConn && !(googleAdsConn as any).spendOnly),
       capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
-      includedMetrics: googleAdsConn && !(googleAdsConn as any).spendOnly ? ["impressions", "clicks", "spend", "conversions", "attributedRevenue"] : [],
+      includedMetrics: googleAdsConn && !(googleAdsConn as any).spendOnly ? ["impressions", "clicks", "spend", "conversions", ...(hasGoogleAdsImportedAttributedRevenue ? ["attributedRevenue"] : [])] : [],
       excludedMetrics: [
         { metric: "sessions", reason: "Sessions are web analytics metrics" },
         { metric: "users", reason: "Users are web analytics metrics" },
+        ...(hasGoogleAdsImportedAttributedRevenue ? [] : [{ metric: "attributedRevenue", reason: "Google Ads Total Revenue requires a Google Ads-scoped imported revenue source" }]),
       ],
       metrics: googleAdsData,
-      revenueSemantics: { attributedRevenueSource: googleAdsAttributedRevenueSource },
+      revenueSemantics: {
+        attributedRevenueSource: googleAdsAttributedRevenueSource,
+        attributedRevenueLabel: hasGoogleAdsImportedAttributedRevenue ? "Google Ads imported attributed revenue" : "Unavailable",
+        importedRevenueSourceIds: googleAdsImportedRevenueSourceIds,
+        conversionValueLabel: "Native Google Ads conversion value",
+        ga4AttributedRevenueLabel: "GA4-matched revenue; not used as Google Ads Total Revenue",
+      },
       freshness: { selectedCampaignIds: googleAdsSelectedCampaignIds },
     }],
     revenue: {
       onsiteRevenue: ga4Data.revenue,
-      offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
-      totalRevenue: parseFloat((ga4Data.revenue + offsiteRevenueTotal).toFixed(2)),
+      offsiteRevenue: parseFloat((offsiteRevenueTotal + googleAdsData.attributedRevenue).toFixed(2)),
+      totalRevenue: parseFloat((ga4Data.revenue + offsiteRevenueTotal + googleAdsData.attributedRevenue).toFixed(2)),
     },
     revenueSources,
   });
@@ -375,15 +419,16 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
         category: "paid_media",
         connected: Boolean(googleAdsConn && !(googleAdsConn as any).spendOnly),
         capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
-        includedMetrics: googleAdsConn && !(googleAdsConn as any).spendOnly ? ["impressions", "clicks", "spend", "conversions", "attributedRevenue"] : [],
+        includedMetrics: googleAdsConn && !(googleAdsConn as any).spendOnly ? ["impressions", "clicks", "spend", "conversions", ...(hasGoogleAdsImportedAttributedRevenue ? ["attributedRevenue"] : [])] : [],
         excludedMetrics: [
           { metric: "sessions", reason: "Sessions are web analytics metrics" },
           { metric: "users", reason: "Users are web analytics metrics" },
+          ...(hasGoogleAdsImportedAttributedRevenue ? [] : [{ metric: "attributedRevenue", reason: "Google Ads Total Revenue requires a Google Ads-scoped imported revenue source" }]),
         ],
         dailyRows: googleAdsDailyRows.map((row: any) => {
           const ga4AttributedRevenue = parseNum(row.ga4Revenue);
           const conversionValue = parseNum(row.conversionValue);
-          const attributedRevenueSource = ga4AttributedRevenue > 0 ? "ga4_attributed_revenue" : conversionValue > 0 ? "google_ads_conversion_value" : "unavailable";
+          const importedAttributedRevenue = parseNum(googleAdsImportedRevenueByDate.get(String(row.date || "").slice(0, 10)));
           return {
             date: row.date,
             metrics: {
@@ -393,7 +438,8 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
               conversions: row.conversions,
               conversionValue,
               ga4AttributedRevenue,
-              attributedRevenue: attributedRevenueSource === "ga4_attributed_revenue" ? ga4AttributedRevenue : attributedRevenueSource === "google_ads_conversion_value" ? conversionValue : 0,
+              importedAttributedRevenue,
+              attributedRevenue: hasGoogleAdsImportedAttributedRevenue ? importedAttributedRevenue : 0,
             },
           };
         }),

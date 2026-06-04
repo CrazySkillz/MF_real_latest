@@ -79,9 +79,14 @@ describe("Google Ads production readiness regression guard", () => {
     expect(helper).toContain('ga4AttributedRevenueLabel: "GA4-matched revenue; not used as Google Ads Total Revenue"');
     expect(helper).not.toContain('"google_ads_conversion_value"');
     expect(helper).not.toContain('"ga4_attributed_revenue"');
-    expect(campaignScheduler).toContain('const googleAdsAttributedRevenueSource = googleAdsRawData.ga4AttributedRevenue > 0');
-    expect(campaignScheduler).toContain('googleAdsRawData.conversionValue > 0 ? "google_ads_conversion_value" : "unavailable"');
-    expect(analytics).toContain("Google Ads conversion value and derived efficiency metrics. GA4-attributed revenue is shown separately where matched.");
+    expect(campaignScheduler).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "google_ads")');
+    expect(campaignScheduler).toContain('const googleAdsAttributedRevenueSource = hasGoogleAdsImportedAttributedRevenue ? "google_ads_imported_attributed_revenue" : "unavailable";');
+    expect(campaignScheduler).toContain('attributedRevenue: hasGoogleAdsImportedAttributedRevenue ? googleAdsImportedAttributedRevenue : 0');
+    expect(campaignScheduler).toContain('importedRevenueSourceIds: googleAdsImportedRevenueSourceIds');
+    expect(campaignScheduler).toContain('Google Ads Total Revenue requires a Google Ads-scoped imported revenue source');
+    expect(campaignScheduler).not.toContain('googleAdsRawData.conversionValue > 0 ? "google_ads_conversion_value" : "unavailable"');
+    expect(campaignScheduler).not.toContain('attributedRevenueSource === "google_ads_conversion_value"');
+    expect(analytics).toContain("Native Google Ads conversion value and derived conversion-value efficiency. Imported attributed revenue is shown separately.");
     expect(analytics).toContain("Native Google Ads conversion value");
     expect(analytics).toContain("No value recorded");
   });

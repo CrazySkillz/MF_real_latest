@@ -117,6 +117,33 @@ describe("Meta production readiness regression guard", () => {
     expect(dailyMetricsRoute).toContain('selectedSet.has(String(row?.metaCampaignId || ""))');
   });
 
+  it("keeps Meta aggregate revenue platform-scoped and gated by Meta revenue tracking", () => {
+    const routes = read("server", "routes-oauth.ts");
+    const aggregate = read("server", "utils", "performance-summary-aggregate.ts");
+    const outcomeTotalsMetaBlock = sliceBetween(
+      routes,
+      "// Meta summary inputs",
+      "const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate"
+    );
+    const executiveSummaryMetaBlock = sliceBetween(
+      routes,
+      "// Fetch Meta/Facebook metrics",
+      "// Fetch GA4 metrics"
+    );
+
+    expect(outcomeTotalsMetaBlock).toContain("const hasRevenueTracking = !!rev.hasRevenueTracking;");
+    expect(outcomeTotalsMetaBlock).toContain("const attributedRevenue = hasRevenueTracking ?");
+    expect(outcomeTotalsMetaBlock).toContain("const roas = hasRevenueTracking && metaSpend > 0");
+    expect(outcomeTotalsMetaBlock).toContain("const roi = hasRevenueTracking && metaSpend > 0");
+    expect(executiveSummaryMetaBlock).toContain('storage.getRevenueTotalForRange(id, metaStart, metaEnd, "meta")');
+    expect(executiveSummaryMetaBlock).not.toContain("storage.getRevenueTotalForRange(id, metaStart, metaEnd).catch");
+    expect(executiveSummaryMetaBlock).toContain("metaMetrics.hasRevenueTracking = metaMetrics.revenue > 0;");
+    expect(aggregate).toContain("const hasMetaRevenue = meta.hasRevenueTracking === true;");
+    expect(aggregate).toContain('...(hasMetaRevenue ? ["attributedRevenue"] : [])');
+    expect(aggregate).toContain('reason: "Meta Total Revenue requires a Meta-scoped imported revenue source"');
+    expect(aggregate).toContain("attributedRevenue: hasMetaRevenue ? parseNum(meta.attributedRevenue) : null");
+  });
+
   it("keeps the Create Campaign confirm Back button on platform selection instead of re-entering OAuth", () => {
     const page = read("client", "src", "pages", "campaigns.tsx");
     const handler = sliceBetween(

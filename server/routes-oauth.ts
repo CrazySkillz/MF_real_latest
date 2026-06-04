@@ -11128,9 +11128,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               conversionsTotal: conversions,
             });
 
-            const attributedRevenue = parseFloat(Number(rev.totalRevenue || 0).toFixed(2));
-            const roas = metaSpend > 0 ? parseFloat((attributedRevenue / metaSpend).toFixed(2)) : 0;
-            const roi = metaSpend > 0 ? parseFloat((((attributedRevenue - metaSpend) / metaSpend) * 100).toFixed(2)) : 0;
+            const hasRevenueTracking = !!rev.hasRevenueTracking;
+            const attributedRevenue = hasRevenueTracking ? parseFloat(Number(rev.totalRevenue || 0).toFixed(2)) : null;
+            const roas = hasRevenueTracking && metaSpend > 0 ? parseFloat((Number(attributedRevenue) / metaSpend).toFixed(2)) : null;
+            const roi = hasRevenueTracking && metaSpend > 0 ? parseFloat((((Number(attributedRevenue) - metaSpend) / metaSpend) * 100).toFixed(2)) : null;
 
             meta = {
               connected: true,
@@ -11138,8 +11139,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               clicks: parseNum(clicks),
               impressions: parseNum(impressions),
               conversions: parseNum(conversions),
-              hasRevenueTracking: !!rev.hasRevenueTracking,
-              conversionValue: parseFloat(Number(rev.conversionValue || 0).toFixed(2)),
+              hasRevenueTracking,
+              conversionValue: hasRevenueTracking ? parseFloat(Number(rev.conversionValue || 0).toFixed(2)) : null,
               attributedRevenue,
               roas,
               roi,
@@ -25839,8 +25840,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               metaMetrics.reach += parseNum(row.reach);
             });
             // Revenue from Meta: pull from revenue sources for this date range
-            const metaRevSources = await storage.getRevenueTotalForRange(id, metaStart, metaEnd).catch(() => ({ totalRevenue: 0 }));
+            const metaRevSources = await storage.getRevenueTotalForRange(id, metaStart, metaEnd, "meta").catch(() => ({ totalRevenue: 0 }));
             metaMetrics.revenue = parseNum((metaRevSources as any)?.totalRevenue);
+            metaMetrics.hasRevenueTracking = metaMetrics.revenue > 0;
             // Use the last row's date as freshness indicator
             const lastRow = metaDailyRows[metaDailyRows.length - 1];
             metaLastUpdate = (lastRow as any)?.date || null;

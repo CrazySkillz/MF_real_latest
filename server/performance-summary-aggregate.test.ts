@@ -90,6 +90,50 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.roi).toMatchObject({ available: true, value: 150, sources: ["revenue", "spend"] });
   });
 
+  it("only includes Meta attributed revenue when Meta revenue tracking is available", () => {
+    const withoutRevenue = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-meta-no-revenue",
+      dateRange: "30days",
+      ga4: { connected: false },
+      webAnalytics: { connected: false, provider: null },
+      spend: { unifiedSpend: 100, spendSource: "platform_spend_fallback" },
+      platforms: {
+        meta: { connected: true, impressions: 1000, clicks: 40, spend: 100, conversions: 4, attributedRevenue: 300 },
+      },
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [],
+    });
+    const metaWithoutRevenue = withoutRevenue.sources.find((source) => source.id === "meta");
+
+    expect(metaWithoutRevenue?.includedMetrics).not.toContain("attributedRevenue");
+    expect(metaWithoutRevenue?.excludedMetrics).toContainEqual({
+      metric: "attributedRevenue",
+      reason: "Meta Total Revenue requires a Meta-scoped imported revenue source",
+    });
+    expect(metaWithoutRevenue?.metrics.attributedRevenue).toBeNull();
+    expect(withoutRevenue.totals.revenue).toMatchObject({ available: false, value: 0, sources: [] });
+    expect(withoutRevenue.totals.roas).toMatchObject({ available: false, value: null, sources: [] });
+    expect(withoutRevenue.totals.roi).toMatchObject({ available: false, value: null, sources: [] });
+
+    const withRevenue = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-meta-revenue",
+      dateRange: "30days",
+      ga4: { connected: false },
+      webAnalytics: { connected: false, provider: null },
+      spend: { unifiedSpend: 100, spendSource: "platform_spend_fallback" },
+      platforms: {
+        meta: { connected: true, impressions: 1000, clicks: 40, spend: 100, conversions: 4, hasRevenueTracking: true, attributedRevenue: 300 },
+      },
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 300, totalRevenue: 300 },
+      revenueSources: [],
+    });
+
+    expect(withRevenue.sources.find((source) => source.id === "meta")?.includedMetrics).toContain("attributedRevenue");
+    expect(withRevenue.totals.revenue).toMatchObject({ available: true, value: 300, sources: ["meta"] });
+    expect(withRevenue.totals.roas).toMatchObject({ available: true, value: 3, sources: ["revenue", "spend"] });
+    expect(withRevenue.totals.roi).toMatchObject({ available: true, value: 200, sources: ["revenue", "spend"] });
+  });
+
   it("aggregates future main Connected Platform sources through the generic source contract", () => {
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "campaign-future",

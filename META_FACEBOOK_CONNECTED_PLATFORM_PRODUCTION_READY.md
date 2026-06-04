@@ -21,7 +21,7 @@ Meta/Facebook is not production-ready yet.
 
 This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
 
-Meta Commit 5 has been implemented locally. Local validation passed; user/browser validation is pending.
+Meta Commit 6 has been implemented locally. Local validation passed; user/browser validation is pending.
 
 Verified current foundations:
 
@@ -34,6 +34,7 @@ Verified current foundations:
 - `AddRevenueWizardModal` already has `platformContext: "meta"` support.
 - Commit 4 replaced the Campaign Overview `Facebook Ads` percentage-split placeholder metrics with source-backed values from `performanceSummary.sources[].id === "meta"`.
 - Commit 5 scopes visible Meta analytics, daily metrics, and Campaign Overview Meta aggregate totals to saved selected Meta campaign IDs.
+- Commit 6 gates Meta attributed revenue in the shared aggregate behind Meta revenue tracking and fixes an unscoped Meta revenue read in Executive Summary.
 
 Verified production-readiness gaps:
 
@@ -44,7 +45,6 @@ Verified production-readiness gaps:
 - `server/meta-scheduler.ts` filters by `selectedCampaignIds` when present, but falls back to all campaigns when selected IDs are absent. Production behavior should fail closed after the connection flow requires explicit selection.
 - Live scheduler daily refresh is not yet production-proven. The reviewed code calls aggregate `getCampaignInsights` for a daily window instead of using the existing `getCampaignDailyInsights` helper for true daily rows.
 - `storage.upsertMetaDailyMetrics` updates core numeric fields but does not update `metaCampaignName`, `ga4Revenue`, or `ga4UtmName` on conflict in the reviewed path.
-- One performance-summary path reads Meta revenue through `getRevenueTotalForRange(id, metaStart, metaEnd)` without `platformContext: "meta"`. That can mix generic or GA4 revenue into Meta attributed revenue. A newer outcome-totals path uses `resolveMetaRevenueContext`, so active caller ownership must be traced before fixing.
 - `server/utils/meta-revenue.ts` has a CSV processor that returns totals but does not materialize revenue records in the shared revenue-source storage path. Its own comment says storage integration is a placeholder.
 - Meta report send and preview routes currently contain TODO behavior while returning success or placeholder preview output. That is not production-ready for report behavior.
 - KPI, Benchmark, report, disconnect, reconnect, scheduler, and source-list lifecycle safety are implemented in parts, but not yet proven end to end.
@@ -404,13 +404,18 @@ Status:
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ### Meta Commit 6: Aggregate And Revenue Semantics Hardening
 
 Goal:
 
 - Prevent wrong ROAS/ROI by making Meta source and revenue meanings explicit.
+
+Root cause:
+
+- `/api/campaigns/:id/executive-summary` read Meta revenue with `getRevenueTotalForRange(id, metaStart, metaEnd)` and no `platformContext: "meta"`, so non-Meta imported revenue could be presented as Meta attributed revenue.
+- `server/utils/performance-summary-aggregate.ts` included Meta `attributedRevenue` whenever Meta was connected, instead of following the LinkedIn pattern where attributed revenue is included only when platform-scoped revenue tracking is proven.
 
 Tasks:
 
@@ -431,7 +436,13 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Completed locally: `GET /api/campaigns/:id/outcome-totals` now passes Meta attributed revenue, ROAS, and ROI to the aggregate only when `resolveMetaRevenueContext` confirms Meta revenue tracking.
+- [x] Completed locally: `GET /api/campaigns/:id/executive-summary` now reads Meta revenue through `getRevenueTotalForRange(id, metaStart, metaEnd, "meta")`.
+- [x] Completed locally: `performanceSummary.sources[].id === "meta"` now excludes `attributedRevenue` and records an unavailable reason until Meta revenue tracking is proven.
+- [x] Completed locally: regression coverage added in `server/performance-summary-aggregate.test.ts` and `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts server/performance-summary-aggregate.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
 
 ### Meta Commit 7: Scheduler And Refresh Hardening
 
@@ -632,14 +643,14 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 6 through Meta Commit 12.
+- Meta Commit 7 through Meta Commit 12.
 
 Outstanding evidence:
 
-- Meta Commit 5 user/browser validation is pending.
+- Meta Commit 6 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 
 ## Current Handoff
 
-The next smallest safest implementation step after Meta Commit 5 validation is Meta Commit 6: aggregate and revenue semantics hardening. That commit should not change KPI, Benchmark, report, scheduler, or disconnect/reconnect behavior yet.
+The next smallest safest implementation step after Meta Commit 6 validation is Meta Commit 7: scheduler and refresh hardening. That commit should not change KPI, Benchmark, report, disconnect/reconnect, or live OAuth behavior yet.

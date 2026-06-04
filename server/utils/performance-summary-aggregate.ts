@@ -162,25 +162,31 @@ const mainSourceAdapters: SourceAdapter[] = [
     build: (input) => {
       const meta = input.platforms?.meta || {};
       const metaConnected = meta.connected === true;
+      const hasMetaRevenue = meta.hasRevenueTracking === true;
       return {
         id: "meta",
         label: "Meta Ads",
         category: "paid_media",
         connected: metaConnected,
         capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
-        includedMetrics: metaConnected ? ["impressions", "clicks", "spend", "conversions", "attributedRevenue"] : [],
+        includedMetrics: metaConnected
+          ? ["impressions", "clicks", "spend", "conversions", ...(hasMetaRevenue ? ["attributedRevenue"] : [])]
+          : [],
         excludedMetrics: [
           { metric: "sessions", reason: "Sessions are web analytics metrics" },
           { metric: "users", reason: "Users are web analytics metrics" },
           { metric: "pageviews", reason: "Pageviews are web analytics metrics" },
           { metric: "leads", reason: "Leads are not available in the current Meta aggregate" },
+          ...(metaConnected && !hasMetaRevenue
+            ? [{ metric: "attributedRevenue", reason: "Meta Total Revenue requires a Meta-scoped imported revenue source" }]
+            : []),
         ],
         metrics: {
           impressions: parseNum(meta.impressions),
           clicks: parseNum(meta.clicks),
           spend: parseNum(meta.spend),
           conversions: parseNum(meta.conversions),
-          attributedRevenue: parseNum(meta.attributedRevenue),
+          attributedRevenue: hasMetaRevenue ? parseNum(meta.attributedRevenue) : null,
         },
       };
     },

@@ -21,7 +21,7 @@ Meta/Facebook is not production-ready yet.
 
 This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
 
-Meta Commit 8 has been implemented locally. Local validation passed; user/browser validation is pending.
+Meta Commit 9 has been implemented locally. Local validation passed; user/browser validation is pending.
 
 Verified current foundations:
 
@@ -37,6 +37,7 @@ Verified current foundations:
 - Commit 6 gates Meta attributed revenue in the shared aggregate behind Meta revenue tracking and fixes an unscoped Meta revenue read in Executive Summary.
 - Commit 7 adds a Google Ads-style Meta Overview Total Revenue card, plus/add action, Sources link, source provenance, edit/delete source behavior, and the shared revenue wizard entry point for Meta-attributed revenue.
 - Commit 8 aligns the Meta Overview initial loading state with the app-level `Loading...` fallback to avoid refresh layout jumps.
+- Commit 9 makes Meta scheduler/manual refresh fail closed when selected Meta campaign IDs are missing instead of refreshing all campaigns in the ad account.
 
 Verified production-readiness gaps:
 
@@ -548,37 +549,83 @@ Status:
 - [x] Completed locally: regression coverage asserts the Meta loading branch does not render `Navigation`, `Sidebar`, or `Loading Meta analytics`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
-### Meta Commit 9: Scheduler And Refresh Hardening
+### Meta Commit 9: Scheduler Selected-Campaign Fail-Closed
 
 Goal:
 
-- Make scheduled and manual Meta refresh update the same source-backed rows consumed by the UI.
+- Prevent scheduled and manual Meta refresh from broadening to all ad-account campaigns when selected Meta campaign IDs are missing.
+
+Root cause analysis:
+
+- `generateMockMetaData` filtered by `selectedCampaignIds` only when selected IDs were present; otherwise it generated all Meta mock campaigns.
+- `fetchRealMetaData` filtered live campaigns only when selected IDs were present; otherwise it refreshed all campaigns returned by the ad account.
+- Because the Create Campaign and Connected Platforms flows now require explicit selected campaign IDs, refresh without a saved selection is an invalid state and must fail closed.
+- The smallest safe fix is to skip refresh when selected IDs are missing or invalid, without changing daily live API shape, KPI behavior, Benchmark behavior, report behavior, disconnect/reconnect behavior, or OAuth behavior in the same commit.
 
 Tasks:
 
-- Audit `server/meta-scheduler.ts` test-mode and live-mode refresh.
-- Use selected campaign IDs in both test and live refresh.
-- Replace aggregate daily-window calls with true daily insights where live Graph API supports it.
-- Persist `lastRefreshAt` consistently.
-- Preserve campaign names on insert and update.
-- Confirm spend record writes are campaign-scoped and do not duplicate misleading spend rows.
-- Fail closed when the Meta connection or selected campaign state is invalid.
+- Audit the selected-campaign boundary in `server/meta-scheduler.ts`.
+- Normalize saved selected Meta campaign IDs.
+- Skip refresh when selected IDs are missing or invalid.
+- Ensure test-mode mock refresh does not fall back to all mock campaigns.
+- Ensure live refresh does not fall back to all ad-account campaigns.
 
 Validation:
 
 - Trigger `/api/meta/:campaignId/refresh` for a test-mode Meta connection.
 - Confirm new daily rows are written only for selected campaigns.
 - Confirm Campaign Overview and Meta Overview update from the same rows.
-- Confirm scheduler skips or fails closed when the connection is missing.
+- Confirm scheduler skips or fails closed when selected campaign IDs are missing.
 - Confirm unrelated campaigns are unchanged.
+
+Status:
+
+- [x] Completed locally: `refreshMetaDataForCampaign` now skips refresh when the Meta connection has no selected campaign IDs.
+- [x] Completed locally: test-mode mock generation now skips instead of generating all mock campaigns when selected IDs are missing.
+- [x] Completed locally: live refresh now skips instead of refreshing all ad-account campaigns when selected IDs are missing.
+- [x] Completed locally: selected IDs are normalized and invalid selected-ID JSON fails closed.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
+
+### Meta Commit 10: Scheduler Live Daily Row And Upsert Hardening
+
+Goal:
+
+- Make live Meta scheduler refresh persist true daily source-backed rows and preserve row metadata correctly.
+
+Root cause analysis:
+
+- Live refresh currently calls aggregate `getCampaignInsights` for a 90-day range and stores one row at the range end date.
+- `MetaGraphAPIClient.getCampaignDailyInsights` already exists and is the correct helper for true daily rows, but the scheduler does not use it in the reviewed path.
+- `storage.upsertMetaDailyMetrics` updates numeric fields on conflict but does not update `metaCampaignName`, `ga4Revenue`, or `ga4UtmName`.
+- These are related scheduler/data materialization issues, but they are separate from selected-campaign fail-closed safety and should be handled in their own small commit.
+
+Tasks:
+
+- Replace live aggregate daily-window storage with true `getCampaignDailyInsights` rows where the helper supports it.
+- Preserve selected campaign scoping from Meta Commit 9.
+- Persist `metaCampaignName` for live refresh rows.
+- Update `storage.upsertMetaDailyMetrics` conflict behavior for safe metadata fields.
+- Confirm spend record writes remain campaign-scoped and do not duplicate misleading spend rows.
+- Preserve existing test-mode behavior.
+
+Validation:
+
+- Trigger `/api/meta/:campaignId/refresh` for a live or production-like Meta connection when available.
+- Confirm rows are daily rows, not one aggregate 90-day row.
+- Confirm selected campaign IDs still scope the refresh.
+- Confirm campaign names are preserved after update.
+- Confirm test-mode refresh behavior remains unchanged.
 
 Status:
 
 - [ ] Not started.
 
-### Meta Commit 10: Disconnect, Reconnect, And Stale Data Safety
+### Meta Commit 11: Disconnect, Reconnect, And Stale Data Safety
 
 Goal:
 
@@ -606,7 +653,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 11: KPI And Benchmark Production Hardening
+### Meta Commit 12: KPI And Benchmark Production Hardening
 
 Goal:
 
@@ -633,7 +680,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 12: Report And Scheduled Report Safety
+### Meta Commit 13: Report And Scheduled Report Safety
 
 Goal:
 
@@ -661,7 +708,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 13: Meta Attributed Revenue Import Parity
+### Meta Commit 14: Meta Attributed Revenue Import Parity
 
 Goal:
 
@@ -691,7 +738,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 14: Final Production-Readiness Regression And Documentation
+### Meta Commit 15: Final Production-Readiness Regression And Documentation
 
 Goal:
 
@@ -749,15 +796,15 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 9 through Meta Commit 14.
+- Meta Commit 10 through Meta Commit 15.
 
 Outstanding evidence:
 
 - Meta Commit 6 user/browser validation is pending.
-- Meta Commit 8 user/browser validation is pending.
+- Meta Commit 9 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 
 ## Current Handoff
 
-The next smallest safest implementation step after Meta Commit 8 validation is Meta Commit 9: scheduler and refresh hardening. That commit should not change KPI, Benchmark, report, disconnect/reconnect, or live OAuth behavior yet.
+The next smallest safest implementation step after Meta Commit 9 validation is Meta Commit 10: scheduler live daily row and upsert hardening. That commit should not change KPI, Benchmark, report, disconnect/reconnect, or live OAuth behavior yet.

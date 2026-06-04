@@ -20,6 +20,18 @@ export const META_MOCK_CAMPAIGNS = [
   { id: 'meta_retargeting',      name: 'Retargeting Campaign',      impressionBase: 6000,  ctrBase: 0.035, spendBase: 150, convRateBase: 0.08 },
 ];
 
+const getSelectedMetaCampaignIds = (connection: any): string[] => {
+  try {
+    const raw = connection?.selectedCampaignIds;
+    const parsed = Array.isArray(raw) ? raw : JSON.parse(String(raw || "[]"));
+    return Array.isArray(parsed)
+      ? Array.from(new Set(parsed.map((id: any) => String(id || "").trim()).filter(Boolean)))
+      : [];
+  } catch {
+    return [];
+  }
+};
+
 /**
  * Generate mock Meta data for test mode
  * Creates realistic daily metrics data
@@ -87,13 +99,17 @@ export async function generateMockMetaData(
 
     const date = iso(nextUTC);
 
-    // Filter by selected campaign IDs if configured
-    const selectedIds: string[] | undefined = connection.selectedCampaignIds
-      ? JSON.parse(connection.selectedCampaignIds)
-      : undefined;
-    const campaignsToGenerate = selectedIds && selectedIds.length > 0
-      ? META_MOCK_CAMPAIGNS.filter(mc => selectedIds.includes(mc.id))
-      : META_MOCK_CAMPAIGNS;
+    const selectedIds = getSelectedMetaCampaignIds(connection);
+    if (selectedIds.length === 0) {
+      console.warn(`[Meta Scheduler] TEST MODE: Skipping mock data for campaign ${campaignId}; missing selected Meta campaign IDs`);
+      return;
+    }
+
+    const campaignsToGenerate = META_MOCK_CAMPAIGNS.filter(mc => selectedIds.includes(mc.id));
+    if (campaignsToGenerate.length === 0) {
+      console.warn(`[Meta Scheduler] TEST MODE: Skipping mock data for campaign ${campaignId}; selected Meta campaign IDs do not match available test campaigns`);
+      return;
+    }
 
     // Generate metrics for each mock campaign
     const rows: any[] = [];
@@ -220,13 +236,17 @@ async function fetchRealMetaData(
       return;
     }
 
-    // Filter by selected campaigns if configured
-    const selectedIds: string[] | undefined = connection.selectedCampaignIds
-      ? JSON.parse(connection.selectedCampaignIds)
-      : undefined;
-    const filteredCampaigns = selectedIds && selectedIds.length > 0
-      ? campaigns.filter((c: any) => selectedIds.includes(c.id))
-      : campaigns;
+    const selectedIds = getSelectedMetaCampaignIds(connection);
+    if (selectedIds.length === 0) {
+      console.warn(`[Meta Scheduler] PRODUCTION MODE: Skipping refresh for campaign ${campaignId}; missing selected Meta campaign IDs`);
+      return;
+    }
+
+    const filteredCampaigns = campaigns.filter((c: any) => selectedIds.includes(c.id));
+    if (filteredCampaigns.length === 0) {
+      console.warn(`[Meta Scheduler] PRODUCTION MODE: Skipping refresh for campaign ${campaignId}; selected Meta campaign IDs were not found in ad account ${connection.adAccountId}`);
+      return;
+    }
 
     // Fetch insights for each campaign
     const campaignIds = filteredCampaigns.map((c: any) => c.id);
@@ -343,6 +363,11 @@ export async function refreshMetaDataForCampaign(
 
     if (!connection) {
       console.log(`[Meta Scheduler] No Meta connection found for campaign ${campaignId}`);
+      return;
+    }
+
+    if (getSelectedMetaCampaignIds(connection).length === 0) {
+      console.warn(`[Meta Scheduler] Skipping refresh for campaign ${campaignId}; missing selected Meta campaign IDs`);
       return;
     }
 

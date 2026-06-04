@@ -253,4 +253,35 @@ describe("Meta production readiness regression guard", () => {
     expect(selectedCampaignRoute).toContain("await generateMockMetaData(campaignId, nextConnection, { advanceDay: true });");
     expect(selectedCampaignRoute.indexOf("storage.updateMetaConnection")).toBeLessThan(selectedCampaignRoute.indexOf("generateMockMetaData"));
   });
+
+  it("fails closed during Meta scheduler refresh when selected campaign IDs are missing", () => {
+    const scheduler = read("server", "meta-scheduler.ts");
+    const mockGenerator = sliceBetween(
+      scheduler,
+      "export async function generateMockMetaData(",
+      "/**\n * Fetch real Meta data from Graph API"
+    );
+    const liveRefresh = sliceBetween(
+      scheduler,
+      "async function fetchRealMetaData(",
+      "/**\n * Refresh Meta data for a single campaign"
+    );
+    const refreshForCampaign = sliceBetween(
+      scheduler,
+      "export async function refreshMetaDataForCampaign(",
+      "/**\n * Refresh Meta data for all campaigns with Meta connections"
+    );
+
+    expect(scheduler).toContain("const getSelectedMetaCampaignIds = (connection: any): string[] => {");
+    expect(mockGenerator).toContain("if (selectedIds.length === 0)");
+    expect(mockGenerator).toContain("missing selected Meta campaign IDs");
+    expect(mockGenerator).toContain("const campaignsToGenerate = META_MOCK_CAMPAIGNS.filter");
+    expect(mockGenerator).not.toContain(": META_MOCK_CAMPAIGNS");
+    expect(liveRefresh).toContain("if (selectedIds.length === 0)");
+    expect(liveRefresh).toContain("missing selected Meta campaign IDs");
+    expect(liveRefresh).toContain("const filteredCampaigns = campaigns.filter");
+    expect(liveRefresh).not.toContain(": campaigns");
+    expect(refreshForCampaign).toContain("if (getSelectedMetaCampaignIds(connection).length === 0)");
+    expect(refreshForCampaign).toContain("return;");
+  });
 });

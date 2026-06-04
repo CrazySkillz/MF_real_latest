@@ -4582,11 +4582,6 @@ export default function CampaignDetail() {
   const campaignSpend = parseFloat(campaign?.spend || "0");
   const estimatedConversions = Math.round(campaignClicks * 0.0347); // 3.47% conversion rate
   
-  // Distribute campaign metrics across connected platforms based on typical performance
-  const platformDistribution = {
-    "Facebook Ads": { impressions: 0.35, clicks: 0.32, spend: 0.38, conversions: 0.28 },
-  };
-  
   // Debug: Log connection status
   useEffect(() => {
     console.log('[Campaign Detail] GA4 Connection Status:', {
@@ -4623,6 +4618,24 @@ export default function CampaignDetail() {
   const linkedInConversions = parseLinkedInMetric(linkedInSourceMetrics.conversions);
   const linkedInCtr = linkedInImpressions > 0 ? formatPct((linkedInClicks / linkedInImpressions) * 100) : "0.00%";
   const linkedInCpc = linkedInClicks > 0 ? `$${(linkedInSpend / linkedInClicks).toFixed(2)}` : "$0.00";
+  const metaSource = useMemo(() => {
+    const sources = Array.isArray(campaignOutcomeTotals?.performanceSummary?.sources)
+      ? campaignOutcomeTotals.performanceSummary.sources
+      : [];
+    return sources.find((source: any) => String(source?.id || "") === "meta");
+  }, [campaignOutcomeTotals]);
+  const parseMetaMetric = (value: any): number => {
+    const parsed = typeof value === "string" ? parseFloat(value.replace(/,/g, "")) : Number(value || 0);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const metaMetrics = metaSource?.metrics || {};
+  const isMetaConnected = platformStatusMap.get("facebook")?.connected === true;
+  const metaImpressions = isMetaConnected ? parseMetaMetric(metaMetrics.impressions) : 0;
+  const metaClicks = isMetaConnected ? parseMetaMetric(metaMetrics.clicks) : 0;
+  const metaSpend = isMetaConnected ? parseMetaMetric(metaMetrics.spend) : 0;
+  const metaConversions = isMetaConnected ? parseMetaMetric(metaMetrics.conversions) : 0;
+  const metaCtr = metaImpressions > 0 ? formatPct((metaClicks / metaImpressions) * 100) : "0.00%";
+  const metaCpc = metaClicks > 0 ? `$${(metaSpend / metaClicks).toFixed(2)}` : "$0.00";
   const googleAdsSource = useMemo(() => {
     const sources = Array.isArray(campaignOutcomeTotals?.performanceSummary?.sources)
       ? campaignOutcomeTotals.performanceSummary.sources
@@ -4671,13 +4684,13 @@ export default function CampaignDetail() {
     },
     {
       platform: "Facebook Ads", 
-      connected: platformStatusMap.get("facebook")?.connected === true,
-      impressions: platformStatusMap.get("facebook")?.connected ? Math.round(campaignImpressions * platformDistribution["Facebook Ads"].impressions) : 0,
-      clicks: platformStatusMap.get("facebook")?.connected ? Math.round(campaignClicks * platformDistribution["Facebook Ads"].clicks) : 0,
-      conversions: platformStatusMap.get("facebook")?.connected ? Math.round(estimatedConversions * platformDistribution["Facebook Ads"].conversions) : 0,
-      spend: platformStatusMap.get("facebook")?.connected ? (campaignSpend * platformDistribution["Facebook Ads"].spend).toFixed(2) : "0.00",
-      ctr: platformStatusMap.get("facebook")?.connected ? "2.64%" : "0.00%",
-      cpc: platformStatusMap.get("facebook")?.connected ? "$0.68" : "$0.00",
+      connected: isMetaConnected,
+      impressions: metaImpressions,
+      clicks: metaClicks,
+      conversions: metaConversions,
+      spend: metaSpend.toFixed(2),
+      ctr: metaCtr,
+      cpc: metaCpc,
       analyticsPath: platformStatusMap.get("facebook")?.analyticsPath || `/campaigns/${campaign?.id}/meta-analytics`
     },
     {

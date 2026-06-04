@@ -21,7 +21,7 @@ Meta/Facebook is not production-ready yet.
 
 This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
 
-Meta Commit 3 has been implemented locally. Local validation passed; user/browser validation is pending.
+Meta Commit 4 has been implemented locally. Local validation passed; user/browser validation is pending.
 
 Verified current foundations:
 
@@ -32,12 +32,13 @@ Verified current foundations:
 - Meta selected-campaign storage exists through `selectedCampaignIds`.
 - Meta analytics, KPI, Benchmark, Report, scheduler, and revenue routes exist.
 - `AddRevenueWizardModal` already has `platformContext: "meta"` support.
+- Commit 4 replaced the Campaign Overview `Facebook Ads` percentage-split placeholder metrics with source-backed values from `performanceSummary.sources[].id === "meta"`.
 
 Verified production-readiness gaps:
 
 - `SimpleMetaAuth` only exposes the test-mode connection action in the visible UI. The live OAuth route exists server-side, but the current UI path does not provide the same live OAuth entry pattern used by hardened sources.
 - Commit 2 fixed the Create Campaign/Connected Platforms test-mode setup path that allowed finalizing without selected Meta campaign IDs.
-- The campaign overview card for `Facebook Ads` in `client/src/pages/campaign-detail.tsx` still uses percentage-split placeholder values from generic campaign totals. Google Ads has already been moved to source-backed values; Meta has not.
+- Commit 3 browser validation was recorded as semi-validated: the Meta add-source path works, but the connection-success transition is not smooth and remains a future UX follow-up.
 - `GET /api/meta/:campaignId/analytics` returns all mock campaigns in test mode from `generateMetaMockData`; selected-campaign filtering was not verified in that visible analytics response.
 - `server/meta-scheduler.ts` filters by `selectedCampaignIds` when present, but falls back to all campaigns when selected IDs are absent. Production behavior should fail closed after the connection flow requires explicit selection.
 - Live scheduler daily refresh is not yet production-proven. The reviewed code calls aggregate `getCampaignInsights` for a daily window instead of using the existing `getCampaignDailyInsights` helper for true daily rows.
@@ -335,7 +336,7 @@ Status:
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser semi-validation recorded: add-source path works, but connection-success transition smoothness remains a future UX follow-up.
 
 ### Meta Commit 4: Remove Placeholder Facebook Metrics
 
@@ -359,7 +360,13 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Completed locally: removed the Facebook percentage-split placeholder calculations from `client/src/pages/campaign-detail.tsx`.
+- [x] Completed locally: Campaign Overview `Facebook Ads` metrics now read from `performanceSummary.sources[].id === "meta"`.
+- [x] Completed locally: preserved the existing Google Ads, LinkedIn, GA4, and Google Sheets card paths.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
 
 ### Meta Commit 5: Selected Campaign Scoping And Analytics Route Parity
 
@@ -614,13 +621,14 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 4 through Meta Commit 12.
+- Meta Commit 5 through Meta Commit 12.
 
 Outstanding evidence:
 
-- Meta Commit 3 user/browser validation is pending.
+- Meta Commit 4 user/browser validation is pending.
+- Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 
 ## Current Handoff
 
-The next smallest safest implementation step after Meta Commit 3 validation is Meta Commit 4: remove placeholder Facebook metrics from Campaign Overview and use source-backed Meta aggregate values. That commit should not change Meta analytics route filtering, KPI, Benchmark, report, scheduler, or revenue behavior yet.
+The next smallest safest implementation step after Meta Commit 4 validation is Meta Commit 5: selected campaign scoping and analytics route parity. That commit should not change KPI, Benchmark, report, scheduler, or revenue behavior yet.

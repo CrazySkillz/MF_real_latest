@@ -36,6 +36,35 @@ describe("Meta production readiness regression guard", () => {
     expect(metaBlock).not.toContain("window.location.reload()");
   });
 
+  it("uses source-backed Meta metrics for the Campaign Overview Facebook card", () => {
+    const page = read("client", "src", "pages", "campaign-detail.tsx");
+    const metaSetup = sliceBetween(
+      page,
+      "const metaSource = useMemo(() => {",
+      "const googleAdsSource = useMemo(() => {"
+    );
+    const facebookCard = sliceBetween(
+      page,
+      'platform: "Facebook Ads"',
+      'platform: "Google Ads"'
+    );
+
+    expect(metaSetup).toContain("campaignOutcomeTotals.performanceSummary.sources");
+    expect(metaSetup).toContain('String(source?.id || "") === "meta"');
+    expect(metaSetup).toContain("const metaMetrics = metaSource?.metrics || {};");
+    expect(metaSetup).toContain('const isMetaConnected = platformStatusMap.get("facebook")?.connected === true;');
+    expect(facebookCard).toContain("connected: isMetaConnected");
+    expect(facebookCard).toContain("impressions: metaImpressions");
+    expect(facebookCard).toContain("clicks: metaClicks");
+    expect(facebookCard).toContain("conversions: metaConversions");
+    expect(facebookCard).toContain("spend: metaSpend.toFixed(2)");
+    expect(facebookCard).toContain("ctr: metaCtr");
+    expect(facebookCard).toContain("cpc: metaCpc");
+    expect(page).not.toContain("platformDistribution");
+    expect(page).not.toContain('platformStatusMap.get("facebook")?.connected ? "2.64%" : "0.00%"');
+    expect(page).not.toContain('platformStatusMap.get("facebook")?.connected ? "$0.68" : "$0.00"');
+  });
+
   it("keeps the Create Campaign confirm Back button on platform selection instead of re-entering OAuth", () => {
     const page = read("client", "src", "pages", "campaigns.tsx");
     const handler = sliceBetween(

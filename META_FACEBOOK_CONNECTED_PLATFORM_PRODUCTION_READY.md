@@ -21,7 +21,7 @@ Meta/Facebook is not production-ready yet.
 
 This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
 
-Meta Commit 9 has been implemented locally. Local validation passed; user/browser validation is pending.
+Meta Commit 10 has been implemented locally. Local validation passed; user/browser validation is pending.
 
 Verified current foundations:
 
@@ -38,6 +38,7 @@ Verified current foundations:
 - Commit 7 adds a Google Ads-style Meta Overview Total Revenue card, plus/add action, Sources link, source provenance, edit/delete source behavior, and the shared revenue wizard entry point for Meta-attributed revenue.
 - Commit 8 aligns the Meta Overview initial loading state with the app-level `Loading...` fallback to avoid refresh layout jumps.
 - Commit 9 makes Meta scheduler/manual refresh fail closed when selected Meta campaign IDs are missing instead of refreshing all campaigns in the ad account.
+- Commit 10 makes live Meta scheduler refresh use true daily insight rows and preserves Meta daily-row metadata during upsert.
 
 Verified production-readiness gaps:
 
@@ -46,8 +47,8 @@ Verified production-readiness gaps:
 - Commit 3 browser validation was recorded as semi-validated: the Meta add-source path works, but the connection-success transition is not smooth and remains a future UX follow-up.
 - Commit 5 replaced the visible Meta analytics test-mode route's separate all-campaign mock generator with persisted selected Meta daily rows.
 - `server/meta-scheduler.ts` filters by `selectedCampaignIds` when present, but falls back to all campaigns when selected IDs are absent. Production behavior should fail closed after the connection flow requires explicit selection.
-- Live scheduler daily refresh is not yet production-proven. The reviewed code calls aggregate `getCampaignInsights` for a daily window instead of using the existing `getCampaignDailyInsights` helper for true daily rows.
-- `storage.upsertMetaDailyMetrics` updates core numeric fields but does not update `metaCampaignName`, `ga4Revenue`, or `ga4UtmName` on conflict in the reviewed path.
+- Live scheduler daily refresh is implemented locally with `getCampaignDailyInsights`, but still requires deployed/production-like evidence before calling live scheduler refresh production-ready.
+- `storage.upsertMetaDailyMetrics` now updates `metaCampaignName` and preserves GA4 attribution metadata on conflict in the reviewed path.
 - `server/utils/meta-revenue.ts` has a CSV processor that returns totals but does not materialize revenue records in the shared revenue-source storage path. Its own comment says storage integration is a placeholder.
 - Meta report send and preview routes currently contain TODO behavior while returning success or placeholder preview output. That is not production-ready for report behavior.
 - KPI, Benchmark, report, disconnect, reconnect, scheduler, and source-list lifecycle safety are implemented in parts, but not yet proven end to end.
@@ -589,7 +590,7 @@ Status:
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ### Meta Commit 10: Scheduler Live Daily Row And Upsert Hardening
 
@@ -600,7 +601,7 @@ Goal:
 Root cause analysis:
 
 - Live refresh currently calls aggregate `getCampaignInsights` for a 90-day range and stores one row at the range end date.
-- `MetaGraphAPIClient.getCampaignDailyInsights` already exists and is the correct helper for true daily rows, but the scheduler does not use it in the reviewed path.
+- `MetaGraphAPIClient.getCampaignDailyInsights` already existed and was the correct helper for true daily rows, but the scheduler previously did not use it in the reviewed path.
 - `storage.upsertMetaDailyMetrics` updates numeric fields on conflict but does not update `metaCampaignName`, `ga4Revenue`, or `ga4UtmName`.
 - These are related scheduler/data materialization issues, but they are separate from selected-campaign fail-closed safety and should be handled in their own small commit.
 
@@ -623,7 +624,16 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Completed locally: live Meta scheduler refresh now calls `getCampaignDailyInsights` for true daily rows.
+- [x] Completed locally: live refresh rows now include `metaCampaignName`.
+- [x] Completed locally: live refresh rows use each insight's `dateStart` or `dateStop` instead of storing one aggregate end-date row.
+- [x] Completed locally: `storage.upsertMetaDailyMetrics` now updates `metaCampaignName` on conflict.
+- [x] Completed locally: `storage.upsertMetaDailyMetrics` now preserves existing `ga4Revenue` and `ga4UtmName` when refreshed rows do not include GA4 attribution.
+- [x] Completed locally: selected campaign scoping from Meta Commit 9 is preserved.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
 
 ### Meta Commit 11: Disconnect, Reconnect, And Stale Data Safety
 
@@ -796,15 +806,15 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 10 through Meta Commit 15.
+- Meta Commit 11 through Meta Commit 15.
 
 Outstanding evidence:
 
 - Meta Commit 6 user/browser validation is pending.
-- Meta Commit 9 user/browser validation is pending.
+- Meta Commit 10 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 
 ## Current Handoff
 
-The next smallest safest implementation step after Meta Commit 9 validation is Meta Commit 10: scheduler live daily row and upsert hardening. That commit should not change KPI, Benchmark, report, disconnect/reconnect, or live OAuth behavior yet.
+The next smallest safest implementation step after Meta Commit 10 validation is Meta Commit 11: disconnect, reconnect, and stale data safety. That commit should not change KPI, Benchmark, report, scheduler, or live OAuth behavior yet.

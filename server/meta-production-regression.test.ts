@@ -284,4 +284,29 @@ describe("Meta production readiness regression guard", () => {
     expect(refreshForCampaign).toContain("if (getSelectedMetaCampaignIds(connection).length === 0)");
     expect(refreshForCampaign).toContain("return;");
   });
+
+  it("stores live Meta scheduler refresh as daily rows and preserves upsert metadata", () => {
+    const scheduler = read("server", "meta-scheduler.ts");
+    const storage = read("server", "storage.ts");
+    const liveRefresh = sliceBetween(
+      scheduler,
+      "async function fetchRealMetaData(",
+      "/**\n * Refresh Meta data for a single campaign"
+    );
+    const upsert = sliceBetween(
+      storage,
+      "async upsertMetaDailyMetrics(metrics: InsertMetaDailyMetric[]): Promise<void> {",
+      "// LinkedIn Import Session methods"
+    );
+
+    expect(liveRefresh).toContain("const dailyInsights = await metaClient.getCampaignDailyInsights(campaign.id, dailyDateRange);");
+    expect(liveRefresh).toContain("for (const insights of Array.isArray(dailyInsights) ? dailyInsights : [])");
+    expect(liveRefresh).toContain('const date = String(insights.dateStart || insights.dateStop || "").slice(0, 10);');
+    expect(liveRefresh).toContain("metaCampaignName: campaign.name");
+    expect(liveRefresh).not.toContain("getBatchCampaignInsights");
+    expect(liveRefresh).not.toContain("getCampaignInsights(campaign.id, dailyDateRange)");
+    expect(upsert).toContain("metaCampaignName: sql`COALESCE(EXCLUDED.meta_campaign_name, ${metaDailyMetrics.metaCampaignName})`");
+    expect(upsert).toContain("ga4Revenue: sql`COALESCE(EXCLUDED.ga4_revenue, ${metaDailyMetrics.ga4Revenue})`");
+    expect(upsert).toContain("ga4UtmName: sql`COALESCE(EXCLUDED.ga4_utm_name, ${metaDailyMetrics.ga4UtmName})`");
+  });
 });

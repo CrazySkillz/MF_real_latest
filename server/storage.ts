@@ -2701,6 +2701,7 @@ export class DatabaseStorage implements IStorage {
           spend: sql`EXCLUDED.spend`,
           conversions: sql`EXCLUDED.conversions`,
           videoViews: sql`EXCLUDED.video_views`,
+          metaCampaignName: sql`COALESCE(EXCLUDED.meta_campaign_name, ${metaDailyMetrics.metaCampaignName})`,
           postEngagement: sql`EXCLUDED.post_engagement`,
           linkClicks: sql`EXCLUDED.link_clicks`,
           ctr: sql`EXCLUDED.ctr`,
@@ -2712,6 +2713,8 @@ export class DatabaseStorage implements IStorage {
           conversionRate: sql`EXCLUDED.conversion_rate`,
           revenue: sql`EXCLUDED.revenue`,
           roas: sql`EXCLUDED.roas`,
+          ga4Revenue: sql`COALESCE(EXCLUDED.ga4_revenue, ${metaDailyMetrics.ga4Revenue})`,
+          ga4UtmName: sql`COALESCE(EXCLUDED.ga4_utm_name, ${metaDailyMetrics.ga4UtmName})`,
           importedAt: sql`CURRENT_TIMESTAMP`,
         },
       });

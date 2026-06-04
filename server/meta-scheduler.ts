@@ -248,23 +248,17 @@ async function fetchRealMetaData(
       return;
     }
 
-    // Fetch insights for each campaign
-    const campaignIds = filteredCampaigns.map((c: any) => c.id);
-    const campaignInsights = await metaClient.getBatchCampaignInsights(campaignIds, dateRange);
-
     // Fetch daily metrics for last 90 days (for Insights tab)
     const dailyDateRange = getLastNDaysRange(90);
     const dailyMetricsToStore: any[] = [];
 
     for (const campaign of filteredCampaigns) {
       try {
-        const dailyInsights = await metaClient.getCampaignInsights(campaign.id, dailyDateRange);
+        const dailyInsights = await metaClient.getCampaignDailyInsights(campaign.id, dailyDateRange);
 
-        if (dailyInsights) {
-          // Meta Graph API returns aggregated data, we need to store it as daily
-          const insights = campaignInsights.get(campaign.id);
-          if (!insights) continue;
-
+        for (const insights of Array.isArray(dailyInsights) ? dailyInsights : []) {
+          const date = String(insights.dateStart || insights.dateStop || "").slice(0, 10);
+          if (!date) continue;
           // Calculate derived metrics
           const ctr = insights.impressions > 0 ? ((insights.clicks / insights.impressions) * 100).toFixed(2) : "0.00";
           const cpc = insights.clicks > 0 ? (insights.spend / insights.clicks).toFixed(2) : "0.00";
@@ -277,7 +271,8 @@ async function fetchRealMetaData(
           dailyMetricsToStore.push({
             campaignId,
             metaCampaignId: campaign.id,
-            date: dateRange.until, // Using the end date for the aggregated period
+            metaCampaignName: campaign.name,
+            date,
             impressions: insights.impressions,
             reach: insights.reach,
             clicks: insights.clicks,

@@ -17,9 +17,9 @@ Google Ads must be treated as a campaign-scoped main paid-media connected source
 
 ## Current Status
 
-Commit 24 local validation passed for the implemented local/test-mode Google Ads attributed revenue import path.
+Commit 24 user validation passed for the implemented local/test-mode Google Ads attributed revenue import path.
 
-Google Ads is locally production-ready for the implemented source-backed test-mode path after Commit 10 regression coverage and the optional attributed revenue import work through Commit 24. Live OAuth should still be validated in a deployed or production-like environment before calling the live OAuth path production-ready.
+Google Ads is locally production-ready for the implemented source-backed test-mode path after Commit 10 regression coverage and the optional attributed revenue import work through Commit 24. Commit 25 removes a live OAuth campaign-selection blocker, but live OAuth should still be validated in a deployed or production-like environment before calling the live OAuth path production-ready.
 
 Implemented foundations:
 
@@ -446,7 +446,9 @@ Use this checklist as the source of truth for what is complete. A checked item i
 - [x] Commit 23: Final regression coverage and local production-ready evidence.
   Validation: final local regression group and type check passed; user validation passed.
 - [x] Commit 24: Trend Analysis Google Ads revenue semantics.
-  Validation: Google Ads revenue and Trend Analysis regression group plus type check passed locally.
+  Validation: Google Ads revenue and Trend Analysis regression group plus type check passed locally; user validation passed.
+- [x] Commit 25: Live OAuth campaign selection before first metrics import.
+  Validation: local regression and type check passed; deployed or production-like OAuth evidence still required.
 
 Deferred validation is not a failed validation. Browser add/edit/delete validation for the visible Google Ads `Total Revenue` entry point is tracked explicitly under Commit 20 and final production-ready evidence.
 
@@ -479,6 +481,7 @@ Confirmed current gaps:
 - Before the second Commit 22 scheduler slice, `server/scheduler.ts` still stored Google Ads snapshot `attributedRevenue` from GA4-matched revenue or native Google Ads `conversionValue`. That diverged from the API aggregate path, where Google Ads business attributed revenue is available only from active Google Ads-scoped imported revenue sources. The safe fix makes scheduled snapshots read `platformContext="google_ads"` imported revenue totals and keeps native conversion value and GA4-matched revenue as separate fields.
 - Before the third Commit 22 lifecycle slice, Google Ads disconnect, reconnect, and selected-campaign replacement changed the Google Ads account/campaign boundary but left active `platformContext="google_ads"` imported revenue sources in place. That could let stale attributed revenue remain visible after the attribution boundary changed. The safe fix clears only the current campaign's Google Ads-scoped imported revenue sources and records on disconnect, customer/test reconnect, and selected-campaign changes.
 - Before Commit 24, `/api/campaigns/:id/trend-analysis` still mapped Google Ads daily-row `attributedRevenue` from GA4-matched revenue or native Google Ads `conversionValue`. That route bypassed the newer Google Ads aggregate helper semantics, so Trend Analysis source rows could expose old revenue meaning even though Performance Summary, scheduler snapshots, KPI/Benchmark, Insights, and Reports had already been corrected. Commit 24 makes Trend Analysis read active `platformContext="google_ads"` imported revenue by date and exposes Google Ads `revenue` / `attributedRevenue` only from that imported source; native `conversionValue` remains separate.
+- Before Commit 25, `GET /api/google-ads/:campaignId/campaigns` built the campaign picker only from stored `google_ads_daily_metrics` rows. Test mode generated mock rows during `connect-test`, so the picker worked locally. Live OAuth saves the selected customer before any daily metrics are imported, so the deployed campaign-selection step could show `No campaigns found yet` even when the Google Ads account had active campaigns. Commit 25 keeps the test-mode stored-row behavior but makes live OAuth list campaigns from the Google Ads API before the first daily import exists.
 - Before Commit 12, `server/storage.ts` supported `getRevenueSources(..., platformContext)` and `getRevenueBreakdownBySource(..., platformContext)` mostly generically, but `getRevenueTotalForRange(...)` hard-coded the non-GA4 branch to `linkedin`; Commit 12 fixes this storage/read-side gap.
 - Before the first Commit 22 scheduler slice, `server/auto-refresh-scheduler.ts` reprocessed Shopify and Google Sheets across `ga4`, `linkedin`, and `meta`, while HubSpot and Salesforce reprocessed only `ga4`; Commits 17, 18, and 19 confirmed the HubSpot/Salesforce/Shopify reprocess payloads could carry `platformContext` and stable `sourceId`, and the first Commit 22 scheduler slice extends those existing loops to include Google Ads.
 - `shared/schema.ts` has `revenue_sources.platform_context` as free text, so a table migration is not expected just to store `google_ads`; however TypeScript unions, zod validation, route filters, UI props, and scheduler context lists must be updated consistently.
@@ -1090,7 +1093,40 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-production-regression.test.ts server/trend-analysis-overview-regression.test.ts server/trend-analysis-aggregate.test.ts`.
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-platform-context.test.ts server/google-ads-production-regression.test.ts server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-salesforce-flow.test.ts server/google-ads-revenue-shopify-flow.test.ts server/google-ads-revenue-overview-ui.test.ts server/google-ads-revenue-kpi-benchmark-ui.test.ts server/google-ads-revenue-scheduler-flow.test.ts server/google-ads-report-regression.test.ts server/performance-summary-aggregate.test.ts server/performance-summary-scheduler-regression.test.ts server/source-safety-regression.test.ts server/ga4-auto-refresh-regression.test.ts server/trend-analysis-overview-regression.test.ts server/trend-analysis-aggregate.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User validation pending for Commit 24 Trend Analysis revenue semantics.
+- [x] User validation passed for Commit 24 Trend Analysis revenue semantics.
+
+#### Commit 25: Live OAuth Campaign Selection Before First Metrics Import
+
+Goal:
+
+- Make deployed live OAuth validation able to select Google Ads campaigns immediately after connecting a real customer account.
+
+Tasks:
+
+- Keep test-mode campaign listing backed by stored mock daily metrics.
+- For live OAuth connections, call the existing Google Ads API client to list campaigns before daily metrics exist.
+- Preserve selected-campaign response shape and campaign-access guard.
+- Preserve stored spend display when daily rows already exist.
+- Add regression coverage so the campaign list route cannot regress to stored-metrics-only behavior.
+
+Validation:
+
+- Live OAuth customer connection can load campaign choices before the first refresh/import.
+- Selected campaign IDs still save through the existing selected-campaign route.
+- Manual refresh/scheduler can then import rows for the selected campaigns.
+- Deployed or production-like OAuth evidence is still required before marking live OAuth production-ready.
+
+Status:
+
+- [x] Completed locally: live OAuth campaign listing now calls `GoogleAdsClient.getCampaigns()` when the connection method is not `test_mode`.
+- [x] Completed locally: the route refreshes the OAuth access token first when a refresh token and OAuth credentials are available.
+- [x] Completed locally: test-mode campaign listing still uses stored mock daily metric rows.
+- [x] Completed locally: existing selected-campaign response shape is preserved.
+- [x] Completed locally: focused regression coverage added in `server/google-ads-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/google-ads-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [x] Local validation passed: `npm test -- server/google-ads-revenue-platform-context.test.ts server/google-ads-production-regression.test.ts server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-salesforce-flow.test.ts server/google-ads-revenue-shopify-flow.test.ts server/google-ads-revenue-overview-ui.test.ts server/google-ads-revenue-kpi-benchmark-ui.test.ts server/google-ads-revenue-scheduler-flow.test.ts server/google-ads-report-regression.test.ts server/performance-summary-aggregate.test.ts server/performance-summary-scheduler-regression.test.ts server/source-safety-regression.test.ts server/ga4-auto-refresh-regression.test.ts server/trend-analysis-overview-regression.test.ts server/trend-analysis-aggregate.test.ts`.
+- [ ] Deployed or production-like validation pending: live OAuth connect -> customer select -> campaign list -> selected campaign save -> refresh.
 
 ## Validation Evidence Required And Status
 
@@ -1112,6 +1148,7 @@ Before Google Ads is marked production-ready, record evidence for:
 - [x] Multiple active Google Ads revenue sources sum additively without changing GA4, LinkedIn, or Meta revenue in the covered local source-management path.
 - [x] Native Google Ads conversion value remains separate from imported Google Ads attributed revenue.
 - [x] Trend Analysis Google Ads revenue semantics use imported Google Ads attributed revenue only.
+- [x] Live OAuth campaign selection no longer depends on preexisting daily metric rows in local code.
 - [ ] Live OAuth connect/select/refresh evidence in a deployed or production-like environment.
 - [ ] Manual browser pass across every Google Ads revenue provider add/edit/delete path if required beyond the recorded local automated and prior visible-card validation.
 
@@ -1186,3 +1223,5 @@ Not included in this local exit:
 - Commit 23 final evidence regression group validated locally.
 - User validation passed for Commit 23 final evidence.
 - Commit 24 Trend Analysis revenue semantics validated locally.
+- User validation passed for Commit 24 Trend Analysis revenue semantics.
+- Commit 25 live OAuth campaign-selection pre-refresh path validated locally.

@@ -20247,7 +20247,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connection: any = await storage.getGoogleAdsConnection(campaignId);
       if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
 
-      // Get campaigns from stored daily metrics (works for both test and real modes)
+      const selectedIds: string[] = connection.selectedCampaignIds ? JSON.parse(connection.selectedCampaignIds) : [];
+
+      // Test mode campaign rows are generated during connect-test. Live OAuth must list campaigns
+      // from the API before the first daily-metric import exists.
       const metrics = await storage.getGoogleAdsDailyMetrics(campaignId, new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10), new Date().toISOString().slice(0, 10));
       const campaignMap = new Map<string, { id: string; name: string; spend: number }>();
       for (const m of (metrics || [])) {
@@ -20258,7 +20261,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignMap.set(id, existing);
       }
 
-      const selectedIds: string[] = connection.selectedCampaignIds ? JSON.parse(connection.selectedCampaignIds) : [];
+      if (String(connection.method || "") !== "test_mode") {
+        const { GoogleAdsClient } = await import('./googleAdsClient');
+        let accessToken = connection.accessToken;
+        const refreshToken = connection.refreshToken;
+        const clientId = connection.clientId || process.env.GOOGLE_ADS_CLIENT_ID || '';
+        const clientSecret = connection.clientSecret || process.env.GOOGLE_ADS_CLIENT_SECRET || '';
+        const developerToken = connection.developerToken || process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '';
+        if (refreshToken && clientId && clientSecret) {
+          const refreshed = await GoogleAdsClient.refreshAccessToken(refreshToken, clientId, clientSecret);
+          accessToken = refreshed.access_token;
+          await storage.updateGoogleAdsConnection(campaignId, {
+            accessToken,
+            expiresAt: new Date(Date.now() + refreshed.expires_in * 1000),
+          } as any);
+        }
+        if (!accessToken || !developerToken) {
+          return res.status(400).json({ error: 'Google Ads OAuth credentials are incomplete' });
+        }
+        const client = new GoogleAdsClient({
+          accessToken,
+          developerToken,
+          customerId: connection.customerId,
+          managerAccountId: connection.managerAccountId || undefined,
+        });
+        const liveCampaigns = await client.getCampaigns();
+        for (const campaign of liveCampaigns) {
+          const id = String(campaign.id);
+          const existing = campaignMap.get(id) || { id, name: campaign.name || id, spend: 0 };
+          campaignMap.set(id, { ...existing, name: campaign.name || existing.name });
+        }
+      }
+
       res.json({
         success: true,
         campaigns: Array.from(campaignMap.values()).map(c => ({ ...c, selected: selectedIds.length === 0 || selectedIds.includes(c.id) })),

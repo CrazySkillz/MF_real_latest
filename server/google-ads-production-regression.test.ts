@@ -44,6 +44,22 @@ describe("Google Ads production readiness regression guard", () => {
     expect(campaignScheduler).toContain("freshness: { selectedCampaignIds: googleAdsSelectedCampaignIds }");
   });
 
+  it("lists live OAuth Google Ads campaigns from the API before daily metrics exist", () => {
+    const routes = read("server", "routes-oauth.ts");
+    const campaignsRoute = sliceBetween(
+      routes,
+      'app.get("/api/google-ads/:campaignId/campaigns"',
+      'app.patch("/api/google-ads/:campaignId/selected-campaigns"'
+    );
+
+    expect(campaignsRoute).toContain('String(connection.method || "") !== "test_mode"');
+    expect(campaignsRoute).toContain("const { GoogleAdsClient } = await import('./googleAdsClient');");
+    expect(campaignsRoute).toContain("GoogleAdsClient.refreshAccessToken(refreshToken, clientId, clientSecret)");
+    expect(campaignsRoute).toContain("const liveCampaigns = await client.getCampaigns();");
+    expect(campaignsRoute).toContain("campaignMap.set(id, { ...existing, name: campaign.name || existing.name });");
+    expect(campaignsRoute).not.toContain("works for both test and real modes");
+  });
+
   it("keeps disconnect and reconnect campaign-scoped so stale Google Ads rows cannot reseed the source", () => {
     const routes = read("server", "routes-oauth.ts");
     const storage = read("server", "storage.ts");

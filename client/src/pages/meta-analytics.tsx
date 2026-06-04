@@ -86,7 +86,7 @@ export default function MetaAnalytics() {
   const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
   const [benchmarkForm, setBenchmarkForm] = useState({
     name: '', metric: '', benchmarkValue: '', description: '', industry: '', currentValue: '', unit: '',
-    benchmarkType: 'industry' as 'industry' | 'custom',
+    benchmarkType: 'custom' as 'industry' | 'custom',
     applyTo: 'all', specificCampaignId: '',
     alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily',
     alertThreshold: '', alertCondition: 'below', emailRecipients: '',
@@ -257,11 +257,15 @@ export default function MetaAnalytics() {
       if (!response.ok) throw new Error('Failed to create benchmark');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'meta'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'meta'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'meta'], exact: true });
       setIsBenchmarkModalOpen(false);
       setEditingBenchmark(null);
       toast({ title: 'Benchmark created successfully' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Failed to create benchmark', description: error?.message || 'Check the benchmark values and try again.', variant: 'destructive' });
     },
   });
 
@@ -808,13 +812,13 @@ export default function MetaAnalytics() {
     const payload = {
       name: benchmarkForm.name,
       metric: benchmarkForm.metric,
-      benchmarkValue: benchmarkForm.benchmarkValue,
-      targetValue: benchmarkForm.benchmarkValue,
-      currentValue: benchmarkForm.currentValue || String(getLiveMetricValue(benchmarkForm.metric)),
+      benchmarkValue: stripNumberFormatting(benchmarkForm.benchmarkValue),
+      targetValue: stripNumberFormatting(benchmarkForm.benchmarkValue),
+      currentValue: stripNumberFormatting(benchmarkForm.currentValue) || String(getLiveMetricValue(benchmarkForm.metric)),
       description: benchmarkForm.description,
       industry: benchmarkForm.industry,
       unit: benchmarkForm.unit || getMetaMetricDef(benchmarkForm.metric).unit,
-      benchmarkType: benchmarkForm.benchmarkType,
+      benchmarkType: benchmarkForm.benchmarkType || 'custom',
       applyTo: benchmarkForm.applyTo,
       specificCampaignId: benchmarkForm.specificCampaignId,
       alertsEnabled: benchmarkForm.alertsEnabled,
@@ -1666,7 +1670,7 @@ export default function MetaAnalytics() {
                     setEditingBenchmark(null);
                     setBenchmarkForm({
                       name: '', metric: '', benchmarkValue: '', description: '', industry: '', currentValue: '', unit: '',
-                      benchmarkType: 'industry' as 'industry' | 'custom',
+                      benchmarkType: 'custom' as 'industry' | 'custom',
                       applyTo: 'all', specificCampaignId: '',
                       alertsEnabled: false, emailNotifications: false, alertFrequency: 'daily',
                       alertThreshold: '', alertCondition: 'below', emailRecipients: '',

@@ -229,6 +229,24 @@ describe("Meta production readiness regression guard", () => {
     expect(page).toContain("title: 'Failed to create KPI'");
   });
 
+  it("keeps the Meta Benchmark modal on custom values and creates cards from clean numeric values", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const benchmarkModal = read("client", "src", "pages", "meta-analytics", "MetaBenchmarkModal.tsx");
+
+    expect(page).toContain("benchmarkType: 'custom' as 'industry' | 'custom'");
+    expect(benchmarkModal).not.toContain('Label htmlFor="benchmark-type">Benchmark Type</Label>');
+    expect(benchmarkModal).not.toContain('data-testid="select-benchmark-type"');
+    expect(benchmarkModal).not.toContain('Label htmlFor="benchmark-industry">Select Industry</Label>');
+    expect(benchmarkModal).not.toContain('data-testid="select-benchmark-industry"');
+    expect(benchmarkModal).not.toContain('benchmarkForm.benchmarkType === "industry"');
+    expect(benchmarkModal).toContain("useGrouping: true, allowNegative: false");
+    expect(page).toContain("benchmarkValue: stripNumberFormatting(benchmarkForm.benchmarkValue)");
+    expect(page).toContain("targetValue: stripNumberFormatting(benchmarkForm.benchmarkValue)");
+    expect(page).toContain("currentValue: stripNumberFormatting(benchmarkForm.currentValue) || String(getLiveMetricValue(benchmarkForm.metric))");
+    expect(page).toContain("await queryClient.refetchQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'meta'], exact: true });");
+    expect(page).toContain("title: 'Failed to create benchmark'");
+  });
+
   it("keeps Meta initial loading aligned with the app fallback to avoid refresh layout jumps", () => {
     const page = read("client", "src", "pages", "meta-analytics.tsx");
     const loadingState = sliceBetween(

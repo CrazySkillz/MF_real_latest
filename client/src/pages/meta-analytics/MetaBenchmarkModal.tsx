@@ -191,10 +191,11 @@ function getMaxDecimalsForMetric(metric: string): number {
 }
 
 /** Format a number string while the user types, respecting max decimals. */
-function formatNumberAsYouType(raw: string, opts?: { maxDecimals?: number }): string {
+function formatNumberAsYouType(raw: string, opts?: { maxDecimals?: number; useGrouping?: boolean; allowNegative?: boolean }): string {
   const maxDec = opts?.maxDecimals ?? 2;
+  const allowNegative = opts?.allowNegative !== false;
   // Strip everything except digits, dots, and leading minus
-  let cleaned = raw.replace(/[^0-9.\-]/g, "");
+  let cleaned = raw.replace(allowNegative ? /[^0-9.\-]/g : /[^0-9.]/g, "");
   // Only allow one dot
   const parts = cleaned.split(".");
   if (parts.length > 2) cleaned = parts[0] + "." + parts.slice(1).join("");
@@ -202,6 +203,15 @@ function formatNumberAsYouType(raw: string, opts?: { maxDecimals?: number }): st
   if (cleaned.includes(".")) {
     const [intPart, decPart] = cleaned.split(".");
     cleaned = intPart + "." + (decPart || "").slice(0, maxDec);
+  }
+  if (opts?.useGrouping) {
+    const hasDecimal = cleaned.includes(".");
+    const [integerPart, decimalPart = ""] = cleaned.split(".");
+    const sign = integerPart.startsWith("-") ? "-" : "";
+    const digits = sign ? integerPart.slice(1) : integerPart;
+    const groupedInteger = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    cleaned = `${sign}${groupedInteger}`;
+    if (hasDecimal) cleaned += `.${decimalPart}`;
   }
   return cleaned;
 }
@@ -541,11 +551,6 @@ export function MetaBenchmarkModal(props: any) {
                     description: shouldAutoUpdateDesc ? nextDefaultDesc : benchmarkForm.description,
                   };
                   setBenchmarkForm(updatedForm);
-
-                  // If industry is already selected, also auto-fill benchmark value
-                  if (benchmarkForm.benchmarkType === "industry" && benchmarkForm.industry && benchmarkForm.industry !== "none" && benchmarkForm.industry !== "other") {
-                    fetchIndustryBenchmark(benchmarkForm.industry, value);
-                  }
                 }}
               >
                 <SelectTrigger id="benchmark-metric" data-testid="select-benchmark-metric">
@@ -739,7 +744,7 @@ export function MetaBenchmarkModal(props: any) {
                 inputMode="decimal"
                 value={benchmarkForm.benchmarkValue}
                 onChange={(e) => {
-                  const formatted = formatNumberAsYouType(e.target.value, { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric) });
+                  const formatted = formatNumberAsYouType(e.target.value, { maxDecimals: getMaxDecimalsForMetric(benchmarkForm.metric), useGrouping: true, allowNegative: false });
                   setBenchmarkForm({ ...benchmarkForm, benchmarkValue: formatted });
                 }}
                 data-testid="input-benchmark-value"
@@ -756,60 +761,6 @@ export function MetaBenchmarkModal(props: any) {
               />
             </div>
           </div>
-
-          {/* Benchmark Type */}
-          <div className="space-y-2">
-            <Label htmlFor="benchmark-type">Benchmark Type</Label>
-            <Select
-              value={benchmarkForm.benchmarkType || "custom"}
-              onValueChange={(value) => {
-                setBenchmarkForm({
-                  ...benchmarkForm,
-                  benchmarkType: value,
-                  industry: value === "custom" ? "" : benchmarkForm.industry,
-                  benchmarkValue: "",
-                });
-              }}
-            >
-              <SelectTrigger id="benchmark-type" data-testid="select-benchmark-type">
-                <SelectValue placeholder="Select benchmark type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="industry">Industry Standard</SelectItem>
-                <SelectItem value="custom">Custom Value</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Industry Selection - Only shown when "Industry Standard" is selected */}
-          {benchmarkForm.benchmarkType === "industry" && (
-            <div className="space-y-2">
-              <Label htmlFor="benchmark-industry">Select Industry</Label>
-              <Select
-                value={benchmarkForm.industry}
-                onValueChange={async (value) => {
-                  setBenchmarkForm({ ...benchmarkForm, industry: value });
-
-                  // Auto-fill benchmark value if metric is selected
-                  if (value && benchmarkForm.metric) {
-                    await fetchIndustryBenchmark(value, benchmarkForm.metric);
-                  }
-                }}
-              >
-                <SelectTrigger id="benchmark-industry" data-testid="select-benchmark-industry">
-                  <SelectValue placeholder="Choose an industry" />
-                </SelectTrigger>
-                <SelectContent>
-                  {INDUSTRIES.map((industry) => (
-                    <SelectItem key={industry.value} value={industry.value}>
-                      {industry.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground/70">Benchmark value will be auto-filled based on Meta Ads industry standards</p>
-            </div>
-          )}
 
           {/* Email Alerts Section */}
           <div className="space-y-4 pt-4 border-t">

@@ -49,14 +49,23 @@ describe("Google Ads production readiness regression guard", () => {
     const storage = read("server", "storage.ts");
     const selectRoute = sliceBetween(routes, 'app.post("/api/google-ads/:campaignId/select-customer"', 'app.post("/api/google-ads/:campaignId/connect-test"');
     const testRoute = sliceBetween(routes, 'app.post("/api/google-ads/:campaignId/connect-test"', 'app.get("/api/google-ads/:campaignId/connection"');
+    const selectedCampaignRoute = sliceBetween(routes, 'app.patch("/api/google-ads/:campaignId/selected-campaigns"', 'app.post("/api/google-ads/:campaignId/enrich-ga4-revenue"');
 
     expect(routes).toContain('app.delete("/api/google-ads/:campaignId/connection"');
+    expect(routes).toContain("const clearGoogleAdsAttributedRevenueSourcesForCampaign = async (campaignId: string) => {");
+    expect(routes).toContain("const existing = await storage.getRevenueSources(campaignId, 'google_ads');");
     expect(routes).toContain("const deleted = await storage.deleteGoogleAdsConnection(campaignId);");
     expect(routes).toContain("if (!connection || (connection as any).spendOnly) return res.json({ success: true, metrics: [] });");
+    expect(selectRoute).toContain("await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);");
     expect(selectRoute).toContain("await storage.deleteGoogleAdsDailyMetrics(campaignId).catch(() => {});");
+    expect(selectRoute.indexOf("clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)")).toBeLessThan(selectRoute.indexOf("storage.createGoogleAdsConnection"));
+    expect(testRoute).toContain("await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);");
     expect(selectRoute.indexOf("storage.deleteGoogleAdsDailyMetrics(campaignId)")).toBeLessThan(selectRoute.indexOf("storage.createGoogleAdsConnection"));
     expect(testRoute).toContain("await storage.deleteGoogleAdsDailyMetrics(campaignId).catch(() => {});");
     expect(testRoute.indexOf("storage.deleteGoogleAdsDailyMetrics(campaignId)")).toBeLessThan(testRoute.indexOf("storage.createGoogleAdsConnection"));
+    expect(selectedCampaignRoute).toContain("const selectionChanged = previousSelectedCampaignIds.join(\"\\n\") !== nextSelectedCampaignIds.join(\"\\n\");");
+    expect(selectedCampaignRoute).toContain("await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);");
+    expect(selectedCampaignRoute.indexOf("clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId)")).toBeLessThan(selectedCampaignRoute.indexOf("storage.updateGoogleAdsConnection"));
     expect(storage).toContain("tx.delete(googleAdsDailyMetrics).where(eq(googleAdsDailyMetrics.campaignId, campaignId))");
   });
 

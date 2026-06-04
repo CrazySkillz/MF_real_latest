@@ -2345,6 +2345,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  const clearGoogleAdsAttributedRevenueSourcesForCampaign = async (campaignId: string) => {
+    const existing = await storage.getRevenueSources(campaignId, 'google_ads');
+    for (const s of existing || []) {
+      if (!s) continue;
+      const sid = String((s as any).id);
+      await storage.deleteRevenueSource(sid);
+      await storage.deleteRevenueRecordsBySource(sid);
+    }
+  };
+
   // Enterprise-grade: whenever a source-of-truth input (revenue / conversion value) changes,
   // recompute all dependent derived values (KPIs + alerts) immediately.
   const recomputeCampaignDerivedValues = async (campaignId: string) => {
@@ -20018,6 +20028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000) : undefined;
 
       // Delete existing connection if any
+      await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
       await storage.deleteGoogleAdsConnection(campaignId).catch(() => {});
       await storage.deleteGoogleAdsDailyMetrics(campaignId).catch(() => {});
 
@@ -20055,6 +20066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
       const { customerId, customerName } = req.body;
 
+      await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
       await storage.deleteGoogleAdsConnection(campaignId).catch(() => {});
       await storage.deleteGoogleAdsDailyMetrics(campaignId).catch(() => {});
 
@@ -20119,6 +20131,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId } = req.params;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
+      const connection = await storage.getGoogleAdsConnection(campaignId);
+      if (!connection) {
+        return res.status(404).json({ error: "Google Ads connection not found" });
+      }
+      await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
       const deleted = await storage.deleteGoogleAdsConnection(campaignId);
       if (!deleted) {
         return res.status(404).json({ error: "Google Ads connection not found" });
@@ -20226,12 +20243,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const connection: any = await storage.getGoogleAdsConnection(campaignId);
       if (!connection) return res.status(404).json({ error: 'No Google Ads connection found' });
+      const normalizeSelectedCampaignIds = (ids: any[]) => Array.from(new Set(
+        ids.map((id: any) => String(id || "").trim()).filter(Boolean)
+      )).sort();
+      const nextSelectedCampaignIds = normalizeSelectedCampaignIds(selectedCampaignIds);
+      const previousSelectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String(connection.selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? normalizeSelectedCampaignIds(parsed) : [];
+        } catch {
+          return [];
+        }
+      })();
+      const selectionChanged = previousSelectedCampaignIds.join("\n") !== nextSelectedCampaignIds.join("\n");
+      if (selectionChanged) {
+        await clearGoogleAdsAttributedRevenueSourcesForCampaign(campaignId);
+      }
 
       await storage.updateGoogleAdsConnection(campaignId, {
-        selectedCampaignIds: JSON.stringify(selectedCampaignIds),
+        selectedCampaignIds: JSON.stringify(nextSelectedCampaignIds),
       } as any);
 
-      res.json({ success: true, selectedCampaignIds });
+      res.json({ success: true, selectedCampaignIds: nextSelectedCampaignIds });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to save selection' });
     }

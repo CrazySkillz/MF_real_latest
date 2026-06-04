@@ -21,6 +21,8 @@ import { getInternalAutoRefreshToken } from "./internal-request-auth";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 
 type AnyRecord = Record<string, any>;
+const refreshableRevenueContexts = ["ga4", "linkedin", "meta", "google_ads"] as const;
+const crmRevenueContexts = ["ga4", "google_ads"] as const;
 
 function getServerBaseUrl(): string {
   // Internal auto-refresh auth is intentionally loopback-only.
@@ -496,41 +498,52 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
       try {
         let anyUpdated = false;
         // HubSpot revenue sources are the source of truth for saved campaign mappings.
-        const hubspotRevenueSources = (await storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]))
-          .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "hubspot");
-        for (const hubspotSource of hubspotRevenueSources) {
-          const hubCfg = safeJsonParse(hubspotSource?.mappingConfig);
-          if (hubCfg?.selectedValues?.length) {
-            attempted++;
-            if (await reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))) { succeeded++; anyUpdated = true; }
-          } else {
-            skipped++;
+        let hubspotRevenueCount = 0;
+        for (const ctx of crmRevenueContexts) {
+          const hubspotRevenueSources = (await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]))
+            .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "hubspot");
+          for (const hubspotSource of hubspotRevenueSources) {
+            hubspotRevenueCount++;
+            const hubCfgRaw = safeJsonParse(hubspotSource?.mappingConfig);
+            const hubCfg = hubCfgRaw ? { ...hubCfgRaw, platformContext: hubCfgRaw.platformContext || hubspotSource.platformContext || ctx } : null;
+            if (hubCfg?.selectedValues?.length) {
+              attempted++;
+              if (await reprocessHubSpot(campaignId, hubCfg, String(hubspotSource.id))) { succeeded++; anyUpdated = true; }
+            } else {
+              skipped++;
+            }
           }
         }
-        if (hubspotRevenueSources.length === 0) skipped++;
+        if (hubspotRevenueCount === 0) skipped++;
 
         // Salesforce revenue sources are the source of truth for saved campaign mappings.
-        const salesforceRevenueSources = (await storage.getRevenueSources(campaignId, "ga4").catch(() => [] as any[]))
-          .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "salesforce");
-        for (const salesforceSource of salesforceRevenueSources) {
-          const sfCfg = safeJsonParse(salesforceSource?.mappingConfig);
-          if (sfCfg?.selectedValues?.length) {
-            attempted++;
-            if (await reprocessSalesforce(campaignId, sfCfg, String(salesforceSource.id))) { succeeded++; anyUpdated = true; }
-          } else {
-            skipped++;
+        let salesforceRevenueCount = 0;
+        for (const ctx of crmRevenueContexts) {
+          const salesforceRevenueSources = (await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]))
+            .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "salesforce");
+          for (const salesforceSource of salesforceRevenueSources) {
+            salesforceRevenueCount++;
+            const sfCfgRaw = safeJsonParse(salesforceSource?.mappingConfig);
+            const sfCfg = sfCfgRaw ? { ...sfCfgRaw, platformContext: sfCfgRaw.platformContext || salesforceSource.platformContext || ctx } : null;
+            if (sfCfg?.selectedValues?.length) {
+              attempted++;
+              if (await reprocessSalesforce(campaignId, sfCfg, String(salesforceSource.id))) { succeeded++; anyUpdated = true; }
+            } else {
+              skipped++;
+            }
           }
         }
-        if (salesforceRevenueSources.length === 0) skipped++;
+        if (salesforceRevenueCount === 0) skipped++;
 
         // Shopify revenue sources are the source of truth for saved campaign mappings.
         let shopifyRevenueCount = 0;
-        for (const ctx of ["ga4", "linkedin", "meta"] as const) {
+        for (const ctx of refreshableRevenueContexts) {
           const shopifyRevenueSources = (await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]))
             .filter((s: any) => s && s.isActive !== false && String(s.sourceType || "").toLowerCase() === "shopify");
           for (const shopifySource of shopifyRevenueSources) {
             shopifyRevenueCount++;
-            const shopCfg = safeJsonParse(shopifySource?.mappingConfig);
+            const shopCfgRaw = safeJsonParse(shopifySource?.mappingConfig);
+            const shopCfg = shopCfgRaw ? { ...shopCfgRaw, platformContext: shopCfgRaw.platformContext || shopifySource.platformContext || ctx } : null;
             if (shopCfg?.selectedValues?.length) {
               attempted++;
               if (await reprocessShopify(campaignId, shopCfg, String(shopifySource.id))) { succeeded++; anyUpdated = true; }
@@ -648,14 +661,15 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
         // Google Sheets (Revenue) — process ALL active Sheets revenue sources across all platform contexts
         try {
           let sheetRevCount = 0;
-          for (const ctx of ["ga4", "linkedin", "meta"] as const) {
+          for (const ctx of refreshableRevenueContexts) {
             const revenueSources = await storage.getRevenueSources(campaignId, ctx).catch(() => [] as any[]);
             const sheetRevSources = (Array.isArray(revenueSources) ? revenueSources : []).filter((s: any) => {
               return !!s && (s as any).isActive !== false && String((s as any).sourceType || "") === "google_sheets";
             });
             for (const sheetRevenue of sheetRevSources) {
               sheetRevCount++;
-              const revCfg = safeJsonParse(sheetRevenue?.mappingConfig);
+              const revCfgRaw = safeJsonParse(sheetRevenue?.mappingConfig);
+              const revCfg = revCfgRaw ? { ...revCfgRaw, platformContext: revCfgRaw.platformContext || sheetRevenue.platformContext || ctx } : null;
               if (revCfg?.connectionId && revCfg?.revenueColumn) {
                 attempted++;
                 if (await reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg)) { succeeded++; anyUpdated = true; }

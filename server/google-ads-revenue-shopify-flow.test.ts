@@ -91,6 +91,6 @@ describe("Google Ads revenue Shopify flow", () => {
     expect(scheduler).toContain("async function reprocessShopify");
     expect(scheduler).toContain("platformContext: mappingConfig.platformContext");
     expect(scheduler).toContain("...(sourceId ? { sourceId } : {})");
-    expect(scheduler).toContain('for (const ctx of ["ga4", "linkedin", "meta"] as const)');
+    expect(scheduler).toContain("for (const ctx of refreshableRevenueContexts)");
   });
 });

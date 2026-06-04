@@ -209,6 +209,26 @@ describe("Meta production readiness regression guard", () => {
     expect(benchmarkModal).toContain("Requires Revenue Source");
   });
 
+  it("keeps the Meta KPI modal focused and creates cards from clean numeric values", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const kpiModal = read("client", "src", "pages", "meta-analytics", "MetaKpiModal.tsx");
+
+    expect(kpiModal).not.toContain('Label htmlFor="kpi-category">Category</Label>');
+    expect(kpiModal).not.toContain('data-testid="select-kpi-category"');
+    expect(kpiModal).not.toContain('Label htmlFor="kpi-timeframe">Timeframe</Label>');
+    expect(kpiModal).not.toContain('data-testid="select-kpi-timeframe"');
+    expect(kpiModal).not.toContain('Label htmlFor="kpi-tracking-period">Tracking Period (days)</Label>');
+    expect(kpiModal).not.toContain('data-testid="input-kpi-tracking-period"');
+    expect(kpiModal).toContain("useGrouping: true, allowNegative: false");
+    expect(page).toContain("function stripNumberFormatting(value: any): any");
+    expect(page).toContain("targetValue: stripNumberFormatting(kpiForm.targetValue)");
+    expect(page).toContain("currentValue: stripNumberFormatting(kpiForm.currentValue) || String(getLiveMetricValue(kpiForm.metric))");
+    expect(page).toContain("await queryClient.refetchQueries({ queryKey: ['/api/platforms/meta/kpis', campaignId], exact: true });");
+    expect(page).toContain("category: kpiForm.category || 'performance'");
+    expect(page).toContain("trackingPeriod: Number(kpiForm.trackingPeriod || 30)");
+    expect(page).toContain("title: 'Failed to create KPI'");
+  });
+
   it("keeps Meta initial loading aligned with the app fallback to avoid refresh layout jumps", () => {
     const page = read("client", "src", "pages", "meta-analytics.tsx");
     const loadingState = sliceBetween(

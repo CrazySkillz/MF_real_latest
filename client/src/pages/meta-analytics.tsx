@@ -57,6 +57,10 @@ function formatMetaMetricValue(metricKey: string, value: number): string {
   return getMetaMetricDef(metricKey).format(value);
 }
 
+function stripNumberFormatting(value: any): any {
+  return typeof value === 'string' ? value.replace(/,/g, '') : value;
+}
+
 export default function MetaAnalytics() {
   const [, params] = useRoute("/campaigns/:id/meta-analytics");
   const campaignId = params?.id;
@@ -200,11 +204,15 @@ export default function MetaAnalytics() {
       if (!response.ok) throw new Error('Failed to create KPI');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platforms/meta/kpis'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/platforms/meta/kpis'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/platforms/meta/kpis', campaignId], exact: true });
       setIsKPIModalOpen(false);
       setEditingKPI(null);
       toast({ title: 'KPI created successfully' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Failed to create KPI', description: error?.message || 'Check the KPI values and try again.', variant: 'destructive' });
     },
   });
 
@@ -769,15 +777,15 @@ export default function MetaAnalytics() {
       name: kpiForm.name,
       metric: kpiForm.metric,
       metricKey: kpiForm.metric,
-      targetValue: kpiForm.targetValue,
-      currentValue: kpiForm.currentValue || String(getLiveMetricValue(kpiForm.metric)),
+      targetValue: stripNumberFormatting(kpiForm.targetValue),
+      currentValue: stripNumberFormatting(kpiForm.currentValue) || String(getLiveMetricValue(kpiForm.metric)),
       description: kpiForm.description,
       unit: kpiForm.unit || getMetaMetricDef(kpiForm.metric).unit,
       priority: kpiForm.priority,
       status: 'active',
-      category: kpiForm.category,
-      timeframe: kpiForm.timeframe,
-      trackingPeriod: kpiForm.trackingPeriod,
+      category: kpiForm.category || 'performance',
+      timeframe: kpiForm.timeframe || 'monthly',
+      trackingPeriod: Number(kpiForm.trackingPeriod || 30),
       alertsEnabled: kpiForm.alertsEnabled,
       emailNotifications: kpiForm.emailNotifications,
       alertFrequency: kpiForm.alertFrequency,

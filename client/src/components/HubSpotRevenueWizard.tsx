@@ -21,6 +21,8 @@ type UniqueValue = {
   count: number;
 };
 
+type PlatformCampaignMapping = { crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string };
+
 export function HubSpotRevenueWizard(props: {
   campaignId: string;
   sourceId?: string;
@@ -39,6 +41,7 @@ export function HubSpotRevenueWizard(props: {
     pipelineTotalToDate?: number;
     lastTotalRevenue?: number;
     dateField?: string;
+    campaignMappings?: PlatformCampaignMapping[];
   } | null;
   onBack?: () => void;
   onSuccess?: (result: any) => void;
@@ -58,6 +61,7 @@ export function HubSpotRevenueWizard(props: {
     props;
   const { toast } = useToast();
   const isLinkedIn = platformContext === "linkedin";
+  const isGoogleAds = platformContext === "google_ads";
 
   type Step = "value-source" | "campaign-field" | "crosswalk" | "pipeline" | "revenue" | "review" | "complete";
   // Start at the value-source step so the user can choose Revenue-only vs Revenue+Pipeline.
@@ -95,6 +99,8 @@ export function HubSpotRevenueWizard(props: {
 
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const [googleAdsCampaigns, setGoogleAdsCampaigns] = useState<Array<{ id: string; name: string }>>([]);
+  const [campaignMappings, setCampaignMappings] = useState<PlatformCampaignMapping[]>([]);
   const [valuesLoading, setValuesLoading] = useState(false);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
   const [reviewPreviewRevenue, setReviewPreviewRevenue] = useState<number | null>(null);
@@ -119,9 +125,15 @@ export function HubSpotRevenueWizard(props: {
       pipelineEnabled: cfg?.pipelineEnabled === true,
       pipelineStageId: cfg?.pipelineEnabled === true ? String(cfg?.pipelineStageId || "") : "",
       dateField: String(cfg?.dateField || "closedate"),
+      campaignMappings: Array.isArray(cfg?.campaignMappings)
+        ? cfg.campaignMappings.map((m: any) => ({
+            crmValue: String(m?.crmValue || "").trim(),
+            linkedinCampaignUrn: String(m?.linkedinCampaignUrn || "").trim(),
+          })).filter((m: any) => m.crmValue && m.linkedinCampaignUrn).sort((a: any, b: any) => a.crmValue.localeCompare(b.crmValue))
+        : [],
     });
-    return normalize({ campaignProperty, selectedValues, revenueProperty, revenueClassification, pipelineEnabled, pipelineStageId, dateField }) !== normalize(initialMappingConfig);
-  }, [campaignProperty, dateField, initialMappingConfig, isLinkedIn, mode, pipelineEnabled, pipelineStageId, revenueClassification, revenueProperty, selectedValues]);
+    return normalize({ campaignProperty, selectedValues, revenueProperty, revenueClassification, pipelineEnabled, pipelineStageId, dateField, campaignMappings }) !== normalize(initialMappingConfig);
+  }, [campaignMappings, campaignProperty, dateField, initialMappingConfig, isLinkedIn, mode, pipelineEnabled, pipelineStageId, revenueClassification, revenueProperty, selectedValues]);
 
   const reviewPipelineProxyDisplayAmount = useMemo(() => {
     if (reviewPipelineProxyAmount != null) return reviewPipelineProxyAmount;
@@ -149,6 +161,7 @@ export function HubSpotRevenueWizard(props: {
 
     setCampaignProperty(nextCampaignProperty);
     setSelectedValues(nextSelectedValues);
+    setCampaignMappings(Array.isArray(cfg.campaignMappings) ? cfg.campaignMappings : []);
     setRevenueProperty(nextRevenueProperty);
     // Deprecated: Conversion Value mode. Keep reading it (for display/debug) but do not keep the wizard in CV mode.
     setConversionValueProperty("");
@@ -164,6 +177,87 @@ export function HubSpotRevenueWizard(props: {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaignId, mode, initialMappingConfig, isLinkedIn]);
+
+  useEffect(() => {
+    if (!isGoogleAds || !campaignId) return;
+    let cancelled = false;
+    fetch(`/api/google-ads/${campaignId}/campaigns`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() : { campaigns: [] })
+      .then((data) => {
+        if (cancelled) return;
+        const campaigns = Array.isArray(data?.campaigns) ? data.campaigns : [];
+        setGoogleAdsCampaigns(campaigns
+          .filter((campaign: any) => campaign?.selected !== false)
+          .map((campaign: any) => ({ id: String(campaign?.id || campaign?.name || ""), name: String(campaign?.name || campaign?.id || "Unknown") }))
+          .filter((campaign: any) => !!campaign.id));
+      })
+      .catch(() => {
+        if (!cancelled) setGoogleAdsCampaigns([]);
+      });
+    return () => { cancelled = true; };
+  }, [isGoogleAds, campaignId]);
+
+  const googleAdsCampaignOptions = useMemo(() => {
+    const options = new Map<string, { id: string; name: string }>();
+    for (const campaign of googleAdsCampaigns) {
+      if (campaign.id) options.set(campaign.id, campaign);
+    }
+    for (const mapping of campaignMappings) {
+      const id = String(mapping.linkedinCampaignUrn || "").trim();
+      if (id && !options.has(id)) options.set(id, { id, name: mapping.linkedinCampaignName || id });
+    }
+    return Array.from(options.values());
+  }, [campaignMappings, googleAdsCampaigns]);
+
+  const selectedCampaignMappings = useMemo(() => {
+    if (!isGoogleAds) return [];
+    const selectedSet = new Set(selectedValues.map((value) => String(value || "").trim()).filter(Boolean));
+    return campaignMappings.filter((mapping) => (
+      selectedSet.has(String(mapping.crmValue || "").trim()) &&
+      googleAdsCampaignOptions.some((campaign) => campaign.id === mapping.linkedinCampaignUrn)
+    ));
+  }, [campaignMappings, googleAdsCampaignOptions, isGoogleAds, selectedValues]);
+
+  const updateCampaignMapping = (crmValue: string, campaignIdValue: string) => {
+    const value = String(crmValue || "").trim();
+    if (!value) return;
+    setCampaignMappings((prev) => {
+      const rest = prev.filter((mapping) => String(mapping.crmValue || "").trim() !== value);
+      if (!campaignIdValue || campaignIdValue === "__none__") return rest;
+      const campaign = googleAdsCampaignOptions.find((item) => item.id === campaignIdValue);
+      return [...rest, { crmValue: value, linkedinCampaignUrn: campaignIdValue, linkedinCampaignName: campaign?.name || campaignIdValue }];
+    });
+  };
+
+  const renderGoogleAdsCampaignMappings = () => {
+    if (!isGoogleAds || selectedValues.length === 0) return null;
+    return (
+      <div className="rounded border p-3 space-y-3">
+        <Label>Google Ads campaign mapping</Label>
+        <div className="space-y-2">
+          {selectedValues.map((value) => {
+            const current = campaignMappings.find((mapping) => String(mapping.crmValue || "").trim() === value);
+            return (
+              <div key={value} className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(220px,320px)] md:items-center">
+                <div className="truncate text-sm">{value}</div>
+                <Select value={current?.linkedinCampaignUrn || "__none__"} onValueChange={(next) => updateCampaignMapping(value, next)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Google Ads campaign" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[10000]">
+                    <SelectItem value="__none__">No campaign mapping</SelectItem>
+                    {googleAdsCampaignOptions.map((campaign) => (
+                      <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   const steps = useMemo(() => {
     return pipelineEnabled ? [
@@ -431,7 +525,7 @@ export function HubSpotRevenueWizard(props: {
     reviewPreviewFiredRef.current = false;
     setReviewPreviewRevenue(null);
     setReviewPipelineProxyAmount(null);
-  }, [campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn]);
+  }, [campaignMappings, campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn]);
 
   useEffect(() => {
     if (step !== "review") return;
@@ -458,6 +552,7 @@ export function HubSpotRevenueWizard(props: {
             pipelineStageId: pipelineEnabled ? pipelineStageId : null,
             pipelineStageLabel: pipelineEnabled ? (pipelineStageLabel || null) : null,
             platformContext,
+            ...(selectedCampaignMappings.length > 0 ? { campaignMappings: selectedCampaignMappings } : {}),
           }),
         });
         const json = await resp.json().catch(() => ({}));
@@ -468,7 +563,7 @@ export function HubSpotRevenueWizard(props: {
         // Keep the review usable even if preview fails.
       }
     })();
-  }, [step, isConnected, campaignId, campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn]);
+  }, [step, isConnected, campaignId, campaignMappings, campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn]);
 
   const save = async () => {
     setIsSaving(true);
@@ -491,6 +586,7 @@ export function HubSpotRevenueWizard(props: {
           pipelineStageId: pipelineEnabled ? pipelineStageId : null,
           pipelineStageLabel: pipelineEnabled ? (pipelineStageLabel || null) : null,
           platformContext,
+          ...(selectedCampaignMappings.length > 0 ? { campaignMappings: selectedCampaignMappings } : {}),
         }),
       });
       const json = await resp.json().catch(() => ({}));
@@ -839,7 +935,10 @@ export function HubSpotRevenueWizard(props: {
                     </div>
                     <Select
                       value={campaignProperty}
-                      onValueChange={(v) => setCampaignProperty(v)}
+                      onValueChange={(v) => {
+                        setCampaignProperty(v);
+                        setCampaignMappings([]);
+                      }}
                       disabled={!isConnected || statusLoading}
                     >
                       <SelectTrigger>
@@ -916,6 +1015,8 @@ export function HubSpotRevenueWizard(props: {
                     </div>
                   )}
                 </div>
+
+                {renderGoogleAdsCampaignMappings()}
 
               </div>
             )}

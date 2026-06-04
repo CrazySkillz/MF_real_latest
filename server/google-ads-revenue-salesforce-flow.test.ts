@@ -43,7 +43,7 @@ describe("Google Ads revenue Salesforce flow", () => {
     expect(route).toContain("if (platformCtx === \"ga4\" && totalRevenue > 0 && materializedRecordCount <= 0)");
   });
 
-  it("materializes Google Ads Salesforce per-campaign revenue only for exact active campaign IDs", () => {
+  it("materializes Google Ads Salesforce per-campaign revenue for exact IDs or explicit active campaign mappings", () => {
     const routes = readSource("server", "routes-oauth.ts");
     const route = sliceBetween(
       routes,
@@ -52,7 +52,8 @@ describe("Google Ads revenue Salesforce flow", () => {
     );
 
     expect(route).toContain('const activeGoogleAdsCampaignIds = platformCtx === "google_ads"');
-    expect(route).toContain("exactGoogleAdsCampaignIdOrNull(platformCtx, campaignValue, activeGoogleAdsCampaignIds)");
+    expect(route).toContain("googleAdsCampaignIdFromValueOrMapping(platformCtx, campaignValue, campaignMappings, activeGoogleAdsCampaignIds)");
+    expect(route).toContain('} else if (platformCtx === "linkedin" && campaignMappings.length > 0) {');
     expect(route).toContain('if ((campaignMappings.length > 0 || platformCtx === "google_ads") && revenueByDateAndCampaign.size > 0)');
     expect(route).toContain("subCampaignUrn: urn,");
     expect(route).not.toContain("spend weight");
@@ -100,6 +101,9 @@ describe("Google Ads revenue Salesforce flow", () => {
     expect(wizard).toContain("dateField,");
     expect(wizard).toContain("pipelineStageName: pipelineEnabled ? (pipelineStageName || null) : null");
     expect(wizard).toContain("platformContext,");
+    expect(wizard).toContain('const isGoogleAds = platformContext === "google_ads";');
+    expect(wizard).toContain("selectedCampaignMappings");
+    expect(wizard).toContain("Google Ads campaign mapping");
     expect(modal).toContain("platformContext={platformContext}");
     expect(modal).toContain('sourceId={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "salesforce" ? String(initialSource?.id || "") : undefined}');
     expect(scheduler).toContain("async function reprocessSalesforce");

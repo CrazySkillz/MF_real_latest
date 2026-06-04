@@ -45,7 +45,7 @@ describe("Google Ads revenue CSV flow", () => {
     expect(csvRoute).toContain("await storage.deleteRevenueRecordsBySource(source.id);");
   });
 
-  it("materializes Google Ads CSV per-campaign revenue only for exact active campaign IDs", () => {
+  it("materializes Google Ads CSV per-campaign revenue for exact IDs or explicit active campaign mappings", () => {
     const routes = readSource("server", "routes-oauth.ts");
     const csvRoute = sliceBetween(
       routes,
@@ -54,7 +54,8 @@ describe("Google Ads revenue CSV flow", () => {
     );
 
     expect(csvRoute).toContain('const activeGoogleAdsCampaignIds = platformContext === "google_ads"');
-    expect(csvRoute).toContain("exactGoogleAdsCampaignIdOrNull(platformContext, campaignKey, activeGoogleAdsCampaignIds)");
+    expect(csvRoute).toContain("googleAdsCampaignIdFromValueOrMapping(platformContext, campaignKey, campaignMappings, activeGoogleAdsCampaignIds)");
+    expect(csvRoute).toContain("const campaignMappings = Array.isArray(mapping.campaignMappings) ? mapping.campaignMappings : [];");
     expect(csvRoute).toContain("const revenueByDateAndCampaign = new Map<string, number>();");
     expect(csvRoute).toContain("subCampaignUrn,");
     expect(csvRoute).not.toContain("spend weight");
@@ -68,5 +69,7 @@ describe("Google Ads revenue CSV flow", () => {
     expect(modal).toContain('toast({ title: "Select at least 1 campaign value"');
     expect(modal).toContain("campaignColumn: csvCampaignCol");
     expect(modal).toContain("campaignValues: csvCampaignValues");
+    expect(modal).toContain("Google Ads campaign mapping");
+    expect(modal).toContain("const campaignMappings = mappedRevenueCampaignsForValues(csvCampaignValues);");
   });
 });

@@ -20,6 +20,7 @@ import { useQueryClient } from "@tanstack/react-query";
 type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify";
 const SELECT_NONE = "__none__";
 type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads';
+type PlatformCampaignMapping = { crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string };
 
 type Preview = {
   fileName?: string;
@@ -159,6 +160,7 @@ export function AddRevenueWizardModal(props: {
     pipelineTotalToDate?: number;
     lastTotalRevenue?: number;
     dateField?: string;
+    campaignMappings?: PlatformCampaignMapping[];
   }>(null);
   const [hubspotInitialMappingConfig, setHubspotInitialMappingConfig] = useState<null | {
     campaignProperty?: string;
@@ -174,6 +176,7 @@ export function AddRevenueWizardModal(props: {
     pipelineTotalToDate?: number;
     lastTotalRevenue?: number;
     dateField?: string;
+    campaignMappings?: PlatformCampaignMapping[];
   }>(null);
 
   // Manual
@@ -185,6 +188,7 @@ export function AddRevenueWizardModal(props: {
   const [manualSubCampaign, setManualSubCampaign] = useState<string>("");
   const [platformCampaigns, setPlatformCampaigns] = useState<Array<{ id: string; name: string }>>([]);
   const [platformCampaignsLoading, setPlatformCampaignsLoading] = useState(false);
+  const [revenueCampaignMappings, setRevenueCampaignMappings] = useState<PlatformCampaignMapping[]>([]);
   const [savingManual, setSavingManual] = useState(false);
   const formatCurrencyWhileTyping = (raw: string) => {
     const s = String(raw ?? "");
@@ -227,6 +231,7 @@ export function AddRevenueWizardModal(props: {
     storedCampaignColumn?: string;
     storedDateColumn?: string;
     csvStoredRevenueRows?: Array<Record<string, string>>;
+    campaignMappings?: PlatformCampaignMapping[];
   }>(null);
 
   // Sheets
@@ -440,6 +445,7 @@ export function AddRevenueWizardModal(props: {
     setManualPlatform(platformContext || 'ga4');
     setManualSubCampaign("");
     setPlatformCampaigns([]);
+    setRevenueCampaignMappings([]);
     setSavingManual(false);
     setCsvFile(null);
     setCsvInputKey((n) => n + 1);
@@ -484,6 +490,7 @@ export function AddRevenueWizardModal(props: {
     setCsvCampaignQuery("");
     setCsvDateCol("");
     setCsvCampaignValues([]);
+    setRevenueCampaignMappings([]);
   };
 
   useEffect(() => {
@@ -499,10 +506,13 @@ export function AddRevenueWizardModal(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Fetch platform campaigns when manual platform selection changes
+  // Fetch platform campaigns when manual platform selection changes or Google Ads imports need mappings.
   useEffect(() => {
-    if (!open || step !== 'manual') return;
-    if (manualPlatform === 'ga4') {
+    if (!open) return;
+    const campaignPlatform = step === 'manual' ? manualPlatform : platformContext;
+    const needsGoogleAdsMapping = platformContext === 'google_ads' && (step === 'csv_map' || step === 'sheets_map');
+    if (step !== 'manual' && !needsGoogleAdsMapping) return;
+    if (campaignPlatform === 'ga4') {
       setPlatformCampaigns([]);
       return;
     }
@@ -510,21 +520,21 @@ export function AddRevenueWizardModal(props: {
     (async () => {
       setPlatformCampaignsLoading(true);
       setPlatformCampaigns([]);
-      setManualSubCampaign("");
+      if (step === 'manual') setManualSubCampaign("");
       try {
-        if (manualPlatform === 'linkedin') {
+        if (campaignPlatform === 'linkedin') {
           const resp = await fetch(`/api/campaigns/${campaignId}/linkedin-campaigns`, { credentials: "include" });
           const json = await resp.json().catch(() => ({}));
           if (!cancelled && Array.isArray(json?.campaigns)) {
             setPlatformCampaigns(json.campaigns.map((c: any) => ({ id: c.campaignUrn || c.id || c.name, name: c.name || c.campaignUrn || 'Unknown' })));
           }
-        } else if (manualPlatform === 'meta') {
+        } else if (campaignPlatform === 'meta') {
           const resp = await fetch(`/api/meta/${campaignId}/campaigns`, { credentials: "include" });
           const json = await resp.json().catch(() => ({}));
           if (!cancelled && Array.isArray(json?.campaigns)) {
             setPlatformCampaigns(json.campaigns.map((c: any) => ({ id: c.id || c.name, name: c.name || c.id || 'Unknown' })));
           }
-        } else if (manualPlatform === 'google_ads') {
+        } else if (campaignPlatform === 'google_ads') {
           const resp = await fetch(`/api/google-ads/${campaignId}/campaigns`, { credentials: "include" });
           const json = await resp.json().catch(() => ({}));
           if (!cancelled && Array.isArray(json?.campaigns)) {
@@ -541,7 +551,7 @@ export function AddRevenueWizardModal(props: {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, step, manualPlatform, campaignId]);
+  }, [open, step, manualPlatform, platformContext, campaignId]);
 
   // Prefill edit mode from an existing revenue source.
   useEffect(() => {
@@ -580,6 +590,7 @@ export function AddRevenueWizardModal(props: {
       setSheetsCampaignCol(String(config?.campaignColumn || ""));
       setSheetsCampaignValues(Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : []);
       setSheetsDateCol(String(config?.dateColumn || ""));
+      setRevenueCampaignMappings(Array.isArray(config?.campaignMappings) ? config.campaignMappings : []);
       return;
     }
 
@@ -601,6 +612,7 @@ export function AddRevenueWizardModal(props: {
         storedCampaignColumn: String(config?.storedCampaignColumn || ""),
         storedDateColumn: String(config?.storedDateColumn || ""),
         csvStoredRevenueRows: Array.isArray(config?.csvStoredRevenueRows) ? config.csvStoredRevenueRows : [],
+        campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : [],
       });
       const savedHeaders = Array.isArray(config?.csvHeaders) ? config.csvHeaders.map(String).filter(Boolean) : [];
       const savedSampleRows = Array.isArray(config?.csvSampleRows) ? config.csvSampleRows : [];
@@ -619,6 +631,7 @@ export function AddRevenueWizardModal(props: {
       setCsvCampaignCol(String(config?.campaignColumn || ""));
       setCsvCampaignValues(Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : []);
       setCsvDateCol(String(config?.dateColumn || ""));
+      setRevenueCampaignMappings(Array.isArray(config?.campaignMappings) ? config.campaignMappings : []);
       return;
     }
 
@@ -637,6 +650,7 @@ export function AddRevenueWizardModal(props: {
         lastTotalRevenue: initialSource?.revenue != null && Number.isFinite(Number(initialSource.revenue)) ? Number(initialSource.revenue)
           : Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue) : undefined,
         dateField: config?.dateField ? String(config.dateField) : undefined,
+        campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : undefined,
       };
       setSalesforceInitialMappingConfig(next);
       setStep("salesforce");
@@ -659,6 +673,7 @@ export function AddRevenueWizardModal(props: {
         lastTotalRevenue: Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue)
           : Number.isFinite(Number(initialSource?.revenue)) ? Number(initialSource.revenue) : undefined,
         dateField: config?.dateField ? String(config.dateField) : undefined,
+        campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : undefined,
       };
       setHubspotInitialMappingConfig(next);
       setStep("hubspot");
@@ -782,6 +797,82 @@ export function AddRevenueWizardModal(props: {
       .map(([value]) => value);
   };
 
+  const googleAdsCampaignOptions = useMemo(() => {
+    const options = new Map<string, { id: string; name: string }>();
+    for (const campaign of platformCampaigns) {
+      if (campaign.id) options.set(campaign.id, campaign);
+    }
+    for (const mapping of revenueCampaignMappings) {
+      const id = String(mapping.linkedinCampaignUrn || "").trim();
+      if (id && !options.has(id)) options.set(id, { id, name: mapping.linkedinCampaignName || id });
+    }
+    return Array.from(options.values());
+  }, [platformCampaigns, revenueCampaignMappings]);
+
+  const mappedRevenueCampaignsForValues = (values: string[]) => {
+    if (platformContext !== "google_ads") return [];
+    const valueSet = new Set(values.map((v) => String(v ?? "").trim()).filter(Boolean));
+    return revenueCampaignMappings.filter((mapping) => (
+      valueSet.has(String(mapping.crmValue || "").trim()) &&
+      googleAdsCampaignOptions.some((campaign) => campaign.id === mapping.linkedinCampaignUrn)
+    ));
+  };
+
+  const updateRevenueCampaignMapping = (crmValue: string, campaignIdValue: string) => {
+    const value = String(crmValue || "").trim();
+    if (!value) return;
+    setRevenueCampaignMappings((prev) => {
+      const rest = prev.filter((mapping) => String(mapping.crmValue || "").trim() !== value);
+      if (!campaignIdValue || campaignIdValue === SELECT_NONE) return rest;
+      const campaign = googleAdsCampaignOptions.find((item) => item.id === campaignIdValue);
+      return [
+        ...rest,
+        {
+          crmValue: value,
+          linkedinCampaignUrn: campaignIdValue,
+          linkedinCampaignName: campaign?.name || campaignIdValue,
+        },
+      ];
+    });
+  };
+
+  const renderGoogleAdsCampaignMapping = (values: string[]) => {
+    const selectedValues = values.map((v) => String(v ?? "").trim()).filter(Boolean);
+    if (platformContext !== "google_ads" || selectedValues.length === 0) return null;
+    return (
+      <div className="pt-2 border-t space-y-3">
+        <Label className="font-normal">Google Ads campaign mapping</Label>
+        <div className="space-y-2">
+          {selectedValues.map((value) => {
+            const current = revenueCampaignMappings.find((mapping) => String(mapping.crmValue || "").trim() === value);
+            return (
+              <div key={value} className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(220px,320px)] md:items-center">
+                <div className="truncate text-sm text-foreground/80">{value}</div>
+                <Select
+                  value={current?.linkedinCampaignUrn || SELECT_NONE}
+                  onValueChange={(next) => updateRevenueCampaignMapping(value, next)}
+                  disabled={platformCampaignsLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Google Ads campaign" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[10000]">
+                    <SelectItem value={SELECT_NONE}>No campaign mapping</SelectItem>
+                    {googleAdsCampaignOptions.map((campaign) => (
+                      <SelectItem key={campaign.id} value={campaign.id}>
+                        {campaign.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const filteredCsvPreviewRows = useMemo(() => {
     const rows = Array.isArray(csvPreview?.sampleRows) ? csvPreview!.sampleRows : [];
     if (!csvCampaignCol) return rows;
@@ -835,19 +926,27 @@ export function AddRevenueWizardModal(props: {
       ? csvPrefill.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v)
       : [];
     const currentCampaignValues = csvCampaignValues.map((v) => String(v ?? "").trim()).filter(Boolean);
+    const normalizeMappings = (items: any[]) => JSON.stringify((Array.isArray(items) ? items : [])
+      .map((item: any) => ({
+        crmValue: String(item?.crmValue || "").trim(),
+        linkedinCampaignUrn: String(item?.linkedinCampaignUrn || "").trim(),
+      }))
+      .filter((item: any) => item.crmValue && item.linkedinCampaignUrn)
+      .sort((a: any, b: any) => a.crmValue.localeCompare(b.crmValue)));
 
     if (currentValueSource !== initialValueSource) return true;
     if (String(csvRevenueCol || "") !== initialRevenueColumn) return true;
     if (String(csvCampaignCol || "") !== initialCampaignColumn) return true;
     if (String(csvDateCol || "") !== initialDateColumn) return true;
     if (currentCampaignValues.length !== initialCampaignValues.length) return true;
+    if (normalizeMappings(mappedRevenueCampaignsForValues(currentCampaignValues)) !== normalizeMappings(csvPrefill?.campaignMappings || [])) return true;
 
     const initialSet = new Set(initialCampaignValues);
     for (const value of currentCampaignValues) {
       if (!initialSet.has(value)) return true;
     }
     return false;
-  }, [isEditing, csvFile, csvPrefill, csvRevenueCol, csvCampaignCol, csvDateCol, csvCampaignValues]);
+  }, [isEditing, csvFile, csvPrefill, csvRevenueCol, csvCampaignCol, csvDateCol, csvCampaignValues, revenueCampaignMappings, googleAdsCampaignOptions]);
 
   const filteredSheetsPreviewRows = useMemo(() => {
     const rows = Array.isArray(sheetsPreview?.sampleRows) ? sheetsPreview!.sampleRows : [];
@@ -885,6 +984,13 @@ export function AddRevenueWizardModal(props: {
       : [];
     const currentCampaignValues = sheetsCampaignValues.map((v) => String(v ?? "").trim()).filter(Boolean);
     const currentValueSource = 'revenue';
+    const normalizeMappings = (items: any[]) => JSON.stringify((Array.isArray(items) ? items : [])
+      .map((item: any) => ({
+        crmValue: String(item?.crmValue || "").trim(),
+        linkedinCampaignUrn: String(item?.linkedinCampaignUrn || "").trim(),
+      }))
+      .filter((item: any) => item.crmValue && item.linkedinCampaignUrn)
+      .sort((a: any, b: any) => a.crmValue.localeCompare(b.crmValue)));
 
     if (String(sheetsConnectionId || "") !== initialConnectionId) return true;
     if (currentValueSource !== initialValueSource) return true;
@@ -893,13 +999,14 @@ export function AddRevenueWizardModal(props: {
     if (String(sheetsCampaignCol || "") !== initialCampaignColumn) return true;
     if (String(sheetsDateCol || "") !== initialDateColumn) return true;
     if (currentCampaignValues.length !== initialCampaignValues.length) return true;
+    if (normalizeMappings(mappedRevenueCampaignsForValues(currentCampaignValues)) !== normalizeMappings(config?.campaignMappings || [])) return true;
 
     const initialSet = new Set(initialCampaignValues);
     for (const value of currentCampaignValues) {
       if (!initialSet.has(value)) return true;
     }
     return false;
-  }, [isEditing, initialSource, sheetsConnectionId, sheetsRevenueCol, sheetsConversionValueCol, sheetsCampaignCol, sheetsDateCol, sheetsCampaignValues]);
+  }, [isEditing, initialSource, sheetsConnectionId, sheetsRevenueCol, sheetsConversionValueCol, sheetsCampaignCol, sheetsDateCol, sheetsCampaignValues, revenueCampaignMappings, googleAdsCampaignOptions]);
 
   const handleBack = () => {
     if (step === "select") return;
@@ -1091,6 +1198,7 @@ export function AddRevenueWizardModal(props: {
     setCsvProcessing(true);
     try {
       const valueSource: 'revenue' = 'revenue';
+      const campaignMappings = mappedRevenueCampaignsForValues(csvCampaignValues);
       const mapping = {
         revenueColumn: csvRevenueCol || null,
         conversionValueColumn: null,
@@ -1105,6 +1213,7 @@ export function AddRevenueWizardModal(props: {
         csvHeaders: Array.isArray(csvPreview?.headers) ? csvPreview.headers : undefined,
         csvSampleRows: Array.isArray(csvPreview?.sampleRows) ? csvPreview.sampleRows : undefined,
         csvRowCount: typeof csvPreview?.rowCount === "number" ? csvPreview.rowCount : undefined,
+        ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         ...(isEditing && initialSource?.id ? { sourceId: String(initialSource.id) } : {}),
       };
       const fd = new FormData();
@@ -1226,6 +1335,7 @@ export function AddRevenueWizardModal(props: {
     try {
       const hasCampaignScope = !!sheetsCampaignCol && sheetsCampaignValues.length > 0;
       const valueSource: 'revenue' = 'revenue';
+      const campaignMappings = mappedRevenueCampaignsForValues(sheetsCampaignValues);
       const mapping = {
         revenueColumn: sheetsRevenueCol || null,
         conversionValueColumn: null,
@@ -1237,6 +1347,7 @@ export function AddRevenueWizardModal(props: {
         currency,
         displayName: "Google Sheets revenue",
         mode: "revenue_to_date",
+        ...(campaignMappings.length > 0 ? { campaignMappings } : {}),
         ...(isEditing && initialSource?.id ? { sourceId: String(initialSource.id) } : {}),
       };
       const resp = await fetch(`/api/campaigns/${campaignId}/revenue/sheets/process`, {
@@ -1725,6 +1836,7 @@ export function AddRevenueWizardModal(props: {
                                 onValueChange={(v) => {
                                   setCsvCampaignCol(v === SELECT_NONE ? "" : v);
                                   setCsvCampaignValues([]);
+                                  setRevenueCampaignMappings([]);
                                   setCsvCampaignQuery("");
                                 }}
                               >
@@ -1777,6 +1889,8 @@ export function AddRevenueWizardModal(props: {
                             </div>
                           </div>
                         </div>
+
+                        {renderGoogleAdsCampaignMapping(csvCampaignValues)}
 
                         <div className="rounded-md border overflow-hidden p-3">
                           <div className="text-sm font-medium mb-3">Preview</div>
@@ -2024,6 +2138,7 @@ export function AddRevenueWizardModal(props: {
                               onValueChange={(v) => {
                                 setSheetsCampaignCol(v === SELECT_NONE ? "" : v);
                                 setSheetsCampaignValues([]);
+                                setRevenueCampaignMappings([]);
                                 setSheetsCampaignQuery("");
                               }}
                             >
@@ -2116,6 +2231,8 @@ export function AddRevenueWizardModal(props: {
                           </div>
 
                         </div>
+
+                        {renderGoogleAdsCampaignMapping(sheetsCampaignValues)}
 
                         {/* Preview table */}
                         <div className="rounded-md border overflow-hidden">

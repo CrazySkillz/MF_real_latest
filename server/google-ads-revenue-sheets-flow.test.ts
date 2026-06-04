@@ -62,7 +62,7 @@ describe("Google Ads revenue Google Sheets flow", () => {
     expect(processRoute).toContain("await storage.deleteRevenueRecordsBySource(String((source as any).id));");
   });
 
-  it("materializes Google Ads Sheets per-campaign revenue only for exact active campaign IDs", () => {
+  it("materializes Google Ads Sheets per-campaign revenue for exact IDs or explicit active campaign mappings", () => {
     const routes = readSource("server", "routes-oauth.ts");
     const processRoute = sliceBetween(
       routes,
@@ -71,7 +71,8 @@ describe("Google Ads revenue Google Sheets flow", () => {
     );
 
     expect(processRoute).toContain('const activeGoogleAdsCampaignIds = platformContext === "google_ads"');
-    expect(processRoute).toContain("exactGoogleAdsCampaignIdOrNull(platformContext, campaignKey, activeGoogleAdsCampaignIds)");
+    expect(processRoute).toContain("googleAdsCampaignIdFromValueOrMapping(platformContext, campaignKey, campaignMappings, activeGoogleAdsCampaignIds)");
+    expect(processRoute).toContain("const campaignMappings = Array.isArray(mapping.campaignMappings) ? mapping.campaignMappings : [];");
     expect(processRoute).toContain("const revenueByDateAndCampaign = new Map<string, number>();");
     expect(processRoute).toContain("subCampaignUrn,");
     expect(processRoute).not.toContain("spend weight");
@@ -88,6 +89,8 @@ describe("Google Ads revenue Google Sheets flow", () => {
     expect(modal).toContain("campaignColumn: hasCampaignScope ? sheetsCampaignCol : null");
     expect(modal).toContain("campaignValues: hasCampaignScope ? sheetsCampaignValues : null");
     expect(modal).toContain("dateColumn: sheetsDateCol || null");
+    expect(modal).toContain("const campaignMappings = mappedRevenueCampaignsForValues(sheetsCampaignValues);");
+    expect(modal).toContain("Google Ads campaign mapping");
     expect(sheetsAuth).toContain("purpose?: 'spend' | 'revenue' | 'general' | 'linkedin_revenue' | 'meta_revenue' | 'google_ads_revenue';");
     expect(sheetsAuth).toContain("purpose === 'revenue' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue'");
   });

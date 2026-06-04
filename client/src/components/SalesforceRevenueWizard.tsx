@@ -21,6 +21,8 @@ type UniqueValue = {
   count: number;
 };
 
+type PlatformCampaignMapping = { crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string };
+
 export function SalesforceRevenueWizard(props: {
   campaignId: string;
   sourceId?: string;
@@ -38,6 +40,7 @@ export function SalesforceRevenueWizard(props: {
     pipelineTotalToDate?: number;
     lastTotalRevenue?: number;
     dateField?: string;
+    campaignMappings?: PlatformCampaignMapping[];
   } | null;
   connectOnly?: boolean;
   /**
@@ -76,6 +79,7 @@ export function SalesforceRevenueWizard(props: {
   } = props;
   const { toast } = useToast();
   const isLinkedIn = platformContext === "linkedin";
+  const isGoogleAds = platformContext === "google_ads";
 
   type Step = "value-source" | "connect" | "campaign-field" | "crosswalk" | "pipeline" | "revenue" | "review" | "complete";
   // UX: OAuth happens before this wizard opens (from the Connect Additional Data flow),
@@ -116,6 +120,8 @@ export function SalesforceRevenueWizard(props: {
 
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const [googleAdsCampaigns, setGoogleAdsCampaigns] = useState<Array<{ id: string; name: string }>>([]);
+  const [campaignMappings, setCampaignMappings] = useState<PlatformCampaignMapping[]>([]);
   const [valuesLoading, setValuesLoading] = useState(false);
   const [valuesError, setValuesError] = useState<string | null>(null);
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
@@ -130,9 +136,15 @@ export function SalesforceRevenueWizard(props: {
       pipelineEnabled: cfg?.pipelineEnabled === true,
       pipelineStageName: cfg?.pipelineEnabled === true ? String(cfg?.pipelineStageName || "") : "",
       dateField: String(cfg?.dateField || "CloseDate"),
+      campaignMappings: Array.isArray(cfg?.campaignMappings)
+        ? cfg.campaignMappings.map((m: any) => ({
+            crmValue: String(m?.crmValue || "").trim(),
+            linkedinCampaignUrn: String(m?.linkedinCampaignUrn || "").trim(),
+          })).filter((m: any) => m.crmValue && m.linkedinCampaignUrn).sort((a: any, b: any) => a.crmValue.localeCompare(b.crmValue))
+        : [],
     });
-    return normalize({ campaignField, selectedValues, revenueField, valueSource, pipelineEnabled, pipelineStageName, dateField }) !== normalize(initialMappingConfig);
-  }, [campaignField, dateField, initialMappingConfig, mode, pipelineEnabled, pipelineStageName, revenueField, selectedValues, valueSource]);
+    return normalize({ campaignField, selectedValues, revenueField, valueSource, pipelineEnabled, pipelineStageName, dateField, campaignMappings }) !== normalize(initialMappingConfig);
+  }, [campaignField, campaignMappings, dateField, initialMappingConfig, mode, pipelineEnabled, pipelineStageName, revenueField, selectedValues, valueSource]);
 
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -177,6 +189,87 @@ export function SalesforceRevenueWizard(props: {
 
   const connectedLabel = useMemo(() => orgName || null, [orgName]);
 
+  useEffect(() => {
+    if (!isGoogleAds || !campaignId) return;
+    let cancelled = false;
+    fetch(`/api/google-ads/${campaignId}/campaigns`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() : { campaigns: [] })
+      .then((data) => {
+        if (cancelled) return;
+        const campaigns = Array.isArray(data?.campaigns) ? data.campaigns : [];
+        setGoogleAdsCampaigns(campaigns
+          .filter((campaign: any) => campaign?.selected !== false)
+          .map((campaign: any) => ({ id: String(campaign?.id || campaign?.name || ""), name: String(campaign?.name || campaign?.id || "Unknown") }))
+          .filter((campaign: any) => !!campaign.id));
+      })
+      .catch(() => {
+        if (!cancelled) setGoogleAdsCampaigns([]);
+      });
+    return () => { cancelled = true; };
+  }, [isGoogleAds, campaignId]);
+
+  const googleAdsCampaignOptions = useMemo(() => {
+    const options = new Map<string, { id: string; name: string }>();
+    for (const campaign of googleAdsCampaigns) {
+      if (campaign.id) options.set(campaign.id, campaign);
+    }
+    for (const mapping of campaignMappings) {
+      const id = String(mapping.linkedinCampaignUrn || "").trim();
+      if (id && !options.has(id)) options.set(id, { id, name: mapping.linkedinCampaignName || id });
+    }
+    return Array.from(options.values());
+  }, [campaignMappings, googleAdsCampaigns]);
+
+  const selectedCampaignMappings = useMemo(() => {
+    if (!isGoogleAds) return [];
+    const selectedSet = new Set(selectedValues.map((value) => String(value || "").trim()).filter(Boolean));
+    return campaignMappings.filter((mapping) => (
+      selectedSet.has(String(mapping.crmValue || "").trim()) &&
+      googleAdsCampaignOptions.some((campaign) => campaign.id === mapping.linkedinCampaignUrn)
+    ));
+  }, [campaignMappings, googleAdsCampaignOptions, isGoogleAds, selectedValues]);
+
+  const updateCampaignMapping = (crmValue: string, campaignIdValue: string) => {
+    const value = String(crmValue || "").trim();
+    if (!value) return;
+    setCampaignMappings((prev) => {
+      const rest = prev.filter((mapping) => String(mapping.crmValue || "").trim() !== value);
+      if (!campaignIdValue || campaignIdValue === "__none__") return rest;
+      const campaign = googleAdsCampaignOptions.find((item) => item.id === campaignIdValue);
+      return [...rest, { crmValue: value, linkedinCampaignUrn: campaignIdValue, linkedinCampaignName: campaign?.name || campaignIdValue }];
+    });
+  };
+
+  const renderGoogleAdsCampaignMappings = () => {
+    if (!isGoogleAds || selectedValues.length === 0) return null;
+    return (
+      <div className="rounded border p-3 space-y-3">
+        <Label>Google Ads campaign mapping</Label>
+        <div className="space-y-2">
+          {selectedValues.map((value) => {
+            const current = campaignMappings.find((mapping) => String(mapping.crmValue || "").trim() === value);
+            return (
+              <div key={value} className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(220px,320px)] md:items-center">
+                <div className="truncate text-sm">{value}</div>
+                <Select value={current?.linkedinCampaignUrn || "__none__"} onValueChange={(next) => updateCampaignMapping(value, next)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Google Ads campaign" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[10000]">
+                    <SelectItem value="__none__">No campaign mapping</SelectItem>
+                    {googleAdsCampaignOptions.map((campaign) => (
+                      <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const fetchStatus = async () => {
     const resp = await fetch(`/api/salesforce/${campaignId}/status`, { credentials: "include" });
     const json = await resp.json().catch(() => ({}));
@@ -207,6 +300,7 @@ export function SalesforceRevenueWizard(props: {
       setStages([]);
       setUniqueValues([]);
       setSelectedValues([]);
+      setCampaignMappings([]);
       setLastSaveResult(null);
       crosswalkFetchedRef.current = false;
       stagesFetchedRef.current = false;
@@ -233,6 +327,7 @@ export function SalesforceRevenueWizard(props: {
     setPipelineStageName(nextPipelineStageName);
     setPipelineStageLabel(nextPipelineStageLabel);
     setSelectedValues(nextSelectedValues);
+    setCampaignMappings(Array.isArray((cfg as any).campaignMappings) ? (cfg as any).campaignMappings : []);
     // Synthesize uniqueValues from selectedValues so crosswalk checkboxes render
     // when user navigates back (API may be unavailable with expired tokens)
     setUniqueValues(nextSelectedValues.map((v) => ({ value: v, count: 0 })));
@@ -782,6 +877,7 @@ export function SalesforceRevenueWizard(props: {
           pipelineStageName: pipelineEnabled ? (pipelineStageName || null) : null,
           pipelineStageLabel: pipelineEnabled ? (pipelineStageLabel || null) : null,
           platformContext,
+          ...(selectedCampaignMappings.length > 0 ? { campaignMappings: selectedCampaignMappings } : {}),
         }),
       });
       const json = await resp.json().catch(() => ({}));
@@ -1119,7 +1215,10 @@ export function SalesforceRevenueWizard(props: {
 
                 <Select
                   value={campaignField}
-                  onValueChange={(v) => setCampaignField(v)}
+                  onValueChange={(v) => {
+                    setCampaignField(v);
+                    setCampaignMappings([]);
+                  }}
                   disabled={!isConnected || statusLoading || fieldsLoading}
                 >
                   <SelectTrigger>
@@ -1231,6 +1330,7 @@ export function SalesforceRevenueWizard(props: {
                   </div>
                 )}
               </div>
+              {renderGoogleAdsCampaignMappings()}
             </div>
           )}
 

@@ -105,8 +105,9 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain('(step === "crosswalk" && selectedValues.length === 0)');
     expect(clientFile).toContain("selectedValues,");
     expect(clientFile).not.toContain("Map each Salesforce value to a LinkedIn campaign");
-    expect(clientFile).not.toContain("campaignMappings");
     expect(clientFile).not.toContain("/linkedin-campaigns");
+    expect(clientFile).toContain('const isGoogleAds = platformContext === "google_ads";');
+    expect(clientFile).toContain('if (!isGoogleAds || selectedValues.length === 0) return null;');
   });
 
   it("Salesforce review total preview key is stable when moving from Revenue to Save", () => {

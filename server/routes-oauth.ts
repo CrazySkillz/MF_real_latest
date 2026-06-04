@@ -2416,6 +2416,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return activeGoogleAdsCampaignIds.has(id) ? id : null;
   };
 
+  const googleAdsCampaignIdFromValueOrMapping = (
+    platformContext: string,
+    sourceValue: any,
+    campaignMappings: any[],
+    activeGoogleAdsCampaignIds: Set<string>,
+  ): string | null => {
+    const exact = exactGoogleAdsCampaignIdOrNull(platformContext, sourceValue, activeGoogleAdsCampaignIds);
+    if (exact) return exact;
+    if (platformContext !== "google_ads") return null;
+    const value = String(sourceValue || "").trim();
+    if (!value || !Array.isArray(campaignMappings)) return null;
+    const mapping = campaignMappings.find((m: any) => String(m?.crmValue || "").trim() === value);
+    const mappedId = String(mapping?.googleAdsCampaignId || mapping?.linkedinCampaignUrn || "").trim();
+    return mappedId && activeGoogleAdsCampaignIds.has(mappedId) ? mappedId : null;
+  };
+
   // Enterprise-grade: whenever a source-of-truth input (revenue / conversion value) changes,
   // recompute all dependent derived values (KPIs + alerts) immediately.
   const recomputeCampaignDerivedValues = async (campaignId: string) => {
@@ -2790,6 +2806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const activeGoogleAdsCampaignIds = platformContext === "google_ads"
           ? await getActiveGoogleAdsCampaignIdSet(campaignId)
           : new Set<string>();
+        const campaignMappings = Array.isArray(mapping.campaignMappings) ? mapping.campaignMappings : [];
         const fallbackRecordDate = yesterdayUTC();
 
         for (const row of parsedRows) {
@@ -2827,7 +2844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
             }
-            const subCampaignUrn = exactGoogleAdsCampaignIdOrNull(platformContext, campaignKey, activeGoogleAdsCampaignIds);
+            const subCampaignUrn = googleAdsCampaignIdFromValueOrMapping(platformContext, campaignKey, campaignMappings, activeGoogleAdsCampaignIds);
             if (subCampaignUrn) {
               const recordDate = normalizedDateForRow || fallbackRecordDate;
               const key = `${recordDate}:${subCampaignUrn}`;
@@ -3327,6 +3344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activeGoogleAdsCampaignIds = platformContext === "google_ads"
         ? await getActiveGoogleAdsCampaignIdSet(campaignId)
         : new Set<string>();
+      const campaignMappings = Array.isArray(mapping.campaignMappings) ? mapping.campaignMappings : [];
       const fallbackRecordDate = yesterdayUTC();
 
       for (const row of rows) {
@@ -3360,7 +3378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
             }
-            const subCampaignUrn = exactGoogleAdsCampaignIdOrNull(platformContext, campaignKey, activeGoogleAdsCampaignIds);
+            const subCampaignUrn = googleAdsCampaignIdFromValueOrMapping(platformContext, campaignKey, campaignMappings, activeGoogleAdsCampaignIds);
             if (subCampaignUrn) {
               const recordDate = normalizedDateForRow || fallbackRecordDate;
               const key = `${recordDate}:${subCampaignUrn}`;
@@ -13853,11 +13871,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (closeDate && Number.isFinite(r)) {
           revenueByDate.set(closeDate, (revenueByDate.get(closeDate) || 0) + r);
 
-          const googleAdsCampaignId = exactGoogleAdsCampaignIdOrNull(platformCtx, campaignValue, activeGoogleAdsCampaignIds);
+          const googleAdsCampaignId = googleAdsCampaignIdFromValueOrMapping(platformCtx, campaignValue, campaignMappings, activeGoogleAdsCampaignIds);
           if (googleAdsCampaignId) {
             const key = `${closeDate}:${googleAdsCampaignId}`;
             revenueByDateAndCampaign.set(key, (revenueByDateAndCampaign.get(key) || 0) + r);
-          } else if (campaignMappings.length > 0) {
+          } else if (platformCtx === "linkedin" && campaignMappings.length > 0) {
             const mapping = campaignMappings.find(m => m.crmValue === campaignValue);
             if (mapping) {
               const key = `${closeDate}:${mapping.linkedinCampaignUrn}`;
@@ -15202,10 +15220,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const campaignValue = String(props[campaignProp] || "").trim();
           if (campaignValue) campaignValueRevenueTotals.set(campaignValue, (campaignValueRevenueTotals.get(campaignValue) || 0) + r);
 
-          const googleAdsCampaignId = exactGoogleAdsCampaignIdOrNull(platformCtx, campaignValue, activeGoogleAdsCampaignIds);
+          const googleAdsCampaignId = googleAdsCampaignIdFromValueOrMapping(platformCtx, campaignValue, campaignMappings, activeGoogleAdsCampaignIds);
           if (googleAdsCampaignId) {
             revenueByLinkedinCampaign.set(googleAdsCampaignId, (revenueByLinkedinCampaign.get(googleAdsCampaignId) || 0) + r);
-          } else if (campaignMappings.length > 0) {
+          } else if (platformCtx === "linkedin" && campaignMappings.length > 0) {
             const mapping = campaignMappings.find(m => m.crmValue === campaignValue);
             if (mapping) {
               const urn = mapping.linkedinCampaignUrn;
@@ -28948,11 +28966,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             revenueByDate.set(orderDate, current + amt.shopAmount);
 
             const orderCrmValue = getFieldValue(o).trim();
-            const googleAdsCampaignId = exactGoogleAdsCampaignIdOrNull(platformCtx, orderCrmValue, activeGoogleAdsCampaignIds);
+            const googleAdsCampaignId = googleAdsCampaignIdFromValueOrMapping(platformCtx, orderCrmValue, campaignMappings, activeGoogleAdsCampaignIds);
             if (googleAdsCampaignId) {
               const key = `${orderDate}:${googleAdsCampaignId}`;
               revenueByDateAndCampaign.set(key, (revenueByDateAndCampaign.get(key) || 0) + amt.shopAmount);
-            } else if (campaignMappings.length > 0) {
+            } else if (platformCtx === "linkedin" && campaignMappings.length > 0) {
               const mapping = campaignMappings.find(m => m.crmValue === orderCrmValue);
               if (mapping) {
                 const key = `${orderDate}:${mapping.linkedinCampaignUrn}`;

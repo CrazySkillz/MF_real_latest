@@ -43,7 +43,7 @@ describe("Google Ads revenue HubSpot flow", () => {
     expect(route).toContain("dailyMaterialization: platformCtx === \"ga4\" && revenueByCloseDate.size > 0 ? \"selected_date_field_v1\" : null");
   });
 
-  it("materializes Google Ads HubSpot per-campaign revenue only for exact active campaign IDs", () => {
+  it("materializes Google Ads HubSpot per-campaign revenue for exact IDs or explicit active campaign mappings", () => {
     const routes = readSource("server", "routes-oauth.ts");
     const route = sliceBetween(
       routes,
@@ -52,7 +52,8 @@ describe("Google Ads revenue HubSpot flow", () => {
     );
 
     expect(route).toContain('const activeGoogleAdsCampaignIds = platformCtx === "google_ads"');
-    expect(route).toContain("exactGoogleAdsCampaignIdOrNull(platformCtx, campaignValue, activeGoogleAdsCampaignIds)");
+    expect(route).toContain("googleAdsCampaignIdFromValueOrMapping(platformCtx, campaignValue, campaignMappings, activeGoogleAdsCampaignIds)");
+    expect(route).toContain('} else if (platformCtx === "linkedin" && campaignMappings.length > 0) {');
     expect(route).toContain('if ((campaignMappings.length > 0 || platformCtx === "google_ads") && revenueByLinkedinCampaign.size > 0)');
     expect(route).toContain("subCampaignUrn: urn,");
     expect(route).not.toContain("spend weight");
@@ -98,6 +99,9 @@ describe("Google Ads revenue HubSpot flow", () => {
     expect(wizard).toContain("...(sourceId ? { sourceId } : {})");
     expect(wizard).toContain("pipelineEnabled,");
     expect(wizard).toContain("pipelineStageId: pipelineEnabled ? pipelineStageId : null");
+    expect(wizard).toContain('const isGoogleAds = platformContext === "google_ads";');
+    expect(wizard).toContain("selectedCampaignMappings");
+    expect(wizard).toContain("Google Ads campaign mapping");
     expect(modal).toContain("platformContext={platformContext}");
     expect(modal).toContain('sourceId={isEditing && String(initialSource?.sourceType || "").toLowerCase() === "hubspot" ? String(initialSource?.id || "") : undefined}');
     expect(scheduler).toContain("platformContext: mappingConfig.platformContext");

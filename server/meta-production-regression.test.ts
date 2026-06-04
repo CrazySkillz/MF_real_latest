@@ -13,6 +13,26 @@ const sliceBetween = (source: string, startNeedle: string, endNeedle: string) =>
 };
 
 describe("Meta production readiness regression guard", () => {
+  it("keeps the Create Campaign confirm Back button on platform selection instead of re-entering OAuth", () => {
+    const page = read("client", "src", "pages", "campaigns.tsx");
+    const handler = sliceBetween(
+      page,
+      "const handleBackFromConfirm = () => {",
+      "const handleContinuePlatformSetup = () => {"
+    );
+    const confirmStep = sliceBetween(
+      page,
+      "/* Step 5: Confirm & Create */",
+      ") : null}"
+    );
+
+    expect(handler).toContain("setSelectedWizardPlatform(null);");
+    expect(handler).toContain("setWizardPlatformConnected(false);");
+    expect(handler).toContain("setWizardStep(2);");
+    expect(confirmStep).toContain("onClick={handleBackFromConfirm}");
+    expect(confirmStep).not.toContain("onClick={() => setWizardStep(3)}");
+  });
+
   it("keeps Meta test-mode setup from finalizing without an explicit campaign selection", () => {
     const flow = read("client", "src", "components", "SimpleMetaAuth.tsx");
 

@@ -21,7 +21,7 @@ Meta/Facebook is not production-ready yet.
 
 This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
 
-Meta Commit 2 has been implemented locally. Local validation passed; user/browser validation is pending.
+Meta Commit 2 has been implemented locally. Local validation and user/browser validation passed.
 
 Verified current foundations:
 
@@ -299,10 +299,11 @@ Status:
 - [x] Completed locally: `SimpleMetaAuth` no longer finalizes Meta setup when campaigns fail to load, when no campaigns exist, or through `Skip (import all)`.
 - [x] Completed locally: selected Meta campaign saves reject empty selections.
 - [x] Completed locally: test-mode mock daily rows are generated after selected campaign IDs are saved, using those selected IDs.
+- [x] Completed locally: Create Campaign confirm Back clears the selected connector before returning to platform selection, so it does not re-enter the OAuth/auth page.
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed for the explicit Meta campaign selection flow.
 
 ### Meta Commit 3: Connected Platforms Add-Source Hardening
 
@@ -611,7 +612,6 @@ Outstanding required implementation work:
 
 Outstanding evidence:
 
-- Meta Commit 2 user/browser validation is pending.
 - Live OAuth evidence is not available locally.
 
 ## Current Handoff

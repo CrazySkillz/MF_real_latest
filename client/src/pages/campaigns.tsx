@@ -484,6 +484,12 @@ export default function Campaigns() {
     setLinkedInImportComplete(false);
   };
 
+  const handleBackFromConfirm = () => {
+    setSelectedWizardPlatform(null);
+    setWizardPlatformConnected(false);
+    setWizardStep(2);
+  };
+
   const handleContinuePlatformSetup = () => {
     const platformId = selectedWizardPlatform || connectedPlatformsInDialog[0] || null;
     if (!platformId) return;
@@ -1296,7 +1302,7 @@ export default function Campaigns() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3 pt-4 border-t">
-                        <Button type="button" variant="outline" className="flex-1" onClick={() => setWizardStep(2)}>
+                        <Button type="button" variant="outline" className="flex-1" onClick={handleBackFromConfirm}>
                           <ArrowLeft className="w-4 h-4 mr-2" /> Back
                         </Button>
                         <Button

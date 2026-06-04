@@ -248,6 +248,21 @@ describe("Meta production readiness regression guard", () => {
     expect(page).toContain("title: 'Failed to create benchmark'");
   });
 
+  it("does not show a Source tile on Meta Benchmark cards when custom value is the only create path", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const benchmarkCards = sliceBetween(
+      page,
+      "{/* Benchmark Cards */}",
+      "No benchmarks have been created yet."
+    );
+
+    expect(benchmarkCards).toContain('className="grid gap-4 md:grid-cols-2"');
+    expect(benchmarkCards).toContain("Benchmark Value");
+    expect(benchmarkCards).not.toContain(">Source<");
+    expect(benchmarkCards).not.toContain("Industry (${benchmark.industry})");
+    expect(benchmarkCards).not.toContain("'Custom'");
+  });
+
   it("keeps Meta initial loading aligned with the app fallback to avoid refresh layout jumps", () => {
     const page = read("client", "src", "pages", "meta-analytics.tsx");
     const loadingState = sliceBetween(

@@ -1860,7 +1860,7 @@ export default function MetaAnalytics() {
                             </div>
                           </div>
 
-                          <div className="grid gap-4 md:grid-cols-3">
+                          <div className="grid gap-4 md:grid-cols-2">
                             <div className="p-3 bg-muted rounded-lg">
                               <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current Value</div>
                               <div className="text-lg font-bold text-foreground">
@@ -1871,12 +1871,6 @@ export default function MetaAnalytics() {
                               <div className="text-sm font-medium text-muted-foreground/70 mb-1">Benchmark Value</div>
                               <div className="text-lg font-bold text-foreground">
                                 {formatMetaMetricValue(metricKey, benchVal)}
-                              </div>
-                            </div>
-                            <div className="p-3 bg-muted rounded-lg">
-                              <div className="text-sm font-medium text-muted-foreground/70 mb-1">Source</div>
-                              <div className="text-lg font-bold text-foreground">
-                                {benchmark.industry ? `Industry (${benchmark.industry})` : 'Custom'}
                               </div>
                             </div>
                           </div>

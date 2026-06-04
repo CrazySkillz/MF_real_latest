@@ -21,7 +21,7 @@ Meta/Facebook is not production-ready yet.
 
 This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
 
-Meta Commit 13 has been implemented locally. Local validation passed; user/browser validation is pending.
+Meta Commit 14 has been implemented locally. Local validation passed; user/browser validation is pending.
 
 Verified current foundations:
 
@@ -42,6 +42,7 @@ Verified current foundations:
 - Commit 11 cleans current-campaign Meta-owned daily metric rows and Meta scheduler spend rows during disconnect/reconnect without deleting user-created Meta revenue sources, KPIs, Benchmarks, or reports.
 - Commit 12 moves Meta KPI and Benchmark lifecycle behavior onto the shared platform-scoped KPI/Benchmark storage pattern and maps revenue-dependent current values to imported Meta attributed revenue.
 - Commit 13 moves Meta report cards to the shared platform-report route, persists scheduler-compatible schedule fields, and makes legacy Meta report send/preview routes fail closed instead of returning placeholder success.
+- Commit 14 preserves Meta revenue import context through the shared revenue wizard, Sheets, HubSpot, Salesforce, scheduler refresh paths, and makes the legacy direct Meta CSV route fail closed instead of returning placeholder import success.
 
 Verified production-readiness gaps:
 
@@ -52,9 +53,9 @@ Verified production-readiness gaps:
 - `server/meta-scheduler.ts` filters by `selectedCampaignIds` when present, but falls back to all campaigns when selected IDs are absent. Production behavior should fail closed after the connection flow requires explicit selection.
 - Live scheduler daily refresh is implemented locally with `getCampaignDailyInsights`, but still requires deployed/production-like evidence before calling live scheduler refresh production-ready.
 - `storage.upsertMetaDailyMetrics` now updates `metaCampaignName` and preserves GA4 attribution metadata on conflict in the reviewed path.
-- `server/utils/meta-revenue.ts` has a CSV processor that returns totals but does not materialize revenue records in the shared revenue-source storage path. Its own comment says storage integration is a placeholder.
+- `server/utils/meta-revenue.ts` still contains a legacy CSV helper that returns totals without materializing shared revenue records. The visible wizard uses the shared CSV import route, and the legacy direct Meta CSV route now fails closed instead of returning placeholder import success.
 - Legacy Meta report send and preview routes now return unavailable instead of fake success or placeholder preview output.
-- Meta report create/list/edit/delete now uses the shared platform-report storage path locally; browser validation is pending.
+- Meta report create/list/edit/delete now uses the shared platform-report storage path locally; browser validation passed for the implemented Commit 13 path.
 
 Unverified from local code review so far:
 
@@ -769,13 +770,23 @@ Status:
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts` and `server/legacy-route-reachability-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts server/legacy-route-reachability-regression.test.ts server/report-email-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ### Meta Commit 14: Meta Attributed Revenue Import Parity
 
 Goal:
 
 - Make Meta imported revenue follow the same source-management pattern as GA4, LinkedIn, and Google Ads if Meta revenue is included in production scope.
+
+Root cause analysis:
+
+- The Meta Overview Total Revenue card and shared `AddRevenueWizardModal` already used `platformContext="meta"`, and CSV/Shopify already used the shared revenue-source path.
+- The Salesforce and HubSpot save routes accepted `platformContext: "meta"` at validation time, but then normalized any non-LinkedIn and non-Google-Ads value back to `ga4`, so Meta CRM revenue imports could be saved as GA4 revenue sources.
+- The Google Sheets revenue preview/process lookup did not map Meta to `meta_revenue`, so the first connection lookup used the GA4 revenue purpose before falling back.
+- `server/auto-refresh-scheduler.ts` refreshed CRM revenue only for GA4 and Google Ads, so Meta HubSpot/Salesforce revenue sources would not be refreshed by the existing scheduler path.
+- `AddRevenueWizardModal` invalidated the legacy Meta report cache key after Meta revenue imports even though Commit 13 moved Meta reports to `/api/platforms/meta/reports`.
+- The legacy direct `POST /api/meta/:campaignId/revenue/csv` route called `processMetaRevenueCSV`, which returns totals but does not materialize shared `revenueSources` or `revenueRecords`. Current UI does not call that route; the visible CSV wizard uses `/api/campaigns/:campaignId/revenue/csv/process` with `platformContext=meta`.
+- The smallest safe fix is to preserve Meta context in the existing shared provider paths and make the legacy direct Meta CSV route fail closed. This does not add a new revenue framework, change GA4/LinkedIn/Google Ads contracts, or alter Meta report scheduling, disconnect/reconnect, or live OAuth behavior.
 
 Tasks:
 
@@ -799,7 +810,16 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Completed locally: Google Sheets revenue preview/process now maps Meta imports to `meta_revenue`.
+- [x] Completed locally: HubSpot and Salesforce revenue save routes preserve `platformContext: "meta"` instead of collapsing Meta to GA4.
+- [x] Completed locally: Meta CRM revenue sources are included in the existing auto-refresh CRM revenue context list.
+- [x] Completed locally: Meta revenue import cache invalidation now targets the shared Meta report cache key.
+- [x] Completed locally: legacy direct Meta CSV import now returns unavailable instead of placeholder success.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-salesforce-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-shopify-flow.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-scheduler-flow.test.ts server/ga4-auto-refresh-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
 
 ### Meta Commit 15: Final Production-Readiness Regression And Documentation
 
@@ -859,15 +879,16 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 14 through Meta Commit 15.
+- Meta Commit 14 user/browser validation.
+- Meta Commit 15 final production-readiness regression and documentation.
 
 Outstanding evidence:
 
 - Meta Commit 6 user/browser validation is pending.
-- Meta Commit 13 user/browser validation is pending.
+- Meta Commit 14 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 
 ## Current Handoff
 
-The next smallest safest implementation step after Meta Commit 13 validation is Meta Commit 14: Meta attributed revenue import parity. That commit should not change report scheduling, scheduler refresh, disconnect/reconnect, or live OAuth behavior unless a traced revenue-import path requires it.
+The next smallest safest step after local Commit 14 validation is a user/browser pass for Meta attributed revenue imports. After that, proceed to Meta Commit 15: final production-readiness regression and documentation. Commit 15 should not introduce new feature behavior; it should prove the implemented local/test-mode paths and record any remaining live-OAuth caveats.

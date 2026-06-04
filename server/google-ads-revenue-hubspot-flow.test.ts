@@ -35,7 +35,7 @@ describe("Google Ads revenue HubSpot flow", () => {
       "// Helper function to refresh Google Sheets access token"
     );
 
-    expect(route).toContain('platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "google_ads" ? "google_ads" : "ga4"');
+    expect(route).toContain('platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : "ga4"');
     expect(route).toContain("const effectiveValueSource: 'revenue' | 'conversion_value' = (platformCtx === 'linkedin' ? parsedValueSource : 'revenue');");
     expect(route).toContain("storage.getRevenueSources(campaignId, platformCtx as any)");
     expect(route).toContain('sourceType: "hubspot"');

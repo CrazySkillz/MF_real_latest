@@ -35,7 +35,7 @@ describe("Google Ads revenue Salesforce flow", () => {
       "// Salesforce pipeline proxy status"
     );
 
-    expect(route).toContain('platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "google_ads" ? "google_ads" : "ga4"');
+    expect(route).toContain('platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : "ga4"');
     expect(route).toContain("platformCtx === 'linkedin' && String(valueSource || '').trim().toLowerCase() === 'conversion_value'");
     expect(route).toContain('sourceType: "salesforce"');
     expect(route).toContain("platformContext: platformCtx");

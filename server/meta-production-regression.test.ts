@@ -168,6 +168,28 @@ describe("Meta production readiness regression guard", () => {
     expect(page).not.toContain("Configure Revenue Tracking");
   });
 
+  it("preserves Meta revenue import context across shared provider save and refresh paths", () => {
+    const wizard = read("client", "src", "components", "AddRevenueWizardModal.tsx");
+    const routes = read("server", "routes-oauth.ts");
+    const scheduler = read("server", "auto-refresh-scheduler.ts");
+    const legacyCsvRoute = sliceBetween(
+      routes,
+      'app.post("/api/meta/:campaignId/revenue/csv"',
+      'app.get("/api/meta/:campaignId/revenue/summary"'
+    );
+
+    expect(wizard).toContain("platformContext === 'meta' ? 'meta_revenue'");
+    expect(wizard).toContain("fetch(`/api/campaigns/${campaignId}/revenue/csv/process`");
+    expect(wizard).toContain('queryKey: ["/api/platforms/meta/reports", campaignId], exact: false');
+    expect(routes).toContain("platformContext === 'meta' ? 'meta_revenue'");
+    expect(routes).toContain('platformContextRaw === "meta" ? "meta"');
+    expect(scheduler).toContain('const crmRevenueContexts = ["ga4", "meta", "google_ads"] as const;');
+    expect(legacyCsvRoute).toContain("res.status(501).json");
+    expect(legacyCsvRoute).toContain("Legacy Meta CSV revenue import is unavailable");
+    expect(legacyCsvRoute).not.toContain("processMetaRevenueCSV");
+    expect(legacyCsvRoute).not.toContain("Revenue data imported successfully");
+  });
+
   it("keeps Meta reports on shared platform-report storage and fail-closes legacy send/preview routes", () => {
     const page = read("client", "src", "pages", "meta-analytics.tsx");
     const routes = read("server", "routes-oauth.ts");

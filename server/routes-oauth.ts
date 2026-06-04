@@ -3046,7 +3046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
       const connectionId = body.data.connectionId;
       const platformContext = body.data.platformContext || "ga4";
-      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : 'revenue';
+      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'meta' ? 'meta_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : 'revenue';
 
       let connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
@@ -3211,7 +3211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : 'revenue';
+      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'meta' ? 'meta_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : 'revenue';
       let connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       // Fall back to purpose-agnostic lookup — the connection may have a different purpose value
@@ -13759,7 +13759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
       const dateFieldChoice = body.data.dateField || "CloseDate";
       const platformContextRaw = String(platformContext || "ga4").trim().toLowerCase();
-      const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "google_ads" ? "google_ads" : "ga4";
+      const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : "ga4";
       const activeGoogleAdsCampaignIds = platformCtx === "google_ads"
         ? await getActiveGoogleAdsCampaignIdSet(campaignId)
         : new Set<string>();
@@ -15192,7 +15192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pipelineStageLabel = String(body.data.pipelineStageLabel || "").trim();
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
       const platformContextRaw = String(platformContext || "ga4").trim().toLowerCase();
-      const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "google_ads" ? "google_ads" : "ga4";
+      const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : "ga4";
       const activeGoogleAdsCampaignIds = platformCtx === "google_ads"
         ? await getActiveGoogleAdsCampaignIdSet(campaignId)
         : new Set<string>();
@@ -21426,7 +21426,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/meta/:campaignId/revenue/csv", async (req, res) => {
     try {
       const { campaignId } = req.params;
-      const { csvData, campaignColumn, revenueColumn } = req.body;
 
       const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
       if (!parsedId.success) {
@@ -21436,45 +21435,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
       if (!ok) return;
 
-      // Validate CSV data
-      if (!csvData || typeof csvData !== 'string') {
-        return res.status(400).json({ error: "Invalid CSV data" });
-      }
-
-      if (!campaignColumn || !revenueColumn) {
-        return res.status(400).json({
-          error: "Campaign column and revenue column are required"
-        });
-      }
-
-      // Import the revenue processing utility
-      const { processMetaRevenueCSV } = await import('./utils/meta-revenue');
-
-      // Process CSV with crosswalk matching
-      const result = await processMetaRevenueCSV({
-        campaignId: parsedId.data,
-        csvData,
-        campaignColumn,
-        revenueColumn,
-      });
-
-      console.log(`[Meta Revenue] CSV upload for campaign ${campaignId}: ${result.rowsProcessed} rows, $${result.totalRevenue} total`);
-
-      if (!result.success) {
-        return res.status(400).json({
-          success: false,
-          error: result.errors?.[0] || 'Failed to process CSV',
-          errors: result.errors,
-        });
-      }
-
-      res.json({
-        success: true,
-        message: "Revenue data imported successfully",
-        rowsProcessed: result.rowsProcessed,
-        totalRevenue: result.totalRevenue,
-        matchedCampaigns: result.matchedCampaigns,
-        warnings: result.errors,
+      res.status(501).json({
+        success: false,
+        error: "Legacy Meta CSV revenue import is unavailable. Use the shared revenue-source CSV import with platformContext=meta.",
       });
     } catch (error: any) {
       console.error('[Meta Revenue] CSV upload error:', error);

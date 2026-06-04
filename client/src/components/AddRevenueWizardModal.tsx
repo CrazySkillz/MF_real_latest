@@ -94,7 +94,7 @@ export function AddRevenueWizardModal(props: {
       void queryClient.invalidateQueries({ queryKey: ["/api/meta", campaignId], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/meta/kpis"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "meta"], exact: false });
-      void queryClient.invalidateQueries({ queryKey: ["/api/meta/reports", campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/meta/reports", campaignId], exact: false });
     }
 
     if (platformContext === 'google_ads') {

@@ -22,7 +22,7 @@ import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 
 type AnyRecord = Record<string, any>;
 const refreshableRevenueContexts = ["ga4", "linkedin", "meta", "google_ads"] as const;
-const crmRevenueContexts = ["ga4", "google_ads"] as const;
+const crmRevenueContexts = ["ga4", "meta", "google_ads"] as const;
 
 function getServerBaseUrl(): string {
   // Internal auto-refresh auth is intentionally loopback-only.

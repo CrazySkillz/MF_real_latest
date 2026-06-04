@@ -309,4 +309,42 @@ describe("Meta production readiness regression guard", () => {
     expect(upsert).toContain("ga4Revenue: sql`COALESCE(EXCLUDED.ga4_revenue, ${metaDailyMetrics.ga4Revenue})`");
     expect(upsert).toContain("ga4UtmName: sql`COALESCE(EXCLUDED.ga4_utm_name, ${metaDailyMetrics.ga4UtmName})`");
   });
+
+  it("cleans Meta-owned metrics and spend rows when disconnecting or reconnecting", () => {
+    const routes = read("server", "routes-oauth.ts");
+    const storage = read("server", "storage.ts");
+    const centralizedDelete = sliceBetween(
+      routes,
+      'app.delete("/api/campaigns/:campaignId/meta/connection"',
+      "// END CENTRALIZED META/FACEBOOK OAUTH"
+    );
+    const legacyDelete = sliceBetween(
+      routes,
+      'app.delete("/api/meta/:campaignId/connection"',
+      "Transfer Meta connection from temporary campaign to real campaign"
+    );
+    const testConnect = sliceBetween(
+      routes,
+      'app.post("/api/meta/:campaignId/connect-test"',
+      'app.get("/api/meta/:campaignId/connection"'
+    );
+    const deleteMethod = sliceBetween(
+      storage,
+      "async deleteMetaConnection(campaignId: string): Promise<boolean> {",
+      "// Google Ads Connection methods"
+    );
+
+    expect(centralizedDelete).toContain("storage.deleteMetaConnection(parsedId.data)");
+    expect(legacyDelete).toContain("storage.deleteMetaConnection(campaignId)");
+    expect(testConnect).toContain("await storage.deleteMetaConnection(campaignId).catch(() => {});");
+    expect(deleteMethod).toContain("db.transaction");
+    expect(deleteMethod).toContain("tx.delete(metaDailyMetrics).where(eq(metaDailyMetrics.campaignId, campaignId))");
+    expect(deleteMethod).toContain("tx.delete(spendRecords).where");
+    expect(deleteMethod).toContain("eq(spendRecords.spendSourceId, 'meta_daily_metrics')");
+    expect(deleteMethod).toContain("eq(spendRecords.sourceType, 'meta_api')");
+    expect(deleteMethod).not.toContain("revenueSources");
+    expect(deleteMethod).not.toContain("metaKpis");
+    expect(deleteMethod).not.toContain("metaBenchmarks");
+    expect(deleteMethod).not.toContain("metaReports");
+  });
 });

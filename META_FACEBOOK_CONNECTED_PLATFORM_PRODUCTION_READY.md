@@ -21,7 +21,7 @@ Meta/Facebook is not production-ready yet.
 
 This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
 
-Meta Commit 10 has been implemented locally. Local validation passed; user/browser validation is pending.
+Meta Commit 11 has been implemented locally. Local validation passed; user/browser validation is pending.
 
 Verified current foundations:
 
@@ -39,6 +39,7 @@ Verified current foundations:
 - Commit 8 aligns the Meta Overview initial loading state with the app-level `Loading...` fallback to avoid refresh layout jumps.
 - Commit 9 makes Meta scheduler/manual refresh fail closed when selected Meta campaign IDs are missing instead of refreshing all campaigns in the ad account.
 - Commit 10 makes live Meta scheduler refresh use true daily insight rows and preserves Meta daily-row metadata during upsert.
+- Commit 11 cleans current-campaign Meta-owned daily metric rows and Meta scheduler spend rows during disconnect/reconnect without deleting user-created Meta revenue sources, KPIs, Benchmarks, or reports.
 
 Verified production-readiness gaps:
 
@@ -633,7 +634,7 @@ Status:
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ### Meta Commit 11: Disconnect, Reconnect, And Stale Data Safety
 
@@ -641,12 +642,20 @@ Goal:
 
 - Ensure Meta lifecycle changes do not leave visible stale or cross-campaign data.
 
+Root cause analysis:
+
+- Both Meta disconnect endpoints call `storage.deleteMetaConnection`.
+- Meta reconnect paths also call `storage.deleteMetaConnection` before creating the new connection.
+- Before this commit, `storage.deleteMetaConnection` deleted only the `meta_connections` row.
+- Meta-owned rows written by the scheduler, specifically `meta_daily_metrics` and `spend_records` with `spendSourceId = "meta_daily_metrics"` or `sourceType = "meta_api"`, could remain after disconnect/reconnect.
+- The smallest safe cleanup is limited to current-campaign Meta-owned metric materialization. User-created Meta revenue sources, KPIs, Benchmarks, and reports are not deleted in this commit.
+
 Tasks:
 
 - Trace both Meta delete endpoints.
-- Decide the smallest safe cleanup behavior for current-campaign Meta rows, spend records, revenue sources, KPIs, Benchmarks, reports, and notifications.
-- Preserve historical records only where the existing product pattern expects historical retention.
-- Ensure reconnect overwrites only the current campaign's Meta connection and selected-campaign state.
+- Decide the smallest safe cleanup behavior for current-campaign Meta rows and spend records.
+- Preserve user-created revenue sources, KPIs, Benchmarks, reports, and notifications until their lifecycle paths are traced separately.
+- Ensure reconnect uses the same cleanup path before creating the new connection.
 - Add targeted cleanup only after the stale-data boundary is proven.
 
 Validation:
@@ -661,7 +670,15 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Completed locally: `storage.deleteMetaConnection` now runs in a transaction.
+- [x] Completed locally: Meta disconnect/reconnect now deletes current-campaign `meta_daily_metrics` rows.
+- [x] Completed locally: Meta disconnect/reconnect now deletes current-campaign Meta scheduler spend rows from `spend_records`.
+- [x] Completed locally: cleanup is limited to Meta-owned metric materialization and does not delete Meta revenue sources, KPIs, Benchmarks, or reports.
+- [x] Completed locally: both Meta delete endpoints and test-mode reconnect use the same storage cleanup path.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
 
 ### Meta Commit 12: KPI And Benchmark Production Hardening
 
@@ -806,15 +823,15 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 11 through Meta Commit 15.
+- Meta Commit 12 through Meta Commit 15.
 
 Outstanding evidence:
 
 - Meta Commit 6 user/browser validation is pending.
-- Meta Commit 10 user/browser validation is pending.
+- Meta Commit 11 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 
 ## Current Handoff
 
-The next smallest safest implementation step after Meta Commit 10 validation is Meta Commit 11: disconnect, reconnect, and stale data safety. That commit should not change KPI, Benchmark, report, scheduler, or live OAuth behavior yet.
+The next smallest safest implementation step after Meta Commit 11 validation is Meta Commit 12: KPI and Benchmark production hardening. That commit should not change report, scheduler, disconnect/reconnect, or live OAuth behavior yet.

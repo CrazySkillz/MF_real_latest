@@ -2392,10 +2392,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteMetaConnection(campaignId: string): Promise<boolean> {
-    const result = await db
-      .delete(metaConnections)
-      .where(eq(metaConnections.campaignId, campaignId));
-    return (result.rowCount || 0) > 0;
+    return await db.transaction(async (tx: any) => {
+      const [existing] = await tx
+        .select({ campaignId: metaConnections.campaignId })
+        .from(metaConnections)
+        .where(eq(metaConnections.campaignId, campaignId))
+        .limit(1);
+      if (!existing) return false;
+
+      await tx.delete(metaDailyMetrics).where(eq(metaDailyMetrics.campaignId, campaignId));
+      await tx.delete(spendRecords).where(
+        and(
+          eq(spendRecords.campaignId, campaignId),
+          or(
+            eq(spendRecords.spendSourceId, 'meta_daily_metrics'),
+            eq(spendRecords.sourceType, 'meta_api')
+          )
+        )
+      );
+      const result = await tx
+        .delete(metaConnections)
+        .where(eq(metaConnections.campaignId, campaignId));
+      return (result.rowCount || 0) > 0;
+    });
   }
 
   // Google Ads Connection methods

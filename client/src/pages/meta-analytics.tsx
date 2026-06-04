@@ -23,6 +23,7 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { MetaKpiModal } from "./meta-analytics/MetaKpiModal";
 import { MetaBenchmarkModal } from "./meta-analytics/MetaBenchmarkModal";
 import { MetaReportModal } from "./meta-analytics/MetaReportModal";
+import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 
 // Meta-specific metric definitions for KPIs and Benchmarks
 const META_METRICS = [
@@ -97,6 +98,10 @@ export default function MetaAnalytics() {
   const [editingReport, setEditingReport] = useState<any>(null);
   const [reportModalStep, setReportModalStep] = useState<'standard' | 'custom' | 'type' | 'configuration'>('standard');
   const [reportFormErrors, setReportFormErrors] = useState<any>({});
+  const [isRevenueWizardOpen, setIsRevenueWizardOpen] = useState(false);
+  const [revenueWizardInitialSource, setRevenueWizardInitialSource] = useState<any>(null);
+  const [showRevenueSourcesDialog, setShowRevenueSourcesDialog] = useState(false);
+  const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState<string | null>(null);
   const [customReportConfig, setCustomReportConfig] = useState<any>({
     coreMetrics: [], derivedMetrics: [], revenueMetrics: [], campaignBreakdown: [],
     kpis: [], benchmarks: [], insights: [], demographics: [],
@@ -126,6 +131,34 @@ export default function MetaAnalytics() {
       return response.json();
     },
     enabled: !!campaignId,
+  });
+
+  const { data: metaRevenueSourcesData } = useQuery<{ success: boolean; sources: any[] }>({
+    queryKey: ["/api/campaigns", campaignId, "revenue-sources", "meta"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=meta`);
+      if (!response.ok) return { success: false, sources: [] };
+      const json = await response.json().catch(() => ({}));
+      return { success: !!json?.success, sources: Array.isArray(json?.sources) ? json.sources : [] };
+    },
+  });
+
+  const { data: metaRevenueTotalsData } = useQuery<{ success: boolean; totalRevenue: number }>({
+    queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=meta&dateRange=90days`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=meta&dateRange=90days`);
+      if (!response.ok) return { success: false, totalRevenue: 0 };
+      const json = await response.json().catch(() => ({}));
+      return { success: !!json?.success, totalRevenue: Number(json?.totalRevenue || 0) };
+    },
   });
 
   // Fetch Meta KPIs
@@ -305,6 +338,50 @@ export default function MetaAnalytics() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/meta/reports'] });
       toast({ title: 'Report deleted' });
+    },
+  });
+
+  const activeMetaRevenueSources = Array.isArray(metaRevenueSourcesData?.sources)
+    ? metaRevenueSourcesData.sources.filter((source: any) => source?.isActive !== false)
+    : [];
+
+  const refreshMetaRevenueQueries = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "meta"] });
+    await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=meta&dateRange=90days`], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/meta", campaignId, "revenue", "summary"], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/meta", campaignId], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/platforms/meta/kpis"], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "meta"], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/meta/reports", campaignId], exact: false });
+    await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "meta"], exact: true });
+    await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=meta&dateRange=90days`], exact: true });
+    await queryClient.refetchQueries({ queryKey: ["/api/meta", campaignId, "revenue", "summary"], exact: true });
+  };
+
+  const deleteMetaRevenueSourceMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json?.success === false) {
+        throw new Error(json?.error || 'Failed to remove revenue source');
+      }
+      return json;
+    },
+    onSuccess: async () => {
+      setDeletingRevenueSourceId(null);
+      toast({ title: 'Revenue source removed', description: 'Meta Total Revenue has been recalculated.' });
+      await refreshMetaRevenueQueries();
+    },
+    onError: (error: any) => {
+      setDeletingRevenueSourceId(null);
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to remove revenue source',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -529,6 +606,52 @@ export default function MetaAnalytics() {
 
   const { summary, campaigns } = analyticsData;
   const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
+  const fmtCurrency = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const parseRevenueSourceConfig = (source: any): any => {
+    try {
+      return source?.mappingConfig
+        ? (typeof source.mappingConfig === 'string' ? JSON.parse(source.mappingConfig) : source.mappingConfig)
+        : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const revenueSourceTypeLabel = (type: any) => {
+    const map: Record<string, string> = {
+      csv: 'CSV',
+      google_sheets: 'Google Sheets',
+      hubspot: 'HubSpot',
+      salesforce: 'Salesforce',
+      shopify: 'Shopify',
+      manual: 'Manual',
+      connector_derived: 'Imported',
+    };
+    return map[String(type || '').trim().toLowerCase()] || 'Imported';
+  };
+
+  const metaRevenueSourceLabel = (source: any) => {
+    const displayName = String(source?.displayName || '').trim();
+    return displayName || revenueSourceTypeLabel(source?.sourceType);
+  };
+
+  const openMetaRevenueModal = (source?: any) => {
+    setRevenueWizardInitialSource(source || null);
+    setIsRevenueWizardOpen(true);
+  };
+
+  const hasMetaAttributedRevenue = activeMetaRevenueSources.length > 0;
+  const metaAttributedRevenueFromSources = activeMetaRevenueSources.reduce(
+    (sum: number, source: any) => sum + Number(source?.lastTotalRevenue || 0),
+    0
+  );
+  const metaAttributedRevenue = metaAttributedRevenueFromSources > 0
+    ? metaAttributedRevenueFromSources
+    : Number(metaRevenueTotalsData?.totalRevenue || 0);
+  const metaAttributedProfit = metaAttributedRevenue - (summary.totalSpend || 0);
+  const metaAttributedRoas = summary.totalSpend > 0 ? metaAttributedRevenue / summary.totalSpend : 0;
+  const metaAttributedRoi = summary.totalSpend > 0 ? ((metaAttributedRevenue - summary.totalSpend) / summary.totalSpend) * 100 : 0;
 
   // Format date helper
   const formatShortDate = (yyyyMmDd: string) => {
@@ -869,21 +992,50 @@ export default function MetaAnalytics() {
           </div>
 
           {/* Revenue Section */}
-          {revenueSummary && revenueSummary.hasRevenueTracking ? (
-            <Card className="mb-8 border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-1">
+                <p className="text-sm text-muted-foreground/70">Total Revenue</p>
+                <button
+                  type="button"
+                  onClick={() => openMetaRevenueModal()}
+                  className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
+                  title="Add Meta revenue source"
+                  aria-label="Add Meta revenue source"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-2xl font-bold text-foreground">
+                {hasMetaAttributedRevenue ? fmtCurrency(metaAttributedRevenue) : "Not connected"}
+              </p>
+              {!hasMetaAttributedRevenue && (
+                <p className="text-xs text-muted-foreground mt-1">Connect attributed revenue</p>
+              )}
+              {activeMetaRevenueSources.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowRevenueSourcesDialog(true)}
+                  className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+                >
+                  Sources ({activeMetaRevenueSources.length})
+                </button>
+              )}
+            </CardContent>
+          </Card>
+
+          {hasMetaAttributedRevenue && (
+            <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-lg text-green-800 dark:text-green-200">Revenue Tracking Active</CardTitle>
+                    <CardTitle className="text-lg text-green-800 dark:text-green-200">Imported Meta Revenue Active</CardTitle>
                     <CardDescription>
-                      {revenueSummary.windowStartDate} to {revenueSummary.windowEndDate}
-                      {revenueSummary.webhookRevenueUsed && " • Webhook Events (Highest Accuracy)"}
+                      Imported Meta attributed revenue from connected sources.
                     </CardDescription>
                   </div>
                   <Badge variant="default" className="bg-green-600">
-                    {revenueSummary.conversionValueSource === 'webhook_events' ? 'Webhook' :
-                     revenueSummary.conversionValueSource === 'manual' ? 'Manual' :
-                     revenueSummary.conversionValueSource === 'csv' ? 'CSV Import' : 'Derived'}
+                    Imported
                   </Badge>
                 </div>
               </CardHeader>
@@ -892,53 +1044,29 @@ export default function MetaAnalytics() {
                   <div>
                     <p className="text-sm text-muted-foreground/70 mb-1">Total Revenue</p>
                     <p className="text-3xl font-bold text-green-700 dark:text-green-300">
-                      ${revenueSummary.totalRevenue.toLocaleString()}
+                      {fmtCurrency(metaAttributedRevenue)}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground/70 mb-1">Conversion Value</p>
-                    <p className="text-3xl font-bold">${revenueSummary.conversionValue.toFixed(2)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground/70 mb-1">ROAS</p>
-                    <p className="text-3xl font-bold">
-                      {summary.totalSpend > 0 ? (revenueSummary.totalRevenue / summary.totalSpend).toFixed(2) : '0.00'}x
-                    </p>
+                    <p className="text-3xl font-bold">{metaAttributedRoas.toFixed(2)}x</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground/70 mb-1">ROI</p>
                     <p className="text-3xl font-bold">
-                      {summary.totalSpend > 0 ? (((revenueSummary.totalRevenue - summary.totalSpend) / summary.totalSpend) * 100).toFixed(1) : '0.0'}%
+                      {metaAttributedRoi.toFixed(1)}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground/70 mb-1">Profit</p>
+                    <p className={`text-3xl font-bold ${metaAttributedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {fmtCurrency(metaAttributedProfit)}
                     </p>
                   </div>
                 </div>
-                {revenueSummary.webhookEventCount && revenueSummary.webhookEventCount > 0 && (
-                  <p className="text-xs text-muted-foreground/70 mt-4">
-                    Using {revenueSummary.webhookEventCount} webhook conversion event(s) for highest accuracy
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="mb-8 border-border">
-              <CardHeader>
-                <CardTitle className="text-lg">Revenue Tracking Not Configured</CardTitle>
-                <CardDescription>
-                  Set up revenue tracking to unlock ROAS, ROI, and revenue-dependent metrics
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground/70 mb-4">
-                  To enable revenue tracking for Meta campaigns, you can:
+                <p className="text-xs text-muted-foreground/70 mt-4">
+                  Sources ({activeMetaRevenueSources.length})
                 </p>
-                <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground/70 mb-4">
-                  <li>Manually enter revenue data for each campaign</li>
-                  <li>Upload a CSV file with campaign revenue data (crosswalk matching)</li>
-                  <li>Set up webhook integration for real-time conversion tracking</li>
-                </ul>
-                <Button variant="outline" size="sm">
-                  Configure Revenue Tracking
-                </Button>
               </CardContent>
             </Card>
           )}
@@ -2932,6 +3060,105 @@ export default function MetaAnalytics() {
             userTimeZone={userTimeZone}
             getTimeZoneDisplay={getTimeZoneDisplay}
           />
+
+          {campaignId && (
+            <AddRevenueWizardModal
+              open={isRevenueWizardOpen}
+              onOpenChange={(open) => {
+                setIsRevenueWizardOpen(open);
+                if (!open) setRevenueWizardInitialSource(null);
+              }}
+              campaignId={campaignId}
+              currency={(analyticsData as any)?.currency || "USD"}
+              dateRange="90days"
+              platformContext="meta"
+              initialSource={revenueWizardInitialSource || undefined}
+              onSuccess={() => {
+                void refreshMetaRevenueQueries();
+              }}
+            />
+          )}
+
+          <Dialog open={showRevenueSourcesDialog} onOpenChange={setShowRevenueSourcesDialog}>
+            <DialogContent className="bg-card border-border max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="text-foreground">Meta Revenue Sources</DialogTitle>
+                <DialogDescription className="text-muted-foreground/70">
+                  Sources contributing to Meta Total Revenue.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+                {activeMetaRevenueSources.length > 0 ? activeMetaRevenueSources.map((source: any) => {
+                  const cfg = parseRevenueSourceConfig(source);
+                  const selectedCount = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.length : 0;
+                  return (
+                    <div key={source.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground" title={metaRevenueSourceLabel(source)}>
+                          {metaRevenueSourceLabel(source)}
+                        </p>
+                        <p className="text-xs text-muted-foreground/70">
+                          {revenueSourceTypeLabel(source.sourceType)}{selectedCount > 0 ? ` - ${selectedCount} selected attribution value${selectedCount === 1 ? '' : 's'}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium tabular-nums text-foreground">
+                          {fmtCurrency(Number(source.lastTotalRevenue || 0))}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowRevenueSourcesDialog(false);
+                            openMetaRevenueModal(source);
+                          }}
+                          className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                          title="Edit revenue source"
+                          aria-label="Edit revenue source"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingRevenueSourceId(String(source.id))}
+                          className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
+                          title="Remove revenue source"
+                          aria-label="Remove revenue source"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <p className="text-sm text-muted-foreground/70">No Meta revenue sources connected.</p>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <AlertDialog open={!!deletingRevenueSourceId} onOpenChange={(open) => { if (!open) setDeletingRevenueSourceId(null); }}>
+            <AlertDialogContent className="bg-card border-border">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-foreground">Remove revenue source?</AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground/70">
+                  This removes only the selected Meta revenue source. Total Revenue will be recalculated.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => {
+                    if (deletingRevenueSourceId) {
+                      deleteMetaRevenueSourceMutation.mutate(deletingRevenueSourceId);
+                    }
+                  }}
+                >
+                  Remove
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </main>
       </div>
     </div>

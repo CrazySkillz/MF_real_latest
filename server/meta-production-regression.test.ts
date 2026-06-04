@@ -144,6 +144,30 @@ describe("Meta production readiness regression guard", () => {
     expect(aggregate).toContain("attributedRevenue: hasMetaRevenue ? parseNum(meta.attributedRevenue) : null");
   });
 
+  it("exposes Meta Overview Total Revenue source management through the shared revenue wizard", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const revenueSection = sliceBetween(
+      page,
+      "{/* Revenue Section */}",
+      "{/* Performance Metrics - Derived Metrics */}"
+    );
+
+    expect(page).toContain('import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";');
+    expect(page).toContain('revenue-sources?platformContext=meta');
+    expect(page).toContain('revenue-totals?platformContext=meta&dateRange=90days');
+    expect(page).toContain('queryKey: ["/api/campaigns", campaignId, "revenue-sources", "meta"]');
+    expect(revenueSection).toContain("Total Revenue");
+    expect(revenueSection).toContain("onClick={() => openMetaRevenueModal()}");
+    expect(revenueSection).toContain("Sources ({activeMetaRevenueSources.length})");
+    expect(page).toContain('platformContext="meta"');
+    expect(page).toContain("Meta Revenue Sources");
+    expect(page).toContain("openMetaRevenueModal(source)");
+    expect(page).toContain("setDeletingRevenueSourceId(String(source.id))");
+    expect(page).toContain("deleteMetaRevenueSourceMutation");
+    expect(page).toContain("revenue-sources/${encodeURIComponent(sourceId)}");
+    expect(page).not.toContain("Configure Revenue Tracking");
+  });
+
   it("keeps the Create Campaign confirm Back button on platform selection instead of re-entering OAuth", () => {
     const page = read("client", "src", "pages", "campaigns.tsx");
     const handler = sliceBetween(

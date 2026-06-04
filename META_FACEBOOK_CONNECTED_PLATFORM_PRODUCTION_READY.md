@@ -21,7 +21,7 @@ Meta/Facebook is not production-ready yet.
 
 This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
 
-Meta Commit 6 has been implemented locally. Local validation passed; user/browser validation is pending.
+Meta Commit 7 has been implemented locally. Local validation passed; user/browser validation is pending.
 
 Verified current foundations:
 
@@ -35,6 +35,7 @@ Verified current foundations:
 - Commit 4 replaced the Campaign Overview `Facebook Ads` percentage-split placeholder metrics with source-backed values from `performanceSummary.sources[].id === "meta"`.
 - Commit 5 scopes visible Meta analytics, daily metrics, and Campaign Overview Meta aggregate totals to saved selected Meta campaign IDs.
 - Commit 6 gates Meta attributed revenue in the shared aggregate behind Meta revenue tracking and fixes an unscoped Meta revenue read in Executive Summary.
+- Commit 7 adds a Google Ads-style Meta Overview Total Revenue card, plus/add action, Sources link, source provenance, edit/delete source behavior, and the shared revenue wizard entry point for Meta-attributed revenue.
 
 Verified production-readiness gaps:
 
@@ -444,7 +445,76 @@ Status:
 - [x] Local validation passed: `npm run check`.
 - [ ] User/browser validation pending.
 
-### Meta Commit 7: Scheduler And Refresh Hardening
+### Meta Commit 7: Overview Total Revenue Source Management
+
+Root cause analysis:
+
+- The Meta Overview already had a visible `Configure Revenue Tracking` button, but it had no click handler and did not open any wizard or source-management UI.
+- The shared `AddRevenueWizardModal` already supports `platformContext: "meta"`, and the shared revenue-source endpoints already support `platformContext=meta`; the missing piece was wiring the Meta Overview to those existing paths.
+- The Meta Overview rendered an older active/not-configured revenue block instead of the Google Ads production-ready Total Revenue card pattern with a plus action and Sources provenance.
+- The shared wizard invalidated only broad Meta revenue caches, so a newly added Meta revenue source could leave the Overview card stale if the Meta page was mounted.
+
+#### Configure Revenue Tracking Link
+
+Strategy:
+
+- Replace the inert `Configure Revenue Tracking` button with the existing Total Revenue card plus action.
+- The plus action opens `AddRevenueWizardModal` with `platformContext="meta"`.
+- Do not add a new endpoint, route, or revenue framework.
+
+#### Total Revenue Card
+
+Strategy:
+
+- Add an always-visible Meta Overview `Total Revenue` card.
+- Show `Not connected` until a Meta-scoped revenue source exists.
+- Show `Sources (n)` when Meta revenue sources exist.
+- Add a Meta Revenue Sources dialog showing source label, source type, selected attribution value count, last source total, edit action, and delete action.
+- Delete uses the existing shared campaign revenue-source delete endpoint.
+
+#### Google Ads Revenue Import Pattern
+
+Strategy:
+
+- Reuse the Google Ads UI pattern for source-backed attributed revenue.
+- Reuse existing source types supported by the shared wizard: HubSpot, Salesforce, Shopify, Google Sheets, CSV, and existing shared source patterns.
+- Keep imports Meta-scoped by passing `platformContext="meta"`.
+- Total Revenue, ROAS, ROI, and Profit use imported Meta attributed revenue only.
+- Do not mix old Meta revenue-summary values into the imported Total Revenue card.
+
+Files changed:
+
+- `client/src/pages/meta-analytics.tsx`
+- `client/src/components/AddRevenueWizardModal.tsx`
+- `server/meta-production-regression.test.ts`
+- `META_FACEBOOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`
+
+Validation:
+
+- Open Meta Overview with no Meta revenue source.
+- Confirm the Total Revenue card appears and shows `Not connected`.
+- Click the plus action and confirm the shared revenue wizard opens.
+- Add a Meta revenue source through CSV, Google Sheets, HubSpot, Salesforce, or Shopify.
+- Confirm Total Revenue updates in the Meta Overview.
+- Confirm `Sources (1)` appears.
+- Open `Sources`, confirm the source amount and provenance are shown.
+- Edit the source and confirm Total Revenue refreshes.
+- Delete the source and confirm Total Revenue returns to `Not connected`.
+- Confirm Google Ads, GA4, and LinkedIn revenue behavior is unchanged.
+
+Status:
+
+- [x] Completed locally: Meta Overview now has the Google Ads-style Total Revenue card with plus/add action.
+- [x] Completed locally: Meta Overview now opens the shared revenue wizard with `platformContext="meta"`.
+- [x] Completed locally: Meta Overview now fetches `revenue-sources?platformContext=meta` and `revenue-totals?platformContext=meta&dateRange=90days`.
+- [x] Completed locally: Meta Overview now has a Sources dialog with source provenance, edit, and delete actions.
+- [x] Completed locally: shared wizard Meta cache refresh now invalidates/refetches Meta revenue source and 90-day total queries.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/google-ads-revenue-overview-ui.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
+
+### Meta Commit 8: Scheduler And Refresh Hardening
 
 Goal:
 
@@ -472,7 +542,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 8: Disconnect, Reconnect, And Stale Data Safety
+### Meta Commit 9: Disconnect, Reconnect, And Stale Data Safety
 
 Goal:
 
@@ -500,7 +570,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 9: KPI And Benchmark Production Hardening
+### Meta Commit 10: KPI And Benchmark Production Hardening
 
 Goal:
 
@@ -527,7 +597,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 10: Report And Scheduled Report Safety
+### Meta Commit 11: Report And Scheduled Report Safety
 
 Goal:
 
@@ -555,7 +625,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 11: Meta Attributed Revenue Import Parity
+### Meta Commit 12: Meta Attributed Revenue Import Parity
 
 Goal:
 
@@ -585,7 +655,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 12: Final Production-Readiness Regression And Documentation
+### Meta Commit 13: Final Production-Readiness Regression And Documentation
 
 Goal:
 
@@ -643,14 +713,15 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 7 through Meta Commit 12.
+- Meta Commit 8 through Meta Commit 13.
 
 Outstanding evidence:
 
 - Meta Commit 6 user/browser validation is pending.
+- Meta Commit 7 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 
 ## Current Handoff
 
-The next smallest safest implementation step after Meta Commit 6 validation is Meta Commit 7: scheduler and refresh hardening. That commit should not change KPI, Benchmark, report, disconnect/reconnect, or live OAuth behavior yet.
+The next smallest safest implementation step after Meta Commit 7 validation is Meta Commit 8: scheduler and refresh hardening. That commit should not change KPI, Benchmark, report, disconnect/reconnect, or live OAuth behavior yet.

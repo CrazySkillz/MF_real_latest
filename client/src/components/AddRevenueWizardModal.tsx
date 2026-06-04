@@ -88,8 +88,13 @@ export function AddRevenueWizardModal(props: {
     if (platformContext === 'meta') {
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date?platformContext=meta`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=meta`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=meta&dateRange=90days`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "meta"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/meta", campaignId, "revenue", "summary"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/meta", campaignId], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/meta/kpis"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "meta"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/meta/reports", campaignId], exact: false });
     }
 
     if (platformContext === 'google_ads') {
@@ -128,6 +133,9 @@ export function AddRevenueWizardModal(props: {
       void queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
     } else if (platformContext === 'meta') {
+      void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=meta&dateRange=90days`], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "meta"], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/meta", campaignId, "revenue", "summary"], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/meta", campaignId], exact: false });
     } else if (platformContext === 'google_ads') {
       void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`], exact: false });

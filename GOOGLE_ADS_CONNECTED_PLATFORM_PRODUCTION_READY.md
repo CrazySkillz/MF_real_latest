@@ -17,9 +17,9 @@ Google Ads must be treated as a campaign-scoped main paid-media connected source
 
 ## Current Status
 
-Commit 29 local validation passed for the implemented local Google Ads path.
+Commit 29 local and user validation passed for the implemented local Google Ads path.
 
-There are no remaining local code steps for the implemented Google Ads source-backed path. Google Ads is locally production-ready for the implemented source-backed test-mode path after Commit 10 regression coverage, the optional attributed revenue import work through Commit 24, the Commit 25 live-OAuth campaign-selection fix, the Commit 26 exact-ID per-campaign attributed revenue slice, the Commit 27 Overview campaign breakdown, the Commit 28 explicit campaign-mapping slice, and the Commit 29 mapped-source read fallback. Live OAuth still requires deployed or production-like evidence before the live OAuth path itself is called production-ready.
+There are no remaining local code or required local validation steps for the implemented Google Ads source-backed path. Google Ads is locally production-ready for the implemented source-backed test-mode path after Commit 10 regression coverage, the optional attributed revenue import work through Commit 24, the Commit 25 live-OAuth campaign-selection fix, the Commit 26 exact-ID per-campaign attributed revenue slice, the Commit 27 Overview campaign breakdown, the Commit 28 explicit campaign-mapping slice, and the Commit 29 mapped-source read fallback. Live OAuth still requires deployed or production-like evidence before the live OAuth path itself is called production-ready.
 
 Implemented foundations:
 
@@ -1179,7 +1179,7 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-platform-context.test.ts server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-salesforce-flow.test.ts server/google-ads-revenue-shopify-flow.test.ts server/google-ads-revenue-overview-ui.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] Local validation passed: `git diff --check`.
-- [ ] User validation pending for the visible Ad Comparison exact-ID behavior.
+- [x] No separate user-validation item remains for this exact-ID slice; later visible Campaign Breakdown mapping validation confirmed the shared per-campaign revenue read path.
 
 #### Commit 27: Google Ads Overview Campaign Breakdown
 
@@ -1212,7 +1212,7 @@ Status:
 - [x] Completed locally: no new endpoint, storage path, scheduler path, or allocation logic was added.
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-overview-ui.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User validation pending for the visible Google Ads Overview campaign breakdown.
+- [x] User validation passed for the visible Google Ads Overview campaign breakdown.
 
 #### Commit 28: Google Ads Revenue Source Campaign Mapping
 
@@ -1251,7 +1251,7 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-salesforce-flow.test.ts server/google-ads-revenue-shopify-flow.test.ts server/latest-day-revenue-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-overview-ui.test.ts server/google-ads-revenue-platform-context.test.ts server/google-ads-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User validation pending for visible Google Ads campaign mapping and mapped Campaign Breakdown `Total Revenue`.
+- [x] User validation passed for visible Google Ads campaign mapping and mapped Campaign Breakdown `Total Revenue`.
 
 #### Commit 29: Google Ads Mapped Campaign Revenue Read Fallback
 
@@ -1288,7 +1288,7 @@ Status:
 - [x] Completed locally: no allocation by campaign name, spend, conversion value, clicks, impressions, or campaign metrics was added.
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-overview-ui.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User validation pending for visible mapped Campaign Breakdown `Total Revenue`.
+- [x] User validation passed for visible mapped Campaign Breakdown `Total Revenue`.
 
 ## Validation Evidence Required And Status
 
@@ -1346,10 +1346,7 @@ Local code / local validation:
 
 - [x] No remaining local code steps for the implemented Google Ads source-backed path.
 - [x] No remaining local automated validation steps for Commits 1 through 29.
-- [ ] User validation pending for Commit 26 visible Ad Comparison exact-ID behavior.
-- [ ] User validation pending for Commit 27 visible Google Ads Overview campaign breakdown.
-- [ ] User validation pending for Commit 28 visible Google Ads campaign mapping and mapped Campaign Breakdown `Total Revenue`.
-- [ ] User validation pending for Commit 29 visible mapped Campaign Breakdown `Total Revenue` read fallback.
+- [x] No remaining required local user-validation steps for Commits 1 through 29.
 
 External evidence only:
 
@@ -1408,10 +1405,9 @@ Optional future scope, not blocking current local readiness:
 - Commit 25 live OAuth campaign-selection pre-refresh path validated locally.
 - User validation passed for Commit 25 local scope.
 - Commit 26 exact-ID per-campaign Google Ads attributed revenue validated locally.
-- User validation pending for Commit 26 visible Ad Comparison exact-ID behavior.
 - Commit 27 Google Ads Overview campaign breakdown validated locally.
-- User validation pending for Commit 27 visible Google Ads Overview campaign breakdown.
+- User validation passed for Commit 27 visible Google Ads Overview campaign breakdown.
 - Commit 28 Google Ads revenue source campaign mapping validated locally.
-- User validation pending for Commit 28 visible Google Ads campaign mapping and mapped Campaign Breakdown `Total Revenue`.
+- User validation passed for Commit 28 visible Google Ads campaign mapping and mapped Campaign Breakdown `Total Revenue`.
 - Commit 29 Google Ads mapped Campaign Breakdown read fallback validated locally.
-- User validation pending for Commit 29 visible mapped Campaign Breakdown `Total Revenue` read fallback.
+- User validation passed for Commit 29 visible mapped Campaign Breakdown `Total Revenue` read fallback.

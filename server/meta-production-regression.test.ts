@@ -13,6 +13,29 @@ const sliceBetween = (source: string, startNeedle: string, endNeedle: string) =>
 };
 
 describe("Meta production readiness regression guard", () => {
+  it("refreshes Connected Platforms Meta add-source state without a page reload", () => {
+    const page = read("client", "src", "pages", "campaign-detail.tsx");
+    const helper = sliceBetween(
+      page,
+      "const invalidateMetaConnectedPlatformQueries = () => {",
+      "// Mutation to set primary connection"
+    );
+    const metaBlock = sliceBetween(
+      page,
+      'platform.platform === "Facebook Ads" ?',
+      'platform.platform === "Google Ads" ?'
+    );
+
+    expect(helper).toContain('queryKey: ["/api/campaigns", campaignId, "connected-platforms"]');
+    expect(helper).toContain('queryKey: ["/api/meta", campaignId], exact: false');
+    expect(helper).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false');
+    expect(helper).toContain('queryKey: [`/api/campaigns/${campaignId}/trend-analysis`], exact: false');
+    expect(helper).toContain('queryKey: ["/api/platforms/meta/kpis", campaignId], exact: false');
+    expect(helper).toContain('queryKey: ["/api/meta/reports", campaignId], exact: false');
+    expect(metaBlock).toContain("invalidateMetaConnectedPlatformQueries();");
+    expect(metaBlock).not.toContain("window.location.reload()");
+  });
+
   it("keeps the Create Campaign confirm Back button on platform selection instead of re-entering OAuth", () => {
     const page = read("client", "src", "pages", "campaigns.tsx");
     const handler = sliceBetween(

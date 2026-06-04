@@ -21,7 +21,7 @@ Meta/Facebook is not production-ready yet.
 
 This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
 
-Meta Commit 2 has been implemented locally. Local validation and user/browser validation passed.
+Meta Commit 3 has been implemented locally. Local validation passed; user/browser validation is pending.
 
 Verified current foundations:
 
@@ -329,7 +329,13 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Completed locally: traced `SimpleMetaAuth` usage in `client/src/pages/campaign-detail.tsx`.
+- [x] Completed locally: added `invalidateMetaConnectedPlatformQueries` to refresh Connected Platforms, Meta analytics, outcome totals, Executive Summary, Trend Analysis, KPI, Benchmark, report, and data-source query caches.
+- [x] Completed locally: replaced the Meta add-source `window.location.reload()` success behavior with targeted query invalidation.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
 
 ### Meta Commit 4: Remove Placeholder Facebook Metrics
 
@@ -608,12 +614,13 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 3 through Meta Commit 12.
+- Meta Commit 4 through Meta Commit 12.
 
 Outstanding evidence:
 
+- Meta Commit 3 user/browser validation is pending.
 - Live OAuth evidence is not available locally.
 
 ## Current Handoff
 
-The next smallest safest implementation step after Meta Commit 2 validation is Meta Commit 3: harden adding Meta/Facebook from Connected Platforms. That commit should focus on replacing the page reload success behavior with targeted query invalidation and should not change source metrics, KPI, Benchmark, report, scheduler, or revenue behavior yet.
+The next smallest safest implementation step after Meta Commit 3 validation is Meta Commit 4: remove placeholder Facebook metrics from Campaign Overview and use source-backed Meta aggregate values. That commit should not change Meta analytics route filtering, KPI, Benchmark, report, scheduler, or revenue behavior yet.

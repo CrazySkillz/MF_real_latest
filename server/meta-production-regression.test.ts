@@ -243,6 +243,7 @@ describe("Meta production readiness regression guard", () => {
     expect(page).toContain("benchmarkValue: stripNumberFormatting(benchmarkForm.benchmarkValue)");
     expect(page).toContain("targetValue: stripNumberFormatting(benchmarkForm.benchmarkValue)");
     expect(page).toContain("currentValue: stripNumberFormatting(benchmarkForm.currentValue) || String(getLiveMetricValue(benchmarkForm.metric))");
+    expect(page).toContain("category: 'performance'");
     expect(page).toContain("await queryClient.refetchQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'meta'], exact: true });");
     expect(page).toContain("title: 'Failed to create benchmark'");
   });

@@ -819,6 +819,7 @@ export default function MetaAnalytics() {
       industry: benchmarkForm.industry,
       unit: benchmarkForm.unit || getMetaMetricDef(benchmarkForm.metric).unit,
       benchmarkType: benchmarkForm.benchmarkType || 'custom',
+      category: 'performance',
       applyTo: benchmarkForm.applyTo,
       specificCampaignId: benchmarkForm.specificCampaignId,
       alertsEnabled: benchmarkForm.alertsEnabled,

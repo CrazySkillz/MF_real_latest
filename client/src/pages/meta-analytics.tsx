@@ -1795,9 +1795,6 @@ export default function MetaAnalytics() {
                                     {metricKey.toUpperCase()}
                                   </Badge>
                                 )}
-                                <Badge variant="outline" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                                  All Campaigns
-                                </Badge>
                               </div>
                               <p className="text-sm text-muted-foreground/70 mt-1">
                                 {benchmark.description || `Compare ${metricDef.label} against benchmark`}

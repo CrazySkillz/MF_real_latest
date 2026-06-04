@@ -258,6 +258,7 @@ describe("Meta production readiness regression guard", () => {
 
     expect(benchmarkCards).toContain('className="grid gap-4 md:grid-cols-2"');
     expect(benchmarkCards).toContain("Benchmark Value");
+    expect(benchmarkCards).not.toContain("All Campaigns");
     expect(benchmarkCards).not.toContain(">Source<");
     expect(benchmarkCards).not.toContain("Industry (${benchmark.industry})");
     expect(benchmarkCards).not.toContain("'Custom'");

@@ -27,7 +27,7 @@ The remaining work is validation hardening and source-specific proof, not a full
 
 Campaign DeepDive is production-ready locally for the implemented connected-source aggregate contract and the current GA4/current-source scope, with the outstanding validation items below.
 
-The remaining validation items can wait until mock-live historical data and future/refined integrations such as Meta or live/deployed Google Ads evidence are available. LinkedIn source-specific validation passed on 2026-05-31 and is tracked in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Google Ads local source-specific validation passed through Commit 29 on 2026-06-04 and is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
+The remaining validation items can wait until mock-live historical data and future/refined live/deployed integration evidence is available. LinkedIn source-specific validation passed on 2026-05-31 and is tracked in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Google Ads local source-specific validation passed through Commit 29 on 2026-06-04 and is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Meta/Facebook local source-specific code/test validation passed through Commit 15 on 2026-06-04 and is tracked in `META_FACEBOOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`; final browser smoke, live OAuth, and deployed scheduled-report evidence remain separate.
 
 LinkedIn refinement is tracked separately in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. That tracker records the source-specific acceptance proof for LinkedIn through both the Create Campaign flow and the campaign Connected Platforms add-source flow. LinkedIn revenue-import validation is complete in `LINKEDIN_REVENUE_IMPORT_PRODUCTION_READY.md`.
 
@@ -64,17 +64,17 @@ Expected proof:
 
 ### 2. Multi-Source Deployed Validation
 
-Status: LinkedIn validation passed on 2026-05-31; Google Ads local/test-mode validation passed on 2026-06-04; future/refined source mixes and Google Ads live OAuth evidence remain source-specific validation work.
+Status: LinkedIn validation passed on 2026-05-31; Google Ads local/test-mode validation passed on 2026-06-04; Meta/Facebook local code/test validation passed on 2026-06-04; final browser smoke for Meta, future/refined source mixes, Google Ads live OAuth evidence, and Meta live OAuth evidence remain source-specific validation work.
 
 Why it remains open:
 
 - The shared aggregate contract is designed to accept future/refined main Connected Platforms.
-- A source such as Meta, TikTok, or another future/refined integration still needs its own source-level readiness proof before its values can be trusted. Google Ads has local/test-mode source proof recorded, but live OAuth still needs deployed or production-like evidence.
+- A source such as TikTok or another future/refined integration still needs its own source-level readiness proof before its values can be trusted. Google Ads and Meta have local/test-mode source proof recorded, but live OAuth still needs deployed or production-like evidence.
 - LinkedIn has its source-specific validation recorded in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
 
 When to complete:
 
-- After integrations such as Meta, TikTok, or other future/refined sources are connected through Connected Platforms, or after Google Ads live OAuth is validated in a deployed or production-like environment.
+- After integrations such as TikTok or other future/refined sources are connected through Connected Platforms, or after Google Ads/Meta live OAuth is validated in a deployed or production-like environment.
 - For LinkedIn specifically, use `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md` as the completed source-specific validation record.
 
 Expected proof:
@@ -136,7 +136,7 @@ As more integrations are added in Connected Platforms, Campaign DeepDive should 
 - regression coverage
 - deployed validation evidence for the tested source mix
 
-New integrations should not require a Campaign DeepDive redesign. They should enter through the existing connected-source aggregate contract. Google Ads local/test-mode validation against this rule is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`; live OAuth evidence remains separate.
+New integrations should not require a Campaign DeepDive redesign. They should enter through the existing connected-source aggregate contract. Google Ads local/test-mode validation against this rule is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`; Meta/Facebook local/test-mode validation is tracked in `META_FACEBOOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Live OAuth evidence remains separate.
 
 ## Relevant Documentation
 
@@ -153,6 +153,7 @@ New integrations should not require a Campaign DeepDive redesign. They should en
 - `CAMPAIGN_DEEPDIVE_CUSTOM_REPORT_PRODUCTION_READY.md`
 - `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`
 - `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`
+- `META_FACEBOOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`
 
 ## Relevant Implementation Files
 
@@ -189,6 +190,10 @@ Passed locally on 2026-05-30:
 - `npm run check`
 - `git diff --check`
 
+Meta/Facebook source-specific final regression passed locally on 2026-06-04:
+
+- `npm test -- server/meta-production-regression.test.ts server/performance-summary-aggregate.test.ts server/performance-summary-scheduler-regression.test.ts server/source-safety-regression.test.ts server/trend-analysis-aggregate.test.ts server/trend-analysis-overview-regression.test.ts server/executive-summary-regression.test.ts server/executive-summary-helpers-regression.test.ts server/platform-comparison-regression.test.ts server/custom-report-regression.test.ts server/report-email-regression.test.ts server/kpi-route-isolation-regression.test.ts server/benchmark-route-isolation-regression.test.ts server/linkedin-connected-platform-flow-regression.test.ts server/linkedin-create-campaign-flow-regression.test.ts server/linkedin-disconnect-regression.test.ts server/linkedin-revenue-isolation.test.ts server/linkedin-scheduler-regression.test.ts server/google-ads-production-regression.test.ts server/google-ads-report-regression.test.ts server/google-ads-revenue-platform-context.test.ts server/google-ads-revenue-overview-ui.test.ts server/google-ads-revenue-kpi-benchmark-ui.test.ts server/google-ads-revenue-scheduler-flow.test.ts server/ga4-auto-refresh-regression.test.ts server/ga4-financial-rules.test.ts server/ga4-kpi-regression.test.ts server/ga4-benchmark-regression.test.ts`
+
 ## Final Readiness Statement
 
 The current Campaign DeepDive implementation is architecturally aligned with the connected-source aggregate pattern.
@@ -196,7 +201,7 @@ The current Campaign DeepDive implementation is architecturally aligned with the
 The remaining work is:
 
 1. historical validation for Trend Analysis,
-2. source-specific deployed validation for Google Ads live OAuth and future/refined integrations such as Meta or TikTok,
+2. source-specific deployed validation for Google Ads live OAuth, Meta live OAuth, and future/refined integrations such as TikTok,
 3. deployed scheduled Custom Report email evidence.
 
 These are validation and source-readiness tasks. They do not require a Campaign DeepDive redesign unless a future integration fails the shared aggregate contract.

@@ -17,11 +17,11 @@ Meta/Facebook must be treated as a campaign-scoped main paid-media connected sou
 
 ## Current Status
 
-Meta/Facebook is not production-ready yet.
+Meta/Facebook is locally code/test validated for the implemented source-backed test-mode path. Final browser smoke validation is pending before calling that local/test-mode path production-ready.
 
-This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
+This tracker is the planning and implementation artifact. The implemented local/test-mode Meta path has been hardened against the source-backed pattern used by LinkedIn and Google Ads. Live OAuth and deployed scheduled-report behavior still require production-like evidence.
 
-Meta Commit 14 has been implemented locally. Local validation passed; user/browser validation is pending.
+Meta Commit 15 has been implemented locally. Final local regression passed. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
 
 Verified current foundations:
 
@@ -43,6 +43,7 @@ Verified current foundations:
 - Commit 12 moves Meta KPI and Benchmark lifecycle behavior onto the shared platform-scoped KPI/Benchmark storage pattern and maps revenue-dependent current values to imported Meta attributed revenue.
 - Commit 13 moves Meta report cards to the shared platform-report route, persists scheduler-compatible schedule fields, and makes legacy Meta report send/preview routes fail closed instead of returning placeholder success.
 - Commit 14 preserves Meta revenue import context through the shared revenue wizard, Sheets, HubSpot, Salesforce, scheduler refresh paths, and makes the legacy direct Meta CSV route fail closed instead of returning placeholder import success.
+- Commit 15 final local regression passed for the implemented source-backed test-mode path.
 
 Verified production-readiness gaps:
 
@@ -819,13 +820,20 @@ Status:
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-salesforce-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-shopify-flow.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-scheduler-flow.test.ts server/ga4-auto-refresh-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ### Meta Commit 15: Final Production-Readiness Regression And Documentation
 
 Goal:
 
 - Prove the implemented Meta source-backed path is production-ready for the validated local/test-mode scope.
+
+Root cause analysis:
+
+- Commit 14 browser validation passed, but the tracker still marked that validation as pending.
+- The Meta source-specific work had accumulated local validation per commit, but the final cross-feature regression evidence had not been recorded in one place.
+- The smallest safe final step is documentation and regression proof only. No new feature behavior is required because production code changes would create unnecessary side effects at this stage.
+- Live OAuth, deployed live scheduler refresh, and deployed scheduled-report email receipt cannot be proven from local code alone and remain separate evidence items.
 
 Tasks:
 
@@ -844,7 +852,12 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Completed locally: Commit 14 user/browser validation is recorded as passed.
+- [x] Completed locally: final Meta/shared regression sweep passed for the implemented local/test-mode source-backed scope.
+- [x] Completed locally: this tracker records remaining live/deployed evidence caveats.
+- [x] Completed locally: top-level Campaign DeepDive status is linked to this Meta tracker.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts server/performance-summary-aggregate.test.ts server/performance-summary-scheduler-regression.test.ts server/source-safety-regression.test.ts server/trend-analysis-aggregate.test.ts server/trend-analysis-overview-regression.test.ts server/executive-summary-regression.test.ts server/executive-summary-helpers-regression.test.ts server/platform-comparison-regression.test.ts server/custom-report-regression.test.ts server/report-email-regression.test.ts server/kpi-route-isolation-regression.test.ts server/benchmark-route-isolation-regression.test.ts server/linkedin-connected-platform-flow-regression.test.ts server/linkedin-create-campaign-flow-regression.test.ts server/linkedin-disconnect-regression.test.ts server/linkedin-revenue-isolation.test.ts server/linkedin-scheduler-regression.test.ts server/google-ads-production-regression.test.ts server/google-ads-report-regression.test.ts server/google-ads-revenue-platform-context.test.ts server/google-ads-revenue-overview-ui.test.ts server/google-ads-revenue-kpi-benchmark-ui.test.ts server/google-ads-revenue-scheduler-flow.test.ts server/ga4-auto-refresh-regression.test.ts server/ga4-financial-rules.test.ts server/ga4-kpi-regression.test.ts server/ga4-benchmark-regression.test.ts`.
+- [ ] User/browser final smoke validation pending.
 
 ## Validation Evidence Required Before Production-Ready Claim
 
@@ -879,16 +892,15 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 14 user/browser validation.
-- Meta Commit 15 final production-readiness regression and documentation.
+- No outstanding local/test-mode implementation work for the implemented source-backed Meta path.
 
 Outstanding evidence:
 
-- Meta Commit 6 user/browser validation is pending.
-- Meta Commit 14 user/browser validation is pending.
+- Meta Commit 15 final browser smoke validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
+- Deployed scheduled Meta report email receipt is not available locally.
 
 ## Current Handoff
 
-The next smallest safest step after local Commit 14 validation is a user/browser pass for Meta attributed revenue imports. After that, proceed to Meta Commit 15: final production-readiness regression and documentation. Commit 15 should not introduce new feature behavior; it should prove the implemented local/test-mode paths and record any remaining live-OAuth caveats.
+The next smallest safest step is a final browser smoke validation for the implemented local/test-mode Meta path. No new local implementation step is currently listed before moving to a future source integration. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.

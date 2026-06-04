@@ -10633,7 +10633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get per-Google-Ads-campaign imported attributed revenue from exact campaign-ID records.
+  // Get per-Google-Ads-campaign imported attributed revenue from exact campaign-ID records or explicit source mappings.
   app.get("/api/campaigns/:id/google-ads-campaign-revenue", requireCampaignAccessParamId, async (req, res) => {
     try {
       const campaignId = String(req.params.id);
@@ -10664,6 +10664,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       `);
 
       const breakdownMap = new Map<string, { campaignId: string; revenue: number; currency?: string; sourceIds: Set<string>; recordCount: number }>();
+      const materializedSourceCampaignPairs = new Set<string>();
       for (const row of rows.rows as any[]) {
         const googleCampaignId = String(row.campaign_id || "").trim();
         if (!activeGoogleAdsCampaignIds.has(googleCampaignId)) continue;
@@ -10678,9 +10679,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         current.revenue += revenue;
         current.recordCount += 1;
-        if (row.source_id) current.sourceIds.add(String(row.source_id));
+        if (row.source_id) {
+          const sourceId = String(row.source_id);
+          current.sourceIds.add(sourceId);
+          materializedSourceCampaignPairs.add(`${sourceId}:${googleCampaignId}`);
+        }
         if (!current.currency && row.currency) current.currency = String(row.currency);
         breakdownMap.set(googleCampaignId, current);
+      }
+
+      const parseCfg = (raw: any) => {
+        if (!raw) return null;
+        try { return typeof raw === "string" ? JSON.parse(raw) : raw; } catch { return null; }
+      };
+
+      const sources = await storage.getRevenueSources(campaignId, "google_ads").catch(() => [] as any[]);
+      for (const source of Array.isArray(sources) ? sources : []) {
+        if (!source || source.isActive === false) continue;
+        const sourceId = String(source.id || "").trim();
+        if (!sourceId) continue;
+        const cfg = parseCfg((source as any).mappingConfig);
+        const campaignMappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
+        if (campaignMappings.length === 0) continue;
+
+        const campaignValueRevenueByValue = new Map<string, number>();
+        for (const row of Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : []) {
+          const value = String(row?.campaignValue || "").trim();
+          const revenue = Number(row?.revenue || 0);
+          if (value && Number.isFinite(revenue) && revenue > 0) {
+            campaignValueRevenueByValue.set(value, (campaignValueRevenueByValue.get(value) || 0) + revenue);
+          }
+        }
+
+        for (const mapping of campaignMappings) {
+          const crmValue = String(mapping?.crmValue || "").trim();
+          const googleCampaignId = String(mapping?.googleAdsCampaignId || mapping?.linkedinCampaignUrn || "").trim();
+          if (!crmValue || !activeGoogleAdsCampaignIds.has(googleCampaignId)) continue;
+          if (materializedSourceCampaignPairs.has(`${sourceId}:${googleCampaignId}`)) continue;
+          const revenue = Number(mapping?.revenue || 0) || Number(campaignValueRevenueByValue.get(crmValue) || 0);
+          if (!Number.isFinite(revenue) || revenue <= 0) continue;
+          const current = breakdownMap.get(googleCampaignId) || {
+            campaignId: googleCampaignId,
+            revenue: 0,
+            currency: source.currency ? String(source.currency) : undefined,
+            sourceIds: new Set<string>(),
+            recordCount: 0,
+          };
+          current.revenue += revenue;
+          current.recordCount += 1;
+          current.sourceIds.add(sourceId);
+          if (!current.currency && source.currency) current.currency = String(source.currency);
+          breakdownMap.set(googleCampaignId, current);
+        }
       }
 
       const breakdown = Array.from(breakdownMap.values()).map((item) => ({

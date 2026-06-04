@@ -17,9 +17,9 @@ Google Ads must be treated as a campaign-scoped main paid-media connected source
 
 ## Current Status
 
-Commit 28 local validation passed for the implemented local Google Ads path.
+Commit 29 local validation passed for the implemented local Google Ads path.
 
-There are no remaining local code steps for the implemented Google Ads source-backed path. Google Ads is locally production-ready for the implemented source-backed test-mode path after Commit 10 regression coverage, the optional attributed revenue import work through Commit 24, the Commit 25 live-OAuth campaign-selection fix, the Commit 26 exact-ID per-campaign attributed revenue slice, the Commit 27 Overview campaign breakdown, and the Commit 28 explicit campaign-mapping slice. Live OAuth still requires deployed or production-like evidence before the live OAuth path itself is called production-ready.
+There are no remaining local code steps for the implemented Google Ads source-backed path. Google Ads is locally production-ready for the implemented source-backed test-mode path after Commit 10 regression coverage, the optional attributed revenue import work through Commit 24, the Commit 25 live-OAuth campaign-selection fix, the Commit 26 exact-ID per-campaign attributed revenue slice, the Commit 27 Overview campaign breakdown, the Commit 28 explicit campaign-mapping slice, and the Commit 29 mapped-source read fallback. Live OAuth still requires deployed or production-like evidence before the live OAuth path itself is called production-ready.
 
 Implemented foundations:
 
@@ -32,7 +32,7 @@ Implemented foundations:
 - Google Ads Reports use the platform-report path and scheduled reports are discoverable by `server/report-scheduler.ts`.
 - Optional imported Google Ads attributed revenue follows the existing GA4/LinkedIn source-management pattern for the implemented local/test-mode path.
 - Google Ads Overview includes a campaign breakdown table sourced from the same selected Google Ads daily rows used by Ad Comparison.
-- Google Ads imported attributed revenue can populate per-campaign revenue by exact selected Google Ads campaign ID or by explicit source-value-to-selected-campaign mapping.
+- Google Ads imported attributed revenue can populate per-campaign revenue by exact selected Google Ads campaign ID, by explicit source-value-to-selected-campaign mapping, or by saved mapped source totals when no materialized source/campaign row is available in the current campaign-revenue endpoint result.
 
 ## Root Cause Analysis
 
@@ -408,7 +408,7 @@ Status:
 
 ### Scope
 
-This section tracks the optional Google Ads attributed revenue import implementation and related Google Ads Overview visibility fixes. Commits 12 through 22 are implemented for storage/read-side isolation, backend aggregate revenue semantics, shared revenue wizard context plumbing, CSV, Google Sheets, HubSpot, Salesforce, Shopify, the visible `Total Revenue` card, downstream KPI/Benchmark/Insights/report semantics, scheduler refresh, scheduled snapshots, and lifecycle cleanup. Final local evidence is tracked in Commit 23, Trend Analysis revenue-semantics parity is tracked in Commit 24, the live-OAuth campaign-selection pre-refresh fix is tracked in Commit 25, exact-ID per-campaign attributed revenue is tracked in Commit 26, Google Ads Overview campaign breakdown is tracked in Commit 27, and explicit imported-value-to-Google-Ads-campaign mapping is tracked in Commit 28. Live OAuth deployed evidence remains separate from local code readiness.
+This section tracks the optional Google Ads attributed revenue import implementation and related Google Ads Overview visibility fixes. Commits 12 through 22 are implemented for storage/read-side isolation, backend aggregate revenue semantics, shared revenue wizard context plumbing, CSV, Google Sheets, HubSpot, Salesforce, Shopify, the visible `Total Revenue` card, downstream KPI/Benchmark/Insights/report semantics, scheduler refresh, scheduled snapshots, and lifecycle cleanup. Final local evidence is tracked in Commit 23, Trend Analysis revenue-semantics parity is tracked in Commit 24, the live-OAuth campaign-selection pre-refresh fix is tracked in Commit 25, exact-ID per-campaign attributed revenue is tracked in Commit 26, Google Ads Overview campaign breakdown is tracked in Commit 27, explicit imported-value-to-Google-Ads-campaign mapping is tracked in Commit 28, and mapped-source Campaign Breakdown read fallback is tracked in Commit 29. Live OAuth deployed evidence remains separate from local code readiness.
 
 Goal:
 
@@ -457,6 +457,8 @@ Use this checklist as the source of truth for what is complete. A checked item i
   Validation: focused Google Ads Overview UI regression and type check passed locally.
 - [x] Commit 28: Google Ads revenue source campaign mapping.
   Validation: focused Google Ads revenue source regression group, adjacent Overview/platform regression, and type check passed locally.
+- [x] Commit 29: Google Ads mapped-source campaign revenue read fallback.
+  Validation: focused Google Ads Overview campaign-revenue regression and type check passed locally.
 
 Deferred validation is not a failed validation. Browser add/edit/delete validation for the visible Google Ads `Total Revenue` entry point is tracked explicitly under Commit 20 and final production-ready evidence.
 
@@ -493,6 +495,7 @@ Confirmed current gaps:
 - Before Commit 26, imported Google Ads attributed revenue existed only at the MimoSaaS campaign/platform total level. The Google Ads Ad Comparison rows still grouped by campaign name and showed native Google Ads conversion value / GA4-matched revenue fields, with no route that could read `revenue_records.sub_campaign_urn` as a Google Ads campaign ID. Commit 26 adds an exact-ID-only per-campaign revenue read/write path for active selected Google Ads campaign IDs and keeps native conversion value separate.
 - Before Commit 27, Google Ads already computed per-campaign metrics from selected Google Ads daily rows, but only rendered that breakdown in the Ad Comparison tab. The Overview tab showed summary cards and aggregate performance cards, so users could not see which Overview metrics belonged to which selected Google Ads campaign without leaving Overview. Commit 27 renders the existing campaign breakdown in Overview, including test mode because test mode writes the same daily-row shape.
 - Before Commit 28, the Google Ads per-campaign imported revenue path required the imported source campaign value to exactly equal an active selected Google Ads campaign ID. LinkedIn-style source-value mapping was not available in the Google Ads revenue wizard path, so a CSV/HubSpot/Salesforce/Shopify/Sheets source could create the aggregate Google Ads `Total Revenue` source while the Overview Campaign Breakdown `Total Revenue` column stayed blank for campaign-name or CRM-value imports. Commit 28 adds the explicit mapping step and uses it only when the mapped Google Ads campaign ID is active/selected.
+- After Commit 28, the Google Ads campaign-revenue display route still read only date-filtered materialized `revenue_records.sub_campaign_urn` rows. If a mapped source had saved `campaignMappings` and `campaignValueRevenueTotals` but no source/campaign row in the endpoint result, the aggregate Google Ads `Total Revenue` source could exist while the Campaign Breakdown row stayed blank. Commit 29 adds a read-side fallback from saved mapped source totals, only for explicit mappings to active selected Google Ads campaign IDs and only when that source/campaign pair was not already materialized in the endpoint result.
 - Before Commit 12, `server/storage.ts` supported `getRevenueSources(..., platformContext)` and `getRevenueBreakdownBySource(..., platformContext)` mostly generically, but `getRevenueTotalForRange(...)` hard-coded the non-GA4 branch to `linkedin`; Commit 12 fixes this storage/read-side gap.
 - Before the first Commit 22 scheduler slice, `server/auto-refresh-scheduler.ts` reprocessed Shopify and Google Sheets across `ga4`, `linkedin`, and `meta`, while HubSpot and Salesforce reprocessed only `ga4`; Commits 17, 18, and 19 confirmed the HubSpot/Salesforce/Shopify reprocess payloads could carry `platformContext` and stable `sourceId`, and the first Commit 22 scheduler slice extends those existing loops to include Google Ads.
 - `shared/schema.ts` has `revenue_sources.platform_context` as free text, so a table migration is not expected just to store `google_ads`; however TypeScript unions, zod validation, route filters, UI props, and scheduler context lists must be updated consistently.
@@ -500,7 +503,7 @@ Confirmed current gaps:
 
 Exact root cause:
 
-- The reusable GA4/LinkedIn revenue import system is present. Commit 12 admits Google Ads on the storage/read side, Commit 13 makes the shared backend aggregate read model use only Google Ads-scoped imported revenue for Google Ads business `attributedRevenue`, Commit 14 adds shared wizard context plumbing, Commit 15 admits Google Ads only on the CSV import write path, Commit 16 admits Google Ads only on the Google Sheets revenue import path, Commit 17 admits Google Ads only on the HubSpot import write path, Commit 18 admits Google Ads only on the Salesforce import write path, Commit 19 admits Google Ads only on the Shopify import write path, Commit 20 exposes the visible Google Ads `Total Revenue` card, `+` wizard action, and source-provenance modal, Commit 21 aligns KPI/Benchmark/Insights/report semantics, Commit 22 covers auto-refresh provider context loops, scheduled snapshot revenue semantics, and Google Ads lifecycle cleanup, Commit 26 adds exact-ID per-campaign attribution for the Google Ads Ad Comparison rows, Commit 27 exposes the existing selected-campaign breakdown in Overview, and Commit 28 adds explicit imported source-value mapping to selected Google Ads campaign IDs. The remaining gap is live/deployed validation separation.
+- The reusable GA4/LinkedIn revenue import system is present. Commit 12 admits Google Ads on the storage/read side, Commit 13 makes the shared backend aggregate read model use only Google Ads-scoped imported revenue for Google Ads business `attributedRevenue`, Commit 14 adds shared wizard context plumbing, Commit 15 admits Google Ads only on the CSV import write path, Commit 16 admits Google Ads only on the Google Sheets revenue import path, Commit 17 admits Google Ads only on the HubSpot import write path, Commit 18 admits Google Ads only on the Salesforce import write path, Commit 19 admits Google Ads only on the Shopify import write path, Commit 20 exposes the visible Google Ads `Total Revenue` card, `+` wizard action, and source-provenance modal, Commit 21 aligns KPI/Benchmark/Insights/report semantics, Commit 22 covers auto-refresh provider context loops, scheduled snapshot revenue semantics, and Google Ads lifecycle cleanup, Commit 26 adds exact-ID per-campaign attribution for the Google Ads Ad Comparison rows, Commit 27 exposes the existing selected-campaign breakdown in Overview, Commit 28 adds explicit imported source-value mapping to selected Google Ads campaign IDs, and Commit 29 makes the Campaign Breakdown read path use saved mapped source totals when no materialized source/campaign row is available. The remaining gap is live/deployed validation separation.
 
 ### Required GA4/LinkedIn Pattern For Google Ads
 
@@ -1250,6 +1253,43 @@ Status:
 - [x] Local validation passed: `npm run check`.
 - [ ] User validation pending for visible Google Ads campaign mapping and mapped Campaign Breakdown `Total Revenue`.
 
+#### Commit 29: Google Ads Mapped Campaign Revenue Read Fallback
+
+Goal:
+
+- Fix the Google Ads Overview Campaign Breakdown `Total Revenue` display when a revenue source has an explicit Google Ads campaign mapping but the campaign-revenue endpoint has no matching materialized source/campaign row in its current result.
+
+Tasks:
+
+- Keep the existing Google Ads campaign-revenue endpoint and response shape.
+- Preserve the existing exact materialized `revenue_records.sub_campaign_urn` path.
+- Read active Google Ads revenue sources and their saved `campaignMappings` / `campaignValueRevenueTotals`.
+- Add mapped source revenue only when the mapped Google Ads campaign ID is active/selected.
+- Avoid double-counting source/campaign pairs that already have materialized rows in the endpoint result.
+- Do not allocate unmapped aggregate revenue by campaign name, spend, conversion value, clicks, impressions, or any other estimate.
+- Preserve GA4, LinkedIn, Meta, scheduler, KPI, Benchmark, Reports, Trend Analysis, and Google Ads daily metric behavior.
+
+Validation:
+
+- Add or edit a Google Ads CSV revenue source.
+- Select the CSV campaign/value column and select one or more source values.
+- In `Google Ads campaign mapping`, map each selected source value to the correct selected Google Ads campaign.
+- Save the source.
+- Open Google Ads Analytics -> Overview.
+- Confirm the mapped campaign row in `Campaign Breakdown` shows `Total Revenue`.
+- Confirm unmapped source values still do not populate any campaign row.
+- Confirm native Google Ads `Conv. Value` remains separate from imported `Total Revenue`.
+
+Status:
+
+- [x] Completed locally: the Google Ads campaign-revenue endpoint now falls back to saved mapped source totals when no materialized source/campaign row is available in the endpoint result.
+- [x] Completed locally: fallback values are accepted only for explicit mappings to active selected Google Ads campaign IDs.
+- [x] Completed locally: materialized source/campaign rows still take precedence so the endpoint does not double-count the same source/campaign pair.
+- [x] Completed locally: no allocation by campaign name, spend, conversion value, clicks, impressions, or campaign metrics was added.
+- [x] Local validation passed: `npm test -- server/google-ads-revenue-overview-ui.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User validation pending for visible mapped Campaign Breakdown `Total Revenue`.
+
 ## Validation Evidence Required And Status
 
 Before Google Ads is marked production-ready, record evidence for:
@@ -1274,6 +1314,7 @@ Before Google Ads is marked production-ready, record evidence for:
 - [x] Google Ads Ad Comparison per-campaign attributed revenue uses exact active selected Google Ads campaign IDs or explicit source-value mappings.
 - [x] Google Ads Overview campaign breakdown renders selected-campaign daily-row metrics, including test-mode rows.
 - [x] Google Ads imported revenue source values can be explicitly mapped to active selected Google Ads campaign IDs for Campaign Breakdown `Total Revenue`.
+- [x] Google Ads Overview Campaign Breakdown can use saved mapped source totals when the campaign-revenue endpoint has no materialized source/campaign row in its current result.
 - [ ] Live OAuth connect/select/refresh evidence in a deployed or production-like environment.
 - [ ] Manual browser pass across every Google Ads revenue provider add/edit/delete path if required beyond the recorded local automated and prior visible-card validation.
 
@@ -1289,7 +1330,7 @@ Google Ads attributed revenue import is locally production-ready for the impleme
 - KPI, Benchmark, Insights, and report consumers use imported Google Ads attributed revenue for business revenue metrics.
 - Scheduler refresh and scheduled snapshots preserve the same revenue semantics as the current aggregate.
 - Trend Analysis preserves the same imported-revenue semantics and does not use native Google Ads conversion value as business revenue.
-- Ad Comparison and Overview campaign breakdown per-campaign attributed revenue use exact active selected Google Ads campaign IDs or explicit source-value mappings to active selected Google Ads campaign IDs, and do not allocate aggregate revenue.
+- Ad Comparison and Overview campaign breakdown per-campaign attributed revenue use exact active selected Google Ads campaign IDs, explicit source-value mappings to active selected Google Ads campaign IDs, or saved mapped source totals when no materialized source/campaign row is available, and do not allocate aggregate revenue.
 - Overview campaign breakdown displays selected Google Ads campaign metrics from existing daily rows without adding a new aggregation path.
 - Disconnect, reconnect, and selected-campaign changes clear only the current campaign's Google Ads-scoped imported revenue records.
 - Regression coverage protects the critical local lifecycle paths.
@@ -1304,10 +1345,11 @@ Not included in this local exit:
 Local code / local validation:
 
 - [x] No remaining local code steps for the implemented Google Ads source-backed path.
-- [x] No remaining local automated validation steps for Commits 1 through 28.
+- [x] No remaining local automated validation steps for Commits 1 through 29.
 - [ ] User validation pending for Commit 26 visible Ad Comparison exact-ID behavior.
 - [ ] User validation pending for Commit 27 visible Google Ads Overview campaign breakdown.
 - [ ] User validation pending for Commit 28 visible Google Ads campaign mapping and mapped Campaign Breakdown `Total Revenue`.
+- [ ] User validation pending for Commit 29 visible mapped Campaign Breakdown `Total Revenue` read fallback.
 
 External evidence only:
 
@@ -1371,3 +1413,5 @@ Optional future scope, not blocking current local readiness:
 - User validation pending for Commit 27 visible Google Ads Overview campaign breakdown.
 - Commit 28 Google Ads revenue source campaign mapping validated locally.
 - User validation pending for Commit 28 visible Google Ads campaign mapping and mapped Campaign Breakdown `Total Revenue`.
+- Commit 29 Google Ads mapped Campaign Breakdown read fallback validated locally.
+- User validation pending for Commit 29 visible mapped Campaign Breakdown `Total Revenue` read fallback.

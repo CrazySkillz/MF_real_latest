@@ -63,6 +63,20 @@ describe("Google Ads revenue Overview UI", () => {
     expect(page).not.toContain("/api/campaigns/${campaignId}/google-ads-overview-campaign-breakdown");
   });
 
+  it("uses saved explicit Google Ads campaign mappings as a campaign revenue fallback", () => {
+    const server = readSource("server", "routes-oauth.ts");
+    const start = server.indexOf('app.get("/api/campaigns/:id/google-ads-campaign-revenue"');
+    const end = server.indexOf("Campaign Outcome Totals", start);
+    const route = server.slice(start, end);
+
+    expect(route).toContain('storage.getRevenueSources(campaignId, "google_ads")');
+    expect(route).toContain("materializedSourceCampaignPairs");
+    expect(route).toContain("campaignValueRevenueTotals");
+    expect(route).toContain("mapping?.googleAdsCampaignId || mapping?.linkedinCampaignUrn");
+    expect(route).toContain("activeGoogleAdsCampaignIds.has(googleCampaignId)");
+    expect(route).toContain('materializedSourceCampaignPairs.has(`${sourceId}:${googleCampaignId}`)');
+  });
+
   it("exposes source provenance plus edit and delete behavior through the guarded source route", () => {
     const page = readSource("client", "src", "pages", "google-ads-analytics.tsx");
 

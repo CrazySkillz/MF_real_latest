@@ -468,6 +468,7 @@ Confirmed current gaps:
 - Google Ads Benchmark edit mode opened the modal with a partial form object and explicitly set `currentValue` and `unit` to empty strings. That omitted the live current value already shown on the benchmark card and caused edit mode to show a blank or stale current value. The dialog also auto-focused the first input, causing the benchmark name to be selected by default. The safe fix hydrates edit mode from the live benchmark card values and suppresses edit-mode auto-focus selection.
 - Google Ads KPI and Benchmark Current Value inputs stripped invalid characters and limited decimals, but did not add thousands separators while typing. Adding display grouping directly to the field would send comma-formatted strings to the shared KPI/Benchmark API unless the payload was cleaned. The safe fix applies grouping only to the Current Value display and strips commas before submit so storage still receives plain numeric strings.
 - Before the Insights slice of Commit 21, the Google Ads Insights executive value cards and financial rules still centered on `summary.roas` and `summary.roi`, which are native Google Ads conversion-value efficiency values. The safe fix keeps native `Conversion Value` separate, uses imported Google Ads attributed revenue for business `Total Revenue`, `ROAS`, and `ROI` when connected, and clearly labels remaining conversion-value trend/rule output.
+- Before the report semantics slice of Commit 21, Google Ads standard/custom/scheduled report payloads saved only the report type, schedule fields, and optional custom composition. They did not persist the current Google Ads revenue interpretation or source provenance, and scheduled snapshot JSON did not include report configuration. The safe fix stores Google Ads revenue semantics and active source provenance in the existing report `configuration`, adds the same configuration to Google Ads scheduled snapshot JSON, and renders a short Google Ads-only revenue semantics section in generated platform PDFs.
 - Before Commit 12, `server/storage.ts` supported `getRevenueSources(..., platformContext)` and `getRevenueBreakdownBySource(..., platformContext)` mostly generically, but `getRevenueTotalForRange(...)` hard-coded the non-GA4 branch to `linkedin`; Commit 12 fixes this storage/read-side gap.
 - `server/auto-refresh-scheduler.ts` reprocesses Shopify and Google Sheets across `ga4`, `linkedin`, and `meta`, while the source loop for HubSpot and Salesforce currently reprocesses only `ga4`; Commits 17, 18, and 19 confirm the HubSpot/Salesforce/Shopify reprocess payloads can carry `platformContext` and stable `sourceId`, but scheduler context selection remains deferred to Commit 22.
 - `shared/schema.ts` has `revenue_sources.platform_context` as free text, so a table migration is not expected just to store `google_ads`; however TypeScript unions, zod validation, route filters, UI props, and scheduler context lists must be updated consistently.
@@ -959,13 +960,17 @@ Status:
 - [x] Completed locally: without active imported Google Ads attributed revenue, Google Ads Insights business `Total Revenue`, `ROAS`, and `ROI` show as unavailable/not connected instead of using native conversion value.
 - [x] Completed locally: Google Ads Insights financial rules now use imported Google Ads attributed revenue when connected and clearly label conversion-value efficiency when no attributed revenue source exists.
 - [x] Completed locally: Google Ads Insights trend labels now call the native daily/rolling ROAS series `Conversion Value ROAS`.
+- [x] User validation passed: Google Ads Insights financial semantics.
+- [x] Completed locally: Google Ads standard/custom/scheduled report payloads now persist Google Ads revenue semantics and active source provenance in the existing report `configuration` field.
+- [x] Completed locally: Google Ads generated platform PDFs now include a Google Ads-only revenue semantics section that labels `Total Revenue`, `Conversion Value`, and ROAS/ROI/Profit source meaning.
+- [x] Completed locally: Google Ads scheduled snapshot JSON now includes saved report configuration so revenue semantics/source provenance are auditable for sent scheduled reports.
 - [x] Completed locally: focused regression coverage added in `server/google-ads-revenue-kpi-benchmark-ui.test.ts`.
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-kpi-benchmark-ui.test.ts server/google-ads-revenue-overview-ui.test.ts`.
 - [x] Local validation passed: full Google Ads revenue regression group including KPI/Benchmark UI coverage.
 - [x] Local validation passed: `npm run check`.
-- [ ] Pending implementation: standard/custom/scheduled report semantics and source provenance.
+- [x] Local validation passed: report semantics/source provenance regression and type check for this slice.
 - [x] Local validation passed: Insights financial semantics regression and type check for this slice.
-- [ ] Pending user validation: Insights financial semantics.
+- [ ] Pending user validation: report semantics/source provenance.
 
 #### Commit 22: Scheduler, Refresh, Snapshot, And Disconnect/Reconnect Safety
 

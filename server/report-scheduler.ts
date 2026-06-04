@@ -171,6 +171,18 @@ function formatWithUnit(value: any, unit: any): string {
   return `${v}${u}`;
 }
 
+function parseReportConfiguration(configuration: any): Record<string, any> {
+  if (!configuration) return {};
+  if (typeof configuration === "string") {
+    try {
+      return JSON.parse(configuration || "{}") || {};
+    } catch {
+      return {};
+    }
+  }
+  return typeof configuration === "object" ? configuration : {};
+}
+
 const campaignDeepDiveReportTypeLabels: Record<string, string> = {
   "performance-summary": "Performance Summary",
   "financial-analysis": "Budget & Financial Analysis",
@@ -611,6 +623,38 @@ export async function buildPdfAttachmentForReport(args: {
 
     const platformType = String((report as any)?.platformType || "linkedin");
     const campaignId = (report as any)?.campaignId ? String((report as any).campaignId) : undefined;
+    const reportConfiguration = parseReportConfiguration((report as any)?.configuration);
+    const revenueSemantics = reportConfiguration?.revenueSemantics || {};
+
+    const addGoogleAdsRevenueSemantics = () => {
+      if (platformType !== "google_ads") return;
+      const totalRevenueConnected = String(revenueSemantics?.totalRevenueSource || "") === "google_ads_imported_attributed_revenue";
+      const sourceRows = Array.isArray(revenueSemantics?.sourceProvenance) ? revenueSemantics.sourceProvenance : [];
+      ensureSpace(38 + Math.min(sourceRows.length, 5) * 6);
+      text("Revenue semantics", left, y, 12, "bold");
+      y += 8;
+      line(left, y, right, y);
+      y += 8;
+      text(`Total Revenue: ${totalRevenueConnected ? "Imported Google Ads attributed revenue" : "Not connected"}`, left, y, 9, "normal", [71, 85, 105]);
+      y += 6;
+      text("Conversion Value: Native Google Ads conversion value", left, y, 9, "normal", [71, 85, 105]);
+      y += 6;
+      text(`ROAS/ROI/Profit: ${totalRevenueConnected ? "Imported attributed revenue / spend" : "Unavailable until attributed revenue is connected"}`, left, y, 9, "normal", [71, 85, 105]);
+      y += 6;
+      if (sourceRows.length > 0) {
+        text("Source provenance", left, y, 9, "bold", [71, 85, 105]);
+        y += 6;
+        sourceRows.slice(0, 5).forEach((source: any) => {
+          const label = safeText(source?.label || source?.sourceType || "Revenue source");
+          const type = safeText(source?.sourceType || "source");
+          text(`- ${label} (${type})`, left + 4, y, 9, "normal", [71, 85, 105]);
+          y += 6;
+        });
+      }
+      y += 4;
+    };
+
+    addGoogleAdsRevenueSemantics();
 
     // Content by report type (start with high-signal types; fall back gracefully).
     if (reportType.toLowerCase() === "kpis") {
@@ -1190,17 +1234,19 @@ export async function checkScheduledReports(): Promise<void> {
         continue;
       }
 
+      const snapshotPlatformType = String((report as any).platformType || "linkedin");
       const snapshotPayload = {
         reportId: String((report as any).id),
         reportName: String((report as any).name || ""),
         reportType: String((report as any).reportType || ""),
-        platformType: String((report as any).platformType || "linkedin"),
+        platformType: snapshotPlatformType,
         campaignId: (report as any).campaignId || null,
         campaignName,
         windowStart,
         windowEnd,
         generatedAt: now.toISOString(),
         scheduledKey: due.scheduledKey,
+        ...(snapshotPlatformType === "google_ads" ? { configuration: parseReportConfiguration((report as any).configuration) } : {}),
       };
 
       if (snapshotPayload.platformType === "google_analytics" && snapshotPayload.campaignId) {

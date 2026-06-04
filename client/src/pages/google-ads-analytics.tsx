@@ -1279,18 +1279,57 @@ export default function GoogleAdsAnalytics() {
     if (hh > 12) hh -= 12;
     return `${hh}:${match[2]} ${ampm}`;
   };
-  const buildGoogleAdsReportPayload = (overrides: Record<string, any> = {}) => ({
-    ...reportForm,
-    ...overrides,
-    status: 'active',
-    scheduleFrequency: reportForm.scheduleEnabled ? reportForm.scheduleFrequency : undefined,
-    scheduleDayOfWeek: reportForm.scheduleEnabled && reportForm.scheduleFrequency === 'weekly' ? dayOfWeekKeyToInt(reportForm.scheduleDayOfWeek) : undefined,
-    scheduleDayOfMonth: reportForm.scheduleEnabled && (reportForm.scheduleFrequency === 'monthly' || reportForm.scheduleFrequency === 'quarterly') ? dayOfMonthToInt(reportForm.scheduleDayOfMonth) : undefined,
-    scheduleTime: reportForm.scheduleEnabled ? to24HourHHMM(reportForm.scheduleTime) : undefined,
-    scheduleTimeZone: reportForm.scheduleEnabled ? userTimeZone : undefined,
-    quarterTiming: reportForm.scheduleEnabled && reportForm.scheduleFrequency === 'quarterly' ? reportForm.quarterTiming : undefined,
-    scheduleRecipients: reportForm.scheduleEnabled ? String(reportForm.emailRecipients || '').split(',').map((e) => e.trim()).filter(Boolean) : undefined,
+  const parseGoogleAdsReportConfiguration = (configuration: any): Record<string, any> => {
+    if (!configuration) return {};
+    if (typeof configuration === 'string') {
+      try {
+        return JSON.parse(configuration || '{}') || {};
+      } catch {
+        return {};
+      }
+    }
+    return typeof configuration === 'object' ? configuration : {};
+  };
+  const googleAdsReportRevenueSourceProvenance = () => activeGoogleAdsRevenueSources.map((source: any) => ({
+    sourceId: String(source?.id || source?.sourceId || '').trim(),
+    sourceType: String(source?.sourceType || '').trim(),
+    label: googleAdsRevenueSourceLabel(source),
+    platformContext: 'google_ads',
+  }));
+  const buildGoogleAdsReportRevenueSemantics = () => ({
+    platformContext: 'google_ads',
+    totalRevenueSource: hasGoogleAdsAttributedRevenue ? 'google_ads_imported_attributed_revenue' : 'unavailable',
+    totalRevenueLabel: 'Imported Google Ads attributed revenue',
+    conversionValueSource: 'native_google_ads_conversion_value',
+    conversionValueLabel: 'Native Google Ads conversion value',
+    roasSource: hasGoogleAdsAttributedRevenue ? 'imported_attributed_revenue_over_spend' : 'unavailable',
+    roiSource: hasGoogleAdsAttributedRevenue ? 'imported_attributed_revenue_over_spend' : 'unavailable',
+    profitSource: hasGoogleAdsAttributedRevenue ? 'imported_attributed_revenue_minus_spend' : 'unavailable',
+    sourceCount: activeGoogleAdsRevenueSources.length,
+    sourceProvenance: googleAdsReportRevenueSourceProvenance(),
   });
+  const buildGoogleAdsReportConfiguration = (configuration: any = {}) => ({
+    ...parseGoogleAdsReportConfiguration(configuration),
+    revenueSemantics: buildGoogleAdsReportRevenueSemantics(),
+  });
+  const buildGoogleAdsReportPayload = (overrides: Record<string, any> = {}) => {
+    const configurationInput = Object.prototype.hasOwnProperty.call(overrides, 'configuration')
+      ? overrides.configuration
+      : reportForm.configuration;
+    return {
+      ...reportForm,
+      ...overrides,
+      configuration: buildGoogleAdsReportConfiguration(configurationInput),
+      status: 'active',
+      scheduleFrequency: reportForm.scheduleEnabled ? reportForm.scheduleFrequency : undefined,
+      scheduleDayOfWeek: reportForm.scheduleEnabled && reportForm.scheduleFrequency === 'weekly' ? dayOfWeekKeyToInt(reportForm.scheduleDayOfWeek) : undefined,
+      scheduleDayOfMonth: reportForm.scheduleEnabled && (reportForm.scheduleFrequency === 'monthly' || reportForm.scheduleFrequency === 'quarterly') ? dayOfMonthToInt(reportForm.scheduleDayOfMonth) : undefined,
+      scheduleTime: reportForm.scheduleEnabled ? to24HourHHMM(reportForm.scheduleTime) : undefined,
+      scheduleTimeZone: reportForm.scheduleEnabled ? userTimeZone : undefined,
+      quarterTiming: reportForm.scheduleEnabled && reportForm.scheduleFrequency === 'quarterly' ? reportForm.quarterTiming : undefined,
+      scheduleRecipients: reportForm.scheduleEnabled ? String(reportForm.emailRecipients || '').split(',').map((e) => e.trim()).filter(Boolean) : undefined,
+    };
+  };
 
   const handleCreateReport = () => {
     if (reportForm.scheduleEnabled && !String(reportForm.emailRecipients || '').trim()) {
@@ -2502,13 +2541,26 @@ export default function GoogleAdsAnalytics() {
                           <div className="flex items-center gap-2">
                             <Button variant="ghost" size="sm" onClick={() => {
                               const reportType = normalizeGoogleAdsReportType(report.reportType);
+                              const reportConfiguration = parseGoogleAdsReportConfiguration(report.configuration);
                               setEditingReport(report);
                               setReportModalStep(reportType === 'custom' ? 'custom' : 'standard');
                               const emailRecipients = Array.isArray(report.scheduleRecipients) ? report.scheduleRecipients.join(', ') : '';
+                              if (reportType === 'custom') {
+                                setCustomReportConfig({
+                                  coreMetrics: [],
+                                  derivedMetrics: [],
+                                  campaignBreakdown: [],
+                                  kpis: [],
+                                  benchmarks: [],
+                                  insights: [],
+                                  ...reportConfiguration,
+                                });
+                              }
                               setReportForm({
                                 name: report.name || '',
                                 description: report.description || '',
                                 reportType,
+                                configuration: reportConfiguration,
                                 scheduleFrequency: report.scheduleFrequency || 'weekly',
                                 scheduleTime: from24HourTo12Hour(report.scheduleTime) || '9:00 AM',
                                 emailRecipients,

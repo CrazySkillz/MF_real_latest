@@ -301,9 +301,9 @@ export default function MetaAnalytics() {
 
   // Fetch Meta Reports
   const { data: reportsData, isLoading: reportsLoading } = useQuery({
-    queryKey: ['/api/meta/reports', campaignId],
+    queryKey: ['/api/platforms/meta/reports', campaignId],
     queryFn: async () => {
-      const response = await fetch(`/api/meta/reports?campaignId=${campaignId}`);
+      const response = await fetch(`/api/platforms/meta/reports?campaignId=${encodeURIComponent(String(campaignId))}`);
       if (!response.ok) throw new Error('Failed to fetch Meta Reports');
       return response.json();
     },
@@ -313,16 +313,16 @@ export default function MetaAnalytics() {
   // Report mutations
   const createReportMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/meta/reports', {
+      const response = await fetch('/api/platforms/meta/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, campaignId, platformType: 'meta' }),
+        body: JSON.stringify({ ...data, campaignId }),
       });
       if (!response.ok) throw new Error('Failed to create report');
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/meta/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/meta/reports'] });
       setIsReportModalOpen(false);
       setEditingReport(null);
       toast({ title: 'Report created successfully' });
@@ -331,7 +331,7 @@ export default function MetaAnalytics() {
 
   const updateReportMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await fetch(`/api/meta/reports/${id}`, {
+      const response = await fetch(`/api/platforms/meta/reports/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -340,7 +340,7 @@ export default function MetaAnalytics() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/meta/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/meta/reports'] });
       setIsReportModalOpen(false);
       setEditingReport(null);
       toast({ title: 'Report updated successfully' });
@@ -349,12 +349,12 @@ export default function MetaAnalytics() {
 
   const deleteReportMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/meta/reports/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/platforms/meta/reports/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('Failed to delete report');
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/meta/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platforms/meta/reports'] });
       toast({ title: 'Report deleted' });
     },
   });
@@ -370,7 +370,7 @@ export default function MetaAnalytics() {
     await queryClient.invalidateQueries({ queryKey: ["/api/meta", campaignId], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/platforms/meta/kpis"], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "meta"], exact: false });
-    await queryClient.invalidateQueries({ queryKey: ["/api/meta/reports", campaignId], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/platforms/meta/reports", campaignId], exact: false });
     await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "meta"], exact: true });
     await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=meta&dateRange=90days`], exact: true });
     await queryClient.refetchQueries({ queryKey: ["/api/meta", campaignId, "revenue", "summary"], exact: true });
@@ -855,16 +855,87 @@ export default function MetaAnalytics() {
     }));
   };
 
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const dayOfWeekKeyToInt = (value: any): number | null => {
+    const map: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+    return map[String(value || '').trim().toLowerCase()] ?? null;
+  };
+  const dayOfWeekIntToKey = (value: any): string => {
+    const map: Record<number, string> = { 0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday' };
+    return map[Number(value)] || 'monday';
+  };
+  const dayOfMonthToInt = (value: any): number | null => {
+    const raw = String(value || '').trim().toLowerCase();
+    if (raw === 'last') return 0;
+    if (raw === 'first') return 1;
+    if (raw === 'mid') return 15;
+    const parsed = parseInt(raw, 10);
+    return Number.isFinite(parsed) ? Math.max(0, Math.min(31, parsed)) : null;
+  };
+  const to24HourHHMM = (value: any): string => {
+    const raw = String(value || '').trim();
+    const match = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return /^\d{1,2}:\d{2}$/.test(raw) ? raw : '09:00';
+    let hours = parseInt(match[1], 10);
+    if (match[3].toUpperCase() === 'AM') {
+      if (hours === 12) hours = 0;
+    } else if (hours !== 12) {
+      hours += 12;
+    }
+    return `${String(hours).padStart(2, '0')}:${match[2]}`;
+  };
+  const from24HourTo12Hour = (value: any): string => {
+    const match = String(value || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return '9:00 AM';
+    let hours = parseInt(match[1], 10);
+    const suffix = hours >= 12 ? 'PM' : 'AM';
+    if (hours === 0) hours = 12;
+    if (hours > 12) hours -= 12;
+    return `${hours}:${match[2]} ${suffix}`;
+  };
+  const parseMetaReportConfiguration = (configuration: any): Record<string, any> => {
+    if (!configuration) return {};
+    if (typeof configuration === 'string') {
+      try {
+        return JSON.parse(configuration || '{}') || {};
+      } catch {
+        return {};
+      }
+    }
+    return typeof configuration === 'object' ? configuration : {};
+  };
+  const normalizeMetaReportType = (type: any): string => {
+    const value = String(type || '').trim();
+    return ['overview', 'kpis', 'benchmarks', 'ads', 'insights', 'custom'].includes(value) ? value : 'overview';
+  };
+  const buildMetaReportPayload = (overrides: Record<string, any> = {}) => {
+    const merged = { ...reportForm, ...overrides };
+    const configurationInput = Object.prototype.hasOwnProperty.call(overrides, 'configuration')
+      ? overrides.configuration
+      : merged.configuration;
+    return {
+      name: merged.name,
+      description: merged.description,
+      reportType: normalizeMetaReportType(merged.reportType),
+      configuration: typeof configurationInput === 'undefined' ? null : configurationInput,
+      scheduleEnabled: !!merged.scheduleEnabled,
+      status: 'active',
+      scheduleFrequency: merged.scheduleEnabled ? merged.scheduleFrequency : undefined,
+      scheduleDayOfWeek: merged.scheduleEnabled && merged.scheduleFrequency === 'weekly' ? dayOfWeekKeyToInt(merged.scheduleDayOfWeek) : undefined,
+      scheduleDayOfMonth: merged.scheduleEnabled && (merged.scheduleFrequency === 'monthly' || merged.scheduleFrequency === 'quarterly') ? dayOfMonthToInt(merged.scheduleDayOfMonth) : undefined,
+      scheduleTime: merged.scheduleEnabled ? to24HourHHMM(merged.scheduleTime) : undefined,
+      scheduleTimeZone: merged.scheduleEnabled ? userTimeZone : undefined,
+      quarterTiming: merged.scheduleEnabled && merged.scheduleFrequency === 'quarterly' ? merged.quarterTiming : undefined,
+      scheduleRecipients: merged.scheduleEnabled ? String(merged.emailRecipients || '').split(',').map((email) => email.trim()).filter(Boolean) : undefined,
+    };
+  };
+
   const handleCreateReport = () => {
     if (reportForm.scheduleEnabled && !String(reportForm.emailRecipients || '').trim()) {
       setReportFormErrors({ emailRecipients: 'Email recipients are required for scheduled reports' });
       return;
     }
-    const payload = {
-      ...reportForm,
-      status: 'active',
-      platformType: 'meta',
-    };
+    const payload = buildMetaReportPayload();
     if (editingReport) {
       updateReportMutation.mutate({ id: editingReport.id, data: payload });
     } else {
@@ -875,13 +946,11 @@ export default function MetaAnalytics() {
   const handleUpdateReport = handleCreateReport;
 
   const handleCustomReport = () => {
-    const payload = {
-      ...reportForm,
-      reportType: 'custom',
-      customConfig: customReportConfig,
-      status: 'active',
-      platformType: 'meta',
-    };
+    if (reportForm.scheduleEnabled && !String(reportForm.emailRecipients || '').trim()) {
+      setReportFormErrors({ emailRecipients: 'Email recipients are required for scheduled reports' });
+      return;
+    }
+    const payload = buildMetaReportPayload({ reportType: 'custom', configuration: customReportConfig });
     if (editingReport) {
       updateReportMutation.mutate({ id: editingReport.id, data: payload });
     } else {
@@ -889,7 +958,6 @@ export default function MetaAnalytics() {
     }
   };
 
-  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const getTimeZoneDisplay = () => userTimeZone.replace(/_/g, ' ');
 
   return (
@@ -2963,7 +3031,7 @@ export default function MetaAnalytics() {
                               <Badge variant="outline">{report.reportType || 'performance_summary'}</Badge>
                               {report.scheduleEnabled && report.scheduleFrequency && (
                                 <span className="text-muted-foreground flex items-center gap-1">
-                                  {report.scheduleFrequency}{report.scheduleTime ? ` at ${report.scheduleTime}` : ''}
+                                  {report.scheduleFrequency}{report.scheduleTime ? ` at ${from24HourTo12Hour(report.scheduleTime)}` : ''}
                                 </span>
                               )}
                               {report.lastSentAt && (
@@ -2981,15 +3049,32 @@ export default function MetaAnalytics() {
                               variant="ghost"
                               size="sm"
                               onClick={() => {
+                                const reportType = normalizeMetaReportType(report.reportType);
+                                const reportConfiguration = parseMetaReportConfiguration(report.configuration);
+                                const emailRecipients = Array.isArray(report.scheduleRecipients)
+                                  ? report.scheduleRecipients.join(', ')
+                                  : String(report.emailRecipients || '');
                                 setEditingReport(report);
+                                setReportModalStep(reportType === 'custom' ? 'custom' : 'standard');
+                                if (reportType === 'custom') {
+                                  setCustomReportConfig({
+                                    coreMetrics: [], derivedMetrics: [], revenueMetrics: [], campaignBreakdown: [],
+                                    kpis: [], benchmarks: [], insights: [], demographics: [],
+                                    ...reportConfiguration,
+                                  });
+                                }
                                 setReportForm({
                                   name: report.name || '',
                                   description: report.description || '',
-                                  reportType: report.reportType || 'performance_summary',
+                                  reportType,
+                                  configuration: reportConfiguration,
                                   scheduleFrequency: report.scheduleFrequency || 'weekly',
-                                  scheduleTime: report.scheduleTime || '9:00 AM',
-                                  emailRecipients: report.emailRecipients || '',
+                                  scheduleTime: from24HourTo12Hour(report.scheduleTime) || '9:00 AM',
+                                  emailRecipients,
                                   scheduleEnabled: report.scheduleEnabled || false,
+                                  scheduleDayOfWeek: dayOfWeekIntToKey(report.scheduleDayOfWeek),
+                                  scheduleDayOfMonth: report.scheduleDayOfMonth === 0 ? 'last' : String(report.scheduleDayOfMonth || 'first'),
+                                  quarterTiming: report.quarterTiming || 'end',
                                 });
                                 setIsReportModalOpen(true);
                               }}

@@ -21,7 +21,7 @@ Meta/Facebook is not production-ready yet.
 
 This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
 
-Meta Commit 12 has been implemented locally. Local validation passed; user/browser validation is pending.
+Meta Commit 13 has been implemented locally. Local validation passed; user/browser validation is pending.
 
 Verified current foundations:
 
@@ -41,6 +41,7 @@ Verified current foundations:
 - Commit 10 makes live Meta scheduler refresh use true daily insight rows and preserves Meta daily-row metadata during upsert.
 - Commit 11 cleans current-campaign Meta-owned daily metric rows and Meta scheduler spend rows during disconnect/reconnect without deleting user-created Meta revenue sources, KPIs, Benchmarks, or reports.
 - Commit 12 moves Meta KPI and Benchmark lifecycle behavior onto the shared platform-scoped KPI/Benchmark storage pattern and maps revenue-dependent current values to imported Meta attributed revenue.
+- Commit 13 moves Meta report cards to the shared platform-report route, persists scheduler-compatible schedule fields, and makes legacy Meta report send/preview routes fail closed instead of returning placeholder success.
 
 Verified production-readiness gaps:
 
@@ -52,16 +53,15 @@ Verified production-readiness gaps:
 - Live scheduler daily refresh is implemented locally with `getCampaignDailyInsights`, but still requires deployed/production-like evidence before calling live scheduler refresh production-ready.
 - `storage.upsertMetaDailyMetrics` now updates `metaCampaignName` and preserves GA4 attribution metadata on conflict in the reviewed path.
 - `server/utils/meta-revenue.ts` has a CSV processor that returns totals but does not materialize revenue records in the shared revenue-source storage path. Its own comment says storage integration is a placeholder.
-- Meta report send and preview routes currently contain TODO behavior while returning success or placeholder preview output. That is not production-ready for report behavior.
-- Report lifecycle safety is not yet proven end to end.
+- Legacy Meta report send and preview routes now return unavailable instead of fake success or placeholder preview output.
+- Meta report create/list/edit/delete now uses the shared platform-report storage path locally; browser validation is pending.
 
 Unverified from local code review so far:
 
 - Whether final campaign creation transfers a draft Meta connection to the real campaign in every Create Campaign path.
 - Whether cancelled Create Campaign setup cleans up draft Meta connections and daily rows.
 - Whether Meta disconnect should delete, deactivate, or hide stale Meta daily rows, spend records, and Meta-scoped revenue sources.
-- Browser validation for Meta KPI and Benchmark create, edit, delete, and current-value behavior after Commit 12.
-- Whether scheduled reports discover, snapshot, send, and audit Meta reports through the same guarded report framework as other production-ready sources.
+- Whether scheduled Meta reports successfully send source-backed PDFs in a deployed or production-like environment.
 - Live OAuth behavior in a deployed or production-like environment.
 
 ## Existing Relevant Paths
@@ -724,13 +724,22 @@ Status:
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ### Meta Commit 13: Report And Scheduled Report Safety
 
 Goal:
 
 - Make Meta reports production-safe instead of returning placeholder success.
+
+Root cause analysis:
+
+- The Meta Reports tab used the legacy `/api/meta/reports` routes, which persisted to the older `meta_reports` table instead of the shared platform-report path used by Google Ads and LinkedIn.
+- The visible Meta Reports query expected an array, but the legacy Meta list route returned `{ reports }`, so saved report rows could fail to render as cards.
+- Scheduled Meta report payloads kept UI-only fields such as `emailRecipients` and 12-hour `scheduleTime`; the shared scheduler expects `scheduleRecipients`, 24-hour `scheduleTime`, `scheduleTimeZone`, and numeric schedule day fields.
+- The legacy direct send route returned `success: true` with `Report sent successfully` even though the route had no real send implementation.
+- The legacy preview route returned placeholder preview text instead of source-backed output or a clear unavailable state.
+- The smallest safe fix is to move the Meta report card lifecycle to `/api/platforms/meta/reports`, normalize scheduled payload fields to the existing shared scheduler contract, and make the legacy Meta send/preview routes fail closed. This does not change Meta scheduler refresh, disconnect/reconnect, revenue import, live OAuth, GA4 behavior, LinkedIn behavior, or Google Ads behavior.
 
 Tasks:
 
@@ -752,7 +761,15 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Completed locally: Meta report list/create/update/delete now use `/api/platforms/meta/reports` and the shared platform report table.
+- [x] Completed locally: scheduled Meta report payloads now persist `scheduleRecipients`, 24-hour `scheduleTime`, browser `scheduleTimeZone`, and numeric schedule day fields.
+- [x] Completed locally: Meta report edit mode reads saved shared report schedule fields back into the modal.
+- [x] Completed locally: legacy `/api/meta/reports/:reportId/send` returns unavailable instead of fake send success.
+- [x] Completed locally: legacy `/api/meta/reports/:reportId/preview` returns unavailable instead of placeholder preview text.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts` and `server/legacy-route-reachability-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts server/legacy-route-reachability-regression.test.ts server/report-email-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
 
 ### Meta Commit 14: Meta Attributed Revenue Import Parity
 
@@ -842,15 +859,15 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 13 through Meta Commit 15.
+- Meta Commit 14 through Meta Commit 15.
 
 Outstanding evidence:
 
 - Meta Commit 6 user/browser validation is pending.
-- Meta Commit 12 user/browser validation is pending.
+- Meta Commit 13 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 
 ## Current Handoff
 
-The next smallest safest implementation step after Meta Commit 12 validation is Meta Commit 13: Report and scheduled report safety. That commit should not change scheduler refresh, disconnect/reconnect, revenue import, or live OAuth behavior yet.
+The next smallest safest implementation step after Meta Commit 13 validation is Meta Commit 14: Meta attributed revenue import parity. That commit should not change report scheduling, scheduler refresh, disconnect/reconnect, or live OAuth behavior unless a traced revenue-import path requires it.

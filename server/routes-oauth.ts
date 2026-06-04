@@ -21322,10 +21322,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, existingReport.campaignId);
       if (!ok) return;
 
-      // TODO: Implement actual report generation and email sending
-      console.log(`[Meta Reports] Sending report ${reportId} immediately`);
-
-      res.json({ success: true, message: "Report sent successfully" });
+      res.status(501).json({
+        success: false,
+        message: "Meta report sending is not available from the legacy Meta report route. Use the platform report scheduler path for saved Meta reports.",
+      });
     } catch (error: any) {
       console.error('[Meta Reports] Send error:', error);
       res.status(500).json({ error: error.message || 'Failed to send Meta report' });
@@ -21347,10 +21347,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, existingReport.campaignId);
       if (!ok) return;
 
-      // TODO: Implement actual report preview generation
-      res.json({
+      res.status(501).json({
+        success: false,
         report: existingReport,
-        preview: "Report preview HTML would be generated here",
+        message: "Meta report preview is not available from the legacy Meta report route.",
       });
     } catch (error: any) {
       console.error('[Meta Reports] Preview error:', error);

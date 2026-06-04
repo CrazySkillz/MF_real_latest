@@ -24,17 +24,21 @@ describe("legacy route reachability inventory", () => {
     expect(routes).toContain('app.get("/api/linkedin/reports"');
   });
 
-  it("keeps shared Meta report routes classified as active because Meta and Google Ads pages both call them", () => {
+  it("keeps legacy Meta report routes retained but no longer used by platform report pages", () => {
     const metaPage = read("client/src/pages/meta-analytics.tsx");
     const googleAdsPage = read("client/src/pages/google-ads-analytics.tsx");
+    const routes = read("server/routes-oauth.ts");
     const schema = read("shared/schema.ts");
     const metaReportsBlock = schema.slice(
       schema.indexOf('export const metaReports = pgTable("meta_reports"'),
       schema.indexOf("// Meta Daily Metrics", schema.indexOf('export const metaReports = pgTable("meta_reports"'))
     );
 
-    expect(metaPage).toContain("/api/meta/reports");
-    expect(googleAdsPage).toContain("/api/meta/reports");
+    expect(metaPage).toContain("/api/platforms/meta/reports");
+    expect(metaPage).not.toContain("/api/meta/reports");
+    expect(googleAdsPage).not.toContain("/api/meta/reports");
+    expect(routes).toContain('app.get("/api/meta/reports"');
+    expect(routes).toContain('app.post("/api/meta/reports/:reportId/send"');
     expect(metaReportsBlock).toContain('export const metaReports = pgTable("meta_reports"');
     expect(metaReportsBlock).not.toContain('platformType: text("platform_type"');
   });

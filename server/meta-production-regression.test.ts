@@ -31,7 +31,7 @@ describe("Meta production readiness regression guard", () => {
     expect(helper).toContain('queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false');
     expect(helper).toContain('queryKey: [`/api/campaigns/${campaignId}/trend-analysis`], exact: false');
     expect(helper).toContain('queryKey: ["/api/platforms/meta/kpis", campaignId], exact: false');
-    expect(helper).toContain('queryKey: ["/api/meta/reports", campaignId], exact: false');
+    expect(helper).toContain('queryKey: ["/api/platforms/meta/reports", campaignId], exact: false');
     expect(metaBlock).toContain("invalidateMetaConnectedPlatformQueries();");
     expect(metaBlock).not.toContain("window.location.reload()");
   });
@@ -166,6 +166,36 @@ describe("Meta production readiness regression guard", () => {
     expect(page).toContain("deleteMetaRevenueSourceMutation");
     expect(page).toContain("revenue-sources/${encodeURIComponent(sourceId)}");
     expect(page).not.toContain("Configure Revenue Tracking");
+  });
+
+  it("keeps Meta reports on shared platform-report storage and fail-closes legacy send/preview routes", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const routes = read("server", "routes-oauth.ts");
+    const legacySendRoute = sliceBetween(
+      routes,
+      'app.post("/api/meta/reports/:reportId/send"',
+      'app.get("/api/meta/reports/:reportId/preview"'
+    );
+    const legacyPreviewRoute = sliceBetween(
+      routes,
+      'app.get("/api/meta/reports/:reportId/preview"',
+      'app.post("/api/meta/:campaignId/revenue/manual"'
+    );
+
+    expect(page).toContain("/api/platforms/meta/reports");
+    expect(page).toContain("queryKey: ['/api/platforms/meta/reports', campaignId]");
+    expect(page).toContain("scheduleRecipients: merged.scheduleEnabled");
+    expect(page).toContain("scheduleTime: merged.scheduleEnabled ? to24HourHHMM(merged.scheduleTime) : undefined");
+    expect(page).toContain("scheduleTimeZone: merged.scheduleEnabled ? userTimeZone : undefined");
+    expect(page).toContain("const reportConfiguration = parseMetaReportConfiguration(report.configuration);");
+    expect(page).not.toContain("fetch(`/api/meta/reports?campaignId=${campaignId}`)");
+    expect(page).not.toContain("fetch('/api/meta/reports'");
+    expect(legacySendRoute).toContain("res.status(501).json");
+    expect(legacySendRoute).toContain("Meta report sending is not available");
+    expect(legacySendRoute).not.toContain("Report sent successfully");
+    expect(legacyPreviewRoute).toContain("res.status(501).json");
+    expect(legacyPreviewRoute).toContain("Meta report preview is not available");
+    expect(legacyPreviewRoute).not.toContain("Report preview HTML would be generated here");
   });
 
   it("keeps Meta KPI and Benchmark lifecycle on shared platform-scoped storage", () => {

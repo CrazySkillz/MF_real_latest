@@ -4370,7 +4370,7 @@ export default function CampaignDetail() {
     queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`], exact: false });
     queryClientHook.invalidateQueries({ queryKey: ["/api/platforms/meta/kpis", campaignId], exact: false });
     queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "meta"], exact: false });
-    queryClientHook.invalidateQueries({ queryKey: ["/api/meta/reports", campaignId], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: ["/api/platforms/meta/reports", campaignId], exact: false });
     queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`], exact: false });
   };
 

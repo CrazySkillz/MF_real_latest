@@ -678,7 +678,7 @@ Executive Summary is production ready only when:
 
 ## Current Status
 
-Production-ready by local code path review, regression coverage, build validation, and user validation for the implemented connected-source aggregate pattern. Executive Summary now follows the same future-proofing pattern as the other Campaign DeepDive subsections: current sections consume the shared connected-source aggregate, and future or refined main Connected Platforms must enter through the documented aggregate contract before being marked production-ready for that source. Google Ads has separate local/test-mode Connected Platforms evidence through Commit 24 in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`; Commit 25 fixes local live-OAuth campaign selection before first metrics import. Live OAuth deployed or production-like evidence remains separate. Executive Summary is ready to consume Google Ads through the same aggregate pattern for the validated source path.
+Production-ready by local code path review, regression coverage, build validation, and user validation for the implemented connected-source aggregate pattern. Executive Summary now follows the same future-proofing pattern as the other Campaign DeepDive subsections: current sections consume the shared connected-source aggregate, and future or refined main Connected Platforms must enter through the documented aggregate contract before being marked production-ready for that source. Google Ads has separate local Connected Platforms evidence through Commit 26 in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Live OAuth deployed or production-like evidence remains separate. Executive Summary is ready to consume Google Ads through the same aggregate pattern for the validated local source path.
 
 ### Executive Summary Status Map
 
@@ -690,7 +690,7 @@ Use this section first when resuming Executive Summary work.
 | Connected-source aggregate future-proofing | Complete | `/executive-summary`, `/outcome-totals`, scheduler snapshots, KPI/Benchmark mapping, Risk inputs, and Strategic Recommendations are guarded for normalized main Connected Platform sources. |
 | Deployed validation evidence log | Evidence tracking only | This records QA evidence for real deployed source mixes. It is not an open implementation blocker. |
 | Future Connected Platform acceptance gate | Standing rule | Every new or refined main source must pass this checklist before that source is called production-ready in Executive Summary. |
-| Google Ads Connected Platforms refinement | Separate source work | Google Ads local/test-mode source proof passed through Commit 24 in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`; Commit 25 fixes local live-OAuth campaign selection; live OAuth deployed evidence remains outstanding. This does not block Executive Summary as an aggregate consumer for the validated local/test-mode path. |
+| Google Ads Connected Platforms refinement | Separate source work | Google Ads local source proof passed through Commit 26 in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`; live OAuth deployed evidence remains outstanding. This does not block Executive Summary as an aggregate consumer for the validated local source path. |
 
 Do not treat the deployed evidence log, the future-source acceptance gate, or Google Ads source refinement as unfinished Executive Summary implementation work. They are separate follow-up categories.
 
@@ -744,7 +744,7 @@ Completed Executive Summary future-proofing checklist:
 
 Separate source work: Google Ads Connected Platforms refinement
 
-- [x] Google Ads-specific local/test-mode metrics, attribution, source UI, and metric correctness have source-level proof recorded in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md` through Commit 24.
+- [x] Google Ads-specific local metrics, attribution, source UI, and metric correctness have source-level proof recorded in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md` through Commit 26.
 - [ ] Google Ads live OAuth connect/select/refresh still needs deployed or production-like evidence before the live OAuth path is treated as production-ready; Commit 25 fixes the local campaign-selection-before-refresh blocker.
 - [x] The Executive Summary work above future-proofs aggregate consumption so the validated Google Ads source path can plug into Executive Summary using the same pattern as Budget & Financial Analysis and the other aggregate-backed DeepDive subsections.
 

@@ -13,7 +13,7 @@ const sliceBetween = (source: string, startNeedle: string, endNeedle: string) =>
 };
 
 describe("Google Ads revenue Shopify flow", () => {
-  it("admits Google Ads only for Shopify revenue save while keeping broader write validation deferred", () => {
+  it("admits Google Ads for Shopify revenue save through the shared platform validator", () => {
     const routes = readSource("server", "routes-oauth.ts");
     const route = sliceBetween(
       routes,
@@ -21,7 +21,7 @@ describe("Google Ads revenue Shopify flow", () => {
       'app.post("/api/campaigns/:id/chat"'
     );
 
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta"]);');
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);');
     expect(routes).toContain('const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);');
     expect(route).toContain("platformContext: zShopifyRevenuePlatformContext.optional()");
     expect(route).not.toContain("platformContext: zPlatformContext.optional()");
@@ -42,6 +42,21 @@ describe("Google Ads revenue Shopify flow", () => {
     expect(route).toContain("platformContext: platformCtx");
     expect(route).toContain('provider: "shopify"');
     expect(route).toContain("campaignValueRevenueTotals: Array.from(campaignValueRevenueTotals.entries()).map");
+  });
+
+  it("materializes Google Ads Shopify per-campaign revenue only for exact active campaign IDs", () => {
+    const routes = readSource("server", "routes-oauth.ts");
+    const route = sliceBetween(
+      routes,
+      'app.post("/api/campaigns/:id/shopify/save-mappings"',
+      'app.post("/api/campaigns/:id/chat"'
+    );
+
+    expect(route).toContain('const activeGoogleAdsCampaignIds = platformCtx === "google_ads"');
+    expect(route).toContain("exactGoogleAdsCampaignIdOrNull(platformCtx, orderCrmValue, activeGoogleAdsCampaignIds)");
+    expect(route).toContain('if ((campaignMappings.length > 0 || platformCtx === "google_ads") && revenueByDateAndCampaign.size > 0)');
+    expect(route).toContain("subCampaignUrn: urn,");
+    expect(route).not.toContain("spend weight");
   });
 
   it("fails closed for stale or wrong Shopify revenue source IDs", () => {

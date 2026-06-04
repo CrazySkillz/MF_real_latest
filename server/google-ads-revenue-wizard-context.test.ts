@@ -18,6 +18,9 @@ describe("Google Ads revenue wizard context", () => {
     expect(modal).toContain('queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"]');
     expect(modal).toContain('void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`], exact: false });');
     expect(modal).toContain('void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"], exact: false });');
+    expect(modal).toContain('void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-ads-campaign-revenue"], exact: false });');
+    expect(modal).toContain("manualPlatform === 'google_ads'");
+    expect(modal).toContain("`/api/google-ads/${campaignId}/campaigns`");
     expect(modal).toContain('queryKey: ["/api/platforms/google_ads/kpis", campaignId]');
   });
 
@@ -31,7 +34,7 @@ describe("Google Ads revenue wizard context", () => {
     }
   });
 
-  it("allows Google Ads revenue Google Sheets purpose without opening revenue import write validation", () => {
+  it("allows Google Ads revenue Google Sheets purpose and shared write validation", () => {
     const sheetsAuth = readSource("client", "src", "components", "SimpleGoogleSheetsAuth.tsx");
     const routes = readSource("server", "routes-oauth.ts");
 
@@ -41,6 +44,6 @@ describe("Google Ads revenue wizard context", () => {
     expect(routes).toContain("sheetsPurpose === 'spend' || sheetsPurpose === 'revenue' || sheetsPurpose === 'general' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue'");
     expect(routes).toContain("purpose === 'spend' || purpose === 'revenue' || purpose === 'general' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue'");
     expect(routes).toContain("sheetsPurpose === 'revenue' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue'");
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta"]);');
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);');
   });
 });

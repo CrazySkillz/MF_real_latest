@@ -13,7 +13,7 @@ const sliceBetween = (source: string, startNeedle: string, endNeedle: string) =>
 };
 
 describe("Google Ads revenue CSV flow", () => {
-  it("admits Google Ads only for CSV revenue processing while keeping broader write validation deferred", () => {
+  it("admits Google Ads for CSV revenue processing through the shared platform validator", () => {
     const routes = readSource("server", "routes-oauth.ts");
     const csvRoute = sliceBetween(
       routes,
@@ -21,7 +21,7 @@ describe("Google Ads revenue CSV flow", () => {
       'app.post("/api/campaigns/:id/revenue/sheets/preview"'
     );
 
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta"]);');
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);');
     expect(routes).toContain('const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);');
     expect(csvRoute).toContain('parseCsvRevenuePlatformContext((req.body as any)?.platformContext, "ga4", res)');
     expect(csvRoute).not.toContain('parsePlatformContext((req.body as any)?.platformContext, "ga4", res)');
@@ -43,6 +43,21 @@ describe("Google Ads revenue CSV flow", () => {
     expect(csvRoute).toContain("storage.createRevenueSource({");
     expect(csvRoute).toContain("platformContext,");
     expect(csvRoute).toContain("await storage.deleteRevenueRecordsBySource(source.id);");
+  });
+
+  it("materializes Google Ads CSV per-campaign revenue only for exact active campaign IDs", () => {
+    const routes = readSource("server", "routes-oauth.ts");
+    const csvRoute = sliceBetween(
+      routes,
+      '"/api/campaigns/:id/revenue/csv/process"',
+      'app.post("/api/campaigns/:id/revenue/sheets/preview"'
+    );
+
+    expect(csvRoute).toContain('const activeGoogleAdsCampaignIds = platformContext === "google_ads"');
+    expect(csvRoute).toContain("exactGoogleAdsCampaignIdOrNull(platformContext, campaignKey, activeGoogleAdsCampaignIds)");
+    expect(csvRoute).toContain("const revenueByDateAndCampaign = new Map<string, number>();");
+    expect(csvRoute).toContain("subCampaignUrn,");
+    expect(csvRoute).not.toContain("spend weight");
   });
 
   it("passes the Google Ads context and campaign scope from the shared CSV wizard path", () => {

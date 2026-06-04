@@ -13,7 +13,7 @@ const sliceBetween = (source: string, startNeedle: string, endNeedle: string) =>
 };
 
 describe("Google Ads revenue Salesforce flow", () => {
-  it("admits Google Ads only for Salesforce revenue save while keeping broader write validation deferred", () => {
+  it("admits Google Ads for Salesforce revenue save through the shared platform validator", () => {
     const routes = readSource("server", "routes-oauth.ts");
     const route = sliceBetween(
       routes,
@@ -21,7 +21,7 @@ describe("Google Ads revenue Salesforce flow", () => {
       "// Salesforce pipeline proxy status"
     );
 
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta"]);');
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);');
     expect(routes).toContain('const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);');
     expect(route).toContain("platformContext: zSalesforceRevenuePlatformContext.optional()");
     expect(route).not.toContain("platformContext: zPlatformContext.optional()");
@@ -41,6 +41,21 @@ describe("Google Ads revenue Salesforce flow", () => {
     expect(route).toContain("platformContext: platformCtx");
     expect(route).toContain('dailyMaterialization: platformCtx === "ga4" && revenueByDate.size > 0 ? "selected_date_field_v1" : null');
     expect(route).toContain("if (platformCtx === \"ga4\" && totalRevenue > 0 && materializedRecordCount <= 0)");
+  });
+
+  it("materializes Google Ads Salesforce per-campaign revenue only for exact active campaign IDs", () => {
+    const routes = readSource("server", "routes-oauth.ts");
+    const route = sliceBetween(
+      routes,
+      'app.post("/api/campaigns/:id/salesforce/save-mappings"',
+      "// Salesforce pipeline proxy status"
+    );
+
+    expect(route).toContain('const activeGoogleAdsCampaignIds = platformCtx === "google_ads"');
+    expect(route).toContain("exactGoogleAdsCampaignIdOrNull(platformCtx, campaignValue, activeGoogleAdsCampaignIds)");
+    expect(route).toContain('if ((campaignMappings.length > 0 || platformCtx === "google_ads") && revenueByDateAndCampaign.size > 0)');
+    expect(route).toContain("subCampaignUrn: urn,");
+    expect(route).not.toContain("spend weight");
   });
 
   it("fails closed for stale or wrong Salesforce revenue source IDs", () => {

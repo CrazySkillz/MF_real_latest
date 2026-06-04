@@ -96,6 +96,7 @@ export function AddRevenueWizardModal(props: {
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-ads-campaign-revenue"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_ads/kpis"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_ads/kpis", campaignId], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "google_ads"], exact: false });
@@ -130,6 +131,7 @@ export function AddRevenueWizardModal(props: {
     } else if (platformContext === 'google_ads') {
       void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-ads-campaign-revenue"], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_ads/kpis", campaignId], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "google_ads"], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_ads/reports", campaignId], exact: false });
@@ -522,17 +524,13 @@ export function AddRevenueWizardModal(props: {
           if (!cancelled && Array.isArray(json?.campaigns)) {
             setPlatformCampaigns(json.campaigns.map((c: any) => ({ id: c.id || c.name, name: c.name || c.id || 'Unknown' })));
           }
-        } else if (manualPlatform === 'google-ads') {
-          const resp = await fetch(`/api/google-ads/${campaignId}/daily-metrics`, { credentials: "include" });
+        } else if (manualPlatform === 'google_ads') {
+          const resp = await fetch(`/api/google-ads/${campaignId}/campaigns`, { credentials: "include" });
           const json = await resp.json().catch(() => ({}));
-          if (!cancelled && Array.isArray(json?.metrics)) {
-            const seen = new Map<string, string>();
-            for (const m of json.metrics) {
-              if (m.googleCampaignId && !seen.has(m.googleCampaignId)) {
-                seen.set(m.googleCampaignId, m.googleCampaignName || m.googleCampaignId);
-              }
-            }
-            setPlatformCampaigns(Array.from(seen, ([id, name]) => ({ id, name })));
+          if (!cancelled && Array.isArray(json?.campaigns)) {
+            setPlatformCampaigns(json.campaigns
+              .filter((c: any) => c?.selected !== false)
+              .map((c: any) => ({ id: c.id || c.name, name: c.name || c.id || 'Unknown' })));
           }
         }
       } catch {
@@ -564,6 +562,8 @@ export function AddRevenueWizardModal(props: {
       const vsRaw = String(config?.valueSource || "").trim().toLowerCase();
       const vs: 'revenue' | 'conversion_value' = vsRaw === 'conversion_value' ? 'conversion_value' : 'revenue';
       setStep("manual");
+      setManualPlatform(String(config?.platformContext || initialSource?.platformContext || platformContext || "ga4"));
+      setManualSubCampaign(String(config?.subCampaignUrn || ""));
       setManualAmount(amt === 0 || amt ? formatCurrencyOnBlur(String(amt)) : "");
       setManualConversionValue(cv === 0 || cv ? formatCurrencyOnBlur(String(cv)) : "");
       setManualValueSource(vs);

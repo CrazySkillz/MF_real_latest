@@ -15,14 +15,15 @@ describe("Google Ads revenue platform context", () => {
     expect(storageFile).not.toContain("eq(revenueSources.platformContext, 'linkedin' as any),");
   });
 
-  it("permits Google Ads on revenue read endpoints while keeping write/import context validation deferred", () => {
+  it("permits Google Ads on revenue read and manual source endpoints", () => {
     const routesFile = readSource("server/routes-oauth.ts");
 
-    expect(routesFile).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta"]);');
+    expect(routesFile).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);');
     expect(routesFile).toContain('const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);');
     expect(routesFile).toContain("const parseRevenueReadPlatformContext = (");
     expect(routesFile).toContain('storage.getRevenueSources(campaignId, \'google_ads\').catch(() => [] as any[])');
     expect(routesFile).toContain("sourcePlatformContext === 'google_ads' ? 'google_ads_revenue' : 'revenue'");
+    expect(routesFile).toContain("subCampaignUrn: subCampaignUrn || null,");
 
     const totalsRoute = routesFile.slice(
       routesFile.indexOf('app.get("/api/campaigns/:id/revenue-totals"'),

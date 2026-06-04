@@ -13,7 +13,7 @@ const sliceBetween = (source: string, startNeedle: string, endNeedle: string) =>
 };
 
 describe("Google Ads revenue Google Sheets flow", () => {
-  it("admits Google Ads only for Google Sheets revenue routes while keeping broader write validation deferred", () => {
+  it("admits Google Ads for Google Sheets revenue routes through the shared platform validator", () => {
     const routes = readSource("server", "routes-oauth.ts");
     const previewRoute = sliceBetween(
       routes,
@@ -26,7 +26,7 @@ describe("Google Ads revenue Google Sheets flow", () => {
       'const deactivateSpendSourcesForCampaign'
     );
 
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta"]);');
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);');
     expect(routes).toContain('const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);');
     expect(previewRoute).toContain("platformContext: zSheetsRevenuePlatformContext.optional()");
     expect(processRoute).toContain("platformContext: zSheetsRevenuePlatformContext.optional()");
@@ -60,6 +60,21 @@ describe("Google Ads revenue Google Sheets flow", () => {
     expect(processRoute).toContain("if (existingSourceId && !existingSheetsSource)");
     expect(processRoute).toContain('return res.status(404).json({ success: false, error: "Revenue source not found" });');
     expect(processRoute).toContain("await storage.deleteRevenueRecordsBySource(String((source as any).id));");
+  });
+
+  it("materializes Google Ads Sheets per-campaign revenue only for exact active campaign IDs", () => {
+    const routes = readSource("server", "routes-oauth.ts");
+    const processRoute = sliceBetween(
+      routes,
+      'app.post("/api/campaigns/:id/revenue/sheets/process"',
+      'const deactivateSpendSourcesForCampaign'
+    );
+
+    expect(processRoute).toContain('const activeGoogleAdsCampaignIds = platformContext === "google_ads"');
+    expect(processRoute).toContain("exactGoogleAdsCampaignIdOrNull(platformContext, campaignKey, activeGoogleAdsCampaignIds)");
+    expect(processRoute).toContain("const revenueByDateAndCampaign = new Map<string, number>();");
+    expect(processRoute).toContain("subCampaignUrn,");
+    expect(processRoute).not.toContain("spend weight");
   });
 
   it("passes Google Ads context, purpose, source identity, campaign scope, and date mapping from the shared wizard", () => {

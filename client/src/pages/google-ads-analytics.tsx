@@ -103,6 +103,7 @@ interface DailyMetric {
   searchImpressionShare: string;
   costPerConversion: string | null;
   conversionRate: string | null;
+  googleCampaignId: string;
   googleCampaignName: string;
   ga4Revenue: string | null;
   ga4UtmName: string | null;
@@ -353,14 +354,39 @@ export default function GoogleAdsAnalytics() {
     },
   });
 
+  const { data: googleAdsCampaignRevenueData } = useQuery<{ success: boolean; breakdown: any[] }>({
+    queryKey: ["/api/campaigns", campaignId, "google-ads-campaign-revenue", "90days"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const res = await fetch(`/api/campaigns/${campaignId}/google-ads-campaign-revenue?dateRange=90days`);
+      if (!res.ok) return { success: false, breakdown: [] };
+      const json = await res.json().catch(() => ({}));
+      return { success: !!json?.success, breakdown: Array.isArray(json?.breakdown) ? json.breakdown : [] };
+    },
+  });
+
   const activeGoogleAdsRevenueSources = Array.isArray(googleAdsRevenueSourcesData?.sources)
     ? googleAdsRevenueSourcesData.sources.filter((source: any) => source?.isActive !== false)
     : [];
 
+  const googleAdsCampaignRevenueById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of Array.isArray(googleAdsCampaignRevenueData?.breakdown) ? googleAdsCampaignRevenueData.breakdown : []) {
+      const id = String(row?.campaignId || "").trim();
+      if (id) map.set(id, Number(row?.revenue || 0));
+    }
+    return map;
+  }, [googleAdsCampaignRevenueData]);
+
   const refreshGoogleAdsRevenueQueries = async () => {
     await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"] });
+    await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-ads-campaign-revenue"], exact: false });
     await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`], exact: false });
     await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"], exact: true });
+    await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-ads-campaign-revenue", "90days"], exact: true });
     await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`], exact: true });
     await queryClient.invalidateQueries({ queryKey: ["/api/google-ads", campaignId, "daily-metrics"], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_ads/kpis", campaignId], exact: false });
@@ -515,10 +541,12 @@ export default function GoogleAdsAnalytics() {
 
   // Campaign breakdown for Ad Comparison tab
   const campaignBreakdown = useMemo(() => {
-    const byName = new Map<string, any>();
+    const byCampaign = new Map<string, any>();
     for (const m of metrics) {
+      const id = String(m.googleCampaignId || "").trim();
       const name = m.googleCampaignName || 'Unknown Campaign';
-      const existing = byName.get(name) || { name, impressions: 0, clicks: 0, spend: 0, conversions: 0, conversionValue: 0, videoViews: 0, ga4Revenue: 0, hasGa4Revenue: false, days: 0 };
+      const key = id || name;
+      const existing = byCampaign.get(key) || { id: key, name, impressions: 0, clicks: 0, spend: 0, conversions: 0, conversionValue: 0, videoViews: 0, ga4Revenue: 0, hasGa4Revenue: false, days: 0 };
       existing.impressions += m.impressions || 0;
       existing.clicks += m.clicks || 0;
       existing.spend += parseFloat(m.spend || "0");
@@ -530,20 +558,27 @@ export default function GoogleAdsAnalytics() {
         existing.hasGa4Revenue = true;
       }
       existing.days += 1;
-      byName.set(name, existing);
+      byCampaign.set(key, existing);
     }
-    return Array.from(byName.values()).map(c => ({
-      ...c,
-      ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
-      cpc: c.clicks > 0 ? c.spend / c.clicks : 0,
-      cpm: c.impressions > 0 ? (c.spend / c.impressions) * 1000 : 0,
-      conversionRate: c.clicks > 0 ? (c.conversions / c.clicks) * 100 : 0,
-      costPerConversion: c.conversions > 0 ? c.spend / c.conversions : 0,
-      roas: c.spend > 0 ? c.conversionValue / c.spend : 0,
-      roi: c.spend > 0 ? ((c.conversionValue - c.spend) / c.spend) * 100 : 0,
-      ga4Roas: c.hasGa4Revenue && c.spend > 0 ? c.ga4Revenue / c.spend : null,
-    }));
-  }, [metrics]);
+    return Array.from(byCampaign.values()).map(c => {
+      const attributedRevenue = Number(googleAdsCampaignRevenueById.get(String(c.id || "")) || 0);
+      return {
+        ...c,
+        attributedRevenue,
+        hasAttributedRevenue: attributedRevenue > 0,
+        ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
+        cpc: c.clicks > 0 ? c.spend / c.clicks : 0,
+        cpm: c.impressions > 0 ? (c.spend / c.impressions) * 1000 : 0,
+        conversionRate: c.clicks > 0 ? (c.conversions / c.clicks) * 100 : 0,
+        costPerConversion: c.conversions > 0 ? c.spend / c.conversions : 0,
+        roas: c.spend > 0 ? c.conversionValue / c.spend : 0,
+        roi: c.spend > 0 ? ((c.conversionValue - c.spend) / c.spend) * 100 : 0,
+        attributedRoas: attributedRevenue > 0 && c.spend > 0 ? attributedRevenue / c.spend : null,
+        attributedRoi: attributedRevenue > 0 && c.spend > 0 ? ((attributedRevenue - c.spend) / c.spend) * 100 : null,
+        ga4Roas: c.hasGa4Revenue && c.spend > 0 ? c.ga4Revenue / c.spend : null,
+      };
+    });
+  }, [metrics, googleAdsCampaignRevenueById]);
 
   // Sorted breakdown for table display (must be before early returns)
   const sortedCampaignBreakdown = useMemo(() => {
@@ -1963,9 +1998,9 @@ export default function GoogleAdsAnalytics() {
                             <th className="text-right font-medium px-2 py-2 w-[100px]">Conversions</th>
                             <th className="text-right font-medium px-2 py-2 w-[90px]">Conv Rate</th>
                             <th className="text-right font-medium px-2 py-2 w-[80px]">CPC</th>
-                            <th className="text-right font-medium px-2 py-2 w-[80px]">ROAS</th>
-                            <th className="text-right font-medium px-2 py-2 w-[100px]">GA4 Revenue</th>
-                            <th className="text-right font-medium px-2 py-2 w-[90px]">GA4 ROAS</th>
+                            <th className="text-right font-medium px-2 py-2 w-[100px]">Conv Value ROAS</th>
+                            <th className="text-right font-medium px-2 py-2 w-[110px]">Total Revenue</th>
+                            <th className="text-right font-medium px-2 py-2 w-[100px]">Attr. ROAS</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1974,7 +2009,7 @@ export default function GoogleAdsAnalytics() {
                             const isBottom = idx === sortedCampaignBreakdown.length - 1 && sortedCampaignBreakdown.length > 1;
                             return (
                               <tr
-                                key={c.name || idx}
+                                key={c.id || c.name || idx}
                                 className={`border-b last:border-b-0 ${isTop ? "bg-emerald-50 dark:bg-emerald-900/10" : isBottom ? "bg-red-50 dark:bg-red-900/10" : ""}`}
                               >
                                 <td className="px-2 py-2 text-muted-foreground tabular-nums">{idx + 1}</td>
@@ -1986,9 +2021,9 @@ export default function GoogleAdsAnalytics() {
                                 <td className="px-2 py-2 text-right tabular-nums">{fmtPct(c.conversionRate)}</td>
                                 <td className="px-2 py-2 text-right tabular-nums">{fmtCurrency(c.cpc)}</td>
                                 <td className="px-2 py-2 text-right tabular-nums">{c.roas.toFixed(2)}x</td>
-                                <td className="px-2 py-2 text-right tabular-nums">{c.ga4Roas !== null ? fmtCurrency(c.ga4Revenue) : <span className="text-muted-foreground/70">—</span>}</td>
-                                <td className={`px-2 py-2 text-right tabular-nums font-medium ${c.ga4Roas === null ? "text-muted-foreground/70" : c.ga4Roas >= 1 ? "text-emerald-600" : "text-red-600"}`}>
-                                  {c.ga4Roas !== null ? `${c.ga4Roas.toFixed(2)}x` : "—"}
+                                <td className="px-2 py-2 text-right tabular-nums">{c.hasAttributedRevenue ? fmtCurrency(c.attributedRevenue) : <span className="text-muted-foreground/70">—</span>}</td>
+                                <td className={`px-2 py-2 text-right tabular-nums font-medium ${c.attributedRoas === null ? "text-muted-foreground/70" : c.attributedRoas >= 1 ? "text-emerald-600" : "text-red-600"}`}>
+                                  {c.attributedRoas !== null ? `${c.attributedRoas.toFixed(2)}x` : "—"}
                                 </td>
                               </tr>
                             );

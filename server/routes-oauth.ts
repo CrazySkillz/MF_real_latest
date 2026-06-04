@@ -235,6 +235,15 @@ async function buildLinkedInPlatformSourceForAggregate(campaignId: string, linke
   return { linkedIn, linkedInSpend, linkedInLastUpdate };
 }
 
+const parseMetaSelectedCampaignIds = (connection: any): string[] => {
+  try {
+    const parsed = JSON.parse(String(connection?.selectedCampaignIds || "[]"));
+    return Array.isArray(parsed) ? Array.from(new Set(parsed.map((id: any) => String(id || "").trim()).filter(Boolean))) : [];
+  } catch {
+    return [];
+  }
+};
+
 function buildMainPlatformSourcesForAggregate(sources: { googleAds?: any } = {}) {
   return [sources.googleAds].filter((source) => source?.connected === true);
 }
@@ -10435,6 +10444,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Include conversion values in connection data for UI display
       const linkedInConversionValue = linkedInConnection?.conversionValue || null;
       const metaConversionValue = metaConnection?.conversionValue || null;
+      const metaSelectedCampaignIds = parseMetaSelectedCampaignIds(metaConnection);
+      const metaConnected = !!(metaConnection && !(metaConnection as any).spendOnly && metaSelectedCampaignIds.length > 0);
 
       // GA4 is only fully "connected" when a propertyId has been selected
       const activeGA4 = ga4Connections.find((c: any) => c.propertyId && c.propertyId !== '');
@@ -10479,8 +10490,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: "facebook",
           name: "Meta/Facebook Ads",
-          connected: !!(metaConnection && !(metaConnection as any).spendOnly),
-          analyticsPath: (metaConnection && !(metaConnection as any).spendOnly)
+          connected: metaConnected,
+          analyticsPath: metaConnected
             ? `/campaigns/${campaignId}/meta-analytics`
             : null,
           lastConnectedAt: metaConnection?.connectedAt,
@@ -11074,23 +11085,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         if (metaConn && !(metaConn as any).spendOnly) {
           let spend = 0, clicks = 0, impressions = 0, conversions = 0;
+          const selectedMetaCampaignIds = parseMetaSelectedCampaignIds(metaConn);
+          const selectedMetaCampaignSet = new Set(selectedMetaCampaignIds);
 
-          if ((metaConn as any).method === "test_mode") {
-            // Test mode: use mock data for base metrics
-            const { generateMetaMockData } = await import("./utils/metaMockData");
-            const mockData = generateMetaMockData(metaConn.adAccountId, metaConn.adAccountName || "Meta Ad Account");
-            const s = mockData?.summary || {};
-            spend = parseNum(s?.totalSpend);
-            clicks = parseNum(s?.totalClicks);
-            impressions = parseNum(s?.totalImpressions);
-            conversions = parseNum(s?.totalConversions);
+          if (selectedMetaCampaignIds.length === 0) {
+            meta = { connected: false, hasSelectedCampaigns: false };
+          } else if ((metaConn as any).method === "test_mode") {
+            const rows = (await storage.getMetaDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[]))
+              .filter((row: any) => selectedMetaCampaignSet.has(String(row?.metaCampaignId || "")));
+            for (const row of rows) {
+              spend += parseNum(row?.spend);
+              clicks += parseNum(row?.clicks);
+              impressions += parseNum(row?.impressions);
+              conversions += parseNum(row?.conversions);
+            }
           } else {
             // Real connection: fetch from Meta Graph API via analytics endpoint data
             try {
               const { MetaGraphAPIClient, getLastNDaysRange } = await import("./services/meta-graph-api");
               const metaClient = new MetaGraphAPIClient((metaConn as any).accessToken);
               const dateRange = getLastNDaysRange(30);
-              const campaigns = await metaClient.getCampaigns(metaConn.adAccountId, dateRange);
+              const campaigns = (await metaClient.getCampaigns(metaConn.adAccountId, dateRange))
+                .filter((campaign: any) => selectedMetaCampaignSet.has(String(campaign?.id || "")));
               for (const c of campaigns) {
                 spend += parseNum((c as any).spend);
                 clicks += parseNum((c as any).clicks);
@@ -11102,31 +11118,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
-          metaSpend = spend;
+          if (selectedMetaCampaignIds.length > 0) {
+            metaSpend = spend;
 
-          // Resolve Meta revenue using canonical utility (mirrors LinkedIn pattern)
-          const { resolveMetaRevenueContext } = await import("./utils/meta-revenue");
-          const rev = await resolveMetaRevenueContext({
-            campaignId,
-            conversionsTotal: conversions,
-          });
+            // Resolve Meta revenue using canonical utility (mirrors LinkedIn pattern)
+            const { resolveMetaRevenueContext } = await import("./utils/meta-revenue");
+            const rev = await resolveMetaRevenueContext({
+              campaignId,
+              conversionsTotal: conversions,
+            });
 
-          const attributedRevenue = parseFloat(Number(rev.totalRevenue || 0).toFixed(2));
-          const roas = metaSpend > 0 ? parseFloat((attributedRevenue / metaSpend).toFixed(2)) : 0;
-          const roi = metaSpend > 0 ? parseFloat((((attributedRevenue - metaSpend) / metaSpend) * 100).toFixed(2)) : 0;
+            const attributedRevenue = parseFloat(Number(rev.totalRevenue || 0).toFixed(2));
+            const roas = metaSpend > 0 ? parseFloat((attributedRevenue / metaSpend).toFixed(2)) : 0;
+            const roi = metaSpend > 0 ? parseFloat((((attributedRevenue - metaSpend) / metaSpend) * 100).toFixed(2)) : 0;
 
-          meta = {
-            connected: true,
-            spend: metaSpend,
-            clicks: parseNum(clicks),
-            impressions: parseNum(impressions),
-            conversions: parseNum(conversions),
-            hasRevenueTracking: !!rev.hasRevenueTracking,
-            conversionValue: parseFloat(Number(rev.conversionValue || 0).toFixed(2)),
-            attributedRevenue,
-            roas,
-            roi,
-          };
+            meta = {
+              connected: true,
+              spend: metaSpend,
+              clicks: parseNum(clicks),
+              impressions: parseNum(impressions),
+              conversions: parseNum(conversions),
+              hasRevenueTracking: !!rev.hasRevenueTracking,
+              conversionValue: parseFloat(Number(rev.conversionValue || 0).toFixed(2)),
+              attributedRevenue,
+              roas,
+              roi,
+              freshness: { selectedCampaignIds: selectedMetaCampaignIds },
+            };
+          }
         }
       } catch (e: any) {
         meta = { connected: !!metaConn, error: e?.message || "Meta unavailable" };
@@ -19401,12 +19420,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Meta connection not found for this campaign" });
       }
 
-      // Fallback to mock data if requested or if in test mode
+      const selectedCampaignIds = parseMetaSelectedCampaignIds(connection);
+      const selectedCampaignSet = new Set(selectedCampaignIds);
+      const emptySummary = {
+        totalCampaigns: 0,
+        activeCampaigns: 0,
+        totalSpend: 0,
+        totalImpressions: 0,
+        totalReach: 0,
+        totalClicks: 0,
+        totalConversions: 0,
+        totalVideoViews: 0,
+        avgCTR: 0,
+        avgCPC: 0,
+        avgCPM: 0,
+        avgCPP: 0,
+        avgFrequency: 0,
+        costPerConversion: 0,
+        conversionRate: 0,
+      };
+      const emptyResponse = (scopeUnavailableReason?: string) => ({
+        adAccountId: connection.adAccountId,
+        adAccountName: connection.adAccountName,
+        campaigns: [],
+        summary: emptySummary,
+        selectedCampaignIds,
+        ...(scopeUnavailableReason ? { scopeUnavailableReason } : {}),
+      });
+      const parseNum = (value: any): number => {
+        if (value === null || typeof value === "undefined" || value === "") return 0;
+        const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+      const summarizeCampaignData = (campaignData: any[]) => {
+        const totalSpend = campaignData.reduce((sum, c) => sum + parseNum(c?.totals?.spend), 0);
+        const totalImpressions = campaignData.reduce((sum, c) => sum + parseNum(c?.totals?.impressions), 0);
+        const totalReach = campaignData.reduce((sum, c) => sum + parseNum(c?.totals?.reach), 0);
+        const totalClicks = campaignData.reduce((sum, c) => sum + parseNum(c?.totals?.clicks), 0);
+        const totalConversions = campaignData.reduce((sum, c) => sum + parseNum(c?.totals?.conversions), 0);
+        const totalVideoViews = campaignData.reduce((sum, c) => sum + parseNum(c?.totals?.videoViews), 0);
+        return {
+          totalCampaigns: campaignData.length,
+          activeCampaigns: campaignData.filter(c => c?.campaign?.status === "ACTIVE").length,
+          totalSpend: parseFloat(totalSpend.toFixed(2)),
+          totalImpressions,
+          totalReach,
+          totalClicks,
+          totalConversions,
+          totalVideoViews,
+          avgCTR: totalImpressions > 0 ? parseFloat(((totalClicks / totalImpressions) * 100).toFixed(2)) : 0,
+          avgCPC: totalClicks > 0 ? parseFloat((totalSpend / totalClicks).toFixed(2)) : 0,
+          avgCPM: totalImpressions > 0 ? parseFloat(((totalSpend / totalImpressions) * 1000).toFixed(2)) : 0,
+          avgCPP: totalReach > 0 ? parseFloat(((totalSpend / totalReach) * 1000).toFixed(2)) : 0,
+          avgFrequency: totalReach > 0 ? parseFloat((totalImpressions / totalReach).toFixed(2)) : 0,
+          costPerConversion: totalConversions > 0 ? parseFloat((totalSpend / totalConversions).toFixed(2)) : 0,
+          conversionRate: totalClicks > 0 ? parseFloat(((totalConversions / totalClicks) * 100).toFixed(2)) : 0,
+        };
+      };
+
+      if (selectedCampaignIds.length === 0) {
+        console.warn(`[Meta Analytics] No selected Meta campaigns saved for campaign ${campaignId}; returning empty scoped analytics`);
+        return res.json(emptyResponse("missing_selected_campaign_ids"));
+      }
+
+      // Test mode reads persisted selected rows, not the separate demo mock generator.
       if (useMock === '1' || connection.method === 'test_mode') {
-        const { generateMetaMockData } = await import('./utils/metaMockData');
-        const mockData = generateMetaMockData(connection.adAccountId, connection.adAccountName || 'Meta Ad Account');
-        console.log(`[Meta Analytics] Using mock data for ${mockData.campaigns.length} campaigns`);
-        return res.json(mockData);
+        const { META_MOCK_CAMPAIGNS } = await import('./meta-scheduler');
+        const mockCampaigns = new Map(META_MOCK_CAMPAIGNS.map((campaign) => [campaign.id, campaign]));
+        const rows = (await storage.getMetaDailyMetrics(campaignId, '1900-01-01', '2099-12-31'))
+          .filter((row: any) => selectedCampaignSet.has(String(row?.metaCampaignId || "")));
+        const byCampaign = new Map<string, any>();
+        for (const row of rows) {
+          const id = String((row as any).metaCampaignId || "");
+          if (!id) continue;
+          const mockCampaign = mockCampaigns.get(id);
+          const current = byCampaign.get(id) || {
+            campaign: {
+              id,
+              name: (row as any).metaCampaignName || mockCampaign?.name || id,
+              status: "ACTIVE",
+              objective: id.includes("awareness") ? "BRAND_AWARENESS" : "CONVERSIONS",
+              dailyBudget: 0,
+            },
+            dailyMetrics: [],
+            totals: {
+              impressions: 0,
+              reach: 0,
+              clicks: 0,
+              spend: 0,
+              conversions: 0,
+              videoViews: 0,
+              postEngagement: 0,
+              linkClicks: 0,
+            },
+            demographics: [],
+            geographics: [],
+            placements: [],
+          };
+          const spend = parseNum((row as any).spend);
+          const day = {
+            date: (row as any).date,
+            date_start: (row as any).date,
+            date_stop: (row as any).date,
+            impressions: parseNum((row as any).impressions),
+            reach: parseNum((row as any).reach),
+            clicks: parseNum((row as any).clicks),
+            spend,
+            conversions: parseNum((row as any).conversions),
+            videoViews: parseNum((row as any).videoViews),
+            postEngagement: parseNum((row as any).postEngagement),
+            linkClicks: parseNum((row as any).linkClicks),
+            ctr: parseNum((row as any).ctr),
+            cpc: parseNum((row as any).cpc),
+            cpm: parseNum((row as any).cpm),
+            cpp: parseNum((row as any).cpp),
+            frequency: parseNum((row as any).frequency),
+            costPerConversion: parseNum((row as any).costPerConversion),
+            conversionRate: parseNum((row as any).conversionRate),
+          };
+          current.dailyMetrics.push(day);
+          current.totals.impressions += day.impressions;
+          current.totals.reach += day.reach;
+          current.totals.clicks += day.clicks;
+          current.totals.spend += spend;
+          current.totals.conversions += day.conversions;
+          current.totals.videoViews += day.videoViews;
+          current.totals.postEngagement += day.postEngagement;
+          current.totals.linkClicks += day.linkClicks;
+          byCampaign.set(id, current);
+        }
+        const campaignData = Array.from(byCampaign.values()).map((item: any) => ({
+          ...item,
+          campaign: {
+            ...item.campaign,
+            dailyBudget: item.dailyMetrics.length > 0 ? item.totals.spend / item.dailyMetrics.length : 0,
+          },
+          totals: {
+            ...item.totals,
+            spend: parseFloat(item.totals.spend.toFixed(2)),
+            ctr: item.totals.impressions > 0 ? parseFloat(((item.totals.clicks / item.totals.impressions) * 100).toFixed(2)) : 0,
+            cpc: item.totals.clicks > 0 ? parseFloat((item.totals.spend / item.totals.clicks).toFixed(2)) : 0,
+            cpm: item.totals.impressions > 0 ? parseFloat(((item.totals.spend / item.totals.impressions) * 1000).toFixed(2)) : 0,
+            cpp: item.totals.reach > 0 ? parseFloat(((item.totals.spend / item.totals.reach) * 1000).toFixed(2)) : 0,
+            frequency: item.totals.reach > 0 ? parseFloat((item.totals.impressions / item.totals.reach).toFixed(2)) : 0,
+            costPerConversion: item.totals.conversions > 0 ? parseFloat((item.totals.spend / item.totals.conversions).toFixed(2)) : 0,
+            conversionRate: item.totals.clicks > 0 ? parseFloat(((item.totals.conversions / item.totals.clicks) * 100).toFixed(2)) : 0,
+          },
+        }));
+        console.log(`[Meta Analytics] Using selected test-mode rows for ${campaignData.length} campaigns`);
+        return res.json({
+          adAccountId: connection.adAccountId,
+          adAccountName: connection.adAccountName,
+          campaigns: campaignData,
+          summary: summarizeCampaignData(campaignData),
+          selectedCampaignIds,
+        });
       }
 
       // Real Meta Graph API integration
@@ -19417,32 +19585,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Meta Analytics] Fetching real data from Meta Graph API`);
 
       // Fetch campaigns from Meta
-      const campaigns = await metaClient.getCampaigns(connection.adAccountId, dateRange);
+      const campaigns = (await metaClient.getCampaigns(connection.adAccountId, dateRange))
+        .filter((campaign: any) => selectedCampaignSet.has(String(campaign?.id || "")));
 
       if (campaigns.length === 0) {
-        console.log(`[Meta Analytics] No campaigns found for ad account ${connection.adAccountId}`);
-        return res.json({
-          adAccountId: connection.adAccountId,
-          adAccountName: connection.adAccountName,
-          campaigns: [],
-          summary: {
-            totalCampaigns: 0,
-            activeCampaigns: 0,
-            totalSpend: 0,
-            totalImpressions: 0,
-            totalReach: 0,
-            totalClicks: 0,
-            totalConversions: 0,
-            totalVideoViews: 0,
-            avgCTR: 0,
-            avgCPC: 0,
-            avgCPM: 0,
-            avgCPP: 0,
-            avgFrequency: 0,
-            costPerConversion: 0,
-            conversionRate: 0,
-          },
-        });
+        console.log(`[Meta Analytics] No selected campaigns found for ad account ${connection.adAccountId}`);
+        return res.json(emptyResponse("selected_campaigns_not_found"));
       }
 
       // Fetch insights for each campaign in batches
@@ -19539,31 +19687,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
 
-      // Calculate summary metrics
-      const totalSpend = campaignData.reduce((sum, c) => sum + c.totals.spend, 0);
-      const totalImpressions = campaignData.reduce((sum, c) => sum + c.totals.impressions, 0);
-      const totalReach = campaignData.reduce((sum, c) => sum + c.totals.reach, 0);
-      const totalClicks = campaignData.reduce((sum, c) => sum + c.totals.clicks, 0);
-      const totalConversions = campaignData.reduce((sum, c) => sum + c.totals.conversions, 0);
-      const totalVideoViews = campaignData.reduce((sum, c) => sum + c.totals.videoViews, 0);
-
-      const summary = {
-        totalCampaigns: campaigns.length,
-        activeCampaigns: campaigns.filter(c => c.status === 'ACTIVE').length,
-        totalSpend: parseFloat(totalSpend.toFixed(2)),
-        totalImpressions,
-        totalReach,
-        totalClicks,
-        totalConversions,
-        totalVideoViews,
-        avgCTR: totalImpressions > 0 ? parseFloat(((totalClicks / totalImpressions) * 100).toFixed(2)) : 0,
-        avgCPC: totalClicks > 0 ? parseFloat((totalSpend / totalClicks).toFixed(2)) : 0,
-        avgCPM: totalImpressions > 0 ? parseFloat(((totalSpend / totalImpressions) * 1000).toFixed(2)) : 0,
-        avgCPP: totalReach > 0 ? parseFloat(((totalSpend / totalReach) * 1000).toFixed(2)) : 0,
-        avgFrequency: totalReach > 0 ? parseFloat((totalImpressions / totalReach).toFixed(2)) : 0,
-        costPerConversion: totalConversions > 0 ? parseFloat((totalSpend / totalConversions).toFixed(2)) : 0,
-        conversionRate: totalClicks > 0 ? parseFloat(((totalConversions / totalClicks) * 100).toFixed(2)) : 0,
-      };
+      const summary = summarizeCampaignData(campaignData);
 
       console.log(`[Meta Analytics] Fetched ${campaigns.length} campaigns from Meta Graph API`);
 
@@ -19572,6 +19696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         adAccountName: connection.adAccountName,
         campaigns: campaignData,
         summary,
+        selectedCampaignIds,
       });
     } catch (error: any) {
       console.error('[Meta Analytics] Error:', error);
@@ -19698,6 +19823,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connection = await storage.getMetaConnection(parsedId.data);
       if (!connection) {
         return res.status(404).json({ error: "Meta connection not found" });
+      }
+      const selectedCampaignIds = parseMetaSelectedCampaignIds(connection);
+      if (selectedCampaignIds.length === 0 || !selectedCampaignIds.includes(String(metaCampaignId))) {
+        return res.status(403).json({ error: "Meta campaign is not selected for this campaign" });
+      }
+
+      if (String((connection as any).method || "") === "test_mode") {
+        const end = new Date().toISOString().slice(0, 10);
+        const start = new Date(Date.now() - (Number(days) || 30) * 86400000).toISOString().slice(0, 10);
+        const rows = (await storage.getMetaDailyMetrics(parsedId.data, start, end))
+          .filter((row: any) => String(row?.metaCampaignId || "") === String(metaCampaignId));
+        const dailyInsights = rows.map((row: any) => ({
+          date: row.date,
+          date_start: row.date,
+          date_stop: row.date,
+          impressions: row.impressions,
+          reach: row.reach,
+          clicks: row.clicks,
+          spend: row.spend,
+          conversions: row.conversions,
+          videoViews: row.videoViews,
+          ctr: row.ctr,
+          cpc: row.cpc,
+          cpm: row.cpm,
+        }));
+        return res.json({ dailyInsights, dateRange: { since: start, until: end } });
       }
 
       const { MetaGraphAPIClient, getLastNDaysRange } = await import('./services/meta-graph-api');
@@ -20639,8 +20790,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { startDate, endDate } = req.query;
       const end = (endDate as string) || new Date().toISOString().slice(0, 10);
       const start = (startDate as string) || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
-      const metrics = await storage.getMetaDailyMetrics(campaignId, start, end);
-      res.json({ success: true, metrics });
+      const connection: any = await storage.getMetaConnection(campaignId);
+      if (!connection || connection.spendOnly) return res.json({ success: true, metrics: [] });
+      const selectedCampaignIds = parseMetaSelectedCampaignIds(connection);
+      if (selectedCampaignIds.length === 0) {
+        return res.json({ success: true, metrics: [], selectedCampaignIds, scopeUnavailableReason: "missing_selected_campaign_ids" });
+      }
+      const selectedSet = new Set(selectedCampaignIds);
+      const metrics = (await storage.getMetaDailyMetrics(campaignId, start, end))
+        .filter((row: any) => selectedSet.has(String(row?.metaCampaignId || "")));
+      res.json({ success: true, metrics, selectedCampaignIds });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to get metrics' });
     }

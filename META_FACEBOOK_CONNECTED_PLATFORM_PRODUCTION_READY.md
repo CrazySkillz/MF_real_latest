@@ -21,7 +21,7 @@ Meta/Facebook is not production-ready yet.
 
 This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
 
-Meta Commit 4 has been implemented locally. Local validation passed; user/browser validation is pending.
+Meta Commit 5 has been implemented locally. Local validation passed; user/browser validation is pending.
 
 Verified current foundations:
 
@@ -33,13 +33,14 @@ Verified current foundations:
 - Meta analytics, KPI, Benchmark, Report, scheduler, and revenue routes exist.
 - `AddRevenueWizardModal` already has `platformContext: "meta"` support.
 - Commit 4 replaced the Campaign Overview `Facebook Ads` percentage-split placeholder metrics with source-backed values from `performanceSummary.sources[].id === "meta"`.
+- Commit 5 scopes visible Meta analytics, daily metrics, and Campaign Overview Meta aggregate totals to saved selected Meta campaign IDs.
 
 Verified production-readiness gaps:
 
 - `SimpleMetaAuth` only exposes the test-mode connection action in the visible UI. The live OAuth route exists server-side, but the current UI path does not provide the same live OAuth entry pattern used by hardened sources.
 - Commit 2 fixed the Create Campaign/Connected Platforms test-mode setup path that allowed finalizing without selected Meta campaign IDs.
 - Commit 3 browser validation was recorded as semi-validated: the Meta add-source path works, but the connection-success transition is not smooth and remains a future UX follow-up.
-- `GET /api/meta/:campaignId/analytics` returns all mock campaigns in test mode from `generateMetaMockData`; selected-campaign filtering was not verified in that visible analytics response.
+- Commit 5 replaced the visible Meta analytics test-mode route's separate all-campaign mock generator with persisted selected Meta daily rows.
 - `server/meta-scheduler.ts` filters by `selectedCampaignIds` when present, but falls back to all campaigns when selected IDs are absent. Production behavior should fail closed after the connection flow requires explicit selection.
 - Live scheduler daily refresh is not yet production-proven. The reviewed code calls aggregate `getCampaignInsights` for a daily window instead of using the existing `getCampaignDailyInsights` helper for true daily rows.
 - `storage.upsertMetaDailyMetrics` updates core numeric fields but does not update `metaCampaignName`, `ga4Revenue`, or `ga4UtmName` on conflict in the reviewed path.
@@ -366,7 +367,7 @@ Status:
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ### Meta Commit 5: Selected Campaign Scoping And Analytics Route Parity
 
@@ -393,7 +394,17 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Completed locally: `GET /api/meta/:campaignId/analytics` now requires saved selected Meta campaign IDs before returning source metrics.
+- [x] Completed locally: Meta test-mode analytics reads persisted selected Meta daily rows instead of the separate unscoped mock generator.
+- [x] Completed locally: live Meta analytics filters fetched Meta campaigns to saved selected campaign IDs before fetching insights and computing summary totals.
+- [x] Completed locally: `GET /api/meta/:campaignId/daily-metrics` filters rows to saved selected Meta campaign IDs and returns empty metrics when selection is missing.
+- [x] Completed locally: `GET /api/meta/:campaignId/insights/daily` rejects unselected Meta campaign IDs and uses persisted rows for test-mode daily charts.
+- [x] Completed locally: Campaign Overview Meta aggregate totals in `/api/campaigns/:id/outcome-totals` now use selected Meta rows/campaigns.
+- [x] Completed locally: Connected Platforms treats Meta as connected only when a non-spend-only Meta connection has saved selected campaign IDs.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
 
 ### Meta Commit 6: Aggregate And Revenue Semantics Hardening
 
@@ -621,14 +632,14 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 5 through Meta Commit 12.
+- Meta Commit 6 through Meta Commit 12.
 
 Outstanding evidence:
 
-- Meta Commit 4 user/browser validation is pending.
+- Meta Commit 5 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 
 ## Current Handoff
 
-The next smallest safest implementation step after Meta Commit 4 validation is Meta Commit 5: selected campaign scoping and analytics route parity. That commit should not change KPI, Benchmark, report, scheduler, or revenue behavior yet.
+The next smallest safest implementation step after Meta Commit 5 validation is Meta Commit 6: aggregate and revenue semantics hardening. That commit should not change KPI, Benchmark, report, scheduler, or disconnect/reconnect behavior yet.

@@ -65,6 +65,58 @@ describe("Meta production readiness regression guard", () => {
     expect(page).not.toContain('platformStatusMap.get("facebook")?.connected ? "$0.68" : "$0.00"');
   });
 
+  it("scopes visible Meta analytics and overview totals to selected Meta campaign IDs", () => {
+    const routes = read("server", "routes-oauth.ts");
+    const connectedPlatformsRoute = sliceBetween(
+      routes,
+      'app.get("/api/campaigns/:id/connected-platforms"',
+      'app.get("/api/campaigns/:id/outcome-totals"'
+    );
+    const outcomeTotalsMetaBlock = sliceBetween(
+      routes,
+      "// Meta summary inputs",
+      "const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate"
+    );
+    const analyticsRoute = sliceBetween(
+      routes,
+      'app.get("/api/meta/:campaignId/analytics"',
+      'app.get("/api/meta/:campaignId/summary"'
+    );
+    const dailyInsightsRoute = sliceBetween(
+      routes,
+      'app.get("/api/meta/:campaignId/insights/daily"',
+      'app.get("/api/meta/:campaignId/demographics"'
+    );
+    const dailyMetricsRoute = sliceBetween(
+      routes,
+      'app.get("/api/meta/:campaignId/daily-metrics"',
+      'app.post("/api/campaigns/:id/spend/ad-platform/import"'
+    );
+
+    expect(routes).toContain("const parseMetaSelectedCampaignIds = (connection: any): string[] => {");
+    expect(connectedPlatformsRoute).toContain("const metaSelectedCampaignIds = parseMetaSelectedCampaignIds(metaConnection);");
+    expect(connectedPlatformsRoute).toContain("metaSelectedCampaignIds.length > 0");
+    expect(connectedPlatformsRoute).toContain("connected: metaConnected");
+    expect(outcomeTotalsMetaBlock).toContain("const selectedMetaCampaignIds = parseMetaSelectedCampaignIds(metaConn);");
+    expect(outcomeTotalsMetaBlock).toContain("storage.getMetaDailyMetrics(campaignId, startDate, endDate)");
+    expect(outcomeTotalsMetaBlock).toContain('selectedMetaCampaignSet.has(String(row?.metaCampaignId || ""))');
+    expect(outcomeTotalsMetaBlock).toContain('selectedMetaCampaignSet.has(String(campaign?.id || ""))');
+    expect(outcomeTotalsMetaBlock).not.toContain("generateMetaMockData");
+    expect(analyticsRoute).toContain("const selectedCampaignIds = parseMetaSelectedCampaignIds(connection);");
+    expect(analyticsRoute).toContain('return res.json(emptyResponse("missing_selected_campaign_ids"));');
+    expect(analyticsRoute).toContain("const { META_MOCK_CAMPAIGNS } = await import('./meta-scheduler');");
+    expect(analyticsRoute).toContain("storage.getMetaDailyMetrics(campaignId, '1900-01-01', '2099-12-31')");
+    expect(analyticsRoute).toContain('selectedCampaignSet.has(String(row?.metaCampaignId || ""))');
+    expect(analyticsRoute).toContain('selectedCampaignSet.has(String(campaign?.id || ""))');
+    expect(analyticsRoute).not.toContain("generateMetaMockData");
+    expect(dailyInsightsRoute).toContain("const selectedCampaignIds = parseMetaSelectedCampaignIds(connection);");
+    expect(dailyInsightsRoute).toContain("!selectedCampaignIds.includes(String(metaCampaignId))");
+    expect(dailyInsightsRoute).toContain("storage.getMetaDailyMetrics(parsedId.data, start, end)");
+    expect(dailyMetricsRoute).toContain("const selectedCampaignIds = parseMetaSelectedCampaignIds(connection);");
+    expect(dailyMetricsRoute).toContain('scopeUnavailableReason: "missing_selected_campaign_ids"');
+    expect(dailyMetricsRoute).toContain('selectedSet.has(String(row?.metaCampaignId || ""))');
+  });
+
   it("keeps the Create Campaign confirm Back button on platform selection instead of re-entering OAuth", () => {
     const page = read("client", "src", "pages", "campaigns.tsx");
     const handler = sliceBetween(

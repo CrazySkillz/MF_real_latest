@@ -17,9 +17,9 @@ Google Ads must be treated as a campaign-scoped main paid-media connected source
 
 ## Current Status
 
-Commit 10 user validation passed.
+Commit 24 local validation passed for the implemented local/test-mode Google Ads attributed revenue import path.
 
-Google Ads is locally production-ready for the implemented source-backed test-mode path after Commit 10 regression coverage. Live OAuth should still be validated in a deployed or production-like environment before calling the live OAuth path production-ready.
+Google Ads is locally production-ready for the implemented source-backed test-mode path after Commit 10 regression coverage and the optional attributed revenue import work through Commit 24. Live OAuth should still be validated in a deployed or production-like environment before calling the live OAuth path production-ready.
 
 Implemented foundations:
 
@@ -30,6 +30,7 @@ Implemented foundations:
 - A Google Ads aggregate helper exists in `server/routes-oauth.ts`.
 - Scheduler snapshot support includes selected Google Ads source rows.
 - Google Ads Reports use the platform-report path and scheduled reports are discoverable by `server/report-scheduler.ts`.
+- Optional imported Google Ads attributed revenue follows the existing GA4/LinkedIn source-management pattern for the implemented local/test-mode path.
 
 ## Root Cause Analysis
 
@@ -405,7 +406,7 @@ Status:
 
 ### Scope
 
-This section tracks the optional Google Ads attributed revenue import implementation. Commits 12 through 22 are now implemented for storage/read-side isolation, backend aggregate revenue semantics, shared revenue wizard context plumbing, CSV, Google Sheets, HubSpot, Salesforce, Shopify, the visible `Total Revenue` card, downstream KPI/Benchmark/Insights/report semantics, scheduler refresh, scheduled snapshots, and lifecycle cleanup. Final local evidence is tracked in Commit 23. Live OAuth remains separate from the local/test-mode evidence.
+This section tracks the optional Google Ads attributed revenue import implementation. Commits 12 through 22 are now implemented for storage/read-side isolation, backend aggregate revenue semantics, shared revenue wizard context plumbing, CSV, Google Sheets, HubSpot, Salesforce, Shopify, the visible `Total Revenue` card, downstream KPI/Benchmark/Insights/report semantics, scheduler refresh, scheduled snapshots, and lifecycle cleanup. Final local evidence is tracked in Commit 23, and Trend Analysis revenue-semantics parity is tracked in Commit 24. Live OAuth remains separate from the local/test-mode evidence.
 
 Goal:
 
@@ -443,7 +444,9 @@ Use this checklist as the source of truth for what is complete. A checked item i
 - [x] Commit 22: Scheduler, refresh, snapshot, disconnect/reconnect, and selected-campaign safety.
   Validation: local regression and type check passed; user validation passed for scheduler context, scheduled snapshot semantics, and lifecycle cleanup.
 - [x] Commit 23: Final regression coverage and local production-ready evidence.
-  Validation: final local regression group and type check passed; user validation pending.
+  Validation: final local regression group and type check passed; user validation passed.
+- [x] Commit 24: Trend Analysis Google Ads revenue semantics.
+  Validation: Google Ads revenue and Trend Analysis regression group plus type check passed locally.
 
 Deferred validation is not a failed validation. Browser add/edit/delete validation for the visible Google Ads `Total Revenue` entry point is tracked explicitly under Commit 20 and final production-ready evidence.
 
@@ -475,6 +478,7 @@ Confirmed current gaps:
 - Before the first Commit 22 scheduler slice, `server/auto-refresh-scheduler.ts` skipped Google Ads imported revenue sources during provider reprocess: HubSpot and Salesforce scanned only `ga4`, while Shopify and Google Sheets scanned `ga4`, `linkedin`, and `meta`. That meant a Google Ads revenue source could exist and display in the UI but still be skipped by daily source refresh. The safe fix adds `google_ads` to the existing refresh context loops and preserves each source's existing `sourceId` and platform context.
 - Before the second Commit 22 scheduler slice, `server/scheduler.ts` still stored Google Ads snapshot `attributedRevenue` from GA4-matched revenue or native Google Ads `conversionValue`. That diverged from the API aggregate path, where Google Ads business attributed revenue is available only from active Google Ads-scoped imported revenue sources. The safe fix makes scheduled snapshots read `platformContext="google_ads"` imported revenue totals and keeps native conversion value and GA4-matched revenue as separate fields.
 - Before the third Commit 22 lifecycle slice, Google Ads disconnect, reconnect, and selected-campaign replacement changed the Google Ads account/campaign boundary but left active `platformContext="google_ads"` imported revenue sources in place. That could let stale attributed revenue remain visible after the attribution boundary changed. The safe fix clears only the current campaign's Google Ads-scoped imported revenue sources and records on disconnect, customer/test reconnect, and selected-campaign changes.
+- Before Commit 24, `/api/campaigns/:id/trend-analysis` still mapped Google Ads daily-row `attributedRevenue` from GA4-matched revenue or native Google Ads `conversionValue`. That route bypassed the newer Google Ads aggregate helper semantics, so Trend Analysis source rows could expose old revenue meaning even though Performance Summary, scheduler snapshots, KPI/Benchmark, Insights, and Reports had already been corrected. Commit 24 makes Trend Analysis read active `platformContext="google_ads"` imported revenue by date and exposes Google Ads `revenue` / `attributedRevenue` only from that imported source; native `conversionValue` remains separate.
 - Before Commit 12, `server/storage.ts` supported `getRevenueSources(..., platformContext)` and `getRevenueBreakdownBySource(..., platformContext)` mostly generically, but `getRevenueTotalForRange(...)` hard-coded the non-GA4 branch to `linkedin`; Commit 12 fixes this storage/read-side gap.
 - Before the first Commit 22 scheduler slice, `server/auto-refresh-scheduler.ts` reprocessed Shopify and Google Sheets across `ga4`, `linkedin`, and `meta`, while HubSpot and Salesforce reprocessed only `ga4`; Commits 17, 18, and 19 confirmed the HubSpot/Salesforce/Shopify reprocess payloads could carry `platformContext` and stable `sourceId`, and the first Commit 22 scheduler slice extends those existing loops to include Google Ads.
 - `shared/schema.ts` has `revenue_sources.platform_context` as free text, so a table migration is not expected just to store `google_ads`; however TypeScript unions, zod validation, route filters, UI props, and scheduler context lists must be updated consistently.
@@ -1021,7 +1025,7 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-production-regression.test.ts server/source-safety-regression.test.ts server/google-ads-revenue-platform-context.test.ts server/google-ads-revenue-overview-ui.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] Local validation passed: `git diff --check`.
-- [ ] User validation pending for this lifecycle cleanup slice.
+- [x] User validation passed for this lifecycle cleanup slice.
 
 #### Commit 23: Regression Coverage And Final Evidence
 
@@ -1056,7 +1060,37 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-platform-context.test.ts server/google-ads-production-regression.test.ts server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-salesforce-flow.test.ts server/google-ads-revenue-shopify-flow.test.ts server/google-ads-revenue-overview-ui.test.ts server/google-ads-revenue-kpi-benchmark-ui.test.ts server/google-ads-revenue-scheduler-flow.test.ts server/google-ads-report-regression.test.ts server/performance-summary-aggregate.test.ts server/performance-summary-scheduler-regression.test.ts server/source-safety-regression.test.ts server/ga4-auto-refresh-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] Local validation passed: `git diff --check`.
-- [ ] User validation pending for Commit 23 final evidence.
+- [x] User validation passed for Commit 23 final evidence.
+
+#### Commit 24: Trend Analysis Google Ads Revenue Semantics
+
+Goal:
+
+- Prevent Trend Analysis from treating native Google Ads conversion value or GA4-matched revenue as imported Google Ads attributed revenue.
+
+Tasks:
+
+- Update `/api/campaigns/:id/trend-analysis` so Google Ads source `revenue` and `attributedRevenue` come only from active Google Ads-scoped imported revenue records.
+- Preserve native Google Ads `conversionValue` and GA4-matched revenue as separate diagnostic fields.
+- Keep selected Google Ads campaign filtering and existing Trend Analysis source contract intact.
+- Add regression coverage for the Trend Analysis Google Ads revenue semantics boundary.
+
+Validation:
+
+- Google Ads Trend Analysis source rows do not derive `attributedRevenue` from native conversion value.
+- Google Ads Trend Analysis source rows do not derive `attributedRevenue` from GA4-matched revenue.
+- With imported Google Ads attributed revenue, Trend Analysis exposes Google Ads source `revenue` from imported Google Ads revenue records.
+
+Status:
+
+- [x] Completed locally: Trend Analysis now reads `platformContext="google_ads"` imported revenue records by date before building the Google Ads source row.
+- [x] Completed locally: Google Ads Trend Analysis `includedMetrics` exposes `revenue` and `attributedRevenue` only when active imported Google Ads attributed revenue exists.
+- [x] Completed locally: native Google Ads `conversionValue` and GA4-matched revenue remain separate fields and are not used for Trend Analysis `revenue` or `attributedRevenue`.
+- [x] Completed locally: focused regression coverage added in `server/google-ads-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/google-ads-production-regression.test.ts server/trend-analysis-overview-regression.test.ts server/trend-analysis-aggregate.test.ts`.
+- [x] Local validation passed: `npm test -- server/google-ads-revenue-platform-context.test.ts server/google-ads-production-regression.test.ts server/google-ads-revenue-wizard-context.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-salesforce-flow.test.ts server/google-ads-revenue-shopify-flow.test.ts server/google-ads-revenue-overview-ui.test.ts server/google-ads-revenue-kpi-benchmark-ui.test.ts server/google-ads-revenue-scheduler-flow.test.ts server/google-ads-report-regression.test.ts server/performance-summary-aggregate.test.ts server/performance-summary-scheduler-regression.test.ts server/source-safety-regression.test.ts server/ga4-auto-refresh-regression.test.ts server/trend-analysis-overview-regression.test.ts server/trend-analysis-aggregate.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User validation pending for Commit 24 Trend Analysis revenue semantics.
 
 ## Validation Evidence Required And Status
 
@@ -1077,6 +1111,7 @@ Before Google Ads is marked production-ready, record evidence for:
 - [x] CSV, Google Sheets, HubSpot, Salesforce, and Shopify Google Ads revenue import paths have local automated coverage for Google Ads context, source identity, and revenue-only semantics.
 - [x] Multiple active Google Ads revenue sources sum additively without changing GA4, LinkedIn, or Meta revenue in the covered local source-management path.
 - [x] Native Google Ads conversion value remains separate from imported Google Ads attributed revenue.
+- [x] Trend Analysis Google Ads revenue semantics use imported Google Ads attributed revenue only.
 - [ ] Live OAuth connect/select/refresh evidence in a deployed or production-like environment.
 - [ ] Manual browser pass across every Google Ads revenue provider add/edit/delete path if required beyond the recorded local automated and prior visible-card validation.
 
@@ -1091,6 +1126,7 @@ Google Ads attributed revenue import is locally production-ready for the impleme
 - Native Google Ads `conversionValue` remains separate from imported Google Ads attributed revenue.
 - KPI, Benchmark, Insights, and report consumers use imported Google Ads attributed revenue for business revenue metrics.
 - Scheduler refresh and scheduled snapshots preserve the same revenue semantics as the current aggregate.
+- Trend Analysis preserves the same imported-revenue semantics and does not use native Google Ads conversion value as business revenue.
 - Disconnect, reconnect, and selected-campaign changes clear only the current campaign's Google Ads-scoped imported revenue records.
 - Regression coverage protects the critical local lifecycle paths.
 
@@ -1098,6 +1134,12 @@ Not included in this local exit:
 
 - Live OAuth production readiness without deployed or production-like evidence.
 - Unverified per-Google-Ads-campaign revenue attribution beyond campaign-level Google Ads attributed revenue.
+
+## Outstanding Items
+
+- [ ] Live OAuth connect/select/refresh evidence in a deployed or production-like environment.
+- [ ] Optional manual browser pass across every Google Ads revenue provider add/edit/delete path if product acceptance requires browser proof beyond the recorded automated coverage and prior visible-card validation.
+- [ ] Per-Google-Ads-campaign revenue attribution remains unverified beyond campaign-level Google Ads attributed revenue.
 
 ## Relevant Documentation
 
@@ -1107,6 +1149,7 @@ Not included in this local exit:
 - `GA4/FINANCIAL_SOURCES.md`
 - `GA4_DEVELOPMENT_WORKFLOW.md`
 - `CAMPAIGN_DEEPDIVE_PRODUCTION_READY_STATUS.md`
+- `CAMPAIGN_DEEPDIVE_TREND_ANALYSIS_PRODUCTION_READY.md`
 - `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`
 - `LINKEDIN_REVENUE_IMPORT_PRODUCTION_READY.md`
 
@@ -1141,3 +1184,5 @@ Not included in this local exit:
 - Commit 22 lifecycle cleanup slice validated locally.
 - User validation passed for Commit 22 lifecycle cleanup slice.
 - Commit 23 final evidence regression group validated locally.
+- User validation passed for Commit 23 final evidence.
+- Commit 24 Trend Analysis revenue semantics validated locally.

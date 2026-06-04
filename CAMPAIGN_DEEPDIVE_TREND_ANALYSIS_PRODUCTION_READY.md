@@ -159,6 +159,11 @@ Not available:
 
 - sessions/users unless explicitly provided as web analytics metrics
 
+Google Ads revenue-specific rule:
+
+- Google Ads `revenue` and `attributedRevenue` in Trend Analysis must come only from active Google Ads-scoped imported revenue records.
+- Native Google Ads `conversionValue` and GA4-matched revenue may remain available as separate diagnostic fields, but they must not feed Trend Analysis `revenue`, `attributedRevenue`, ROAS, or ROI.
+
 ### Custom Integration
 
 Available only for metrics included in the source's aggregate capabilities.
@@ -450,6 +455,7 @@ Validation:
 Evidence:
 
 - Regression coverage proves scheduler snapshots import and build the Trend Analysis aggregate, include `financialDailyRows`, read GA4/LinkedIn/Meta/Google Ads daily rows, and store `trendAnalysis` inside the snapshot metrics payload.
+- Google Ads revenue-semantics regression coverage in `server/google-ads-production-regression.test.ts` proves the route-level Trend Analysis Google Ads source does not derive `revenue` or `attributedRevenue` from native conversion value or GA4-matched revenue.
 
 ## Validation Strategy
 

@@ -78,6 +78,11 @@ describe("Google Ads production readiness regression guard", () => {
       "async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string)",
       "async function buildLinkedInPlatformSourceForAggregate"
     );
+    const trendRoute = sliceBetween(
+      routes,
+      'app.get("/api/campaigns/:id/trend-analysis"',
+      "// Limits + timeouts"
+    );
 
     expect(helper).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "google_ads")');
     expect(helper).toContain('const attributedRevenueSource = hasImportedAttributedRevenue ? "google_ads_imported_attributed_revenue" : "unavailable";');
@@ -95,6 +100,14 @@ describe("Google Ads production readiness regression guard", () => {
     expect(campaignScheduler).toContain('Google Ads Total Revenue requires a Google Ads-scoped imported revenue source');
     expect(campaignScheduler).not.toContain('googleAdsRawData.conversionValue > 0 ? "google_ads_conversion_value" : "unavailable"');
     expect(campaignScheduler).not.toContain('attributedRevenueSource === "google_ads_conversion_value"');
+    expect(trendRoute).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "google_ads")');
+    expect(trendRoute).toContain("const hasGoogleAdsImportedAttributedRevenue = googleAdsImportedAttributedRevenue > 0;");
+    expect(trendRoute).toContain('...(hasGoogleAdsImportedAttributedRevenue ? ["attributedRevenue", "revenue"] : [])');
+    expect(trendRoute).toContain('Google Ads Total Revenue requires a Google Ads-scoped imported revenue source');
+    expect(trendRoute).toContain('attributedRevenue: hasGoogleAdsImportedAttributedRevenue ? importedAttributedRevenue : 0');
+    expect(trendRoute).toContain('revenue: hasGoogleAdsImportedAttributedRevenue ? importedAttributedRevenue : 0');
+    expect(trendRoute).not.toContain('attributedRevenueSource === "ga4_attributed_revenue"');
+    expect(trendRoute).not.toContain('attributedRevenueSource === "google_ads_conversion_value"');
     expect(analytics).toContain("Native Google Ads conversion value and derived conversion-value efficiency. Imported attributed revenue is shown separately.");
     expect(analytics).toContain("Native Google Ads conversion value");
     expect(analytics).toContain("No value recorded");

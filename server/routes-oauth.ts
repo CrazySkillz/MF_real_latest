@@ -1349,6 +1349,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const googleAdsRows = selectedGoogleAdsIds.size > 0
         ? googleAdsRowsRaw.filter((row: any) => selectedGoogleAdsIds.has(String(row?.googleCampaignId || "")))
         : googleAdsRowsRaw;
+      let googleAdsImportedAttributedRevenue = 0;
+      const googleAdsImportedRevenueByDate = new Map<string, number>();
+      try {
+        const googleAdsImportedRevenueTotals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, "google_ads");
+        googleAdsImportedAttributedRevenue = parseNum((googleAdsImportedRevenueTotals as any)?.totalRevenue);
+        const googleAdsDailyRevenueRows = await db.execute(sql`
+          SELECT rr.date, rr.revenue_source_id as source_id, rr.revenue, rr.sub_campaign_urn
+          FROM revenue_records rr
+          INNER JOIN revenue_sources rs ON rs.id::text = rr.revenue_source_id
+          WHERE rr.campaign_id = ${campaignId}
+            AND rs.is_active = true
+            AND rs.platform_context = 'google_ads'
+            AND rr.date >= ${startDate}
+            AND rr.date <= ${endDate}
+        `);
+        const totalsByDateAndSource = new Map<string, { aggregate: number; subCampaign: number }>();
+        for (const row of (googleAdsDailyRevenueRows.rows as any[])) {
+          const date = String(row.date || "").slice(0, 10);
+          const sourceId = String(row.source_id || "");
+          if (!date || !sourceId) continue;
+          const key = `${date}::${sourceId}`;
+          const current = totalsByDateAndSource.get(key) || { aggregate: 0, subCampaign: 0 };
+          const value = parseNum(row.revenue);
+          if (row.sub_campaign_urn) current.subCampaign += value;
+          else current.aggregate += value;
+          totalsByDateAndSource.set(key, current);
+        }
+        for (const [key, totals] of Array.from(totalsByDateAndSource.entries())) {
+          const date = key.split("::")[0];
+          const value = totals.aggregate > 0 ? totals.aggregate : totals.subCampaign;
+          googleAdsImportedRevenueByDate.set(date, parseFloat(((googleAdsImportedRevenueByDate.get(date) || 0) + value).toFixed(2)));
+        }
+      } catch {
+        // Keep Google Ads revenue unavailable if imported attributed revenue cannot be resolved.
+      }
+      const hasGoogleAdsImportedAttributedRevenue = googleAdsImportedAttributedRevenue > 0;
 
       const financialData = await db.execute(sql`
         SELECT sr.date, SUM(sr.spend::NUMERIC) as spend, 0::NUMERIC as revenue
@@ -1451,16 +1487,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             label: "Google Ads",
             category: "paid_media",
             connected: Boolean(googleAdsConn && !(googleAdsConn as any).spendOnly),
-            capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
-            includedMetrics: Boolean(googleAdsConn && !(googleAdsConn as any).spendOnly) ? ["impressions", "clicks", "spend", "conversions", "attributedRevenue"] : [],
+            capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue", "revenue"],
+            includedMetrics: Boolean(googleAdsConn && !(googleAdsConn as any).spendOnly) ? ["impressions", "clicks", "spend", "conversions", ...(hasGoogleAdsImportedAttributedRevenue ? ["attributedRevenue", "revenue"] : [])] : [],
             excludedMetrics: [
               { metric: "sessions", reason: "Sessions are web analytics metrics" },
               { metric: "users", reason: "Users are web analytics metrics" },
+              ...(hasGoogleAdsImportedAttributedRevenue ? [] : [{ metric: "attributedRevenue", reason: "Google Ads Total Revenue requires a Google Ads-scoped imported revenue source" }]),
             ],
             dailyRows: googleAdsRows.map((row: any) => {
               const ga4AttributedRevenue = parseNum(row.ga4Revenue);
               const conversionValue = parseNum(row.conversionValue);
-              const attributedRevenueSource = ga4AttributedRevenue > 0 ? "ga4_attributed_revenue" : conversionValue > 0 ? "google_ads_conversion_value" : "unavailable";
+              const importedAttributedRevenue = parseNum(googleAdsImportedRevenueByDate.get(String(row.date || "").slice(0, 10)));
               return {
                 date: row.date,
                 metrics: {
@@ -1470,7 +1507,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   conversions: row.conversions,
                   conversionValue,
                   ga4AttributedRevenue,
-                  attributedRevenue: attributedRevenueSource === "ga4_attributed_revenue" ? ga4AttributedRevenue : attributedRevenueSource === "google_ads_conversion_value" ? conversionValue : 0,
+                  importedAttributedRevenue,
+                  attributedRevenue: hasGoogleAdsImportedAttributedRevenue ? importedAttributedRevenue : 0,
+                  revenue: hasGoogleAdsImportedAttributedRevenue ? importedAttributedRevenue : 0,
                 },
               };
             }),

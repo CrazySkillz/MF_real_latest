@@ -27,18 +27,18 @@ The remaining work is validation hardening and source-specific proof, not a full
 
 Campaign DeepDive is production-ready locally for the implemented connected-source aggregate contract and the current GA4/current-source scope, with the outstanding validation items below.
 
-The remaining validation items can wait until mock-live historical data and future/refined integrations such as Meta or Google Ads are available. LinkedIn source-specific validation passed on 2026-05-31 and is tracked in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
+The remaining validation items can wait until mock-live historical data and future/refined integrations such as Meta or live/deployed Google Ads evidence are available. LinkedIn source-specific validation passed on 2026-05-31 and is tracked in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Google Ads local/test-mode source-specific validation passed on 2026-06-04 and is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
 
 LinkedIn refinement is tracked separately in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. That tracker records the source-specific acceptance proof for LinkedIn through both the Create Campaign flow and the campaign Connected Platforms add-source flow. LinkedIn revenue-import validation is complete in `LINKEDIN_REVENUE_IMPORT_PRODUCTION_READY.md`.
 
 ## Pre-Google Ads Handoff
 
-LinkedIn is validated as production-ready for the current supported implementation scope before Google Ads refinement begins.
+LinkedIn is validated as production-ready for the current supported implementation scope before Google Ads refinement began.
 
 - LinkedIn is not an open Campaign DeepDive blocker.
 - LinkedIn should remain the reference pattern for source-scoped paid-media aggregation, unavailable-metric handling, disconnect/reconnect cleanup, and attributed-revenue isolation.
-- Google Ads refinement is tracked separately in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md` and must pass the same future integration rule below before Google Ads is marked production-ready.
-- Do not treat Google Ads as production-ready merely because LinkedIn is validated; Google Ads needs its own source-specific proof.
+- Google Ads local/test-mode refinement is tracked separately in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md` and has passed local source-specific proof through Commit 24.
+- Do not treat the Google Ads live OAuth path as production-ready until deployed or production-like OAuth connect/select/refresh evidence is recorded.
 
 ## Outstanding Validation Items
 
@@ -64,17 +64,17 @@ Expected proof:
 
 ### 2. Multi-Source Deployed Validation
 
-Status: LinkedIn validation passed on 2026-05-31; future/refined source mixes remain source-specific validation work.
+Status: LinkedIn validation passed on 2026-05-31; Google Ads local/test-mode validation passed on 2026-06-04; future/refined source mixes and Google Ads live OAuth evidence remain source-specific validation work.
 
 Why it remains open:
 
 - The shared aggregate contract is designed to accept future/refined main Connected Platforms.
-- A source such as Meta, Google Ads, TikTok, or another future/refined integration still needs its own source-level readiness proof before its values can be trusted.
+- A source such as Meta, TikTok, or another future/refined integration still needs its own source-level readiness proof before its values can be trusted. Google Ads has local/test-mode source proof recorded, but live OAuth still needs deployed or production-like evidence.
 - LinkedIn has its source-specific validation recorded in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
 
 When to complete:
 
-- After integrations such as Meta, Google Ads, TikTok, or other future/refined sources are connected through Connected Platforms.
+- After integrations such as Meta, TikTok, or other future/refined sources are connected through Connected Platforms, or after Google Ads live OAuth is validated in a deployed or production-like environment.
 - For LinkedIn specifically, use `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md` as the completed source-specific validation record.
 
 Expected proof:
@@ -136,7 +136,7 @@ As more integrations are added in Connected Platforms, Campaign DeepDive should 
 - regression coverage
 - deployed validation evidence for the tested source mix
 
-New integrations should not require a Campaign DeepDive redesign. They should enter through the existing connected-source aggregate contract. Google Ads is the next planned integration to validate against this rule after LinkedIn and is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`.
+New integrations should not require a Campaign DeepDive redesign. They should enter through the existing connected-source aggregate contract. Google Ads local/test-mode validation against this rule is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`; live OAuth evidence remains separate.
 
 ## Relevant Documentation
 
@@ -196,7 +196,7 @@ The current Campaign DeepDive implementation is architecturally aligned with the
 The remaining work is:
 
 1. historical validation for Trend Analysis,
-2. source-specific deployed validation for future/refined integrations such as Google Ads, Meta, or TikTok,
+2. source-specific deployed validation for Google Ads live OAuth and future/refined integrations such as Meta or TikTok,
 3. deployed scheduled Custom Report email evidence.
 
 These are validation and source-readiness tasks. They do not require a Campaign DeepDive redesign unless a future integration fails the shared aggregate contract.

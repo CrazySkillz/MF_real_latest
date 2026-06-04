@@ -40,6 +40,11 @@ const META_METRICS = [
   { key: 'conversionRate', label: 'Conversion Rate', unit: '%', format: (v: number) => `${formatPct(v)}` },
   { key: 'costPerConversion', label: 'Cost per Conversion', unit: '$', format: (v: number) => `$${v.toFixed(2)}` },
   { key: 'videoViews', label: 'Video Views', unit: '', format: (v: number) => v.toLocaleString() },
+  { key: 'totalRevenue', label: 'Total Revenue', unit: '$', format: (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+  { key: 'profit', label: 'Profit', unit: '$', format: (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+  { key: 'roas', label: 'ROAS', unit: 'x', format: (v: number) => `${v.toFixed(2)}x` },
+  { key: 'roi', label: 'ROI', unit: '%', format: (v: number) => `${formatPct(v)}` },
+  { key: 'profitMargin', label: 'Profit Margin', unit: '%', format: (v: number) => `${formatPct(v)}` },
 ];
 
 const LOWER_IS_BETTER_METRICS = ['cpc', 'cpm', 'cpp', 'costPerConversion', 'frequency', 'spend'];
@@ -167,7 +172,8 @@ export default function MetaAnalytics() {
     queryFn: async () => {
       const response = await fetch(`/api/platforms/meta/kpis/${campaignId}`);
       if (!response.ok) throw new Error('Failed to fetch Meta KPIs');
-      return response.json();
+      const json = await response.json();
+      return Array.isArray(json) ? json : Array.isArray(json?.kpis) ? json.kpis : [];
     },
     enabled: !!campaignId,
   });
@@ -176,7 +182,7 @@ export default function MetaAnalytics() {
   const { data: benchmarksData, isLoading: benchmarksLoading } = useQuery({
     queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'meta'],
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/benchmarks/evaluated?platform=meta`);
+      const response = await fetch(`/api/platforms/meta/benchmarks?campaignId=${encodeURIComponent(String(campaignId))}`);
       if (!response.ok) throw new Error('Failed to fetch Meta Benchmarks');
       return response.json();
     },
@@ -235,7 +241,7 @@ export default function MetaAnalytics() {
   // Benchmark mutations
   const createBenchmarkMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch(`/api/campaigns/${campaignId}/benchmarks`, {
+      const response = await fetch('/api/platforms/meta/benchmarks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...data, campaignId, platform: 'meta' }),
@@ -244,7 +250,7 @@ export default function MetaAnalytics() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'meta'] });
       setIsBenchmarkModalOpen(false);
       setEditingBenchmark(null);
       toast({ title: 'Benchmark created successfully' });
@@ -253,8 +259,8 @@ export default function MetaAnalytics() {
 
   const updateBenchmarkMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await fetch(`/api/benchmarks/${id}`, {
-        method: 'PATCH',
+      const response = await fetch(`/api/platforms/meta/benchmarks/${id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
@@ -262,7 +268,7 @@ export default function MetaAnalytics() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'meta'] });
       setIsBenchmarkModalOpen(false);
       setEditingBenchmark(null);
       toast({ title: 'Benchmark updated successfully' });
@@ -271,12 +277,12 @@ export default function MetaAnalytics() {
 
   const deleteBenchmarkMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/benchmarks/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/platforms/meta/benchmarks/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('Failed to delete benchmark');
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns', campaignId, 'benchmarks', 'meta'] });
       toast({ title: 'Benchmark deleted' });
     },
   });
@@ -644,6 +650,16 @@ export default function MetaAnalytics() {
   const metaAttributedProfit = metaAttributedRevenue - (summary.totalSpend || 0);
   const metaAttributedRoas = summary.totalSpend > 0 ? metaAttributedRevenue / summary.totalSpend : 0;
   const metaAttributedRoi = summary.totalSpend > 0 ? ((metaAttributedRevenue - summary.totalSpend) / summary.totalSpend) * 100 : 0;
+  const metaAttributedProfitMargin = metaAttributedRevenue > 0 ? (metaAttributedProfit / metaAttributedRevenue) * 100 : 0;
+  const metaRevenueMetricSummary = {
+    ...(revenueSummary || {}),
+    hasRevenueTracking: hasMetaAttributedRevenue,
+    totalRevenue: hasMetaAttributedRevenue ? metaAttributedRevenue : 0,
+    profit: hasMetaAttributedRevenue ? metaAttributedProfit : 0,
+    roas: hasMetaAttributedRevenue ? metaAttributedRoas : 0,
+    roi: hasMetaAttributedRevenue ? metaAttributedRoi : 0,
+    profitMargin: hasMetaAttributedRevenue ? metaAttributedProfitMargin : 0,
+  };
 
   // Format date helper
   const formatShortDate = (yyyyMmDd: string) => {
@@ -655,6 +671,12 @@ export default function MetaAnalytics() {
 
   // Helper: get live metric value from Meta summary for KPIs/Benchmarks
   const getLiveMetricValue = (metricKey: string): number => {
+    const normalizedKey = String(metricKey || '').trim().toLowerCase();
+    if (normalizedKey === 'totalrevenue' || normalizedKey === 'revenue') return hasMetaAttributedRevenue ? metaAttributedRevenue : 0;
+    if (normalizedKey === 'profit') return hasMetaAttributedRevenue ? metaAttributedProfit : 0;
+    if (normalizedKey === 'roas') return hasMetaAttributedRevenue ? metaAttributedRoas : 0;
+    if (normalizedKey === 'roi') return hasMetaAttributedRevenue ? metaAttributedRoi : 0;
+    if (normalizedKey === 'profitmargin') return hasMetaAttributedRevenue ? metaAttributedProfitMargin : 0;
     const map: Record<string, number> = {
       impressions: summary.totalImpressions || 0,
       reach: summary.totalReach || 0,
@@ -1528,11 +1550,25 @@ export default function MetaAnalytics() {
                                 onClick={() => {
                                   setEditingKPI(kpi);
                                   setKpiForm({
-                                    ...kpiForm,
                                     name: kpi.name || '',
                                     metric: metricKey,
                                     targetValue: kpi.targetValue || '',
                                     description: kpi.description || '',
+                                    currentValue: String(currentVal),
+                                    unit: kpi.unit || metricDef.unit || '',
+                                    priority: kpi.priority || 'high',
+                                    status: kpi.status || 'active',
+                                    category: kpi.category || '',
+                                    timeframe: kpi.timeframe || 'monthly',
+                                    trackingPeriod: String(kpi.trackingPeriod || 30),
+                                    alertsEnabled: !!kpi.alertsEnabled,
+                                    emailNotifications: !!kpi.emailNotifications,
+                                    alertFrequency: kpi.alertFrequency || 'daily',
+                                    alertThreshold: kpi.alertThreshold || '',
+                                    alertCondition: kpi.alertCondition || 'below',
+                                    emailRecipients: kpi.emailRecipients || '',
+                                    applyTo: kpi.applyTo || 'all',
+                                    specificCampaignId: kpi.specificCampaignId || '',
                                   });
                                   setIsKPIModalOpen(true);
                                 }}
@@ -1764,12 +1800,22 @@ export default function MetaAnalytics() {
                                 onClick={() => {
                                   setEditingBenchmark(benchmark);
                                   setBenchmarkForm({
-                                    ...benchmarkForm,
                                     metric: metricKey,
                                     name: benchmark.name || '',
                                     benchmarkValue: benchmark.benchmarkValue || benchmark.targetValue || '',
                                     description: benchmark.description || '',
                                     industry: benchmark.industry || '',
+                                    currentValue: String(currentVal),
+                                    unit: benchmark.unit || metricDef.unit || '',
+                                    benchmarkType: benchmark.benchmarkType || 'custom',
+                                    applyTo: benchmark.applyTo || 'all',
+                                    specificCampaignId: benchmark.specificCampaignId || '',
+                                    alertsEnabled: !!benchmark.alertsEnabled,
+                                    emailNotifications: !!benchmark.emailNotifications,
+                                    alertFrequency: benchmark.alertFrequency || 'daily',
+                                    alertThreshold: benchmark.alertThreshold || '',
+                                    alertCondition: benchmark.alertCondition || 'below',
+                                    emailRecipients: benchmark.emailRecipients || '',
                                   });
                                   setIsBenchmarkModalOpen(true);
                                 }}
@@ -3004,8 +3050,15 @@ export default function MetaAnalytics() {
             setEditingKPI={setEditingKPI}
             kpiForm={kpiForm}
             setKpiForm={setKpiForm}
-            summary={summary}
-            revenueSummary={revenueSummary}
+            summary={{
+              ...summary,
+              totalRevenue: metaRevenueMetricSummary.totalRevenue,
+              profit: metaRevenueMetricSummary.profit,
+              roas: metaRevenueMetricSummary.roas,
+              roi: metaRevenueMetricSummary.roi,
+              profitMargin: metaRevenueMetricSummary.profitMargin,
+            }}
+            revenueSummary={metaRevenueMetricSummary}
             campaigns={campaigns}
             toast={toast}
             handleCreateKPI={handleCreateKPI}
@@ -3019,8 +3072,15 @@ export default function MetaAnalytics() {
             setEditingBenchmark={setEditingBenchmark}
             benchmarkForm={benchmarkForm}
             setBenchmarkForm={setBenchmarkForm}
-            summary={summary}
-            revenueSummary={revenueSummary}
+            summary={{
+              ...summary,
+              totalRevenue: metaRevenueMetricSummary.totalRevenue,
+              profit: metaRevenueMetricSummary.profit,
+              roas: metaRevenueMetricSummary.roas,
+              roi: metaRevenueMetricSummary.roi,
+              profitMargin: metaRevenueMetricSummary.profitMargin,
+            }}
+            revenueSummary={metaRevenueMetricSummary}
             campaigns={campaigns}
             toast={toast}
             handleCreateBenchmark={handleCreateBenchmark}

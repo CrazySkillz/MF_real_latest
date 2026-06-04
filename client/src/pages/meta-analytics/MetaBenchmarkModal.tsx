@@ -354,7 +354,7 @@ export function MetaBenchmarkModal(props: any) {
   /* ----- Campaign-specific metric extraction ----- */
   const getCampaignMetricValue = (campaign: any, metric: string): { currentValue: string; unit: string } => {
     if (!campaign) return { currentValue: "", unit: "" };
-    const m = campaign.metrics || campaign;
+    const m = campaign.totals || campaign.metrics || campaign;
     let currentValue = "";
     let unit = "";
     switch (metric) {
@@ -473,8 +473,8 @@ export function MetaBenchmarkModal(props: any) {
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">Revenue Metrics Unavailable</h3>
                   <p className="text-sm text-amber-800 dark:text-amber-300 mb-3">
-                    To create benchmarks for ROI, ROAS, Total Revenue, Profit, Profit Margin, or Revenue Per Conversion, you need to add
-                    a conversion value to your campaign first.
+                    To create benchmarks for ROI, ROAS, Total Revenue, Profit, Profit Margin, or Revenue Per Conversion, add
+                    a Meta revenue source first.
                   </p>
                 </div>
               </div>
@@ -503,9 +503,9 @@ export function MetaBenchmarkModal(props: any) {
                   // Block revenue-gated metrics when no revenue tracking
                   if (revenueMetrics.includes(value) && !hasRevenue) {
                     toast({
-                      title: "Conversion Value Required",
+                      title: "Revenue Source Required",
                       description:
-                        "Revenue metrics require a conversion value. Please add a conversion value to track ROI, ROAS, Revenue, and Profit.",
+                        "Revenue metrics require imported Meta attributed revenue. Add a Meta revenue source to track ROI, ROAS, Revenue, and Profit.",
                       variant: "destructive",
                     });
                     return;
@@ -515,7 +515,12 @@ export function MetaBenchmarkModal(props: any) {
                   let autoFill: { currentValue: string; unit: string };
                   if (benchmarkForm.applyTo === "specific" && benchmarkForm.specificCampaignId) {
                     const campaign = (campaigns || []).find(
-                      (c: any) => c.id === benchmarkForm.specificCampaignId || c.campaign_id === benchmarkForm.specificCampaignId || c.name === benchmarkForm.specificCampaignId
+                      (c: any) =>
+                        c.id === benchmarkForm.specificCampaignId ||
+                        c.campaign?.id === benchmarkForm.specificCampaignId ||
+                        c.campaign_id === benchmarkForm.specificCampaignId ||
+                        c.name === benchmarkForm.specificCampaignId ||
+                        c.campaign?.name === benchmarkForm.specificCampaignId
                     );
                     autoFill = campaign ? getCampaignMetricValue(campaign, value) : autoPopulateCurrentValue(value);
                   } else {
@@ -561,22 +566,22 @@ export function MetaBenchmarkModal(props: any) {
                   <SelectItem value="conversionRate">Conversion Rate</SelectItem>
                   <SelectItem value="costPerConversion">Cost Per Conversion</SelectItem>
                   <SelectItem value="roi" disabled={!hasRevenue}>
-                    Return on Investment (ROI) {!hasRevenue && "(Requires Conversion Value)"}
+                    Return on Investment (ROI) {!hasRevenue && "(Requires Revenue Source)"}
                   </SelectItem>
                   <SelectItem value="roas" disabled={!hasRevenue}>
-                    Return on Ad Spend (ROAS) {!hasRevenue && "(Requires Conversion Value)"}
+                    Return on Ad Spend (ROAS) {!hasRevenue && "(Requires Revenue Source)"}
                   </SelectItem>
                   <SelectItem value="totalRevenue" disabled={!hasRevenue}>
-                    Total Revenue {!hasRevenue && "(Requires Conversion Value)"}
+                    Total Revenue {!hasRevenue && "(Requires Revenue Source)"}
                   </SelectItem>
                   <SelectItem value="profit" disabled={!hasRevenue}>
-                    Profit {!hasRevenue && "(Requires Conversion Value)"}
+                    Profit {!hasRevenue && "(Requires Revenue Source)"}
                   </SelectItem>
                   <SelectItem value="profitMargin" disabled={!hasRevenue}>
-                    Profit Margin {!hasRevenue && "(Requires Conversion Value)"}
+                    Profit Margin {!hasRevenue && "(Requires Revenue Source)"}
                   </SelectItem>
                   <SelectItem value="revenuePerConversion" disabled={!hasRevenue}>
-                    Revenue Per Conversion {!hasRevenue && "(Requires Conversion Value)"}
+                    Revenue Per Conversion {!hasRevenue && "(Requires Revenue Source)"}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -671,7 +676,7 @@ export function MetaBenchmarkModal(props: any) {
                   }
 
                   const campaign = (campaigns || []).find(
-                    (c: any) => c.id === value || c.campaign_id === value || c.name === value
+                    (c: any) => c.id === value || c.campaign?.id === value || c.campaign_id === value || c.name === value || c.campaign?.name === value
                   );
                   const autoFill = campaign
                     ? getCampaignMetricValue(campaign, benchmarkForm.metric)
@@ -691,8 +696,8 @@ export function MetaBenchmarkModal(props: any) {
                 <SelectContent>
                   {Array.isArray(campaigns) && campaigns.length > 0 ? (
                     campaigns.map((campaign: any) => (
-                      <SelectItem key={campaign.id || campaign.campaign_id || campaign.name} value={campaign.id || campaign.campaign_id || campaign.name}>
-                        {campaign.name || campaign.campaign_name || campaign.id}
+                      <SelectItem key={campaign.id || campaign.campaign?.id || campaign.campaign_id || campaign.name} value={campaign.id || campaign.campaign?.id || campaign.campaign_id || campaign.name}>
+                        {campaign.name || campaign.campaign?.name || campaign.campaign_name || campaign.id || campaign.campaign?.id}
                       </SelectItem>
                     ))
                   ) : (

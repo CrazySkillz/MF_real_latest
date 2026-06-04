@@ -140,12 +140,13 @@ export function MetaKpiModal(props: any) {
 
     if (campaign) {
       // Campaign-level metric resolution
-      const imp = Number(campaign.impressions || 0);
-      const rch = Number(campaign.reach || 0);
-      const clk = Number(campaign.clicks || 0);
-      const conv = Number(campaign.conversions || 0);
-      const spd = Number(campaign.spend || 0);
-      const vidViews = Number(campaign.videoViews || 0);
+      const m = campaign.totals || campaign.metrics || campaign;
+      const imp = Number(m.impressions || 0);
+      const rch = Number(m.reach || 0);
+      const clk = Number(m.clicks || 0);
+      const conv = Number(m.conversions || 0);
+      const spd = Number(m.spend || 0);
+      const vidViews = Number(m.videoViews || 0);
 
       // Derived rates at campaign level
       const ctr = imp > 0 ? (clk / imp) * 100 : 0;
@@ -342,7 +343,11 @@ export function MetaKpiModal(props: any) {
     if (!campaigns || !Array.isArray(campaigns)) return null;
     return (
       campaigns.find(
-        (c: any) => String(c.id) === String(campaignId) || c.name === campaignId || c.metaCampaignId === campaignId
+        (c: any) =>
+          String(c.id || c.campaign?.id || "") === String(campaignId) ||
+          c.name === campaignId ||
+          c.campaign?.name === campaignId ||
+          c.metaCampaignId === campaignId
       ) || null
     );
   };
@@ -416,8 +421,8 @@ export function MetaKpiModal(props: any) {
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">Revenue Metrics Unavailable</h3>
                   <p className="text-sm text-amber-800 dark:text-amber-300 mb-3">
-                    To create KPIs for ROI, ROAS, Total Revenue, Profit, or Profit Margin, you need to add a
-                    conversion value to your campaign first. You can do this from your campaign settings.
+                    To create KPIs for ROI, ROAS, Total Revenue, Profit, or Profit Margin, add a Meta revenue
+                    source first.
                   </p>
                 </div>
               </div>
@@ -448,9 +453,9 @@ export function MetaKpiModal(props: any) {
                   // Block revenue metrics when no revenue tracking
                   if (REVENUE_METRICS.includes(value) && !hasRevenue) {
                     toast({
-                      title: "Conversion Value Required",
+                      title: "Revenue Source Required",
                       description:
-                        "Revenue metrics require a conversion value. Please add a conversion value to your campaign to track ROI, ROAS, Revenue, and Profit.",
+                        "Revenue metrics require imported Meta attributed revenue. Add a Meta revenue source to track ROI, ROAS, Revenue, and Profit.",
                       variant: "destructive",
                     });
                     return;
@@ -489,19 +494,19 @@ export function MetaKpiModal(props: any) {
                   <SelectItem value="costPerConversion">Cost Per Conversion</SelectItem>
                   <SelectItem value="videoViews">Video Views</SelectItem>
                   <SelectItem value="roi" disabled={!hasRevenue}>
-                    Return on Investment (ROI) {!hasRevenue && "(Requires Conversion Value)"}
+                    Return on Investment (ROI) {!hasRevenue && "(Requires Revenue Source)"}
                   </SelectItem>
                   <SelectItem value="roas" disabled={!hasRevenue}>
-                    Return on Ad Spend (ROAS) {!hasRevenue && "(Requires Conversion Value)"}
+                    Return on Ad Spend (ROAS) {!hasRevenue && "(Requires Revenue Source)"}
                   </SelectItem>
                   <SelectItem value="totalRevenue" disabled={!hasRevenue}>
-                    Total Revenue {!hasRevenue && "(Requires Conversion Value)"}
+                    Total Revenue {!hasRevenue && "(Requires Revenue Source)"}
                   </SelectItem>
                   <SelectItem value="profit" disabled={!hasRevenue}>
-                    Profit {!hasRevenue && "(Requires Conversion Value)"}
+                    Profit {!hasRevenue && "(Requires Revenue Source)"}
                   </SelectItem>
                   <SelectItem value="profitMargin" disabled={!hasRevenue}>
-                    Profit Margin {!hasRevenue && "(Requires Conversion Value)"}
+                    Profit Margin {!hasRevenue && "(Requires Revenue Source)"}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -702,8 +707,8 @@ export function MetaKpiModal(props: any) {
                     </SelectTrigger>
                     <SelectContent>
                       {campaigns.map((campaign: any) => (
-                        <SelectItem key={campaign.id || campaign.name} value={String(campaign.id || campaign.name)}>
-                          {campaign.name || campaign.campaignName || `Campaign ${campaign.id}`}
+                        <SelectItem key={campaign.id || campaign.campaign?.id || campaign.name} value={String(campaign.id || campaign.campaign?.id || campaign.name)}>
+                          {campaign.name || campaign.campaign?.name || campaign.campaignName || `Campaign ${campaign.id || campaign.campaign?.id}`}
                         </SelectItem>
                       ))}
                     </SelectContent>

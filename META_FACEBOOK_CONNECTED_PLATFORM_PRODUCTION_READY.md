@@ -21,7 +21,7 @@ Meta/Facebook is not production-ready yet.
 
 This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
 
-Meta Commit 11 has been implemented locally. Local validation passed; user/browser validation is pending.
+Meta Commit 12 has been implemented locally. Local validation passed; user/browser validation is pending.
 
 Verified current foundations:
 
@@ -40,6 +40,7 @@ Verified current foundations:
 - Commit 9 makes Meta scheduler/manual refresh fail closed when selected Meta campaign IDs are missing instead of refreshing all campaigns in the ad account.
 - Commit 10 makes live Meta scheduler refresh use true daily insight rows and preserves Meta daily-row metadata during upsert.
 - Commit 11 cleans current-campaign Meta-owned daily metric rows and Meta scheduler spend rows during disconnect/reconnect without deleting user-created Meta revenue sources, KPIs, Benchmarks, or reports.
+- Commit 12 moves Meta KPI and Benchmark lifecycle behavior onto the shared platform-scoped KPI/Benchmark storage pattern and maps revenue-dependent current values to imported Meta attributed revenue.
 
 Verified production-readiness gaps:
 
@@ -52,14 +53,14 @@ Verified production-readiness gaps:
 - `storage.upsertMetaDailyMetrics` now updates `metaCampaignName` and preserves GA4 attribution metadata on conflict in the reviewed path.
 - `server/utils/meta-revenue.ts` has a CSV processor that returns totals but does not materialize revenue records in the shared revenue-source storage path. Its own comment says storage integration is a placeholder.
 - Meta report send and preview routes currently contain TODO behavior while returning success or placeholder preview output. That is not production-ready for report behavior.
-- KPI, Benchmark, report, disconnect, reconnect, scheduler, and source-list lifecycle safety are implemented in parts, but not yet proven end to end.
+- Report lifecycle safety is not yet proven end to end.
 
 Unverified from local code review so far:
 
 - Whether final campaign creation transfers a draft Meta connection to the real campaign in every Create Campaign path.
 - Whether cancelled Create Campaign setup cleans up draft Meta connections and daily rows.
 - Whether Meta disconnect should delete, deactivate, or hide stale Meta daily rows, spend records, and Meta-scoped revenue sources.
-- Whether Meta KPI and Benchmark current values use the same source-backed values shown in the Meta analytics page.
+- Browser validation for Meta KPI and Benchmark create, edit, delete, and current-value behavior after Commit 12.
 - Whether scheduled reports discover, snapshot, send, and audit Meta reports through the same guarded report framework as other production-ready sources.
 - Live OAuth behavior in a deployed or production-like environment.
 
@@ -144,10 +145,10 @@ Existing endpoints likely involved:
 - `POST /api/platforms/meta/kpis`
 - `PATCH /api/platforms/meta/kpis/:kpiId`
 - `DELETE /api/platforms/meta/kpis/:kpiId`
-- `GET /api/campaigns/:id/benchmarks/evaluated?platform=meta`
-- `POST /api/campaigns/:id/benchmarks`
-- `PATCH /api/benchmarks/:benchmarkId`
-- `DELETE /api/benchmarks/:benchmarkId`
+- `GET /api/platforms/meta/benchmarks?campaignId=:campaignId`
+- `POST /api/platforms/meta/benchmarks`
+- `PUT /api/platforms/meta/benchmarks/:benchmarkId`
+- `DELETE /api/platforms/meta/benchmarks/:benchmarkId`
 - `GET /api/meta/reports?campaignId=:campaignId`
 - `POST /api/meta/reports`
 - `PATCH /api/meta/reports/:reportId`
@@ -678,13 +679,22 @@ Status:
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ### Meta Commit 12: KPI And Benchmark Production Hardening
 
 Goal:
 
 - Make Meta KPI and Benchmark creation, edit, delete, and current values source-backed and campaign-scoped.
+
+Root cause analysis:
+
+- The Meta KPI tab called `/api/platforms/meta/kpis/:campaignId`, but the server returned wrapped `{ kpis }` data while the page checked for an array.
+- The Meta KPI create/update routes accepted the generic UI payload (`metric`, `unit`, `description`, alert fields) but persisted through the older `meta_kpis` table, which requires `metricType` and `startDate` and does not preserve the same fields as the shared KPI pattern.
+- The Meta Benchmark tab used the campaign benchmark route with `platform=meta`, which was intercepted by the older Meta-specific benchmark route instead of the shared platform benchmark route used by Google Ads.
+- Meta revenue-dependent KPI/Benchmark current values still had conversion-value wording and did not consistently use the imported Meta attributed revenue values shown in the Overview Total Revenue section.
+- Specific-campaign KPI/Benchmark current-value selection looked for flat campaign fields, but the Meta analytics page supplies nested `campaign` and `totals` objects.
+- The smallest safe fix is to keep the existing Meta UI surface, move Meta KPI persistence to the shared platform KPI storage path, move Meta Benchmark requests to the shared platform Benchmark routes, and map revenue metrics to imported Meta attributed revenue without changing reports, scheduler, disconnect/reconnect, or OAuth behavior.
 
 Tasks:
 
@@ -705,7 +715,16 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Completed locally: Meta KPI read/create/update/delete now use shared platform-scoped KPI storage with `platformType = "meta"` while preserving campaign access checks.
+- [x] Completed locally: Meta Benchmark read/create/update/delete now use shared platform-scoped Benchmark routes from the Meta page.
+- [x] Completed locally: Meta KPI and Benchmark cards, edit prefill, and current values resolve from the same source-backed Meta summary values as the Overview.
+- [x] Completed locally: Total Revenue, ROAS, ROI, Profit, and Profit Margin KPI/Benchmark values use imported Meta attributed revenue when a Meta revenue source exists.
+- [x] Completed locally: Meta KPI/Benchmark modals now label revenue-gated metrics as requiring a Meta revenue source, not a conversion value.
+- [x] Completed locally: specific-campaign KPI/Benchmark selectors now resolve nested Meta campaign rows through `campaign.id` and `totals`.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
 
 ### Meta Commit 13: Report And Scheduled Report Safety
 
@@ -823,15 +842,15 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 12 through Meta Commit 15.
+- Meta Commit 13 through Meta Commit 15.
 
 Outstanding evidence:
 
 - Meta Commit 6 user/browser validation is pending.
-- Meta Commit 11 user/browser validation is pending.
+- Meta Commit 12 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 
 ## Current Handoff
 
-The next smallest safest implementation step after Meta Commit 11 validation is Meta Commit 12: KPI and Benchmark production hardening. That commit should not change report, scheduler, disconnect/reconnect, or live OAuth behavior yet.
+The next smallest safest implementation step after Meta Commit 12 validation is Meta Commit 13: Report and scheduled report safety. That commit should not change scheduler refresh, disconnect/reconnect, revenue import, or live OAuth behavior yet.

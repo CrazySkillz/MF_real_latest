@@ -20200,7 +20200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
       if (!ok) return;
 
-      const kpis = await storage.getMetaKPIs(parsedId.data);
+      const kpis = await storage.getPlatformKPIs("meta", parsedId.data);
       res.json({ kpis });
     } catch (error: any) {
       console.error('[Meta KPIs] Get error:', error);
@@ -20223,7 +20223,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
       if (!ok) return;
 
-      const kpi = await storage.createMetaKPI(kpiData);
+      const toDecimalString = (v: any, fallback: string) => {
+        if (v === '' || v === null || typeof v === 'undefined') return fallback;
+        return typeof v === 'number' ? String(v) : String(v);
+      };
+      const requestData = {
+        ...kpiData,
+        platformType: "meta",
+        campaignId: parsedId.data,
+        metric: kpiData.metric === '' ? null : kpiData.metric || kpiData.metricKey || null,
+        targetValue: toDecimalString(kpiData.targetValue, "0"),
+        currentValue: toDecimalString(kpiData.currentValue, "0"),
+        alertThreshold: (kpiData.alertThreshold === '' || kpiData.alertThreshold === null || typeof kpiData.alertThreshold === 'undefined')
+          ? null
+          : (typeof kpiData.alertThreshold === 'number' ? String(kpiData.alertThreshold) : String(kpiData.alertThreshold)),
+        emailRecipients: kpiData.emailRecipients === '' ? null : kpiData.emailRecipients,
+        timeframe: kpiData.timeframe || "monthly",
+        trackingPeriod: Number(kpiData.trackingPeriod || 30),
+      };
+
+      const validatedKPI = insertKPISchema.parse(requestData);
+      const kpi = await storage.createKPI(validatedKPI);
+      checkPerformanceAlerts().catch((e) => console.warn("[Meta KPI Create] Alert check failed:", (e as any)?.message || e));
+      import("./services/alert-monitoring.js")
+        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateKPIAlertIfNeeded(String((kpi as any)?.id || "")))
+        .catch((e) => console.warn("[Meta KPI Create] Immediate email alert check failed:", e?.message || e));
       res.json({ kpi });
     } catch (error: any) {
       console.error('[Meta KPIs] Create error:', error);
@@ -20238,6 +20262,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { kpiId } = req.params;
       const updates = req.body;
+
+      const existingPlatformKPI = await storage.getKPI(kpiId);
+      if (existingPlatformKPI) {
+        if (String((existingPlatformKPI as any).platformType || "").toLowerCase() !== "meta") {
+          return res.status(404).json({ error: "KPI not found" });
+        }
+        const ok = await ensureCampaignAccess(req as any, res as any, String((existingPlatformKPI as any).campaignId || ""));
+        if (!ok) return;
+
+        const cleanedUpdates: any = {
+          ...updates,
+          metric: updates.metric === '' ? null : updates.metric || updates.metricKey || undefined,
+          trackingPeriod: updates.trackingPeriod !== undefined ? Number(updates.trackingPeriod || 30) : undefined,
+        };
+        if (updates.targetValue !== undefined) cleanedUpdates.targetValue = updates.targetValue === '' ? "0" : String(updates.targetValue);
+        if (updates.currentValue !== undefined) cleanedUpdates.currentValue = updates.currentValue === '' ? "0" : String(updates.currentValue);
+        if (updates.alertThreshold !== undefined) cleanedUpdates.alertThreshold = updates.alertThreshold === '' ? null : String(updates.alertThreshold);
+        Object.keys(cleanedUpdates).forEach((key) => cleanedUpdates[key] === undefined && delete cleanedUpdates[key]);
+
+        const validatedUpdates = insertKPISchema.partial().parse({
+          ...cleanedUpdates,
+          campaignId: (existingPlatformKPI as any).campaignId,
+          platformType: (existingPlatformKPI as any).platformType,
+        }) as any;
+        delete validatedUpdates.campaignId;
+        delete validatedUpdates.platformType;
+
+        const updatedKPI = await storage.updateKPI(kpiId, validatedUpdates);
+        return res.json({ kpi: updatedKPI });
+      }
 
       // Verify KPI exists and get campaignId for access check
       const existingKPI = await storage.getMetaKPIById(kpiId);
@@ -20262,6 +20316,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/platforms/meta/kpis/:kpiId", async (req, res) => {
     try {
       const { kpiId } = req.params;
+
+      const existingPlatformKPI = await storage.getKPI(kpiId);
+      if (existingPlatformKPI) {
+        if (String((existingPlatformKPI as any).platformType || "").toLowerCase() !== "meta") {
+          return res.status(404).json({ error: "KPI not found" });
+        }
+        const ok = await ensureCampaignAccess(req as any, res as any, String((existingPlatformKPI as any).campaignId || ""));
+        if (!ok) return;
+
+        await storage.deleteKPI(kpiId);
+        try {
+          const notifs = await storage.getNotifications().catch(() => []);
+          await Promise.all(
+            (Array.isArray(notifs) ? notifs : []).map(async (n: any) => {
+              const metaRaw = (n as any)?.metadata;
+              if (!metaRaw) return;
+              try {
+                const meta = typeof metaRaw === "string" ? JSON.parse(metaRaw) : metaRaw;
+                if (String(meta?.kpiId || "") === String(kpiId)) {
+                  await softHideNotification(n, getActorId(req as any) || "system", "kpi_deleted");
+                }
+              } catch {}
+            })
+          );
+        } catch (e) {
+          console.warn("[Meta KPI Delete] Failed to cascade delete KPI notifications:", e);
+        }
+        return res.json({ success: true });
+      }
 
       // Verify KPI exists and get campaignId for access check
       const existingKPI = await storage.getMetaKPIById(kpiId);

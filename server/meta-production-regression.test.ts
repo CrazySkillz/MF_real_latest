@@ -168,6 +168,47 @@ describe("Meta production readiness regression guard", () => {
     expect(page).not.toContain("Configure Revenue Tracking");
   });
 
+  it("keeps Meta KPI and Benchmark lifecycle on shared platform-scoped storage", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const routes = read("server", "routes-oauth.ts");
+    const kpiRoutes = sliceBetween(
+      routes,
+      'app.get("/api/platforms/meta/kpis/:campaignId"',
+      "// ====================== GOOGLE ADS INTEGRATION ======================"
+    );
+
+    expect(kpiRoutes).toContain('storage.getPlatformKPIs("meta", parsedId.data)');
+    expect(kpiRoutes).toContain('platformType: "meta"');
+    expect(kpiRoutes).toContain("insertKPISchema.parse(requestData)");
+    expect(kpiRoutes).toContain("storage.createKPI(validatedKPI)");
+    expect(kpiRoutes).toContain("storage.updateKPI(kpiId, validatedUpdates)");
+    expect(kpiRoutes).toContain("storage.deleteKPI(kpiId)");
+    expect(page).toContain("Array.isArray(json) ? json : Array.isArray(json?.kpis) ? json.kpis : []");
+    expect(page).toContain("fetch(`/api/platforms/meta/benchmarks?campaignId=${encodeURIComponent(String(campaignId))}`)");
+    expect(page).toContain("fetch('/api/platforms/meta/benchmarks'");
+    expect(page).toContain("fetch(`/api/platforms/meta/benchmarks/${id}`,");
+    expect(page).not.toContain("benchmarks/evaluated?platform=meta");
+  });
+
+  it("maps Meta KPI and Benchmark revenue metrics to imported attributed revenue", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const kpiModal = read("client", "src", "pages", "meta-analytics", "MetaKpiModal.tsx");
+    const benchmarkModal = read("client", "src", "pages", "meta-analytics", "MetaBenchmarkModal.tsx");
+
+    expect(page).toContain("{ key: 'totalRevenue', label: 'Total Revenue'");
+    expect(page).toContain("if (normalizedKey === 'totalrevenue' || normalizedKey === 'revenue') return hasMetaAttributedRevenue ? metaAttributedRevenue : 0;");
+    expect(page).toContain("if (normalizedKey === 'profit') return hasMetaAttributedRevenue ? metaAttributedProfit : 0;");
+    expect(page).toContain("if (normalizedKey === 'roas') return hasMetaAttributedRevenue ? metaAttributedRoas : 0;");
+    expect(page).toContain("if (normalizedKey === 'roi') return hasMetaAttributedRevenue ? metaAttributedRoi : 0;");
+    expect(page).toContain("if (normalizedKey === 'profitmargin') return hasMetaAttributedRevenue ? metaAttributedProfitMargin : 0;");
+    expect(page).toContain("revenueSummary={metaRevenueMetricSummary}");
+    expect(page).toContain("currentValue: String(currentVal)");
+    expect(kpiModal).toContain("campaign.totals || campaign.metrics || campaign");
+    expect(benchmarkModal).toContain("campaign.totals || campaign.metrics || campaign");
+    expect(kpiModal).toContain("Requires Revenue Source");
+    expect(benchmarkModal).toContain("Requires Revenue Source");
+  });
+
   it("keeps Meta initial loading aligned with the app fallback to avoid refresh layout jumps", () => {
     const page = read("client", "src", "pages", "meta-analytics.tsx");
     const loadingState = sliceBetween(

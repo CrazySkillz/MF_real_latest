@@ -168,6 +168,21 @@ describe("Meta production readiness regression guard", () => {
     expect(page).not.toContain("Configure Revenue Tracking");
   });
 
+  it("keeps Meta initial loading aligned with the app fallback to avoid refresh layout jumps", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const loadingState = sliceBetween(
+      page,
+      "if (isLoading) {",
+      "if (!analyticsData) {"
+    );
+
+    expect(loadingState).toContain("min-h-screen w-full flex items-center justify-center bg-gray-50");
+    expect(loadingState).toContain("Loading...");
+    expect(loadingState).not.toContain("Loading Meta analytics");
+    expect(loadingState).not.toContain("<Navigation />");
+    expect(loadingState).not.toContain("<Sidebar />");
+  });
+
   it("keeps the Create Campaign confirm Back button on platform selection instead of re-entering OAuth", () => {
     const page = read("client", "src", "pages", "campaigns.tsx");
     const handler = sliceBetween(

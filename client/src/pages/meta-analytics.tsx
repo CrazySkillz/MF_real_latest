@@ -571,18 +571,10 @@ export default function MetaAnalytics() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-8">
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-muted-foreground/70">Loading Meta analytics...</p>
-              </div>
-            </div>
-          </main>
+      <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );

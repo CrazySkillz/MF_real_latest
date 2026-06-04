@@ -21,7 +21,7 @@ Meta/Facebook is not production-ready yet.
 
 This tracker is the planning and implementation artifact. Several Meta paths already exist, but they have not been hardened to the same production-ready standard as LinkedIn and Google Ads. The current implementation is best described as partially implemented and partly test/demo oriented.
 
-Meta Commit 7 has been implemented locally. Local validation passed; user/browser validation is pending.
+Meta Commit 8 has been implemented locally. Local validation passed; user/browser validation is pending.
 
 Verified current foundations:
 
@@ -36,6 +36,7 @@ Verified current foundations:
 - Commit 5 scopes visible Meta analytics, daily metrics, and Campaign Overview Meta aggregate totals to saved selected Meta campaign IDs.
 - Commit 6 gates Meta attributed revenue in the shared aggregate behind Meta revenue tracking and fixes an unscoped Meta revenue read in Executive Summary.
 - Commit 7 adds a Google Ads-style Meta Overview Total Revenue card, plus/add action, Sources link, source provenance, edit/delete source behavior, and the shared revenue wizard entry point for Meta-attributed revenue.
+- Commit 8 aligns the Meta Overview initial loading state with the app-level `Loading...` fallback to avoid refresh layout jumps.
 
 Verified production-readiness gaps:
 
@@ -512,9 +513,44 @@ Status:
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/google-ads-revenue-overview-ui.test.ts`.
 - [x] Local validation passed: `npm run check`.
+- [x] User/browser validation passed.
+
+### Meta Commit 8: Overview Loading Stability
+
+Root cause analysis:
+
+- On a hard refresh, the app-level lazy/auth fallback first showed a centered `Loading...` screen.
+- After the Meta page bundle mounted but before `/api/meta/:campaignId/analytics` resolved, `client/src/pages/meta-analytics.tsx` rendered a different page-specific loading layout with `Navigation`, `Sidebar`, and `Loading Meta analytics...`.
+- That second loading layout moved the loading indicator to a different part of the page, creating the visible jump.
+
+Strategy:
+
+- Change only the Meta analytics initial `isLoading` branch.
+- Match the app/Google Ads centered `Loading...` fallback.
+- Do not change loaded Meta page layout, data fetching, revenue behavior, routing, or other platform pages.
+
+Files changed:
+
+- `client/src/pages/meta-analytics.tsx`
+- `server/meta-production-regression.test.ts`
+- `META_FACEBOOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`
+
+Validation:
+
+- Refresh the Meta Overview page.
+- Confirm it shows one centered `Loading...` state.
+- Confirm it does not switch to `Loading Meta analytics...`.
+- Confirm the loaded Meta Overview page appears normally after data loads.
+
+Status:
+
+- [x] Completed locally: Meta initial loading now uses the centered app-style `Loading...` layout.
+- [x] Completed locally: regression coverage asserts the Meta loading branch does not render `Navigation`, `Sidebar`, or `Loading Meta analytics`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
 - [ ] User/browser validation pending.
 
-### Meta Commit 8: Scheduler And Refresh Hardening
+### Meta Commit 9: Scheduler And Refresh Hardening
 
 Goal:
 
@@ -542,7 +578,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 9: Disconnect, Reconnect, And Stale Data Safety
+### Meta Commit 10: Disconnect, Reconnect, And Stale Data Safety
 
 Goal:
 
@@ -570,7 +606,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 10: KPI And Benchmark Production Hardening
+### Meta Commit 11: KPI And Benchmark Production Hardening
 
 Goal:
 
@@ -597,7 +633,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 11: Report And Scheduled Report Safety
+### Meta Commit 12: Report And Scheduled Report Safety
 
 Goal:
 
@@ -625,7 +661,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 12: Meta Attributed Revenue Import Parity
+### Meta Commit 13: Meta Attributed Revenue Import Parity
 
 Goal:
 
@@ -655,7 +691,7 @@ Status:
 
 - [ ] Not started.
 
-### Meta Commit 13: Final Production-Readiness Regression And Documentation
+### Meta Commit 14: Final Production-Readiness Regression And Documentation
 
 Goal:
 
@@ -713,15 +749,15 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 8 through Meta Commit 13.
+- Meta Commit 9 through Meta Commit 14.
 
 Outstanding evidence:
 
 - Meta Commit 6 user/browser validation is pending.
-- Meta Commit 7 user/browser validation is pending.
+- Meta Commit 8 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 
 ## Current Handoff
 
-The next smallest safest implementation step after Meta Commit 7 validation is Meta Commit 8: scheduler and refresh hardening. That commit should not change KPI, Benchmark, report, disconnect/reconnect, or live OAuth behavior yet.
+The next smallest safest implementation step after Meta Commit 8 validation is Meta Commit 9: scheduler and refresh hardening. That commit should not change KPI, Benchmark, report, disconnect/reconnect, or live OAuth behavior yet.

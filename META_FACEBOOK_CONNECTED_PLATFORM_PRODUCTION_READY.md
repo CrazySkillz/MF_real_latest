@@ -17,11 +17,11 @@ Meta/Facebook must be treated as a campaign-scoped main paid-media connected sou
 
 ## Current Status
 
-Meta/Facebook is locally code/test validated for the implemented source-backed test-mode path. Final browser smoke validation is pending before calling that local/test-mode path production-ready.
+Meta/Facebook is locally production-ready for the implemented source-backed test-mode path.
 
 This tracker is the planning and implementation artifact. The implemented local/test-mode Meta path has been hardened against the source-backed pattern used by LinkedIn and Google Ads. Live OAuth and deployed scheduled-report behavior still require production-like evidence.
 
-Meta Commit 15 has been implemented locally. Final local regression passed. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
+Meta Commit 17 has been implemented locally. Local validation passed; user/browser validation is pending. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
 
 Verified current foundations:
 
@@ -44,6 +44,8 @@ Verified current foundations:
 - Commit 13 moves Meta report cards to the shared platform-report route, persists scheduler-compatible schedule fields, and makes legacy Meta report send/preview routes fail closed instead of returning placeholder success.
 - Commit 14 preserves Meta revenue import context through the shared revenue wizard, Sheets, HubSpot, Salesforce, scheduler refresh paths, and makes the legacy direct Meta CSV route fail closed instead of returning placeholder import success.
 - Commit 15 final local regression passed for the implemented source-backed test-mode path.
+- Commit 16 renames the Meta Overview per-campaign card section from `All Campaigns` to `Campaign Breakdown`, removes duplicate or unsafe financial values from that section, and hides optional live-only breakdown sections when no breakdown rows exist.
+- Commit 17 includes `Top Demographics`, `Top Locations`, and `Ad Placements` in the selected Meta analytics response for the source-backed test-mode path, while preserving the live Meta Insights breakdown import path.
 
 Verified production-readiness gaps:
 
@@ -857,7 +859,76 @@ Status:
 - [x] Completed locally: this tracker records remaining live/deployed evidence caveats.
 - [x] Completed locally: top-level Campaign DeepDive status is linked to this Meta tracker.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts server/performance-summary-aggregate.test.ts server/performance-summary-scheduler-regression.test.ts server/source-safety-regression.test.ts server/trend-analysis-aggregate.test.ts server/trend-analysis-overview-regression.test.ts server/executive-summary-regression.test.ts server/executive-summary-helpers-regression.test.ts server/platform-comparison-regression.test.ts server/custom-report-regression.test.ts server/report-email-regression.test.ts server/kpi-route-isolation-regression.test.ts server/benchmark-route-isolation-regression.test.ts server/linkedin-connected-platform-flow-regression.test.ts server/linkedin-create-campaign-flow-regression.test.ts server/linkedin-disconnect-regression.test.ts server/linkedin-revenue-isolation.test.ts server/linkedin-scheduler-regression.test.ts server/google-ads-production-regression.test.ts server/google-ads-report-regression.test.ts server/google-ads-revenue-platform-context.test.ts server/google-ads-revenue-overview-ui.test.ts server/google-ads-revenue-kpi-benchmark-ui.test.ts server/google-ads-revenue-scheduler-flow.test.ts server/ga4-auto-refresh-regression.test.ts server/ga4-financial-rules.test.ts server/ga4-kpi-regression.test.ts server/ga4-benchmark-regression.test.ts`.
-- [ ] User/browser final smoke validation pending.
+- [x] User/browser final smoke validation passed.
+
+### Meta Commit 16: Overview Campaign Breakdown Clarity And Optional Breakdown Safety
+
+Goal:
+
+- Make the Meta Overview per-campaign metrics section easier to understand without changing source calculations, scheduler behavior, or API response shapes.
+
+Root cause analysis:
+
+- The section titled `All Campaigns` renders one card per selected Meta campaign.
+- The heading could be misread as a platform-wide or unscoped all-account view, even though the data is campaign-scoped through the selected Meta campaigns saved on the current campaign connection.
+- The top-right amount in each per-campaign row was spend. That duplicated the existing `Total Spend` metric in the same row, so it added visual noise without adding a new metric.
+- Revenue should not be shown inside Campaign Breakdown unless exact per-Meta-campaign attributed revenue exists. An equal split of total imported Meta revenue across campaigns would be invented attribution and is not production-safe.
+- `Top Demographics`, `Top Locations`, and `Ad Placements` are implemented in the live Meta analytics route through Meta Insights breakdown calls, but the current source-backed test-mode/daily-metrics path does not persist or return those breakdown rows. They should render only when exact breakdown rows are present.
+- The smallest safe fix is a localized Overview UI rendering change: rename the section, remove the duplicate header spend amount, prevent unsafe per-row revenue allocation, and hide optional breakdown cards when their arrays are empty. This does not change campaign scoping, filtering, sorting, source aggregation, revenue totals, scheduler behavior, reports, KPIs, Benchmarks, GA4, LinkedIn, or Google Ads behavior.
+
+Validation:
+
+- Open Meta Overview.
+- Confirm the section heading says `Campaign Breakdown`.
+- Confirm the cards still show the same selected Meta campaign metrics.
+- Confirm each campaign row shows `Total Spend` only once in the metric grid.
+- Confirm Campaign Breakdown does not show Revenue, ROAS, or ROI unless exact per-Meta-campaign attributed revenue is later implemented.
+- Confirm `Top Demographics`, `Top Locations`, and `Ad Placements` do not appear as empty tables in test mode or any response with empty breakdown arrays.
+- Confirm sort and status filter still work.
+
+Status:
+
+- [x] Completed locally: renamed `All Campaigns` to `Campaign Breakdown`.
+- [x] Completed locally: updated the section description to `Metrics grouped by selected Meta campaign`.
+- [x] Completed locally: removed the duplicate top-right spend amount from the Overview Campaign Breakdown rows.
+- [x] Completed locally: removed unsafe per-row revenue display from Campaign Breakdown unless exact per-campaign attributed revenue is implemented later.
+- [x] Completed locally: optional `Top Demographics`, `Top Locations`, and `Ad Placements` sections now render only when exact breakdown rows exist.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
+
+### Meta Commit 17: Standard Meta Breakdown Imports
+
+Goal:
+
+- Include `Top Demographics`, `Top Locations`, and `Ad Placements` in the selected Meta analytics import response without changing campaign totals, revenue logic, scheduler behavior, or shared aggregate behavior.
+
+Root cause analysis:
+
+- Live Meta analytics already calls Meta Insights breakdown APIs for demographics, geographics, and placements through `getDemographicInsights`, `getGeographicInsights`, and `getPlacementInsights`.
+- The source-backed test-mode path reads persisted selected Meta daily rows from `meta_daily_metrics`, but it previously returned empty `demographics`, `geographics`, and `placements` arrays for each selected campaign.
+- Commit 16 correctly hid empty breakdown sections, but the standard test-mode import still did not include the breakdown rows users expect to see in Meta Overview.
+- The smallest safe fix is to keep the existing live Meta API breakdown path and add equivalent test-mode breakdown rows derived from the already persisted, selected campaign totals. This avoids a new database table, avoids changing source totals, and keeps the data scoped to selected Meta campaigns only.
+- The generated test-mode breakdown rows are validation/demo data derived from source-backed selected campaign totals. Live OAuth/deployed validation is still required before claiming live breakdown imports production-ready.
+
+Validation:
+
+- Open Meta Overview for a Meta test-mode campaign.
+- Confirm `Campaign Breakdown` still shows selected Meta campaign metrics.
+- Confirm `Top Demographics` appears with rows.
+- Confirm `Top Locations` appears with rows.
+- Confirm `Ad Placements` appears with rows.
+- Confirm campaign totals, Total Revenue, KPI, Benchmark, report, and Campaign DeepDive values are unchanged.
+
+Status:
+
+- [x] Completed locally: selected test-mode Meta analytics now returns demographics, geographics, and placements derived from persisted selected campaign totals.
+- [x] Completed locally: live Meta analytics still uses Meta Insights breakdown API calls.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
 
 ## Validation Evidence Required Before Production-Ready Claim
 
@@ -896,11 +967,11 @@ Outstanding required implementation work:
 
 Outstanding evidence:
 
-- Meta Commit 15 final browser smoke validation is pending.
+- Meta Commit 17 user/browser validation is pending and should cover the visible Commit 16/17 Meta Overview changes.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 - Deployed scheduled Meta report email receipt is not available locally.
 
 ## Current Handoff
 
-The next smallest safest step is a final browser smoke validation for the implemented local/test-mode Meta path. No new local implementation step is currently listed before moving to a future source integration. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.
+The next smallest safest step is a browser check that Meta Overview shows `Campaign Breakdown`, keeps the selected Meta campaign metrics, shows spend only in the metric grid, and renders `Top Demographics`, `Top Locations`, and `Ad Placements` rows for a test-mode Meta campaign with selected campaign metrics. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.

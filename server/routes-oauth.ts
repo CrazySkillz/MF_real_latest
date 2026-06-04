@@ -19487,6 +19487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Test mode reads persisted selected rows, not the separate demo mock generator.
       if (useMock === '1' || connection.method === 'test_mode') {
         const { META_MOCK_CAMPAIGNS } = await import('./meta-scheduler');
+        const { generateDemographics, generateGeographics, generatePlacements } = await import('./utils/metaMockData');
         const mockCampaigns = new Map(META_MOCK_CAMPAIGNS.map((campaign) => [campaign.id, campaign]));
         const rows = (await storage.getMetaDailyMetrics(campaignId, '1900-01-01', '2099-12-31'))
           .filter((row: any) => selectedCampaignSet.has(String(row?.metaCampaignId || "")));
@@ -19550,13 +19551,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           current.totals.linkClicks += day.linkClicks;
           byCampaign.set(id, current);
         }
-        const campaignData = Array.from(byCampaign.values()).map((item: any) => ({
-          ...item,
-          campaign: {
-            ...item.campaign,
-            dailyBudget: item.dailyMetrics.length > 0 ? item.totals.spend / item.dailyMetrics.length : 0,
-          },
-          totals: {
+        const campaignData = Array.from(byCampaign.values()).map((item: any) => {
+          const totals = {
             ...item.totals,
             spend: parseFloat(item.totals.spend.toFixed(2)),
             ctr: item.totals.impressions > 0 ? parseFloat(((item.totals.clicks / item.totals.impressions) * 100).toFixed(2)) : 0,
@@ -19566,8 +19562,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             frequency: item.totals.reach > 0 ? parseFloat((item.totals.impressions / item.totals.reach).toFixed(2)) : 0,
             costPerConversion: item.totals.conversions > 0 ? parseFloat((item.totals.spend / item.totals.conversions).toFixed(2)) : 0,
             conversionRate: item.totals.clicks > 0 ? parseFloat(((item.totals.conversions / item.totals.clicks) * 100).toFixed(2)) : 0,
-          },
-        }));
+          };
+          const hasBreakdownInputs = totals.impressions > 0 && totals.clicks > 0;
+          return {
+            ...item,
+            campaign: {
+              ...item.campaign,
+              dailyBudget: item.dailyMetrics.length > 0 ? item.totals.spend / item.dailyMetrics.length : 0,
+            },
+            totals,
+            demographics: hasBreakdownInputs ? generateDemographics(totals.impressions, totals.clicks, totals.spend, totals.conversions) : [],
+            geographics: hasBreakdownInputs ? generateGeographics(totals.impressions, totals.clicks, totals.spend, totals.conversions) : [],
+            placements: hasBreakdownInputs ? generatePlacements(totals.impressions, totals.clicks, totals.spend, totals.conversions) : [],
+          };
+        });
         console.log(`[Meta Analytics] Using selected test-mode rows for ${campaignData.length} campaigns`);
         return res.json({
           adAccountId: connection.adAccountId,

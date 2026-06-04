@@ -168,6 +168,64 @@ describe("Meta production readiness regression guard", () => {
     expect(page).not.toContain("Configure Revenue Tracking");
   });
 
+  it("labels the Meta Overview per-campaign section and avoids invented row financials", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const campaignBreakdown = sliceBetween(
+      page,
+      "{/* Campaign Breakdown - Card Layout */}",
+      "{/* Demographics & Geographics */}"
+    );
+
+    expect(campaignBreakdown).toContain("<CardTitle>Campaign Breakdown</CardTitle>");
+    expect(campaignBreakdown).toContain("<CardDescription>Metrics grouped by selected Meta campaign</CardDescription>");
+    expect(campaignBreakdown).not.toContain("<CardTitle>All Campaigns</CardTitle>");
+    expect(campaignBreakdown).not.toContain("Detailed performance metrics for all campaigns");
+    expect(campaignBreakdown).not.toContain("{formatCurrency(totals.spend || 0)}</span>");
+    expect(campaignBreakdown).not.toContain("revenueSummary.totalRevenue / campaigns.length");
+    expect(campaignBreakdown).not.toContain("Revenue metrics");
+  });
+
+  it("renders Meta optional breakdown sections only when breakdown rows exist", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const overviewBreakdowns = sliceBetween(
+      page,
+      "{/* Demographics & Geographics */}",
+      '<TabsContent value="kpis"'
+    );
+
+    expect(page).toContain("const firstCampaignDemographics = Array.isArray(firstCampaignBreakdowns?.demographics)");
+    expect(page).toContain("const firstCampaignGeographics = Array.isArray(firstCampaignBreakdowns?.geographics)");
+    expect(page).toContain("const firstCampaignPlacements = Array.isArray(firstCampaignBreakdowns?.placements)");
+    expect(page).toContain("const hasFirstCampaignBreakdowns = firstCampaignDemographics.length > 0 || firstCampaignGeographics.length > 0 || firstCampaignPlacements.length > 0;");
+    expect(overviewBreakdowns).toContain("{hasFirstCampaignBreakdowns && (");
+    expect(overviewBreakdowns).toContain("{firstCampaignDemographics.length > 0 && (");
+    expect(overviewBreakdowns).toContain("{firstCampaignGeographics.length > 0 && (");
+    expect(overviewBreakdowns).toContain("{firstCampaignPlacements.length > 0 && (");
+    expect(overviewBreakdowns).toContain("{demo.ageRange || demo.age}");
+    expect(overviewBreakdowns).toContain("placement.placement || [placement.publisherPlatform, placement.platformPosition]");
+    expect(overviewBreakdowns).not.toContain("campaigns[0]?.demographics &&");
+    expect(overviewBreakdowns).not.toContain("campaigns[0]?.geographics &&");
+    expect(overviewBreakdowns).not.toContain("campaigns[0]?.placements &&");
+  });
+
+  it("includes Meta breakdown imports in the selected analytics response", () => {
+    const routes = read("server", "routes-oauth.ts");
+    const analyticsRoute = sliceBetween(
+      routes,
+      'app.get("/api/meta/:campaignId/analytics"',
+      'app.get("/api/meta/:campaignId/summary"'
+    );
+
+    expect(analyticsRoute).toContain("const { generateDemographics, generateGeographics, generatePlacements } = await import('./utils/metaMockData');");
+    expect(analyticsRoute).toContain("const hasBreakdownInputs = totals.impressions > 0 && totals.clicks > 0;");
+    expect(analyticsRoute).toContain("demographics: hasBreakdownInputs ? generateDemographics(totals.impressions, totals.clicks, totals.spend, totals.conversions) : []");
+    expect(analyticsRoute).toContain("geographics: hasBreakdownInputs ? generateGeographics(totals.impressions, totals.clicks, totals.spend, totals.conversions) : []");
+    expect(analyticsRoute).toContain("placements: hasBreakdownInputs ? generatePlacements(totals.impressions, totals.clicks, totals.spend, totals.conversions) : []");
+    expect(analyticsRoute).toContain("metaClient.getDemographicInsights(campaign.id, dateRange).catch(() => [])");
+    expect(analyticsRoute).toContain("metaClient.getGeographicInsights(campaign.id, dateRange).catch(() => [])");
+    expect(analyticsRoute).toContain("metaClient.getPlacementInsights(campaign.id, dateRange).catch(() => [])");
+  });
+
   it("preserves Meta revenue import context across shared provider save and refresh paths", () => {
     const wizard = read("client", "src", "components", "AddRevenueWizardModal.tsx");
     const routes = read("server", "routes-oauth.ts");

@@ -672,6 +672,11 @@ export default function MetaAnalytics() {
     roi: hasMetaAttributedRevenue ? metaAttributedRoi : 0,
     profitMargin: hasMetaAttributedRevenue ? metaAttributedProfitMargin : 0,
   };
+  const firstCampaignBreakdowns = campaigns[0] || {};
+  const firstCampaignDemographics = Array.isArray(firstCampaignBreakdowns?.demographics) ? firstCampaignBreakdowns.demographics : [];
+  const firstCampaignGeographics = Array.isArray(firstCampaignBreakdowns?.geographics) ? firstCampaignBreakdowns.geographics : [];
+  const firstCampaignPlacements = Array.isArray(firstCampaignBreakdowns?.placements) ? firstCampaignBreakdowns.placements : [];
+  const hasFirstCampaignBreakdowns = firstCampaignDemographics.length > 0 || firstCampaignGeographics.length > 0 || firstCampaignPlacements.length > 0;
 
   // Format date helper
   const formatShortDate = (yyyyMmDd: string) => {
@@ -1219,12 +1224,12 @@ export default function MetaAnalytics() {
             </CardContent>
           </Card>
 
-          {/* All Campaigns - Card Layout */}
+          {/* Campaign Breakdown - Card Layout */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <div>
-                <CardTitle>All Campaigns</CardTitle>
-                <CardDescription>Detailed performance metrics for all campaigns</CardDescription>
+                <CardTitle>Campaign Breakdown</CardTitle>
+                <CardDescription>Metrics grouped by selected Meta campaign</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Select value={sortBy} onValueChange={setSortBy}>
@@ -1285,7 +1290,6 @@ export default function MetaAnalytics() {
                           <h4 className="font-semibold text-foreground">{campaign.name}</h4>
                           <span className="text-xs text-muted-foreground">{campaign.objective}</span>
                         </div>
-                        <span className="text-lg font-bold text-foreground">{formatCurrency(totals.spend || 0)}</span>
                       </div>
 
                       {/* Core metrics — prominent */}
@@ -1348,27 +1352,6 @@ export default function MetaAnalytics() {
                         </div>
                       </div>
 
-                      {/* Revenue metrics — only when tracking */}
-                      {revenueSummary?.hasRevenueTracking && (
-                        <div className="grid grid-cols-3 gap-4 pt-3 mt-3 border-t border-green-100 dark:border-green-900/30">
-                          <div>
-                            <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">Revenue</p>
-                            <p className="text-sm font-bold text-green-700 dark:text-green-300">{formatCurrency(revenueSummary.totalRevenue / campaigns.length)}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">ROAS</p>
-                            <p className="text-sm font-bold text-green-700 dark:text-green-300">
-                              {totals.spend > 0 ? ((revenueSummary.totalRevenue / campaigns.length) / totals.spend).toFixed(2) + 'x' : 'N/A'}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">ROI</p>
-                            <p className="text-sm font-bold text-green-700 dark:text-green-300">
-                              {totals.spend > 0 ? (((revenueSummary.totalRevenue / campaigns.length) - totals.spend) / totals.spend * 100).toFixed(1) + '%' : 'N/A'}
-                            </p>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -1377,14 +1360,16 @@ export default function MetaAnalytics() {
           </Card>
 
           {/* Demographics & Geographics */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Demographics</CardTitle>
-                <CardDescription>Performance by age and gender (first campaign)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {campaigns[0]?.demographics && (
+          {hasFirstCampaignBreakdowns && (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                {firstCampaignDemographics.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Top Demographics</CardTitle>
+                      <CardDescription>Performance by age and gender for the first selected Meta campaign</CardDescription>
+                    </CardHeader>
+                    <CardContent>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1395,9 +1380,9 @@ export default function MetaAnalytics() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {campaigns[0].demographics.slice(0, 6).map((demo: any, index: number) => (
+                      {firstCampaignDemographics.slice(0, 6).map((demo: any, index: number) => (
                         <TableRow key={index}>
-                          <TableCell>{demo.ageRange}</TableCell>
+                          <TableCell>{demo.ageRange || demo.age}</TableCell>
                           <TableCell className="capitalize">{demo.gender}</TableCell>
                           <TableCell className="text-right">{demo.impressions.toLocaleString()}</TableCell>
                           <TableCell className="text-right">{demo.clicks.toLocaleString()}</TableCell>
@@ -1405,17 +1390,17 @@ export default function MetaAnalytics() {
                       ))}
                     </TableBody>
                   </Table>
+                    </CardContent>
+                  </Card>
                 )}
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Locations</CardTitle>
-                <CardDescription>Performance by country (first campaign)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {campaigns[0]?.geographics && (
+                {firstCampaignGeographics.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Top Locations</CardTitle>
+                      <CardDescription>Performance by country for the first selected Meta campaign</CardDescription>
+                    </CardHeader>
+                    <CardContent>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1426,7 +1411,7 @@ export default function MetaAnalytics() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {campaigns[0].geographics.map((geo: any, index: number) => (
+                      {firstCampaignGeographics.map((geo: any, index: number) => (
                         <TableRow key={index}>
                           <TableCell>{geo.country}</TableCell>
                           <TableCell className="text-right">{geo.impressions.toLocaleString()}</TableCell>
@@ -1436,19 +1421,19 @@ export default function MetaAnalytics() {
                       ))}
                     </TableBody>
                   </Table>
+                    </CardContent>
+                  </Card>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+              </div>
 
-          {/* Placements */}
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle>Ad Placements</CardTitle>
-              <CardDescription>Performance by placement (first campaign)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {campaigns[0]?.placements && (
+              {/* Placements */}
+              {firstCampaignPlacements.length > 0 && (
+                <Card className="mt-8">
+                  <CardHeader>
+                    <CardTitle>Ad Placements</CardTitle>
+                    <CardDescription>Performance by placement for the first selected Meta campaign</CardDescription>
+                  </CardHeader>
+                  <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1460,20 +1445,24 @@ export default function MetaAnalytics() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {campaigns[0].placements.map((placement: any, index: number) => (
+                    {firstCampaignPlacements.map((placement: any, index: number) => (
                       <TableRow key={index}>
-                        <TableCell className="font-medium">{placement.placement}</TableCell>
+                        <TableCell className="font-medium">
+                          {placement.placement || [placement.publisherPlatform, placement.platformPosition].filter(Boolean).join(' / ')}
+                        </TableCell>
                         <TableCell className="text-right">{placement.impressions.toLocaleString()}</TableCell>
                         <TableCell className="text-right">{placement.clicks.toLocaleString()}</TableCell>
                         <TableCell className="text-right">${placement.spend.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{placement.conversions.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{Number(placement.conversions || 0).toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
+            </>
+          )}
             </TabsContent>
 
             <TabsContent value="kpis" className="space-y-6 fade-in">

@@ -354,7 +354,7 @@ describe("source safety regression guards", () => {
   it("Instagram selected-campaign updates fail closed and clear stale daily rows only after selection changes", () => {
     const routesSource = readRoutesSource();
     const routeStart = routesSource.indexOf('app.patch("/api/instagram/:campaignId/selected-campaigns"');
-    const routeEnd = routesSource.indexOf("/**\n   * Transfer Meta connection", routeStart);
+    const routeEnd = routesSource.indexOf("/**\n   * Delete Instagram connection", routeStart);
     const route = routesSource.slice(routeStart, routeEnd);
 
     expect(routeStart).toBeGreaterThanOrEqual(0);
@@ -370,6 +370,32 @@ describe("source safety regression guards", () => {
     expect(route).not.toContain("storage.createInstagramConnection");
     expect(route).not.toContain("upsertInstagramDailyMetrics");
     expect(route).not.toContain("refreshInstagram");
+  });
+
+  it("Instagram disconnect route is campaign-scoped and fails closed when no row is deleted", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.delete("/api/instagram/:campaignId/connection"');
+    const routeEnd = routesSource.indexOf("/**\n   * Transfer Meta connection", routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(routeStart).toBeGreaterThanOrEqual(0);
+    expect(route).toContain("ensureCampaignAccess");
+    expect(route.indexOf("ensureCampaignAccess")).toBeLessThan(route.indexOf("storage.getInstagramConnection"));
+    expect(route.indexOf("storage.getInstagramConnection")).toBeLessThan(route.indexOf("storage.deleteInstagramConnection"));
+    expect(route).toContain("Instagram connection not found");
+    expect(route).toContain("const deleted = await storage.deleteInstagramConnection(parsedId.data);");
+    expect(route).not.toContain("storage.deleteInstagramDailyMetrics");
+    expect(route).not.toContain("upsertInstagramDailyMetrics");
+    expect(route).not.toContain("refreshInstagram");
+
+    const storageSource = readStorageSource();
+    const methodStart = storageSource.indexOf("async deleteInstagramConnection(campaignId: string)");
+    const methodEnd = storageSource.indexOf("async deleteInstagramDailyMetrics", methodStart);
+    const method = storageSource.slice(methodStart, methodEnd);
+
+    expect(method).toContain("db.transaction");
+    expect(method).toContain("eq(instagramConnections.campaignId, campaignId)");
+    expect(method).toContain("tx.delete(instagramDailyMetrics).where(eq(instagramDailyMetrics.campaignId, campaignId))");
   });
 
   it("ad-platform spend routes preserve source identity for Meta and Google Ads edits", () => {

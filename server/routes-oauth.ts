@@ -19653,6 +19653,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * Delete Instagram connection
+   */
+  app.delete("/api/instagram/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getInstagramConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Instagram connection not found" });
+      }
+
+      const deleted = await storage.deleteInstagramConnection(parsedId.data);
+      if (!deleted) {
+        return res.status(404).json({ error: "Instagram connection not found" });
+      }
+
+      res.json({ success: true, message: "Instagram connection deleted" });
+    } catch (error: any) {
+      console.error('[Instagram] Delete connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete Instagram connection' });
+    }
+  });
+
+  /**
    * Transfer Meta connection from temporary campaign to real campaign
    */
   app.post("/api/meta/transfer-connection", async (req, res) => {

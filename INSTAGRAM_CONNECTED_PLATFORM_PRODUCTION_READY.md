@@ -21,7 +21,7 @@ This table is the single source of truth for what is done, pending, and where ea
 | 4A | Read-only Instagram connection/status route | Done and pushed; user validation pending | Backend route only; no UI |
 | 4B | Backend test-mode connection route requiring selected Instagram campaigns | Done and pushed; user validation passed by local checks | Backend route only; no UI |
 | 4C | Backend selected-campaign update route for an existing connection | Done and pushed; user validation pending | Backend route only; no UI |
-| 4D | Backend disconnect route | Pending | Backend route only; no UI |
+| 4D | Backend disconnect route | Implemented locally; user validation pending | Backend route only; no UI |
 | 4E | Backend Instagram campaign-list/selector contract | Pending | Backend route only; no UI |
 | 4F | Commit 4 backend contract finalization and validation docs | Pending | None |
 | 5A | Create Campaign platform option only, disabled/hidden behind backend readiness guard if needed | Pending | Create Campaign UI option only |
@@ -103,6 +103,8 @@ Commit 4B backend test-mode connection route is implemented locally. It requires
 
 Commit 4C backend selected-campaign update route is implemented locally. It requires an existing Instagram connection and a non-empty selected campaign list, clears Instagram daily rows only when the selected scope changes, and still does not expose UI, refresh, aggregate, or live OAuth behavior.
 
+Commit 4D backend disconnect route is implemented locally. It requires campaign access, fails closed when no Instagram connection exists, deletes via storage cleanup, and still does not expose UI, refresh, aggregate, or live OAuth behavior.
+
 ## Root Cause Analysis
 
 The current gap is not one isolated UI bug. It is a missing source contract and lifecycle implementation:
@@ -115,6 +117,7 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 4A, `server/routes-oauth.ts` had no Instagram connection/status route; Commit 4A adds a read-only status route.
 - Before Commit 4B, there was no backend write path to create an Instagram source contract row; Commit 4B adds a test-mode-only route that requires selected campaigns before writing and still adds no live OAuth, analytics, refresh, revenue, KPI, Benchmark, or report route.
 - Before Commit 4C, selected Instagram campaign scope could only be set by replacing the whole test connection; Commit 4C adds a backend selected-campaign update route for an existing connection and clears stale Instagram daily rows when that scope changes.
+- Before Commit 4D, there was no backend disconnect route for the Instagram source contract; Commit 4D adds a campaign-access-guarded disconnect route that delegates source and daily-row cleanup to storage.
 - `server/scheduler.ts` and platform schedulers have no Instagram refresh or snapshot input.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`, but no Instagram resolver currently supplies one.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
@@ -505,6 +508,23 @@ Commit 4C validation:
 - Route clears stale daily rows before updating the selected scope only when the selection changes.
 - Route does not call create, daily upsert, or refresh paths.
 
+Commit 4D smallest safe backend slice:
+
+- Add `DELETE /api/instagram/:campaignId/connection`.
+- Require campaign access before reading or deleting the connection.
+- Return `404` when no Instagram connection exists.
+- Delete through `storage.deleteInstagramConnection` so connection and daily-row cleanup stay centralized.
+- Do not call daily metric cleanup directly from the route.
+- Do not add UI, update Connected Platforms, refresh provider data, seed metrics, or feed aggregate/report paths.
+
+Commit 4D validation:
+
+- Route is guarded by `ensureCampaignAccess`.
+- Route reads the connection before delete and fails closed when none exists.
+- Route delegates cleanup to `storage.deleteInstagramConnection`.
+- Storage delete removes `instagram_daily_metrics` for only the campaign being disconnected.
+- Route does not call daily upsert or refresh paths.
+
 Tasks:
 
 - Add an Instagram connection flow component or narrowly scoped Meta API adapter flow.
@@ -529,10 +549,14 @@ Status:
 - [x] Commit 4C implemented locally: selected-campaign update route requires existing connection and non-empty selected IDs.
 - [x] Commit 4C implemented locally: stale daily row cleanup on selected-scope change.
 - [x] Commit 4C implemented locally: source-safety regression coverage.
+- [x] Commit 4D implemented locally: disconnect route is campaign-access guarded and fails closed.
+- [x] Commit 4D implemented locally: disconnect delegates connection and daily-row cleanup to storage.
+- [x] Commit 4D implemented locally: source-safety regression coverage.
 - [ ] Full connection flow not started.
 - [ ] User validation pending for Commit 4A.
 - [ ] User validation pending for Commit 4B.
 - [ ] User validation pending for Commit 4C.
+- [ ] User validation pending for Commit 4D.
 
 ### Details For Commits 5A-5E: Create Campaign Flow
 
@@ -867,7 +891,7 @@ Proven:
 - The existing architecture requires new main Connected Platforms to plug into Campaign DeepDive through the shared connected-source aggregate contract.
 - The current aggregate can consume generic future `platformSources`.
 - The current Create Campaign and Connected Platforms paths do not expose Instagram.
-- The current scheduler/report paths do not include Instagram lifecycle support; schema/storage foundation exists locally after Commit 3, a read-only backend status route exists locally after Commit 4A, a backend test-mode source creation route exists locally after Commit 4B, and a backend selected-campaign update route exists locally after Commit 4C.
+- The current scheduler/report paths do not include Instagram lifecycle support; schema/storage foundation exists locally after Commit 3, a read-only backend status route exists locally after Commit 4A, a backend test-mode source creation route exists locally after Commit 4B, a backend selected-campaign update route exists locally after Commit 4C, and a backend disconnect route exists locally after Commit 4D.
 - Meta/Facebook currently has Instagram-related placement concepts, but not a standalone Instagram source contract.
 - Instagram Commit 1 documentation and acceptance-contract validation passed after user review.
 - Instagram Commit 2 API/source-contract research and local design trace passed user validation.
@@ -875,6 +899,7 @@ Proven:
 - Instagram Commit 4A read-only backend connection/status route is implemented locally without UI, write, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
 - Instagram Commit 4B backend test-mode connection route is implemented locally without UI, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
 - Instagram Commit 4C backend selected-campaign update route is implemented locally without UI, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
+- Instagram Commit 4D backend disconnect route is implemented locally without UI, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
 
 Partially reviewed:
 
@@ -907,6 +932,7 @@ Implementation:
 - [x] Add read-only connection/status route foundation.
 - [x] Add backend test-mode connection route requiring selected Instagram campaigns.
 - [x] Add backend selected-campaign update route requiring an existing Instagram connection.
+- [x] Add backend disconnect route.
 - [ ] Add write connection flow.
 - [ ] Add Create Campaign integration.
 - [ ] Add Connected Platforms integration.
@@ -926,6 +952,7 @@ Evidence:
 - [x] Commit 4A local read-only connection/status route implementation.
 - [x] Commit 4B local backend test-mode connection route implementation.
 - [x] Commit 4C local backend selected-campaign update route implementation.
+- [x] Commit 4D local backend disconnect route implementation.
 - [ ] Local test-mode Create Campaign validation.
 - [ ] Local test-mode Connected Platforms validation.
 - [ ] Local Campaign DeepDive aggregate validation.
@@ -958,3 +985,4 @@ Evidence:
 - Local implementation complete for Instagram Commit 4A read-only connection/status route; user validation is pending.
 - Local implementation complete for Instagram Commit 4B backend test-mode connection route; user validation is pending.
 - Local implementation complete for Instagram Commit 4C backend selected-campaign update route; user validation is pending.
+- Local implementation complete for Instagram Commit 4D backend disconnect route; user validation is pending.

@@ -314,6 +314,24 @@ describe("source safety regression guards", () => {
     }
   });
 
+  it("Instagram connection status is campaign-scoped, read-only, and token-safe", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.get("/api/instagram/:campaignId/connection"');
+    const routeEnd = routesSource.indexOf("/**\n   * Transfer Meta connection", routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(routeStart).toBeGreaterThanOrEqual(0);
+    expect(route).toContain("ensureCampaignAccess");
+    expect(route.indexOf("ensureCampaignAccess")).toBeLessThan(route.indexOf("storage.getInstagramConnection"));
+    expect(route).toContain("selectedCampaignIds");
+    expect(route).not.toContain("storage.createInstagramConnection");
+    expect(route).not.toContain("storage.updateInstagramConnection");
+    expect(route).not.toContain("storage.deleteInstagramConnection");
+    expect(route).not.toContain("accessToken:");
+    expect(route).not.toContain("refreshToken:");
+    expect(route).not.toContain("encryptedTokens:");
+  });
+
   it("ad-platform spend routes preserve source identity for Meta and Google Ads edits", () => {
     const routesSource = readRoutesSource();
     const manualStart = routesSource.indexOf('app.post("/api/campaigns/:id/spend/process/manual"');

@@ -19497,6 +19497,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * Get Instagram connection status
+   */
+  app.get("/api/instagram/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getInstagramConnection(parsedId.data);
+      if (!connection) {
+        return res.json({ connected: false, selectedCampaignIds: [] });
+      }
+
+      const selectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+
+      res.json({
+        connected: true,
+        adAccountId: connection.adAccountId,
+        adAccountName: connection.adAccountName,
+        method: connection.method,
+        selectedCampaignIds,
+        publisherPlatformFilter: connection.publisherPlatformFilter,
+        sourceContractVersion: connection.sourceContractVersion,
+        lastRefreshAt: connection.lastRefreshAt,
+        spendOnly: connection.spendOnly,
+      });
+    } catch (error: any) {
+      console.error('[Instagram] Get connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to get connection status' });
+    }
+  });
+
+  /**
    * Transfer Meta connection from temporary campaign to real campaign
    */
   app.post("/api/meta/transfer-connection", async (req, res) => {

@@ -2169,7 +2169,7 @@ export default function MetaAnalytics() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid gap-4 md:grid-cols-4">
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                       <Card>
                         <CardContent className="p-5">
                           <div className="text-sm font-medium text-muted-foreground/70">Spend</div>
@@ -2179,6 +2179,42 @@ export default function MetaAnalytics() {
                           <div className="text-xs text-muted-foreground/70 mt-1">Source: Meta Ads</div>
                         </CardContent>
                       </Card>
+                      <Card>
+                        <CardContent className="p-5">
+                          <div className="text-sm font-medium text-muted-foreground/70">Total Revenue</div>
+                          <div className="text-2xl font-bold text-foreground">
+                            {hasMetaAttributedRevenue ? fmtCurrency(metaAttributedRevenue) : "Not connected"}
+                          </div>
+                          <div className="text-xs text-muted-foreground/70 mt-1">Imported Meta attributed revenue</div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-5">
+                          <div className="text-sm font-medium text-muted-foreground/70">Profit</div>
+                          <div className={`text-2xl font-bold ${hasMetaAttributedRevenue && metaAttributedProfit < 0 ? 'text-red-600' : 'text-foreground'}`}>
+                            {hasMetaAttributedRevenue ? fmtCurrency(metaAttributedProfit) : "-"}
+                          </div>
+                          <div className="text-xs text-muted-foreground/70 mt-1">Attributed revenue - spend</div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-5">
+                          <div className="text-sm font-medium text-muted-foreground/70">ROAS</div>
+                          <div className="text-2xl font-bold text-foreground">
+                            {hasMetaAttributedRevenue ? `${metaAttributedRoas.toFixed(2)}x` : "-"}
+                          </div>
+                          <div className="text-xs text-muted-foreground/70 mt-1">Attributed revenue / spend</div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-5">
+                          <div className="text-sm font-medium text-muted-foreground/70">ROI</div>
+                          <div className={`text-2xl font-bold ${hasMetaAttributedRevenue && metaAttributedRoi < 0 ? 'text-red-600' : 'text-foreground'}`}>
+                            {hasMetaAttributedRevenue ? formatPct(metaAttributedRoi) : "-"}
+                          </div>
+                          <div className="text-xs text-muted-foreground/70 mt-1">Attributed revenue ROI</div>
+                        </CardContent>
+                      </Card>
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-border text-xs text-muted-foreground/70">
@@ -2186,6 +2222,12 @@ export default function MetaAnalytics() {
                       <div className="grid gap-1">
                         <div>
                           <span className="font-medium">Spend</span>: Meta Graph API
+                        </div>
+                        <div>
+                          <span className="font-medium">Revenue</span>: {hasMetaAttributedRevenue ? `Meta attributed revenue sources (${activeMetaRevenueSources.length})` : "Not connected"}
+                        </div>
+                        <div>
+                          <span className="font-medium">Profit, ROAS, ROI</span>: {hasMetaAttributedRevenue ? "Meta attributed revenue + Meta spend" : "Unavailable until Meta attributed revenue is connected"}
                         </div>
                       </div>
                     </div>
@@ -2502,7 +2544,7 @@ export default function MetaAnalytics() {
                       group: 'performance',
                     });
                   }
-                  if (!revenueSummary?.hasRevenueTracking) {
+                  if (!hasMetaAttributedRevenue) {
                     allInsights.push({
                       id: 'no-revenue',
                       title: 'Revenue Tracking Not Connected',

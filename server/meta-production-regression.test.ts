@@ -226,7 +226,7 @@ describe("Meta production readiness regression guard", () => {
     expect(analyticsRoute).toContain("metaClient.getPlacementInsights(campaign.id, dateRange).catch(() => [])");
   });
 
-  it("keeps Meta imported revenue limited to the Overview Total Revenue card until campaign attribution exists", () => {
+  it("keeps Meta imported revenue source-safe across Overview and Insights", () => {
     const page = read("client", "src", "pages", "meta-analytics.tsx");
     const revenueSection = sliceBetween(
       page,
@@ -251,6 +251,15 @@ describe("Meta production readiness regression guard", () => {
     expect(page).not.toContain("const revenue = hasRev ? conversions * convValue : 0");
     expect(page).not.toContain('<SelectItem value="revenue">Revenue</SelectItem>');
     expect(page).not.toContain('<SelectItem value="roas">ROAS</SelectItem>');
+    expect(insightsSection).toContain("Total Revenue");
+    expect(insightsSection).toContain('hasMetaAttributedRevenue ? fmtCurrency(metaAttributedRevenue) : "Not connected"');
+    expect(insightsSection).toContain("Profit");
+    expect(insightsSection).toContain("ROAS");
+    expect(insightsSection).toContain("ROI");
+    expect(insightsSection).toContain("Meta attributed revenue + Meta spend");
+    expect(insightsSection).toContain("Unavailable until Meta attributed revenue is connected");
+    expect(insightsSection).toContain("if (!hasMetaAttributedRevenue)");
+    expect(insightsSection).not.toContain("if (!revenueSummary?.hasRevenueTracking)");
     expect(insightsSection).not.toContain("Revenue metrics appear only when a Meta revenue source is connected.");
     expect(insightsSection).not.toContain("Connect a revenue source to unlock ROAS, ROI, and revenue-dependent KPIs.");
   });

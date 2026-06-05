@@ -17,11 +17,11 @@ Meta/Facebook must be treated as a campaign-scoped main paid-media connected sou
 
 ## Current Status
 
-Meta/Facebook is locally production-ready for the implemented source-backed test-mode path except the newly identified Meta Insights multi-campaign Trends alignment gap tracked as Commit 20. Meta Commit 21 has been implemented and locally validated; user/browser validation is pending.
+Meta/Facebook is locally production-ready for the implemented source-backed test-mode path except the newly identified Meta Insights multi-campaign Trends alignment gap tracked as Commit 20. Meta Commit 21 user/browser validation passed. Meta Commit 22 has been implemented and locally validated; user/browser validation is pending.
 
 This tracker is the planning and implementation artifact. The implemented local/test-mode Meta path has been hardened against the source-backed pattern used by LinkedIn and Google Ads. Live OAuth and deployed scheduled-report behavior still require production-like evidence.
 
-Meta Commit 19 has been implemented locally. Local validation and user/browser validation passed. Meta Commit 21 fixed the Meta Ad Comparison ranking/copy alignment gap locally. Meta Commit 20 remains pending: Insights Trends currently reads daily history for only the first selected Meta campaign, while Overview totals use all selected Meta campaigns. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
+Meta Commit 19 has been implemented locally. Local validation and user/browser validation passed. Meta Commit 21 fixed the Meta Ad Comparison ranking/copy alignment gap and user/browser validation passed. Meta Commit 22 restores source-gated Executive financial cards in Meta Insights. Meta Commit 20 remains pending: Insights Trends currently reads daily history for only the first selected Meta campaign, while Overview totals use all selected Meta campaigns. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
 
 Verified current foundations:
 
@@ -50,6 +50,7 @@ Verified current foundations:
 - Commit 19 adds exact Meta campaign mapping for imported revenue sources and shows Campaign Breakdown `Total Revenue` only when mapped revenue exists for the selected Meta campaign.
 - Meta Insights KPI/Benchmark cards use the same Summary and live metric helper as Overview, but the Trends section still needs selected-campaign aggregate alignment before multi-campaign Insights can be considered production-ready.
 - Commit 21 makes Meta Ad Comparison ranking cards and the top-by-spend chart source-backed from the same selected-campaign `campaigns` array used by Overview.
+- Commit 22 makes Meta Insights Executive financials show source-gated Total Revenue, Profit, ROAS, and ROI when Meta attributed revenue exists, while keeping daily Trends revenue/ROAS options removed.
 
 Verified production-readiness gaps:
 
@@ -947,7 +948,7 @@ Root cause analysis:
   - a `Match GA4 Revenue` header action,
   - a per-campaign `GA4 Revenue Attribution` table,
   - an `Imported Meta Revenue Active` secondary card with ROAS, ROI, and Profit,
-  - Insights financial cards for Total Revenue, ROAS, and ROI,
+- unproven Insights financial cards for Total Revenue, ROAS, and ROI,
   - daily trend options for Revenue and ROAS derived from conversions and a conversion value.
 - These surfaces can imply per-campaign or per-day revenue attribution that has not been proven for Meta imported revenue.
 - The smallest safe fix is frontend-only: leave the Overview Total Revenue card, plus action, Sources link, and source modal intact, but remove the visible unproven revenue/ROAS/ROI surfaces. This does not change stored revenue sources, revenue import routes, scheduler behavior, campaign totals, KPI/Benchmark storage, reports, GA4, LinkedIn, or Google Ads behavior.
@@ -961,7 +962,7 @@ Validation:
 - Confirm Campaign Breakdown does not show Revenue, ROAS, ROI, or Profit.
 - Confirm the header no longer shows `Match GA4 Revenue`.
 - Confirm the page no longer shows `GA4 Revenue Attribution`.
-- Confirm Insights no longer shows revenue, ROAS, or ROI cards.
+- Confirm Insights does not show unproven revenue, ROAS, or ROI trend/secondary cards.
 - Confirm Trends does not offer Revenue or ROAS as metrics.
 
 Status:
@@ -969,7 +970,7 @@ Status:
 - [x] Completed locally: removed the Meta `Match GA4 Revenue` header action.
 - [x] Completed locally: removed the per-campaign `GA4 Revenue Attribution` table from the Meta page.
 - [x] Completed locally: removed the secondary `Imported Meta Revenue Active` financial card.
-- [x] Completed locally: removed Insights revenue, ROAS, and ROI cards outside the Overview Total Revenue card.
+- [x] Completed locally: removed unproven Insights revenue, ROAS, and ROI cards outside the Overview Total Revenue card. Commit 22 later restored source-gated aggregate Executive financial cards.
 - [x] Completed locally: removed derived daily Revenue and ROAS trend options.
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
@@ -1098,6 +1099,55 @@ Status:
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
+- [x] User/browser validation passed.
+
+Deferred note:
+
+- Some remaining Meta Ad Comparison polish can be revisited later after broader paid-social source refinement such as TikTok and Instagram. This is deferred follow-up polish, not a blocker for the Commit 21 source-backed ranking fix.
+
+### Meta Commit 22: Insights Executive Financials Revenue Metrics
+
+Goal:
+
+- Restore Meta Insights Executive financial metrics in a source-safe way.
+
+Root cause analysis:
+
+- Meta Overview and KPI/Benchmark current-value logic already compute `metaAttributedRevenue`, `metaAttributedProfit`, `metaAttributedRoas`, `metaAttributedRoi`, and `metaAttributedProfitMargin` from active Meta-scoped revenue sources.
+- Commit 18 correctly removed unproven revenue/ROAS/ROI surfaces that implied per-campaign or per-day attribution before exact mapping existed.
+- The current Meta Insights Executive financials JSX still rendered only Spend, even when a valid Meta attributed revenue source existed.
+- This made the Insights tab look incomplete and inconsistent with the existing Meta financial model.
+- The safe boundary is aggregate Executive financials only: Total Revenue, Profit, ROAS, and ROI can use imported Meta attributed revenue plus Meta spend when a Meta revenue source exists. Daily Trends and Ad Comparison still must not show revenue, ROAS, ROI, or Profit.
+
+Smallest safe implementation strategy:
+
+- Add Total Revenue, Profit, ROAS, and ROI cards to Meta Insights Executive financials.
+- Gate revenue-dependent values behind `hasMetaAttributedRevenue`.
+- Show `Not connected` or `-` when no Meta attributed revenue source exists.
+- Update the shared `Sources used` footer to state the provenance for spend, revenue, and derived financial metrics.
+- Keep daily Trends metric options unchanged and do not add Revenue or ROAS trend lines.
+- Do not change Overview, Campaign Breakdown, Ad Comparison, KPI/Benchmark storage, reports, scheduler behavior, revenue import routes, GA4, LinkedIn, or Google Ads.
+
+Validation:
+
+- Open Meta Insights.
+- Confirm Executive financials shows Spend.
+- If no Meta revenue source exists, confirm Total Revenue says `Not connected` and Profit, ROAS, and ROI show `-`.
+- Add or use an existing Meta revenue source.
+- Confirm Total Revenue, Profit, ROAS, and ROI populate from Meta attributed revenue and Meta spend.
+- Confirm the Trends metric dropdown still does not include Revenue or ROAS.
+- Confirm Ad Comparison still does not show Revenue, ROAS, ROI, or Profit.
+
+Status:
+
+- [x] Root cause traced locally.
+- [x] Completed locally: Meta Insights Executive financials now renders Total Revenue, Profit, ROAS, and ROI.
+- [x] Completed locally: revenue-dependent cards are gated by `hasMetaAttributedRevenue`.
+- [x] Completed locally: `Sources used` explains Meta spend and Meta attributed revenue provenance.
+- [x] Completed locally: Trends revenue/ROAS options remain removed.
+- [x] Completed locally: regression coverage updated in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
 - [ ] User/browser validation pending.
 
 ## Validation Evidence Required Before Production-Ready Claim
@@ -1134,14 +1184,15 @@ Must be proven in deployed or production-like environment before live OAuth is c
 Outstanding required implementation work:
 
 - Meta Commit 20 is pending: align Meta Insights Trends with the same selected-campaign aggregate scope used by Overview.
+- Deferred follow-up: revisit remaining Meta Ad Comparison polish after broader paid-social source refinement such as TikTok and Instagram.
 
 Outstanding evidence:
 
-- Meta Commit 21 user/browser validation is pending.
+- Meta Commit 22 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 - Deployed scheduled Meta report email receipt is not available locally.
 
 ## Current Handoff
 
-The next smallest safest steps are browser validation for Meta Commit 21 and implementation of Meta Commit 20. Commit 21 should confirm Ad Comparison rankings use selected Meta campaign values. Commit 20 aligns Insights Trends with all selected Meta campaigns. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.
+The next smallest safest steps are browser validation for Meta Commit 22 and implementation of Meta Commit 20. Commit 22 should confirm Meta Insights Executive financials show source-gated Total Revenue, Profit, ROAS, and ROI. Commit 20 aligns Insights Trends with all selected Meta campaigns. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.

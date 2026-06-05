@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ArrowLeft, ArrowUpDown, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Target, Users, Video, Activity, Plus, Pencil, Trash2, CheckCircle2, AlertCircle, AlertTriangle, Filter, Loader2, BarChart3 } from "lucide-react";
+import { ArrowLeft, ArrowUpDown, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Target, Users, Video, Activity, Plus, Pencil, Trash2, CheckCircle2, AlertCircle, AlertTriangle, Filter } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -403,61 +403,6 @@ export default function MetaAnalytics() {
     },
   });
 
-  // Fetch Meta daily metrics for campaign breakdown (GA4 revenue attribution)
-  const { data: metaDailyMetricsResp } = useQuery({
-    queryKey: ['/api/meta', campaignId, 'daily-metrics'],
-    queryFn: async () => {
-      const end = new Date().toISOString().slice(0, 10);
-      const start = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
-      const resp = await fetch(`/api/meta/${campaignId}/daily-metrics?startDate=${start}&endDate=${end}`);
-      if (!resp.ok) return { metrics: [] };
-      return resp.json();
-    },
-    enabled: !!campaignId,
-  });
-
-  // Campaign breakdown from daily metrics (for GA4 ROAS table)
-  const metaCampaignBreakdown = useMemo(() => {
-    const metrics = metaDailyMetricsResp?.metrics || [];
-    const byName = new Map<string, any>();
-    for (const m of metrics) {
-      const name = (m as any).metaCampaignName || (m as any).metaCampaignId || 'Unknown Campaign';
-      const existing = byName.get(name) || { name, impressions: 0, clicks: 0, spend: 0, conversions: 0, ga4Revenue: 0, hasGa4Revenue: false, days: 0 };
-      existing.impressions += Number(m.impressions || 0);
-      existing.clicks += Number(m.clicks || 0);
-      existing.spend += parseFloat(String(m.spend || '0'));
-      existing.conversions += Number(m.conversions || 0);
-      if ((m as any).ga4Revenue) {
-        existing.ga4Revenue += parseFloat((m as any).ga4Revenue || '0');
-        existing.hasGa4Revenue = true;
-      }
-      existing.days++;
-      byName.set(name, existing);
-    }
-    return Array.from(byName.values()).map(c => ({
-      ...c,
-      ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
-      cpc: c.clicks > 0 ? c.spend / c.clicks : 0,
-      conversionRate: c.clicks > 0 ? (c.conversions / c.clicks) * 100 : 0,
-      ga4Roas: c.hasGa4Revenue && c.spend > 0 ? c.ga4Revenue / c.spend : null,
-    })).sort((a, b) => b.spend - a.spend);
-  }, [metaDailyMetricsResp]);
-
-  const enrichMetaGA4Mutation = useMutation({
-    mutationFn: async () => {
-      const resp = await fetch(`/api/meta/${campaignId}/enrich-ga4-revenue`, { method: 'POST' });
-      if (!resp.ok) throw new Error('Failed to match GA4 revenue');
-      return resp.json();
-    },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/meta', campaignId, 'daily-metrics'] });
-      toast({ title: 'GA4 Revenue Matched', description: `${data.matched} of ${data.matched + (data.unmatched?.length || 0)} campaigns matched.` });
-    },
-    onError: (err: any) => {
-      toast({ title: 'GA4 Match Failed', description: err.message, variant: 'destructive' });
-    },
-  });
-
   // Fetch Meta daily data for time-series (Daily/7d/30d)
   const firstMetaCampaignId = analyticsData?.campaigns?.[0]?.campaign?.id;
   const { data: metaDailyResp, isLoading: metaDailyLoading } = useQuery({
@@ -474,8 +419,6 @@ export default function MetaAnalytics() {
   // NOTE: These useMemo hooks MUST be before conditional returns to satisfy Rules of Hooks
   const metaDailySeries = useMemo(() => {
     const raw = Array.isArray(metaDailyResp?.dailyInsights) ? metaDailyResp.dailyInsights : [];
-    const hasRev = !!revenueSummary?.hasRevenueTracking;
-    const convValue = revenueSummary?.conversionValue || 0;
 
     const byDate = raw
       .map((r: any) => {
@@ -489,9 +432,7 @@ export default function MetaAnalytics() {
         const cpc = clicks > 0 ? spend / clicks : 0;
         const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
         const conversionRate = clicks > 0 ? (conversions / clicks) * 100 : 0;
-        const revenue = hasRev ? conversions * convValue : 0;
-        const roas = spend > 0 ? revenue / spend : 0;
-        return { date, impressions, reach, clicks, conversions, spend, ctr, cpc, cpm, conversionRate, revenue, roas };
+        return { date, impressions, reach, clicks, conversions, spend, ctr, cpc, cpm, conversionRate };
       })
       .filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(r.date))
       .sort((a: any, b: any) => a.date.localeCompare(b.date));
@@ -508,23 +449,21 @@ export default function MetaAnalytics() {
             acc.clicks += r.clicks;
             acc.conversions += r.conversions;
             acc.spend += r.spend;
-            acc.revenue += r.revenue;
             return acc;
           },
-          { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 }
+          { impressions: 0, clicks: 0, conversions: 0, spend: 0 }
         );
         const ctr = sums.impressions > 0 ? (sums.clicks / sums.impressions) * 100 : 0;
         const cpc = sums.clicks > 0 ? sums.spend / sums.clicks : 0;
         const cpm = sums.impressions > 0 ? (sums.spend / sums.impressions) * 1000 : 0;
         const conversionRate = sums.clicks > 0 ? (sums.conversions / sums.clicks) * 100 : 0;
-        const roas = sums.spend > 0 ? sums.revenue / sums.spend : 0;
-        out.push({ date: byDate[i].date, ...sums, ctr, cpc, cpm, conversionRate, roas });
+        out.push({ date: byDate[i].date, ...sums, ctr, cpc, cpm, conversionRate });
       }
       return out;
     };
 
-    return { daily: byDate, rolling7: rolling(7), rolling30: rolling(30), hasRevenueTracking: hasRev };
-  }, [metaDailyResp, revenueSummary]);
+    return { daily: byDate, rolling7: rolling(7), rolling30: rolling(30) };
+  }, [metaDailyResp]);
 
   const metaInsightsRollups = useMemo(() => {
     const byDate = metaDailySeries.daily;
@@ -540,17 +479,15 @@ export default function MetaAnalytics() {
           acc.clicks += r.clicks;
           acc.conversions += r.conversions;
           acc.spend += r.spend;
-          acc.revenue += r.revenue;
           return acc;
         },
-        { impressions: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 }
+        { impressions: 0, clicks: 0, conversions: 0, spend: 0 }
       );
       const ctr = sums.impressions > 0 ? (sums.clicks / sums.impressions) * 100 : 0;
       const cpc = sums.clicks > 0 ? sums.spend / sums.clicks : 0;
       const cpm = sums.impressions > 0 ? (sums.spend / sums.impressions) * 1000 : 0;
       const conversionRate = sums.clicks > 0 ? (sums.conversions / sums.clicks) * 100 : 0;
-      const roas = sums.spend > 0 ? sums.revenue / sums.spend : 0;
-      return { ...sums, ctr, cpc, cpm, conversionRate, roas, startDate: slice[0]?.date || null, endDate: slice[slice.length - 1]?.date || null, days: slice.length };
+      return { ...sums, ctr, cpc, cpm, conversionRate, startDate: slice[0]?.date || null, endDate: slice[slice.length - 1]?.date || null, days: slice.length };
     };
 
     const last7 = rollup(7, 0);
@@ -571,8 +508,6 @@ export default function MetaAnalytics() {
         cpc7: prior7.cpc > 0 ? ((last7.cpc - prior7.cpc) / prior7.cpc) * 100 : 0,
         cpm7: prior7.cpm > 0 ? ((last7.cpm - prior7.cpm) / prior7.cpm) * 100 : 0,
         conversionRate7: prior7.conversionRate > 0 ? ((last7.conversionRate - prior7.conversionRate) / prior7.conversionRate) * 100 : 0,
-        revenue7: deltaPct(last7.revenue, prior7.revenue),
-        roas7: prior7.roas > 0 ? ((last7.roas - prior7.roas) / prior7.roas) * 100 : 0,
         impressions30: deltaPct(last30.impressions, prior30.impressions),
         clicks30: deltaPct(last30.clicks, prior30.clicks),
         conversions30: deltaPct(last30.conversions, prior30.conversions),
@@ -581,8 +516,6 @@ export default function MetaAnalytics() {
         cpc30: prior30.cpc > 0 ? ((last30.cpc - prior30.cpc) / prior30.cpc) * 100 : 0,
         cpm30: prior30.cpm > 0 ? ((last30.cpm - prior30.cpm) / prior30.cpm) * 100 : 0,
         conversionRate30: prior30.conversionRate > 0 ? ((last30.conversionRate - prior30.conversionRate) / prior30.conversionRate) * 100 : 0,
-        revenue30: deltaPct(last30.revenue, prior30.revenue),
-        roas30: prior30.roas > 0 ? ((last30.roas - prior30.roas) / prior30.roas) * 100 : 0,
       },
     };
   }, [metaDailySeries]);
@@ -987,10 +920,6 @@ export default function MetaAnalytics() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => enrichMetaGA4Mutation.mutate()} disabled={enrichMetaGA4Mutation.isPending}>
-                  {enrichMetaGA4Mutation.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <BarChart3 className="w-3 h-3 mr-1" />}
-                  Match GA4 Revenue
-                </Button>
                 <Badge variant="outline" className="text-blue-600 border-blue-600">
                   Test Mode - Realistic Demo Data
                 </Badge>
@@ -1123,53 +1052,6 @@ export default function MetaAnalytics() {
               )}
             </CardContent>
           </Card>
-
-          {hasMetaAttributedRevenue && (
-            <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg text-green-800 dark:text-green-200">Imported Meta Revenue Active</CardTitle>
-                    <CardDescription>
-                      Imported Meta attributed revenue from connected sources.
-                    </CardDescription>
-                  </div>
-                  <Badge variant="default" className="bg-green-600">
-                    Imported
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <div>
-                    <p className="text-sm text-muted-foreground/70 mb-1">Total Revenue</p>
-                    <p className="text-3xl font-bold text-green-700 dark:text-green-300">
-                      {fmtCurrency(metaAttributedRevenue)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground/70 mb-1">ROAS</p>
-                    <p className="text-3xl font-bold">{metaAttributedRoas.toFixed(2)}x</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground/70 mb-1">ROI</p>
-                    <p className="text-3xl font-bold">
-                      {metaAttributedRoi.toFixed(1)}%
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground/70 mb-1">Profit</p>
-                    <p className={`text-3xl font-bold ${metaAttributedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {fmtCurrency(metaAttributedProfit)}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground/70 mt-4">
-                  Sources ({activeMetaRevenueSources.length})
-                </p>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Performance Metrics - Derived Metrics */}
           <Card className="mb-8">
@@ -1972,7 +1854,7 @@ export default function MetaAnalytics() {
                     <div className="space-y-2">
                       <div>
                         <p className="font-semibold text-green-600">Product Launch - Holiday Sale</p>
-                        <p className="text-xs text-muted-foreground/70">ROAS: 6.2x • CTR: 2.8%</p>
+                        <p className="text-xs text-muted-foreground/70">CTR: 2.8%</p>
                       </div>
                     </div>
                   </CardContent>
@@ -2209,55 +2091,6 @@ export default function MetaAnalytics() {
                 </Card>
               </div>
 
-              {/* GA4 Revenue Attribution Breakdown */}
-              {metaCampaignBreakdown.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>GA4 Revenue Attribution</CardTitle>
-                    <CardDescription>Campaign spend vs GA4-verified revenue. Click "Match GA4 Revenue" to populate.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="overflow-hidden border rounded-md">
-                      <div className="max-h-[480px] overflow-y-auto">
-                        <table className="w-full text-sm table-fixed">
-                          <thead className="sticky top-0 z-10 bg-muted border-b">
-                            <tr>
-                              <th className="text-left font-medium px-2 py-2 w-[40px]">#</th>
-                              <th className="text-left font-medium px-2 py-2">Campaign</th>
-                              <th className="text-right font-medium px-2 py-2 w-[100px]">Impressions</th>
-                              <th className="text-right font-medium px-2 py-2 w-[80px]">Clicks</th>
-                              <th className="text-right font-medium px-2 py-2 w-[90px]">Spend</th>
-                              <th className="text-right font-medium px-2 py-2 w-[100px]">Conversions</th>
-                              <th className="text-right font-medium px-2 py-2 w-[100px]">GA4 Revenue</th>
-                              <th className="text-right font-medium px-2 py-2 w-[90px]">GA4 ROAS</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {metaCampaignBreakdown.map((c: any, idx: number) => {
-                              const fmtC = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                              const fmtN = (v: number) => v.toLocaleString();
-                              return (
-                                <tr key={c.name || idx} className="border-b last:border-b-0">
-                                  <td className="px-2 py-2 text-muted-foreground tabular-nums">{idx + 1}</td>
-                                  <td className="px-2 py-2 truncate font-medium text-foreground" title={c.name}>{c.name}</td>
-                                  <td className="px-2 py-2 text-right tabular-nums">{fmtN(c.impressions)}</td>
-                                  <td className="px-2 py-2 text-right tabular-nums">{fmtN(c.clicks)}</td>
-                                  <td className="px-2 py-2 text-right tabular-nums">{fmtC(c.spend)}</td>
-                                  <td className="px-2 py-2 text-right tabular-nums">{fmtN(Math.round(c.conversions))}</td>
-                                  <td className="px-2 py-2 text-right tabular-nums">{c.ga4Roas !== null ? fmtC(c.ga4Revenue) : <span className="text-muted-foreground/70">—</span>}</td>
-                                  <td className={`px-2 py-2 text-right tabular-nums font-medium ${c.ga4Roas === null ? "text-muted-foreground/70" : c.ga4Roas >= 1 ? "text-emerald-600" : "text-red-600"}`}>
-                                    {c.ga4Roas !== null ? `${c.ga4Roas.toFixed(2)}x` : "—"}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </TabsContent>
 
             <TabsContent value="insights" className="space-y-6 fade-in">
@@ -2276,7 +2109,7 @@ export default function MetaAnalytics() {
                       <div className="flex-1">
                         <CardTitle>Executive financials</CardTitle>
                         <CardDescription>
-                          Spend comes from Meta imports. Revenue metrics appear only when a Meta revenue source is connected.
+                          Spend comes from Meta imports. Imported revenue is managed in the Overview Total Revenue card.
                         </CardDescription>
                       </div>
                     </div>
@@ -2292,39 +2125,6 @@ export default function MetaAnalytics() {
                           <div className="text-xs text-muted-foreground/70 mt-1">Source: Meta Ads</div>
                         </CardContent>
                       </Card>
-                      <Card>
-                        <CardContent className="p-5">
-                          <div className="text-sm font-medium text-muted-foreground/70">Total Revenue</div>
-                          <div className="text-2xl font-bold text-foreground">
-                            ${(revenueSummary?.hasRevenueTracking ? revenueSummary.totalRevenue : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </div>
-                          <div className="text-xs text-muted-foreground/70 mt-1">
-                            {revenueSummary?.hasRevenueTracking ? "From connected revenue source" : "Not connected"}
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="p-5">
-                          <div className="text-sm font-medium text-muted-foreground/70">ROAS</div>
-                          <div className="text-2xl font-bold text-foreground">
-                            {revenueSummary?.hasRevenueTracking && summary.totalSpend > 0
-                              ? (revenueSummary.totalRevenue / summary.totalSpend).toFixed(2)
-                              : '0.00'}x
-                          </div>
-                          <div className="text-xs text-muted-foreground/70 mt-1">Revenue ÷ Spend</div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="p-5">
-                          <div className="text-sm font-medium text-muted-foreground/70">ROI</div>
-                          <div className="text-2xl font-bold text-foreground">
-                            {revenueSummary?.hasRevenueTracking && summary.totalSpend > 0
-                              ? (((revenueSummary.totalRevenue - summary.totalSpend) / summary.totalSpend) * 100).toFixed(1)
-                              : '0.0'}%
-                          </div>
-                          <div className="text-xs text-muted-foreground/70 mt-1">(Revenue - Spend) ÷ Spend</div>
-                        </CardContent>
-                      </Card>
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-border text-xs text-muted-foreground/70">
@@ -2332,14 +2132,6 @@ export default function MetaAnalytics() {
                       <div className="grid gap-1">
                         <div>
                           <span className="font-medium">Spend</span>: Meta Graph API
-                        </div>
-                        <div>
-                          <span className="font-medium">Revenue</span>: {revenueSummary?.hasRevenueTracking
-                            ? (revenueSummary.conversionValueSource === 'webhook_events' ? 'Webhook Events'
-                              : revenueSummary.conversionValueSource === 'manual' ? 'Manual Entry'
-                              : revenueSummary.conversionValueSource === 'csv' ? 'CSV Import'
-                              : 'Connected revenue source')
-                            : "Not connected"}
                         </div>
                       </div>
                     </div>
@@ -2379,8 +2171,6 @@ export default function MetaAnalytics() {
                               <SelectItem value="cpc">CPC</SelectItem>
                               <SelectItem value="cpm">CPM</SelectItem>
                               <SelectItem value="conversionRate">Conversion Rate</SelectItem>
-                              {metaDailySeries.hasRevenueTracking && <SelectItem value="revenue">Revenue</SelectItem>}
-                              {metaDailySeries.hasRevenueTracking && <SelectItem value="roas">ROAS</SelectItem>}
                             </SelectContent>
                           </Select>
                         </div>
@@ -2415,10 +2205,9 @@ export default function MetaAnalytics() {
 
                           const formatChartValue = (v: any) => {
                             const n = Number(v || 0) || 0;
-                            if (insightsTrendMetric === 'spend' || insightsTrendMetric === 'revenue') return `$${n.toFixed(2)}`;
+                            if (insightsTrendMetric === 'spend') return `$${n.toFixed(2)}`;
                             if (insightsTrendMetric === 'ctr' || insightsTrendMetric === 'conversionRate') return `${formatPct(n)}`;
                             if (insightsTrendMetric === 'cpc' || insightsTrendMetric === 'cpm') return `$${n.toFixed(2)}`;
-                            if (insightsTrendMetric === 'roas') return `${n.toFixed(2)}x`;
                             return n.toLocaleString();
                           };
 
@@ -2433,7 +2222,7 @@ export default function MetaAnalytics() {
                                   <Legend />
                                   <Line type="monotone" dataKey={insightsTrendMetric} stroke="#7c3aed" strokeWidth={2} dot={false}
                                     name={(() => {
-                                      const labels: Record<string, string> = { spend: 'Spend', impressions: 'Impressions', clicks: 'Clicks', conversions: 'Conversions', ctr: 'CTR', cpc: 'CPC', cpm: 'CPM', conversionRate: 'Conv Rate', revenue: 'Revenue', roas: 'ROAS' };
+                                      const labels: Record<string, string> = { spend: 'Spend', impressions: 'Impressions', clicks: 'Clicks', conversions: 'Conversions', ctr: 'CTR', cpc: 'CPC', cpm: 'CPM', conversionRate: 'Conv Rate' };
                                       return labels[insightsTrendMetric] || insightsTrendMetric;
                                     })()} />
                                 </LineChart>
@@ -2452,7 +2241,7 @@ export default function MetaAnalytics() {
                                     <th className="text-left p-3 w-[38%]">Date</th>
                                     <th className="text-right p-3 w-[31%]">
                                       {(() => {
-                                        const labels: Record<string, string> = { spend: 'Spend', impressions: 'Impressions', clicks: 'Clicks', conversions: 'Conversions', ctr: 'CTR', cpc: 'CPC', cpm: 'CPM', conversionRate: 'Conv Rate', revenue: 'Revenue', roas: 'ROAS' };
+                                        const labels: Record<string, string> = { spend: 'Spend', impressions: 'Impressions', clicks: 'Clicks', conversions: 'Conversions', ctr: 'CTR', cpc: 'CPC', cpm: 'CPM', conversionRate: 'Conv Rate' };
                                         return labels[insightsTrendMetric] || 'Metric';
                                       })()}
                                     </th>
@@ -2478,9 +2267,8 @@ export default function MetaAnalytics() {
                                       const showDelta = !!prev && prevVal > 0;
 
                                       const formatValue = (key: string, v: number) => {
-                                        if (key === 'spend' || key === 'revenue' || key === 'cpc' || key === 'cpm') return `$${v.toFixed(2)}`;
+                                        if (key === 'spend' || key === 'cpc' || key === 'cpm') return `$${v.toFixed(2)}`;
                                         if (key === 'ctr' || key === 'conversionRate') return `${formatPct(v)}`;
-                                        if (key === 'roas') return `${v.toFixed(2)}x`;
                                         return v.toLocaleString();
                                       };
 
@@ -2518,7 +2306,7 @@ export default function MetaAnalytics() {
                                   <th className="text-left p-3 w-[38%]">Period</th>
                                   <th className="text-right p-3 w-[31%]">
                                     {(() => {
-                                      const labels: Record<string, string> = { spend: 'Spend', impressions: 'Impressions', clicks: 'Clicks', conversions: 'Conversions', ctr: 'CTR', cpc: 'CPC', cpm: 'CPM', conversionRate: 'Conv Rate', revenue: 'Revenue', roas: 'ROAS' };
+                                      const labels: Record<string, string> = { spend: 'Spend', impressions: 'Impressions', clicks: 'Clicks', conversions: 'Conversions', ctr: 'CTR', cpc: 'CPC', cpm: 'CPM', conversionRate: 'Conv Rate' };
                                       return labels[insightsTrendMetric] || 'Metric';
                                     })()}
                                   </th>
@@ -2544,9 +2332,8 @@ export default function MetaAnalytics() {
                                   const metricKey = insightsTrendMetric;
                                   const valueFor = (obj: any) => {
                                     const v = Number(obj?.[metricKey] ?? 0) || 0;
-                                    if (metricKey === 'spend' || metricKey === 'revenue' || metricKey === 'cpc' || metricKey === 'cpm') return `$${v.toFixed(2)}`;
+                                    if (metricKey === 'spend' || metricKey === 'cpc' || metricKey === 'cpm') return `$${v.toFixed(2)}`;
                                     if (metricKey === 'ctr' || metricKey === 'conversionRate') return `${formatPct(v)}`;
-                                    if (metricKey === 'roas') return `${v.toFixed(2)}x`;
                                     return v.toLocaleString();
                                   };
                                   const suffix = is7 ? '7' : '30';
@@ -2665,9 +2452,9 @@ export default function MetaAnalytics() {
                     allInsights.push({
                       id: 'no-revenue',
                       title: 'Revenue Tracking Not Connected',
-                      description: 'Without revenue tracking, ROAS and ROI calculations are unavailable.',
+                      description: 'Meta imported revenue is not connected.',
                       severity: 'low',
-                      recommendation: 'Connect a revenue source to unlock ROAS, ROI, and revenue-dependent KPIs.',
+                      recommendation: 'Use the Overview Total Revenue card to connect and review Meta attributed revenue.',
                       group: 'integrity',
                     });
                   }

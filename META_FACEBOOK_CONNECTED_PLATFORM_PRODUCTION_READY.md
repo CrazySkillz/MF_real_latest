@@ -21,7 +21,7 @@ Meta/Facebook is locally production-ready for the implemented source-backed test
 
 This tracker is the planning and implementation artifact. The implemented local/test-mode Meta path has been hardened against the source-backed pattern used by LinkedIn and Google Ads. Live OAuth and deployed scheduled-report behavior still require production-like evidence.
 
-Meta Commit 17 has been implemented locally. Local validation passed; user/browser validation is pending. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
+Meta Commit 18 has been implemented locally. Local validation passed; user/browser validation is pending. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
 
 Verified current foundations:
 
@@ -46,6 +46,7 @@ Verified current foundations:
 - Commit 15 final local regression passed for the implemented source-backed test-mode path.
 - Commit 16 renames the Meta Overview per-campaign card section from `All Campaigns` to `Campaign Breakdown`, removes duplicate or unsafe financial values from that section, and hides optional live-only breakdown sections when no breakdown rows exist.
 - Commit 17 includes `Top Demographics`, `Top Locations`, and `Ad Placements` in the selected Meta analytics response for the source-backed test-mode path, while preserving the live Meta Insights breakdown import path.
+- Commit 18 keeps imported Meta revenue visible only in the Overview Total Revenue card until exact per-Meta-campaign revenue attribution is implemented.
 
 Verified production-readiness gaps:
 
@@ -930,6 +931,48 @@ Status:
 - [x] Local validation passed: `npm run check`.
 - [ ] User/browser validation pending.
 
+### Meta Commit 18: Keep Imported Revenue In Total Revenue Card Only
+
+Goal:
+
+- Prevent imported Meta revenue from appearing as per-campaign, daily, or secondary financial values until exact per-Meta-campaign revenue attribution exists.
+
+Root cause analysis:
+
+- Commit 16 removed the unsafe equal-split revenue block from Overview Campaign Breakdown.
+- A broader trace found older Meta page surfaces still exposed imported or GA4-attributed revenue outside the Overview Total Revenue card:
+  - a `Match GA4 Revenue` header action,
+  - a per-campaign `GA4 Revenue Attribution` table,
+  - an `Imported Meta Revenue Active` secondary card with ROAS, ROI, and Profit,
+  - Insights financial cards for Total Revenue, ROAS, and ROI,
+  - daily trend options for Revenue and ROAS derived from conversions and a conversion value.
+- These surfaces can imply per-campaign or per-day revenue attribution that has not been proven for Meta imported revenue.
+- The smallest safe fix is frontend-only: leave the Overview Total Revenue card, plus action, Sources link, and source modal intact, but remove the visible unproven revenue/ROAS/ROI surfaces. This does not change stored revenue sources, revenue import routes, scheduler behavior, campaign totals, KPI/Benchmark storage, reports, GA4, LinkedIn, or Google Ads behavior.
+
+Validation:
+
+- Open Meta Overview.
+- Confirm the Total Revenue card still appears.
+- Confirm the Total Revenue card plus action still opens the revenue source wizard.
+- Confirm the Sources link still opens the Meta revenue source list when sources exist.
+- Confirm Campaign Breakdown does not show Revenue, ROAS, ROI, or Profit.
+- Confirm the header no longer shows `Match GA4 Revenue`.
+- Confirm the page no longer shows `GA4 Revenue Attribution`.
+- Confirm Insights no longer shows revenue, ROAS, or ROI cards.
+- Confirm Trends does not offer Revenue or ROAS as metrics.
+
+Status:
+
+- [x] Completed locally: removed the Meta `Match GA4 Revenue` header action.
+- [x] Completed locally: removed the per-campaign `GA4 Revenue Attribution` table from the Meta page.
+- [x] Completed locally: removed the secondary `Imported Meta Revenue Active` financial card.
+- [x] Completed locally: removed Insights revenue, ROAS, and ROI cards outside the Overview Total Revenue card.
+- [x] Completed locally: removed derived daily Revenue and ROAS trend options.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
+
 ## Validation Evidence Required Before Production-Ready Claim
 
 Must be proven locally:
@@ -967,11 +1010,11 @@ Outstanding required implementation work:
 
 Outstanding evidence:
 
-- Meta Commit 17 user/browser validation is pending and should cover the visible Commit 16/17 Meta Overview changes.
+- Meta Commit 18 user/browser validation is pending and should cover the visible Commit 16/17/18 Meta Overview changes.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 - Deployed scheduled Meta report email receipt is not available locally.
 
 ## Current Handoff
 
-The next smallest safest step is a browser check that Meta Overview shows `Campaign Breakdown`, keeps the selected Meta campaign metrics, shows spend only in the metric grid, and renders `Top Demographics`, `Top Locations`, and `Ad Placements` rows for a test-mode Meta campaign with selected campaign metrics. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.
+The next smallest safest step is a browser check that Meta Overview shows `Campaign Breakdown`, keeps the selected Meta campaign metrics, renders `Top Demographics`, `Top Locations`, and `Ad Placements` rows for a test-mode Meta campaign, and keeps imported revenue visible only in the Overview Total Revenue card. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.

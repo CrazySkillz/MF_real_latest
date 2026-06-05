@@ -226,6 +226,35 @@ describe("Meta production readiness regression guard", () => {
     expect(analyticsRoute).toContain("metaClient.getPlacementInsights(campaign.id, dateRange).catch(() => [])");
   });
 
+  it("keeps Meta imported revenue limited to the Overview Total Revenue card until campaign attribution exists", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const revenueSection = sliceBetween(
+      page,
+      "{/* Revenue Section */}",
+      "{/* Performance Metrics - Derived Metrics */}"
+    );
+    const insightsSection = sliceBetween(
+      page,
+      '<TabsContent value="insights"',
+      '<TabsContent value="reports"'
+    );
+
+    expect(revenueSection).toContain("Total Revenue");
+    expect(revenueSection).toContain("onClick={() => openMetaRevenueModal()}");
+    expect(revenueSection).toContain("Sources ({activeMetaRevenueSources.length})");
+    expect(page).not.toContain("Imported Meta Revenue Active");
+    expect(page).not.toContain("Match GA4 Revenue");
+    expect(page).not.toContain("GA4 Revenue Attribution");
+    expect(page).not.toContain("revenueSummary.totalRevenue / campaigns.length");
+    expect(page).not.toContain("revenueSummary.totalRevenue / summary.totalSpend");
+    expect(page).not.toContain("revenueSummary.totalRevenue - summary.totalSpend");
+    expect(page).not.toContain("const revenue = hasRev ? conversions * convValue : 0");
+    expect(page).not.toContain('<SelectItem value="revenue">Revenue</SelectItem>');
+    expect(page).not.toContain('<SelectItem value="roas">ROAS</SelectItem>');
+    expect(insightsSection).not.toContain("Revenue metrics appear only when a Meta revenue source is connected.");
+    expect(insightsSection).not.toContain("Connect a revenue source to unlock ROAS, ROI, and revenue-dependent KPIs.");
+  });
+
   it("preserves Meta revenue import context across shared provider save and refresh paths", () => {
     const wizard = read("client", "src", "components", "AddRevenueWizardModal.tsx");
     const routes = read("server", "routes-oauth.ts");

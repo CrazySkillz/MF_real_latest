@@ -27,7 +27,7 @@ The remaining work is validation hardening and source-specific proof, not a full
 
 Campaign DeepDive is production-ready locally for the implemented connected-source aggregate contract and the current GA4/current-source scope, with the outstanding validation items below.
 
-The remaining validation items can wait until mock-live historical data and future/refined live/deployed integration evidence is available. LinkedIn source-specific validation passed on 2026-05-31 and is tracked in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Google Ads local source-specific validation passed through Commit 29 on 2026-06-04 and is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Meta/Facebook local source-specific code/test validation and Commit 15 browser smoke passed on 2026-06-04 and are tracked in `META_FACEBOOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`; Commit 17 browser validation, live OAuth, and deployed scheduled-report evidence remain separate.
+The remaining validation items can wait until mock-live historical data and future/refined live/deployed integration evidence is available. LinkedIn source-specific validation passed on 2026-05-31 and is tracked in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Google Ads local source-specific validation passed through Commit 29 on 2026-06-04 and is tracked in `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`. Meta/Facebook local source-specific code/test validation and Commit 15 browser smoke passed on 2026-06-04 and are tracked in `META_FACEBOOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`; Commit 18 browser validation, live OAuth, and deployed scheduled-report evidence remain separate.
 
 LinkedIn refinement is tracked separately in `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`. That tracker records the source-specific acceptance proof for LinkedIn through both the Create Campaign flow and the campaign Connected Platforms add-source flow. LinkedIn revenue-import validation is complete in `LINKEDIN_REVENUE_IMPORT_PRODUCTION_READY.md`.
 
@@ -64,7 +64,7 @@ Expected proof:
 
 ### 2. Multi-Source Deployed Validation
 
-Status: LinkedIn validation passed on 2026-05-31; Google Ads local/test-mode validation passed on 2026-06-04; Meta/Facebook local code/test validation and Commit 15 browser smoke passed on 2026-06-04; Meta Commit 17 browser validation, future/refined source mixes, Google Ads live OAuth evidence, and Meta live OAuth evidence remain source-specific validation work.
+Status: LinkedIn validation passed on 2026-05-31; Google Ads local/test-mode validation passed on 2026-06-04; Meta/Facebook local code/test validation and Commit 15 browser smoke passed on 2026-06-04; Meta Commit 18 browser validation, future/refined source mixes, Google Ads live OAuth evidence, and Meta live OAuth evidence remain source-specific validation work.
 
 Why it remains open:
 

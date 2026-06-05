@@ -375,7 +375,7 @@ describe("source safety regression guards", () => {
   it("Instagram disconnect route is campaign-scoped and fails closed when no row is deleted", () => {
     const routesSource = readRoutesSource();
     const routeStart = routesSource.indexOf('app.delete("/api/instagram/:campaignId/connection"');
-    const routeEnd = routesSource.indexOf("/**\n   * Transfer Meta connection", routeStart);
+    const routeEnd = routesSource.indexOf("/**\n   * List Instagram campaigns", routeStart);
     const route = routesSource.slice(routeStart, routeEnd);
 
     expect(routeStart).toBeGreaterThanOrEqual(0);
@@ -396,6 +396,28 @@ describe("source safety regression guards", () => {
     expect(method).toContain("db.transaction");
     expect(method).toContain("eq(instagramConnections.campaignId, campaignId)");
     expect(method).toContain("tx.delete(instagramDailyMetrics).where(eq(instagramDailyMetrics.campaignId, campaignId))");
+  });
+
+  it("Instagram campaign list route is campaign-scoped, read-only, and selector-contract only", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.get("/api/instagram/:campaignId/campaigns"');
+    const routeEnd = routesSource.indexOf("/**\n   * Transfer Meta connection", routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(routeStart).toBeGreaterThanOrEqual(0);
+    expect(route).toContain("ensureCampaignAccess");
+    expect(route.indexOf("ensureCampaignAccess")).toBeLessThan(route.indexOf("storage.getInstagramConnection"));
+    expect(route).toContain("Instagram connection not found");
+    expect(route).toContain("selectedCampaignIds");
+    expect(route).toContain('publisherPlatform: "instagram"');
+    expect(route).not.toContain("storage.createInstagramConnection");
+    expect(route).not.toContain("storage.updateInstagramConnection");
+    expect(route).not.toContain("storage.deleteInstagramConnection");
+    expect(route).not.toContain("upsertInstagramDailyMetrics");
+    expect(route).not.toContain("refreshInstagram");
+    expect(route).not.toContain("accessToken:");
+    expect(route).not.toContain("refreshToken:");
+    expect(route).not.toContain("encryptedTokens:");
   });
 
   it("ad-platform spend routes preserve source identity for Meta and Google Ads edits", () => {

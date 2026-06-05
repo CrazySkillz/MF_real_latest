@@ -19684,6 +19684,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * List Instagram campaigns from the persisted selected-source contract
+   */
+  app.get("/api/instagram/:campaignId/campaigns", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getInstagramConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Instagram connection not found" });
+      }
+
+      const selectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+
+      const campaigns = selectedCampaignIds.map((id: string) => ({
+        id,
+        name: id,
+        selected: true,
+        publisherPlatform: "instagram",
+      }));
+
+      res.json({
+        success: true,
+        campaigns,
+        selectedCampaignIds,
+        publisherPlatformFilter: connection.publisherPlatformFilter,
+        sourceContractVersion: connection.sourceContractVersion,
+      });
+    } catch (error: any) {
+      console.error('[Instagram] List campaigns error:', error);
+      res.status(500).json({ error: error.message || 'Failed to list Instagram campaigns' });
+    }
+  });
+
+  /**
    * Transfer Meta connection from temporary campaign to real campaign
    */
   app.post("/api/meta/transfer-connection", async (req, res) => {

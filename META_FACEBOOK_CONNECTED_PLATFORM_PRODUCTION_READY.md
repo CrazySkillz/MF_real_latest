@@ -17,11 +17,11 @@ Meta/Facebook must be treated as a campaign-scoped main paid-media connected sou
 
 ## Current Status
 
-Meta/Facebook is locally production-ready for the implemented source-backed test-mode path except the newly identified Meta Insights multi-campaign Trends alignment gap tracked as Commit 20. Meta Commit 21 user/browser validation passed. Meta Commit 22 has been implemented and locally validated; user/browser validation is pending.
+Meta/Facebook is locally production-ready for the implemented source-backed test-mode path except the newly identified Meta Insights multi-campaign Trends alignment gap tracked as Commit 20. Meta Commit 21 user/browser validation passed. Meta Commits 22, 23, and 24 have been implemented and locally validated; user/browser validation is pending for those UI-visible changes.
 
 This tracker is the planning and implementation artifact. The implemented local/test-mode Meta path has been hardened against the source-backed pattern used by LinkedIn and Google Ads. Live OAuth and deployed scheduled-report behavior still require production-like evidence.
 
-Meta Commit 19 has been implemented locally. Local validation and user/browser validation passed. Meta Commit 21 fixed the Meta Ad Comparison ranking/copy alignment gap and user/browser validation passed. Meta Commit 22 restores source-gated Executive financial cards in Meta Insights. Meta Commit 20 remains pending: Insights Trends currently reads daily history for only the first selected Meta campaign, while Overview totals use all selected Meta campaigns. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
+Meta Commit 19 has been implemented locally. Local validation and user/browser validation passed. Meta Commit 21 fixed the Meta Ad Comparison ranking/copy alignment gap and user/browser validation passed. Meta Commit 22 restores source-gated Executive financial cards in Meta Insights. Meta Commit 23 lets users choose which selected Meta campaign feeds Top Demographics, Top Locations, and Ad Placements. Meta Commit 24 calculates live Ad Placement conversions from Meta action rows. Meta Commit 20 remains pending: Insights Trends currently reads daily history for only the first selected Meta campaign, while Overview totals use all selected Meta campaigns. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
 
 Verified current foundations:
 
@@ -51,6 +51,8 @@ Verified current foundations:
 - Meta Insights KPI/Benchmark cards use the same Summary and live metric helper as Overview, but the Trends section still needs selected-campaign aggregate alignment before multi-campaign Insights can be considered production-ready.
 - Commit 21 makes Meta Ad Comparison ranking cards and the top-by-spend chart source-backed from the same selected-campaign `campaigns` array used by Overview.
 - Commit 22 makes Meta Insights Executive financials show source-gated Total Revenue, Profit, ROAS, and ROI when Meta attributed revenue exists, while keeping daily Trends revenue/ROAS options removed.
+- Commit 23 adds a Meta Overview campaign selector for `Top Demographics`, `Top Locations`, and `Ad Placements`, so those breakdown tables use the selected Meta campaign instead of the first selected campaign.
+- Commit 24 adds live Meta Ad Placement `conversions` values by deriving them from Meta `actions` with the same purchase/lead/conversion semantics used by campaign-level Meta conversion handling.
 
 Verified production-readiness gaps:
 
@@ -1150,6 +1152,83 @@ Status:
 - [x] Local validation passed: `npm run check`.
 - [ ] User/browser validation pending.
 
+### Meta Commit 23: Overview Breakdown Campaign Selector
+
+Goal:
+
+- Let users choose which selected Meta campaign feeds `Top Demographics`, `Top Locations`, and `Ad Placements`.
+
+Root cause analysis:
+
+- The Meta analytics response contains `demographics`, `geographics`, and `placements` arrays per selected Meta campaign.
+- The Meta Overview UI previously rendered these sections from `campaigns[0]`.
+- That made the breakdown cards campaign-specific but visually ambiguous, because users could not choose or verify which campaign the rows represented.
+- The smallest safe fix is UI-only: add a selector over campaigns that actually have breakdown rows and bind the three tables to that selected campaign's arrays.
+
+Smallest safe implementation strategy:
+
+- Keep the existing `/api/meta/:campaignId/analytics` response shape.
+- Keep selected-campaign scoping, Summary totals, Campaign Breakdown totals, revenue, scheduler, report, KPI, and Benchmark behavior unchanged.
+- Add local UI state for the selected breakdown campaign.
+- Default to the first campaign with available breakdown rows.
+- Render `Top Demographics`, `Top Locations`, and `Ad Placements` from the selected campaign's arrays.
+
+Validation:
+
+- Open Meta Overview.
+- Find `Audience And Placement Breakdowns`.
+- Change the campaign dropdown.
+- Confirm `Top Demographics`, `Top Locations`, and `Ad Placements` update for the selected Meta campaign.
+- Confirm Overview metric cards and Campaign Breakdown totals do not change when only this breakdown selector changes.
+
+Status:
+
+- [x] Root cause traced locally.
+- [x] Completed locally: Overview breakdowns now have a selected Meta campaign dropdown.
+- [x] Completed locally: breakdown rows are read from the selected campaign's `demographics`, `geographics`, and `placements` arrays.
+- [x] Completed locally: regression coverage updated in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
+
+### Meta Commit 24: Live Ad Placement Conversion Actions
+
+Goal:
+
+- Make live Meta Ad Placement `Conversions` use Meta action rows instead of showing zero when the live placement response lacks a literal `conversions` field.
+
+Root cause analysis:
+
+- Test-mode placement rows include a `conversions` field generated from selected campaign totals.
+- Live Meta placement rows are fetched through `MetaGraphAPIClient.getPlacementInsights`.
+- The live helper requested `actions` and returned `actions`, but did not materialize a `conversions` field.
+- The Meta Overview `Ad Placements` table renders `Number(placement.conversions || 0)`, so live placement conversions could appear as zero even when Meta returned purchase, lead, or conversion action rows.
+- The smallest safe fix is to calculate `conversions` inside the existing live placement helper from `actions`, using the same purchase/lead/conversion action semantics used by campaign-level Meta conversion handling.
+
+Smallest safe implementation strategy:
+
+- Update only `server/services/meta-graph-api.ts`.
+- Preserve the existing live Meta placement API call, fields, response shape, and `actions` provenance.
+- Add `conversions` to `MetaPlacementInsight`.
+- Derive `conversions` from placement `actions` where the action type contains `purchase`, `lead`, or `conversion`.
+- Do not change demographics, locations, Overview totals, Summary totals, Campaign Breakdown totals, revenue, scheduler, reports, KPIs, Benchmarks, GA4, LinkedIn, Google Ads, or test-mode generator behavior.
+
+Validation:
+
+- Open Meta Overview in a live Meta OAuth environment with placement action data.
+- Confirm `Ad Placements` still shows Placement, Impressions, Clicks, and Spend.
+- Confirm `Conversions` reflects purchase, lead, or conversion action counts for the selected Meta campaign's placement rows.
+- Confirm test-mode Ad Placements still display as before.
+
+Status:
+
+- [x] Root cause traced locally.
+- [x] Completed locally: live Meta placement rows now include `conversions` derived from Meta `actions`.
+- [x] Completed locally: regression coverage updated in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser/live OAuth validation pending.
+
 ## Validation Evidence Required Before Production-Ready Claim
 
 Must be proven locally:
@@ -1189,10 +1268,12 @@ Outstanding required implementation work:
 Outstanding evidence:
 
 - Meta Commit 22 user/browser validation is pending.
+- Meta Commit 23 user/browser validation is pending.
+- Meta Commit 24 user/browser/live OAuth validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 - Deployed scheduled Meta report email receipt is not available locally.
 
 ## Current Handoff
 
-The next smallest safest steps are browser validation for Meta Commit 22 and implementation of Meta Commit 20. Commit 22 should confirm Meta Insights Executive financials show source-gated Total Revenue, Profit, ROAS, and ROI. Commit 20 aligns Insights Trends with all selected Meta campaigns. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.
+The next smallest safest steps are browser validation for Meta Commits 22 and 23, live/browser validation for Meta Commit 24 where live Meta placement action rows exist, and implementation of Meta Commit 20. Commit 22 should confirm Meta Insights Executive financials show source-gated Total Revenue, Profit, ROAS, and ROI. Commit 23 should confirm the Overview breakdown selector changes the selected-campaign Top Demographics, Top Locations, and Ad Placements rows without changing Overview totals. Commit 24 should confirm live Ad Placement conversions populate from Meta action rows. Commit 20 aligns Insights Trends with all selected Meta campaigns. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.

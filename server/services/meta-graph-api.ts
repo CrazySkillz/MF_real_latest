@@ -78,6 +78,7 @@ export interface MetaPlacementInsight {
   impressions: number;
   clicks: number;
   spend: number;
+  conversions: number;
   actions?: MetaAction[];
 }
 
@@ -356,14 +357,26 @@ export class MetaGraphAPIClient {
       },
     });
 
-    return response.data.data.map((placement: any) => ({
-      publisherPlatform: placement.publisher_platform,
-      platformPosition: placement.platform_position,
-      impressions: parseInt(placement.impressions) || 0,
-      clicks: parseInt(placement.clicks) || 0,
-      spend: parseFloat(placement.spend) || 0,
-      actions: placement.actions,
-    }));
+    return response.data.data.map((placement: any) => {
+      const actions = Array.isArray(placement.actions) ? placement.actions : [];
+      const conversions = actions.reduce((sum: number, action: MetaAction) => {
+        const actionType = String(action.actionType || action.action_type || "");
+        if (actionType.includes('purchase') || actionType.includes('lead') || actionType.includes('conversion')) {
+          return sum + (parseInt(action.value) || 0);
+        }
+        return sum;
+      }, 0);
+
+      return {
+        publisherPlatform: placement.publisher_platform,
+        platformPosition: placement.platform_position,
+        impressions: parseInt(placement.impressions) || 0,
+        clicks: parseInt(placement.clicks) || 0,
+        spend: parseFloat(placement.spend) || 0,
+        conversions,
+        actions: placement.actions,
+      };
+    });
   }
 
   /**

@@ -219,6 +219,7 @@ describe("Meta production readiness regression guard", () => {
 
   it("includes Meta breakdown imports in the selected analytics response", () => {
     const routes = read("server", "routes-oauth.ts");
+    const metaGraphClient = read("server", "services", "meta-graph-api.ts");
     const analyticsRoute = sliceBetween(
       routes,
       'app.get("/api/meta/:campaignId/analytics"',
@@ -233,6 +234,11 @@ describe("Meta production readiness regression guard", () => {
     expect(analyticsRoute).toContain("metaClient.getDemographicInsights(campaign.id, dateRange).catch(() => [])");
     expect(analyticsRoute).toContain("metaClient.getGeographicInsights(campaign.id, dateRange).catch(() => [])");
     expect(analyticsRoute).toContain("metaClient.getPlacementInsights(campaign.id, dateRange).catch(() => [])");
+    expect(metaGraphClient).toContain("conversions: number;");
+    expect(metaGraphClient).toContain("const conversions = actions.reduce((sum: number, action: MetaAction) => {");
+    expect(metaGraphClient).toContain("const actionType = String(action.actionType || action.action_type || \"\");");
+    expect(metaGraphClient).toContain("actionType.includes('purchase') || actionType.includes('lead') || actionType.includes('conversion')");
+    expect(metaGraphClient).toContain("conversions,");
   });
 
   it("keeps Meta imported revenue source-safe across Overview and Insights", () => {

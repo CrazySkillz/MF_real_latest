@@ -95,6 +95,7 @@ export default function MetaAnalytics() {
   // Campaign filter state
   const [sortBy, setSortBy] = useState<string>('name');
   const [filterBy, setFilterBy] = useState<string>('all');
+  const [selectedBreakdownCampaignId, setSelectedBreakdownCampaignId] = useState<string>('');
 
   // Insights state
   const [showDailyFinancialsView, setShowDailyFinancialsView] = useState(false);
@@ -323,6 +324,28 @@ export default function MetaAnalytics() {
     },
     enabled: !!campaignId,
   });
+
+  const breakdownCampaignOptions = useMemo(() => {
+    const rows = Array.isArray((analyticsData as any)?.campaigns) ? (analyticsData as any).campaigns : [];
+    return rows.filter((item: any) => {
+      const id = String(item?.campaign?.id || '').trim();
+      const demographics = Array.isArray(item?.demographics) ? item.demographics : [];
+      const geographics = Array.isArray(item?.geographics) ? item.geographics : [];
+      const placements = Array.isArray(item?.placements) ? item.placements : [];
+      return id && (demographics.length > 0 || geographics.length > 0 || placements.length > 0);
+    });
+  }, [analyticsData]);
+
+  useEffect(() => {
+    const ids = new Set(breakdownCampaignOptions.map((item: any) => String(item?.campaign?.id || '')));
+    if (breakdownCampaignOptions.length === 0) {
+      if (selectedBreakdownCampaignId) setSelectedBreakdownCampaignId('');
+      return;
+    }
+    if (!selectedBreakdownCampaignId || !ids.has(selectedBreakdownCampaignId)) {
+      setSelectedBreakdownCampaignId(String(breakdownCampaignOptions[0]?.campaign?.id || ''));
+    }
+  }, [breakdownCampaignOptions, selectedBreakdownCampaignId]);
 
   // Report mutations
   const createReportMutation = useMutation({
@@ -630,11 +653,13 @@ export default function MetaAnalytics() {
     roi: hasMetaAttributedRevenue ? metaAttributedRoi : 0,
     profitMargin: hasMetaAttributedRevenue ? metaAttributedProfitMargin : 0,
   };
-  const firstCampaignBreakdowns = campaigns[0] || {};
-  const firstCampaignDemographics = Array.isArray(firstCampaignBreakdowns?.demographics) ? firstCampaignBreakdowns.demographics : [];
-  const firstCampaignGeographics = Array.isArray(firstCampaignBreakdowns?.geographics) ? firstCampaignBreakdowns.geographics : [];
-  const firstCampaignPlacements = Array.isArray(firstCampaignBreakdowns?.placements) ? firstCampaignBreakdowns.placements : [];
-  const hasFirstCampaignBreakdowns = firstCampaignDemographics.length > 0 || firstCampaignGeographics.length > 0 || firstCampaignPlacements.length > 0;
+  const selectedBreakdownCampaign = breakdownCampaignOptions.find((item: any) =>
+    String(item?.campaign?.id || '') === selectedBreakdownCampaignId
+  ) || breakdownCampaignOptions[0] || {};
+  const selectedBreakdownCampaignValue = String(selectedBreakdownCampaign?.campaign?.id || '');
+  const selectedCampaignDemographics = Array.isArray(selectedBreakdownCampaign?.demographics) ? selectedBreakdownCampaign.demographics : [];
+  const selectedCampaignGeographics = Array.isArray(selectedBreakdownCampaign?.geographics) ? selectedBreakdownCampaign.geographics : [];
+  const selectedCampaignPlacements = Array.isArray(selectedBreakdownCampaign?.placements) ? selectedBreakdownCampaign.placements : [];
 
   // Format date helper
   const formatShortDate = (yyyyMmDd: string) => {
@@ -1290,14 +1315,35 @@ export default function MetaAnalytics() {
           </Card>
 
           {/* Demographics & Geographics */}
-          {hasFirstCampaignBreakdowns && (
+          {breakdownCampaignOptions.length > 0 && (
             <>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between mt-8">
+                <div>
+                  <h3 className="text-xl font-semibold text-foreground">Audience And Placement Breakdowns</h3>
+                  <p className="text-sm text-muted-foreground/70">Breakdowns for the selected Meta campaign</p>
+                </div>
+                <Select value={selectedBreakdownCampaignValue} onValueChange={setSelectedBreakdownCampaignId}>
+                  <SelectTrigger className="w-full lg:w-[280px]">
+                    <SelectValue placeholder="Select campaign" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {breakdownCampaignOptions.map((campaignData: any) => {
+                      const optionId = String(campaignData?.campaign?.id || '');
+                      return (
+                        <SelectItem key={optionId} value={optionId}>
+                          {campaignData?.campaign?.name || optionId}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                {firstCampaignDemographics.length > 0 && (
+                {selectedCampaignDemographics.length > 0 && (
                   <Card>
                     <CardHeader>
                       <CardTitle>Top Demographics</CardTitle>
-                      <CardDescription>Performance by age and gender for the first selected Meta campaign</CardDescription>
+                      <CardDescription>Performance by age and gender for the selected Meta campaign</CardDescription>
                     </CardHeader>
                     <CardContent>
                   <Table>
@@ -1310,7 +1356,7 @@ export default function MetaAnalytics() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {firstCampaignDemographics.slice(0, 6).map((demo: any, index: number) => (
+                      {selectedCampaignDemographics.slice(0, 6).map((demo: any, index: number) => (
                         <TableRow key={index}>
                           <TableCell>{demo.ageRange || demo.age}</TableCell>
                           <TableCell className="capitalize">{demo.gender}</TableCell>
@@ -1324,11 +1370,11 @@ export default function MetaAnalytics() {
                   </Card>
                 )}
 
-                {firstCampaignGeographics.length > 0 && (
+                {selectedCampaignGeographics.length > 0 && (
                   <Card>
                     <CardHeader>
                       <CardTitle>Top Locations</CardTitle>
-                      <CardDescription>Performance by country for the first selected Meta campaign</CardDescription>
+                      <CardDescription>Performance by country for the selected Meta campaign</CardDescription>
                     </CardHeader>
                     <CardContent>
                   <Table>
@@ -1341,7 +1387,7 @@ export default function MetaAnalytics() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {firstCampaignGeographics.map((geo: any, index: number) => (
+                      {selectedCampaignGeographics.map((geo: any, index: number) => (
                         <TableRow key={index}>
                           <TableCell>{geo.country}</TableCell>
                           <TableCell className="text-right">{geo.impressions.toLocaleString()}</TableCell>
@@ -1357,11 +1403,11 @@ export default function MetaAnalytics() {
               </div>
 
               {/* Placements */}
-              {firstCampaignPlacements.length > 0 && (
+              {selectedCampaignPlacements.length > 0 && (
                 <Card className="mt-8">
                   <CardHeader>
                     <CardTitle>Ad Placements</CardTitle>
-                    <CardDescription>Performance by placement for the first selected Meta campaign</CardDescription>
+                    <CardDescription>Performance by placement for the selected Meta campaign</CardDescription>
                   </CardHeader>
                   <CardContent>
                 <Table>
@@ -1375,7 +1421,7 @@ export default function MetaAnalytics() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {firstCampaignPlacements.map((placement: any, index: number) => (
+                    {selectedCampaignPlacements.map((placement: any, index: number) => (
                       <TableRow key={index}>
                         <TableCell className="font-medium">
                           {placement.placement || [placement.publisherPlatform, placement.platformPosition].filter(Boolean).join(' / ')}

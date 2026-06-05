@@ -193,16 +193,25 @@ describe("Meta production readiness regression guard", () => {
       '<TabsContent value="kpis"'
     );
 
-    expect(page).toContain("const firstCampaignDemographics = Array.isArray(firstCampaignBreakdowns?.demographics)");
-    expect(page).toContain("const firstCampaignGeographics = Array.isArray(firstCampaignBreakdowns?.geographics)");
-    expect(page).toContain("const firstCampaignPlacements = Array.isArray(firstCampaignBreakdowns?.placements)");
-    expect(page).toContain("const hasFirstCampaignBreakdowns = firstCampaignDemographics.length > 0 || firstCampaignGeographics.length > 0 || firstCampaignPlacements.length > 0;");
-    expect(overviewBreakdowns).toContain("{hasFirstCampaignBreakdowns && (");
-    expect(overviewBreakdowns).toContain("{firstCampaignDemographics.length > 0 && (");
-    expect(overviewBreakdowns).toContain("{firstCampaignGeographics.length > 0 && (");
-    expect(overviewBreakdowns).toContain("{firstCampaignPlacements.length > 0 && (");
+    expect(page).toContain("const [selectedBreakdownCampaignId, setSelectedBreakdownCampaignId] = useState<string>('');");
+    expect(page).toContain("const breakdownCampaignOptions = useMemo(() => {");
+    expect(page).toContain("const selectedBreakdownCampaign = breakdownCampaignOptions.find");
+    expect(page).toContain("const selectedCampaignDemographics = Array.isArray(selectedBreakdownCampaign?.demographics)");
+    expect(page).toContain("const selectedCampaignGeographics = Array.isArray(selectedBreakdownCampaign?.geographics)");
+    expect(page).toContain("const selectedCampaignPlacements = Array.isArray(selectedBreakdownCampaign?.placements)");
+    expect(overviewBreakdowns).toContain("{breakdownCampaignOptions.length > 0 && (");
+    expect(overviewBreakdowns).toContain("<Select value={selectedBreakdownCampaignValue} onValueChange={setSelectedBreakdownCampaignId}>");
+    expect(overviewBreakdowns).toContain("{breakdownCampaignOptions.map((campaignData: any) => {");
+    expect(overviewBreakdowns).toContain("{selectedCampaignDemographics.length > 0 && (");
+    expect(overviewBreakdowns).toContain("{selectedCampaignGeographics.length > 0 && (");
+    expect(overviewBreakdowns).toContain("{selectedCampaignPlacements.length > 0 && (");
     expect(overviewBreakdowns).toContain("{demo.ageRange || demo.age}");
     expect(overviewBreakdowns).toContain("placement.placement || [placement.publisherPlatform, placement.platformPosition]");
+    expect(overviewBreakdowns).not.toContain("first selected Meta campaign");
+    expect(page).not.toContain("firstCampaignBreakdowns");
+    expect(page).not.toContain("firstCampaignDemographics");
+    expect(page).not.toContain("firstCampaignGeographics");
+    expect(page).not.toContain("firstCampaignPlacements");
     expect(overviewBreakdowns).not.toContain("campaigns[0]?.demographics &&");
     expect(overviewBreakdowns).not.toContain("campaigns[0]?.geographics &&");
     expect(overviewBreakdowns).not.toContain("campaigns[0]?.placements &&");

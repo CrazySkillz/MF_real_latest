@@ -19542,6 +19542,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * Connect Instagram in test mode with explicit selected campaign scope
+   */
+  app.post("/api/instagram/:campaignId/connect-test", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const selectedCampaignIdsRaw = (req.body as any)?.selectedCampaignIds;
+      const selectedCampaignIds = Array.isArray(selectedCampaignIdsRaw)
+        ? selectedCampaignIdsRaw.map((id: any) => String(id || "").trim()).filter(Boolean)
+        : [];
+      if (selectedCampaignIds.length === 0) {
+        return res.status(400).json({ error: "At least one Instagram campaign must be selected" });
+      }
+
+      const adAccountId = String((req.body as any)?.adAccountId || "act_instagram_test").trim();
+      const adAccountName = String((req.body as any)?.adAccountName || "Test Instagram Ad Account").trim();
+
+      await storage.deleteInstagramConnection(parsedId.data).catch(() => {});
+      await storage.createInstagramConnection({
+        campaignId: parsedId.data,
+        adAccountId,
+        adAccountName,
+        accessToken: `instagram_test_token_${Date.now()}`,
+        method: "test_mode",
+        selectedCampaignIds: JSON.stringify(selectedCampaignIds),
+        publisherPlatformFilter: "instagram",
+        sourceContractVersion: "instagram_publisher_platform_v1",
+        spendOnly: !!(req.body as any)?.spendOnly,
+      } as any);
+
+      res.json({
+        success: true,
+        connected: true,
+        adAccountId,
+        adAccountName,
+        selectedCampaignIds,
+        publisherPlatformFilter: "instagram",
+        sourceContractVersion: "instagram_publisher_platform_v1",
+      });
+    } catch (error: any) {
+      console.error('[Instagram] Test connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to connect Instagram test account' });
+    }
+  });
+
+  /**
    * Transfer Meta connection from temporary campaign to real campaign
    */
   app.post("/api/meta/transfer-connection", async (req, res) => {

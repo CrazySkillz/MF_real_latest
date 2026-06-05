@@ -255,6 +255,62 @@ describe("Meta production readiness regression guard", () => {
     expect(insightsSection).not.toContain("Connect a revenue source to unlock ROAS, ROI, and revenue-dependent KPIs.");
   });
 
+  it("supports exact Meta campaign mapping for imported revenue sources", () => {
+    const modal = read("client", "src", "components", "AddRevenueWizardModal.tsx");
+    const hubspot = read("client", "src", "components", "HubSpotRevenueWizard.tsx");
+    const salesforce = read("client", "src", "components", "SalesforceRevenueWizard.tsx");
+    const shopify = read("client", "src", "components", "ShopifyRevenueWizard.tsx");
+    const routes = read("server", "routes-oauth.ts");
+    const metaCampaignRevenueRoute = sliceBetween(
+      routes,
+      'app.get("/api/campaigns/:id/meta-campaign-revenue"',
+      'app.get("/api/campaigns/:id/outcome-totals"'
+    );
+
+    expect(modal).toContain('platformContext === "meta" ? "Meta" : "Google Ads"');
+    expect(modal).toContain('const needsCampaignMapping = (platformContext === \'google_ads\' || platformContext === \'meta\')');
+    expect(modal).toContain('fetch(`/api/meta/${campaignId}/campaigns`');
+    expect(modal).toContain('selectedIds.has(String(c?.id || ""))');
+    expect(modal).toContain('renderPlatformCampaignMapping(csvCampaignValues)');
+    expect(modal).toContain('renderPlatformCampaignMapping(sheetsCampaignValues)');
+
+    expect(hubspot).toContain('const isMeta = platformContext === "meta";');
+    expect(hubspot).toContain('const url = isMeta ? `/api/meta/${campaignId}/campaigns`');
+    expect(hubspot).toContain('renderAdPlatformCampaignMappings()');
+    expect(salesforce).toContain('const isMeta = platformContext === "meta";');
+    expect(salesforce).toContain('const url = isMeta ? `/api/meta/${campaignId}/campaigns`');
+    expect(salesforce).toContain('renderAdPlatformCampaignMappings()');
+    expect(shopify).toContain('const isMeta = platformContext === "meta";');
+    expect(shopify).toContain('? `/api/meta/${campaignId}/campaigns`');
+    expect(shopify).toContain('(isLinkedIn || isGoogleAds || isMeta) && selectedCampaignMappings.length > 0');
+
+    expect(routes).toContain("const getActiveMetaCampaignIdSet = async (campaignId: string): Promise<Set<string>> => {");
+    expect(routes).toContain('if (!id || (platformContext !== "google_ads" && platformContext !== "meta")) return null;');
+    expect(routes).toContain('mapping?.metaCampaignId || mapping?.linkedinCampaignUrn');
+    expect(metaCampaignRevenueRoute).toContain("const activeMetaCampaignIds = await getActiveMetaCampaignIdSet(campaignId);");
+    expect(metaCampaignRevenueRoute).toContain("rs.platform_context = 'meta'");
+    expect(metaCampaignRevenueRoute).toContain("activeMetaCampaignIds.has(metaCampaignId)");
+    expect(metaCampaignRevenueRoute).toContain("storage.getRevenueSources(campaignId, \"meta\")");
+    expect(metaCampaignRevenueRoute).toContain("campaignValueRevenueByValue.get(crmValue)");
+  });
+
+  it("renders Meta Campaign Breakdown revenue only from exact campaign revenue data", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const campaignBreakdown = sliceBetween(
+      page,
+      "{/* Campaign Breakdown - Card Layout */}",
+      "{/* Demographics & Geographics */}"
+    );
+
+    expect(page).toContain('queryKey: ["/api/campaigns", campaignId, "meta-campaign-revenue"]');
+    expect(page).toContain('fetch(`/api/campaigns/${campaignId}/meta-campaign-revenue?dateRange=90days`)');
+    expect(page).toContain("const metaCampaignRevenueById = useMemo(() => {");
+    expect(campaignBreakdown).toContain("const campaignRevenue = Number(metaCampaignRevenueById.get(String(campaign.id || \"\")) || 0);");
+    expect(campaignBreakdown).toContain("Total Revenue");
+    expect(campaignBreakdown).toContain("campaignRevenue > 0 ? formatCurrency(campaignRevenue)");
+    expect(campaignBreakdown).not.toContain("revenueSummary.totalRevenue / campaigns.length");
+  });
+
   it("preserves Meta revenue import context across shared provider save and refresh paths", () => {
     const wizard = read("client", "src", "components", "AddRevenueWizardModal.tsx");
     const routes = read("server", "routes-oauth.ts");

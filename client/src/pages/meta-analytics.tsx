@@ -170,6 +170,20 @@ export default function MetaAnalytics() {
     },
   });
 
+  const { data: metaCampaignRevenueData } = useQuery<{ success: boolean; breakdown: any[] }>({
+    queryKey: ["/api/campaigns", campaignId, "meta-campaign-revenue"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/meta-campaign-revenue?dateRange=90days`);
+      if (!response.ok) return { success: false, breakdown: [] };
+      const json = await response.json().catch(() => ({}));
+      return { success: !!json?.success, breakdown: Array.isArray(json?.breakdown) ? json.breakdown : [] };
+    },
+  });
+
   // Fetch Meta KPIs
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
     queryKey: ['/api/platforms/meta/kpis', campaignId],
@@ -362,18 +376,29 @@ export default function MetaAnalytics() {
   const activeMetaRevenueSources = Array.isArray(metaRevenueSourcesData?.sources)
     ? metaRevenueSourcesData.sources.filter((source: any) => source?.isActive !== false)
     : [];
+  const metaCampaignRevenueById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of Array.isArray(metaCampaignRevenueData?.breakdown) ? metaCampaignRevenueData.breakdown : []) {
+      const id = String(row?.campaignId || "").trim();
+      const revenue = Number(row?.revenue || 0);
+      if (id && Number.isFinite(revenue) && revenue > 0) map.set(id, (map.get(id) || 0) + revenue);
+    }
+    return map;
+  }, [metaCampaignRevenueData]);
 
   const refreshMetaRevenueQueries = async () => {
     await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "meta"] });
     await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=meta&dateRange=90days`], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/meta", campaignId, "revenue", "summary"], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/meta", campaignId], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "meta-campaign-revenue"], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/platforms/meta/kpis"], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "meta"], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/platforms/meta/reports", campaignId], exact: false });
     await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "meta"], exact: true });
     await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=meta&dateRange=90days`], exact: true });
     await queryClient.refetchQueries({ queryKey: ["/api/meta", campaignId, "revenue", "summary"], exact: true });
+    await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "meta-campaign-revenue"], exact: true });
   };
 
   const deleteMetaRevenueSourceMutation = useMutation({
@@ -1162,6 +1187,7 @@ export default function MetaAnalytics() {
                   const { campaign, totals } = campaignData;
                   const formatCurrency = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                   const formatNum = (v: number) => v.toLocaleString();
+                  const campaignRevenue = Number(metaCampaignRevenueById.get(String(campaign.id || "")) || 0);
                   // formatPct imported from @shared/metric-math
 
                   return (
@@ -1203,7 +1229,7 @@ export default function MetaAnalytics() {
                       </div>
 
                       {/* Secondary metrics — smaller */}
-                      <div className="grid grid-cols-4 md:grid-cols-7 gap-3 pt-3 border-t border-slate-100">
+                      <div className="grid grid-cols-4 md:grid-cols-8 gap-3 pt-3 border-t border-slate-100">
                         <div>
                           <p className="text-[10px] text-muted-foreground/70 font-medium">CPC</p>
                           <p className="text-sm font-semibold text-foreground/80/60">{formatCurrency(totals.cpc)}</p>
@@ -1231,6 +1257,12 @@ export default function MetaAnalytics() {
                         <div>
                           <p className="text-[10px] text-muted-foreground/70 font-medium">Total Spend</p>
                           <p className="text-sm font-semibold text-foreground/80/60">{formatCurrency(totals.spend)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground/70 font-medium">Total Revenue</p>
+                          <p className="text-sm font-semibold text-foreground/80/60">
+                            {campaignRevenue > 0 ? formatCurrency(campaignRevenue) : <span className="text-muted-foreground/70">-</span>}
+                          </p>
                         </div>
                       </div>
 

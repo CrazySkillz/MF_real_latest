@@ -80,6 +80,7 @@ export function SalesforceRevenueWizard(props: {
   const { toast } = useToast();
   const isLinkedIn = platformContext === "linkedin";
   const isGoogleAds = platformContext === "google_ads";
+  const isMeta = platformContext === "meta";
 
   type Step = "value-source" | "connect" | "campaign-field" | "crosswalk" | "pipeline" | "revenue" | "review" | "complete";
   // UX: OAuth happens before this wizard opens (from the Connect Additional Data flow),
@@ -120,7 +121,7 @@ export function SalesforceRevenueWizard(props: {
 
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
-  const [googleAdsCampaigns, setGoogleAdsCampaigns] = useState<Array<{ id: string; name: string }>>([]);
+  const [platformCampaigns, setPlatformCampaigns] = useState<Array<{ id: string; name: string }>>([]);
   const [campaignMappings, setCampaignMappings] = useState<PlatformCampaignMapping[]>([]);
   const [valuesLoading, setValuesLoading] = useState(false);
   const [valuesError, setValuesError] = useState<string | null>(null);
@@ -190,27 +191,29 @@ export function SalesforceRevenueWizard(props: {
   const connectedLabel = useMemo(() => orgName || null, [orgName]);
 
   useEffect(() => {
-    if (!isGoogleAds || !campaignId) return;
+    if ((!isGoogleAds && !isMeta) || !campaignId) return;
     let cancelled = false;
-    fetch(`/api/google-ads/${campaignId}/campaigns`, { credentials: "include" })
+    const url = isMeta ? `/api/meta/${campaignId}/campaigns` : `/api/google-ads/${campaignId}/campaigns`;
+    fetch(url, { credentials: "include" })
       .then((r) => r.ok ? r.json() : { campaigns: [] })
       .then((data) => {
         if (cancelled) return;
         const campaigns = Array.isArray(data?.campaigns) ? data.campaigns : [];
-        setGoogleAdsCampaigns(campaigns
-          .filter((campaign: any) => campaign?.selected !== false)
+        const selectedIds = new Set(Array.isArray(data?.selectedCampaignIds) ? data.selectedCampaignIds.map((id: any) => String(id)) : []);
+        setPlatformCampaigns(campaigns
+          .filter((campaign: any) => isMeta ? (selectedIds.size > 0 ? selectedIds.has(String(campaign?.id || "")) : campaign?.selected !== false) : campaign?.selected !== false)
           .map((campaign: any) => ({ id: String(campaign?.id || campaign?.name || ""), name: String(campaign?.name || campaign?.id || "Unknown") }))
           .filter((campaign: any) => !!campaign.id));
       })
       .catch(() => {
-        if (!cancelled) setGoogleAdsCampaigns([]);
+        if (!cancelled) setPlatformCampaigns([]);
       });
     return () => { cancelled = true; };
-  }, [isGoogleAds, campaignId]);
+  }, [isGoogleAds, isMeta, campaignId]);
 
-  const googleAdsCampaignOptions = useMemo(() => {
+  const platformCampaignOptions = useMemo(() => {
     const options = new Map<string, { id: string; name: string }>();
-    for (const campaign of googleAdsCampaigns) {
+    for (const campaign of platformCampaigns) {
       if (campaign.id) options.set(campaign.id, campaign);
     }
     for (const mapping of campaignMappings) {
@@ -218,16 +221,16 @@ export function SalesforceRevenueWizard(props: {
       if (id && !options.has(id)) options.set(id, { id, name: mapping.linkedinCampaignName || id });
     }
     return Array.from(options.values());
-  }, [campaignMappings, googleAdsCampaigns]);
+  }, [campaignMappings, platformCampaigns]);
 
   const selectedCampaignMappings = useMemo(() => {
-    if (!isGoogleAds) return [];
+    if (!isGoogleAds && !isMeta) return [];
     const selectedSet = new Set(selectedValues.map((value) => String(value || "").trim()).filter(Boolean));
     return campaignMappings.filter((mapping) => (
       selectedSet.has(String(mapping.crmValue || "").trim()) &&
-      googleAdsCampaignOptions.some((campaign) => campaign.id === mapping.linkedinCampaignUrn)
+      platformCampaignOptions.some((campaign) => campaign.id === mapping.linkedinCampaignUrn)
     ));
-  }, [campaignMappings, googleAdsCampaignOptions, isGoogleAds, selectedValues]);
+  }, [campaignMappings, isGoogleAds, isMeta, platformCampaignOptions, selectedValues]);
 
   const updateCampaignMapping = (crmValue: string, campaignIdValue: string) => {
     const value = String(crmValue || "").trim();
@@ -235,16 +238,17 @@ export function SalesforceRevenueWizard(props: {
     setCampaignMappings((prev) => {
       const rest = prev.filter((mapping) => String(mapping.crmValue || "").trim() !== value);
       if (!campaignIdValue || campaignIdValue === "__none__") return rest;
-      const campaign = googleAdsCampaignOptions.find((item) => item.id === campaignIdValue);
+      const campaign = platformCampaignOptions.find((item) => item.id === campaignIdValue);
       return [...rest, { crmValue: value, linkedinCampaignUrn: campaignIdValue, linkedinCampaignName: campaign?.name || campaignIdValue }];
     });
   };
 
-  const renderGoogleAdsCampaignMappings = () => {
-    if (!isGoogleAds || selectedValues.length === 0) return null;
+  const renderAdPlatformCampaignMappings = () => {
+    if ((!isGoogleAds && !isMeta) || selectedValues.length === 0) return null;
+    const platformLabel = isMeta ? "Meta" : "Google Ads";
     return (
       <div className="rounded border p-3 space-y-3">
-        <Label>Google Ads campaign mapping</Label>
+        <Label>{platformLabel} campaign mapping</Label>
         <div className="space-y-2">
           {selectedValues.map((value) => {
             const current = campaignMappings.find((mapping) => String(mapping.crmValue || "").trim() === value);
@@ -253,11 +257,11 @@ export function SalesforceRevenueWizard(props: {
                 <div className="truncate text-sm">{value}</div>
                 <Select value={current?.linkedinCampaignUrn || "__none__"} onValueChange={(next) => updateCampaignMapping(value, next)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select Google Ads campaign" />
+                    <SelectValue placeholder={`Select ${platformLabel} campaign`} />
                   </SelectTrigger>
                   <SelectContent className="z-[10000]">
                     <SelectItem value="__none__">No campaign mapping</SelectItem>
-                    {googleAdsCampaignOptions.map((campaign) => (
+                    {platformCampaignOptions.map((campaign) => (
                       <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1330,7 +1334,7 @@ export function SalesforceRevenueWizard(props: {
                   </div>
                 )}
               </div>
-              {renderGoogleAdsCampaignMappings()}
+              {renderAdPlatformCampaignMappings()}
             </div>
           )}
 

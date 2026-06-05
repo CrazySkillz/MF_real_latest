@@ -95,6 +95,7 @@ export function AddRevenueWizardModal(props: {
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/meta/kpis"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "meta"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/meta/reports", campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "meta-campaign-revenue"], exact: false });
     }
 
     if (platformContext === 'google_ads') {
@@ -137,6 +138,7 @@ export function AddRevenueWizardModal(props: {
       void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "meta"], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/meta", campaignId, "revenue", "summary"], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/meta", campaignId], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "meta-campaign-revenue"], exact: false });
     } else if (platformContext === 'google_ads') {
       void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_ads&dateRange=90days`], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_ads"], exact: false });
@@ -514,12 +516,12 @@ export function AddRevenueWizardModal(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Fetch platform campaigns when manual platform selection changes or Google Ads imports need mappings.
+  // Fetch platform campaigns when manual platform selection changes or ad-platform imports need mappings.
   useEffect(() => {
     if (!open) return;
     const campaignPlatform = step === 'manual' ? manualPlatform : platformContext;
-    const needsGoogleAdsMapping = platformContext === 'google_ads' && (step === 'csv_map' || step === 'sheets_map');
-    if (step !== 'manual' && !needsGoogleAdsMapping) return;
+    const needsCampaignMapping = (platformContext === 'google_ads' || platformContext === 'meta') && (step === 'csv_map' || step === 'sheets_map');
+    if (step !== 'manual' && !needsCampaignMapping) return;
     if (campaignPlatform === 'ga4') {
       setPlatformCampaigns([]);
       return;
@@ -540,7 +542,10 @@ export function AddRevenueWizardModal(props: {
           const resp = await fetch(`/api/meta/${campaignId}/campaigns`, { credentials: "include" });
           const json = await resp.json().catch(() => ({}));
           if (!cancelled && Array.isArray(json?.campaigns)) {
-            setPlatformCampaigns(json.campaigns.map((c: any) => ({ id: c.id || c.name, name: c.name || c.id || 'Unknown' })));
+            const selectedIds = new Set(Array.isArray(json?.selectedCampaignIds) ? json.selectedCampaignIds.map((id: any) => String(id)) : []);
+            setPlatformCampaigns(json.campaigns
+              .filter((c: any) => selectedIds.size > 0 ? selectedIds.has(String(c?.id || "")) : c?.selected !== false)
+              .map((c: any) => ({ id: c.id || c.name, name: c.name || c.id || 'Unknown' })));
           }
         } else if (campaignPlatform === 'google_ads') {
           const resp = await fetch(`/api/google-ads/${campaignId}/campaigns`, { credentials: "include" });
@@ -805,7 +810,7 @@ export function AddRevenueWizardModal(props: {
       .map(([value]) => value);
   };
 
-  const googleAdsCampaignOptions = useMemo(() => {
+  const platformCampaignOptions = useMemo(() => {
     const options = new Map<string, { id: string; name: string }>();
     for (const campaign of platformCampaigns) {
       if (campaign.id) options.set(campaign.id, campaign);
@@ -818,11 +823,11 @@ export function AddRevenueWizardModal(props: {
   }, [platformCampaigns, revenueCampaignMappings]);
 
   const mappedRevenueCampaignsForValues = (values: string[]) => {
-    if (platformContext !== "google_ads") return [];
+    if (platformContext !== "google_ads" && platformContext !== "meta") return [];
     const valueSet = new Set(values.map((v) => String(v ?? "").trim()).filter(Boolean));
     return revenueCampaignMappings.filter((mapping) => (
       valueSet.has(String(mapping.crmValue || "").trim()) &&
-      googleAdsCampaignOptions.some((campaign) => campaign.id === mapping.linkedinCampaignUrn)
+      platformCampaignOptions.some((campaign) => campaign.id === mapping.linkedinCampaignUrn)
     ));
   };
 
@@ -832,7 +837,7 @@ export function AddRevenueWizardModal(props: {
     setRevenueCampaignMappings((prev) => {
       const rest = prev.filter((mapping) => String(mapping.crmValue || "").trim() !== value);
       if (!campaignIdValue || campaignIdValue === SELECT_NONE) return rest;
-      const campaign = googleAdsCampaignOptions.find((item) => item.id === campaignIdValue);
+      const campaign = platformCampaignOptions.find((item) => item.id === campaignIdValue);
       return [
         ...rest,
         {
@@ -844,12 +849,13 @@ export function AddRevenueWizardModal(props: {
     });
   };
 
-  const renderGoogleAdsCampaignMapping = (values: string[]) => {
+  const renderPlatformCampaignMapping = (values: string[]) => {
     const selectedValues = values.map((v) => String(v ?? "").trim()).filter(Boolean);
-    if (platformContext !== "google_ads" || selectedValues.length === 0) return null;
+    if ((platformContext !== "google_ads" && platformContext !== "meta") || selectedValues.length === 0) return null;
+    const platformLabel = platformContext === "meta" ? "Meta" : "Google Ads";
     return (
       <div className="pt-2 border-t space-y-3">
-        <Label className="font-normal">Google Ads campaign mapping</Label>
+        <Label className="font-normal">{platformLabel} campaign mapping</Label>
         <div className="space-y-2">
           {selectedValues.map((value) => {
             const current = revenueCampaignMappings.find((mapping) => String(mapping.crmValue || "").trim() === value);
@@ -862,11 +868,11 @@ export function AddRevenueWizardModal(props: {
                   disabled={platformCampaignsLoading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select Google Ads campaign" />
+                    <SelectValue placeholder={`Select ${platformLabel} campaign`} />
                   </SelectTrigger>
                   <SelectContent className="z-[10000]">
                     <SelectItem value={SELECT_NONE}>No campaign mapping</SelectItem>
-                    {googleAdsCampaignOptions.map((campaign) => (
+                    {platformCampaignOptions.map((campaign) => (
                       <SelectItem key={campaign.id} value={campaign.id}>
                         {campaign.name}
                       </SelectItem>
@@ -954,7 +960,7 @@ export function AddRevenueWizardModal(props: {
       if (!initialSet.has(value)) return true;
     }
     return false;
-  }, [isEditing, csvFile, csvPrefill, csvRevenueCol, csvCampaignCol, csvDateCol, csvCampaignValues, revenueCampaignMappings, googleAdsCampaignOptions]);
+  }, [isEditing, csvFile, csvPrefill, csvRevenueCol, csvCampaignCol, csvDateCol, csvCampaignValues, revenueCampaignMappings, platformCampaignOptions]);
 
   const filteredSheetsPreviewRows = useMemo(() => {
     const rows = Array.isArray(sheetsPreview?.sampleRows) ? sheetsPreview!.sampleRows : [];
@@ -1014,7 +1020,7 @@ export function AddRevenueWizardModal(props: {
       if (!initialSet.has(value)) return true;
     }
     return false;
-  }, [isEditing, initialSource, sheetsConnectionId, sheetsRevenueCol, sheetsConversionValueCol, sheetsCampaignCol, sheetsDateCol, sheetsCampaignValues, revenueCampaignMappings, googleAdsCampaignOptions]);
+  }, [isEditing, initialSource, sheetsConnectionId, sheetsRevenueCol, sheetsConversionValueCol, sheetsCampaignCol, sheetsDateCol, sheetsCampaignValues, revenueCampaignMappings, platformCampaignOptions]);
 
   const handleBack = () => {
     if (step === "select") return;
@@ -1898,7 +1904,7 @@ export function AddRevenueWizardModal(props: {
                           </div>
                         </div>
 
-                        {renderGoogleAdsCampaignMapping(csvCampaignValues)}
+                        {renderPlatformCampaignMapping(csvCampaignValues)}
 
                         <div className="rounded-md border overflow-hidden p-3">
                           <div className="text-sm font-medium mb-3">Preview</div>
@@ -2240,7 +2246,7 @@ export function AddRevenueWizardModal(props: {
 
                         </div>
 
-                        {renderGoogleAdsCampaignMapping(sheetsCampaignValues)}
+                        {renderPlatformCampaignMapping(sheetsCampaignValues)}
 
                         {/* Preview table */}
                         <div className="rounded-md border overflow-hidden">

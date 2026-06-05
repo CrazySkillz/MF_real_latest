@@ -21,7 +21,7 @@ Meta/Facebook is locally production-ready for the implemented source-backed test
 
 This tracker is the planning and implementation artifact. The implemented local/test-mode Meta path has been hardened against the source-backed pattern used by LinkedIn and Google Ads. Live OAuth and deployed scheduled-report behavior still require production-like evidence.
 
-Meta Commit 18 has been implemented locally. Local validation passed; user/browser validation is pending. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
+Meta Commit 19 has been implemented locally. Local validation passed; user/browser validation is pending. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
 
 Verified current foundations:
 
@@ -47,6 +47,7 @@ Verified current foundations:
 - Commit 16 renames the Meta Overview per-campaign card section from `All Campaigns` to `Campaign Breakdown`, removes duplicate or unsafe financial values from that section, and hides optional live-only breakdown sections when no breakdown rows exist.
 - Commit 17 includes `Top Demographics`, `Top Locations`, and `Ad Placements` in the selected Meta analytics response for the source-backed test-mode path, while preserving the live Meta Insights breakdown import path.
 - Commit 18 keeps imported Meta revenue visible only in the Overview Total Revenue card until exact per-Meta-campaign revenue attribution is implemented.
+- Commit 19 adds exact Meta campaign mapping for imported revenue sources and shows Campaign Breakdown `Total Revenue` only when mapped revenue exists for the selected Meta campaign.
 
 Verified production-readiness gaps:
 
@@ -973,6 +974,44 @@ Status:
 - [x] Local validation passed: `npm run check`.
 - [ ] User/browser validation pending.
 
+### Meta Commit 19: Exact Meta Campaign Revenue Mapping
+
+Goal:
+
+- Let users map imported campaign values from Meta revenue sources to selected Meta campaign IDs, then show exact mapped revenue in the Meta Overview Campaign Breakdown.
+
+Root cause analysis:
+
+- The Meta revenue wizard already used `platformContext="meta"` and could import total Meta-attributed revenue.
+- The campaign mapping control in CSV/Google Sheets and embedded CRM/ecommerce wizards was only enabled for Google Ads, with LinkedIn support in some child flows.
+- The server materialized exact sub-campaign revenue records only when Google Ads campaign IDs or LinkedIn mappings were resolved.
+- Meta Overview had no per-Meta-campaign revenue endpoint, so Campaign Breakdown could not safely show individual campaign revenue without inventing allocation.
+- The smallest safe fix is to reuse the existing `campaignMappings` and `revenue_records.sub_campaign_urn` pattern for Meta, scoped to selected Meta campaign IDs only.
+
+Validation:
+
+- Open Meta Overview.
+- Click the Total Revenue `+` action.
+- Add or edit a revenue source with a campaign/attribution value field.
+- Confirm the wizard shows `Meta campaign mapping`.
+- Map each imported campaign value to the correct selected Meta campaign.
+- Save the source.
+- Confirm the Total Revenue card updates.
+- Confirm Campaign Breakdown shows `Total Revenue` only on rows with exact mapped Meta campaign revenue.
+- Confirm unmapped Meta campaign rows show `-` for Total Revenue.
+- Confirm no ROAS, ROI, or Profit values are added back to Campaign Breakdown.
+
+Status:
+
+- [x] Completed locally: CSV and Google Sheets Meta revenue imports can map imported campaign values to selected Meta campaigns.
+- [x] Completed locally: HubSpot, Salesforce, and Shopify Meta revenue imports can map selected CRM/ecommerce campaign values to selected Meta campaigns.
+- [x] Completed locally: server revenue materialization now writes exact Meta `subCampaignUrn` records when mapped selected Meta campaign IDs exist.
+- [x] Completed locally: Meta Overview reads `/api/campaigns/:id/meta-campaign-revenue` and renders Campaign Breakdown `Total Revenue` from exact mapped revenue only.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] User/browser validation pending.
+
 ## Validation Evidence Required Before Production-Ready Claim
 
 Must be proven locally:
@@ -1010,11 +1049,11 @@ Outstanding required implementation work:
 
 Outstanding evidence:
 
-- Meta Commit 18 user/browser validation is pending and should cover the visible Commit 16/17/18 Meta Overview changes.
+- Meta Commit 19 user/browser validation is pending and should cover visible Commit 16/17/18/19 Meta Overview changes and exact Meta revenue mapping.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 - Deployed scheduled Meta report email receipt is not available locally.
 
 ## Current Handoff
 
-The next smallest safest step is a browser check that Meta Overview shows `Campaign Breakdown`, keeps the selected Meta campaign metrics, renders `Top Demographics`, `Top Locations`, and `Ad Placements` rows for a test-mode Meta campaign, and keeps imported revenue visible only in the Overview Total Revenue card. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.
+The next smallest safest step is a browser check that Meta Overview shows `Campaign Breakdown`, keeps the selected Meta campaign metrics, renders `Top Demographics`, `Top Locations`, and `Ad Placements` rows for a test-mode Meta campaign, and shows Campaign Breakdown `Total Revenue` only for exact mapped Meta campaign revenue. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.

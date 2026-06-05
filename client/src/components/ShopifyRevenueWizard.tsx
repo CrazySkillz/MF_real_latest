@@ -41,6 +41,7 @@ export function ShopifyRevenueWizard(props: {
   const { toast } = useToast();
   const isLinkedIn = platformContext === "linkedin";
   const isGoogleAds = platformContext === "google_ads";
+  const isMeta = platformContext === "meta";
 
   const [step, setStep] = useState<Step>("campaign-field");
   // Allow parent (outer modal Back button) to drive navigation back to the connect screen.
@@ -121,14 +122,21 @@ export function ShopifyRevenueWizard(props: {
 
   // Fetch selected platform campaigns when per-campaign mapping is supported.
   useEffect(() => {
-    if ((!isLinkedIn && !isGoogleAds) || !campaignId) return;
-    const url = isGoogleAds ? `/api/google-ads/${campaignId}/campaigns` : `/api/campaigns/${campaignId}/linkedin-campaigns`;
+    if ((!isLinkedIn && !isGoogleAds && !isMeta) || !campaignId) return;
+    const url = isGoogleAds
+      ? `/api/google-ads/${campaignId}/campaigns`
+      : isMeta
+        ? `/api/meta/${campaignId}/campaigns`
+        : `/api/campaigns/${campaignId}/linkedin-campaigns`;
     fetch(url, { credentials: "include" })
       .then(r => r.ok ? r.json() : { campaigns: [] })
       .then(data => {
         const campaigns = Array.isArray(data?.campaigns) ? data.campaigns : [];
+        const selectedIds = new Set(Array.isArray(data?.selectedCampaignIds) ? data.selectedCampaignIds.map((id: any) => String(id)) : []);
         setPlatformCampaigns(campaigns
-          .filter((campaign: any) => !isGoogleAds || campaign?.selected !== false)
+          .filter((campaign: any) => isMeta
+            ? (selectedIds.size > 0 ? selectedIds.has(String(campaign?.id || "")) : campaign?.selected !== false)
+            : (!isGoogleAds || campaign?.selected !== false))
           .map((campaign: any) => ({
             id: String(campaign?.campaignUrn || campaign?.id || campaign?.name || ""),
             name: String(campaign?.name || campaign?.campaignUrn || campaign?.id || "Unknown"),
@@ -136,7 +144,7 @@ export function ShopifyRevenueWizard(props: {
           .filter((campaign: any) => !!campaign.id));
       })
       .catch(() => setPlatformCampaigns([]));
-  }, [isLinkedIn, isGoogleAds, campaignId]);
+  }, [isLinkedIn, isGoogleAds, isMeta, campaignId]);
 
   const platformCampaignOptions = useMemo(() => {
     const options = new Map<string, { id: string; name: string }>();
@@ -151,13 +159,13 @@ export function ShopifyRevenueWizard(props: {
   }, [campaignMappings, platformCampaigns]);
 
   const selectedCampaignMappings = useMemo(() => {
-    if (!isLinkedIn && !isGoogleAds) return [];
+    if (!isLinkedIn && !isGoogleAds && !isMeta) return [];
     const selectedSet = new Set(selectedValues.map((value) => String(value || "").trim()).filter(Boolean));
     return campaignMappings.filter((mapping) => (
       selectedSet.has(String(mapping.crmValue || "").trim()) &&
       platformCampaignOptions.some((campaign) => campaign.id === mapping.linkedinCampaignUrn)
     ));
-  }, [campaignMappings, isGoogleAds, isLinkedIn, platformCampaignOptions, selectedValues]);
+  }, [campaignMappings, isGoogleAds, isLinkedIn, isMeta, platformCampaignOptions, selectedValues]);
 
   const updateCampaignMapping = (crmValue: string, campaignIdValue: string) => {
     const value = String(crmValue || "").trim();
@@ -171,10 +179,11 @@ export function ShopifyRevenueWizard(props: {
   };
 
   const renderPlatformCampaignMappings = () => {
-    if ((!isLinkedIn && !isGoogleAds) || selectedValues.length === 0) return null;
+    if ((!isLinkedIn && !isGoogleAds && !isMeta) || selectedValues.length === 0) return null;
+    const platformLabel = isGoogleAds ? "Google Ads" : isMeta ? "Meta" : "LinkedIn";
     return (
       <div className="rounded border p-3 space-y-3">
-        <Label>{isGoogleAds ? "Google Ads campaign mapping" : "LinkedIn campaign mapping"}</Label>
+        <Label>{platformLabel} campaign mapping</Label>
         <div className="space-y-2">
           {selectedValues.map((value) => {
             const current = campaignMappings.find((mapping) => String(mapping.crmValue || "").trim() === value);
@@ -183,7 +192,7 @@ export function ShopifyRevenueWizard(props: {
                 <div className="truncate text-sm">{value}</div>
                 <Select value={current?.linkedinCampaignUrn || "__none__"} onValueChange={(next) => updateCampaignMapping(value, next)}>
                   <SelectTrigger>
-                    <SelectValue placeholder={isGoogleAds ? "Select Google Ads campaign" : "Select LinkedIn campaign"} />
+                    <SelectValue placeholder={`Select ${platformLabel} campaign`} />
                   </SelectTrigger>
                   <SelectContent className="z-[10000]">
                     <SelectItem value="__none__">No campaign mapping</SelectItem>
@@ -502,7 +511,7 @@ export function ShopifyRevenueWizard(props: {
             platformContext,
             valueSource: "revenue",
             revenueClassification: isLinkedIn ? "offsite_not_in_ga4" : "onsite_in_ga4",
-            ...((isLinkedIn || isGoogleAds) && selectedCampaignMappings.length > 0 ? { campaignMappings: selectedCampaignMappings } : {}),
+            ...((isLinkedIn || isGoogleAds || isMeta) && selectedCampaignMappings.length > 0 ? { campaignMappings: selectedCampaignMappings } : {}),
           }),
         });
         const json = await resp.json().catch(() => ({}));

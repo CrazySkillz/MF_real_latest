@@ -31,6 +31,8 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("connected: isInstagramConnected");
     expect(page).toContain("analyticsPath: null");
     expect(page).toContain('case "Instagram Ads":');
+    expect(page).toContain("p === 'Instagram Ads'");
+    expect(page).toContain("`/api/instagram/${campaignId}/connection`");
     expect(page).not.toContain("/campaigns/${campaign?.id}/instagram");
     expect(page).not.toContain("InstagramConnectionFlow");
   });

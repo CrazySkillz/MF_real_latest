@@ -4935,6 +4935,8 @@ export default function CampaignDetail() {
         url = `/api/google-ads/${campaignId}/connection`;
       } else if (p === 'Google Sheets') {
         url = `/api/google-sheets/${campaignId}/connection`;
+      } else if (p === 'Instagram Ads') {
+        url = `/api/instagram/${campaignId}/connection`;
       } else if (p === 'Custom Integration') {
         url = `/api/custom-integration/${campaignId}`;
       } else {
@@ -4951,6 +4953,7 @@ export default function CampaignDetail() {
       void queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", campaignId] });
       void queryClient.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
       void queryClient.invalidateQueries({ queryKey: ['/api/google-ads', campaignId, 'connection'] });
+      void queryClient.invalidateQueries({ queryKey: [`/api/instagram/${campaignId}/connection`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`] });
       void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports'], exact: false });

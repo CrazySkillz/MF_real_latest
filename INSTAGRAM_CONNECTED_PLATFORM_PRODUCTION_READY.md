@@ -29,11 +29,12 @@ This table is the single source of truth for what is done, pending, and where ea
 | 5C | Create Campaign selected-campaign validation and finalization guard | Done and pushed; user validation passed | Create Campaign finalization guard |
 | 5D | Create Campaign query invalidation after successful Instagram setup | Done and pushed; user validation passed | Create Campaign cache behavior |
 | 5E | Create Campaign regression and validation docs | Done and pushed; user validation passed | None |
-| 6A | Connected Platforms status endpoint includes Instagram status from source contract | Implemented locally; user validation pending | Backend status payload used by UI |
-| 6B | Connected Platforms Instagram card shell with no placeholder metrics | Implemented locally; user validation pending | Connected Platforms UI card |
-| 6C | Connected Platforms add-source flow opens existing Instagram setup contract | Implemented locally; user validation pending | Connected Platforms setup UI |
-| 6D | Connected Platforms success/error/empty states and query invalidation | Implemented locally; user validation pending | Connected Platforms UI state |
-| 6E | Connected Platforms regression and validation docs | Implemented locally; user validation pending | None |
+| 6A | Connected Platforms status endpoint includes Instagram status from source contract | Done and pushed; user validation pending | Backend status payload used by UI |
+| 6B | Connected Platforms Instagram card shell with no placeholder metrics | Done and pushed; user validation pending | Connected Platforms UI card |
+| 6C | Connected Platforms add-source flow opens existing Instagram setup contract | Done and pushed; user validation pending | Connected Platforms setup UI |
+| 6D | Connected Platforms success/error/empty states and query invalidation | Done and pushed; user validation pending | Connected Platforms UI state |
+| 6E | Connected Platforms regression and validation docs | Done and pushed; user validation pending | None |
+| 6F | Connected Platforms disconnect UI route mapping | Implemented locally; user validation pending | Connected Platforms disconnect action |
 | 7A | Campaign Overview reads Instagram connection/source status only | Pending | Overview source status |
 | 7B | Campaign Overview unavailable metric states for connected-without-rows | Pending | Overview metric states |
 | 7C | Campaign Overview source-backed metrics from Instagram daily rows only | Pending | Overview metrics |
@@ -121,15 +122,17 @@ Commit 5D Create Campaign query invalidation is done, pushed, and user-validated
 
 Commit 5E Create Campaign closeout is done, pushed, and user-validated. It documents the completed Commit 5 boundary: Instagram can be connected during Create Campaign through the test source contract and finalized with source validation/cache invalidation, but analytics aggregation, Campaign DeepDive source cards, reports, scheduler, revenue, KPI, and Benchmark behavior remain future commits.
 
-Commit 6A Connected Platforms status endpoint is implemented locally. `/api/campaigns/:id/connected-platforms` now includes Instagram status from the persisted Instagram source contract only, requires a non-empty selected campaign scope, and intentionally returns no analytics path until the Instagram analytics/aggregate phases are implemented.
+Commit 6A Connected Platforms status endpoint is done and pushed. `/api/campaigns/:id/connected-platforms` now includes Instagram status from the persisted Instagram source contract only, requires a non-empty selected campaign scope, and intentionally returns no analytics path until the Instagram analytics/aggregate phases are implemented.
 
-Commit 6B Connected Platforms card shell is implemented locally. Campaign Detail renders an Instagram Ads card from the connected-platforms status map, with no placeholder metrics and no analytics link.
+Commit 6B Connected Platforms card shell is done and pushed. Campaign Detail renders an Instagram Ads card from the connected-platforms status map, with no placeholder metrics and no analytics link.
 
-Commit 6C Connected Platforms add-source setup is implemented locally. The Instagram Ads card can open a minimal test setup form that calls only `POST /api/instagram/:campaignId/connect-test` with explicit selected Instagram campaign IDs.
+Commit 6C Connected Platforms add-source setup is done and pushed. The Instagram Ads card can open a minimal test setup form that calls only `POST /api/instagram/:campaignId/connect-test` with explicit selected Instagram campaign IDs.
 
-Commit 6D Connected Platforms state/invalidation is implemented locally. Instagram setup now uses a dedicated campaign-scoped invalidation helper after success and keeps empty selected-campaign input plus backend errors in destructive toast states.
+Commit 6D Connected Platforms state/invalidation is done and pushed. Instagram setup now uses a dedicated campaign-scoped invalidation helper after success and keeps empty selected-campaign input plus backend errors in destructive toast states.
 
-Commit 6E Connected Platforms closeout is implemented locally. It documents the completed Commit 6 boundary: Instagram can be surfaced and connected from Connected Platforms through the test source contract, but analytics pages, Campaign DeepDive aggregation, refresh, reports, revenue, KPI, and Benchmark behavior remain future commits.
+Commit 6E Connected Platforms closeout is done and pushed. It documents the completed Commit 6 boundary: Instagram can be surfaced and connected from Connected Platforms through the test source contract, but analytics pages, Campaign DeepDive aggregation, refresh, reports, revenue, KPI, and Benchmark behavior remain future commits.
+
+Commit 6F Connected Platforms disconnect UI route mapping is implemented locally. It maps the existing shared disconnect action for `Instagram Ads` to the already campaign-access-guarded backend `DELETE /api/instagram/:campaignId/connection` route and invalidates the Instagram connection query after success; it does not add analytics, refresh, aggregate, reports, revenue, KPI, Benchmark, or live OAuth behavior.
 
 ## Root Cause Analysis
 
@@ -157,6 +160,7 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 6C, the Instagram card could not connect Instagram later from Connected Platforms. Commit 6C opens the same test source-contract setup path without adding live OAuth, analytics, refresh, or aggregate behavior.
 - Before Commit 6D, successful Instagram setup from Connected Platforms invalidated only the platform status and Instagram connection query, leaving source-dependent campaign queries potentially stale. Commit 6D broadens invalidation without adding new data paths.
 - Before Commit 6E, the Commit 6 validation text still implied Instagram analytics and Campaign DeepDive source-backed confirmation, even though those are explicitly later commits. Commit 6E corrects the Connected Platforms acceptance boundary.
+- Before Commit 6F, the shared Connected Platforms disconnect handler did not include an `Instagram Ads` route mapping, so disconnecting Instagram fell through to the generic unsupported-platform toast even though the backend disconnect route already existed. Commit 6F maps only that UI branch to the existing guarded Instagram route.
 - `server/scheduler.ts` and platform schedulers have no Instagram refresh or snapshot input.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`, but no Instagram resolver currently supplies one.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
@@ -747,7 +751,7 @@ Status:
 - [x] User validation passed for Commit 5D by connecting to the Instagram test account.
 - [x] User validation passed for Commit 5E by connecting to the Instagram test account.
 
-### Details For Commits 6A-6E: Connected Platforms Add-Source Flow
+### Details For Commits 6A-6F: Connected Platforms Add-Source Flow
 
 Goal:
 
@@ -830,6 +834,20 @@ Commit 6E validation:
 - Instagram analytics, Campaign DeepDive aggregation, source-backed metrics, reports, scheduler, revenue, KPI, and Benchmark work remain pending in later commits.
 - Regression coverage remains focused on Connected Platforms status/card/setup/invalidation and source-contract boundaries.
 
+Commit 6F smallest safe UI slice:
+
+- Add only the missing `Instagram Ads` branch to the shared Connected Platforms disconnect handler.
+- Call only the existing `DELETE /api/instagram/:campaignId/connection` route.
+- Invalidate the Instagram connection query after successful disconnect.
+- Do not change backend disconnect behavior, storage cleanup, analytics, refresh, aggregate, scheduler, reports, revenue, KPI, Benchmark, or live OAuth behavior.
+
+Commit 6F validation:
+
+- Disconnecting Instagram from Connected Platforms no longer shows `Disconnect not supported for this platform`.
+- The Instagram card returns to disconnected state after a successful disconnect.
+- Existing platform disconnect behavior remains unchanged.
+- Instagram analytics, Campaign DeepDive aggregation, source-backed metrics, reports, scheduler, revenue, KPI, and Benchmark work remain pending in later commits.
+
 Tasks:
 
 - Add Instagram to the Campaign Overview Connected Platforms card list.
@@ -848,16 +866,18 @@ Validation:
 
 Status:
 
-- [x] Commit 6A implemented locally: Connected Platforms backend status includes Instagram from the source contract only.
-- [x] Commit 6B implemented locally: Campaign Detail renders an Instagram Ads card shell without analytics exposure.
-- [x] Commit 6C implemented locally: disconnected Instagram card opens the test source-contract setup form.
-- [x] Commit 6D implemented locally: Instagram Connected Platforms setup invalidates source-dependent campaign query keys.
-- [x] Commit 6E implemented locally: Connected Platforms validation and acceptance boundary are documented.
+- [x] Commit 6A done and pushed: Connected Platforms backend status includes Instagram from the source contract only.
+- [x] Commit 6B done and pushed: Campaign Detail renders an Instagram Ads card shell without analytics exposure.
+- [x] Commit 6C done and pushed: disconnected Instagram card opens the test source-contract setup form.
+- [x] Commit 6D done and pushed: Instagram Connected Platforms setup invalidates source-dependent campaign query keys.
+- [x] Commit 6E done and pushed: Connected Platforms validation and acceptance boundary are documented.
+- [x] Commit 6F implemented locally: Connected Platforms disconnect maps Instagram Ads to the existing backend route.
 - [ ] User validation pending for Commit 6A.
 - [ ] User validation pending for Commit 6B.
 - [ ] User validation pending for Commit 6C.
 - [ ] User validation pending for Commit 6D.
 - [ ] User validation pending for Commit 6E.
+- [ ] User validation pending for Commit 6F.
 
 ### Details For Commits 7A-7D: Source-Backed Campaign Overview Metrics
 
@@ -1156,11 +1176,11 @@ Proven:
 - Instagram Commit 5C startup migration correction is done and pushed, and only creates missing Instagram source tables/indexes.
 - Instagram Commit 5D Create Campaign query invalidation is done, pushed, and user-validated without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, Connected Platforms, or report exposure.
 - Instagram Commit 5E Create Campaign closeout is done, pushed, and user-validated as documentation/regression-boundary tracking only.
-- Instagram Commit 6A Connected Platforms backend status is implemented locally without UI card, setup flow, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, or report exposure.
-- Instagram Commit 6B Connected Platforms card shell is implemented locally without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, or report exposure.
-- Instagram Commit 6C Connected Platforms add-source setup is implemented locally without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, or report exposure.
-- Instagram Commit 6D Connected Platforms state/invalidation is implemented locally without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, or report exposure.
-- Instagram Commit 6E Connected Platforms closeout is implemented locally as documentation/regression-boundary tracking only.
+- Instagram Commit 6A Connected Platforms backend status is done and pushed without UI card, setup flow, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, or report exposure.
+- Instagram Commit 6B Connected Platforms card shell is done and pushed without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, or report exposure.
+- Instagram Commit 6C Connected Platforms add-source setup is done and pushed without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, or report exposure.
+- Instagram Commit 6D Connected Platforms state/invalidation is done and pushed without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, or report exposure.
+- Instagram Commit 6E Connected Platforms closeout is done and pushed as documentation/regression-boundary tracking only.
 
 Partially reviewed:
 

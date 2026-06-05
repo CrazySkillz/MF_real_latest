@@ -2597,6 +2597,65 @@ export default function MetaAnalytics() {
                     }
                   });
 
+                  // Generate source-safe campaign-level budget optimization insights
+                  const budgetCampaignRows = (Array.isArray(campaigns) ? campaigns : [])
+                    .map((campaignData: any) => {
+                      const campaign = campaignData?.campaign || {};
+                      const totals = campaignData?.totals || {};
+                      const campaignId = String(campaign?.id || '');
+                      const spend = Number(totals?.spend || 0) || 0;
+                      const conversions = Number(totals?.conversions || 0) || 0;
+                      const costPerConversion = conversions > 0 ? spend / conversions : Number(totals?.costPerConversion || 0) || 0;
+                      const mappedRevenue = Number(metaCampaignRevenueById.get(campaignId) || 0);
+                      return {
+                        id: campaignId,
+                        name: String(campaign?.name || campaignId || 'Meta campaign'),
+                        spend,
+                        conversions,
+                        clicks: Number(totals?.clicks || 0) || 0,
+                        ctr: Number(totals?.ctr || 0) || 0,
+                        cpc: Number(totals?.cpc || 0) || 0,
+                        cpm: Number(totals?.cpm || 0) || 0,
+                        costPerConversion,
+                        mappedRevenue,
+                        roas: mappedRevenue > 0 && spend > 0 ? mappedRevenue / spend : null,
+                        roi: mappedRevenue > 0 && spend > 0 ? ((mappedRevenue - spend) / spend) * 100 : null,
+                        profit: mappedRevenue > 0 ? mappedRevenue - spend : null,
+                      };
+                    })
+                    .filter((row: any) => row.id && row.spend > 0);
+                  const campaignsWithConversions = budgetCampaignRows.filter((row: any) => row.conversions > 0 && row.costPerConversion > 0);
+                  const efficientCampaign = [...campaignsWithConversions].sort((a: any, b: any) => a.costPerConversion - b.costPerConversion)[0];
+                  const inefficientCampaign = [...budgetCampaignRows].sort((a: any, b: any) => {
+                    if (a.conversions === 0 && b.conversions > 0) return -1;
+                    if (b.conversions === 0 && a.conversions > 0) return 1;
+                    return b.costPerConversion - a.costPerConversion;
+                  })[0];
+                  const budgetSource = (row: any) => row.mappedRevenue > 0
+                    ? 'Source: Meta campaign metrics + exact mapped Meta attributed revenue.'
+                    : 'Source: Meta campaign metrics only. No exact mapped Meta attributed revenue is available for this campaign.';
+
+                  if (efficientCampaign) {
+                    allInsights.push({
+                      id: `budget-efficient-${efficientCampaign.id}`,
+                      title: `Budget Efficiency Opportunity: ${efficientCampaign.name}`,
+                      description: `${budgetSource(efficientCampaign)} Spend is ${fmtCurrency(efficientCampaign.spend)}, conversions are ${efficientCampaign.conversions.toLocaleString()}, and cost/conversion is ${fmtCurrency(efficientCampaign.costPerConversion)}.${efficientCampaign.roas !== null ? ` ROAS is ${efficientCampaign.roas.toFixed(2)}x, ROI is ${formatPct(efficientCampaign.roi || 0)}, and profit is ${fmtCurrency(efficientCampaign.profit || 0)}.` : ''}`,
+                      severity: 'medium',
+                      recommendation: 'Review this campaign as a candidate for incremental budget before scaling lower-efficiency campaigns.',
+                      group: 'budget',
+                    });
+                  }
+                  if (inefficientCampaign && inefficientCampaign.id !== efficientCampaign?.id) {
+                    allInsights.push({
+                      id: `budget-review-${inefficientCampaign.id}`,
+                      title: `Budget Review Needed: ${inefficientCampaign.name}`,
+                      description: `${budgetSource(inefficientCampaign)} Spend is ${fmtCurrency(inefficientCampaign.spend)}, conversions are ${inefficientCampaign.conversions.toLocaleString()}, and cost/conversion is ${inefficientCampaign.conversions > 0 ? fmtCurrency(inefficientCampaign.costPerConversion) : 'unavailable because conversions are 0'}.${inefficientCampaign.roas !== null ? ` ROAS is ${inefficientCampaign.roas.toFixed(2)}x, ROI is ${formatPct(inefficientCampaign.roi || 0)}, and profit is ${fmtCurrency(inefficientCampaign.profit || 0)}.` : ''}`,
+                      severity: inefficientCampaign.conversions === 0 ? 'high' : 'medium',
+                      recommendation: 'Review targeting, creative, and spend before increasing this campaign budget.',
+                      group: 'budget',
+                    });
+                  }
+
                   // Generate insights from campaign performance
                   if (summary.avgFrequency > 3.0) {
                     allInsights.push({
@@ -2850,6 +2909,39 @@ export default function MetaAnalytics() {
                                     <Badge variant="outline" className="text-xs">{allInsights.filter(i => i.group === 'integrity').length}</Badge>
                                   </div>
                                   {allInsights.filter(i => i.group === 'integrity').map(i => (
+                                    <div key={i.id} className="rounded-lg border border-border p-4">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <div className="font-semibold text-foreground">{i.title}</div>
+                                            <Badge className={`text-xs border ${
+                                              i.severity === 'high' ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
+                                              : i.severity === 'medium' ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
+                                              : 'bg-muted text-foreground border-border dark:text-slate-200'
+                                            }`}>
+                                              {i.severity === 'high' ? 'High' : i.severity === 'medium' ? 'Medium' : 'Low'}
+                                            </Badge>
+                                          </div>
+                                          <div className="text-sm text-muted-foreground/70 mt-1">{i.description}</div>
+                                          {i.recommendation && (
+                                            <div className="text-sm text-foreground/80/60 mt-2">
+                                              <span className="font-medium">Next step:</span> {i.recommendation}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {allInsights.filter(i => i.group === 'budget').length > 0 && (
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-sm font-semibold text-foreground/80/60">Budget optimization</div>
+                                    <Badge variant="outline" className="text-xs">{allInsights.filter(i => i.group === 'budget').length}</Badge>
+                                  </div>
+                                  {allInsights.filter(i => i.group === 'budget').map(i => (
                                     <div key={i.id} className="rounded-lg border border-border p-4">
                                       <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">

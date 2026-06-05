@@ -17,11 +17,11 @@ Meta/Facebook must be treated as a campaign-scoped main paid-media connected sou
 
 ## Current Status
 
-Meta/Facebook is locally production-ready for the implemented source-backed test-mode path. Meta Commits 20, 21, 22, 23, and 25 user/browser validation passed. Meta Commits 24 and 26 have been implemented and locally validated; user/browser validation is pending for Commit 26, and live/browser validation is pending for Commit 24 where live Meta placement action rows exist. Commit 25 budget values were corrected to use Meta campaign metrics only until same-period campaign revenue/spend alignment is proven.
+Meta/Facebook is locally production-ready for the implemented source-backed test-mode path. Meta Commits 20, 21, 22, 23, 25, and 26 user/browser validation passed. Meta Commit 24 has been implemented and locally validated; live/browser validation is pending for Commit 24 where live Meta placement action rows exist. Commit 25 budget values were corrected to use Meta campaign metrics only until same-period campaign revenue/spend alignment is proven.
 
 This tracker is the planning and implementation artifact. The implemented local/test-mode Meta path has been hardened against the source-backed pattern used by LinkedIn and Google Ads. Live OAuth and deployed scheduled-report behavior still require production-like evidence.
 
-Meta Commit 19 has been implemented locally. Local validation and user/browser validation passed. Meta Commit 20 aligns Meta Insights Trends with all selected Meta campaigns and user/browser validation passed. Meta Commit 21 fixed the Meta Ad Comparison ranking/copy alignment gap and user/browser validation passed. Meta Commit 22 restores source-gated Executive financial cards in Meta Insights and user/browser validation passed. Meta Commit 23 lets users choose which selected Meta campaign feeds Top Demographics, Top Locations, and Ad Placements and user/browser validation passed. Meta Commit 24 calculates live Ad Placement conversions from Meta action rows. Meta Commit 25 adds source-safe campaign-level budget optimization insights and user/browser validation passed. Meta Commit 26 adds source-safe placement, location, and demographic efficiency insights. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
+Meta Commit 19 has been implemented locally. Local validation and user/browser validation passed. Meta Commit 20 aligns Meta Insights Trends with all selected Meta campaigns and user/browser validation passed. Meta Commit 21 fixed the Meta Ad Comparison ranking/copy alignment gap and user/browser validation passed. Meta Commit 22 restores source-gated Executive financial cards in Meta Insights and user/browser validation passed. Meta Commit 23 lets users choose which selected Meta campaign feeds Top Demographics, Top Locations, and Ad Placements and user/browser validation passed. Meta Commit 24 calculates live Ad Placement conversions from Meta action rows. Meta Commit 25 adds source-safe campaign-level budget optimization insights and user/browser validation passed. Meta Commit 26 adds source-safe placement, location, and demographic efficiency insights and user/browser validation passed. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
 
 Verified current foundations:
 
@@ -1330,7 +1330,7 @@ Status:
 - [x] Completed locally: regression coverage updated in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ## Validation Evidence Required Before Production-Ready Claim
 
@@ -1371,11 +1371,10 @@ Outstanding required implementation work:
 Outstanding evidence:
 
 - Meta Commit 24 user/browser/live OAuth validation is pending.
-- Meta Commit 26 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 - Deployed scheduled Meta report email receipt is not available locally.
 
 ## Current Handoff
 
-The current local source-backed Meta refinement sequence has no remaining required implementation steps. The next step is user/browser validation for Meta Commit 26. Live/browser validation is still pending for Meta Commit 24 where live Meta placement action rows exist. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.
+The current local source-backed Meta refinement sequence has no remaining required implementation steps. Live/browser validation is still pending for Meta Commit 24 where live Meta placement action rows exist. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.

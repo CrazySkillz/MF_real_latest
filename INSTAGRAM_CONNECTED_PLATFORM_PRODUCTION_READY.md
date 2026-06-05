@@ -23,6 +23,10 @@ Current code supports Meta/Facebook Ads and can surface Instagram placement name
 
 No production-ready claim can be made for Instagram until the implementation and validation items in this tracker are completed.
 
+Commit 1 documentation and acceptance-contract validation passed after user review.
+
+Commit 2 API/source-contract research and local design trace is complete locally. The next implementation step is schema/storage foundation work using the source boundary documented below. No runtime Instagram behavior exists yet.
+
 ## Root Cause Analysis
 
 The current gap is not one isolated UI bug. It is a missing source contract and lifecycle implementation:
@@ -143,6 +147,138 @@ Instagram is commonly managed through Meta advertising infrastructure, but the p
 - If the implementation reuses Meta API mechanics, it must filter and persist Instagram-only rows under the Instagram source contract.
 - If the product decision is to keep Instagram bundled inside Meta/Facebook Ads, do not add Instagram as a separate main Connected Platform. Instead, keep Instagram as a breakdown inside Meta analytics and update this tracker accordingly.
 
+## Commit 2 API And Local Design Trace
+
+### External API Research Result
+
+Official Meta documentation references for implementation:
+
+- Meta Marketing API Insights: `https://developers.facebook.com/docs/marketing-api/insights`
+- Meta Marketing API Insights Breakdowns: `https://developers.facebook.com/docs/marketing-api/insights/breakdowns/`
+- Meta Marketing API Insights Parameters: `https://developers.facebook.com/docs/marketing-api/insights/parameters/`
+- Meta Marketing API Authorization: `https://developers.facebook.com/docs/marketing-api/get-started/authorization/`
+- Meta Marketing API ad object insights reference: `https://developers.facebook.com/docs/marketing-api/reference/adgroup/insights`
+
+Findings:
+
+- Meta's Insights API is the relevant data source for paid Instagram ad delivery because Instagram ads are delivered through Meta ad infrastructure.
+- The relevant segmentation fields for separating Instagram delivery from other Meta delivery are `publisher_platform` and `platform_position`.
+- Third-party docs and examples that point back to Meta's official Insights docs use platform breakdown requests such as `publisher_platform`, `platform_position`, and `impression_device`.
+- Current local code already calls the Meta Insights endpoint with `breakdowns: 'publisher_platform,platform_position'` in `MetaGraphAPIClient.getPlacementInsights`.
+- Current local code does not persist those placement breakdown rows as a standalone source. They are only used as Meta analytics breakdowns.
+- Because direct official docs access can be unstable in this environment, live implementation must re-check the exact current Meta API version, allowed breakdown combinations, field compatibility, and permission requirements before live OAuth is called production-ready.
+
+### Local Code Trace Result
+
+Reusable with care:
+
+- `server/services/meta-graph-api.ts`
+  - `MetaGraphAPIClient` already handles Meta API requests, token errors, permission errors, rate-limit errors, campaign discovery, daily campaign insights, and placement insights.
+  - `getPlacementInsights` already requests `publisher_platform,platform_position` and materializes `publisherPlatform`, `platformPosition`, impressions, clicks, spend, conversion-like actions, and raw actions.
+
+- `server/meta-scheduler.ts`
+  - Existing selected-campaign guard pattern is useful: skip refresh when selected campaign IDs are missing.
+  - Existing fail-closed pattern is useful: selected IDs that no longer exist should not import all account campaigns.
+  - Existing upsert and refresh timestamp pattern is useful.
+
+- `server/routes-oauth.ts`
+  - Existing selected-campaign route pattern is useful.
+  - Existing daily-metrics route pattern is useful.
+  - Existing ad-platform spend import route needs future extension only after Instagram daily rows exist.
+
+Not safe to reuse directly:
+
+- `meta_daily_metrics` rows are campaign-level Meta rows and are not currently guaranteed to be Instagram-only.
+- Existing Meta aggregate logic can include all selected Meta campaign delivery and therefore may include Facebook plus Instagram together.
+- Existing Meta spend records use `sourceType: 'meta_api'`; Instagram must use its own source identity, such as `instagram_api`, to avoid stale or cross-platform spend provenance.
+- Existing Meta revenue context is `platformContext="meta"`; Instagram attributed revenue must use `platformContext="instagram"` only after platform context validation is extended.
+
+### Future `instagram_connections` Fields
+
+Minimum planned fields for Commit 3:
+
+- `id`
+- `campaignId`
+- `adAccountId`
+- `adAccountName`
+- `accessToken`
+- `refreshToken`
+- `encryptedTokens`
+- `method`
+- `selectedCampaignIds`
+- `campaignUtmMap`
+- `publisherPlatformFilter`
+- `sourceContractVersion`
+- `lastRefreshAt`
+- `spendOnly`
+- `expiresAt`
+- `connectedAt`
+- `createdAt`
+
+Field meanings:
+
+- `selectedCampaignIds` stores the Meta campaign IDs selected for the standalone Instagram source.
+- `publisherPlatformFilter` must be fixed to `instagram` for the standalone Instagram source contract.
+- `sourceContractVersion` identifies the source contract used to materialize rows, starting with a value such as `instagram_publisher_platform_v1`.
+- `campaignUtmMap` follows the existing source-to-GA4 matching pattern, but must map Instagram selected campaign IDs only.
+
+### Future `instagram_daily_metrics` Fields
+
+Minimum planned fields for Commit 3:
+
+- `id`
+- `campaignId`
+- `instagramCampaignId`
+- `instagramCampaignName`
+- `date`
+- `publisherPlatform`
+- `platformPosition`
+- `impressions`
+- `clicks`
+- `spend`
+- `conversions`
+- `actions`
+- `videoViews`
+- `ctr`
+- `cpc`
+- `cpm`
+- `costPerConversion`
+- `conversionRate`
+- `ga4Revenue`
+- `ga4UtmName`
+- `importedAt`
+
+Field meanings:
+
+- `publisherPlatform` must be persisted and must equal `instagram` for rows accepted into the Instagram source contract.
+- `platformPosition` is persisted for provenance and future placement breakdowns.
+- `actions` preserves provider action rows for auditability because conversion semantics are action-derived.
+- `ga4Revenue` and `ga4UtmName` remain nullable and can be used only after a future explicit Instagram attribution/enrichment path is implemented.
+- Reach, frequency, CPP, and other Meta-only or broad delivery metrics remain unavailable for Instagram until proven available at the same Instagram-only source scope.
+
+### No-Double-Counting Rule
+
+Implementation-ready rule:
+
+- Instagram standalone source rows must be materialized only from provider rows where `publisher_platform` is exactly `instagram`.
+- Meta/Facebook source rows must not be combined with Instagram standalone rows unless Meta/Facebook rows are also filtered to exclude `publisher_platform=instagram`.
+- If Meta/Facebook cannot be filtered to exclude Instagram at the same metric/date/campaign scope, then shared aggregate consumers must treat Meta/Facebook and Instagram as overlapping sources and must fail closed for combined paid-media totals rather than double-count.
+- In a campaign with both Meta/Facebook and Instagram connected, the aggregate is trusted only when both source resolvers can prove mutually exclusive row scopes.
+- Existing Meta analytics may continue to show Instagram placements as Meta breakdown rows, but those rows do not make Instagram a main Connected Platform and must not feed the standalone Instagram aggregate unless they are persisted under the Instagram source contract.
+
+### Commit 3 Smallest Schema/Storage Slice
+
+The next code-bearing commit should only add schema and storage foundations:
+
+- Add `instagram_connections`.
+- Add `instagram_daily_metrics`.
+- Add insert schemas and select/insert types.
+- Add storage interface and implementation methods for get/upsert/update/delete connection and get/upsert/delete daily rows.
+- Add campaign delete cleanup coverage.
+- Do not expose Instagram in Create Campaign.
+- Do not expose Instagram in Connected Platforms.
+- Do not add routes, schedulers, aggregate resolvers, revenue context, or UI behavior yet.
+
 ## Implementation Plan
 
 ### Instagram Commit 1: Documentation And Acceptance Contract
@@ -168,7 +304,46 @@ Status:
 - [x] Product decision confirmed for tracking purposes: plan Instagram as a standalone main Connected Platform unless a later explicit product decision keeps Instagram bundled inside Meta/Facebook.
 - [x] User review complete for Commit 1.
 
-### Instagram Commit 2: Schema And Storage Foundation
+### Instagram Commit 2: API Source Contract And Local Design Trace
+
+Goal:
+
+- Prove the exact Instagram source boundary before adding persistence or runtime behavior.
+
+Root cause:
+
+- Instagram likely depends on Meta Marketing API mechanics, but a standalone Instagram main Connected Platform cannot safely reuse all Meta/Facebook ad data.
+- The current codebase already has Meta/Facebook analytics that can include Instagram placement rows.
+- Adding Instagram schema or UI before proving provider filters, source identity, and no-double-counting rules would risk persisting ambiguous data and misleading campaign metrics.
+
+Tasks:
+
+- Verify official current Meta/Instagram Marketing API requirements, scopes, account discovery, campaign discovery, insights fields, and Instagram-only filtering behavior.
+- Prove whether Instagram-only paid delivery can be filtered reliably from provider responses, such as by publisher platform, platform position, placement, account/campaign scope, or another official field.
+- Trace existing Meta/Facebook code paths that may be reusable without changing their current behavior.
+- Decide the exact persisted source identity fields for future `instagram_connections`.
+- Decide the exact persisted daily-row fields for future `instagram_daily_metrics`.
+- Document how Instagram selected campaigns will be represented and validated.
+- Document the Meta/Facebook plus Instagram no-double-counting rule before any migration or code change.
+- Identify the smallest schema/storage slice for Commit 3.
+
+Validation:
+
+- Official API references are recorded in this tracker or a linked companion note.
+- The planned `instagram_connections` and `instagram_daily_metrics` fields are listed before implementation.
+- The Meta/Facebook no-double-counting boundary is documented in implementation-ready terms.
+- No schema, storage, route, scheduler, or UI behavior is changed in this commit.
+
+Status:
+
+- [x] Completed locally: official Meta API references recorded.
+- [x] Completed locally: local Meta API and scheduler reuse boundaries traced.
+- [x] Completed locally: future `instagram_connections` fields documented.
+- [x] Completed locally: future `instagram_daily_metrics` fields documented.
+- [x] Completed locally: Meta/Facebook plus Instagram no-double-counting rule documented.
+- [x] Completed locally: Commit 3 smallest schema/storage slice identified.
+
+### Instagram Commit 3: Schema And Storage Foundation
 
 Goal:
 
@@ -191,7 +366,7 @@ Status:
 
 - [ ] Not started.
 
-### Instagram Commit 3: Connection Flow And Selected Campaign Scope
+### Instagram Commit 4: Connection Flow And Selected Campaign Scope
 
 Goal:
 
@@ -216,7 +391,7 @@ Status:
 
 - [ ] Not started.
 
-### Instagram Commit 4: Create Campaign Flow
+### Instagram Commit 5: Create Campaign Flow
 
 Goal:
 
@@ -243,7 +418,7 @@ Status:
 
 - [ ] Not started.
 
-### Instagram Commit 5: Connected Platforms Add-Source Flow
+### Instagram Commit 6: Connected Platforms Add-Source Flow
 
 Goal:
 
@@ -269,7 +444,7 @@ Status:
 
 - [ ] Not started.
 
-### Instagram Commit 6: Source-Backed Campaign Overview Metrics
+### Instagram Commit 7: Source-Backed Campaign Overview Metrics
 
 Goal:
 
@@ -291,7 +466,7 @@ Status:
 
 - [ ] Not started.
 
-### Instagram Commit 7: Instagram Analytics Page
+### Instagram Commit 8: Instagram Analytics Page
 
 Goal:
 
@@ -316,7 +491,7 @@ Status:
 
 - [ ] Not started.
 
-### Instagram Commit 8: Campaign DeepDive Aggregate Resolver
+### Instagram Commit 9: Campaign DeepDive Aggregate Resolver
 
 Goal:
 
@@ -341,7 +516,7 @@ Status:
 
 - [ ] Not started.
 
-### Instagram Commit 9: Revenue, Spend, And Derived Metric Semantics
+### Instagram Commit 10: Revenue, Spend, And Derived Metric Semantics
 
 Goal:
 
@@ -366,7 +541,7 @@ Status:
 
 - [ ] Not started.
 
-### Instagram Commit 10: Scheduler And Freshness Hardening
+### Instagram Commit 11: Scheduler And Freshness Hardening
 
 Goal:
 
@@ -392,7 +567,7 @@ Status:
 
 - [ ] Not started.
 
-### Instagram Commit 11: Disconnect, Reconnect, And Stale Data Safety
+### Instagram Commit 12: Disconnect, Reconnect, And Stale Data Safety
 
 Goal:
 
@@ -417,7 +592,7 @@ Status:
 
 - [ ] Not started.
 
-### Instagram Commit 12: KPI, Benchmark, Reports, And Scheduled Output Parity
+### Instagram Commit 13: KPI, Benchmark, Reports, And Scheduled Output Parity
 
 Goal:
 
@@ -443,7 +618,7 @@ Status:
 
 - [ ] Not started.
 
-### Instagram Commit 13: Regression Coverage And Final Evidence
+### Instagram Commit 14: Regression Coverage And Final Evidence
 
 Goal:
 
@@ -551,6 +726,8 @@ Proven:
 - The current Create Campaign and Connected Platforms paths do not expose Instagram.
 - The current schema/storage/scheduler/report paths do not include Instagram lifecycle support.
 - Meta/Facebook currently has Instagram-related placement concepts, but not a standalone Instagram source contract.
+- Instagram Commit 1 documentation and acceptance-contract validation passed after user review.
+- Instagram Commit 2 API/source-contract research and local design trace completed locally.
 
 Partially reviewed:
 
@@ -563,7 +740,7 @@ Partially reviewed:
 
 Unverified:
 
-- Official current Meta/Instagram Marketing API requirements, scopes, account discovery, and Instagram-only filtering details.
+- Live implementation still needs production-like confirmation of exact current Meta API version, allowed breakdown combinations, field compatibility, and permission requirements.
 - Whether product wants standalone Instagram or Instagram as a Meta/Facebook breakdown only.
 - Live OAuth behavior.
 - Provider rate limits, token lifetime, and permission review requirements.
@@ -573,8 +750,12 @@ Unverified:
 
 Implementation:
 
-- [ ] Confirm product decision: standalone Instagram main platform versus Meta/Facebook breakdown.
-- [ ] Confirm official API requirements from current Meta/Instagram docs.
+- [x] Confirm product decision for tracking purposes: standalone Instagram main platform unless later explicitly changed.
+- [x] Complete Commit 2 API/source-contract research and local design trace.
+- [x] Confirm official API requirements from current Meta/Instagram docs for planning purposes.
+- [x] Document exact future `instagram_connections` fields.
+- [x] Document exact future `instagram_daily_metrics` fields.
+- [x] Document implementation-ready Meta/Facebook plus Instagram no-double-counting rule.
 - [ ] Add schema/storage foundation.
 - [ ] Add connection flow.
 - [ ] Add Create Campaign integration.
@@ -589,6 +770,8 @@ Implementation:
 
 Evidence:
 
+- [x] Commit 1 documentation and acceptance-contract validation.
+- [x] Commit 2 API/source-contract research and local design trace.
 - [ ] Local test-mode Create Campaign validation.
 - [ ] Local test-mode Connected Platforms validation.
 - [ ] Local Campaign DeepDive aggregate validation.
@@ -612,3 +795,8 @@ Evidence:
 - `LINKEDIN_CONNECTED_PLATFORM_PRODUCTION_READY.md`
 - `GOOGLE_ADS_CONNECTED_PLATFORM_PRODUCTION_READY.md`
 - `META_FACEBOOK_CONNECTED_PLATFORM_PRODUCTION_READY.md`
+
+## Latest Validation
+
+- User validation passed for Instagram Commit 1 documentation and acceptance contract.
+- Local validation passed for Instagram Commit 2 API/source-contract research and local design trace.

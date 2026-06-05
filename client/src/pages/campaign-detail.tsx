@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { SiGoogle, SiFacebook, SiLinkedin, SiX, SiHubspot, SiSalesforce, SiShopify } from "react-icons/si";
+import { SiGoogle, SiFacebook, SiInstagram, SiLinkedin, SiX, SiHubspot, SiSalesforce, SiShopify } from "react-icons/si";
 import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
@@ -4374,6 +4374,52 @@ export default function CampaignDetail() {
     queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`], exact: false });
   };
 
+  const invalidateInstagramConnectedPlatformQueries = () => {
+    if (!campaignId) return;
+    queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
+    queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/instagram/${campaignId}/connection`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "executive-summary"], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/executive-summary`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/trend-analysis`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpis`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`], exact: false });
+  };
+
+  const connectInstagramTestMode = async () => {
+    if (!campaignId) return;
+    const selectedCampaignIds = instagramSelectedCampaignIds
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (selectedCampaignIds.length === 0) {
+      toastHook({ title: "Instagram campaign required", description: "Enter at least one Instagram campaign ID.", variant: "destructive" });
+      return;
+    }
+
+    setIsInstagramConnecting(true);
+    try {
+      const response = await apiRequest("POST", `/api/instagram/${campaignId}/connect-test`, {
+        adAccountId: instagramAdAccountId.trim() || "act_instagram_test",
+        adAccountName: instagramAdAccountName.trim() || "Test Instagram Ad Account",
+        selectedCampaignIds,
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || "Failed to connect Instagram");
+      }
+      setExpandedPlatform(null);
+      invalidateInstagramConnectedPlatformQueries();
+      toastHook({ title: "Instagram Ads Connected", description: "Successfully connected test Instagram campaign scope." });
+    } catch (error: any) {
+      toastHook({ title: "Connection Failed", description: error?.message || "Failed to connect Instagram", variant: "destructive" });
+    } finally {
+      setIsInstagramConnecting(false);
+    }
+  };
+
   // Mutation to set primary connection
   const setPrimaryMutation = useMutation({
     mutationFn: async (connectionId: string) => {
@@ -4654,6 +4700,7 @@ export default function CampaignDetail() {
   const googleAdsConversions = isGoogleAdsConnected ? parseGoogleAdsMetric(googleAdsMetrics.conversions) : 0;
   const googleAdsCtr = googleAdsImpressions > 0 ? formatPct((googleAdsClicks / googleAdsImpressions) * 100) : "0.00%";
   const googleAdsCpc = googleAdsClicks > 0 ? `$${(googleAdsSpend / googleAdsClicks).toFixed(2)}` : "$0.00";
+  const isInstagramConnected = platformStatusMap.get("instagram")?.connected === true;
   
   // Build platformMetrics array dynamically based on connected platforms
   const allPlatformMetrics: PlatformMetrics[] = [
@@ -4724,6 +4771,17 @@ export default function CampaignDetail() {
               : `/campaigns/${campaign?.id}/linkedin-analytics`)))
     },
     {
+      platform: "Instagram Ads",
+      connected: isInstagramConnected,
+      impressions: 0,
+      clicks: 0,
+      conversions: 0,
+      spend: "0.00",
+      ctr: "0.00%",
+      cpc: "$0.00",
+      analyticsPath: null
+    },
+    {
       platform: "Custom Integration",
       connected: platformStatusMap.get("custom-integration")?.connected === true,
       impressions: 0,
@@ -4752,6 +4810,8 @@ export default function CampaignDetail() {
         return <SiGoogle className="w-5 h-5 text-green-500" />;
       case "Facebook Ads":
         return <SiFacebook className="w-5 h-5 text-blue-600" />;
+      case "Instagram Ads":
+        return <SiInstagram className="w-5 h-5 text-pink-600" />;
       case "LinkedIn Ads":
         return <SiLinkedin className="w-5 h-5 text-blue-700" />;
       case "Custom Integration":
@@ -4791,6 +4851,10 @@ export default function CampaignDetail() {
 
   // Add state for managing connection dropdowns and report generation
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
+  const [instagramAdAccountId, setInstagramAdAccountId] = useState("act_instagram_test");
+  const [instagramAdAccountName, setInstagramAdAccountName] = useState("Test Instagram Ad Account");
+  const [instagramSelectedCampaignIds, setInstagramSelectedCampaignIds] = useState("ig_test_1");
+  const [isInstagramConnecting, setIsInstagramConnecting] = useState(false);
   const [addRevenueWizardOpen, setAddRevenueWizardOpen] = useState(false);
   const [revenueWizardInitialStep, setRevenueWizardInitialStep] = useState<string | undefined>(undefined);
   const [revenueWizardPlatformContext, setRevenueWizardPlatformContext] = useState<'ga4' | 'linkedin' | 'meta'>('ga4');
@@ -5403,16 +5467,19 @@ export default function CampaignDetail() {
                   ].map((columnPlatforms, columnIndex) => (
                     <div key={columnIndex} className="space-y-4">
               {columnPlatforms.map((platform, index) => (
+                (() => {
+                  const canExpandPlatform = !platform.connected || platform.needsSetup || platform.requiresImport;
+                  return (
                 <Card 
                   key={platform.platform} 
                   className={platform.connected ? "border-green-200 dark:border-green-800" : "border-border"}
                 >
                   {/* Platform Header - Always Visible */}
                   <div
-                    className={`flex items-center justify-between p-3 ${(!platform.connected || platform.needsSetup || platform.requiresImport) ? 'cursor-pointer hover:bg-muted transition-colors' : ''}`}
+                    className={`flex items-center justify-between p-3 ${canExpandPlatform ? 'cursor-pointer hover:bg-muted transition-colors' : ''}`}
                     onClick={() => {
                       console.log(`[Platform Click] ${platform.platform}: connected=${platform.connected}, needsSetup=${platform.needsSetup}, requiresImport=${platform.requiresImport}, expandedPlatform=${expandedPlatform}`);
-                      if (!platform.connected || platform.needsSetup || platform.requiresImport) {
+                      if (canExpandPlatform) {
                         setExpandedPlatform(expandedPlatform === platform.platform ? null : platform.platform);
                       }
                     }}
@@ -5440,7 +5507,7 @@ export default function CampaignDetail() {
                           {platform.requiresImport ? "Import Required" : (platform.connected ? "Connected" : "Not Connected")}
                         </Badge>
                       )}
-                      {(!platform.connected || platform.needsSetup || platform.requiresImport) && (
+                      {canExpandPlatform && (
                         <ChevronDown className={`w-4 h-4 text-muted-foreground/70 transition-transform ${expandedPlatform === platform.platform ? 'rotate-180' : ''}`} />
                       )}
                       {platform.connected && !platform.needsSetup && !platform.requiresImport && (
@@ -5657,6 +5724,42 @@ export default function CampaignDetail() {
                             console.error("Google Ads connection error:", error);
                           }}
                         />
+                      ) : platform.platform === "Instagram Ads" ? (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="instagram-detail-ad-account-id">Ad Account ID</Label>
+                            <Input
+                              id="instagram-detail-ad-account-id"
+                              value={instagramAdAccountId}
+                              onChange={(event) => setInstagramAdAccountId(event.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="instagram-detail-ad-account-name">Ad Account Name</Label>
+                            <Input
+                              id="instagram-detail-ad-account-name"
+                              value={instagramAdAccountName}
+                              onChange={(event) => setInstagramAdAccountName(event.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="instagram-detail-selected-campaign-ids">Selected Instagram Campaign IDs</Label>
+                            <Input
+                              id="instagram-detail-selected-campaign-ids"
+                              value={instagramSelectedCampaignIds}
+                              onChange={(event) => setInstagramSelectedCampaignIds(event.target.value)}
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={connectInstagramTestMode}
+                            disabled={isInstagramConnecting}
+                          >
+                            {isInstagramConnecting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Connect Instagram Test Account
+                          </Button>
+                        </div>
                       ) : platform.platform === "Custom Integration" ? (
                         <div className="space-y-4">
                           <p className="text-sm text-muted-foreground/70">
@@ -5754,7 +5857,9 @@ export default function CampaignDetail() {
                     </div>
                   )}
                 </Card>
-                ))}
+                  );
+                })()
+              ))}
                     </div>
                   ))}
                 </div>

@@ -10415,6 +10415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metaConnection,
         customIntegration,
         googleAdsConnection,
+        instagramConnection,
         hubspotConnection,
         shopifyConnection,
         salesforceConnection,
@@ -10425,6 +10426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getMetaConnection(campaignId).catch(() => undefined),
         storage.getCustomIntegration(campaignId).catch(() => undefined),
         storage.getGoogleAdsConnection(campaignId).catch(() => undefined),
+        storage.getInstagramConnection(campaignId).catch(() => undefined),
         storage.getHubspotConnection(campaignId).catch(() => undefined),
         storage.getShopifyConnection(campaignId).catch(() => undefined),
         storage.getSalesforceConnection(campaignId).catch(() => undefined),
@@ -10464,6 +10466,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const metaConversionValue = metaConnection?.conversionValue || null;
       const metaSelectedCampaignIds = parseMetaSelectedCampaignIds(metaConnection);
       const metaConnected = !!(metaConnection && !(metaConnection as any).spendOnly && metaSelectedCampaignIds.length > 0);
+      const instagramSelectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((instagramConnection as any)?.selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      const instagramConnected = !!(instagramConnection && !(instagramConnection as any).spendOnly && instagramSelectedCampaignIds.length > 0);
 
       // GA4 is only fully "connected" when a propertyId has been selected
       const activeGA4 = ga4Connections.find((c: any) => c.propertyId && c.propertyId !== '');
@@ -10524,6 +10535,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : null,
           lastConnectedAt: googleAdsConnection?.connectedAt,
           method: googleAdsConnection?.method,
+        },
+        {
+          id: "instagram",
+          name: "Instagram Ads",
+          connected: instagramConnected,
+          analyticsPath: null,
+          lastConnectedAt: instagramConnection?.connectedAt,
+          method: instagramConnection?.method,
+          selectedCampaignIds: instagramSelectedCampaignIds,
+          publisherPlatformFilter: instagramConnection?.publisherPlatformFilter,
+          sourceContractVersion: instagramConnection?.sourceContractVersion,
         },
         {
           id: "custom-integration",

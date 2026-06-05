@@ -17,11 +17,11 @@ Meta/Facebook must be treated as a campaign-scoped main paid-media connected sou
 
 ## Current Status
 
-Meta/Facebook is locally production-ready for the implemented source-backed test-mode path except the newly identified Meta Insights multi-campaign Trends alignment gap tracked as Commit 20. Meta Commit 21 user/browser validation passed. Meta Commits 22, 23, and 24 have been implemented and locally validated; user/browser validation is pending for those UI-visible changes.
+Meta/Facebook is locally production-ready for the implemented source-backed test-mode path. Meta Commit 21 user/browser validation passed. Meta Commits 20, 22, 23, and 24 have been implemented and locally validated; user/browser validation is pending for those UI-visible changes.
 
 This tracker is the planning and implementation artifact. The implemented local/test-mode Meta path has been hardened against the source-backed pattern used by LinkedIn and Google Ads. Live OAuth and deployed scheduled-report behavior still require production-like evidence.
 
-Meta Commit 19 has been implemented locally. Local validation and user/browser validation passed. Meta Commit 21 fixed the Meta Ad Comparison ranking/copy alignment gap and user/browser validation passed. Meta Commit 22 restores source-gated Executive financial cards in Meta Insights. Meta Commit 23 lets users choose which selected Meta campaign feeds Top Demographics, Top Locations, and Ad Placements. Meta Commit 24 calculates live Ad Placement conversions from Meta action rows. Meta Commit 20 remains pending: Insights Trends currently reads daily history for only the first selected Meta campaign, while Overview totals use all selected Meta campaigns. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
+Meta Commit 19 has been implemented locally. Local validation and user/browser validation passed. Meta Commit 20 aligns Meta Insights Trends with all selected Meta campaigns. Meta Commit 21 fixed the Meta Ad Comparison ranking/copy alignment gap and user/browser validation passed. Meta Commit 22 restores source-gated Executive financial cards in Meta Insights. Meta Commit 23 lets users choose which selected Meta campaign feeds Top Demographics, Top Locations, and Ad Placements. Meta Commit 24 calculates live Ad Placement conversions from Meta action rows. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
 
 Verified current foundations:
 
@@ -48,7 +48,7 @@ Verified current foundations:
 - Commit 17 includes `Top Demographics`, `Top Locations`, and `Ad Placements` in the selected Meta analytics response for the source-backed test-mode path, while preserving the live Meta Insights breakdown import path.
 - Commit 18 keeps imported Meta revenue visible only in the Overview Total Revenue card until exact per-Meta-campaign revenue attribution is implemented.
 - Commit 19 adds exact Meta campaign mapping for imported revenue sources and shows Campaign Breakdown `Total Revenue` only when mapped revenue exists for the selected Meta campaign.
-- Meta Insights KPI/Benchmark cards use the same Summary and live metric helper as Overview, but the Trends section still needs selected-campaign aggregate alignment before multi-campaign Insights can be considered production-ready.
+- Commit 20 makes Meta Insights Trends fetch and aggregate daily rows for all selected Meta campaigns before building Daily, 7d, and 30d trend series.
 - Commit 21 makes Meta Ad Comparison ranking cards and the top-by-spend chart source-backed from the same selected-campaign `campaigns` array used by Overview.
 - Commit 22 makes Meta Insights Executive financials show source-gated Total Revenue, Profit, ROAS, and ROI when Meta attributed revenue exists, while keeping daily Trends revenue/ROAS options removed.
 - Commit 23 adds a Meta Overview campaign selector for `Top Demographics`, `Top Locations`, and `Ad Placements`, so those breakdown tables use the selected Meta campaign instead of the first selected campaign.
@@ -1027,7 +1027,7 @@ Root cause analysis:
 
 - Meta Overview reads `/api/meta/:campaignId/analytics` and renders totals from `summary`, which is built from all saved selected Meta campaign IDs.
 - Meta Insights KPI/Benchmark and configuration insight cards use `getLiveMetricValue`, which reads the same `summary` and Meta attributed revenue values used by Overview.
-- Meta Insights Trends currently sets `firstMetaCampaignId = analyticsData?.campaigns?.[0]?.campaign?.id` and fetches `/api/meta/:campaignId/insights/daily?metaCampaignId=${firstMetaCampaignId}&days=90`.
+- Before Commit 20, Meta Insights Trends set `firstMetaCampaignId = analyticsData?.campaigns?.[0]?.campaign?.id` and fetched `/api/meta/:campaignId/insights/daily?metaCampaignId=${firstMetaCampaignId}&days=90`.
 - The daily endpoint correctly rejects unselected Meta campaign IDs, but it only returns one Meta campaign at a time.
 - Therefore, for a campaign with multiple selected Meta campaigns, Overview can show aggregate selected-campaign totals while Insights Trends shows only the first selected campaign's daily trend. That is not logically aligned.
 - Revenue remains safe in the current implementation because Commit 18 removed revenue, ROAS, and ROI trend options from Insights and keeps imported Meta revenue in the Overview Total Revenue card.
@@ -1053,8 +1053,14 @@ Validation:
 Status:
 
 - [x] Root cause traced locally.
-- [ ] Implementation pending.
-- [ ] Local validation pending.
+- [x] Completed locally: Meta Insights Trends now collects all selected Meta campaign IDs from the analytics response.
+- [x] Completed locally: daily rows are fetched through the existing selected-campaign guarded endpoint for each selected Meta campaign.
+- [x] Completed locally: returned daily rows are aggregated by date before Daily, 7d, and 30d trend series are built.
+- [x] Completed locally: Trend metrics remain spend, impressions, clicks, conversions, CTR, CPC, CPM, and conversion rate.
+- [x] Completed locally: Revenue, ROAS, ROI, and Profit remain excluded from Trends.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
 - [ ] User/browser validation pending.
 
 ### Meta Commit 21: Ad Comparison Source-Backed Ranking Alignment
@@ -1262,7 +1268,6 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- Meta Commit 20 is pending: align Meta Insights Trends with the same selected-campaign aggregate scope used by Overview.
 - Deferred follow-up: revisit remaining Meta Ad Comparison polish after broader paid-social source refinement such as TikTok and Instagram.
 
 Outstanding evidence:
@@ -1270,10 +1275,11 @@ Outstanding evidence:
 - Meta Commit 22 user/browser validation is pending.
 - Meta Commit 23 user/browser validation is pending.
 - Meta Commit 24 user/browser/live OAuth validation is pending.
+- Meta Commit 20 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 - Deployed scheduled Meta report email receipt is not available locally.
 
 ## Current Handoff
 
-The next smallest safest steps are browser validation for Meta Commits 22 and 23, live/browser validation for Meta Commit 24 where live Meta placement action rows exist, and implementation of Meta Commit 20. Commit 22 should confirm Meta Insights Executive financials show source-gated Total Revenue, Profit, ROAS, and ROI. Commit 23 should confirm the Overview breakdown selector changes the selected-campaign Top Demographics, Top Locations, and Ad Placements rows without changing Overview totals. Commit 24 should confirm live Ad Placement conversions populate from Meta action rows. Commit 20 aligns Insights Trends with all selected Meta campaigns. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.
+The next smallest safest steps are browser validation for Meta Commits 20, 22, and 23, and live/browser validation for Meta Commit 24 where live Meta placement action rows exist. Commit 20 should confirm Meta Insights Trends use all selected Meta campaigns without adding Revenue, ROAS, ROI, or Profit trend metrics. Commit 22 should confirm Meta Insights Executive financials show source-gated Total Revenue, Profit, ROAS, and ROI. Commit 23 should confirm the Overview breakdown selector changes the selected-campaign Top Demographics, Top Locations, and Ad Placements rows without changing Overview totals. Commit 24 should confirm live Ad Placement conversions populate from Meta action rows. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.

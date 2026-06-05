@@ -283,6 +283,38 @@ describe("Meta production readiness regression guard", () => {
     expect(insightsSection).not.toContain("Connect a revenue source to unlock ROAS, ROI, and revenue-dependent KPIs.");
   });
 
+  it("aligns Meta Insights Trends with all selected Meta campaigns", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const trendsSetup = sliceBetween(
+      page,
+      "// Fetch Meta daily data for time-series (Daily/7d/30d)",
+      "const metaInsightsRollups = useMemo(() => {"
+    );
+    const insightsSection = sliceBetween(
+      page,
+      '<TabsContent value="insights"',
+      '<TabsContent value="reports"'
+    );
+
+    expect(trendsSetup).toContain("const selectedMetaCampaignIds = useMemo(() => {");
+    expect(trendsSetup).toContain("const rows = Array.isArray((analyticsData as any)?.campaigns)");
+    expect(trendsSetup).toContain("const selectedMetaCampaignKey = selectedMetaCampaignIds.join('|');");
+    expect(trendsSetup).toContain("selectedMetaCampaignIds.map(async (metaCampaignId: string) => {");
+    expect(trendsSetup).toContain("metaCampaignId=${encodeURIComponent(metaCampaignId)}&days=90");
+    expect(trendsSetup).toContain("return { dailyInsights: results.flat() };");
+    expect(trendsSetup).toContain("enabled: !!campaignId && selectedMetaCampaignIds.length > 0");
+    expect(trendsSetup).toContain("const grouped = new Map<string, any>();");
+    expect(trendsSetup).toContain("const current = grouped.get(date) || { date, impressions: 0, reach: 0, clicks: 0, conversions: 0, spend: 0 };");
+    expect(trendsSetup).toContain("current.impressions += impressions;");
+    expect(trendsSetup).toContain("current.clicks += clicks;");
+    expect(trendsSetup).toContain("current.conversions += conversions;");
+    expect(trendsSetup).toContain("current.spend += spend;");
+    expect(trendsSetup).toContain("const byDate = Array.from(grouped.values())");
+    expect(trendsSetup).not.toContain("firstMetaCampaignId");
+    expect(insightsSection).not.toContain('<SelectItem value="revenue">Revenue</SelectItem>');
+    expect(insightsSection).not.toContain('<SelectItem value="roas">ROAS</SelectItem>');
+  });
+
   it("supports exact Meta campaign mapping for imported revenue sources", () => {
     const modal = read("client", "src", "components", "AddRevenueWizardModal.tsx");
     const hubspot = read("client", "src", "components", "HubSpotRevenueWizard.tsx");

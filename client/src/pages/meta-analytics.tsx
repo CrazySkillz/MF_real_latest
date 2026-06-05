@@ -452,15 +452,26 @@ export default function MetaAnalytics() {
   });
 
   // Fetch Meta daily data for time-series (Daily/7d/30d)
-  const firstMetaCampaignId = analyticsData?.campaigns?.[0]?.campaign?.id;
+  const selectedMetaCampaignIds = useMemo(() => {
+    const rows = Array.isArray((analyticsData as any)?.campaigns) ? (analyticsData as any).campaigns : [];
+    return rows
+      .map((item: any) => String(item?.campaign?.id || '').trim())
+      .filter((id: string) => id.length > 0);
+  }, [analyticsData]);
+  const selectedMetaCampaignKey = selectedMetaCampaignIds.join('|');
   const { data: metaDailyResp, isLoading: metaDailyLoading } = useQuery({
-    queryKey: ['/api/meta', campaignId, 'insights/daily', firstMetaCampaignId],
+    queryKey: ['/api/meta', campaignId, 'insights/daily', selectedMetaCampaignKey],
     queryFn: async () => {
-      const resp = await fetch(`/api/meta/${campaignId}/insights/daily?metaCampaignId=${firstMetaCampaignId}&days=90`);
-      if (!resp.ok) return { dailyInsights: [] };
-      return resp.json();
+      const results = await Promise.all(selectedMetaCampaignIds.map(async (metaCampaignId: string) => {
+        const resp = await fetch(`/api/meta/${campaignId}/insights/daily?metaCampaignId=${encodeURIComponent(metaCampaignId)}&days=90`);
+        if (!resp.ok) return [];
+        const json = await resp.json().catch(() => ({}));
+        const rows = Array.isArray(json?.dailyInsights) ? json.dailyInsights : [];
+        return rows.map((row: any) => ({ ...row, metaCampaignId }));
+      }));
+      return { dailyInsights: results.flat() };
     },
-    enabled: !!campaignId && !!firstMetaCampaignId,
+    enabled: !!campaignId && selectedMetaCampaignIds.length > 0,
   });
 
   // Process daily data into series and rollups for Daily/7d/30d charts
@@ -468,21 +479,32 @@ export default function MetaAnalytics() {
   const metaDailySeries = useMemo(() => {
     const raw = Array.isArray(metaDailyResp?.dailyInsights) ? metaDailyResp.dailyInsights : [];
 
-    const byDate = raw
+    const grouped = new Map<string, any>();
+    raw.forEach((r: any) => {
+      const date = String(r?.date_start || r?.date || '').trim().slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+      const impressions = Number(r?.impressions || 0) || 0;
+      const reach = Number(r?.reach || 0) || 0;
+      const clicks = Number(r?.clicks || r?.inline_link_clicks || 0) || 0;
+      const conversions = Number(r?.conversions || r?.actions?.length || 0) || 0;
+      const spend = Number(r?.spend || 0) || 0;
+      const current = grouped.get(date) || { date, impressions: 0, reach: 0, clicks: 0, conversions: 0, spend: 0 };
+      current.impressions += impressions;
+      current.reach += reach;
+      current.clicks += clicks;
+      current.conversions += conversions;
+      current.spend += spend;
+      grouped.set(date, current);
+    });
+
+    const byDate = Array.from(grouped.values())
       .map((r: any) => {
-        const date = String(r?.date_start || r?.date || '').trim().slice(0, 10);
-        const impressions = Number(r?.impressions || 0) || 0;
-        const reach = Number(r?.reach || 0) || 0;
-        const clicks = Number(r?.clicks || r?.inline_link_clicks || 0) || 0;
-        const conversions = Number(r?.conversions || r?.actions?.length || 0) || 0;
-        const spend = Number(r?.spend || 0) || 0;
-        const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-        const cpc = clicks > 0 ? spend / clicks : 0;
-        const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
-        const conversionRate = clicks > 0 ? (conversions / clicks) * 100 : 0;
-        return { date, impressions, reach, clicks, conversions, spend, ctr, cpc, cpm, conversionRate };
+        const ctr = r.impressions > 0 ? (r.clicks / r.impressions) * 100 : 0;
+        const cpc = r.clicks > 0 ? r.spend / r.clicks : 0;
+        const cpm = r.impressions > 0 ? (r.spend / r.impressions) * 1000 : 0;
+        const conversionRate = r.clicks > 0 ? (r.conversions / r.clicks) * 100 : 0;
+        return { ...r, ctr, cpc, cpm, conversionRate };
       })
-      .filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(r.date))
       .sort((a: any, b: any) => a.date.localeCompare(b.date));
 
     const rolling = (windowDays: number) => {

@@ -207,6 +207,10 @@ describe("Meta production readiness regression guard", () => {
     expect(overviewBreakdowns).toContain("{selectedCampaignPlacements.length > 0 && (");
     expect(overviewBreakdowns).toContain("{demo.ageRange || demo.age}");
     expect(overviewBreakdowns).toContain("placement.placement || [placement.publisherPlatform, placement.platformPosition]");
+    expect(overviewBreakdowns).toContain("Source: Meta age and gender breakdown for the selected campaign.");
+    expect(overviewBreakdowns).toContain("Source: Meta country breakdown for the selected campaign.");
+    expect(overviewBreakdowns).toContain("Source: Meta placement breakdown for the selected campaign.");
+    expect(overviewBreakdowns).toContain("These rows are not a reconciliation to the metric cards above.");
     expect(overviewBreakdowns).not.toContain("first selected Meta campaign");
     expect(page).not.toContain("firstCampaignBreakdowns");
     expect(page).not.toContain("firstCampaignDemographics");

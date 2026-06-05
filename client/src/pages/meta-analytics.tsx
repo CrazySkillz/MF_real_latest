@@ -1343,7 +1343,9 @@ export default function MetaAnalytics() {
                   <Card>
                     <CardHeader>
                       <CardTitle>Top Demographics</CardTitle>
-                      <CardDescription>Performance by age and gender for the selected Meta campaign</CardDescription>
+                      <CardDescription>
+                        Source: Meta age and gender breakdown for the selected campaign. These rows are not a reconciliation to the metric cards above.
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                   <Table>
@@ -1374,7 +1376,9 @@ export default function MetaAnalytics() {
                   <Card>
                     <CardHeader>
                       <CardTitle>Top Locations</CardTitle>
-                      <CardDescription>Performance by country for the selected Meta campaign</CardDescription>
+                      <CardDescription>
+                        Source: Meta country breakdown for the selected campaign. These rows are not a reconciliation to the metric cards above.
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                   <Table>
@@ -1407,7 +1411,9 @@ export default function MetaAnalytics() {
                 <Card className="mt-8">
                   <CardHeader>
                     <CardTitle>Ad Placements</CardTitle>
-                    <CardDescription>Performance by placement for the selected Meta campaign</CardDescription>
+                    <CardDescription>
+                      Source: Meta placement breakdown for the selected campaign. These rows are not a reconciliation to the metric cards above.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                 <Table>

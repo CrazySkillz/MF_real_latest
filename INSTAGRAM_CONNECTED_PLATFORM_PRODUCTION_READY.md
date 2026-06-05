@@ -115,6 +115,8 @@ Commit 5B Create Campaign test setup is implemented locally. Instagram can enter
 
 Commit 5C Create Campaign finalization guard is implemented locally. When Instagram is selected, Step 5 now verifies the persisted Instagram connection through `/api/instagram/:campaignId/connection` and blocks activation unless the connection is present with at least one selected Instagram campaign ID.
 
+Commit 5C startup migration correction is implemented locally. The Create Campaign test route failed with `relation "instagram_connections" does not exist` because the SQL migration file existed but the app's inline startup migration block did not create the Instagram tables for the active database.
+
 ## Root Cause Analysis
 
 The current gap is not one isolated UI bug. It is a missing source contract and lifecycle implementation:
@@ -133,6 +135,7 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 5A, Create Campaign did not show Instagram at all; Commit 5A added a disabled option only.
 - Before Commit 5B, the Create Campaign Instagram option could not enter setup; Commit 5B adds a test-mode setup path using the backend source contract without analytics/runtime exposure.
 - Before Commit 5C, Create Campaign finalization trusted the wizard's in-memory connected platform list and did not re-check the persisted Instagram source contract; Commit 5C adds a read-only finalization guard before activating the draft.
+- The first 5C browser validation exposed a startup migration gap: `instagram_connections` and `instagram_daily_metrics` existed in `shared/schema.ts` and `migrations/0007_add_instagram_connected_platform_foundation.sql`, but not in the inline startup migrations in `server/index.ts`. Because this app runs those inline startup migrations for the active database, the backend route reached storage before the tables existed.
 - `server/scheduler.ts` and platform schedulers have no Instagram refresh or snapshot input.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`, but no Instagram resolver currently supplies one.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
@@ -661,6 +664,7 @@ Commit 5C validation:
 - Instagram finalization checks the persisted connection before the existing campaign activation PATCH.
 - Missing or incomplete Instagram selected campaign scope blocks campaign activation.
 - A valid Instagram test connection can proceed to the existing finalization PATCH.
+- Startup migrations create `instagram_connections` and `instagram_daily_metrics` if they are absent before Instagram routes need them.
 - Existing Google Ads, Meta/Facebook, LinkedIn, GA4, and Google Sheets setup paths remain unchanged.
 
 Tasks:
@@ -687,6 +691,7 @@ Status:
 - [x] Commit 5B implemented locally: Instagram Create Campaign setup uses backend test route.
 - [x] Commit 5B implemented locally: selected campaign IDs are required before backend connection.
 - [x] Commit 5C implemented locally: Step 5 verifies the persisted Instagram connection before campaign activation.
+- [x] Commit 5C correction implemented locally: startup migrations create Instagram source tables if absent.
 - [ ] Commit 5D not started.
 - [ ] Commit 5E not started.
 - [ ] User validation pending for Commit 5A.
@@ -1013,6 +1018,7 @@ Proven:
 - Instagram Commit 5A Create Campaign option is implemented locally.
 - Instagram Commit 5B Create Campaign test setup is implemented locally without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, Connected Platforms, or report exposure.
 - Instagram Commit 5C Create Campaign finalization guard is implemented locally without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, Connected Platforms, or report exposure.
+- Instagram Commit 5C startup migration correction is implemented locally and only creates missing Instagram source tables/indexes.
 
 Partially reviewed:
 
@@ -1076,6 +1082,7 @@ Evidence:
 - [x] Commit 5A local disabled Create Campaign option implementation.
 - [x] Commit 5B local Create Campaign test setup implementation.
 - [x] Commit 5C local Create Campaign finalization guard implementation.
+- [x] Commit 5C local startup migration correction for Instagram source tables.
 - [ ] Local test-mode Create Campaign validation.
 - [ ] Local test-mode Connected Platforms validation.
 - [ ] Local Campaign DeepDive aggregate validation.
@@ -1114,3 +1121,4 @@ Evidence:
 - Local implementation complete for Instagram Commit 5A Create Campaign platform option; user validation is pending.
 - Local implementation complete for Instagram Commit 5B Create Campaign test setup path; user validation is pending.
 - Local implementation complete for Instagram Commit 5C Create Campaign finalization guard; user validation is pending.
+- Local implementation complete for Instagram Commit 5C startup migration correction after browser validation exposed the missing active-database tables.

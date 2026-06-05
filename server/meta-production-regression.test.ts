@@ -324,18 +324,17 @@ describe("Meta production readiness regression guard", () => {
     );
 
     expect(insightsSection).toContain("const budgetCampaignRows = (Array.isArray(campaigns) ? campaigns : [])");
-    expect(insightsSection).toContain("const mappedRevenue = Number(metaCampaignRevenueById.get(campaignId) || 0);");
-    expect(insightsSection).toContain("roas: mappedRevenue > 0 && spend > 0 ? mappedRevenue / spend : null");
-    expect(insightsSection).toContain("roi: mappedRevenue > 0 && spend > 0 ? ((mappedRevenue - spend) / spend) * 100 : null");
-    expect(insightsSection).toContain("profit: mappedRevenue > 0 ? mappedRevenue - spend : null");
-    expect(insightsSection).toContain("Source: Meta campaign metrics only. No exact mapped Meta attributed revenue is available for this campaign.");
-    expect(insightsSection).toContain("Source: Meta campaign metrics + exact mapped Meta attributed revenue.");
+    expect(insightsSection).toContain("const costPerConversion = Number(totals?.costPerConversion || 0) || (conversions > 0 ? spend / conversions : 0);");
+    expect(insightsSection).toContain("Source: Meta campaign metrics from selected Meta campaign rows.");
     expect(insightsSection).toContain("Budget Efficiency Opportunity:");
     expect(insightsSection).toContain("Budget Review Needed:");
     expect(insightsSection).toContain("Review this campaign as a candidate for incremental budget");
     expect(insightsSection).toContain("Review targeting, creative, and spend before increasing this campaign budget.");
     expect(insightsSection).toContain("group: 'budget'");
     expect(insightsSection).toContain("Budget optimization");
+    expect(insightsSection).not.toContain("ROAS is");
+    expect(insightsSection).not.toContain("ROI is");
+    expect(insightsSection).not.toContain("profit is");
     expect(insightsSection).not.toContain("placement ROAS");
     expect(insightsSection).not.toContain("demographic ROAS");
     expect(insightsSection).not.toContain("location ROAS");

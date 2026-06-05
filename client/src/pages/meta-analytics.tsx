@@ -2605,8 +2605,7 @@ export default function MetaAnalytics() {
                       const campaignId = String(campaign?.id || '');
                       const spend = Number(totals?.spend || 0) || 0;
                       const conversions = Number(totals?.conversions || 0) || 0;
-                      const costPerConversion = conversions > 0 ? spend / conversions : Number(totals?.costPerConversion || 0) || 0;
-                      const mappedRevenue = Number(metaCampaignRevenueById.get(campaignId) || 0);
+                      const costPerConversion = Number(totals?.costPerConversion || 0) || (conversions > 0 ? spend / conversions : 0);
                       return {
                         id: campaignId,
                         name: String(campaign?.name || campaignId || 'Meta campaign'),
@@ -2617,10 +2616,6 @@ export default function MetaAnalytics() {
                         cpc: Number(totals?.cpc || 0) || 0,
                         cpm: Number(totals?.cpm || 0) || 0,
                         costPerConversion,
-                        mappedRevenue,
-                        roas: mappedRevenue > 0 && spend > 0 ? mappedRevenue / spend : null,
-                        roi: mappedRevenue > 0 && spend > 0 ? ((mappedRevenue - spend) / spend) * 100 : null,
-                        profit: mappedRevenue > 0 ? mappedRevenue - spend : null,
                       };
                     })
                     .filter((row: any) => row.id && row.spend > 0);
@@ -2631,15 +2626,13 @@ export default function MetaAnalytics() {
                     if (b.conversions === 0 && a.conversions > 0) return 1;
                     return b.costPerConversion - a.costPerConversion;
                   })[0];
-                  const budgetSource = (row: any) => row.mappedRevenue > 0
-                    ? 'Source: Meta campaign metrics + exact mapped Meta attributed revenue.'
-                    : 'Source: Meta campaign metrics only. No exact mapped Meta attributed revenue is available for this campaign.';
+                  const budgetSource = 'Source: Meta campaign metrics from selected Meta campaign rows.';
 
                   if (efficientCampaign) {
                     allInsights.push({
                       id: `budget-efficient-${efficientCampaign.id}`,
                       title: `Budget Efficiency Opportunity: ${efficientCampaign.name}`,
-                      description: `${budgetSource(efficientCampaign)} Spend is ${fmtCurrency(efficientCampaign.spend)}, conversions are ${efficientCampaign.conversions.toLocaleString()}, and cost/conversion is ${fmtCurrency(efficientCampaign.costPerConversion)}.${efficientCampaign.roas !== null ? ` ROAS is ${efficientCampaign.roas.toFixed(2)}x, ROI is ${formatPct(efficientCampaign.roi || 0)}, and profit is ${fmtCurrency(efficientCampaign.profit || 0)}.` : ''}`,
+                      description: `${budgetSource} Spend is ${fmtCurrency(efficientCampaign.spend)}, conversions are ${efficientCampaign.conversions.toLocaleString()}, and cost/conversion is ${fmtCurrency(efficientCampaign.costPerConversion)}.`,
                       severity: 'medium',
                       recommendation: 'Review this campaign as a candidate for incremental budget before scaling lower-efficiency campaigns.',
                       group: 'budget',
@@ -2649,7 +2642,7 @@ export default function MetaAnalytics() {
                     allInsights.push({
                       id: `budget-review-${inefficientCampaign.id}`,
                       title: `Budget Review Needed: ${inefficientCampaign.name}`,
-                      description: `${budgetSource(inefficientCampaign)} Spend is ${fmtCurrency(inefficientCampaign.spend)}, conversions are ${inefficientCampaign.conversions.toLocaleString()}, and cost/conversion is ${inefficientCampaign.conversions > 0 ? fmtCurrency(inefficientCampaign.costPerConversion) : 'unavailable because conversions are 0'}.${inefficientCampaign.roas !== null ? ` ROAS is ${inefficientCampaign.roas.toFixed(2)}x, ROI is ${formatPct(inefficientCampaign.roi || 0)}, and profit is ${fmtCurrency(inefficientCampaign.profit || 0)}.` : ''}`,
+                      description: `${budgetSource} Spend is ${fmtCurrency(inefficientCampaign.spend)}, conversions are ${inefficientCampaign.conversions.toLocaleString()}, and cost/conversion is ${inefficientCampaign.conversions > 0 ? fmtCurrency(inefficientCampaign.costPerConversion) : 'unavailable because conversions are 0'}.`,
                       severity: inefficientCampaign.conversions === 0 ? 'high' : 'medium',
                       recommendation: 'Review targeting, creative, and spend before increasing this campaign budget.',
                       group: 'budget',

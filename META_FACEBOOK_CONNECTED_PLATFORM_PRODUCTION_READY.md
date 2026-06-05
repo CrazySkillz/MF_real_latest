@@ -17,7 +17,7 @@ Meta/Facebook must be treated as a campaign-scoped main paid-media connected sou
 
 ## Current Status
 
-Meta/Facebook is locally production-ready for the implemented source-backed test-mode path. Meta Commits 20 and 21 user/browser validation passed. Meta Commits 22, 23, 24, and 25 have been implemented and locally validated; user/browser validation is pending for those UI-visible changes.
+Meta/Facebook is locally production-ready for the implemented source-backed test-mode path. Meta Commits 20 and 21 user/browser validation passed. Meta Commits 22, 23, 24, and 25 have been implemented and locally validated; user/browser validation is pending for those UI-visible changes. Commit 25 budget values were corrected to use Meta campaign metrics only until same-period campaign revenue/spend alignment is proven.
 
 This tracker is the planning and implementation artifact. The implemented local/test-mode Meta path has been hardened against the source-backed pattern used by LinkedIn and Google Ads. Live OAuth and deployed scheduled-report behavior still require production-like evidence.
 
@@ -53,7 +53,7 @@ Verified current foundations:
 - Commit 22 makes Meta Insights Executive financials show source-gated Total Revenue, Profit, ROAS, and ROI when Meta attributed revenue exists, while keeping daily Trends revenue/ROAS options removed.
 - Commit 23 adds a Meta Overview campaign selector for `Top Demographics`, `Top Locations`, and `Ad Placements`, so those breakdown tables use the selected Meta campaign instead of the first selected campaign.
 - Commit 24 adds live Meta Ad Placement `conversions` values by deriving them from Meta `actions` with the same purchase/lead/conversion semantics used by campaign-level Meta conversion handling.
-- Commit 25 adds campaign-level Meta Budget Optimization Insights using selected Meta campaign metrics, with ROAS, ROI, and Profit shown only when exact mapped Meta campaign revenue exists.
+- Commit 25 adds campaign-level Meta Budget Optimization Insights using selected Meta campaign metrics only; ROAS, ROI, and Profit are excluded from this section until same-period campaign revenue/spend alignment is proven.
 
 Verified production-readiness gaps:
 
@@ -1255,10 +1255,9 @@ Smallest safe implementation strategy:
 - Add a `budget` insight group to the existing Meta Insights `allInsights` flow.
 - Build budget rows only from selected Meta campaign `campaigns` data already used by Overview.
 - Use spend, clicks, conversions, CTR, CPC, CPM, and cost/conversion for non-revenue recommendations.
-- Use exact mapped campaign revenue from `metaCampaignRevenueById` only when present.
 - Show source text on each recommendation:
-  - `Source: Meta campaign metrics only...`
-  - `Source: Meta campaign metrics + exact mapped Meta attributed revenue.`
+  - `Source: Meta campaign metrics from selected Meta campaign rows.`
+- Keep ROAS, ROI, and Profit out of Budget Optimization Insights until exact mapped Meta campaign revenue and campaign spend are proven to be the same period.
 - Do not add placement, location, or demographic budget optimization yet.
 - Do not add placement/location/demographic ROAS, ROI, or Profit.
 - Do not change Overview, Ad Comparison, Trends, scheduler, reports, KPI, Benchmark, revenue import, GA4, LinkedIn, or Google Ads behavior.
@@ -1269,7 +1268,7 @@ Validation:
 - Confirm the `What changed, what to do next` section can show `Budget optimization`.
 - Confirm the budget cards name selected Meta campaigns.
 - Confirm each recommendation includes a source statement.
-- Confirm ROAS, ROI, and Profit appear only when that campaign has exact mapped Meta attributed revenue.
+- Confirm ROAS, ROI, and Profit do not appear in Budget Optimization Insights.
 - Confirm no placement, location, or demographic ROAS/ROI recommendation appears.
 
 Status:
@@ -1277,7 +1276,8 @@ Status:
 - [x] Root cause traced locally.
 - [x] Completed locally: campaign-level Meta Budget Optimization Insights added to the existing Insights card flow.
 - [x] Completed locally: recommendations use selected Meta campaign metrics from the existing `campaigns` response.
-- [x] Completed locally: exact revenue-dependent ROAS, ROI, and Profit are gated behind `metaCampaignRevenueById`.
+- [x] Completed locally: budget recommendations use the same `totals.costPerConversion` field shown in Overview Campaign Breakdown.
+- [x] Completed locally: ROAS, ROI, and Profit are excluded from Budget Optimization Insights until same-period campaign revenue/spend alignment is proven.
 - [x] Completed locally: source semantics are shown on each budget recommendation.
 - [x] Completed locally: placement/location/demographic revenue optimization remains excluded.
 - [x] Completed locally: regression coverage updated in `server/meta-production-regression.test.ts`.

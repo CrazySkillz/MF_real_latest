@@ -345,6 +345,26 @@ export const metaConnections = pgTable("meta_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const instagramConnections = pgTable("instagram_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  adAccountId: text("ad_account_id").notNull(),
+  adAccountName: text("ad_account_name"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  encryptedTokens: jsonb("encrypted_tokens"),
+  method: text("method").notNull(),
+  selectedCampaignIds: text("selected_campaign_ids"),
+  campaignUtmMap: text("campaign_utm_map"),
+  publisherPlatformFilter: text("publisher_platform_filter").notNull().default("instagram"),
+  sourceContractVersion: text("source_contract_version").notNull().default("instagram_publisher_platform_v1"),
+  lastRefreshAt: timestamp("last_refresh_at"),
+  spendOnly: boolean("spend_only").default(false),
+  expiresAt: timestamp("expires_at"),
+  connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Google Ads connections
 export const googleAdsConnections = pgTable("google_ads_connections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -480,6 +500,30 @@ export const metaDailyMetrics = pgTable("meta_daily_metrics", {
   metaCampaignName: text("meta_campaign_name"), // Meta campaign name for GA4 matching
   ga4Revenue: decimal("ga4_revenue", { precision: 15, scale: 2 }), // GA4-attributed revenue
   ga4UtmName: text("ga4_utm_name"), // matched GA4 UTM campaign name
+  importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const instagramDailyMetrics = pgTable("instagram_daily_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  instagramCampaignId: text("instagram_campaign_id").notNull(),
+  instagramCampaignName: text("instagram_campaign_name"),
+  date: text("date").notNull(),
+  publisherPlatform: text("publisher_platform").notNull().default("instagram"),
+  platformPosition: text("platform_position").notNull().default("unknown"),
+  impressions: integer("impressions").notNull().default(0),
+  clicks: integer("clicks").notNull().default(0),
+  spend: decimal("spend", { precision: 10, scale: 2 }).notNull().default(sql`0`),
+  conversions: decimal("conversions", { precision: 10, scale: 2 }).notNull().default(sql`0`),
+  videoViews: integer("video_views").notNull().default(0),
+  actions: jsonb("actions"),
+  ctr: decimal("ctr", { precision: 5, scale: 2 }),
+  cpc: decimal("cpc", { precision: 10, scale: 2 }),
+  cpm: decimal("cpm", { precision: 10, scale: 2 }),
+  costPerConversion: decimal("cost_per_conversion", { precision: 10, scale: 2 }),
+  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }),
+  ga4Revenue: decimal("ga4_revenue", { precision: 15, scale: 2 }),
+  ga4UtmName: text("ga4_utm_name"),
   importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -1245,6 +1289,22 @@ export const insertMetaConnectionSchema = createInsertSchema(metaConnections).pi
   expiresAt: true,
 });
 
+export const insertInstagramConnectionSchema = createInsertSchema(instagramConnections).pick({
+  campaignId: true,
+  adAccountId: true,
+  adAccountName: true,
+  accessToken: true,
+  refreshToken: true,
+  method: true,
+  selectedCampaignIds: true,
+  campaignUtmMap: true,
+  publisherPlatformFilter: true,
+  sourceContractVersion: true,
+  lastRefreshAt: true,
+  spendOnly: true,
+  expiresAt: true,
+});
+
 export const insertMetaKpiSchema = createInsertSchema(metaKpis).pick({
   campaignId: true,
   name: true,
@@ -1313,6 +1373,28 @@ export const insertMetaDailyMetricSchema = createInsertSchema(metaDailyMetrics).
   conversionRate: true,
   revenue: true,
   roas: true,
+});
+
+export const insertInstagramDailyMetricSchema = createInsertSchema(instagramDailyMetrics).pick({
+  campaignId: true,
+  instagramCampaignId: true,
+  instagramCampaignName: true,
+  date: true,
+  publisherPlatform: true,
+  platformPosition: true,
+  impressions: true,
+  clicks: true,
+  spend: true,
+  conversions: true,
+  videoViews: true,
+  actions: true,
+  ctr: true,
+  cpc: true,
+  cpm: true,
+  costPerConversion: true,
+  conversionRate: true,
+  ga4Revenue: true,
+  ga4UtmName: true,
 });
 
 export const insertGoogleAdsConnectionSchema = createInsertSchema(googleAdsConnections).pick({
@@ -1758,6 +1840,8 @@ export type LinkedInConnection = typeof linkedinConnections.$inferSelect;
 export type InsertLinkedInConnection = z.infer<typeof insertLinkedInConnectionSchema>;
 export type MetaConnection = typeof metaConnections.$inferSelect;
 export type InsertMetaConnection = z.infer<typeof insertMetaConnectionSchema>;
+export type InstagramConnection = typeof instagramConnections.$inferSelect;
+export type InsertInstagramConnection = z.infer<typeof insertInstagramConnectionSchema>;
 export type GoogleAdsConnection = typeof googleAdsConnections.$inferSelect;
 export type InsertGoogleAdsConnection = z.infer<typeof insertGoogleAdsConnectionSchema>;
 export type GoogleAdsDailyMetric = typeof googleAdsDailyMetrics.$inferSelect;
@@ -1770,6 +1854,8 @@ export type MetaReport = typeof metaReports.$inferSelect;
 export type InsertMetaReport = z.infer<typeof insertMetaReportSchema>;
 export type MetaDailyMetric = typeof metaDailyMetrics.$inferSelect;
 export type InsertMetaDailyMetric = z.infer<typeof insertMetaDailyMetricSchema>;
+export type InstagramDailyMetric = typeof instagramDailyMetrics.$inferSelect;
+export type InsertInstagramDailyMetric = z.infer<typeof insertInstagramDailyMetricSchema>;
 export type KPI = typeof kpis.$inferSelect;
 export type InsertKPI = z.infer<typeof insertKPISchema>;
 export type KPIProgress = typeof kpiProgress.$inferSelect;

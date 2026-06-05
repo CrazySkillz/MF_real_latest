@@ -1,4 +1,5 @@
 import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, notifications, emailAlertEvents, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, reportSnapshots, reportSendEvents, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
+import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, instagramConnections, instagramDailyMetrics } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql, gte, lte, inArray } from "drizzle-orm";
@@ -133,6 +134,17 @@ export interface IStorage {
   createMetaConnection(connection: InsertMetaConnection): Promise<MetaConnection>;
   updateMetaConnection(campaignId: string, connection: Partial<InsertMetaConnection>): Promise<MetaConnection | undefined>;
   deleteMetaConnection(campaignId: string): Promise<boolean>;
+
+  // Instagram Connections
+  getInstagramConnection(campaignId: string): Promise<InstagramConnection | undefined>;
+  createInstagramConnection(connection: InsertInstagramConnection): Promise<InstagramConnection>;
+  updateInstagramConnection(campaignId: string, connection: Partial<InsertInstagramConnection>): Promise<InstagramConnection | undefined>;
+  deleteInstagramConnection(campaignId: string): Promise<boolean>;
+  deleteInstagramDailyMetrics(campaignId: string): Promise<boolean>;
+
+  // Instagram Daily Metrics
+  getInstagramDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<InstagramDailyMetric[]>;
+  upsertInstagramDailyMetrics(metrics: InsertInstagramDailyMetric[]): Promise<{ upserted: number }>;
 
   // Google Ads Connections
   getGoogleAdsConnection(campaignId: string): Promise<GoogleAdsConnection | undefined>;
@@ -493,6 +505,7 @@ export class DatabaseStorage implements IStorage {
     await tx.delete(ga4DailyMetrics).where(eq(ga4DailyMetrics.campaignId, campaignId));
     await tx.delete(linkedinDailyMetrics).where(eq(linkedinDailyMetrics.campaignId, campaignId));
     await tx.delete(metaDailyMetrics).where(eq(metaDailyMetrics.campaignId, campaignId));
+    await tx.delete(instagramDailyMetrics).where(eq(instagramDailyMetrics.campaignId, campaignId));
     await tx.delete(googleAdsDailyMetrics).where(eq(googleAdsDailyMetrics.campaignId, campaignId));
     await tx.delete(ga4Connections).where(eq(ga4Connections.campaignId, campaignId));
     await tx.delete(googleSheetsConnections).where(eq(googleSheetsConnections.campaignId, campaignId));
@@ -501,6 +514,7 @@ export class DatabaseStorage implements IStorage {
     await tx.delete(shopifyConnections).where(eq(shopifyConnections.campaignId, campaignId));
     await tx.delete(linkedinConnections).where(eq(linkedinConnections.campaignId, campaignId));
     await tx.delete(metaConnections).where(eq(metaConnections.campaignId, campaignId));
+    await tx.delete(instagramConnections).where(eq(instagramConnections.campaignId, campaignId));
     await tx.delete(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId));
     await deleteOptionalCampaignTable("meta_kpis");
     await deleteOptionalCampaignTable("meta_benchmarks");
@@ -2415,6 +2429,116 @@ export class DatabaseStorage implements IStorage {
         .where(eq(metaConnections.campaignId, campaignId));
       return (result.rowCount || 0) > 0;
     });
+  }
+
+  // Instagram Connection methods
+  async getInstagramConnection(campaignId: string): Promise<InstagramConnection | undefined> {
+    const [connection] = await db.select().from(instagramConnections).where(eq(instagramConnections.campaignId, campaignId));
+    if (!connection) return undefined;
+    return hydrateDecryptedTokens(connection) as any;
+  }
+
+  async createInstagramConnection(connection: InsertInstagramConnection): Promise<InstagramConnection> {
+    const enc = buildEncryptedTokens({
+      accessToken: (connection as any).accessToken,
+      refreshToken: (connection as any).refreshToken,
+    } as any);
+    const [instagramConnection] = await db
+      .insert(instagramConnections)
+      .values({
+        ...connection,
+        accessToken: null,
+        refreshToken: null,
+        encryptedTokens: enc as any,
+      } as any)
+      .returning();
+    return hydrateDecryptedTokens(instagramConnection) as any;
+  }
+
+  async updateInstagramConnection(campaignId: string, connection: Partial<InsertInstagramConnection>): Promise<InstagramConnection | undefined> {
+    const [existing] = await db.select().from(instagramConnections).where(eq(instagramConnections.campaignId, campaignId));
+    if (!existing) return undefined;
+
+    const tokenFieldsProvided =
+      Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "refreshToken");
+
+    const setObj: any = { ...connection };
+    if (tokenFieldsProvided || (existing as any).encryptedTokens) {
+      setObj.encryptedTokens = buildEncryptedTokens({
+        accessToken: (connection as any).accessToken,
+        refreshToken: (connection as any).refreshToken,
+        prev: (existing as any).encryptedTokens,
+      } as any);
+      setObj.accessToken = null;
+      setObj.refreshToken = null;
+    }
+
+    const [updated] = await db
+      .update(instagramConnections)
+      .set(setObj)
+      .where(eq(instagramConnections.campaignId, campaignId))
+      .returning();
+    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+  }
+
+  async deleteInstagramConnection(campaignId: string): Promise<boolean> {
+    return await db.transaction(async (tx: any) => {
+      const result = await tx
+        .delete(instagramConnections)
+        .where(eq(instagramConnections.campaignId, campaignId));
+      const deleted = (result.rowCount || 0) > 0;
+      if (deleted) {
+        await tx.delete(instagramDailyMetrics).where(eq(instagramDailyMetrics.campaignId, campaignId));
+      }
+      return deleted;
+    });
+  }
+
+  async deleteInstagramDailyMetrics(campaignId: string): Promise<boolean> {
+    const result = await db
+      .delete(instagramDailyMetrics)
+      .where(eq(instagramDailyMetrics.campaignId, campaignId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getInstagramDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<InstagramDailyMetric[]> {
+    return await db.select().from(instagramDailyMetrics)
+      .where(and(
+        eq(instagramDailyMetrics.campaignId, campaignId),
+        gte(instagramDailyMetrics.date, startDate),
+        lte(instagramDailyMetrics.date, endDate),
+      ))
+      .orderBy(instagramDailyMetrics.date);
+  }
+
+  async upsertInstagramDailyMetrics(metrics: InsertInstagramDailyMetric[]): Promise<{ upserted: number }> {
+    if (metrics.length === 0) return { upserted: 0 };
+    await db
+      .insert(instagramDailyMetrics)
+      .values(metrics)
+      .onConflictDoUpdate({
+        target: [instagramDailyMetrics.campaignId, instagramDailyMetrics.instagramCampaignId, instagramDailyMetrics.date, instagramDailyMetrics.platformPosition],
+        set: {
+          instagramCampaignName: sql`COALESCE(EXCLUDED.instagram_campaign_name, ${instagramDailyMetrics.instagramCampaignName})`,
+          publisherPlatform: sql`EXCLUDED.publisher_platform`,
+          impressions: sql`EXCLUDED.impressions`,
+          clicks: sql`EXCLUDED.clicks`,
+          spend: sql`EXCLUDED.spend`,
+          conversions: sql`EXCLUDED.conversions`,
+          videoViews: sql`EXCLUDED.video_views`,
+          actions: sql`EXCLUDED.actions`,
+          ctr: sql`EXCLUDED.ctr`,
+          cpc: sql`EXCLUDED.cpc`,
+          cpm: sql`EXCLUDED.cpm`,
+          costPerConversion: sql`EXCLUDED.cost_per_conversion`,
+          conversionRate: sql`EXCLUDED.conversion_rate`,
+          ga4Revenue: sql`COALESCE(EXCLUDED.ga4_revenue, ${instagramDailyMetrics.ga4Revenue})`,
+          ga4UtmName: sql`COALESCE(EXCLUDED.ga4_utm_name, ${instagramDailyMetrics.ga4UtmName})`,
+          importedAt: sql`CURRENT_TIMESTAMP`,
+        },
+      });
+    return { upserted: metrics.length };
   }
 
   // Google Ads Connection methods

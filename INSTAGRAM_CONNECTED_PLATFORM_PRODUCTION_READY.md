@@ -24,11 +24,11 @@ This table is the single source of truth for what is done, pending, and where ea
 | 4D | Backend disconnect route | Done and pushed; user validation passed by local checks | Backend route only; no UI |
 | 4E | Backend Instagram campaign-list/selector contract | Done and pushed; user validation passed by local checks | Backend route only; no UI |
 | 4F | Commit 4 backend contract finalization and validation docs | Done and pushed; user validation passed | None |
-| 5A | Create Campaign platform option only, disabled/hidden behind backend readiness guard if needed | Implemented locally; user validation pending | Create Campaign UI option only |
-| 5B | Create Campaign uses existing backend test connection contract without finalizing campaign analytics | Implemented locally; user validation pending | Create Campaign connection step |
-| 5C | Create Campaign selected-campaign validation and finalization guard | Implemented locally; user validation pending | Create Campaign finalization guard |
-| 5D | Create Campaign query invalidation after successful Instagram setup | Pending | Create Campaign cache behavior |
-| 5E | Create Campaign regression and validation docs | Pending | None |
+| 5A | Create Campaign platform option only, disabled/hidden behind backend readiness guard if needed | Done and pushed; user validation passed | Create Campaign UI option only |
+| 5B | Create Campaign uses existing backend test connection contract without finalizing campaign analytics | Done and pushed; user validation passed | Create Campaign connection step |
+| 5C | Create Campaign selected-campaign validation and finalization guard | Done and pushed; user validation passed | Create Campaign finalization guard |
+| 5D | Create Campaign query invalidation after successful Instagram setup | Implemented locally; user validation pending | Create Campaign cache behavior |
+| 5E | Create Campaign regression and validation docs | Implemented locally; user validation pending | None |
 | 6A | Connected Platforms status endpoint includes Instagram status from source contract | Pending | Backend status payload used by UI |
 | 6B | Connected Platforms Instagram card shell with no placeholder metrics | Pending | Connected Platforms UI card |
 | 6C | Connected Platforms add-source flow opens existing Instagram setup contract | Pending | Connected Platforms setup UI |
@@ -115,7 +115,11 @@ Commit 5B Create Campaign test setup is implemented locally. Instagram can enter
 
 Commit 5C Create Campaign finalization guard is implemented locally. When Instagram is selected, Step 5 now verifies the persisted Instagram connection through `/api/instagram/:campaignId/connection` and blocks activation unless the connection is present with at least one selected Instagram campaign ID.
 
-Commit 5C startup migration correction is implemented locally. The Create Campaign test route failed with `relation "instagram_connections" does not exist` because the SQL migration file existed but the app's inline startup migration block did not create the Instagram tables for the active database.
+Commit 5C startup migration correction is done and pushed. The Create Campaign test route failed with `relation "instagram_connections" does not exist` because the SQL migration file existed but the app's inline startup migration block did not create the Instagram tables for the active database.
+
+Commit 5D Create Campaign query invalidation is implemented locally. After successful finalization, the Create Campaign flow invalidates campaign-scoped connected platform, outcome totals, Executive Summary, Trend Analysis, KPI, Benchmark, and all-data-source queries so stale source-dependent data is not retained after an Instagram connection is added.
+
+Commit 5E Create Campaign closeout is implemented locally. It documents the completed Commit 5 boundary: Instagram can be connected during Create Campaign through the test source contract and finalized with source validation/cache invalidation, but analytics aggregation, Campaign DeepDive source cards, reports, scheduler, revenue, KPI, and Benchmark behavior remain future commits.
 
 ## Root Cause Analysis
 
@@ -136,6 +140,8 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 5B, the Create Campaign Instagram option could not enter setup; Commit 5B adds a test-mode setup path using the backend source contract without analytics/runtime exposure.
 - Before Commit 5C, Create Campaign finalization trusted the wizard's in-memory connected platform list and did not re-check the persisted Instagram source contract; Commit 5C adds a read-only finalization guard before activating the draft.
 - The first 5C browser validation exposed a startup migration gap: `instagram_connections` and `instagram_daily_metrics` existed in `shared/schema.ts` and `migrations/0007_add_instagram_connected_platform_foundation.sql`, but not in the inline startup migrations in `server/index.ts`. Because this app runs those inline startup migrations for the active database, the backend route reached storage before the tables existed.
+- Before Commit 5D, Create Campaign finalization invalidated campaigns, connected platforms, outcome totals, one Executive Summary key, and LinkedIn imports, but did not invalidate the other campaign-scoped source-dependent keys used by Trend Analysis, KPIs, Benchmarks, reports, and all-data-source surfaces.
+- Before Commit 5E, the Create Campaign validation text incorrectly included confirming Instagram in `/api/campaigns/:campaignId/outcome-totals` through `performanceSummary.sources`, even though Instagram aggregate resolution is explicitly deferred to Commit 9. Commit 5E corrects the acceptance boundary so validation does not imply unimplemented analytics behavior.
 - `server/scheduler.ts` and platform schedulers have no Instagram refresh or snapshot input.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`, but no Instagram resolver currently supplies one.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
@@ -667,12 +673,38 @@ Commit 5C validation:
 - Startup migrations create `instagram_connections` and `instagram_daily_metrics` if they are absent before Instagram routes need them.
 - Existing Google Ads, Meta/Facebook, LinkedIn, GA4, and Google Sheets setup paths remain unchanged.
 
+Commit 5D smallest safe UI slice:
+
+- Extend only the existing post-finalization query invalidation list.
+- Invalidate the string-key Executive Summary query, Trend Analysis, KPIs, Benchmarks, and all-data-source queries for the finalized campaign.
+- Do not add backend routes, provider calls, live OAuth, refresh, analytics, scheduler, reports, revenue, KPI, Benchmark, or Connected Platforms behavior.
+
+Commit 5D validation:
+
+- Successful Create Campaign finalization invalidates Connected Platforms, outcome totals, Executive Summary, Trend Analysis, KPI, Benchmark, and all-data-source campaign queries.
+- No new Instagram fetch, refresh, analytics, scheduler, report, revenue, KPI, or Benchmark route is called.
+- Existing non-Instagram platform finalization behavior remains unchanged except broader stale-cache invalidation.
+
+Commit 5E smallest safe documentation slice:
+
+- Close the Create Campaign phase in the tracker.
+- Keep 5A-5C marked user-validated after the Instagram test-account validation.
+- Keep 5D marked locally implemented and pending user validation.
+- Remove aggregate/outcome-totals source inclusion from Commit 5 validation because it belongs to later source-backed aggregate work.
+- Do not add runtime behavior.
+
+Commit 5E validation:
+
+- The Create Campaign tracker describes only source setup, finalization guard, and cache invalidation.
+- Instagram aggregate, Campaign DeepDive, Connected Platforms add-source, reports, scheduler, revenue, KPI, and Benchmark work remain pending in later commits.
+- Regression coverage remains focused on Create Campaign setup/finalization/cache invalidation and startup table creation.
+
 Tasks:
 
 - Add Instagram to the Create Campaign platform list.
 - Reuse the Instagram connection flow in Step 3.
 - Add finalization guard so an Instagram-selected draft cannot become active unless the Instagram source contract is complete.
-- Invalidate campaign, Connected Platforms, outcome totals, Executive Summary, Trend Analysis, KPI, Benchmark, and report queries after finalization.
+- Invalidate campaign, Connected Platforms, outcome totals, Executive Summary, Trend Analysis, KPI, Benchmark, and all-data-source queries after finalization.
 
 Validation:
 
@@ -681,22 +713,24 @@ Validation:
 - Connect or use approved test mode.
 - Select Instagram campaigns.
 - Finalize campaign.
-- Confirm Connected Platforms shows Instagram connected for that campaign only.
-- Confirm `/api/campaigns/:campaignId/outcome-totals` includes Instagram through `performanceSummary.sources`.
+- Confirm the campaign is created and the persisted Instagram connection is campaign-scoped.
+- Confirm `/api/campaigns/:campaignId/outcome-totals` does not include placeholder Instagram metrics before Commit 9 aggregate work.
 
 Status:
 
-- [x] Commit 5A implemented locally: Instagram appears in Create Campaign platform list.
-- [x] Commit 5A implemented locally: Instagram option added before Commit 5B enabled setup.
-- [x] Commit 5B implemented locally: Instagram Create Campaign setup uses backend test route.
-- [x] Commit 5B implemented locally: selected campaign IDs are required before backend connection.
-- [x] Commit 5C implemented locally: Step 5 verifies the persisted Instagram connection before campaign activation.
-- [x] Commit 5C correction implemented locally: startup migrations create Instagram source tables if absent.
-- [ ] Commit 5D not started.
-- [ ] Commit 5E not started.
-- [ ] User validation pending for Commit 5A.
-- [ ] User validation pending for Commit 5B.
-- [ ] User validation pending for Commit 5C.
+- [x] Commit 5A done and pushed: Instagram appears in Create Campaign platform list.
+- [x] Commit 5A done and pushed: Instagram option added before Commit 5B enabled setup.
+- [x] Commit 5B done and pushed: Instagram Create Campaign setup uses backend test route.
+- [x] Commit 5B done and pushed: selected campaign IDs are required before backend connection.
+- [x] Commit 5C done and pushed: Step 5 verifies the persisted Instagram connection before campaign activation.
+- [x] Commit 5C correction done and pushed: startup migrations create Instagram source tables if absent.
+- [x] Commit 5D implemented locally: successful finalization invalidates campaign-scoped source-dependent query keys.
+- [x] Commit 5E implemented locally: Create Campaign validation and acceptance boundary are documented.
+- [x] User validation passed for Commit 5A by connecting to the Instagram test account.
+- [x] User validation passed for Commit 5B by connecting to the Instagram test account.
+- [x] User validation passed for Commit 5C by connecting to the Instagram test account.
+- [ ] User validation pending for Commit 5D.
+- [ ] User validation pending for Commit 5E.
 
 ### Details For Commits 6A-6E: Connected Platforms Add-Source Flow
 
@@ -1004,7 +1038,7 @@ Proven:
 - The existing architecture requires new main Connected Platforms to plug into Campaign DeepDive through the shared connected-source aggregate contract.
 - The current aggregate can consume generic future `platformSources`.
 - The current Create Campaign and Connected Platforms paths do not expose Instagram.
-- The current scheduler/report paths do not include Instagram lifecycle support; schema/storage foundation exists locally after Commit 3, backend-only connection/status, test connection, selected-campaign update, disconnect, and selected-campaign list routes exist after Commit 4A-4E, Commit 4F documents that this backend contract is closed without UI/runtime exposure, Commit 5A added the Create Campaign option, Commit 5B adds a test setup path only, and Commit 5C adds a persisted-source finalization guard.
+- The current scheduler/report paths do not include Instagram lifecycle support; schema/storage foundation exists locally after Commit 3, backend-only connection/status, test connection, selected-campaign update, disconnect, and selected-campaign list routes exist after Commit 4A-4E, Commit 4F documents that this backend contract is closed without UI/runtime exposure, Commit 5A added the Create Campaign option, Commit 5B adds a test setup path only, Commit 5C adds a persisted-source finalization guard, Commit 5D broadens post-finalization cache invalidation only, and Commit 5E closes the Create Campaign documentation boundary.
 - Meta/Facebook currently has Instagram-related placement concepts, but not a standalone Instagram source contract.
 - Instagram Commit 1 documentation and acceptance-contract validation passed after user review.
 - Instagram Commit 2 API/source-contract research and local design trace passed user validation.
@@ -1018,7 +1052,9 @@ Proven:
 - Instagram Commit 5A Create Campaign option is implemented locally.
 - Instagram Commit 5B Create Campaign test setup is implemented locally without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, Connected Platforms, or report exposure.
 - Instagram Commit 5C Create Campaign finalization guard is implemented locally without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, Connected Platforms, or report exposure.
-- Instagram Commit 5C startup migration correction is implemented locally and only creates missing Instagram source tables/indexes.
+- Instagram Commit 5C startup migration correction is done and pushed, and only creates missing Instagram source tables/indexes.
+- Instagram Commit 5D Create Campaign query invalidation is implemented locally without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, Connected Platforms, or report exposure.
+- Instagram Commit 5E Create Campaign closeout is implemented locally as documentation/regression-boundary tracking only.
 
 Partially reviewed:
 
@@ -1083,6 +1119,8 @@ Evidence:
 - [x] Commit 5B local Create Campaign test setup implementation.
 - [x] Commit 5C local Create Campaign finalization guard implementation.
 - [x] Commit 5C local startup migration correction for Instagram source tables.
+- [x] Commit 5D local Create Campaign query invalidation implementation.
+- [x] Commit 5E local Create Campaign validation and documentation closeout.
 - [ ] Local test-mode Create Campaign validation.
 - [ ] Local test-mode Connected Platforms validation.
 - [ ] Local Campaign DeepDive aggregate validation.
@@ -1118,7 +1156,9 @@ Evidence:
 - User validation passed for Instagram Commit 4D backend disconnect route through local check and source-safety regression suite.
 - User validation passed for Instagram Commit 4E backend selected-campaign list route through local check and source-safety regression suite.
 - User validation passed for Instagram Commit 4F backend contract finalization documentation.
-- Local implementation complete for Instagram Commit 5A Create Campaign platform option; user validation is pending.
-- Local implementation complete for Instagram Commit 5B Create Campaign test setup path; user validation is pending.
-- Local implementation complete for Instagram Commit 5C Create Campaign finalization guard; user validation is pending.
-- Local implementation complete for Instagram Commit 5C startup migration correction after browser validation exposed the missing active-database tables.
+- User validation passed for Instagram Commit 5A Create Campaign platform option by connecting to the Instagram test account.
+- User validation passed for Instagram Commit 5B Create Campaign test setup path by connecting to the Instagram test account.
+- User validation passed for Instagram Commit 5C Create Campaign finalization guard by connecting to the Instagram test account.
+- Instagram Commit 5C startup migration correction is done and pushed after browser validation exposed the missing active-database tables.
+- Local implementation complete for Instagram Commit 5D Create Campaign query invalidation; user validation is pending.
+- Local implementation complete for Instagram Commit 5E Create Campaign closeout documentation; user validation is pending.

@@ -487,6 +487,11 @@ export default function Campaigns() {
         queryClient.invalidateQueries({ queryKey: ["/api/campaigns", draftCampaignId, "connected-platforms"] }),
         queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/outcome-totals`], exact: false }),
         queryClient.invalidateQueries({ queryKey: ["/api/campaigns", draftCampaignId, "executive-summary"] }),
+        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/executive-summary`], exact: false }),
+        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/trend-analysis`], exact: false }),
+        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/kpis`], exact: false }),
+        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/benchmarks`], exact: false }),
+        queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${draftCampaignId}/all-data-sources`], exact: false }),
         queryClient.invalidateQueries({ queryKey: ["/api/linkedin/imports"], exact: false }),
       ]);
 

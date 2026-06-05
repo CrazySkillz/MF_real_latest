@@ -17,6 +17,13 @@ describe("Instagram Create Campaign flow regression guard", () => {
     expect(page).toContain("`/api/instagram/${draftCampaignId}/connection`");
     expect(page).toContain("!connection.connected || !Array.isArray(connection.selectedCampaignIds) || connection.selectedCampaignIds.length === 0");
     expect(page.indexOf("`/api/instagram/${draftCampaignId}/connection`")).toBeLessThan(page.indexOf("`/api/campaigns/${draftCampaignId}`"));
+    expect(page).toContain('queryKey: ["/api/campaigns", draftCampaignId, "connected-platforms"]');
+    expect(page).toContain("`/api/campaigns/${draftCampaignId}/outcome-totals`");
+    expect(page).toContain("`/api/campaigns/${draftCampaignId}/executive-summary`");
+    expect(page).toContain("`/api/campaigns/${draftCampaignId}/trend-analysis`");
+    expect(page).toContain("`/api/campaigns/${draftCampaignId}/kpis`");
+    expect(page).toContain("`/api/campaigns/${draftCampaignId}/benchmarks`");
+    expect(page).toContain("`/api/campaigns/${draftCampaignId}/all-data-sources`");
     expect(page).not.toContain("/api/instagram/oauth");
     expect(page).not.toContain("refreshInstagram");
     expect(page).not.toContain("upsertInstagramDailyMetrics");

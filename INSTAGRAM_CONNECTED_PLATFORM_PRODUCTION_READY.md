@@ -33,6 +33,8 @@ Commit 4A read-only backend connection/status route is implemented locally. No r
 
 Commit 4B backend test-mode connection route is implemented locally. It requires explicit selected Instagram campaign IDs before replacing a campaign-scoped Instagram source and does not refresh, seed, aggregate, expose UI, or call live OAuth.
 
+Commit 4C backend selected-campaign update route is implemented locally. It requires an existing Instagram connection and a non-empty selected campaign list, clears Instagram daily rows only when the selected scope changes, and still does not expose UI, refresh, aggregate, or live OAuth behavior.
+
 ## Root Cause Analysis
 
 The current gap is not one isolated UI bug. It is a missing source contract and lifecycle implementation:
@@ -44,6 +46,7 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 3, `server/storage.ts` had no Instagram storage lifecycle methods; Commit 3 adds storage methods without UI, scheduler, or aggregate callers.
 - Before Commit 4A, `server/routes-oauth.ts` had no Instagram connection/status route; Commit 4A adds a read-only status route.
 - Before Commit 4B, there was no backend write path to create an Instagram source contract row; Commit 4B adds a test-mode-only route that requires selected campaigns before writing and still adds no live OAuth, analytics, refresh, revenue, KPI, Benchmark, or report route.
+- Before Commit 4C, selected Instagram campaign scope could only be set by replacing the whole test connection; Commit 4C adds a backend selected-campaign update route for an existing connection and clears stale Instagram daily rows when that scope changes.
 - `server/scheduler.ts` and platform schedulers have no Instagram refresh or snapshot input.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`, but no Instagram resolver currently supplies one.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
@@ -288,6 +291,74 @@ The next code-bearing commit should only add schema and storage foundations:
 
 ## Implementation Plan
 
+### Commit Roadmap
+
+| Commit | Scope | Status | Runtime/UI exposure |
+| --- | --- | --- | --- |
+| 1 | Documentation and acceptance contract | Done and pushed; user validation passed | None |
+| 2 | API/source-contract research and local design trace | Done and pushed; user validation passed | None |
+| 3 | Schema/storage foundation and migration | Done and pushed; user validation pending | None |
+| 4A | Read-only Instagram connection/status route | Done and pushed; user validation pending | Backend route only; no UI |
+| 4B | Backend test-mode connection route requiring selected Instagram campaigns | Done and pushed; user validation passed by local checks | Backend route only; no UI |
+| 4C | Backend selected-campaign update route for an existing connection | Implemented locally; not committed/pushed yet | Backend route only; no UI |
+| 4D | Backend disconnect route | Pending | Backend route only; no UI |
+| 4E | Backend Instagram campaign-list/selector contract | Pending | Backend route only; no UI |
+| 4F | Commit 4 backend contract finalization and validation docs | Pending | None |
+| 5A | Create Campaign platform option only, disabled/hidden behind backend readiness guard if needed | Pending | Create Campaign UI option only |
+| 5B | Create Campaign uses existing backend test connection contract without finalizing campaign analytics | Pending | Create Campaign connection step |
+| 5C | Create Campaign selected-campaign validation and finalization guard | Pending | Create Campaign finalization guard |
+| 5D | Create Campaign query invalidation after successful Instagram setup | Pending | Create Campaign cache behavior |
+| 5E | Create Campaign regression and validation docs | Pending | None |
+| 6A | Connected Platforms status endpoint includes Instagram status from source contract | Pending | Backend status payload used by UI |
+| 6B | Connected Platforms Instagram card shell with no placeholder metrics | Pending | Connected Platforms UI card |
+| 6C | Connected Platforms add-source flow opens existing Instagram setup contract | Pending | Connected Platforms setup UI |
+| 6D | Connected Platforms success/error/empty states and query invalidation | Pending | Connected Platforms UI state |
+| 6E | Connected Platforms regression and validation docs | Pending | None |
+| 7A | Campaign Overview reads Instagram connection/source status only | Pending | Overview source status |
+| 7B | Campaign Overview unavailable metric states for connected-without-rows | Pending | Overview metric states |
+| 7C | Campaign Overview source-backed metrics from Instagram daily rows only | Pending | Overview metrics |
+| 7D | Campaign Overview regression and validation docs | Pending | None |
+| 8A | Instagram analytics route shell and access guard | Pending | Instagram analytics page route |
+| 8B | Instagram analytics daily metrics endpoint | Pending | Backend analytics data route |
+| 8C | Instagram analytics Overview tab from source-backed rows | Pending | Analytics UI |
+| 8D | Instagram analytics Campaign Breakdown tab from selected campaign rows | Pending | Analytics UI |
+| 8E | Instagram analytics unavailable/error/freshness states | Pending | Analytics UI state |
+| 8F | Instagram analytics regression and validation docs | Pending | None |
+| 9A | Instagram aggregate resolver reads only `instagram_daily_metrics` | Pending | Campaign DeepDive backend aggregate |
+| 9B | Instagram aggregate capabilities and unavailable-reason contract | Pending | Campaign DeepDive source contract |
+| 9C | Meta/Facebook plus Instagram no-double-counting guard | Pending | Campaign DeepDive source safety |
+| 9D | Campaign DeepDive consumers accept Instagram through existing `platformSources` contract | Pending | Campaign DeepDive UI values |
+| 9E | Campaign DeepDive regression and validation docs | Pending | None |
+| 10A | Add `instagram` platform context allowlist only where storage/source proof exists | Pending | Financial import backend |
+| 10B | Instagram spend import/edit source identity uses `instagram_api` only | Pending | Spend import path |
+| 10C | Instagram attributed revenue import/edit source identity uses `platformContext="instagram"` only | Pending | Revenue import path |
+| 10D | Revenue/spend regression and validation docs | Pending | None |
+| 11A | Instagram provider/client adapter research refresh before live behavior | Pending | None |
+| 11B | Test-mode Instagram daily metric generation behind explicit refresh only | Pending | Backend refresh route |
+| 11C | Manual refresh route imports selected Instagram-only rows | Pending | Backend refresh route |
+| 11D | Scheduler refresh skips missing, spend-only, invalid, or unselected-source campaigns | Pending | Background refresh |
+| 11E | Scheduler snapshot integration uses same aggregate contract as UI | Pending | Background snapshots |
+| 11F | Scheduler/refresh regression and validation docs | Pending | None |
+| 12A | Backend disconnect route and storage cleanup proof | Pending after 4D if 4D is not enough | Backend lifecycle route |
+| 12B | Reconnect stale-row safety and selected-scope replacement proof | Pending | Backend lifecycle behavior |
+| 12C | Existing damaged-data cleanup plan if stale Instagram rows can exist | Pending | Data cleanup plan only unless needed |
+| 12D | Lifecycle regression and validation docs | Pending | None |
+| 13A | Instagram KPI current-value source contract | Pending | KPI backend/UI |
+| 13B | Instagram Benchmark current-value source contract | Pending | Benchmark backend/UI |
+| 13C | Instagram report route/source contract | Pending | Report backend/UI |
+| 13D | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
+| 13E | Instagram PDF/export output source proof | Pending | Report exports |
+| 13F | KPI/Benchmark/Report regression and validation docs | Pending | None |
+| 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
+| 14B | End-to-end local test-mode Connected Platforms validation | Pending | Validation only |
+| 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending | Validation only |
+| 14D | Production-like or deployed live OAuth/API validation | Pending | Validation only |
+| 14E | Final production-ready evidence update | Pending | Documentation only |
+
+This roadmap is the definitive execution checklist for the remaining Instagram work. If a future finding requires splitting or adding a commit, the new subcommit must be added to this table before implementation starts.
+
+Commit 4 is intentionally split into backend-only subcommits because this area is analytics-sensitive. No Commit 4 subcommit should expose Instagram in Create Campaign, Connected Platforms, Campaign DeepDive, reports, scheduler, revenue, KPIs, or Benchmarks.
+
 ### Instagram Commit 1: Documentation And Acceptance Contract
 
 Goal:
@@ -415,6 +486,23 @@ Commit 4B validation:
 - Route persists selected IDs for the status route.
 - Route does not call Instagram daily metric upsert or refresh paths.
 
+Commit 4C smallest safe backend slice:
+
+- Add `PATCH /api/instagram/:campaignId/selected-campaigns`.
+- Require an existing Instagram connection.
+- Require a non-empty `selectedCampaignIds` array before any cleanup or update.
+- Clear `instagram_daily_metrics` only when the selected campaign list changes.
+- Update only the connection's selected campaign scope.
+- Do not create a connection, refresh provider data, seed metrics, add UI, update Connected Platforms, or feed aggregate/report paths.
+
+Commit 4C validation:
+
+- Route is guarded by `ensureCampaignAccess`.
+- Route returns `404` when no Instagram connection exists.
+- Route fails closed when selected campaign IDs are missing.
+- Route clears stale daily rows before updating the selected scope only when the selection changes.
+- Route does not call create, daily upsert, or refresh paths.
+
 Tasks:
 
 - Add an Instagram connection flow component or narrowly scoped Meta API adapter flow.
@@ -436,9 +524,13 @@ Status:
 - [x] Commit 4A implemented locally: auth and source-safety regression coverage.
 - [x] Commit 4B implemented locally: test-mode connection route requires selected campaign IDs before writing.
 - [x] Commit 4B implemented locally: source-safety regression coverage.
+- [x] Commit 4C implemented locally: selected-campaign update route requires existing connection and non-empty selected IDs.
+- [x] Commit 4C implemented locally: stale daily row cleanup on selected-scope change.
+- [x] Commit 4C implemented locally: source-safety regression coverage.
 - [ ] Full connection flow not started.
 - [ ] User validation pending for Commit 4A.
 - [ ] User validation pending for Commit 4B.
+- [ ] User validation pending for Commit 4C.
 
 ### Instagram Commit 5: Create Campaign Flow
 
@@ -773,13 +865,14 @@ Proven:
 - The existing architecture requires new main Connected Platforms to plug into Campaign DeepDive through the shared connected-source aggregate contract.
 - The current aggregate can consume generic future `platformSources`.
 - The current Create Campaign and Connected Platforms paths do not expose Instagram.
-- The current scheduler/report paths do not include Instagram lifecycle support; schema/storage foundation exists locally after Commit 3, a read-only backend status route exists locally after Commit 4A, and a backend test-mode source creation route exists locally after Commit 4B.
+- The current scheduler/report paths do not include Instagram lifecycle support; schema/storage foundation exists locally after Commit 3, a read-only backend status route exists locally after Commit 4A, a backend test-mode source creation route exists locally after Commit 4B, and a backend selected-campaign update route exists locally after Commit 4C.
 - Meta/Facebook currently has Instagram-related placement concepts, but not a standalone Instagram source contract.
 - Instagram Commit 1 documentation and acceptance-contract validation passed after user review.
 - Instagram Commit 2 API/source-contract research and local design trace passed user validation.
 - Instagram Commit 3 schema/storage foundation is implemented locally without UI, route, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
 - Instagram Commit 4A read-only backend connection/status route is implemented locally without UI, write, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
 - Instagram Commit 4B backend test-mode connection route is implemented locally without UI, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
+- Instagram Commit 4C backend selected-campaign update route is implemented locally without UI, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
 
 Partially reviewed:
 
@@ -811,6 +904,7 @@ Implementation:
 - [x] Add schema/storage foundation.
 - [x] Add read-only connection/status route foundation.
 - [x] Add backend test-mode connection route requiring selected Instagram campaigns.
+- [x] Add backend selected-campaign update route requiring an existing Instagram connection.
 - [ ] Add write connection flow.
 - [ ] Add Create Campaign integration.
 - [ ] Add Connected Platforms integration.
@@ -829,6 +923,7 @@ Evidence:
 - [x] Commit 3 local schema/storage foundation implementation.
 - [x] Commit 4A local read-only connection/status route implementation.
 - [x] Commit 4B local backend test-mode connection route implementation.
+- [x] Commit 4C local backend selected-campaign update route implementation.
 - [ ] Local test-mode Create Campaign validation.
 - [ ] Local test-mode Connected Platforms validation.
 - [ ] Local Campaign DeepDive aggregate validation.
@@ -860,3 +955,4 @@ Evidence:
 - Local implementation complete for Instagram Commit 3 schema/storage foundation; user validation is pending.
 - Local implementation complete for Instagram Commit 4A read-only connection/status route; user validation is pending.
 - Local implementation complete for Instagram Commit 4B backend test-mode connection route; user validation is pending.
+- Local implementation complete for Instagram Commit 4C backend selected-campaign update route; user validation is pending.

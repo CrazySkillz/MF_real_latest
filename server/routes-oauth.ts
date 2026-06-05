@@ -19595,6 +19595,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * Update selected Instagram campaigns for an existing connection
+   */
+  app.patch("/api/instagram/:campaignId/selected-campaigns", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getInstagramConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Instagram connection not found" });
+      }
+
+      const selectedCampaignIdsRaw = (req.body as any)?.selectedCampaignIds;
+      const selectedCampaignIds = Array.isArray(selectedCampaignIdsRaw)
+        ? selectedCampaignIdsRaw.map((id: any) => String(id || "").trim()).filter(Boolean)
+        : [];
+      if (selectedCampaignIds.length === 0) {
+        return res.status(400).json({ error: "At least one Instagram campaign must be selected" });
+      }
+
+      const previousSelectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      const selectionChanged = previousSelectedCampaignIds.join("\n") !== selectedCampaignIds.join("\n");
+      if (selectionChanged) {
+        await storage.deleteInstagramDailyMetrics(parsedId.data);
+      }
+
+      const updated = await storage.updateInstagramConnection(parsedId.data, {
+        selectedCampaignIds: JSON.stringify(selectedCampaignIds),
+      } as any);
+
+      res.json({
+        success: true,
+        connected: true,
+        selectedCampaignIds,
+        selectionChanged,
+        publisherPlatformFilter: updated?.publisherPlatformFilter,
+        sourceContractVersion: updated?.sourceContractVersion,
+      });
+    } catch (error: any) {
+      console.error('[Instagram] Update selected campaigns error:', error);
+      res.status(500).json({ error: error.message || 'Failed to update selected Instagram campaigns' });
+    }
+  });
+
+  /**
    * Transfer Meta connection from temporary campaign to real campaign
    */
   app.post("/api/meta/transfer-connection", async (req, res) => {

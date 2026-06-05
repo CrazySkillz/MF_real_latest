@@ -311,6 +311,47 @@ describe("Meta production readiness regression guard", () => {
     expect(campaignBreakdown).not.toContain("revenueSummary.totalRevenue / campaigns.length");
   });
 
+  it("keeps Meta Ad Comparison source-backed and scoped to selected campaigns", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const chartSetup = sliceBetween(
+      page,
+      "// Prepare data for charts",
+      "// Handler: create or update KPI"
+    );
+    const adComparison = sliceBetween(
+      page,
+      '<TabsContent value="ad-comparison"',
+      '<TabsContent value="insights"'
+    );
+
+    expect(chartSetup).toContain("const rankingCampaigns = campaigns.filter");
+    expect(chartSetup).toContain("const bestCtrCampaign = [...rankingCampaigns]");
+    expect(chartSetup).toContain("const mostEfficientCampaign = [...rankingCampaigns]");
+    expect(chartSetup).toContain("const needsAttentionCampaign = [...rankingCampaigns]");
+    expect(chartSetup).toContain("const campaignPerformanceData = [...campaigns]");
+    expect(chartSetup).toContain(".sort((a: any, b: any) => Number(b?.totals?.spend || 0) - Number(a?.totals?.spend || 0))");
+    expect(chartSetup).toContain(".slice(0, 5)");
+    expect(chartSetup).not.toContain("campaigns.slice(0, 5)");
+
+    expect(adComparison).toContain("Compare performance across selected Meta campaigns");
+    expect(adComparison).toContain("Best CTR");
+    expect(adComparison).toContain("Lowest CPC");
+    expect(adComparison).toContain("Lowest Conversion Rate");
+    expect(adComparison).toContain("bestCtrCampaign?.campaign?.name");
+    expect(adComparison).toContain("mostEfficientCampaign?.campaign?.name");
+    expect(adComparison).toContain("needsAttentionCampaign?.campaign?.name");
+    expect(adComparison).toContain("Top 5 campaigns by spend");
+    expect(adComparison).toContain("Side-by-side metrics for selected campaigns");
+    expect(adComparison).not.toContain("Product Launch - Holiday Sale");
+    expect(adComparison).not.toContain("Retargeting Campaign");
+    expect(adComparison).not.toContain("Video Views Campaign");
+    expect(adComparison).not.toContain("all Meta campaigns");
+    expect(adComparison).not.toContain("Total Revenue");
+    expect(adComparison).not.toContain("ROAS");
+    expect(adComparison).not.toContain("ROI");
+    expect(adComparison).not.toContain("Profit");
+  });
+
   it("preserves Meta revenue import context across shared provider save and refresh paths", () => {
     const wizard = read("client", "src", "components", "AddRevenueWizardModal.tsx");
     const routes = read("server", "routes-oauth.ts");

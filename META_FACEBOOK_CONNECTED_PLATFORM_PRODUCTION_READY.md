@@ -17,11 +17,11 @@ Meta/Facebook must be treated as a campaign-scoped main paid-media connected sou
 
 ## Current Status
 
-Meta/Facebook is locally production-ready for the implemented source-backed test-mode path.
+Meta/Facebook is locally production-ready for the implemented source-backed test-mode path except the newly identified Meta Insights multi-campaign Trends alignment gap tracked as Commit 20. Meta Commit 21 has been implemented and locally validated; user/browser validation is pending.
 
 This tracker is the planning and implementation artifact. The implemented local/test-mode Meta path has been hardened against the source-backed pattern used by LinkedIn and Google Ads. Live OAuth and deployed scheduled-report behavior still require production-like evidence.
 
-Meta Commit 19 has been implemented locally. Local validation passed; user/browser validation is pending. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
+Meta Commit 19 has been implemented locally. Local validation and user/browser validation passed. Meta Commit 21 fixed the Meta Ad Comparison ranking/copy alignment gap locally. Meta Commit 20 remains pending: Insights Trends currently reads daily history for only the first selected Meta campaign, while Overview totals use all selected Meta campaigns. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
 
 Verified current foundations:
 
@@ -48,6 +48,8 @@ Verified current foundations:
 - Commit 17 includes `Top Demographics`, `Top Locations`, and `Ad Placements` in the selected Meta analytics response for the source-backed test-mode path, while preserving the live Meta Insights breakdown import path.
 - Commit 18 keeps imported Meta revenue visible only in the Overview Total Revenue card until exact per-Meta-campaign revenue attribution is implemented.
 - Commit 19 adds exact Meta campaign mapping for imported revenue sources and shows Campaign Breakdown `Total Revenue` only when mapped revenue exists for the selected Meta campaign.
+- Meta Insights KPI/Benchmark cards use the same Summary and live metric helper as Overview, but the Trends section still needs selected-campaign aggregate alignment before multi-campaign Insights can be considered production-ready.
+- Commit 21 makes Meta Ad Comparison ranking cards and the top-by-spend chart source-backed from the same selected-campaign `campaigns` array used by Overview.
 
 Verified production-readiness gaps:
 
@@ -898,7 +900,7 @@ Status:
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ### Meta Commit 17: Standard Meta Breakdown Imports
 
@@ -930,7 +932,7 @@ Status:
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ### Meta Commit 18: Keep Imported Revenue In Total Revenue Card Only
 
@@ -972,7 +974,7 @@ Status:
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ### Meta Commit 19: Exact Meta Campaign Revenue Mapping
 
@@ -1007,6 +1009,92 @@ Status:
 - [x] Completed locally: HubSpot, Salesforce, and Shopify Meta revenue imports can map selected CRM/ecommerce campaign values to selected Meta campaigns.
 - [x] Completed locally: server revenue materialization now writes exact Meta `subCampaignUrn` records when mapped selected Meta campaign IDs exist.
 - [x] Completed locally: Meta Overview reads `/api/campaigns/:id/meta-campaign-revenue` and renders Campaign Breakdown `Total Revenue` from exact mapped revenue only.
+- [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [x] User/browser validation passed.
+
+### Meta Commit 20: Insights Selected-Campaign Trend Alignment
+
+Goal:
+
+- Make the Meta Insights Trends section use the same selected-campaign scope as the Meta Overview totals.
+
+Root cause analysis:
+
+- Meta Overview reads `/api/meta/:campaignId/analytics` and renders totals from `summary`, which is built from all saved selected Meta campaign IDs.
+- Meta Insights KPI/Benchmark and configuration insight cards use `getLiveMetricValue`, which reads the same `summary` and Meta attributed revenue values used by Overview.
+- Meta Insights Trends currently sets `firstMetaCampaignId = analyticsData?.campaigns?.[0]?.campaign?.id` and fetches `/api/meta/:campaignId/insights/daily?metaCampaignId=${firstMetaCampaignId}&days=90`.
+- The daily endpoint correctly rejects unselected Meta campaign IDs, but it only returns one Meta campaign at a time.
+- Therefore, for a campaign with multiple selected Meta campaigns, Overview can show aggregate selected-campaign totals while Insights Trends shows only the first selected campaign's daily trend. That is not logically aligned.
+- Revenue remains safe in the current implementation because Commit 18 removed revenue, ROAS, and ROI trend options from Insights and keeps imported Meta revenue in the Overview Total Revenue card.
+
+Smallest safe implementation strategy:
+
+- Reuse the existing source-backed selected-campaign daily row path instead of adding a new Insights framework.
+- Aggregate daily trend rows across all selected Meta campaigns by date before building Daily, 7d, and 30d Insights trend series.
+- Preserve the existing metrics: spend, impressions, clicks, conversions, CTR, CPC, CPM, and conversion rate.
+- Preserve campaign scoping and selected Meta campaign scoping.
+- Do not add revenue, ROAS, ROI, or Profit to Insights Trends.
+- Do not change Overview, KPI, Benchmark, report, scheduler, revenue wizard, or shared aggregate response shapes.
+
+Validation:
+
+- Open Meta Overview for a test-mode Meta campaign with one selected Meta campaign.
+- Confirm Insights Trends still shows daily spend and performance history.
+- Open or create a test-mode Meta campaign with two selected Meta campaigns.
+- Confirm Overview totals and Insights Trends use both selected Meta campaigns, not only the first campaign.
+- Confirm the Trends metric dropdown still excludes Revenue, ROAS, ROI, and Profit.
+- Confirm KPI/Benchmark insight cards still use the same current values as the visible Meta Overview cards.
+
+Status:
+
+- [x] Root cause traced locally.
+- [ ] Implementation pending.
+- [ ] Local validation pending.
+- [ ] User/browser validation pending.
+
+### Meta Commit 21: Ad Comparison Source-Backed Ranking Alignment
+
+Goal:
+
+- Make the Meta Ad Comparison tab fully use the same selected-campaign data and metric semantics as Meta Overview.
+
+Root cause analysis:
+
+- Meta Overview reads `/api/meta/:campaignId/analytics` and renders selected Meta campaign totals from `summary` and `campaigns`.
+- The Ad Comparison tab reads the same `campaigns` array, so its detailed campaign cards, CTR chart, conversion-rate chart, and objective spend chart are mostly source-backed and campaign-scoped.
+- The three top ranking cards are hardcoded as `Product Launch - Holiday Sale`, `Retargeting Campaign`, and `Video Views Campaign`, with hardcoded CTR/CPC/CPM/conversion-rate values. Those cards can disagree with the selected Meta campaigns shown in Overview.
+- The `Campaign Performance` chart description says `Top 5 campaigns by spend`, but the data is `campaigns.slice(0, 5)` without sorting by spend. It is source-backed, but the label can be wrong when the API order is not spend-descending.
+- The tab header says `Compare performance across all Meta campaigns`, while the API correctly scopes to saved selected Meta campaign IDs. The copy should say selected Meta campaigns to avoid implying unscoped account-wide data.
+- The performance badges are local heuristics derived from CTR and conversion rate. They do not invent raw metrics, but they should not be treated as Meta-provided ratings or benchmark-backed truth.
+- Revenue remains safe in the current Ad Comparison tab because imported Meta revenue is not shown there; exact per-campaign revenue remains in Overview Campaign Breakdown only.
+
+Smallest safe implementation strategy:
+
+- Replace the three hardcoded ranking cards with source-backed rankings computed from `campaigns`.
+- Keep rankings simple and transparent: best CTR, lowest CPC among campaigns with clicks/spend, and lowest conversion rate or highest cost/conversion for needs-attention.
+- Sort `campaignPerformanceData` by spend before taking the top five, or change the chart description if sorting is not desired.
+- Update copy from `all Meta campaigns` to `selected Meta campaigns`.
+- Do not add revenue, ROAS, ROI, or Profit to Ad Comparison.
+- Do not change the `/api/meta/:campaignId/analytics` response shape, Overview values, revenue mappings, KPI/Benchmark behavior, scheduler behavior, reports, GA4, LinkedIn, or Google Ads.
+
+Validation:
+
+- Open Meta Ad Comparison for a test-mode Meta campaign.
+- Confirm the ranking cards show real selected Meta campaign names, not hardcoded campaign names.
+- Confirm the `Campaign Performance` chart either shows the true top five campaigns by spend or has copy that matches the actual order.
+- Confirm Detailed Campaign Comparison values match the same selected campaign rows shown in Overview Campaign Breakdown.
+- Confirm CTR and Conversion Rate charts use the same per-campaign CTR and conversion-rate values shown in the detailed rows.
+- Confirm Ad Comparison does not show Revenue, ROAS, ROI, or Profit.
+
+Status:
+
+- [x] Root cause traced locally.
+- [x] Completed locally: ranking cards now use selected Meta campaign data instead of hardcoded names and metric values.
+- [x] Completed locally: the top-five campaign performance chart sorts by spend before taking the top five.
+- [x] Completed locally: Ad Comparison copy now says selected Meta campaigns instead of all Meta campaigns.
+- [x] Completed locally: Ad Comparison still excludes Revenue, ROAS, ROI, and Profit.
 - [x] Completed locally: regression coverage added in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
@@ -1045,15 +1133,15 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
-- No outstanding local/test-mode implementation work for the implemented source-backed Meta path.
+- Meta Commit 20 is pending: align Meta Insights Trends with the same selected-campaign aggregate scope used by Overview.
 
 Outstanding evidence:
 
-- Meta Commit 19 user/browser validation is pending and should cover visible Commit 16/17/18/19 Meta Overview changes and exact Meta revenue mapping.
+- Meta Commit 21 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 - Deployed scheduled Meta report email receipt is not available locally.
 
 ## Current Handoff
 
-The next smallest safest step is a browser check that Meta Overview shows `Campaign Breakdown`, keeps the selected Meta campaign metrics, renders `Top Demographics`, `Top Locations`, and `Ad Placements` rows for a test-mode Meta campaign, and shows Campaign Breakdown `Total Revenue` only for exact mapped Meta campaign revenue. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.
+The next smallest safest steps are browser validation for Meta Commit 21 and implementation of Meta Commit 20. Commit 21 should confirm Ad Comparison rankings use selected Meta campaign values. Commit 20 aligns Insights Trends with all selected Meta campaigns. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.

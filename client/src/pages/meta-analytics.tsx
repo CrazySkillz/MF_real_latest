@@ -719,12 +719,28 @@ export default function MetaAnalytics() {
   })();
 
   // Prepare data for charts
-  const campaignPerformanceData = campaigns.slice(0, 5).map((c: any) => ({
-    name: c.campaign.name.length > 20 ? c.campaign.name.substring(0, 20) + '...' : c.campaign.name,
-    spend: c.totals.spend,
-    conversions: c.totals.conversions,
-    clicks: c.totals.clicks,
-  }));
+  const rankingCampaigns = campaigns.filter((c: any) => c?.campaign && c?.totals);
+  const bestCtrCampaign = [...rankingCampaigns]
+    .sort((a: any, b: any) => Number(b?.totals?.ctr || 0) - Number(a?.totals?.ctr || 0))[0];
+  const mostEfficientCampaign = [...rankingCampaigns]
+    .filter((c: any) => Number(c?.totals?.clicks || 0) > 0 && Number(c?.totals?.spend || 0) > 0)
+    .sort((a: any, b: any) => Number(a?.totals?.cpc || Number.MAX_SAFE_INTEGER) - Number(b?.totals?.cpc || Number.MAX_SAFE_INTEGER))[0];
+  const needsAttentionCampaign = [...rankingCampaigns]
+    .filter((c: any) => Number(c?.totals?.clicks || 0) > 0)
+    .sort((a: any, b: any) => {
+      const conversionRateDiff = Number(a?.totals?.conversionRate || 0) - Number(b?.totals?.conversionRate || 0);
+      if (conversionRateDiff !== 0) return conversionRateDiff;
+      return Number(b?.totals?.costPerConversion || 0) - Number(a?.totals?.costPerConversion || 0);
+    })[0];
+  const campaignPerformanceData = [...campaigns]
+    .sort((a: any, b: any) => Number(b?.totals?.spend || 0) - Number(a?.totals?.spend || 0))
+    .slice(0, 5)
+    .map((c: any) => ({
+      name: c.campaign.name.length > 20 ? c.campaign.name.substring(0, 20) + '...' : c.campaign.name,
+      spend: c.totals.spend,
+      conversions: c.totals.conversions,
+      clicks: c.totals.clicks,
+    }));
 
   const objectiveDistribution = campaigns.reduce((acc: any, c: any) => {
     const objective = c.campaign.objective;
@@ -1869,7 +1885,7 @@ export default function MetaAnalytics() {
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Campaign Comparison</h2>
                 <p className="text-sm text-muted-foreground/70 mt-1">
-                  Compare performance across all Meta campaigns
+                  Compare performance across selected Meta campaigns
                 </p>
               </div>
 
@@ -1879,14 +1895,16 @@ export default function MetaAnalytics() {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                       <TrendingUp className="w-4 h-4 text-green-600" />
-                      Best Performing
+                      Best CTR
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
                       <div>
-                        <p className="font-semibold text-green-600">Product Launch - Holiday Sale</p>
-                        <p className="text-xs text-muted-foreground/70">CTR: 2.8%</p>
+                        <p className="font-semibold text-green-600">{bestCtrCampaign?.campaign?.name || 'No selected campaign data'}</p>
+                        <p className="text-xs text-muted-foreground/70">
+                          CTR: {bestCtrCampaign ? formatPct(Number(bestCtrCampaign?.totals?.ctr || 0)) : '-'}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -1896,14 +1914,16 @@ export default function MetaAnalytics() {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                       <Activity className="w-4 h-4 text-blue-600" />
-                      Most Efficient
+                      Lowest CPC
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
                       <div>
-                        <p className="font-semibold text-blue-600">Retargeting Campaign</p>
-                        <p className="text-xs text-muted-foreground/70">CPC: $0.72 • CPM: $11.20</p>
+                        <p className="font-semibold text-blue-600">{mostEfficientCampaign?.campaign?.name || 'No selected campaign data'}</p>
+                        <p className="text-xs text-muted-foreground/70">
+                          CPC: {mostEfficientCampaign ? fmtCurrency(Number(mostEfficientCampaign?.totals?.cpc || 0)) : '-'} | CPM: {mostEfficientCampaign ? fmtCurrency(Number(mostEfficientCampaign?.totals?.cpm || 0)) : '-'}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -1913,14 +1933,16 @@ export default function MetaAnalytics() {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                       <TrendingDown className="w-4 h-4 text-orange-600" />
-                      Needs Attention
+                      Lowest Conversion Rate
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
                       <div>
-                        <p className="font-semibold text-orange-600">Video Views Campaign</p>
-                        <p className="text-xs text-muted-foreground/70">CTR: 0.8% • Conv Rate: 1.2%</p>
+                        <p className="font-semibold text-orange-600">{needsAttentionCampaign?.campaign?.name || 'No selected campaign data'}</p>
+                        <p className="text-xs text-muted-foreground/70">
+                          Conv Rate: {needsAttentionCampaign ? formatPct(Number(needsAttentionCampaign?.totals?.conversionRate || 0)) : '-'} | Cost/Conv: {needsAttentionCampaign ? fmtCurrency(Number(needsAttentionCampaign?.totals?.costPerConversion || 0)) : '-'}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -1952,7 +1974,7 @@ export default function MetaAnalytics() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Spend by Objective</CardTitle>
-                    <CardDescription>Budget allocation across campaign types</CardDescription>
+                    <CardDescription>Budget allocation across selected campaign objectives</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
@@ -1982,7 +2004,7 @@ export default function MetaAnalytics() {
               <Card>
                 <CardHeader>
                   <CardTitle>Detailed Campaign Comparison</CardTitle>
-                  <CardDescription>Side-by-side metrics for all campaigns</CardDescription>
+                  <CardDescription>Side-by-side metrics for selected campaigns</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -2089,7 +2111,7 @@ export default function MetaAnalytics() {
                 <Card>
                   <CardHeader>
                     <CardTitle>CTR Comparison</CardTitle>
-                    <CardDescription>Click-through rate across campaigns</CardDescription>
+                    <CardDescription>Click-through rate across selected campaigns</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
@@ -2107,7 +2129,7 @@ export default function MetaAnalytics() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Conversion Rate Comparison</CardTitle>
-                    <CardDescription>Conversion rate across campaigns</CardDescription>
+                    <CardDescription>Conversion rate across selected campaigns</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>

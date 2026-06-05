@@ -17,7 +17,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Edit, Trash2, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
-import { SiFacebook, SiGoogle, SiLinkedin, SiX } from "react-icons/si";
+import { SiFacebook, SiGoogle, SiInstagram, SiLinkedin, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -94,6 +94,14 @@ const platforms = [
     type: "credentials"
   },
   {
+    id: "instagram",
+    name: "Instagram Ads",
+    icon: SiInstagram,
+    color: "text-pink-600",
+    description: "Connect your Instagram Ads account",
+    type: "credentials"
+  },
+  {
     id: "google-ads",
     name: "Google Ads",
     icon: SiGoogle,
@@ -146,6 +154,10 @@ export default function Campaigns() {
   const [ga4ConfigSubStep, setGa4ConfigSubStep] = useState<'property' | 'campaigns'>('property');
   const [wizardLookbackDays, setWizardLookbackDays] = useState<number>(90);
   const [wizardGA4TestMode, setWizardGA4TestMode] = useState(false);
+  const [instagramAdAccountId, setInstagramAdAccountId] = useState("act_instagram_test");
+  const [instagramAdAccountName, setInstagramAdAccountName] = useState("Test Instagram Ad Account");
+  const [instagramSelectedCampaignIds, setInstagramSelectedCampaignIds] = useState("ig_test_1");
+  const [isInstagramConnecting, setIsInstagramConnecting] = useState(false);
   const { toast } = useToast();
 
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
@@ -424,6 +436,28 @@ export default function Campaigns() {
       return;
     }
 
+    if (selectedPlatforms.includes('instagram')) {
+      const response = await apiRequest("GET", `/api/instagram/${draftCampaignId}/connection`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        toast({
+          title: "Instagram connection required",
+          description: errorData.error || errorData.message || "Connect Instagram and select at least one campaign before creating this campaign.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const connection = await response.json();
+      if (!connection.connected || !Array.isArray(connection.selectedCampaignIds) || connection.selectedCampaignIds.length === 0) {
+        toast({
+          title: "Instagram campaign required",
+          description: "Connect Instagram and select at least one campaign before creating this campaign.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     // Finalize: update the already-created campaign with the chosen platform list.
     try {
       console.log('🔧 Finalizing campaign:', draftCampaignId, 'with platforms:', selectedPlatforms);
@@ -630,6 +664,10 @@ export default function Campaigns() {
     setGa4ConfigSubStep('property');
     setWizardLookbackDays(90);
     setWizardGA4TestMode(false);
+    setInstagramAdAccountId("act_instagram_test");
+    setInstagramAdAccountName("Test Instagram Ad Account");
+    setInstagramSelectedCampaignIds("ig_test_1");
+    setIsInstagramConnecting(false);
     form.reset();
   };
 
@@ -670,6 +708,39 @@ export default function Campaigns() {
       toast({ title: "Connection Failed", description: "Failed to retrieve Google Analytics properties.", variant: "destructive" });
     } finally {
       setIsGA4PropertyLoading(false);
+    }
+  };
+
+  const connectInstagramTestMode = async () => {
+    if (!draftCampaignId) return;
+    const selectedCampaignIds = instagramSelectedCampaignIds
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (selectedCampaignIds.length === 0) {
+      toast({ title: "Instagram campaign required", description: "Enter at least one Instagram campaign ID.", variant: "destructive" });
+      return;
+    }
+
+    setIsInstagramConnecting(true);
+    try {
+      const response = await apiRequest("POST", `/api/instagram/${draftCampaignId}/connect-test`, {
+        adAccountId: instagramAdAccountId.trim() || "act_instagram_test",
+        adAccountName: instagramAdAccountName.trim() || "Test Instagram Ad Account",
+        selectedCampaignIds,
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || "Failed to connect Instagram");
+      }
+      setConnectedPlatformsInDialog(prev => prev.includes('instagram') ? prev : [...prev, 'instagram']);
+      setWizardPlatformConnected(true);
+      toast({ title: "Instagram Ads Connected!", description: "Successfully connected test Instagram campaign scope." });
+      setWizardStep(5);
+    } catch (error: any) {
+      toast({ title: "Connection Failed", description: error?.message || "Failed to connect Instagram", variant: "destructive" });
+    } finally {
+      setIsInstagramConnecting(false);
     }
   };
 
@@ -1112,6 +1183,42 @@ export default function Campaigns() {
                               toast({ title: "Connection Failed", description: error, variant: "destructive" });
                             }}
                           />
+                        )}
+                        {selectedWizardPlatform === 'instagram' && (
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="instagramAdAccountId">Ad Account ID</Label>
+                              <Input
+                                id="instagramAdAccountId"
+                                value={instagramAdAccountId}
+                                onChange={(event) => setInstagramAdAccountId(event.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="instagramAdAccountName">Ad Account Name</Label>
+                              <Input
+                                id="instagramAdAccountName"
+                                value={instagramAdAccountName}
+                                onChange={(event) => setInstagramAdAccountName(event.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="instagramSelectedCampaignIds">Selected Instagram Campaign IDs</Label>
+                              <Input
+                                id="instagramSelectedCampaignIds"
+                                value={instagramSelectedCampaignIds}
+                                onChange={(event) => setInstagramSelectedCampaignIds(event.target.value)}
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              onClick={connectInstagramTestMode}
+                              disabled={isInstagramConnecting}
+                            >
+                              {isInstagramConnecting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                              Connect Instagram Test Account
+                            </Button>
+                          </div>
                         )}
                       </div>
                       <div className="flex pt-4 border-t">

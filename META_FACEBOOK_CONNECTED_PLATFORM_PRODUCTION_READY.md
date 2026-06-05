@@ -17,11 +17,11 @@ Meta/Facebook must be treated as a campaign-scoped main paid-media connected sou
 
 ## Current Status
 
-Meta/Facebook is locally production-ready for the implemented source-backed test-mode path. Meta Commits 20 and 21 user/browser validation passed. Meta Commits 22, 23, 24, and 25 have been implemented and locally validated; user/browser validation is pending for those UI-visible changes. Commit 25 budget values were corrected to use Meta campaign metrics only until same-period campaign revenue/spend alignment is proven.
+Meta/Facebook is locally production-ready for the implemented source-backed test-mode path. Meta Commits 20, 21, 22, 23, and 25 user/browser validation passed. Meta Commits 24 and 26 have been implemented and locally validated; user/browser validation is pending for Commit 26, and live/browser validation is pending for Commit 24 where live Meta placement action rows exist. Commit 25 budget values were corrected to use Meta campaign metrics only until same-period campaign revenue/spend alignment is proven.
 
 This tracker is the planning and implementation artifact. The implemented local/test-mode Meta path has been hardened against the source-backed pattern used by LinkedIn and Google Ads. Live OAuth and deployed scheduled-report behavior still require production-like evidence.
 
-Meta Commit 19 has been implemented locally. Local validation and user/browser validation passed. Meta Commit 20 aligns Meta Insights Trends with all selected Meta campaigns and user/browser validation passed. Meta Commit 21 fixed the Meta Ad Comparison ranking/copy alignment gap and user/browser validation passed. Meta Commit 22 restores source-gated Executive financial cards in Meta Insights. Meta Commit 23 lets users choose which selected Meta campaign feeds Top Demographics, Top Locations, and Ad Placements. Meta Commit 24 calculates live Ad Placement conversions from Meta action rows. Meta Commit 25 adds source-safe campaign-level budget optimization insights. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
+Meta Commit 19 has been implemented locally. Local validation and user/browser validation passed. Meta Commit 20 aligns Meta Insights Trends with all selected Meta campaigns and user/browser validation passed. Meta Commit 21 fixed the Meta Ad Comparison ranking/copy alignment gap and user/browser validation passed. Meta Commit 22 restores source-gated Executive financial cards in Meta Insights and user/browser validation passed. Meta Commit 23 lets users choose which selected Meta campaign feeds Top Demographics, Top Locations, and Ad Placements and user/browser validation passed. Meta Commit 24 calculates live Ad Placement conversions from Meta action rows. Meta Commit 25 adds source-safe campaign-level budget optimization insights and user/browser validation passed. Meta Commit 26 adds source-safe placement, location, and demographic efficiency insights. Live OAuth and deployed scheduled-report evidence remain unavailable locally and must be recorded before those live paths are called production-ready.
 
 Verified current foundations:
 
@@ -54,6 +54,7 @@ Verified current foundations:
 - Commit 23 adds a Meta Overview campaign selector for `Top Demographics`, `Top Locations`, and `Ad Placements`, so those breakdown tables use the selected Meta campaign instead of the first selected campaign.
 - Commit 24 adds live Meta Ad Placement `conversions` values by deriving them from Meta `actions` with the same purchase/lead/conversion semantics used by campaign-level Meta conversion handling.
 - Commit 25 adds campaign-level Meta Budget Optimization Insights using selected Meta campaign metrics only; ROAS, ROI, and Profit are excluded from this section until same-period campaign revenue/spend alignment is proven.
+- Commit 26 adds selected-campaign placement, location, and demographic efficiency insights using only spend, clicks, conversions, and cost/conversion from existing breakdown rows.
 
 Verified production-readiness gaps:
 
@@ -1157,7 +1158,7 @@ Status:
 - [x] Completed locally: regression coverage updated in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ### Meta Commit 23: Overview Breakdown Campaign Selector
 
@@ -1196,7 +1197,7 @@ Status:
 - [x] Completed locally: regression coverage updated in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] User/browser validation pending.
+- [x] User/browser validation passed.
 
 ### Meta Commit 24: Live Ad Placement Conversion Actions
 
@@ -1283,6 +1284,52 @@ Status:
 - [x] Completed locally: regression coverage updated in `server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
+- [x] User/browser validation passed.
+
+### Meta Commit 26: Breakdown Efficiency Insights
+
+Goal:
+
+- Add selected-campaign placement, location, and demographic efficiency insights using only proven non-revenue metrics.
+
+Root cause analysis:
+
+- Commit 25 added campaign-level budget recommendations, but the existing selected-campaign breakdown rows still did not produce action-oriented efficiency insights.
+- `Top Demographics`, `Top Locations`, and `Ad Placements` already expose selected-campaign breakdown rows in Meta Overview.
+- Those rows can safely support non-revenue efficiency observations when they include spend, clicks, conversions, and cost/conversion.
+- They cannot safely support ROAS, ROI, Profit, or revenue recommendations because no exact revenue attribution exists for placement, location, or demographic dimensions.
+- The smallest safe fix is frontend-only: add a breakdown insight group inside the existing Meta Insights card flow, using only the already-loaded selected-campaign breakdown arrays.
+
+Smallest safe implementation strategy:
+
+- Use `selectedCampaignPlacements`, `selectedCampaignGeographics`, and `selectedCampaignDemographics`.
+- Generate insights only from rows with spend > 0 and conversions > 0.
+- Compute cost/conversion as spend divided by conversions for the breakdown row.
+- Include clear source text:
+  - `Source: Meta placement breakdown for the selected campaign.`
+  - `Source: Meta location breakdown for the selected campaign.`
+  - `Source: Meta demographic breakdown for the selected campaign.`
+- Do not add revenue, ROAS, ROI, or Profit to breakdown insights.
+- Do not change Overview totals, Campaign Breakdown, revenue imports, scheduler, reports, KPI, Benchmark, GA4, LinkedIn, or Google Ads.
+
+Validation:
+
+- Open Meta Insights.
+- Confirm `Audience and placement efficiency` appears when selected breakdown rows have spend and conversions.
+- Confirm cards can name placements, locations, or demographics.
+- Confirm each card shows spend, clicks, conversions, and cost/conversion.
+- Confirm each card includes a source statement.
+- Confirm no breakdown revenue, ROAS, ROI, or Profit appears.
+
+Status:
+
+- [x] Root cause traced locally.
+- [x] Completed locally: selected-campaign placement, location, and demographic efficiency insights were added to the existing Insights card flow.
+- [x] Completed locally: recommendations use only spend, clicks, conversions, and cost/conversion from existing breakdown rows.
+- [x] Completed locally: breakdown revenue, ROAS, ROI, and Profit remain excluded.
+- [x] Completed locally: regression coverage updated in `server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
 - [ ] User/browser validation pending.
 
 ## Validation Evidence Required Before Production-Ready Claim
@@ -1318,18 +1365,17 @@ Must be proven in deployed or production-like environment before live OAuth is c
 
 Outstanding required implementation work:
 
+- None for the current local source-backed Meta refinement sequence.
 - Deferred follow-up: revisit remaining Meta Ad Comparison polish after broader paid-social source refinement such as TikTok and Instagram.
 
 Outstanding evidence:
 
-- Meta Commit 22 user/browser validation is pending.
-- Meta Commit 23 user/browser validation is pending.
 - Meta Commit 24 user/browser/live OAuth validation is pending.
-- Meta Commit 25 user/browser validation is pending.
+- Meta Commit 26 user/browser validation is pending.
 - Meta Commit 3 transition smoothness remains a future UX follow-up.
 - Live OAuth evidence is not available locally.
 - Deployed scheduled Meta report email receipt is not available locally.
 
 ## Current Handoff
 
-The next smallest implementation step after validating Commit 25 is placement/location/demographic efficiency insights using only proven non-revenue metrics such as spend, clicks, conversions, and cost/conversion where rows exist. Do not add placement/location/demographic ROAS, ROI, or Profit unless exact revenue attribution exists for those dimensions. Browser validation is still pending for Meta Commits 22, 23, and 25, and live/browser validation is pending for Meta Commit 24 where live Meta placement action rows exist. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.
+The current local source-backed Meta refinement sequence has no remaining required implementation steps. The next step is user/browser validation for Meta Commit 26. Live/browser validation is still pending for Meta Commit 24 where live Meta placement action rows exist. Live OAuth and deployed scheduled-report evidence remain separate production-like validation tasks.

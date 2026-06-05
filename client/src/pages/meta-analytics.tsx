@@ -2649,6 +2649,56 @@ export default function MetaAnalytics() {
                     });
                   }
 
+                  // Generate source-safe selected-campaign breakdown efficiency insights
+                  const addBreakdownEfficiencyInsight = (kind: 'placement' | 'location' | 'demographic', rows: any[], labelFor: (row: any) => string) => {
+                    const efficiencyRows = rows
+                      .map((row: any) => {
+                        const spend = Number(row?.spend || 0) || 0;
+                        const conversions = Number(row?.conversions || 0) || 0;
+                        const clicks = Number(row?.clicks || 0) || 0;
+                        return {
+                          label: labelFor(row),
+                          spend,
+                          clicks,
+                          conversions,
+                          costPerConversion: conversions > 0 ? spend / conversions : 0,
+                        };
+                      })
+                      .filter((row: any) => row.label && row.spend > 0 && row.conversions > 0);
+                    const efficient = [...efficiencyRows].sort((a: any, b: any) => a.costPerConversion - b.costPerConversion)[0];
+                    const inefficient = [...efficiencyRows].sort((a: any, b: any) => b.costPerConversion - a.costPerConversion)[0];
+                    const titleLabel = kind === 'placement' ? 'Placement' : kind === 'location' ? 'Location' : 'Demographic';
+                    const sourceLabel = `Source: Meta ${kind} breakdown for the selected campaign.`;
+
+                    if (efficient) {
+                      allInsights.push({
+                        id: `breakdown-efficient-${kind}-${efficient.label}`,
+                        title: `${titleLabel} Efficiency Opportunity: ${efficient.label}`,
+                        description: `${sourceLabel} Spend is ${fmtCurrency(efficient.spend)}, clicks are ${efficient.clicks.toLocaleString()}, conversions are ${efficient.conversions.toLocaleString()}, and cost/conversion is ${fmtCurrency(efficient.costPerConversion)}.`,
+                        severity: 'medium',
+                        recommendation: `Review this ${kind} as a candidate for focused optimization within the selected campaign.`,
+                        group: 'breakdown',
+                      });
+                    }
+                    if (inefficient && inefficient.label !== efficient?.label) {
+                      allInsights.push({
+                        id: `breakdown-review-${kind}-${inefficient.label}`,
+                        title: `${titleLabel} Efficiency Review: ${inefficient.label}`,
+                        description: `${sourceLabel} Spend is ${fmtCurrency(inefficient.spend)}, clicks are ${inefficient.clicks.toLocaleString()}, conversions are ${inefficient.conversions.toLocaleString()}, and cost/conversion is ${fmtCurrency(inefficient.costPerConversion)}.`,
+                        severity: 'medium',
+                        recommendation: `Review spend, targeting, and creative before increasing this ${kind}.`,
+                        group: 'breakdown',
+                      });
+                    }
+                  };
+                  addBreakdownEfficiencyInsight('placement', selectedCampaignPlacements, (row: any) =>
+                    String(row?.placement || [row?.publisherPlatform, row?.platformPosition].filter(Boolean).join(' / ') || '').trim()
+                  );
+                  addBreakdownEfficiencyInsight('location', selectedCampaignGeographics, (row: any) => String(row?.country || '').trim());
+                  addBreakdownEfficiencyInsight('demographic', selectedCampaignDemographics, (row: any) =>
+                    [row?.ageRange || row?.age, row?.gender].filter(Boolean).join(' / ')
+                  );
+
                   // Generate insights from campaign performance
                   if (summary.avgFrequency > 3.0) {
                     allInsights.push({
@@ -2951,6 +3001,39 @@ export default function MetaAnalytics() {
                                           <div className="text-sm text-muted-foreground/70 mt-1">{i.description}</div>
                                           {i.recommendation && (
                                             <div className="text-sm text-foreground/80/60 mt-2">
+                                              <span className="font-medium">Next step:</span> {i.recommendation}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {allInsights.filter(i => i.group === 'breakdown').length > 0 && (
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-sm font-semibold text-foreground/80">Audience and placement efficiency</div>
+                                    <Badge variant="outline" className="text-xs">{allInsights.filter(i => i.group === 'breakdown').length}</Badge>
+                                  </div>
+                                  {allInsights.filter(i => i.group === 'breakdown').map(i => (
+                                    <div key={i.id} className="rounded-lg border border-border p-4">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <div className="font-semibold text-foreground">{i.title}</div>
+                                            <Badge className={`text-xs border ${
+                                              i.severity === 'high' ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
+                                              : i.severity === 'medium' ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
+                                              : 'bg-muted text-foreground border-border dark:text-slate-200'
+                                            }`}>
+                                              {i.severity === 'high' ? 'High' : i.severity === 'medium' ? 'Medium' : 'Low'}
+                                            </Badge>
+                                          </div>
+                                          <div className="text-sm text-muted-foreground/70 mt-1">{i.description}</div>
+                                          {i.recommendation && (
+                                            <div className="text-sm text-foreground/80 mt-2">
                                               <span className="font-medium">Next step:</span> {i.recommendation}
                                             </div>
                                           )}

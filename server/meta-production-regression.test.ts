@@ -340,6 +340,31 @@ describe("Meta production readiness regression guard", () => {
     expect(insightsSection).not.toContain("location ROAS");
   });
 
+  it("adds source-safe selected-campaign breakdown efficiency insights", () => {
+    const page = read("client", "src", "pages", "meta-analytics.tsx");
+    const insightsSection = sliceBetween(
+      page,
+      '<TabsContent value="insights"',
+      '<TabsContent value="reports"'
+    );
+
+    expect(insightsSection).toContain("const addBreakdownEfficiencyInsight = (kind: 'placement' | 'location' | 'demographic'");
+    expect(insightsSection).toContain("costPerConversion: conversions > 0 ? spend / conversions : 0");
+    expect(insightsSection).toContain("Source: Meta ${kind} breakdown for the selected campaign.");
+    expect(insightsSection).toContain("addBreakdownEfficiencyInsight('placement', selectedCampaignPlacements");
+    expect(insightsSection).toContain("addBreakdownEfficiencyInsight('location', selectedCampaignGeographics");
+    expect(insightsSection).toContain("addBreakdownEfficiencyInsight('demographic', selectedCampaignDemographics");
+    expect(insightsSection).toContain("Audience and placement efficiency");
+    expect(insightsSection).toContain("group: 'breakdown'");
+    expect(insightsSection).toContain("Spend is ${fmtCurrency(efficient.spend)}, clicks are ${efficient.clicks.toLocaleString()}, conversions are ${efficient.conversions.toLocaleString()}, and cost/conversion is ${fmtCurrency(efficient.costPerConversion)}.");
+    expect(insightsSection).not.toContain("placement revenue");
+    expect(insightsSection).not.toContain("location revenue");
+    expect(insightsSection).not.toContain("demographic revenue");
+    expect(insightsSection).not.toContain("placement ROAS");
+    expect(insightsSection).not.toContain("location ROAS");
+    expect(insightsSection).not.toContain("demographic ROAS");
+  });
+
   it("supports exact Meta campaign mapping for imported revenue sources", () => {
     const modal = read("client", "src", "components", "AddRevenueWizardModal.tsx");
     const hubspot = read("client", "src", "components", "HubSpotRevenueWizard.tsx");

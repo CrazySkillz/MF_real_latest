@@ -76,11 +76,12 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13H | Instagram analytics connection loading-state stability | Done and pushed; user validation pending | Instagram analytics UI |
 | 13I | Instagram Overview metrics loading-state stability | Done and pushed; user validation pending | Instagram analytics UI |
 | 13J | Instagram Benchmark tab management UI parity | Done and pushed; user validation pending | Instagram analytics Benchmark UI |
-| 13K | Instagram Ad Comparison selected-campaign UI parity | Implemented locally; user validation pending | Instagram analytics Ad Comparison UI |
-| 13L | Instagram report route/source contract | Pending | Report backend/UI |
-| 13M | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
-| 13N | Instagram PDF/export output source proof | Pending | Report exports |
-| 13O | KPI/Benchmark/Ad Comparison/Report regression and validation docs | Pending | None |
+| 13K | Instagram Ad Comparison selected-campaign UI parity | Done and pushed; user validation pending | Instagram analytics Ad Comparison UI |
+| 13L | Instagram Insights tab source-backed UI parity | Implemented locally; user validation pending | Instagram analytics Insights UI |
+| 13M | Instagram report route/source contract | Pending | Report backend/UI |
+| 13N | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
+| 13O | Instagram PDF/export output source proof | Pending | Report exports |
+| 13P | KPI/Benchmark/Ad Comparison/Insights/Report regression and validation docs | Pending | None |
 | 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
 | 14B | End-to-end local test-mode Connected Platforms validation | Pending | Validation only |
 | 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending | Validation only |
@@ -239,6 +240,8 @@ Commit 13J Instagram Benchmark tab management UI parity is done and pushed. The 
 
 Commit 13K Instagram Ad Comparison selected-campaign UI parity is implemented locally. The Ad Comparison tab now compares selected source-backed Instagram campaign rows grouped by `instagramCampaignId` with comparative charts, leader cards, and a ranked table; it does not claim ad-creative-level comparison because the current Instagram daily metrics contract is campaign-level.
 
+Commit 13L Instagram Insights tab source-backed UI parity is implemented locally. The Instagram analytics page now exposes an Insights tab that derives trend and recommendation cards only from selected source-backed Instagram daily rows; it does not add backend routes, provider refresh, scheduler behavior, reports, PDF output, or source aggregation.
+
 ## Root Cause Analysis
 
 The current gap is not one isolated UI bug. It is a missing source contract and lifecycle implementation:
@@ -309,6 +312,7 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 13I, the Instagram analytics Overview tab rendered a second visible loading branch while `/api/instagram/:campaignId/daily-metrics` was loading. Even after Commit 13H removed the connection-query flash, this metrics-query branch could still flash `Loading source-backed Instagram metrics...` before source-backed metric cards rendered. Commit 13I removes that transient text and keeps final metric/empty/error states unchanged.
 - Before Commit 13J, the Instagram Benchmarks tab still rendered through the generic read-only row helper. It had no Benchmark header, Create Benchmark action, tracker summary, progress cards, edit path, or confirmation-gated delete path, even though the shared Instagram Benchmark routes and selected-row current-value refresh already existed. Commit 13J adds that UI parity without adding backend routes, provider refresh, scheduler behavior, reports, or source aggregation.
 - Before Commit 13K, the Instagram Ad Comparison tab was hard-coded to an empty unavailable card, then the first selected-campaign view presented repeated metric cards that duplicated the Overview tab instead of helping executives compare campaigns. The selected daily metrics response already contained campaign-level rows grouped by `instagramCampaignId`, so Commit 13K renders comparative charts and a ranked table from those rows only and does not add ad-level import, backend routes, provider refresh, scheduler behavior, reports, or source aggregation.
+- Before Commit 13L, the Instagram analytics tab shell had no Insights tab, while GA4, LinkedIn, Meta, and Google Ads expose an executive/action layer for trends, risk, and recommendations. Commit 13L adds an Instagram-specific Insights tab from selected Instagram daily rows only and keeps all provider/backend/report behavior unchanged.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`; Commit 9A supplies an Instagram source builder and Commit 9D wires it into the two current aggregate route consumers.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
 - Meta/Facebook currently includes Instagram-related placement data in some contexts; promoting that data to a standalone Instagram platform without explicit source boundaries would risk double-counting and misleading source attribution.
@@ -1664,12 +1668,14 @@ Status:
 - [ ] User validation pending for Commit 13I.
 - [x] Commit 13J done and pushed: Instagram Benchmark tab provides create/edit/delete and tracker-card UI parity through existing shared Benchmark routes.
 - [ ] User validation pending for Commit 13J.
-- [x] Commit 13K implemented locally: Instagram Ad Comparison renders selected campaign comparison from source-backed daily rows.
+- [x] Commit 13K done and pushed: Instagram Ad Comparison renders selected campaign comparison from source-backed daily rows.
 - [ ] User validation pending for Commit 13K.
-- [ ] Commit 13L pending: Instagram report route/source contract.
-- [ ] Commit 13M pending: Instagram scheduled report snapshot/send guard.
-- [ ] Commit 13N pending: Instagram PDF/export output source proof.
-- [ ] Commit 13O pending: KPI/Benchmark/Ad Comparison/Report regression and validation docs.
+- [x] Commit 13L implemented locally: Instagram Insights tab provides source-backed trend and recommendation cards.
+- [ ] User validation pending for Commit 13L.
+- [ ] Commit 13M pending: Instagram report route/source contract.
+- [ ] Commit 13N pending: Instagram scheduled report snapshot/send guard.
+- [ ] Commit 13O pending: Instagram PDF/export output source proof.
+- [ ] Commit 13P pending: KPI/Benchmark/Ad Comparison/Insights/Report regression and validation docs.
 
 Commit 13A root-cause trace:
 
@@ -1844,6 +1850,21 @@ Commit 13K validation:
 - Confirm the ranked comparison table shows spend, conversions, CTR, CPC, cost per conversion, and video views for each selected Instagram campaign.
 - If the campaign has no selected source-backed Instagram daily rows, confirm the final empty state says `No selected source-backed Instagram campaign comparison rows are available yet.`
 - This commit does not add ad-level import, backend routes, metric calculations, KPI/Benchmark behavior, scheduler behavior, OAuth, provider refresh, reports, PDF output, or source aggregation.
+
+Commit 13L root-cause trace:
+
+- The Instagram analytics page exposed Overview, KPIs, Benchmarks, Ad Comparison, and Reports, but no Insights tab.
+- Other source analytics pages use Insights for an executive/action layer: trend visibility, risk detection, and recommendations.
+- Instagram already has selected source-backed daily rows, so the smallest safe Insights implementation derives from those rows only.
+
+Commit 13L validation:
+
+- Open `/campaigns/:id/instagram-analytics`, then confirm the visible tabs include `Insights`.
+- Open `Insights` and confirm it shows `Actionable Instagram insights from selected source-backed daily rows.`
+- Confirm it shows summary cards for Insights, High Priority, and Trend Days.
+- Confirm it shows a `Performance Trend` chart for spend, clicks, and conversions.
+- Confirm it shows insight/recommendation cards for available selected Instagram data, or the final empty state when no selected source-backed rows exist.
+- This commit does not add backend routes, provider refresh, scheduler behavior, OAuth, reports, PDF output, source aggregation, or new metric calculations beyond frontend insight presentation.
 
 ### Details For Commits 14A-14E: Regression Coverage And Final Evidence
 

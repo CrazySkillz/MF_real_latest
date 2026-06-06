@@ -368,6 +368,7 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain('<TabsTrigger value="kpis">KPIs</TabsTrigger>');
     expect(page).toContain('<TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>');
     expect(page).toContain('<TabsTrigger value="ads">Ad Comparison</TabsTrigger>');
+    expect(page).toContain('<TabsTrigger value="insights">Insights</TabsTrigger>');
     expect(page).toContain('<TabsTrigger value="reports">Reports</TabsTrigger>');
     expect(page).toContain("/api/platforms/instagram/kpis");
     expect(page).toContain("/api/platforms/instagram/benchmarks");
@@ -391,6 +392,11 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("Spend vs Conversions");
     expect(page).toContain("Efficiency: CTR vs CPC");
     expect(page).toContain("instagramComparisonChartRows");
+    expect(page).toContain("instagramInsights");
+    expect(page).toContain("instagramInsightTrendRows");
+    expect(page).toContain("Actionable Instagram insights from selected source-backed daily rows.");
+    expect(page).toContain("Performance Trend");
+    expect(page).toContain("No selected source-backed Instagram rows are available for insights yet.");
     expect(page).toContain("No selected source-backed Instagram campaign comparison rows are available yet.");
     expect(page).not.toContain("No source-backed Instagram ad comparison rows are available yet.");
     expect(page).not.toContain("Connection Status");

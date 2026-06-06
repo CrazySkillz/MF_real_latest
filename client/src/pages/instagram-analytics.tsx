@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, AlertCircle, AlertTriangle, CheckCircle2, Loader2, Eye, MousePointer, DollarSign, Target, BarChart3, Percent, Video, Plus, TrendingUp, Pencil, Trash2 } from "lucide-react";
 import { SiInstagram } from "react-icons/si";
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,10 @@ function formatNumericInput(value: string) {
   const integer = integerPart.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   const decimal = decimalParts.join("").slice(0, 2);
   return decimalParts.length > 0 ? `${integer || "0"}.${decimal}` : integer;
+}
+
+function formatPctValue(value: number | null) {
+  return value === null ? "Unavailable" : `${value.toFixed(2)}%`;
 }
 
 function getInstagramKpiProgress(kpi: any) {
@@ -248,6 +252,88 @@ export default function InstagramAnalytics() {
     bestCtr: [...instagramComparisonRows].filter((row: any) => row.ctr !== null).sort((a: any, b: any) => Number(b.ctr || 0) - Number(a.ctr || 0))[0],
     lowestCpc: [...instagramComparisonRows].filter((row: any) => row.cpc !== null).sort((a: any, b: any) => Number(a.cpc || 0) - Number(b.cpc || 0))[0],
   }), [instagramComparisonRows]);
+  const instagramInsightTrendRows = useMemo(() => {
+    const grouped = new Map<string, any>();
+    const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
+    rows.forEach((row: any) => {
+      const date = String(row.date || "").slice(0, 10);
+      if (!date) return;
+      const existing = grouped.get(date) || { date, impressions: 0, clicks: 0, spend: 0, conversions: 0 };
+      existing.impressions += Number(row.impressions || 0);
+      existing.clicks += Number(row.clicks || 0);
+      existing.spend += Number(row.spend || 0);
+      existing.conversions += Number(row.conversions || 0);
+      grouped.set(date, existing);
+    });
+    return Array.from(grouped.values())
+      .sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)))
+      .map((row: any) => ({
+        ...row,
+        ctr: row.impressions > 0 ? (row.clicks / row.impressions) * 100 : 0,
+        cpc: row.clicks > 0 ? row.spend / row.clicks : 0,
+        conversionRate: row.clicks > 0 ? (row.conversions / row.clicks) * 100 : 0,
+      }));
+  }, [dailyMetrics]);
+  const instagramInsights = useMemo(() => {
+    const insights: Array<{ title: string; severity: "high" | "medium" | "positive"; description: string; recommendation: string }> = [];
+    const ctr = overviewTotals.ctr;
+    const cpc = overviewTotals.cpc;
+    const conversionRate = overviewTotals.conversionRate;
+    const costPerConversion = overviewTotals.costPerConversion;
+    if (instagramInsightTrendRows.length < 7) {
+      insights.push({
+        title: "Limited trend history",
+        severity: "medium",
+        description: `${instagramInsightTrendRows.length} day(s) of selected Instagram history are available.`,
+        recommendation: "Use current performance directionally until at least 7 days of source-backed history are available.",
+      });
+    }
+    if (ctr !== null && ctr < 1) {
+      insights.push({
+        title: "Low click-through rate",
+        severity: "high",
+        description: `Instagram CTR is ${formatPctValue(ctr)} across selected campaign rows.`,
+        recommendation: "Review creative hooks, first-frame clarity, audience fit, and placement-specific messaging.",
+      });
+    } else if (ctr !== null && ctr >= 3) {
+      insights.push({
+        title: "Strong engagement signal",
+        severity: "positive",
+        description: `Instagram CTR is ${formatPctValue(ctr)}, indicating strong click engagement.`,
+        recommendation: "Compare high-CTR campaign creative against lower performers and reuse the strongest messaging patterns.",
+      });
+    }
+    if (cpc !== null && cpc > 2) {
+      insights.push({
+        title: "High CPC pressure",
+        severity: "medium",
+        description: `Instagram CPC is $${cpc.toFixed(2)} across selected campaign rows.`,
+        recommendation: "Check audience overlap, bid settings, and creative fatigue before scaling spend.",
+      });
+    }
+    if (conversionRate !== null && conversionRate < 2 && overviewTotals.clicks > 0) {
+      insights.push({
+        title: "Post-click conversion weakness",
+        severity: "high",
+        description: `Conversion rate is ${formatPctValue(conversionRate)} from ${overviewTotals.clicks.toLocaleString()} clicks.`,
+        recommendation: "Audit landing-page continuity, offer clarity, load speed, and conversion tracking.",
+      });
+    }
+    if (costPerConversion !== null && overviewTotals.conversions > 0) {
+      insights.push({
+        title: "Cost per conversion baseline",
+        severity: "positive",
+        description: `Current Instagram cost per conversion is $${costPerConversion.toFixed(2)}.`,
+        recommendation: "Use this as the benchmark for KPI targets and campaign-level optimization decisions.",
+      });
+    }
+    return insights.length > 0 ? insights : [{
+      title: "No major issues detected",
+      severity: "positive",
+      description: "Selected Instagram source-backed rows do not show obvious CTR, CPC, or conversion-rate risks.",
+      recommendation: "Continue monitoring trends as more source-backed history accumulates.",
+    }];
+  }, [instagramInsightTrendRows.length, overviewTotals]);
   const latestImportedAt = useMemo(() => {
     const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
     const latest = rows
@@ -569,11 +655,12 @@ export default function InstagramAnalytics() {
 
             {!isLoading && connected && (
               <Tabs defaultValue="overview" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
                   <TabsTrigger value="ads">Ad Comparison</TabsTrigger>
+                  <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="reports">Reports</TabsTrigger>
                 </TabsList>
                 {metricsError && (
@@ -963,6 +1050,79 @@ export default function InstagramAnalytics() {
                         <div className="flex items-start gap-2 text-sm bg-muted/60 border border-border rounded-lg p-3">
                           <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                           <p className="text-muted-foreground">No selected source-backed Instagram campaign comparison rows are available yet.</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+                <TabsContent value="insights" className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-foreground">Insights</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Actionable Instagram insights from selected source-backed daily rows.</p>
+                  </div>
+                  {metricsError ? null : metricsLoading ? (
+                    <div className="min-h-[220px]" aria-hidden="true" />
+                  ) : hasRows ? (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Insights</p><p className="text-2xl font-bold text-foreground">{instagramInsights.length}</p></CardContent></Card>
+                        <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">High Priority</p><p className="text-2xl font-bold text-red-600">{instagramInsights.filter((insight) => insight.severity === "high").length}</p></CardContent></Card>
+                        <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Trend Days</p><p className="text-2xl font-bold text-foreground">{instagramInsightTrendRows.length}</p></CardContent></Card>
+                      </div>
+
+                      <Card>
+                        <CardContent className="p-5">
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <h3 className="text-lg font-semibold text-foreground">Performance Trend</h3>
+                              <p className="text-sm text-muted-foreground">Daily selected Instagram campaign performance.</p>
+                            </div>
+                          </div>
+                          <div className="h-[300px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={instagramInsightTrendRows}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="date" />
+                                <YAxis />
+                                <Tooltip />
+                                <Legend />
+                                <Line type="monotone" dataKey="spend" name="Spend" stroke="#f97316" strokeWidth={2} dot={false} />
+                                <Line type="monotone" dataKey="clicks" name="Clicks" stroke="#2563eb" strokeWidth={2} dot={false} />
+                                <Line type="monotone" dataKey="conversions" name="Conversions" stroke="#16a34a" strokeWidth={2} dot={false} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        {instagramInsights.map((insight) => {
+                          const borderClass = insight.severity === "high" ? "border-red-200 dark:border-red-800" : insight.severity === "medium" ? "border-amber-200 dark:border-amber-800" : "border-green-200 dark:border-green-800";
+                          const Icon = insight.severity === "high" ? AlertTriangle : insight.severity === "medium" ? AlertCircle : CheckCircle2;
+                          const iconClass = insight.severity === "high" ? "text-red-600" : insight.severity === "medium" ? "text-amber-600" : "text-green-600";
+                          return (
+                            <Card key={insight.title} className={borderClass}>
+                              <CardContent className="p-5">
+                                <div className="flex items-start gap-3">
+                                  <Icon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${iconClass}`} />
+                                  <div className="space-y-2">
+                                    <h3 className="font-semibold text-foreground">{insight.title}</h3>
+                                    <p className="text-sm text-muted-foreground">{insight.description}</p>
+                                    <p className="text-sm font-medium text-foreground">{insight.recommendation}</p>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-2 text-sm bg-muted/60 border border-border rounded-lg p-3">
+                          <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <p className="text-muted-foreground">No selected source-backed Instagram rows are available for insights yet.</p>
                         </div>
                       </CardContent>
                     </Card>

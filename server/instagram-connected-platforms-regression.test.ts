@@ -348,6 +348,10 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("overviewTotals.cpm");
     expect(page).toContain("overviewTotals.costPerConversion");
     expect(page).toContain("overviewTotals.conversionRate");
+    expect(page).toContain('{ label: "Total Revenue", value: "Not connected"');
+    expect(page).toContain('{ label: "ROAS", value: "Unavailable"');
+    expect(page).toContain("Requires Instagram-scoped revenue import");
+    expect(page).toContain("Requires source-backed revenue");
     expect(page).toContain('{ label: "CTR"');
     expect(page).toContain('{ label: "CPC"');
     expect(page).toContain('{ label: "CPM"');
@@ -395,6 +399,11 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("instagramInsights");
     expect(page).toContain("instagramInsightTrendRows");
     expect(page).toContain("Actionable Instagram insights from selected source-backed daily rows.");
+    expect(page).toContain("Revenue attribution required");
+    expect(page).toContain("Instagram revenue, ROAS, ROI, and profit are unavailable until an Instagram-scoped revenue source is imported.");
+    expect(page).toContain("Missing data to unlock richer Instagram Insights");
+    expect(page).toContain("Ad or creative-level rows for winner/loser creative diagnostics.");
+    expect(page).toContain("Audience, placement, and device breakdowns for budget allocation guidance.");
     expect(page).toContain("Performance Trend");
     expect(page).toContain("No selected source-backed Instagram rows are available for insights yet.");
     expect(page).toContain("No selected source-backed Instagram campaign comparison rows are available yet.");

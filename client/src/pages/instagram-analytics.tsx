@@ -327,6 +327,12 @@ export default function InstagramAnalytics() {
         recommendation: "Use this as the benchmark for KPI targets and campaign-level optimization decisions.",
       });
     }
+    insights.push({
+      title: "Revenue attribution required",
+      severity: "medium",
+      description: "Instagram revenue, ROAS, ROI, and profit are unavailable until an Instagram-scoped revenue source is imported.",
+      recommendation: "Use delivery metrics for media diagnostics, then add source-backed Instagram revenue before making budget-return decisions.",
+    });
     return insights.length > 0 ? insights : [{
       title: "No major issues detected",
       severity: "positive",
@@ -686,19 +692,22 @@ export default function InstagramAnalytics() {
                         { label: "Clicks", value: overviewTotals.clicks.toLocaleString(), Icon: MousePointer },
                         { label: "Spend", value: `$${overviewTotals.spend.toFixed(2)}`, Icon: DollarSign },
                         { label: "Conversions", value: overviewTotals.conversions.toLocaleString(), Icon: Target },
+                        { label: "Total Revenue", value: "Not connected", Icon: DollarSign, helper: "Requires Instagram-scoped revenue import" },
+                        { label: "ROAS", value: "Unavailable", Icon: TrendingUp, helper: "Requires source-backed revenue" },
                         { label: "CTR", value: overviewTotals.ctr === null ? "Unavailable" : `${overviewTotals.ctr.toFixed(2)}%`, Icon: Percent },
                         { label: "CPC", value: overviewTotals.cpc === null ? "Unavailable" : `$${overviewTotals.cpc.toFixed(2)}`, Icon: DollarSign },
                         { label: "CPM", value: overviewTotals.cpm === null ? "Unavailable" : `$${overviewTotals.cpm.toFixed(2)}`, Icon: BarChart3 },
                         { label: "Cost / Conversion", value: overviewTotals.costPerConversion === null ? "Unavailable" : `$${overviewTotals.costPerConversion.toFixed(2)}`, Icon: Target },
                         { label: "Conversion Rate", value: overviewTotals.conversionRate === null ? "Unavailable" : `${overviewTotals.conversionRate.toFixed(2)}%`, Icon: Percent },
                         { label: "Video Views", value: overviewTotals.videoViews.toLocaleString(), Icon: Video },
-                      ].map(({ label, value, Icon }) => (
+                      ].map(({ label, value, Icon, helper }) => (
                         <Card key={label}>
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                               <div>
                                 <p className="text-sm text-muted-foreground">{label}</p>
                                 <p className="text-2xl font-semibold text-foreground">{value}</p>
+                                {helper && <p className="text-xs text-muted-foreground mt-1">{helper}</p>}
                               </div>
                               <Icon className="w-5 h-5 text-muted-foreground" />
                             </div>
@@ -1069,6 +1078,25 @@ export default function InstagramAnalytics() {
                         <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">High Priority</p><p className="text-2xl font-bold text-red-600">{instagramInsights.filter((insight) => insight.severity === "high").length}</p></CardContent></Card>
                         <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Trend Days</p><p className="text-2xl font-bold text-foreground">{instagramInsightTrendRows.length}</p></CardContent></Card>
                       </div>
+
+                      <Card>
+                        <CardContent className="p-5">
+                          <h3 className="text-lg font-semibold text-foreground mb-3">Missing data to unlock richer Instagram Insights</h3>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            {[
+                              "Instagram-attributed revenue for Total Revenue, ROAS, ROI, and profit.",
+                              "Ad or creative-level rows for winner/loser creative diagnostics.",
+                              "Audience, placement, and device breakdowns for budget allocation guidance.",
+                              "At least 14 days of daily history for reliable short-term trend comparison.",
+                            ].map((item) => (
+                              <div key={item} className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm text-muted-foreground">
+                                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span>{item}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
 
                       <Card>
                         <CardContent className="p-5">

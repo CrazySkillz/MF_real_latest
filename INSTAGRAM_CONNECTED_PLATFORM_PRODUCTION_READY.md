@@ -77,11 +77,13 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13I | Instagram Overview metrics loading-state stability | Done and pushed; user validation pending | Instagram analytics UI |
 | 13J | Instagram Benchmark tab management UI parity | Done and pushed; user validation pending | Instagram analytics Benchmark UI |
 | 13K | Instagram Ad Comparison selected-campaign UI parity | Done and pushed; user validation pending | Instagram analytics Ad Comparison UI |
-| 13L | Instagram Insights tab source-backed UI parity | Implemented locally; user validation pending | Instagram analytics Insights UI |
-| 13M | Instagram report route/source contract | Pending | Report backend/UI |
-| 13N | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
-| 13O | Instagram PDF/export output source proof | Pending | Report exports |
-| 13P | KPI/Benchmark/Ad Comparison/Insights/Report regression and validation docs | Pending | None |
+| 13L | Instagram Insights tab source-backed UI parity | Done and pushed; user validation pending | Instagram analytics Insights UI |
+| 13M | Instagram Insights missing-data and revenue-readiness guidance | Implemented locally; user validation pending | Instagram analytics Insights/Overview UI |
+| 13N | Instagram revenue import wizard and revenue context | Pending | Instagram analytics revenue UI/backend |
+| 13O | Instagram report route/source contract | Pending | Report backend/UI |
+| 13P | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
+| 13Q | Instagram PDF/export output source proof | Pending | Report exports |
+| 13R | KPI/Benchmark/Ad Comparison/Insights/Revenue/Report regression and validation docs | Pending | None |
 | 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
 | 14B | End-to-end local test-mode Connected Platforms validation | Pending | Validation only |
 | 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending | Validation only |
@@ -238,9 +240,13 @@ Commit 13I Instagram Overview metrics loading-state stability is done and pushed
 
 Commit 13J Instagram Benchmark tab management UI parity is done and pushed. The Instagram Benchmarks tab now follows the established GA4/Google Ads-style pattern with a Benchmark header, Create Benchmark action, tracker cards, Benchmark cards with current/benchmark/progress, edit support, and confirmation-gated delete support, using only the existing shared Instagram Benchmark routes.
 
-Commit 13K Instagram Ad Comparison selected-campaign UI parity is implemented locally. The Ad Comparison tab now compares selected source-backed Instagram campaign rows grouped by `instagramCampaignId` with comparative charts, leader cards, and a ranked table; it does not claim ad-creative-level comparison because the current Instagram daily metrics contract is campaign-level.
+Commit 13K Instagram Ad Comparison selected-campaign UI parity is done and pushed. The Ad Comparison tab now compares selected source-backed Instagram campaign rows grouped by `instagramCampaignId` with comparative charts, leader cards, and a ranked table; it does not claim ad-creative-level comparison because the current Instagram daily metrics contract is campaign-level.
 
-Commit 13L Instagram Insights tab source-backed UI parity is implemented locally. The Instagram analytics page now exposes an Insights tab that derives trend and recommendation cards only from selected source-backed Instagram daily rows; it does not add backend routes, provider refresh, scheduler behavior, reports, PDF output, or source aggregation.
+Commit 13L Instagram Insights tab source-backed UI parity is done and pushed. The Instagram analytics page now exposes an Insights tab that derives trend and recommendation cards only from selected source-backed Instagram daily rows; it does not add backend routes, provider refresh, scheduler behavior, reports, PDF output, or source aggregation.
+
+Commit 13M Instagram Insights missing-data and revenue-readiness guidance is implemented locally. The Instagram Overview now shows Total Revenue and ROAS as unavailable until an Instagram-scoped revenue source exists, and the Insights tab names the missing revenue, ad/creative, audience/placement, and history inputs needed for richer executive recommendations. This does not add financial import UI, revenue math, storage changes, provider refresh, scheduler behavior, reports, PDF output, or source aggregation.
+
+Commit 13N Instagram revenue import wizard and revenue context is pending and must be implemented before Commit 14 final validation. Instagram is a paid-media source, so Total Revenue, ROAS, ROI, Profit, and revenue-derived KPI/Benchmark/Insights values may appear only after the user imports an explicit Instagram-scoped revenue attribution source using the same source-scoped pattern proven for LinkedIn revenue. This commit belongs before reports and final validation because Commit 14 should validate a complete Instagram platform parity scope, not a spend-only platform with revenue still missing.
 
 ## Root Cause Analysis
 
@@ -1670,12 +1676,15 @@ Status:
 - [ ] User validation pending for Commit 13J.
 - [x] Commit 13K done and pushed: Instagram Ad Comparison renders selected campaign comparison from source-backed daily rows.
 - [ ] User validation pending for Commit 13K.
-- [x] Commit 13L implemented locally: Instagram Insights tab provides source-backed trend and recommendation cards.
+- [x] Commit 13L done and pushed: Instagram Insights tab provides source-backed trend and recommendation cards.
 - [ ] User validation pending for Commit 13L.
-- [ ] Commit 13M pending: Instagram report route/source contract.
-- [ ] Commit 13N pending: Instagram scheduled report snapshot/send guard.
-- [ ] Commit 13O pending: Instagram PDF/export output source proof.
-- [ ] Commit 13P pending: KPI/Benchmark/Ad Comparison/Insights/Report regression and validation docs.
+- [x] Commit 13M implemented locally: Instagram Insights and Overview name missing revenue/attribution inputs instead of implying financial metrics exist.
+- [ ] User validation pending for Commit 13M.
+- [ ] Commit 13N pending: Instagram revenue import wizard and revenue context.
+- [ ] Commit 13O pending: Instagram report route/source contract.
+- [ ] Commit 13P pending: Instagram scheduled report snapshot/send guard.
+- [ ] Commit 13Q pending: Instagram PDF/export output source proof.
+- [ ] Commit 13R pending: KPI/Benchmark/Ad Comparison/Insights/Revenue/Report regression and validation docs.
 
 Commit 13A root-cause trace:
 
@@ -1865,6 +1874,53 @@ Commit 13L validation:
 - Confirm it shows a `Performance Trend` chart for spend, clicks, and conversions.
 - Confirm it shows insight/recommendation cards for available selected Instagram data, or the final empty state when no selected source-backed rows exist.
 - This commit does not add backend routes, provider refresh, scheduler behavior, OAuth, reports, PDF output, source aggregation, or new metric calculations beyond frontend insight presentation.
+
+Commit 13M root-cause trace:
+
+- The first Instagram Insights implementation was source-backed but too thin because it only evaluated delivery rows: impressions, clicks, spend, conversions, and derived efficiency metrics.
+- GA4, LinkedIn, and Meta Insights are richer because they can use financial context, KPI/Benchmark context, trend history, and sometimes deeper breakdowns.
+- Instagram does not yet have a dedicated revenue resolver or scheduler refresh allowlist equivalent to LinkedIn/Meta revenue handling, so showing real Total Revenue, ROAS, ROI, or profit would be misleading unless a source-backed Instagram revenue input exists.
+- The smallest safe fix is UI-only: make Total Revenue and ROAS explicitly unavailable, and tell the user exactly which data is missing before richer Instagram Insights can be trusted.
+
+Commit 13M validation:
+
+- Open `/campaigns/:id/instagram-analytics`, then confirm the Overview tab shows `Total Revenue` as `Not connected` and `ROAS` as `Unavailable`.
+- Confirm those cards say revenue requires an Instagram-scoped/source-backed revenue import.
+- Open `Insights` and confirm it shows `Missing data to unlock richer Instagram Insights`.
+- Confirm the missing-data list includes Instagram-attributed revenue, ad or creative-level rows, audience/placement/device breakdowns, and at least 14 days of history.
+- Confirm the recommendation cards include `Revenue attribution required`.
+- This commit does not add backend routes, financial import UI, revenue calculations, storage changes, provider refresh, scheduler behavior, OAuth, reports, PDF output, or source aggregation.
+
+Commit 13N root-cause trace:
+
+- Instagram has `platformContext="instagram"` isolation groundwork from Commit 10C and disconnect cleanup from Commit 12A, but the user-facing revenue-import path is not wired.
+- The shared `AddRevenueWizardModal` and CRM/ecommerce revenue wizards currently type/support GA4, LinkedIn, Meta, and Google Ads contexts, but not Instagram.
+- Google Sheets revenue purpose values do not include `instagram_revenue`.
+- Auto-refresh revenue context allowlists currently exclude Instagram, so refreshable imported revenue sources would not have the same lifecycle behavior as LinkedIn/Meta/Google Ads.
+- Instagram has no dedicated revenue resolver equivalent to `resolveLinkedInRevenueContext(...)`, so Overview, KPIs, Benchmarks, Insights, and Campaign DeepDive cannot safely know whether Instagram revenue is truly connected.
+- The safe implementation is to follow LinkedIn's explicit source-scoped attribution pattern: Instagram ad metrics come from Instagram; Total Revenue comes only from active Instagram-scoped revenue sources.
+
+Commit 13N implementation strategy:
+
+- Extend the shared revenue wizard platform context union to include `instagram`.
+- Add Instagram-specific wizard copy such as `Add Instagram revenue attribution`; do not describe revenue as native Instagram revenue.
+- Add `instagram_revenue` to Google Sheets purpose handling and keep Google Sheets/CSV/CRM/ecommerce payloads scoped with `platformContext="instagram"`.
+- Add `resolveInstagramRevenueContext(...)` that reads only active `platformContext="instagram"` revenue sources and campaign-scoped revenue records.
+- Add Instagram Overview source controls following LinkedIn: `+` opens the Instagram-scoped revenue wizard, and `Sources (n)` lists/removes active Instagram revenue sources.
+- Populate Instagram Overview `Total Revenue`, `ROAS`, `ROI`, and `Profit` only when source-backed Instagram revenue exists; keep these unavailable when no Instagram revenue source exists.
+- Update Instagram KPI, Benchmark, and Insights current-value mappings only where they can use the resolved Instagram revenue context safely.
+- Wire cache invalidation/refetches after add/edit/delete to Instagram analytics, Campaign DeepDive aggregates, campaign KPIs/Benchmarks, Executive Summary, Trend Analysis, and reports where existing patterns already support those query families.
+- Add regression coverage proving GA4, LinkedIn, Meta, and Google Ads revenue sources cannot unlock Instagram revenue, ROAS, ROI, or Profit.
+
+Commit 13N validation:
+
+- Open Instagram Analytics -> Overview with no Instagram revenue source and confirm Total Revenue remains `Not connected`.
+- Click the Total Revenue `+` action and confirm the existing revenue wizard opens with Instagram-specific attribution copy.
+- Add an Instagram-scoped test revenue source and confirm Total Revenue updates without using GA4/LinkedIn/Meta/Google Ads revenue.
+- Confirm ROAS, ROI, and Profit appear only after Instagram spend plus Instagram-scoped revenue are available.
+- Remove the Instagram revenue source and confirm revenue-derived values return to unavailable without a hard refresh.
+- Confirm Campaign DeepDive and Instagram KPI/Benchmark/Insights consumers refetch through existing query invalidation paths.
+- This commit must not add live Instagram OAuth behavior, provider refresh beyond existing revenue-source refresh patterns, report output changes, or non-Instagram financial leakage.
 
 ### Details For Commits 14A-14E: Regression Coverage And Final Evidence
 

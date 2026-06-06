@@ -351,7 +351,7 @@ describe("source safety regression guards", () => {
     expect(route).not.toContain("refreshInstagram");
   });
 
-  it("Instagram selected-campaign updates fail closed and clear stale daily rows only after selection changes", () => {
+  it("Instagram selected-campaign updates fail closed and clear stale rows only after selection changes", () => {
     const routesSource = readRoutesSource();
     const routeStart = routesSource.indexOf('app.patch("/api/instagram/:campaignId/selected-campaigns"');
     const routeEnd = routesSource.indexOf("/**\n   * Delete Instagram connection", routeStart);
@@ -366,6 +366,9 @@ describe("source safety regression guards", () => {
     expect(route).toContain("const selectionChanged = previousSelectedCampaignIds.join(\"\\n\") !== selectedCampaignIds.join(\"\\n\");");
     expect(route.indexOf("if (selectionChanged)")).toBeLessThan(route.indexOf("storage.updateInstagramConnection"));
     expect(route).toContain("storage.deleteInstagramDailyMetrics(parsedId.data)");
+    expect(route).toContain("storage.deleteInstagramFinancialData(parsedId.data)");
+    expect(route.indexOf("storage.deleteInstagramDailyMetrics")).toBeLessThan(route.indexOf("storage.deleteInstagramFinancialData"));
+    expect(route.indexOf("storage.deleteInstagramFinancialData")).toBeLessThan(route.indexOf("storage.updateInstagramConnection"));
     expect(route).toContain("selectedCampaignIds: JSON.stringify(selectedCampaignIds)");
     expect(route).not.toContain("storage.createInstagramConnection");
     expect(route).not.toContain("upsertInstagramDailyMetrics");
@@ -395,7 +398,24 @@ describe("source safety regression guards", () => {
 
     expect(method).toContain("db.transaction");
     expect(method).toContain("eq(instagramConnections.campaignId, campaignId)");
+    expect(method).toContain("deleteInstagramFinancialDataForCampaign(tx, campaignId)");
+    expect(method.indexOf("deleteInstagramFinancialDataForCampaign(tx, campaignId)")).toBeLessThan(method.indexOf(".delete(instagramConnections)"));
     expect(method).toContain("tx.delete(instagramDailyMetrics).where(eq(instagramDailyMetrics.campaignId, campaignId))");
+
+    const helperStart = storageSource.indexOf("const deleteInstagramFinancialDataForCampaign");
+    const helperEnd = storageSource.indexOf("function hydrateDecryptedTokens", helperStart);
+    const helper = storageSource.slice(helperStart, helperEnd);
+
+    expect(helperStart).toBeGreaterThanOrEqual(0);
+    expect(helper).toContain("eq(spendSources.campaignId, campaignId)");
+    expect(helper).toContain('eq(spendSources.sourceType, "instagram_api")');
+    expect(helper).toContain('eq(spendSources.platformContext, "instagram")');
+    expect(helper).toContain("inArray(spendRecords.spendSourceId, instagramSpendSourceIds)");
+    expect(helper).toContain('eq(spendRecords.sourceType, "instagram_api")');
+    expect(helper).toContain("eq(revenueSources.campaignId, campaignId)");
+    expect(helper).toContain('eq(revenueSources.platformContext, "instagram")');
+    expect(helper).toContain("inArray(revenueRecords.revenueSourceId, instagramRevenueSourceIds)");
+    expect(storageSource).toContain("async deleteInstagramFinancialData(campaignId: string)");
   });
 
   it("Instagram campaign list route is campaign-scoped, read-only, and selector-contract only", () => {

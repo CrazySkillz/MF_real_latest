@@ -15,6 +15,40 @@ const devLog = (...args: any[]) => {
 
 export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram';
 
+const deleteInstagramFinancialDataForCampaign = async (tx: any, campaignId: string): Promise<void> => {
+  const instagramSpendSources = await tx
+    .select({ id: spendSources.id })
+    .from(spendSources)
+    .where(and(
+      eq(spendSources.campaignId, campaignId),
+      or(eq(spendSources.sourceType, "instagram_api"), eq(spendSources.platformContext, "instagram"))
+    ));
+  const instagramSpendSourceIds = instagramSpendSources.map((source: any) => String(source.id)).filter(Boolean);
+  if (instagramSpendSourceIds.length > 0) {
+    await tx.delete(spendRecords).where(or(
+      inArray(spendRecords.spendSourceId, instagramSpendSourceIds),
+      and(eq(spendRecords.campaignId, campaignId), eq(spendRecords.sourceType, "instagram_api"))
+    ));
+    await tx.update(spendSources)
+      .set({ isActive: false } as any)
+      .where(inArray(spendSources.id, instagramSpendSourceIds));
+  } else {
+    await tx.delete(spendRecords).where(and(eq(spendRecords.campaignId, campaignId), eq(spendRecords.sourceType, "instagram_api")));
+  }
+
+  const instagramRevenueSources = await tx
+    .select({ id: revenueSources.id })
+    .from(revenueSources)
+    .where(and(eq(revenueSources.campaignId, campaignId), eq(revenueSources.platformContext, "instagram")));
+  const instagramRevenueSourceIds = instagramRevenueSources.map((source: any) => String(source.id)).filter(Boolean);
+  if (instagramRevenueSourceIds.length > 0) {
+    await tx.delete(revenueRecords).where(inArray(revenueRecords.revenueSourceId, instagramRevenueSourceIds));
+    await tx.update(revenueSources)
+      .set({ isActive: false } as any)
+      .where(inArray(revenueSources.id, instagramRevenueSourceIds));
+  }
+};
+
 function hydrateDecryptedTokens<T extends Record<string, any>>(row: T): T {
   const enc = (row as any)?.encryptedTokens as EncryptedTokens | undefined;
   const dec = decryptTokens(enc);
@@ -140,6 +174,7 @@ export interface IStorage {
   createInstagramConnection(connection: InsertInstagramConnection): Promise<InstagramConnection>;
   updateInstagramConnection(campaignId: string, connection: Partial<InsertInstagramConnection>): Promise<InstagramConnection | undefined>;
   deleteInstagramConnection(campaignId: string): Promise<boolean>;
+  deleteInstagramFinancialData(campaignId: string): Promise<boolean>;
   deleteInstagramDailyMetrics(campaignId: string): Promise<boolean>;
 
   // Instagram Daily Metrics
@@ -2484,6 +2519,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteInstagramConnection(campaignId: string): Promise<boolean> {
     return await db.transaction(async (tx: any) => {
+      await deleteInstagramFinancialDataForCampaign(tx, campaignId);
       const result = await tx
         .delete(instagramConnections)
         .where(eq(instagramConnections.campaignId, campaignId));
@@ -2493,6 +2529,13 @@ export class DatabaseStorage implements IStorage {
       }
       return deleted;
     });
+  }
+
+  async deleteInstagramFinancialData(campaignId: string): Promise<boolean> {
+    await db.transaction(async (tx: any) => {
+      await deleteInstagramFinancialDataForCampaign(tx, campaignId);
+    });
+    return true;
   }
 
   async deleteInstagramDailyMetrics(campaignId: string): Promise<boolean> {

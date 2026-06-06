@@ -19741,6 +19741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectionChanged = previousSelectedCampaignIds.join("\n") !== selectedCampaignIds.join("\n");
       if (selectionChanged) {
         await storage.deleteInstagramDailyMetrics(parsedId.data);
+        await storage.deleteInstagramFinancialData(parsedId.data);
       }
 
       const updated = await storage.updateInstagramConnection(parsedId.data, {

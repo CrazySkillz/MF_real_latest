@@ -54,16 +54,16 @@ This table is the single source of truth for what is done, pending, and where ea
 | 10B | Instagram spend import/edit source identity uses `instagram_api` only | Done and pushed; user validation passed | Spend import path |
 | 10C | Instagram attributed revenue import/edit source identity uses `platformContext="instagram"` only | Done and pushed; user validation passed | Revenue import path |
 | 10D | Revenue/spend regression and validation docs | Done and pushed; user validation passed | None |
-| 11A | Instagram provider/client adapter research refresh before live behavior | Implemented locally; user validation pending | None |
-| 11B | Test-mode Instagram daily metric generation behind explicit refresh only | Implemented locally; user validation pending | Backend refresh route |
-| 11C | Manual refresh route imports selected Instagram-only rows | Implemented locally; user validation pending | Backend refresh route |
-| 11D | Scheduler refresh skips missing, spend-only, invalid, or unselected-source campaigns | Implemented locally; user validation pending | Background refresh |
-| 11E | Scheduler snapshot integration uses same aggregate contract as UI | Implemented locally; user validation pending | Background snapshots |
-| 11F | Scheduler/refresh regression and validation docs | Implemented locally; user validation pending | None |
-| 12A | Backend disconnect route and storage cleanup proof | Pending after 4D if 4D is not enough | Backend lifecycle route |
-| 12B | Reconnect stale-row safety and selected-scope replacement proof | Pending | Backend lifecycle behavior |
-| 12C | Existing damaged-data cleanup plan if stale Instagram rows can exist | Pending | Data cleanup plan only unless needed |
-| 12D | Lifecycle regression and validation docs | Pending | None |
+| 11A | Instagram provider/client adapter research refresh before live behavior | Done and pushed; user validation passed | None |
+| 11B | Test-mode Instagram daily metric generation behind explicit refresh only | Done and pushed; user validation passed | Backend refresh route |
+| 11C | Manual refresh route imports selected Instagram-only rows | Done and pushed; user validation passed | Backend refresh route |
+| 11D | Scheduler refresh skips missing, spend-only, invalid, or unselected-source campaigns | Done and pushed; user validation passed | Background refresh |
+| 11E | Scheduler snapshot integration uses same aggregate contract as UI | Done and pushed; user validation passed | Background snapshots |
+| 11F | Scheduler/refresh regression and validation docs | Done and pushed; user validation passed | None |
+| 12A | Backend disconnect route and storage cleanup proof | Implemented locally; user validation pending | Backend lifecycle route |
+| 12B | Reconnect stale-row safety and selected-scope replacement proof | Implemented locally; user validation pending | Backend lifecycle behavior |
+| 12C | Existing damaged-data cleanup plan if stale Instagram rows can exist | Implemented locally; user validation pending | Data cleanup plan only |
+| 12D | Lifecycle regression and validation docs | Implemented locally; user validation pending | None |
 | 13A | Instagram KPI current-value source contract | Pending | KPI backend/UI |
 | 13B | Instagram Benchmark current-value source contract | Pending | Benchmark backend/UI |
 | 13C | Instagram report route/source contract | Pending | Report backend/UI |
@@ -88,7 +88,7 @@ Instagram must be treated as a campaign-scoped main paid-media connected source 
 
 Instagram is not implemented as a first-class connected platform in the current local codebase.
 
-Initial code supported Meta/Facebook Ads and could surface Instagram placement names inside Meta analytics, but that was not the same as a standalone Instagram connected platform. The current implementation now has a test-mode Instagram source contract, schema/storage, guarded routes, Create Campaign and Connected Platforms flows, Campaign Overview metrics, analytics page, Campaign DeepDive aggregate wiring, financial platform-context isolation, the Commit 11A provider/refresh design trace, an explicit test-mode Instagram daily metric refresh route, a manual live refresh route that imports selected Instagram publisher-platform rows only, a fail-closed Instagram scheduler refresh wrapper, and scheduler snapshot integration through the same aggregate source contract as the UI; live OAuth connect UI, reports, and KPI/Benchmark parity remain pending.
+Initial code supported Meta/Facebook Ads and could surface Instagram placement names inside Meta analytics, but that was not the same as a standalone Instagram connected platform. The current implementation now has a test-mode Instagram source contract, schema/storage, guarded routes, Create Campaign and Connected Platforms flows, Campaign Overview metrics, analytics page, Campaign DeepDive aggregate wiring, financial platform-context isolation, the Commit 11A provider/refresh design trace, an explicit test-mode Instagram daily metric refresh route, a manual live refresh route that imports selected Instagram publisher-platform rows only, a fail-closed Instagram scheduler refresh wrapper, scheduler snapshot integration through the same aggregate source contract as the UI, local backend lifecycle cleanup for disconnect and selected-scope replacement, a non-destructive stale-data cleanup plan, and local lifecycle regression/validation documentation; live OAuth connect UI, reports, and KPI/Benchmark parity remain pending.
 
 No production-ready claim can be made for Instagram until the implementation and validation items in this tracker are completed.
 
@@ -192,6 +192,16 @@ Commit 11E scheduler snapshot integration is implemented locally. `server/schedu
 
 Commit 11F scheduler/refresh closeout is implemented locally as documentation only. It records the completed Commit 11A-11E boundary, focused regression evidence, and remaining validation gaps: live OAuth connect UI, deployed/provider token evidence, report parity, KPI/Benchmark parity, and production-like live refresh proof remain later commits.
 
+Commit 11A-11F validation passed through the focused local regression suite after the bundle was pushed.
+
+Commit 12A backend disconnect cleanup proof is implemented locally. `storage.deleteInstagramConnection(...)` now transactionally cleans the current campaign's Instagram connection, Instagram daily metric rows, Instagram spend rows/sources (`sourceType="instagram_api"` or `platformContext="instagram"`), and Instagram-scoped revenue rows/sources (`platformContext="instagram"`). It does not touch Meta/Facebook, Google Ads, LinkedIn, GA4, or unrelated campaign rows.
+
+Commit 12B reconnect stale-row safety is implemented locally. Selected Instagram campaign scope changes now clear Instagram daily rows and Instagram-scoped financial children before persisting the new selected scope; full reconnect continues through `deleteInstagramConnection(...)` cleanup before creating the replacement connection.
+
+Commit 12C existing damaged-data cleanup plan is implemented locally as documentation only. No automatic cleanup migration is added because stale production rows have not been inventoried; cleanup must start with read-only counts scoped to Instagram source identity before any data mutation is approved.
+
+Commit 12D lifecycle regression and validation closeout is implemented locally as documentation only. It records the exact local validation commands for the Commit 12 lifecycle bundle and keeps user/browser validation separate.
+
 ## Root Cause Analysis
 
 The current gap is not one isolated UI bug. It is a missing source contract and lifecycle implementation:
@@ -245,6 +255,10 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 11E, scheduled snapshots could store Campaign DeepDive aggregate history for Google Ads and other sources but not Instagram, even after Instagram rows existed. Commit 11E adds Instagram to snapshot composition through the same selected-row aggregate contract used by Campaign DeepDive UI routes.
 - Before Commit 11D/11E, `server/scheduler.ts` and platform schedulers had no Instagram refresh or snapshot input. Commit 11D adds the refresh wrapper, and Commit 11E adds selected-row snapshot aggregate input.
 - Before Commit 11F, the implementation existed but the tracker did not close the Commit 11 refresh/scheduler boundary or name the exact validation command set. Commit 11F records that boundary without runtime changes.
+- Before Commit 12A, backend Instagram disconnect deleted the Instagram connection and daily metric rows only. After Commit 10 introduced Instagram-scoped spend and revenue identity, disconnect could leave active `instagram_api` spend sources/records and `platformContext="instagram"` revenue sources/records attached to the campaign. Commit 12A extends the existing transactional storage cleanup to deactivate/delete only those Instagram-scoped financial children for the same campaign.
+- Before Commit 12B, selected-campaign updates deleted only daily metrics when scope changed, leaving Instagram-scoped spend/revenue children from the previous selected scope active. Commit 12B calls the centralized Instagram financial cleanup before updating selected campaign IDs.
+- Before Commit 12C, the tracker did not explicitly separate forward-path lifecycle fixes from existing damaged-data handling. A cleanup migration would be unsafe without first proving stale Instagram rows by exact source identity and campaign boundary. Commit 12C records a read-only inventory-first cleanup plan and blocks automatic deletion until stale rows are proven.
+- Before Commit 12D, the lifecycle fixes and source-safety coverage existed locally but the tracker did not explicitly close the Commit 12 validation boundary. Commit 12D records the regression commands and leaves user validation pending instead of implying production readiness.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`; Commit 9A supplies an Instagram source builder and Commit 9D wires it into the two current aggregate route consumers.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
 - Meta/Facebook currently includes Instagram-related placement data in some contexts; promoting that data to a standalone Instagram platform without explicit source boundaries would risk double-counting and misleading source attribution.
@@ -1297,18 +1311,12 @@ Validation:
 
 Status:
 
-- [x] Commit 11A implemented locally: provider/client adapter research and refresh boundary traced before live behavior.
-- [ ] User validation pending for Commit 11A.
-- [x] Commit 11B implemented locally: test-mode Instagram daily metric generation behind explicit refresh only.
-- [ ] User validation pending for Commit 11B.
-- [x] Commit 11C implemented locally: manual refresh route imports selected Instagram-only rows.
-- [ ] User validation pending for Commit 11C.
-- [x] Commit 11D implemented locally: scheduler refresh skips missing, spend-only, invalid, or unselected-source campaigns.
-- [ ] User validation pending for Commit 11D.
-- [x] Commit 11E implemented locally: scheduler snapshot integration uses same aggregate contract as UI.
-- [ ] User validation pending for Commit 11E.
-- [x] Commit 11F implemented locally: scheduler/refresh regression and validation docs.
-- [ ] User validation pending for Commit 11F.
+- [x] Commit 11A done and pushed; user validation passed: provider/client adapter research and refresh boundary traced before live behavior.
+- [x] Commit 11B done and pushed; user validation passed: test-mode Instagram daily metric generation behind explicit refresh only.
+- [x] Commit 11C done and pushed; user validation passed: manual refresh route imports selected Instagram-only rows.
+- [x] Commit 11D done and pushed; user validation passed: scheduler refresh skips missing, spend-only, invalid, or unselected-source campaigns.
+- [x] Commit 11E done and pushed; user validation passed: scheduler snapshot integration uses same aggregate contract as UI.
+- [x] Commit 11F done and pushed; user validation passed: scheduler/refresh regression and validation docs.
 
 Commit 11A root-cause trace:
 
@@ -1387,7 +1395,7 @@ Commit 11F validation:
   - `git diff --check`
   - `npm run check`
   - `npm test -- server/instagram-connected-platforms-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts server/trend-analysis-overview-regression.test.ts`
-- User validation remains pending for Commit 11A-11F as one bundled Commit 11 validation.
+- User validation passed for Commit 11A-11F as one bundled Commit 11 validation.
 - Live provider validation remains pending until a production-like Instagram token-backed connection exists.
 
 ### Details For Commits 12A-12D: Disconnect, Reconnect, And Stale Data Safety
@@ -1413,7 +1421,119 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Commit 12A implemented locally: backend disconnect storage cleanup removes only the current campaign's Instagram connection, daily rows, Instagram spend rows/sources, and Instagram-scoped revenue rows/sources.
+- [ ] User validation pending for Commit 12A.
+- [x] Commit 12B implemented locally: selected-campaign replacement clears old Instagram daily rows and Instagram financial children before persisting the new selected scope.
+- [ ] User validation pending for Commit 12B.
+- [x] Commit 12C implemented locally: existing damaged-data handling is documented as a read-only inventory-first plan with no automatic mutation.
+- [ ] User validation pending for Commit 12C.
+- [x] Commit 12D implemented locally: lifecycle regression and validation docs close the Commit 12 local evidence boundary.
+- [ ] User validation pending for Commit 12D.
+
+Commit 12A root-cause trace:
+
+- The disconnect route already proves campaign access and delegates to `storage.deleteInstagramConnection(...)`.
+- Before 12A, that storage method deleted only `instagram_connections` and `instagram_daily_metrics`.
+- After Commit 10, Instagram-scoped financial children can exist as `spend_sources/sourceType="instagram_api"`, `spend_sources/platformContext="instagram"`, `spend_records/sourceType="instagram_api"`, and `revenue_sources/platformContext="instagram"`.
+- Leaving those rows active after disconnect could keep Instagram spend/revenue in downstream aggregates even though the main Instagram platform was disconnected.
+
+Commit 12A validation:
+
+- Storage cleanup remains transactional.
+- Cleanup is scoped by `campaignId`.
+- Spend cleanup targets only Instagram spend sources/records.
+- Revenue cleanup targets only Instagram-scoped revenue sources/records.
+- The disconnect route still fails closed when no Instagram connection exists before cleanup is called.
+
+Commit 12B root-cause trace:
+
+- The full reconnect path already calls `storage.deleteInstagramConnection(...)` before creating the new Instagram connection, so the Commit 12A cleanup now covers full replacement.
+- The selected-campaign update path does not replace the whole connection. It computes `selectionChanged`, deletes stale `instagram_daily_metrics`, and then persists the new selected campaign IDs.
+- Before 12B, that partial replacement path did not clear Instagram spend/revenue children associated with the previous selected scope.
+- Commit 12B centralizes Instagram financial cleanup in storage and calls it only when `selectionChanged` is true, after daily-row cleanup and before `storage.updateInstagramConnection(...)`.
+
+Commit 12B validation:
+
+- The selected-campaign route remains campaign-access guarded and still fails closed when no Instagram connection exists.
+- Cleanup runs only when selected Instagram campaign IDs change.
+- Cleanup order is daily rows, Instagram financial children, then persisted selected-scope update.
+- The route still does not create a connection, seed daily metrics, call refresh, or broaden to Meta/Facebook data.
+
+Commit 12C root-cause trace:
+
+- Commits 12A and 12B fix the forward paths for disconnect, full reconnect, and selected-scope replacement.
+- Existing data may already contain stale Instagram-scoped financial rows if a user disconnected Instagram or changed selected Instagram campaign IDs before those forward-path fixes existed.
+- Local source code cannot prove whether any deployed database currently contains those stale rows.
+- An automatic cleanup migration would be unsafe because the only acceptable mutation boundary is exact campaign ID plus explicit Instagram source identity; Meta/Facebook placement rows must not be treated as standalone Instagram rows.
+
+Commit 12C cleanup decision rule:
+
+- Do not add an automatic cleanup migration until read-only inventory proves stale Instagram rows exist.
+- Stale daily rows are rows in `instagram_daily_metrics` for a campaign with no `instagram_connections` row, or rows whose `instagram_campaign_id` is not in the active connection's selected campaign IDs.
+- Stale spend rows are active `spend_sources` or `spend_records` for a campaign with `sourceType="instagram_api"` or `platformContext="instagram"` when the campaign no longer has an active Instagram connection or the rows were created for an old selected scope.
+- Stale revenue rows are active `revenue_sources` or child `revenue_records` with `platformContext="instagram"` when the campaign no longer has an active Instagram connection or the rows were created for an old selected scope.
+- Cleanup, if needed later, must deactivate source rows and delete only child rows that match the proven Instagram source IDs; it must not delete Meta/Facebook sources, Google Ads sources, LinkedIn sources, GA4 rows, or unrelated campaign data.
+
+Commit 12C read-only inventory queries:
+
+```sql
+-- Instagram daily rows for campaigns that no longer have an Instagram connection.
+SELECT m.campaign_id, COUNT(*) AS stale_daily_rows
+FROM instagram_daily_metrics m
+LEFT JOIN instagram_connections c ON c.campaign_id = m.campaign_id
+WHERE c.id IS NULL
+GROUP BY m.campaign_id;
+
+-- Instagram spend sources for campaigns that no longer have an Instagram connection.
+SELECT s.campaign_id, COUNT(*) AS stale_spend_sources
+FROM spend_sources s
+LEFT JOIN instagram_connections c ON c.campaign_id = s.campaign_id
+WHERE c.id IS NULL
+  AND (s.source_type = 'instagram_api' OR s.platform_context = 'instagram')
+GROUP BY s.campaign_id;
+
+-- Instagram revenue sources for campaigns that no longer have an Instagram connection.
+SELECT r.campaign_id, COUNT(*) AS stale_revenue_sources
+FROM revenue_sources r
+LEFT JOIN instagram_connections c ON c.campaign_id = r.campaign_id
+WHERE c.id IS NULL
+  AND r.platform_context = 'instagram'
+GROUP BY r.campaign_id;
+```
+
+Commit 12C validation:
+
+- The plan is documentation-only and changes no runtime code.
+- The inventory queries are read-only.
+- The cleanup boundary is explicitly Instagram source identity plus campaign ID.
+- Existing forward-path cleanup remains covered by Commit 12A and 12B regression tests.
+
+Commit 12D root-cause trace:
+
+- Commit 12 includes runtime cleanup changes in storage and routes plus a documentation-only damaged-data cleanup plan.
+- Without an explicit closeout entry, the tracker could blur local regression evidence, user validation, and future production/database inventory work.
+- Commit 12D records only the validation boundary and does not change runtime behavior.
+
+Commit 12D local validation commands:
+
+```powershell
+git diff --check
+npm run check
+npm test -- server/source-safety-regression.test.ts server/instagram-connected-platforms-regression.test.ts server/endpoint-auth-audit.test.ts
+```
+
+Commit 12D validation scope:
+
+- `server/source-safety-regression.test.ts` proves the selected-campaign update route clears stale Instagram daily rows and Instagram financial children only after selected scope changes, before persisting the new selected scope.
+- `server/source-safety-regression.test.ts` proves the disconnect route remains campaign-access guarded, fails closed when no connection exists, and delegates storage cleanup through `deleteInstagramConnection(...)`.
+- `server/storage.ts` cleanup proof is source-identity scoped to the current campaign's Instagram connection, daily rows, `instagram_api`/`platformContext="instagram"` spend data, and `platformContext="instagram"` revenue data.
+- `server/instagram-connected-platforms-regression.test.ts` keeps the Connected Platforms contract covered while lifecycle cleanup changes remain backend-only.
+- `server/endpoint-auth-audit.test.ts` keeps endpoint auth coverage in the focused validation set.
+
+Commit 12 remaining validation boundary:
+
+- User validation remains pending for Commit 12A-12D until Instagram is disconnected/reconnected from the UI and the user confirms Connected Platforms, Campaign Overview, Instagram Analytics, and Campaign DeepDive no longer show stale Instagram data after disconnect or selected-scope replacement.
+- Production/deployed damaged-data cleanup remains pending until the read-only inventory queries in Commit 12C are run against the target database and reviewed.
 
 ### Details For Commits 13A-13F: KPI, Benchmark, Reports, And Scheduled Output Parity
 
@@ -1643,7 +1763,8 @@ Implementation:
 - [x] Add fail-closed Instagram scheduler refresh wrapper.
 - [x] Add Instagram scheduler snapshot aggregate input.
 - [x] Close Commit 11 scheduler/refresh validation documentation.
-- [ ] Add disconnect/reconnect cleanup.
+- [x] Add backend disconnect cleanup proof.
+- [ ] Add reconnect stale-row safety.
 - [ ] Add KPI/Benchmark/report parity.
 - [x] Add Commit 11 regression coverage.
 
@@ -1698,12 +1819,17 @@ Evidence:
 - [x] Commit 11D local fail-closed scheduler refresh wrapper.
 - [x] Commit 11E local scheduler snapshot aggregate input.
 - [x] Commit 11F local scheduler/refresh validation documentation closeout.
+- [x] Commit 11A-11F user validation passed through focused regression checks.
+- [x] Commit 12A local backend disconnect cleanup proof.
+- [x] Commit 12B local reconnect stale-row safety and selected-scope replacement proof.
+- [x] Commit 12C local existing damaged-data cleanup plan.
+- [x] Commit 12D local lifecycle regression and validation documentation closeout.
 - [ ] Local test-mode Create Campaign validation.
 - [ ] Local test-mode Connected Platforms validation.
 - [x] Local Campaign DeepDive aggregate validation through focused regression suite.
 - [x] Local Meta + Instagram no-double-counting validation through focused regression suite.
-- [ ] Local scheduler validation.
 - [x] Local Commit 11 scheduler/refresh regression validation through focused regression suite.
+- [x] Local Commit 12 lifecycle validation through focused regression suite.
 - [ ] Local report validation.
 - [ ] Deployed or production-like live OAuth validation.
 
@@ -1753,9 +1879,8 @@ Evidence:
 - User validation passed for Instagram Commit 8A-8F analytics page foundation by connecting to the Instagram test account; the connected source opened the analytics page and correctly showed the selected-campaign unavailable state when no persisted daily rows existed.
 - User validation passed for Instagram Commit 9A-9E Campaign DeepDive aggregate source wiring by connecting to the Instagram test account.
 - User validation passed for Instagram Commit 10A-10D financial platform-context isolation by connecting to the Instagram test account and running `npm run check` plus the focused regression suite.
-- Local implementation complete for Instagram Commit 11A provider/client adapter research and refresh boundary trace; user validation is pending.
-- Local implementation complete for Instagram Commit 11B explicit test-mode daily metric refresh route; user validation is pending.
-- Local implementation complete for Instagram Commit 11C selected-source manual refresh route; user validation is pending.
-- Local implementation complete for Instagram Commit 11D fail-closed scheduler refresh wrapper; user validation is pending.
-- Local implementation complete for Instagram Commit 11E scheduler snapshot aggregate input; user validation is pending.
-- Local implementation complete for Instagram Commit 11F scheduler/refresh validation documentation closeout; user validation is pending.
+- User validation passed for Instagram Commit 11A-11F refresh and scheduler foundation through `npm run check` plus the focused regression suite.
+- Local implementation complete for Instagram Commit 12A backend disconnect cleanup proof; user validation is pending.
+- Local implementation complete for Instagram Commit 12B reconnect stale-row safety and selected-scope replacement proof; user validation is pending.
+- Local implementation complete for Instagram Commit 12C existing damaged-data cleanup plan; user validation is pending.
+- Local implementation complete for Instagram Commit 12D lifecycle regression and validation documentation closeout; user validation is pending.

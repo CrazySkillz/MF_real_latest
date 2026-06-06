@@ -354,15 +354,21 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).not.toContain("/api/instagram/oauth");
   });
 
-  it("renders Instagram analytics Campaign Breakdown from selected daily rows only", () => {
+  it("renders Instagram analytics platform tab shell without obsolete status or breakdown sections", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "instagram-analytics.tsx"), "utf-8");
 
-    expect(page).toContain('<TabsTrigger value="campaign-breakdown">Campaign Breakdown</TabsTrigger>');
-    expect(page).toContain("const campaignBreakdown = useMemo");
-    expect(page).toContain("row.instagramCampaignId");
-    expect(page).toContain("instagramCampaignName");
-    expect(page).toContain("campaignBreakdown.map");
-    expect(page).toContain("No selected Instagram campaign rows are available yet.");
+    expect(page).toContain('<TabsTrigger value="overview">Overview</TabsTrigger>');
+    expect(page).toContain('<TabsTrigger value="kpis">KPIs</TabsTrigger>');
+    expect(page).toContain('<TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>');
+    expect(page).toContain('<TabsTrigger value="ads">Ad Comparison</TabsTrigger>');
+    expect(page).toContain('<TabsTrigger value="reports">Reports</TabsTrigger>');
+    expect(page).toContain("/api/platforms/instagram/kpis");
+    expect(page).toContain("/api/platforms/instagram/benchmarks");
+    expect(page).toContain("/api/platforms/instagram/reports");
+    expect(page).toContain("No source-backed Instagram ad comparison rows are available yet.");
+    expect(page).not.toContain("Connection Status");
+    expect(page).not.toContain('<TabsTrigger value="campaign-breakdown">Campaign Breakdown</TabsTrigger>');
+    expect(page).not.toContain("const campaignBreakdown = useMemo");
     expect(page).not.toContain("upsertInstagramDailyMetrics");
     expect(page).not.toContain("refreshInstagram");
     expect(page).not.toContain("/api/instagram/oauth");
@@ -375,7 +381,9 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("Latest Instagram row import:");
     expect(page).toContain("latestImportedAt");
     expect(page).toContain("No selected source-backed Instagram metric rows are available yet.");
-    expect(page).toContain("No selected Instagram campaign rows are available yet.");
+    expect(page).toContain("No Instagram KPIs have been created yet.");
+    expect(page).toContain("No Instagram Benchmarks have been created yet.");
+    expect(page).toContain("No Instagram Reports have been created yet.");
     expect(page).toContain("Connect Instagram Ads from the campaign Connected Platforms section");
     expect(page).not.toContain("upsertInstagramDailyMetrics");
     expect(page).not.toContain("refreshInstagram");

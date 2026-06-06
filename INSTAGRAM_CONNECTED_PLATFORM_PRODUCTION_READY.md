@@ -72,12 +72,13 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13D | Instagram KPI tab management UI parity | Done and pushed; user validation pending | Instagram analytics KPI UI |
 | 13E | Instagram test-mode missing daily-row self-heal | Done and pushed; user validation pending | Backend analytics data route |
 | 13F | Instagram Create KPI modal parity with GA4 pattern | Done and pushed; user validation pending | Instagram analytics KPI UI |
-| 13G | Instagram Create KPI modal input constraints | Implemented locally; user validation pending | Instagram analytics KPI UI |
-| 13H | Instagram analytics refresh loading-state stability | Implemented locally; user validation pending | Instagram analytics UI |
-| 13I | Instagram report route/source contract | Pending | Report backend/UI |
-| 13J | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
-| 13K | Instagram PDF/export output source proof | Pending | Report exports |
-| 13L | KPI/Benchmark/Report regression and validation docs | Pending | None |
+| 13G | Instagram Create KPI modal input constraints | Done and pushed; user validation pending | Instagram analytics KPI UI |
+| 13H | Instagram analytics connection loading-state stability | Done and pushed; user validation pending | Instagram analytics UI |
+| 13I | Instagram Overview metrics loading-state stability | Implemented locally; user validation pending | Instagram analytics UI |
+| 13J | Instagram report route/source contract | Pending | Report backend/UI |
+| 13K | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
+| 13L | Instagram PDF/export output source proof | Pending | Report exports |
+| 13M | KPI/Benchmark/Report regression and validation docs | Pending | None |
 | 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
 | 14B | End-to-end local test-mode Connected Platforms validation | Pending | Validation only |
 | 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending | Validation only |
@@ -226,9 +227,11 @@ Commit 13E Instagram test-mode missing daily-row self-heal is implemented locall
 
 Commit 13F Instagram Create KPI modal parity with the GA4 pattern is done and pushed. The Instagram Create/Edit KPI modal now uses the GA4-style template picker, required KPI name/target fields, description textarea with counter, current value, unit, priority, and alert controls while still saving through the existing Instagram KPI routes.
 
-Commit 13G Instagram Create KPI modal input constraints are implemented locally. The modal now opens with no selected metric/template, the Target Value input accepts only numeric characters and auto-formats as the user types, and the Tracking Period field is removed from the modal while retaining the existing backend default.
+Commit 13G Instagram Create KPI modal input constraints are done and pushed. The modal now opens with no selected metric/template, the Target Value input accepts only numeric characters and auto-formats as the user types, and the Tracking Period field is removed from the modal while retaining the existing backend default.
 
-Commit 13H Instagram analytics refresh loading-state stability is implemented locally. The Instagram analytics page no longer renders a visible transient connection-loading message during the initial connection query; it reserves a stable blank content area until the campaign-scoped Instagram connection resolves, then renders the connected tab content or the final error/disconnected state.
+Commit 13H Instagram analytics connection loading-state stability is done and pushed. The Instagram analytics page no longer renders a visible transient connection-loading message during the initial connection query; it reserves a stable blank content area until the campaign-scoped Instagram connection resolves, then renders the connected tab content or the final error/disconnected state.
+
+Commit 13I Instagram Overview metrics loading-state stability is implemented locally. The Overview tab no longer renders visible transient daily-metrics loading text after the connection resolves; it reserves a stable blank content area until source-backed metrics resolve, then renders metrics, the final empty state, or the final error state.
 
 ## Root Cause Analysis
 
@@ -297,6 +300,7 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 13F, the Instagram KPI create/edit modal was a small generic form with only name, metric, target, tracking period, and description. GA4 uses a richer campaign KPI modal pattern with template selection, current/target/unit, priority, and alert configuration. Commit 13F updates the Instagram modal to follow that pattern without adding backend or analytics behavior.
 - Before Commit 13G, the Instagram Create KPI modal still selected the first metric template by default, accepted arbitrary text in Target Value, and exposed Tracking Period. Commit 13G removes those UI gaps without changing the backend KPI route or the stored tracking-period default.
 - Before Commit 13H, the Instagram analytics page rendered its connection guard while the initial connection query was still loading. Because `connection` is undefined during a hard refresh, the page briefly showed visible loading/disconnected text above the eventual analytics tabs. Commit 13H removes that transient text branch and only displays final error/disconnected copy after the connection request resolves.
+- Before Commit 13I, the Instagram analytics Overview tab rendered a second visible loading branch while `/api/instagram/:campaignId/daily-metrics` was loading. Even after Commit 13H removed the connection-query flash, this metrics-query branch could still flash `Loading source-backed Instagram metrics...` before source-backed metric cards rendered. Commit 13I removes that transient text and keeps final metric/empty/error states unchanged.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`; Commit 9A supplies an Instagram source builder and Commit 9D wires it into the two current aggregate route consumers.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
 - Meta/Facebook currently includes Instagram-related placement data in some contexts; promoting that data to a standalone Instagram platform without explicit source boundaries would risk double-counting and misleading source attribution.
@@ -1644,14 +1648,16 @@ Status:
 - [ ] User validation pending for Commit 13E.
 - [x] Commit 13F done and pushed: Instagram Create KPI modal follows the GA4 modal structure while using existing Instagram KPI routes.
 - [ ] User validation pending for Commit 13F.
-- [x] Commit 13G implemented locally: Instagram Create KPI modal opens with no selected metric, formats numeric target input, and hides Tracking Period.
+- [x] Commit 13G done and pushed: Instagram Create KPI modal opens with no selected metric, formats numeric target input, and hides Tracking Period.
 - [ ] User validation pending for Commit 13G.
-- [x] Commit 13H implemented locally: Instagram analytics refresh no longer flashes transient connection-loading text before connected content loads.
+- [x] Commit 13H done and pushed: Instagram analytics refresh no longer flashes transient connection-loading text before connected content loads.
 - [ ] User validation pending for Commit 13H.
-- [ ] Commit 13I pending: Instagram report route/source contract.
-- [ ] Commit 13J pending: Instagram scheduled report snapshot/send guard.
-- [ ] Commit 13K pending: Instagram PDF/export output source proof.
-- [ ] Commit 13L pending: KPI/Benchmark/Report regression and validation docs.
+- [x] Commit 13I implemented locally: Instagram Overview no longer flashes transient daily-metrics loading text before source-backed content loads.
+- [ ] User validation pending for Commit 13I.
+- [ ] Commit 13J pending: Instagram report route/source contract.
+- [ ] Commit 13K pending: Instagram scheduled report snapshot/send guard.
+- [ ] Commit 13L pending: Instagram PDF/export output source proof.
+- [ ] Commit 13M pending: KPI/Benchmark/Report regression and validation docs.
 
 Commit 13A root-cause trace:
 
@@ -1778,6 +1784,21 @@ Commit 13H validation:
 - Confirm the Overview, KPIs, Benchmarks, Ad Comparison, and Reports tabs still render after the connection resolves.
 - Confirm a truly disconnected campaign still shows `Connect Instagram Ads from the campaign Connected Platforms section before opening Instagram analytics.` after the connection check resolves.
 - This commit does not change backend routes, metrics, KPI saves, scheduler behavior, OAuth, provider refresh, reports, PDF output, or source aggregation.
+
+Commit 13I root-cause trace:
+
+- After the connection query resolved, the Overview tab still had a separate daily-metrics loading branch.
+- That branch rendered visible text while `/api/instagram/:campaignId/daily-metrics?dateRange=30days` was loading.
+- Commit 13I removes the visible `Loading source-backed Instagram metrics...` branch and uses a stable blank placeholder until the daily metrics query resolves.
+
+Commit 13I validation:
+
+- Open `/campaigns/:id/instagram-analytics` for a campaign with Instagram connected and selected test rows.
+- Stay on the Overview tab and hard-refresh the browser page.
+- Confirm the page does not flash `Loading source-backed Instagram metrics...`.
+- Confirm the Instagram metric cards still appear after the daily metrics request resolves.
+- Confirm the final empty state still appears only when there are no selected source-backed Instagram rows.
+- This commit does not change backend routes, metric calculations, KPI saves, scheduler behavior, OAuth, provider refresh, reports, PDF output, or source aggregation.
 
 ### Details For Commits 14A-14E: Regression Coverage And Final Evidence
 

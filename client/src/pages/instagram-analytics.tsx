@@ -411,14 +411,7 @@ export default function InstagramAnalytics() {
                 )}
                 <TabsContent value="overview" className="space-y-4">
                   {metricsError ? null : metricsLoading ? (
-                    <Card>
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Loading source-backed Instagram metrics...
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <div className="min-h-[140px]" aria-hidden="true" />
                   ) : hasRows ? (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                       {[

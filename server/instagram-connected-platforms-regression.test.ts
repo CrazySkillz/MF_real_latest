@@ -355,6 +355,7 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain('{ label: "Conversion Rate"');
     expect(page).toContain('{ label: "Video Views"');
     expect(page).toContain("No selected source-backed Instagram metric rows are available yet.");
+    expect(page).not.toContain("Loading source-backed Instagram metrics...");
     expect(page).not.toContain("upsertInstagramDailyMetrics");
     expect(page).not.toContain("refreshInstagram");
     expect(page).not.toContain("/api/instagram/oauth");

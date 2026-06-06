@@ -18,4 +18,37 @@ describe("KPI refresh regression guards", () => {
     expect(campaignSpecificBlock).toContain("continue;");
     expect(campaignSpecificBlock).not.toContain("Using aggregate metrics for campaign-specific KPI");
   });
+
+  it("refreshes Instagram KPIs only from selected source-backed Instagram daily rows", () => {
+    const source = readKpiRefreshSource();
+
+    expect(source).toContain("export async function refreshInstagramKPIsForCampaign");
+    expect(source).toContain('storage.getPlatformKPIs("instagram", campaignId)');
+    expect(source).toContain("storage.getInstagramConnection(campaignId)");
+    expect(source).toContain("storage.getInstagramDailyMetrics(campaignId, startDate, endDate)");
+    expect(source).toContain("selectedSet.has(String(row?.instagramCampaignId || \"\"))");
+    expect(source).toContain('String(row?.publisherPlatform || "instagram").trim().toLowerCase() === "instagram"');
+    expect(source).toContain('String((target as any).applyTo || "") === "specific"');
+    expect(source).toContain("if (specificId && !selectedSet.has(specificId)) return null;");
+    expect(source).toContain("mapKPIMetricToInstagramKey");
+    expect(source).toContain("costPerConversion");
+    expect(source).toContain("conversionRate");
+    expect(source).not.toContain("getMetaDailyMetrics");
+    expect(source).not.toContain("MetaGraphAPIClient");
+  });
+
+  it("refreshes Instagram Benchmarks only from selected source-backed Instagram daily rows", () => {
+    const source = readKpiRefreshSource();
+
+    expect(source).toContain("export async function refreshInstagramBenchmarksForCampaign");
+    expect(source).toContain('storage.getPlatformBenchmarks("instagram", campaignId)');
+    expect(source).toContain("getInstagramMetricsForTarget(campaignId, benchmark)");
+    expect(source).toContain("storage.updateBenchmark(String((benchmark as any).id)");
+    expect(source).toContain("currentValue,");
+    expect(source).toContain("variance: String(variance)");
+    expect(source).toContain("selectedSet.has(String(row?.instagramCampaignId || \"\"))");
+    expect(source).toContain('String(row?.publisherPlatform || "instagram").trim().toLowerCase() === "instagram"');
+    expect(source).not.toContain("getMetaDailyMetrics");
+    expect(source).not.toContain("MetaGraphAPIClient");
+  });
 });

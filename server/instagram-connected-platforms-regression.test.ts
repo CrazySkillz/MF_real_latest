@@ -183,7 +183,8 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(routes).toContain("RevenueReadPlatformContext[] = ['ga4', 'linkedin', 'meta', 'google_ads', 'instagram']");
     expect(validation).toContain('"instagram" | null');
     expect(routes).not.toContain("/api/instagram/oauth");
-    expect(routes).not.toContain("refreshInstagram");
+    expect(routes).not.toContain("refreshInstagram(");
+    expect(routes).not.toContain("refreshInstagramForCampaign");
     expect(validation).not.toContain("upsertInstagramDailyMetrics");
   });
 
@@ -304,7 +305,8 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(csvRoute).toContain('String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== platformContext');
     expect(sheetsRoute).toContain("storage.getRevenueSources(campaignId, platformContext)");
     expect(routes).not.toContain("/api/instagram/oauth");
-    expect(routes).not.toContain("refreshInstagram");
+    expect(routes).not.toContain("refreshInstagram(");
+    expect(routes).not.toContain("refreshInstagramForCampaign");
   });
 
   it("registers an Instagram analytics route shell guarded by the campaign connection", () => {

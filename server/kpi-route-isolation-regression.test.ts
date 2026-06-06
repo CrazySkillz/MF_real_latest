@@ -18,6 +18,28 @@ describe("KPI route isolation regression guard", () => {
     expect((routesFile.match(/isCampaignKPIPlatformType\(platformType\)/g) || []).length).toBeGreaterThanOrEqual(4);
   });
 
+  it("refreshes Instagram platform KPI current values through shared platform routes", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    const platformRoutes = routesFile.slice(
+      routesFile.indexOf('// Platform-level KPI routes'),
+      routesFile.indexOf('app.delete("/api/platforms/:platformType/kpis/:kpiId"')
+    );
+
+    expect(routesFile).toContain('import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign } from "./utils/kpi-refresh";');
+    expect(routesFile).toContain("const refreshInstagramKpisIfNeeded = async");
+    expect(platformRoutes).toContain("await refreshInstagramKpisIfNeeded(platformType, campaignId)");
+    expect(platformRoutes).toContain("await refreshInstagramKpisIfNeeded(platformType, validatedKPI.campaignId)");
+    expect(platformRoutes).toContain("await refreshInstagramKpisIfNeeded((okKpi as any)?.platformType, (okKpi as any)?.campaignId)");
+    expect(platformRoutes).toContain("const responseKpi = String(platformType || \"\").trim().toLowerCase() === \"instagram\"");
+    expect(platformRoutes).toContain("const responseKPI = String((okKpi as any)?.platformType || \"\").trim().toLowerCase() === \"instagram\"");
+    expect(platformRoutes).toContain("storage.getKPI(kpi.id)");
+    expect(platformRoutes).toContain("storage.getKPI(kpiId)");
+  });
+
   it("keeps campaign KPI routes responsible for campaign KPI rows", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),

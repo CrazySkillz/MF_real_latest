@@ -60,14 +60,14 @@ This table is the single source of truth for what is done, pending, and where ea
 | 11D | Scheduler refresh skips missing, spend-only, invalid, or unselected-source campaigns | Done and pushed; user validation passed | Background refresh |
 | 11E | Scheduler snapshot integration uses same aggregate contract as UI | Done and pushed; user validation passed | Background snapshots |
 | 11F | Scheduler/refresh regression and validation docs | Done and pushed; user validation passed | None |
-| 12A | Backend disconnect route and storage cleanup proof | Implemented locally; user validation pending | Backend lifecycle route |
-| 12B | Reconnect stale-row safety and selected-scope replacement proof | Implemented locally; user validation pending | Backend lifecycle behavior |
-| 12C | Existing damaged-data cleanup plan if stale Instagram rows can exist | Implemented locally; user validation pending | Data cleanup plan only |
-| 12D | Lifecycle regression and validation docs | Implemented locally; user validation pending | None |
-| 12E | Test-mode connect seeds selected Instagram daily rows | Implemented locally; user validation pending | Backend test-mode data writer |
-| 12F | Instagram core metric display and Campaign DeepDive source-backed inclusion | Implemented locally; user validation pending | Instagram analytics UI and aggregate |
-| 13A | Instagram KPI current-value source contract | Pending | KPI backend/UI |
-| 13B | Instagram Benchmark current-value source contract | Pending | Benchmark backend/UI |
+| 12A | Backend disconnect route and storage cleanup proof | Done and pushed; user validation passed | Backend lifecycle route |
+| 12B | Reconnect stale-row safety and selected-scope replacement proof | Done and pushed; user validation passed | Backend lifecycle behavior |
+| 12C | Existing damaged-data cleanup plan if stale Instagram rows can exist | Done and pushed; user validation passed | Data cleanup plan only |
+| 12D | Lifecycle regression and validation docs | Done and pushed; user validation passed | None |
+| 12E | Test-mode connect seeds selected Instagram daily rows | Done and pushed; user validation passed | Backend test-mode data writer |
+| 12F | Instagram core metric display and Campaign DeepDive source-backed inclusion | Done and pushed; user validation passed | Instagram analytics UI and aggregate |
+| 13A | Instagram KPI current-value source contract | Implemented locally; user validation pending | KPI backend |
+| 13B | Instagram Benchmark current-value source contract | Implemented locally; user validation pending | Benchmark backend |
 | 13C | Instagram report route/source contract | Pending | Report backend/UI |
 | 13D | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
 | 13E | Instagram PDF/export output source proof | Pending | Report exports |
@@ -208,6 +208,10 @@ Commit 12E test-mode connect seed correction is implemented locally. Instagram t
 
 Commit 12F Instagram core metrics and Campaign DeepDive inclusion is implemented locally. Instagram Analytics now displays the selected-row core stored/derived metrics beyond the initial four-card summary, and Campaign DeepDive paid-media totals include source-backed Instagram rows instead of suppressing Instagram whenever Meta/Facebook is also connected.
 
+Commit 13A Instagram KPI current-value source contract is implemented locally. Shared platform KPI routes now refresh Instagram KPI current values from selected `instagram_daily_metrics` rows before reads and after create/update writes, without adding Benchmark, Report, scheduler, OAuth, or provider behavior.
+
+Commit 13B Instagram Benchmark current-value source contract is implemented locally. Shared platform Benchmark routes now refresh Instagram Benchmark current values from selected `instagram_daily_metrics` rows before reads and after create/update writes, without adding Report, scheduler, OAuth, provider, or PDF behavior.
+
 ## Root Cause Analysis
 
 The current gap is not one isolated UI bug. It is a missing source contract and lifecycle implementation:
@@ -267,6 +271,8 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 12D, the lifecycle fixes and source-safety coverage existed locally but the tracker did not explicitly close the Commit 12 validation boundary. Commit 12D records the regression commands and leaves user validation pending instead of implying production readiness.
 - Before Commit 12E, Instagram test connections persisted the selected source contract but wrote no daily metric rows unless the separate `/api/instagram/:campaignId/refresh-test` endpoint was called manually. The UI did not call that endpoint, so View Detailed Analytics and Campaign DeepDive correctly showed no source-backed Instagram rows. Commit 12E seeds the same selected-source test rows during `connect-test`, matching the existing Google Ads test-mode pattern and covering both Create Campaign and Connected Platforms entry points.
 - Before Commit 12F, Instagram Analytics rendered only impressions, clicks, spend, and conversions even though the Instagram row contract also persisted video views, CTR, CPC, CPM, cost per conversion, and conversion rate. Campaign DeepDive also suppressed Instagram paid-media contributions whenever Meta/Facebook was connected, even when Instagram had explicit selected source-backed rows. Commit 12F displays the stored core metrics and includes source-backed Instagram in paid-media aggregate totals.
+- Before Commit 13A, the shared platform KPI routes existed, but automatic current-value refresh was LinkedIn-only. Instagram KPIs could therefore retain caller-provided or stale `currentValue` values instead of being recomputed from selected Instagram source rows. Commit 13A adds an Instagram-only KPI refresh path that reads only campaign-scoped selected `publisherPlatform="instagram"` daily rows.
+- Before Commit 13B, the shared platform Benchmark routes existed, but Instagram Benchmarks had the same stale/caller-provided `currentValue` gap as KPI rows. Commit 13B adds an Instagram-only Benchmark refresh path using the same selected source-backed Instagram daily rows and updates variance from the refreshed value.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`; Commit 9A supplies an Instagram source builder and Commit 9D wires it into the two current aggregate route consumers.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
 - Meta/Facebook currently includes Instagram-related placement data in some contexts; promoting that data to a standalone Instagram platform without explicit source boundaries would risk double-counting and misleading source attribution.
@@ -1430,17 +1436,17 @@ Validation:
 Status:
 
 - [x] Commit 12A implemented locally: backend disconnect storage cleanup removes only the current campaign's Instagram connection, daily rows, Instagram spend rows/sources, and Instagram-scoped revenue rows/sources.
-- [ ] User validation pending for Commit 12A.
+- [x] User validation passed for Commit 12A.
 - [x] Commit 12B implemented locally: selected-campaign replacement clears old Instagram daily rows and Instagram financial children before persisting the new selected scope.
-- [ ] User validation pending for Commit 12B.
+- [x] User validation passed for Commit 12B.
 - [x] Commit 12C implemented locally: existing damaged-data handling is documented as a read-only inventory-first plan with no automatic mutation.
-- [ ] User validation pending for Commit 12C.
+- [x] User validation passed for Commit 12C.
 - [x] Commit 12D implemented locally: lifecycle regression and validation docs close the Commit 12 local evidence boundary.
-- [ ] User validation pending for Commit 12D.
+- [x] User validation passed for Commit 12D.
 - [x] Commit 12E implemented locally: test-mode connect seeds selected Instagram daily rows immediately after creating the source contract.
-- [ ] User validation pending for Commit 12E.
+- [x] User validation passed for Commit 12E.
 - [x] Commit 12F implemented locally: Instagram Analytics displays core selected-row metrics and Campaign DeepDive includes source-backed Instagram paid-media metrics.
-- [ ] User validation pending for Commit 12F.
+- [x] User validation passed for Commit 12F.
 
 Commit 12A root-cause trace:
 
@@ -1544,7 +1550,7 @@ Commit 12D validation scope:
 
 Commit 12 remaining validation boundary:
 
-- User validation remains pending for Commit 12A-12D until Instagram is disconnected/reconnected from the UI and the user confirms Connected Platforms, Campaign Overview, Instagram Analytics, and Campaign DeepDive no longer show stale Instagram data after disconnect or selected-scope replacement.
+- User validation passed for Commit 12A-12F.
 - Production/deployed damaged-data cleanup remains pending until the read-only inventory queries in Commit 12C are run against the target database and reviewed.
 
 Commit 12E root-cause trace:
@@ -1602,7 +1608,45 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Commit 13A implemented locally: Instagram platform KPI current values refresh from selected source-backed Instagram rows before read and after create/update.
+- [ ] User validation pending for Commit 13A.
+- [x] Commit 13B implemented locally: Instagram platform Benchmark current values refresh from selected source-backed Instagram rows before read and after create/update.
+- [ ] User validation pending for Commit 13B.
+- [ ] Commit 13C pending: Instagram report route/source contract.
+- [ ] Commit 13D pending: Instagram scheduled report snapshot/send guard.
+- [ ] Commit 13E pending: Instagram PDF/export output source proof.
+- [ ] Commit 13F pending: KPI/Benchmark/Report regression and validation docs.
+
+Commit 13A root-cause trace:
+
+- Shared platform KPI routes already support `platformType`.
+- Before 13A, the only automatic platform KPI current-value refresh was LinkedIn-specific.
+- Instagram KPIs could be created or updated through shared routes, but `currentValue` was not recomputed from Instagram's selected source rows.
+- Commit 13A adds `refreshInstagramKPIsForCampaign(...)`, scoped to the campaign's Instagram connection, selected Instagram campaign IDs, and `publisherPlatform="instagram"` rows only.
+
+Commit 13A validation:
+
+- `GET /api/platforms/instagram/kpis?campaignId=...` refreshes Instagram KPI current values before returning rows.
+- `POST /api/platforms/instagram/kpis` refreshes after creation and returns the refreshed KPI row.
+- `PATCH /api/platforms/instagram/kpis/:kpiId` refreshes after update and returns the refreshed KPI row.
+- Specific-scope KPIs fail closed when `specificCampaignId` is not one of the selected Instagram campaign IDs.
+- Supported Instagram KPI metrics are impressions, clicks, spend, conversions, video views, CTR, CPC, CPM, CPA/cost per conversion, and CVR/conversion rate.
+- This commit does not add Benchmark, Report, scheduler, OAuth, provider refresh, or PDF behavior.
+
+Commit 13B root-cause trace:
+
+- Shared platform Benchmark routes already support `platformType`.
+- Before 13B, Instagram Benchmarks could be created or updated through shared routes, but `currentValue` and `variance` were not recomputed from Instagram's selected source rows.
+- Commit 13B reuses the Instagram selected-row metric resolver and updates only Instagram Benchmark current values and variance.
+
+Commit 13B validation:
+
+- `GET /api/platforms/instagram/benchmarks?campaignId=...` refreshes Instagram Benchmark current values before returning rows.
+- `POST /api/platforms/instagram/benchmarks` refreshes after creation and returns the refreshed Benchmark row.
+- `PUT /api/platforms/instagram/benchmarks/:benchmarkId` refreshes after update and returns the refreshed Benchmark row.
+- Specific-scope Benchmarks fail closed when `specificCampaignId` is not one of the selected Instagram campaign IDs.
+- Supported Instagram Benchmark metrics match Commit 13A KPI metrics.
+- This commit does not add Report, scheduler, OAuth, provider refresh, or PDF behavior.
 
 ### Details For Commits 14A-14E: Regression Coverage And Final Evidence
 
@@ -1869,6 +1913,9 @@ Evidence:
 - [x] Commit 12D local lifecycle regression and validation documentation closeout.
 - [x] Commit 12E local test-mode connect daily-row seed correction.
 - [x] Commit 12F local Instagram core metric display and Campaign DeepDive source-backed inclusion.
+- [x] Commit 12A-12F user validation passed.
+- [x] Commit 13A local Instagram KPI current-value source contract.
+- [x] Commit 13B local Instagram Benchmark current-value source contract.
 - [ ] Local test-mode Create Campaign validation.
 - [ ] Local test-mode Connected Platforms validation.
 - [x] Local Campaign DeepDive aggregate validation through focused regression suite.
@@ -1925,9 +1972,6 @@ Evidence:
 - User validation passed for Instagram Commit 9A-9E Campaign DeepDive aggregate source wiring by connecting to the Instagram test account.
 - User validation passed for Instagram Commit 10A-10D financial platform-context isolation by connecting to the Instagram test account and running `npm run check` plus the focused regression suite.
 - User validation passed for Instagram Commit 11A-11F refresh and scheduler foundation through `npm run check` plus the focused regression suite.
-- Local implementation complete for Instagram Commit 12A backend disconnect cleanup proof; user validation is pending.
-- Local implementation complete for Instagram Commit 12B reconnect stale-row safety and selected-scope replacement proof; user validation is pending.
-- Local implementation complete for Instagram Commit 12C existing damaged-data cleanup plan; user validation is pending.
-- Local implementation complete for Instagram Commit 12D lifecycle regression and validation documentation closeout; user validation is pending.
-- Local implementation complete for Instagram Commit 12E test-mode connect daily-row seed correction; user validation is pending.
-- Local implementation complete for Instagram Commit 12F core metric display and Campaign DeepDive source-backed inclusion; user validation is pending.
+- User validation passed for Instagram Commit 12A-12F lifecycle, test data, core metrics, and Campaign DeepDive source-backed inclusion.
+- Local implementation complete for Instagram Commit 13A KPI current-value source contract; user validation is pending.
+- Local implementation complete for Instagram Commit 13B Benchmark current-value source contract; user validation is pending.

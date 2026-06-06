@@ -24,7 +24,7 @@ import { toCanonicalFormatBatch } from "./utils/canonical-format";
 import { pickConversionValueFromRows } from "./utils/googleSheetsSelection";
 import { db } from "./db";
 import { eq, sql } from "drizzle-orm";
-import { refreshKPIsForCampaign } from "./utils/kpi-refresh";
+import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign } from "./auto-refresh-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
@@ -23114,6 +23114,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return !platformType || platformType === "campaign";
   };
 
+  const refreshInstagramKpisIfNeeded = async (platformType: unknown, campaignId: unknown) => {
+    if (String(platformType || "").trim().toLowerCase() !== "instagram" || !campaignId) return;
+    await refreshInstagramKPIsForCampaign(String(campaignId));
+  };
+
+  const refreshInstagramBenchmarksIfNeeded = async (platformType: unknown, campaignId: unknown) => {
+    if (String(platformType || "").trim().toLowerCase() !== "instagram" || !campaignId) return;
+    await refreshInstagramBenchmarksForCampaign(String(campaignId));
+  };
+
   app.get("/api/campaigns/:id/kpis", async (req, res) => {
     try {
       const { id } = req.params;
@@ -23165,6 +23175,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.warn('[GET KPIs] KPI refresh failed (continuing with stored values):', e?.message || e);
         }
       }
+      if (String(platformType || '').toLowerCase() === 'instagram' && campaignId) {
+        try {
+          await refreshInstagramKpisIfNeeded(platformType, campaignId);
+        } catch (e: any) {
+          console.warn('[GET KPIs] Instagram KPI refresh failed (continuing with stored values):', e?.message || e);
+        }
+      }
 
       const kpis = await storage.getPlatformKPIs(platformType, campaignId as string | undefined);
       res.json(kpis);
@@ -23213,6 +23230,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedKPI = insertKPISchema.parse(requestData);
 
       const kpi = await storage.createKPI(validatedKPI);
+      await refreshInstagramKpisIfNeeded(platformType, validatedKPI.campaignId).catch((e: any) => {
+        console.warn("[KPI Create] Instagram KPI refresh failed:", e?.message || e);
+      });
+      const responseKpi = String(platformType || "").trim().toLowerCase() === "instagram"
+        ? await storage.getKPI(kpi.id).catch(() => kpi)
+        : kpi;
 
       // Check alerts immediately so breached thresholds create notifications right away
       if (String(platformType || '').toLowerCase() === 'google_analytics' && validatedKPI.campaignId) {
@@ -23228,7 +23251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateKPIAlertIfNeeded(String((kpi as any)?.id || "")))
         .catch((e) => console.warn("[KPI Create] Immediate email alert check failed:", (e as any)?.message || e));
 
-      res.json(kpi);
+      res.json(responseKpi || kpi);
     } catch (error) {
       console.error('Platform KPI creation error:', error);
       if (error instanceof z.ZodError) {
@@ -23286,6 +23309,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!updatedKPI) {
         return res.status(404).json({ message: "KPI not found" });
       }
+      await refreshInstagramKpisIfNeeded((okKpi as any)?.platformType, (okKpi as any)?.campaignId).catch((e: any) => {
+        console.warn("[KPI Update] Instagram KPI refresh failed:", e?.message || e);
+      });
+      const responseKPI = String((okKpi as any)?.platformType || "").trim().toLowerCase() === "instagram"
+        ? await storage.getKPI(kpiId).catch(() => updatedKPI)
+        : updatedKPI;
 
       // Re-check alerts after update (threshold or value may have changed)
       if (String((okKpi as any)?.platformType || '').toLowerCase() === 'google_analytics' && (okKpi as any)?.campaignId) {
@@ -23301,7 +23330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateKPIAlertIfNeeded(String(kpiId)))
         .catch((e) => console.warn("[KPI Update] Immediate email alert check failed:", (e as any)?.message || e));
 
-      res.json(updatedKPI);
+      res.json(responseKPI || updatedKPI);
     } catch (error) {
       console.error('Platform KPI update error:', error);
       if (error instanceof z.ZodError) {
@@ -23947,6 +23976,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaignId) return res.json([]);
       const ok = await ensureCampaignAccess(req as any, res as any, String(campaignId));
       if (!ok) return;
+      await refreshInstagramBenchmarksIfNeeded(platformType, campaignId).catch((e: any) => {
+        console.warn("[Benchmark Fetch] Instagram Benchmark refresh failed:", e?.message || e);
+      });
       const benchmarks = await storage.getPlatformBenchmarks(platformType, campaignId as string | undefined);
       res.json(benchmarks);
     } catch (error) {
@@ -23989,10 +24021,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const benchmark = await storage.createBenchmark(validatedData);
+      await refreshInstagramBenchmarksIfNeeded(platformType, validatedData.campaignId).catch((e: any) => {
+        console.warn("[Platform Benchmark Create] Instagram Benchmark refresh failed:", e?.message || e);
+      });
+      const responseBenchmark = String(platformType || "").trim().toLowerCase() === "instagram"
+        ? await storage.getBenchmark(benchmark.id).catch(() => benchmark)
+        : benchmark;
       import("./services/alert-monitoring.js")
         .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(String((benchmark as any)?.id || "")))
         .catch((e) => console.warn("[Platform Benchmark Create] Immediate email alert check failed:", (e as any)?.message || e));
-      res.status(201).json(benchmark);
+      res.status(201).json(responseBenchmark || benchmark);
     } catch (error) {
       console.error('Platform benchmark creation error:', error);
       if (error instanceof z.ZodError) {
@@ -24035,6 +24073,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!benchmark) {
         return res.status(404).json({ message: "Benchmark not found" });
       }
+      await refreshInstagramBenchmarksIfNeeded((existing as any)?.platformType, (existing as any)?.campaignId).catch((e: any) => {
+        console.warn("[Platform Benchmark Update] Instagram Benchmark refresh failed:", e?.message || e);
+      });
+      const responseBenchmark = String((existing as any)?.platformType || "").trim().toLowerCase() === "instagram"
+        ? await storage.getBenchmark(benchmarkId).catch(() => benchmark)
+        : benchmark;
 
       try {
         const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
@@ -24044,7 +24088,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(String(benchmarkId)))
         .catch((e) => console.warn("[Platform Benchmark Update] Immediate email alert check failed:", (e as any)?.message || e));
 
-      res.json(benchmark);
+      res.json(responseBenchmark || benchmark);
     } catch (error) {
       console.error('Platform benchmark update error:', error);
       if (error instanceof z.ZodError) {

@@ -18,6 +18,28 @@ describe("Benchmark route isolation regression guard", () => {
     expect((routesFile.match(/isCampaignBenchmarkPlatformType\(platformType\)/g) || []).length).toBeGreaterThanOrEqual(4);
   });
 
+  it("refreshes Instagram platform Benchmark current values through shared platform routes", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    const platformRoutes = routesFile.slice(
+      routesFile.indexOf('// Get platform benchmarks'),
+      routesFile.indexOf('app.delete("/api/platforms/:platformType/benchmarks/:benchmarkId"')
+    );
+
+    expect(routesFile).toContain('import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign } from "./utils/kpi-refresh";');
+    expect(routesFile).toContain("const refreshInstagramBenchmarksIfNeeded = async");
+    expect(platformRoutes).toContain("await refreshInstagramBenchmarksIfNeeded(platformType, campaignId)");
+    expect(platformRoutes).toContain("await refreshInstagramBenchmarksIfNeeded(platformType, validatedData.campaignId)");
+    expect(platformRoutes).toContain("await refreshInstagramBenchmarksIfNeeded((existing as any)?.platformType, (existing as any)?.campaignId)");
+    expect(platformRoutes).toContain("const responseBenchmark = String(platformType || \"\").trim().toLowerCase() === \"instagram\"");
+    expect(platformRoutes).toContain("const responseBenchmark = String((existing as any)?.platformType || \"\").trim().toLowerCase() === \"instagram\"");
+    expect(platformRoutes).toContain("storage.getBenchmark(benchmark.id)");
+    expect(platformRoutes).toContain("storage.getBenchmark(benchmarkId)");
+  });
+
   it("keeps Benchmark campaign/platform scope immutable on update routes", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),

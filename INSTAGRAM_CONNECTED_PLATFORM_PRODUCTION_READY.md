@@ -68,11 +68,12 @@ This table is the single source of truth for what is done, pending, and where ea
 | 12F | Instagram core metric display and Campaign DeepDive source-backed inclusion | Done and pushed; user validation passed | Instagram analytics UI and aggregate |
 | 13A | Instagram KPI current-value source contract | Implemented locally; user validation pending | KPI backend |
 | 13B | Instagram Benchmark current-value source contract | Implemented locally; user validation pending | Benchmark backend |
-| 13C | Instagram analytics tab shell parity and obsolete status/breakdown cleanup | Implemented locally; user validation pending | Instagram analytics UI |
-| 13D | Instagram report route/source contract | Pending | Report backend/UI |
-| 13E | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
-| 13F | Instagram PDF/export output source proof | Pending | Report exports |
-| 13G | KPI/Benchmark/Report regression and validation docs | Pending | None |
+| 13C | Instagram analytics tab shell parity and obsolete status/breakdown cleanup | Done and pushed; user validation pending | Instagram analytics UI |
+| 13D | Instagram KPI tab management UI parity | Implemented locally; user validation pending | Instagram analytics KPI UI |
+| 13E | Instagram report route/source contract | Pending | Report backend/UI |
+| 13F | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
+| 13G | Instagram PDF/export output source proof | Pending | Report exports |
+| 13H | KPI/Benchmark/Report regression and validation docs | Pending | None |
 | 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
 | 14B | End-to-end local test-mode Connected Platforms validation | Pending | Validation only |
 | 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending | Validation only |
@@ -215,6 +216,8 @@ Commit 13B Instagram Benchmark current-value source contract is implemented loca
 
 Commit 13C Instagram analytics tab shell parity and obsolete status/breakdown cleanup is implemented locally. The Instagram analytics page now exposes Overview, KPIs, Benchmarks, Ad Comparison, and Reports tabs, removes the Connection Status card, and removes the Campaign Breakdown tab without adding create/edit modals, new backend routes, provider refresh, scheduler behavior, or report generation.
 
+Commit 13D Instagram KPI tab management UI parity is implemented locally. The Instagram KPI tab now follows the established GA4/LinkedIn-style pattern with a KPI header, Create KPI action, KPI tracker cards, KPI cards with current/target/progress, edit support, and confirmation-gated delete support, using only the existing shared Instagram KPI routes.
+
 ## Root Cause Analysis
 
 The current gap is not one isolated UI bug. It is a missing source contract and lifecycle implementation:
@@ -277,6 +280,7 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 13A, the shared platform KPI routes existed, but automatic current-value refresh was LinkedIn-only. Instagram KPIs could therefore retain caller-provided or stale `currentValue` values instead of being recomputed from selected Instagram source rows. Commit 13A adds an Instagram-only KPI refresh path that reads only campaign-scoped selected `publisherPlatform="instagram"` daily rows.
 - Before Commit 13B, the shared platform Benchmark routes existed, but Instagram Benchmarks had the same stale/caller-provided `currentValue` gap as KPI rows. Commit 13B adds an Instagram-only Benchmark refresh path using the same selected source-backed Instagram daily rows and updates variance from the refreshed value.
 - Before Commit 13C, the Instagram analytics page still used its early standalone UI shape: it showed a large Connection Status card, exposed only Overview plus Campaign Breakdown tabs, and did not expose the shared platform tab surface users expect for KPIs, Benchmarks, Ad Comparison, and Reports. Commit 13C updates the page shell only and reads existing shared platform rows where safe.
+- Before Commit 13D, the Instagram KPI tab only listed existing KPI rows and showed a plain empty message when none existed. Unlike GA4, LinkedIn, and Google Ads, it had no KPI header, Create KPI action, tracker summary, progress cards, edit path, or confirmation-gated delete path. Commit 13D adds those UI affordances while continuing to use the already-scoped backend KPI contract from Commit 13A.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`; Commit 9A supplies an Instagram source builder and Commit 9D wires it into the two current aggregate route consumers.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
 - Meta/Facebook currently includes Instagram-related placement data in some contexts; promoting that data to a standalone Instagram platform without explicit source boundaries would risk double-counting and misleading source attribution.
@@ -1618,10 +1622,12 @@ Status:
 - [ ] User validation pending for Commit 13B.
 - [x] Commit 13C implemented locally: Instagram analytics page exposes Overview, KPIs, Benchmarks, Ad Comparison, and Reports tabs, with Connection Status and Campaign Breakdown removed.
 - [ ] User validation pending for Commit 13C.
-- [ ] Commit 13D pending: Instagram report route/source contract.
-- [ ] Commit 13E pending: Instagram scheduled report snapshot/send guard.
-- [ ] Commit 13F pending: Instagram PDF/export output source proof.
-- [ ] Commit 13G pending: KPI/Benchmark/Report regression and validation docs.
+- [x] Commit 13D implemented locally: Instagram KPI tab provides create/edit/delete and tracker-card UI parity through existing shared KPI routes.
+- [ ] User validation pending for Commit 13D.
+- [ ] Commit 13E pending: Instagram report route/source contract.
+- [ ] Commit 13F pending: Instagram scheduled report snapshot/send guard.
+- [ ] Commit 13G pending: Instagram PDF/export output source proof.
+- [ ] Commit 13H pending: KPI/Benchmark/Report regression and validation docs.
 
 Commit 13A root-cause trace:
 
@@ -1670,6 +1676,22 @@ Commit 13C validation:
 - Confirm the Overview metric cards still render the selected source-backed Instagram rows.
 - Confirm KPI, Benchmark, and Report tabs load existing Instagram rows or their empty states without errors.
 - This commit does not add create/edit modals, ad-level import, new report generation, scheduled sends, OAuth, provider refresh, or PDF behavior.
+
+Commit 13D root-cause trace:
+
+- The Instagram analytics tab shell existed after Commit 13C, but the KPI tab still rendered only a read-only row list or an empty message.
+- Existing backend routes already supported Instagram KPI create, update, delete, read, and current-value refresh from selected source-backed rows.
+- The missing boundary was frontend-only: the Instagram KPI tab did not expose the established KPI management pattern used by other analytics pages.
+
+Commit 13D validation:
+
+- Open `/campaigns/:id/instagram-analytics` for a campaign with Instagram connected.
+- Open the `KPIs` tab and confirm the header, tracker cards, and `Create KPI` button appear.
+- Create an Instagram KPI for a supported metric such as Impressions, Clicks, Spend, Conversions, CTR, CPC, CPM, Cost per Conversion, Conversion Rate, or Video Views.
+- Confirm the KPI appears as a card with Current, Target, and Progress.
+- Edit the KPI and confirm the card updates.
+- Delete the KPI and confirm the delete confirmation appears before removal.
+- This commit does not add Benchmark UI parity, ad-level import, report generation, scheduled sends, OAuth, provider refresh, scheduler behavior, or PDF behavior.
 
 ### Details For Commits 14A-14E: Regression Coverage And Final Evidence
 

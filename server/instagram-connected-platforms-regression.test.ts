@@ -374,6 +374,26 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).not.toContain("/api/instagram/oauth");
   });
 
+  it("renders Instagram analytics KPI tab with management UI backed by shared KPI routes", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "instagram-analytics.tsx"), "utf-8");
+
+    expect(page).toContain("Key Performance Indicators");
+    expect(page).toContain("Create KPI");
+    expect(page).toContain("Total KPIs");
+    expect(page).toContain("Avg. Progress");
+    expect(page).toContain("getInstagramKpiProgress");
+    expect(page).toContain("formatInstagramKpiValue");
+    expect(page).toContain("/api/platforms/instagram/kpis");
+    expect(page).toContain('method: editingKpi ? "PATCH" : "POST"');
+    expect(page).toContain('method: "DELETE"');
+    expect(page).toContain("AlertDialog");
+    expect(page).toContain("Edit Instagram KPI");
+    expect(page).toContain("Create Instagram KPI");
+    expect(page).not.toContain("runGA4DailyKPIAndBenchmarkJobs");
+    expect(page).not.toContain("refreshInstagram(");
+    expect(page).not.toContain("/api/instagram/oauth");
+  });
+
   it("renders Instagram analytics unavailable, error, and freshness states without refresh behavior", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "instagram-analytics.tsx"), "utf-8");
 
@@ -381,7 +401,7 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("Latest Instagram row import:");
     expect(page).toContain("latestImportedAt");
     expect(page).toContain("No selected source-backed Instagram metric rows are available yet.");
-    expect(page).toContain("No Instagram KPIs have been created yet.");
+    expect(page).toContain("No KPIs yet");
     expect(page).toContain("No Instagram Benchmarks have been created yet.");
     expect(page).toContain("No Instagram Reports have been created yet.");
     expect(page).toContain("Connect Instagram Ads from the campaign Connected Platforms section");

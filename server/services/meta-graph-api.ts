@@ -80,6 +80,8 @@ export interface MetaPlacementInsight {
   spend: number;
   conversions: number;
   actions?: MetaAction[];
+  dateStart?: string;
+  dateStop?: string;
 }
 
 export interface MetaAdSet {
@@ -375,6 +377,50 @@ export class MetaGraphAPIClient {
         spend: parseFloat(placement.spend) || 0,
         conversions,
         actions: placement.actions,
+      };
+    });
+  }
+
+  /**
+   * Get daily placement breakdown (publisher platform + position)
+   */
+  async getCampaignDailyPlacementInsights(
+    campaignId: string,
+    dateRange: { since: string; until: string }
+  ): Promise<MetaPlacementInsight[]> {
+    await this.rateLimit();
+
+    const response = await this.axiosInstance.get(`/${campaignId}/insights`, {
+      params: {
+        access_token: this.accessToken,
+        time_range: JSON.stringify(dateRange),
+        time_increment: 1,
+        breakdowns: 'publisher_platform,platform_position',
+        fields: 'impressions,clicks,spend,actions',
+        level: 'campaign',
+      },
+    });
+
+    return response.data.data.map((placement: any) => {
+      const actions = Array.isArray(placement.actions) ? placement.actions : [];
+      const conversions = actions.reduce((sum: number, action: MetaAction) => {
+        const actionType = String(action.actionType || action.action_type || "");
+        if (actionType.includes('purchase') || actionType.includes('lead') || actionType.includes('conversion')) {
+          return sum + (parseInt(action.value) || 0);
+        }
+        return sum;
+      }, 0);
+
+      return {
+        publisherPlatform: placement.publisher_platform,
+        platformPosition: placement.platform_position,
+        impressions: parseInt(placement.impressions) || 0,
+        clicks: parseInt(placement.clicks) || 0,
+        spend: parseFloat(placement.spend) || 0,
+        conversions,
+        actions: placement.actions,
+        dateStart: placement.date_start,
+        dateStop: placement.date_stop,
       };
     });
   }

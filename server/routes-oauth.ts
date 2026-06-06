@@ -20024,6 +20024,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * Explicit test-mode Instagram daily metric refresh
+   */
+  app.post("/api/instagram/:campaignId/refresh-test", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getInstagramConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Instagram connection not found" });
+      }
+      if (String((connection as any).method || "") !== "test_mode") {
+        return res.status(400).json({ error: "Instagram test refresh is available only for test-mode connections" });
+      }
+
+      const selectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      if (selectedCampaignIds.length === 0) {
+        return res.status(400).json({ error: "No selected Instagram campaigns" });
+      }
+
+      const date = yesterdayUTC();
+      const rows = selectedCampaignIds.map((id: string, index: number) => {
+        const impressions = 2500 + (index * 375);
+        const clicks = 90 + (index * 17);
+        const spend = 85 + (index * 12.5);
+        const conversions = 4 + index;
+        return {
+          campaignId: parsedId.data,
+          instagramCampaignId: id,
+          instagramCampaignName: id,
+          date,
+          publisherPlatform: "instagram",
+          platformPosition: "instagram_feed",
+          impressions,
+          clicks,
+          spend: spend.toFixed(2),
+          conversions: conversions.toFixed(2),
+          videoViews: 300 + (index * 45),
+          actions: [{ action_type: "lead", value: String(conversions) }],
+          ctr: ((clicks / impressions) * 100).toFixed(2),
+          cpc: (spend / clicks).toFixed(2),
+          cpm: ((spend / impressions) * 1000).toFixed(2),
+          costPerConversion: (spend / conversions).toFixed(2),
+          conversionRate: ((conversions / clicks) * 100).toFixed(2),
+        };
+      });
+
+      const result = await storage.upsertInstagramDailyMetrics(rows as any);
+      const updated = await storage.updateInstagramConnection(parsedId.data, { lastRefreshAt: new Date() } as any);
+
+      res.json({
+        success: true,
+        date,
+        upserted: result.upserted,
+        selectedCampaignIds,
+        publisherPlatformFilter: "instagram",
+        lastRefreshAt: updated?.lastRefreshAt,
+      });
+    } catch (error: any) {
+      console.error('[Instagram] Test refresh error:', error);
+      res.status(500).json({ error: error.message || 'Failed to refresh Instagram test metrics' });
+    }
+  });
+
+  /**
+   * Manually refresh live Instagram daily metrics from selected Instagram placement rows only
+   */
+  app.post("/api/instagram/:campaignId/refresh", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getInstagramConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Instagram connection not found" });
+      }
+      if (String((connection as any).method || "") === "test_mode") {
+        return res.status(400).json({ error: "Use /api/instagram/:campaignId/refresh-test for test-mode connections" });
+      }
+      if (!(connection as any).accessToken) {
+        return res.status(401).json({ error: "Instagram connection requires reauthorization" });
+      }
+
+      const selectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      if (selectedCampaignIds.length === 0) {
+        return res.status(400).json({ error: "No selected Instagram campaigns" });
+      }
+
+      const dateRange = String(req.query.dateRange || "30days");
+      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const { MetaGraphAPIClient } = await import('./services/meta-graph-api');
+      const metaClient = new MetaGraphAPIClient((connection as any).accessToken as string);
+      const rows: any[] = [];
+
+      for (const instagramCampaignId of selectedCampaignIds) {
+        const placements = await metaClient.getCampaignDailyPlacementInsights(instagramCampaignId, { since: startDate, until: endDate });
+        for (const placement of placements) {
+          if (String(placement.publisherPlatform || "").trim().toLowerCase() !== "instagram") continue;
+          const date = String(placement.dateStart || placement.dateStop || "").slice(0, 10);
+          if (!date) continue;
+          rows.push({
+            campaignId: parsedId.data,
+            instagramCampaignId,
+            instagramCampaignName: instagramCampaignId,
+            date,
+            publisherPlatform: "instagram",
+            platformPosition: placement.platformPosition || "unknown",
+            impressions: placement.impressions || 0,
+            clicks: placement.clicks || 0,
+            spend: String(Number(placement.spend || 0).toFixed(2)),
+            conversions: String(Number(placement.conversions || 0).toFixed(2)),
+            actions: placement.actions || [],
+            ctr: placement.impressions > 0 ? ((placement.clicks / placement.impressions) * 100).toFixed(2) : "0.00",
+            cpc: placement.clicks > 0 ? (placement.spend / placement.clicks).toFixed(2) : "0.00",
+            cpm: placement.impressions > 0 ? ((placement.spend / placement.impressions) * 1000).toFixed(2) : "0.00",
+            costPerConversion: placement.conversions > 0 ? (placement.spend / placement.conversions).toFixed(2) : "0.00",
+            conversionRate: placement.clicks > 0 ? ((placement.conversions / placement.clicks) * 100).toFixed(2) : "0.00",
+          });
+        }
+      }
+
+      const result = rows.length > 0 ? await storage.upsertInstagramDailyMetrics(rows as any) : { upserted: 0 };
+      const updated = await storage.updateInstagramConnection(parsedId.data, { lastRefreshAt: new Date() } as any);
+
+      res.json({
+        success: true,
+        dateRange,
+        startDate,
+        endDate,
+        selectedCampaignIds,
+        publisherPlatformFilter: "instagram",
+        upserted: result.upserted,
+        lastRefreshAt: updated?.lastRefreshAt,
+      });
+    } catch (error: any) {
+      console.error('[Instagram] Manual refresh error:', error);
+      res.status(500).json({ error: error.message || 'Failed to refresh Instagram metrics' });
+    }
+  });
+
+  /**
    * Get Meta analytics data for a campaign
    */
   app.get("/api/meta/:campaignId/analytics", async (req, res) => {

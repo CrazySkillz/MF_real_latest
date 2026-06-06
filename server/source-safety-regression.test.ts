@@ -420,6 +420,57 @@ describe("source safety regression guards", () => {
     expect(route).not.toContain("encryptedTokens:");
   });
 
+  it("Instagram test refresh route is campaign-scoped, test-mode-only, and selected-source-only", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.post("/api/instagram/:campaignId/refresh-test"');
+    const routeEnd = routesSource.indexOf("/**\n   * Manually refresh live Instagram daily metrics", routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(routeStart).toBeGreaterThanOrEqual(0);
+    expect(route).toContain("ensureCampaignAccess");
+    expect(route.indexOf("ensureCampaignAccess")).toBeLessThan(route.indexOf("storage.getInstagramConnection"));
+    expect(route).toContain("Instagram connection not found");
+    expect(route).toContain('String((connection as any).method || "") !== "test_mode"');
+    expect(route).toContain("selectedCampaignIds.length === 0");
+    expect(route.indexOf("selectedCampaignIds.length === 0")).toBeLessThan(route.indexOf("storage.upsertInstagramDailyMetrics"));
+    expect(route).toContain('publisherPlatform: "instagram"');
+    expect(route).toContain("storage.updateInstagramConnection");
+    expect(route).not.toContain("MetaGraphAPIClient");
+    expect(route).not.toContain("getMetaDailyMetrics");
+    expect(route).not.toContain("accessToken:");
+    expect(route).not.toContain("refreshToken:");
+    expect(route).not.toContain("encryptedTokens:");
+    expect(route).not.toContain("refreshInstagram");
+  });
+
+  it("Instagram manual refresh route imports only selected Instagram publisher-platform rows", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.post("/api/instagram/:campaignId/refresh"');
+    const routeEnd = routesSource.indexOf("/**\n   * Get Meta analytics data for a campaign", routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(routeStart).toBeGreaterThanOrEqual(0);
+    expect(route).toContain("ensureCampaignAccess");
+    expect(route.indexOf("ensureCampaignAccess")).toBeLessThan(route.indexOf("storage.getInstagramConnection"));
+    expect(route).toContain("Instagram connection not found");
+    expect(route).toContain('String((connection as any).method || "") === "test_mode"');
+    expect(route).toContain("Instagram connection requires reauthorization");
+    expect(route).toContain("selectedCampaignIds.length === 0");
+    expect(route.indexOf("selectedCampaignIds.length === 0")).toBeLessThan(route.indexOf("getCampaignDailyPlacementInsights"));
+    expect(route).toContain("getCampaignDailyPlacementInsights(instagramCampaignId");
+    expect(route).toContain('String(placement.publisherPlatform || "").trim().toLowerCase() !== "instagram"');
+    expect(route).toContain('publisherPlatform: "instagram"');
+    expect(route.indexOf('publisherPlatform: "instagram"')).toBeLessThan(route.indexOf("storage.upsertInstagramDailyMetrics"));
+    expect(route).toContain("rows.length > 0 ? await storage.upsertInstagramDailyMetrics");
+    expect(route).toContain("storage.updateInstagramConnection");
+    expect(route).not.toContain("getMetaDailyMetrics");
+    expect(route).not.toContain("storage.upsertMetaDailyMetrics");
+    expect(route).not.toContain("accessToken:");
+    expect(route).not.toContain("refreshToken:");
+    expect(route).not.toContain("encryptedTokens:");
+    expect(route).not.toContain("refreshInstagram");
+  });
+
   it("ad-platform spend routes preserve source identity for Meta and Google Ads edits", () => {
     const routesSource = readRoutesSource();
     const manualStart = routesSource.indexOf('app.post("/api/campaigns/:id/spend/process/manual"');
@@ -507,6 +558,31 @@ describe("source safety regression guards", () => {
     expect(refreshRoute.indexOf("if ((connection as any).spendOnly) return;")).toBeLessThan(refreshRoute.indexOf("generateMockGoogleAdsData"));
     expect(refreshRoute.indexOf("storage.getCampaign(campaignId)")).toBeLessThan(refreshRoute.indexOf("generateMockGoogleAdsData"));
     expect(refreshRoute.indexOf("storage.getCampaign(campaignId)")).toBeLessThan(refreshRoute.indexOf("fetchRealGoogleAdsData"));
+  });
+
+  it("Instagram scheduler fails closed before refreshing stale, spend-only, test-mode, or unselected connections", () => {
+    const schedulerSource = fs.readFileSync(path.join(process.cwd(), "server", "instagram-scheduler.ts"), "utf8");
+    const refreshStart = schedulerSource.indexOf("export async function refreshInstagramForCampaign");
+    const refreshEnd = schedulerSource.indexOf("export async function refreshAllInstagramMetrics", refreshStart);
+    const refreshFn = schedulerSource.slice(refreshStart, refreshEnd);
+    const indexSource = fs.readFileSync(path.join(process.cwd(), "server", "index.ts"), "utf8");
+
+    expect(refreshStart).toBeGreaterThanOrEqual(0);
+    expect(refreshFn).toContain("if ((connection as any).spendOnly) return");
+    expect(refreshFn).toContain('String((connection as any).method || "") === "test_mode"');
+    expect(refreshFn).toContain('String((connection as any).publisherPlatformFilter || "instagram") !== "instagram"');
+    expect(refreshFn).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => null);");
+    expect(refreshFn).toContain("Skipping refresh for missing campaign");
+    expect(refreshFn).toContain("if (!(connection as any).accessToken) return");
+    expect(refreshFn).toContain("selectedCampaignIds.length === 0");
+    expect(refreshFn.indexOf("selectedCampaignIds.length === 0")).toBeLessThan(refreshFn.indexOf("new MetaGraphAPIClient"));
+    expect(refreshFn).toContain("getCampaignDailyPlacementInsights(instagramCampaignId");
+    expect(refreshFn).toContain('String(placement.publisherPlatform || "").trim().toLowerCase() !== "instagram"');
+    expect(refreshFn).toContain('publisherPlatform: "instagram"');
+    expect(refreshFn).not.toContain("storage.deleteInstagramDailyMetrics");
+    expect(refreshFn).not.toContain("storage.upsertMetaDailyMetrics");
+    expect(indexSource).toContain('import { startInstagramScheduler } from "./instagram-scheduler";');
+    expect(indexSource).toContain("startInstagramScheduler();");
   });
 
   it("Google Ads analytics reports do not fall back to Campaign DeepDive report types", () => {

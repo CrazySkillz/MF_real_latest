@@ -149,6 +149,31 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     console.log(`No Google Ads metrics found for campaign ${campaignId}`);
   }
 
+  let instagramConn: any = null;
+  let instagramDailyRows: any[] = [];
+  let instagramSelectedCampaignIds: string[] = [];
+  try {
+    instagramConn = await storage.getInstagramConnection(campaignId);
+    if (instagramConn && !(instagramConn as any).spendOnly && String((instagramConn as any).publisherPlatformFilter || "instagram") === "instagram") {
+      const rawRows = await storage.getInstagramDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[]);
+      const selectedIds = (() => {
+        try {
+          const parsed = JSON.parse(String((instagramConn as any)?.selectedCampaignIds || "[]"));
+          instagramSelectedCampaignIds = Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+          return new Set(instagramSelectedCampaignIds);
+        } catch {
+          instagramSelectedCampaignIds = [];
+          return new Set<string>();
+        }
+      })();
+      instagramDailyRows = selectedIds.size > 0
+        ? rawRows.filter((row: any) => selectedIds.has(String(row?.instagramCampaignId || "")) && String(row?.publisherPlatform || "instagram") === "instagram")
+        : [];
+    }
+  } catch (err) {
+    console.log(`No Instagram metrics found for campaign ${campaignId}`);
+  }
+
   // Aggregate legacy engagement only for the existing snapshot schema column.
   const linkedinClicks = parseNum(linkedinMetrics.clicks);
   const ciClicks = parseNum(customIntegrationData.clicks);
@@ -211,6 +236,14 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     importedAttributedRevenue: googleAdsImportedAttributedRevenue,
     attributedRevenue: hasGoogleAdsImportedAttributedRevenue ? googleAdsImportedAttributedRevenue : 0,
   };
+  const instagramData = instagramDailyRows.reduce((totals: any, row: any) => ({
+    impressions: totals.impressions + parseNum(row?.impressions),
+    clicks: totals.clicks + parseNum(row?.clicks),
+    spend: totals.spend + parseNum(row?.spend),
+    conversions: totals.conversions + parseNum(row?.conversions),
+    videoViews: totals.videoViews + parseNum(row?.videoViews),
+    ga4AttributedRevenue: totals.ga4AttributedRevenue + parseNum(row?.ga4Revenue),
+  }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, videoViews: 0, ga4AttributedRevenue: 0 });
 
   // Double-counting prevention: GA4 and CI both track website analytics.
   // When GA4 is connected, prefer GA4 for web metrics; otherwise use CI.
@@ -219,7 +252,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   // Advertising metrics: LinkedIn + CI(ads) + Meta — no overlap
   const advertisingEngagements = linkedinClicks + linkedinEngagement + ciClicks + ciEngagements + metaClicks;
   const totalEngagements = advertisingEngagements + webSessions;
-  const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend) + metaData.spend + googleAdsData.spend;
+  const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend) + metaData.spend + googleAdsData.spend + instagramData.spend;
 
   let persistedSpend = 0;
   let spendSourceIds: string[] = [];
@@ -305,28 +338,50 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
       meta: { connected: metaConnected, ...metaData },
       customIntegration: { connected: customIntegrationConnected, ...customIntegrationData },
     },
-    platformSources: [{
-      id: "google_ads",
-      label: "Google Ads",
-      category: "paid_media",
-      connected: Boolean(googleAdsConn && !(googleAdsConn as any).spendOnly),
-      capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
-      includedMetrics: googleAdsConn && !(googleAdsConn as any).spendOnly ? ["impressions", "clicks", "spend", "conversions", ...(hasGoogleAdsImportedAttributedRevenue ? ["attributedRevenue"] : [])] : [],
-      excludedMetrics: [
-        { metric: "sessions", reason: "Sessions are web analytics metrics" },
-        { metric: "users", reason: "Users are web analytics metrics" },
-        ...(hasGoogleAdsImportedAttributedRevenue ? [] : [{ metric: "attributedRevenue", reason: "Google Ads Total Revenue requires a Google Ads-scoped imported revenue source" }]),
-      ],
-      metrics: googleAdsData,
-      revenueSemantics: {
-        attributedRevenueSource: googleAdsAttributedRevenueSource,
-        attributedRevenueLabel: hasGoogleAdsImportedAttributedRevenue ? "Google Ads imported attributed revenue" : "Unavailable",
-        importedRevenueSourceIds: googleAdsImportedRevenueSourceIds,
-        conversionValueLabel: "Native Google Ads conversion value",
-        ga4AttributedRevenueLabel: "GA4-matched revenue; not used as Google Ads Total Revenue",
+    platformSources: [
+      {
+        id: "google_ads",
+        label: "Google Ads",
+        category: "paid_media",
+        connected: Boolean(googleAdsConn && !(googleAdsConn as any).spendOnly),
+        capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        includedMetrics: googleAdsConn && !(googleAdsConn as any).spendOnly ? ["impressions", "clicks", "spend", "conversions", ...(hasGoogleAdsImportedAttributedRevenue ? ["attributedRevenue"] : [])] : [],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+          ...(hasGoogleAdsImportedAttributedRevenue ? [] : [{ metric: "attributedRevenue", reason: "Google Ads Total Revenue requires a Google Ads-scoped imported revenue source" }]),
+        ],
+        metrics: googleAdsData,
+        revenueSemantics: {
+          attributedRevenueSource: googleAdsAttributedRevenueSource,
+          attributedRevenueLabel: hasGoogleAdsImportedAttributedRevenue ? "Google Ads imported attributed revenue" : "Unavailable",
+          importedRevenueSourceIds: googleAdsImportedRevenueSourceIds,
+          conversionValueLabel: "Native Google Ads conversion value",
+          ga4AttributedRevenueLabel: "GA4-matched revenue; not used as Google Ads Total Revenue",
+        },
+        freshness: { selectedCampaignIds: googleAdsSelectedCampaignIds },
       },
-      freshness: { selectedCampaignIds: googleAdsSelectedCampaignIds },
-    }],
+      {
+        id: "instagram",
+        label: "Instagram Ads",
+        category: "paid_media",
+        connected: Boolean(instagramConn && !(instagramConn as any).spendOnly && instagramSelectedCampaignIds.length > 0),
+        capabilities: ["impressions", "clicks", "spend", "conversions"],
+        includedMetrics: instagramConn && !(instagramConn as any).spendOnly && instagramSelectedCampaignIds.length > 0 ? ["impressions", "clicks", "spend", "conversions"] : [],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+          { metric: "attributedRevenue", reason: "Instagram attributed revenue is unavailable until an Instagram-scoped revenue source is configured" },
+        ],
+        metrics: instagramData,
+        revenueSemantics: {
+          attributedRevenueSource: "unavailable",
+          attributedRevenueLabel: "Unavailable",
+          ga4AttributedRevenueLabel: "GA4-matched revenue; not used as Instagram Total Revenue",
+        },
+        freshness: { selectedCampaignIds: instagramSelectedCampaignIds },
+      },
+    ],
     revenue: {
       onsiteRevenue: ga4Data.revenue,
       offsiteRevenue: parseFloat((offsiteRevenueTotal + googleAdsData.attributedRevenue).toFixed(2)),
@@ -443,6 +498,29 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
             },
           };
         }),
+      },
+      {
+        id: "instagram",
+        label: "Instagram Ads",
+        category: "paid_media",
+        connected: Boolean(instagramConn && !(instagramConn as any).spendOnly && instagramSelectedCampaignIds.length > 0),
+        capabilities: ["impressions", "clicks", "spend", "conversions"],
+        includedMetrics: instagramConn && !(instagramConn as any).spendOnly && instagramSelectedCampaignIds.length > 0 ? ["impressions", "clicks", "spend", "conversions"] : [],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+        ],
+        dailyRows: instagramDailyRows.map((row: any) => ({
+          date: row.date,
+          metrics: {
+            impressions: row.impressions,
+            clicks: row.clicks,
+            spend: row.spend,
+            conversions: row.conversions,
+            ga4AttributedRevenue: row.ga4Revenue,
+          },
+        })),
+        freshness: { selectedCampaignIds: instagramSelectedCampaignIds },
       },
       {
         id: "custom_integration",

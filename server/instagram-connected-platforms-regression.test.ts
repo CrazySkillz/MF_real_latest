@@ -184,7 +184,72 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(validation).toContain('"instagram" | null');
     expect(routes).not.toContain("/api/instagram/oauth");
     expect(routes).not.toContain("refreshInstagram");
-    expect(routes).not.toContain("upsertInstagramDailyMetrics");
+    expect(validation).not.toContain("upsertInstagramDailyMetrics");
+  });
+
+  it("writes Instagram test daily metrics only through the explicit test refresh route", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.post("/api/instagram/:campaignId/refresh-test"');
+    const routeEnd = routes.indexOf("/**\n   * Manually refresh live Instagram daily metrics", routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(routeStart).toBeGreaterThanOrEqual(0);
+    expect(route).toContain("ensureCampaignAccess");
+    expect(route).toContain("storage.getInstagramConnection(parsedId.data)");
+    expect(route).toContain('String((connection as any).method || "") !== "test_mode"');
+    expect(route).toContain("selectedCampaignIds.length === 0");
+    expect(route).toContain('publisherPlatform: "instagram"');
+    expect(route).toContain('platformPosition: "instagram_feed"');
+    expect(route).toContain("storage.upsertInstagramDailyMetrics(rows as any)");
+    expect(route).toContain("storage.updateInstagramConnection(parsedId.data, { lastRefreshAt: new Date() } as any)");
+    expect(route).not.toContain("MetaGraphAPIClient");
+    expect(route).not.toContain("getMetaDailyMetrics");
+    expect(route).not.toContain("/api/instagram/oauth");
+    expect(route).not.toContain("refreshInstagram");
+  });
+
+  it("manual Instagram refresh imports only selected live Instagram placement rows", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.post("/api/instagram/:campaignId/refresh"');
+    const routeEnd = routes.indexOf("/**\n   * Get Meta analytics data for a campaign", routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+    const metaClient = readFileSync(join(process.cwd(), "server", "services", "meta-graph-api.ts"), "utf-8");
+
+    expect(routeStart).toBeGreaterThanOrEqual(0);
+    expect(route).toContain("ensureCampaignAccess");
+    expect(route).toContain("storage.getInstagramConnection(parsedId.data)");
+    expect(route).toContain('String((connection as any).method || "") === "test_mode"');
+    expect(route).toContain("selectedCampaignIds.length === 0");
+    expect(route).toContain("new MetaGraphAPIClient((connection as any).accessToken as string)");
+    expect(route).toContain("metaClient.getCampaignDailyPlacementInsights(instagramCampaignId, { since: startDate, until: endDate })");
+    expect(route).toContain('String(placement.publisherPlatform || "").trim().toLowerCase() !== "instagram"');
+    expect(route).toContain('publisherPlatform: "instagram"');
+    expect(route).toContain("storage.upsertInstagramDailyMetrics(rows as any)");
+    expect(route).toContain("storage.updateInstagramConnection(parsedId.data, { lastRefreshAt: new Date() } as any)");
+    expect(route).not.toContain("getMetaDailyMetrics");
+    expect(route).not.toContain("storage.upsertMetaDailyMetrics");
+    expect(route).not.toContain("/api/instagram/oauth");
+    expect(route).not.toContain("refreshInstagram");
+    expect(metaClient).toContain("async getCampaignDailyPlacementInsights");
+    expect(metaClient).toContain("time_increment: 1");
+    expect(metaClient).toContain("breakdowns: 'publisher_platform,platform_position'");
+    expect(metaClient).toContain("dateStart: placement.date_start");
+  });
+
+  it("wires Instagram into scheduler snapshots through the same aggregate source contract", () => {
+    const scheduler = readFileSync(join(process.cwd(), "server", "scheduler.ts"), "utf-8");
+
+    expect(scheduler).toContain("storage.getInstagramConnection(campaignId)");
+    expect(scheduler).toContain("storage.getInstagramDailyMetrics(campaignId, startDate, endDate)");
+    expect(scheduler).toContain("selectedIds.has(String(row?.instagramCampaignId || \"\"))");
+    expect(scheduler).toContain('String(row?.publisherPlatform || "instagram") === "instagram"');
+    expect(scheduler).toContain('id: "instagram"');
+    expect(scheduler).toContain('label: "Instagram Ads"');
+    expect(scheduler).toContain('category: "paid_media"');
+    expect(scheduler).toContain("metrics: instagramData");
+    expect(scheduler).toContain("freshness: { selectedCampaignIds: instagramSelectedCampaignIds }");
+    expect(scheduler).toContain("ga4AttributedRevenue: row.ga4Revenue");
+    expect(scheduler).not.toContain("storage.upsertInstagramDailyMetrics");
   });
 
   it("uses only instagram_api source identity for Instagram-scoped manual spend", () => {

@@ -125,6 +125,8 @@ describe("Trend Analysis Overview regression guard", () => {
     expect(scheduler).toContain("storage.getLinkedInDailyMetrics(campaignId, startDate, endDate)");
     expect(scheduler).toContain("storage.getMetaDailyMetrics(campaignId, startDate, endDate)");
     expect(scheduler).toContain("storage.getGoogleAdsDailyMetrics(campaignId, startDate, endDate)");
+    expect(scheduler).toContain("storage.getInstagramDailyMetrics(campaignId, startDate, endDate)");
+    expect(scheduler).toContain('id: "instagram"');
     expect(scheduler).toContain("trendAnalysis,");
   });
 

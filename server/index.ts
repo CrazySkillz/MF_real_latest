@@ -10,6 +10,7 @@ import { startGoogleSheetsTokenScheduler } from "./google-sheets-token-scheduler
 import { startDailyAutoRefreshScheduler } from "./auto-refresh-scheduler";
 import { startGA4DailyScheduler } from "./ga4-daily-scheduler";
 import { startGoogleAdsScheduler } from "./google-ads-scheduler";
+import { startInstagramScheduler } from "./instagram-scheduler";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { clerkMiddleware } from "@clerk/express";
@@ -886,6 +887,13 @@ process.on('uncaughtException', (error: Error) => {
           startGoogleAdsScheduler();
         } catch (error) {
           console.error('Failed to start Google Ads scheduler:', error);
+        }
+
+        // Start Instagram data refresh scheduler
+        try {
+          startInstagramScheduler();
+        } catch (error) {
+          console.error('Failed to start Instagram scheduler:', error);
         }
       }, 5000); // 5 second delay
     });

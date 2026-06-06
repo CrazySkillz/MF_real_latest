@@ -50,16 +50,16 @@ This table is the single source of truth for what is done, pending, and where ea
 | 9C | Meta/Facebook plus Instagram no-double-counting guard | Done and pushed; user validation passed | Campaign DeepDive source safety |
 | 9D | Campaign DeepDive consumers accept Instagram through existing `platformSources` contract | Done and pushed; user validation passed | Campaign DeepDive UI values |
 | 9E | Campaign DeepDive regression and validation docs | Done and pushed; user validation passed | None |
-| 10A | Add `instagram` platform context allowlist only where storage/source proof exists | Implemented locally; user validation pending | Financial import backend |
-| 10B | Instagram spend import/edit source identity uses `instagram_api` only | Implemented locally; user validation pending | Spend import path |
-| 10C | Instagram attributed revenue import/edit source identity uses `platformContext="instagram"` only | Implemented locally; user validation pending | Revenue import path |
-| 10D | Revenue/spend regression and validation docs | Implemented locally; user validation pending | None |
-| 11A | Instagram provider/client adapter research refresh before live behavior | Pending | None |
-| 11B | Test-mode Instagram daily metric generation behind explicit refresh only | Pending | Backend refresh route |
-| 11C | Manual refresh route imports selected Instagram-only rows | Pending | Backend refresh route |
-| 11D | Scheduler refresh skips missing, spend-only, invalid, or unselected-source campaigns | Pending | Background refresh |
-| 11E | Scheduler snapshot integration uses same aggregate contract as UI | Pending | Background snapshots |
-| 11F | Scheduler/refresh regression and validation docs | Pending | None |
+| 10A | Add `instagram` platform context allowlist only where storage/source proof exists | Done and pushed; user validation passed | Financial import backend |
+| 10B | Instagram spend import/edit source identity uses `instagram_api` only | Done and pushed; user validation passed | Spend import path |
+| 10C | Instagram attributed revenue import/edit source identity uses `platformContext="instagram"` only | Done and pushed; user validation passed | Revenue import path |
+| 10D | Revenue/spend regression and validation docs | Done and pushed; user validation passed | None |
+| 11A | Instagram provider/client adapter research refresh before live behavior | Implemented locally; user validation pending | None |
+| 11B | Test-mode Instagram daily metric generation behind explicit refresh only | Implemented locally; user validation pending | Backend refresh route |
+| 11C | Manual refresh route imports selected Instagram-only rows | Implemented locally; user validation pending | Backend refresh route |
+| 11D | Scheduler refresh skips missing, spend-only, invalid, or unselected-source campaigns | Implemented locally; user validation pending | Background refresh |
+| 11E | Scheduler snapshot integration uses same aggregate contract as UI | Implemented locally; user validation pending | Background snapshots |
+| 11F | Scheduler/refresh regression and validation docs | Implemented locally; user validation pending | None |
 | 12A | Backend disconnect route and storage cleanup proof | Pending after 4D if 4D is not enough | Backend lifecycle route |
 | 12B | Reconnect stale-row safety and selected-scope replacement proof | Pending | Backend lifecycle behavior |
 | 12C | Existing damaged-data cleanup plan if stale Instagram rows can exist | Pending | Data cleanup plan only unless needed |
@@ -88,7 +88,7 @@ Instagram must be treated as a campaign-scoped main paid-media connected source 
 
 Instagram is not implemented as a first-class connected platform in the current local codebase.
 
-Initial code supported Meta/Facebook Ads and could surface Instagram placement names inside Meta analytics, but that was not the same as a standalone Instagram connected platform. The current implementation now has a test-mode Instagram source contract, schema/storage, guarded routes, Create Campaign and Connected Platforms flows, Campaign Overview metrics, analytics page, Campaign DeepDive aggregate wiring, and financial platform-context allowlist; live OAuth, scheduler, reports, KPI/Benchmark parity, and full revenue/spend source identity remain pending.
+Initial code supported Meta/Facebook Ads and could surface Instagram placement names inside Meta analytics, but that was not the same as a standalone Instagram connected platform. The current implementation now has a test-mode Instagram source contract, schema/storage, guarded routes, Create Campaign and Connected Platforms flows, Campaign Overview metrics, analytics page, Campaign DeepDive aggregate wiring, financial platform-context isolation, the Commit 11A provider/refresh design trace, an explicit test-mode Instagram daily metric refresh route, a manual live refresh route that imports selected Instagram publisher-platform rows only, a fail-closed Instagram scheduler refresh wrapper, and scheduler snapshot integration through the same aggregate source contract as the UI; live OAuth connect UI, reports, and KPI/Benchmark parity remain pending.
 
 No production-ready claim can be made for Instagram until the implementation and validation items in this tracker are completed.
 
@@ -178,6 +178,20 @@ Commit 10C Instagram revenue source identity is implemented locally. Shared manu
 
 Commit 10D revenue/spend closeout is implemented locally. It records the completed Commit 10 boundary, regression coverage, and validation path for Instagram financial platform-context isolation; it does not add runtime behavior beyond Commits 10A-10C.
 
+Commit 10A-10D validation passed by connecting to the Instagram test account and running the focused regression suite.
+
+Commit 11A provider/client adapter research refresh is implemented locally as documentation and source trace only. It confirms that the next runtime step must use the existing Meta Marketing API client boundary with `publisher_platform,platform_position` insights breakdowns, persist only rows where `publisher_platform === "instagram"`, and keep all refresh behavior out of runtime until Commit 11B/11C. Official Meta documentation refresh was attempted on 2026-06-06, but the browser tool could not retrieve the developer pages during this session; the implementation boundary therefore remains based on the previously documented official-source contract plus current local `server/services/meta-graph-api.ts`, `server/meta-scheduler.ts`, and Instagram storage traces.
+
+Commit 11B test-mode Instagram daily metric generation is implemented locally. It adds `POST /api/instagram/:campaignId/refresh-test`, guarded by campaign access, existing Instagram connection, `method === "test_mode"`, and non-empty selected Instagram campaign IDs. It upserts one selected-source daily row per selected Instagram campaign with `publisherPlatform="instagram"` and updates `lastRefreshAt`; it does not add live OAuth, provider calls, scheduler behavior, UI refresh controls, reports, KPI, Benchmark, or non-test refresh behavior.
+
+Commit 11C manual Instagram refresh is implemented locally. It adds `POST /api/instagram/:campaignId/refresh`, guarded by campaign access, existing Instagram connection, non-test mode, access token presence, and non-empty selected Instagram campaign IDs. It uses the Meta API client daily placement breakdown method and upserts only rows where the provider placement has `publisherPlatform === "instagram"`; it does not add live OAuth connect UI, scheduler behavior, automatic refresh, reports, KPI, Benchmark, or aggregate writes beyond the existing selected-row read paths.
+
+Commit 11D scheduler refresh fail-closed wrapper is implemented locally. It adds `server/instagram-scheduler.ts`, starts it from `server/index.ts`, and refreshes no rows until a non-test, non-spend-only, token-backed Instagram connection with a valid campaign, `publisherPlatformFilter="instagram"`, and selected Instagram campaign IDs is present. It does not run immediately on server startup, does not delete Instagram rows on skip/failure, and does not add scheduler snapshot/report/KPI/Benchmark behavior.
+
+Commit 11E scheduler snapshot integration is implemented locally. `server/scheduler.ts` now reads only selected `instagram_daily_metrics` rows with `publisherPlatform="instagram"` and passes a normalized Instagram source into the existing `buildPerformanceSummaryAggregate(...)` `platformSources` contract and Trend Analysis snapshot source list. It is read-only snapshot composition and does not add refresh writes, OAuth, reports, KPI, or Benchmark behavior.
+
+Commit 11F scheduler/refresh closeout is implemented locally as documentation only. It records the completed Commit 11A-11E boundary, focused regression evidence, and remaining validation gaps: live OAuth connect UI, deployed/provider token evidence, report parity, KPI/Benchmark parity, and production-like live refresh proof remain later commits.
+
 ## Root Cause Analysis
 
 The current gap is not one isolated UI bug. It is a missing source contract and lifecycle implementation:
@@ -224,7 +238,13 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 10B, an Instagram-scoped spend write could still use a generic or caller-supplied source type, which would make source provenance ambiguous and risk cross-platform spend leakage. Commit 10B forces Instagram spend identity to `instagram_api` and prevents editing a non-Instagram spend source as Instagram.
 - Before Commit 10C, shared revenue edit paths validated platform context but did not explicitly re-persist the context during source updates. Commit 10C makes the platform-context identity explicit for manual, CSV, and Google Sheets revenue edits.
 - Before Commit 10D, Commit 10A-10C implementation and regression proof existed locally but the tracker did not explicitly close the revenue/spend validation boundary. Commit 10D records that boundary without runtime changes.
-- `server/scheduler.ts` and platform schedulers have no Instagram refresh or snapshot input.
+- Before Commit 11A, the tracker moved from financial source identity into scheduler/refresh work without restating the exact provider boundary. That was unsafe because current Meta client code can fetch generic campaign insights and placement breakdowns, while standalone Instagram must materialize only insights rows whose `publisher_platform` is exactly `instagram`. Commit 11A records the safe adapter boundary before any refresh route or scheduler is added.
+- Before Commit 11B, Instagram test accounts could connect and read persisted rows, but there was no explicit writer to create source-backed test daily rows for validation. Commit 11B adds a test-mode-only refresh route that writes only selected Instagram rows with `publisherPlatform="instagram"` and leaves live/provider/scheduler behavior pending.
+- Before Commit 11C, there was still no live manual refresh path to materialize selected Instagram-only provider rows. Commit 11C adds a token-backed manual route that calls daily placement breakdowns for selected campaign IDs and filters to `publisherPlatform === "instagram"` before writing `instagram_daily_metrics`.
+- Before Commit 11D, background refresh had no Instagram wrapper, so future scheduler integration could bypass the selected-source and no-double-counting guards proven in the manual route. Commit 11D adds a scheduler wrapper that skips missing campaigns, spend-only rows, test-mode rows, invalid publisher-platform filters, missing tokens, and missing selected campaigns before any provider call.
+- Before Commit 11E, scheduled snapshots could store Campaign DeepDive aggregate history for Google Ads and other sources but not Instagram, even after Instagram rows existed. Commit 11E adds Instagram to snapshot composition through the same selected-row aggregate contract used by Campaign DeepDive UI routes.
+- Before Commit 11D/11E, `server/scheduler.ts` and platform schedulers had no Instagram refresh or snapshot input. Commit 11D adds the refresh wrapper, and Commit 11E adds selected-row snapshot aggregate input.
+- Before Commit 11F, the implementation existed but the tracker did not close the Commit 11 refresh/scheduler boundary or name the exact validation command set. Commit 11F records that boundary without runtime changes.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`; Commit 9A supplies an Instagram source builder and Commit 9D wires it into the two current aggregate route consumers.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
 - Meta/Facebook currently includes Instagram-related placement data in some contexts; promoting that data to a standalone Instagram platform without explicit source boundaries would risk double-counting and misleading source attribution.
@@ -1234,14 +1254,10 @@ Validation:
 
 Status:
 
-- [x] Commit 10A implemented locally: shared financial platform-context validators and storage revenue platform-context type accept `instagram`.
-- [ ] User validation pending for Commit 10A.
-- [x] Commit 10B implemented locally: Instagram-scoped manual spend writes use `instagram_api` source identity only.
-- [ ] User validation pending for Commit 10B.
-- [x] Commit 10C implemented locally: shared manual, CSV, and Google Sheets revenue edits preserve `platformContext="instagram"`.
-- [ ] User validation pending for Commit 10C.
-- [x] Commit 10D implemented locally: revenue/spend regression and validation boundary is documented.
-- [ ] User validation pending for Commit 10D.
+- [x] Commit 10A done and pushed; user validation passed: shared financial platform-context validators and storage revenue platform-context type accept `instagram`.
+- [x] Commit 10B done and pushed; user validation passed: Instagram-scoped manual spend writes use `instagram_api` source identity only.
+- [x] Commit 10C done and pushed; user validation passed: shared manual, CSV, and Google Sheets revenue edits preserve `platformContext="instagram"`.
+- [x] Commit 10D done and pushed; user validation passed: revenue/spend regression and validation boundary is documented.
 
 Commit 10 local validation:
 
@@ -1281,7 +1297,98 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Commit 11A implemented locally: provider/client adapter research and refresh boundary traced before live behavior.
+- [ ] User validation pending for Commit 11A.
+- [x] Commit 11B implemented locally: test-mode Instagram daily metric generation behind explicit refresh only.
+- [ ] User validation pending for Commit 11B.
+- [x] Commit 11C implemented locally: manual refresh route imports selected Instagram-only rows.
+- [ ] User validation pending for Commit 11C.
+- [x] Commit 11D implemented locally: scheduler refresh skips missing, spend-only, invalid, or unselected-source campaigns.
+- [ ] User validation pending for Commit 11D.
+- [x] Commit 11E implemented locally: scheduler snapshot integration uses same aggregate contract as UI.
+- [ ] User validation pending for Commit 11E.
+- [x] Commit 11F implemented locally: scheduler/refresh regression and validation docs.
+- [ ] User validation pending for Commit 11F.
+
+Commit 11A root-cause trace:
+
+- `server/services/meta-graph-api.ts` already contains the Meta API client and placement-breakdown method using `publisher_platform,platform_position`.
+- `server/meta-scheduler.ts` currently refreshes Meta/Facebook rows from generic campaign daily insights; this is not safe for standalone Instagram because it does not require `publisher_platform === "instagram"`.
+- `server/storage.ts` already has `upsertInstagramDailyMetrics(...)` keyed by campaign, Instagram campaign ID, date, and platform position, so the safe next runtime boundary is a dedicated Instagram refresh adapter that writes only filtered Instagram placement rows into `instagram_daily_metrics`.
+- Existing Instagram read paths already filter selected campaign IDs and `publisherPlatform === "instagram"`, so Commit 11B/11C must preserve that source identity instead of importing all Meta campaign rows.
+
+Commit 11A validation:
+
+- Documentation-only/source-trace change.
+- No routes, schedulers, storage writes, UI, OAuth, aggregate behavior, KPI, Benchmark, or report behavior are added.
+
+Commit 11B root-cause trace:
+
+- Test-mode Instagram connections can be created and finalized, and the Overview, analytics page, and Campaign DeepDive can read `instagram_daily_metrics`, but no backend path wrote selected Instagram test daily rows after connection.
+- The missing writer caused connected Instagram test accounts to remain in the expected empty-row state even though the schema/storage read path existed.
+- The safe fix is an explicit test refresh route only, not automatic setup seeding or scheduler refresh, so existing connection flows and analytics pages do not gain hidden write behavior.
+
+Commit 11B validation:
+
+- `POST /api/instagram/:campaignId/refresh-test` requires campaign access, an existing Instagram connection, `method === "test_mode"`, and selected Instagram campaign IDs before calling `storage.upsertInstagramDailyMetrics`.
+- Rows are generated only for selected campaign IDs and persist `publisherPlatform: "instagram"`.
+- The route does not call live OAuth, `MetaGraphAPIClient`, Meta daily metrics storage, scheduler logic, KPI, Benchmark, report, or aggregate write paths.
+
+Commit 11C root-cause trace:
+
+- The existing Meta API client had placement breakdown support, but not a daily placement method that preserved `date_start`/`date_stop` for `instagram_daily_metrics`.
+- The new `getCampaignDailyPlacementInsights(...)` method adds only `time_increment: 1` placement reads and returns the provider dates needed for daily rows.
+- The manual Instagram route calls that method only after campaign access, connection existence, non-test mode, access token presence, and selected campaign IDs are proven.
+- Provider rows are filtered to `publisherPlatform === "instagram"` before any upsert, preserving the standalone Instagram no-double-counting boundary with Meta/Facebook.
+
+Commit 11C validation:
+
+- `POST /api/instagram/:campaignId/refresh` rejects test-mode connections, missing tokens, and missing selected campaigns before provider calls.
+- Only selected campaign IDs are queried.
+- Only placement rows with `publisherPlatform: "instagram"` are persisted.
+- The route does not call Meta daily metric storage, Instagram OAuth, scheduler, KPI, Benchmark, report, or aggregate write paths.
+
+Commit 11D root-cause trace:
+
+- `server/index.ts` started schedulers for GA4, LinkedIn, Meta/Facebook, Google Sheets, and Google Ads, but not Instagram.
+- Without an Instagram scheduler wrapper, later automatic refresh could be bolted onto the wrong route or generic Meta scheduler and bypass the standalone Instagram source contract.
+- The safe scheduler boundary is to reuse the selected-source daily placement import rules, while skipping missing campaigns, spend-only connections, test-mode connections, invalid publisher-platform filters, missing tokens, and missing selected campaigns before any provider call.
+
+Commit 11D validation:
+
+- `server/instagram-scheduler.ts` refreshes only after the fail-closed guards pass.
+- Skipped refreshes do not delete or zero existing `instagram_daily_metrics`.
+- The scheduler uses `getCampaignDailyPlacementInsights(...)` and persists only `publisherPlatform: "instagram"` rows.
+- `server/index.ts` starts the Instagram scheduler after startup delay, and the scheduler itself does not perform an immediate startup refresh.
+
+Commit 11E root-cause trace:
+
+- `server/scheduler.ts` already stores `metrics.performanceSummary` snapshots from the shared aggregate contract and `metrics.trendAnalysis` snapshots from the shared trend aggregate.
+- Before 11E, those snapshots did not read Instagram rows, so Campaign DeepDive UI could include Instagram while snapshot-backed history omitted it.
+- The safe fix is read-only snapshot composition from existing `instagram_daily_metrics`, filtered by selected Instagram campaign IDs and `publisherPlatform === "instagram"`, with no refresh write behavior.
+
+Commit 11E validation:
+
+- `aggregateCampaignMetrics(...)` reads `storage.getInstagramConnection(...)` and `storage.getInstagramDailyMetrics(...)`.
+- It filters rows to selected Instagram campaign IDs and `publisherPlatform === "instagram"`.
+- It passes Instagram as a normalized `platformSources` entry to `buildPerformanceSummaryAggregate(...)`.
+- It passes Instagram daily rows into the Trend Analysis snapshot source list.
+- It does not call `storage.upsertInstagramDailyMetrics`.
+
+Commit 11F root-cause trace:
+
+- Commit 11 spans provider/source-contract tracing, explicit test refresh, manual live refresh, scheduler fail-closed behavior, and scheduler snapshot composition.
+- Without a closeout record, the tracker could again become ambiguous about whether Commit 11 is still open, which validations apply, and what remains outside this bundle.
+- The safe fix is documentation-only closeout: no runtime changes, no route changes, no scheduler changes, and no tests changed beyond the already-added 11B-11E regression guards.
+
+Commit 11F validation:
+
+- Local validation for the current Commit 11 bundle:
+  - `git diff --check`
+  - `npm run check`
+  - `npm test -- server/instagram-connected-platforms-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts server/trend-analysis-overview-regression.test.ts`
+- User validation remains pending for Commit 11A-11F as one bundled Commit 11 validation.
+- Live provider validation remains pending until a production-like Instagram token-backed connection exists.
 
 ### Details For Commits 12A-12D: Disconnect, Reconnect, And Stale Data Safety
 
@@ -1530,10 +1637,15 @@ Implementation:
 - [x] Add aggregate resolver source builder.
 - [x] Add Instagram financial platform-context allowlist.
 - [ ] Add Instagram revenue/spend source identity and attribution.
-- [ ] Add scheduler.
+- [x] Complete Commit 11A provider/client adapter research and refresh boundary trace.
+- [x] Add explicit test-mode Instagram daily metric refresh route.
+- [x] Add selected-source manual Instagram refresh route.
+- [x] Add fail-closed Instagram scheduler refresh wrapper.
+- [x] Add Instagram scheduler snapshot aggregate input.
+- [x] Close Commit 11 scheduler/refresh validation documentation.
 - [ ] Add disconnect/reconnect cleanup.
 - [ ] Add KPI/Benchmark/report parity.
-- [ ] Add regression coverage.
+- [x] Add Commit 11 regression coverage.
 
 Evidence:
 
@@ -1579,11 +1691,19 @@ Evidence:
 - [x] Commit 10B local Instagram spend source identity guard implementation.
 - [x] Commit 10C local Instagram revenue source identity guard implementation.
 - [x] Commit 10D local revenue/spend validation closeout.
+- [x] Commit 10A-10D user validation passed by connecting to the Instagram test account and running focused regression checks.
+- [x] Commit 11A local provider/client adapter research and refresh boundary trace.
+- [x] Commit 11B local explicit test-mode Instagram daily metric refresh route.
+- [x] Commit 11C local selected-source manual Instagram refresh route.
+- [x] Commit 11D local fail-closed scheduler refresh wrapper.
+- [x] Commit 11E local scheduler snapshot aggregate input.
+- [x] Commit 11F local scheduler/refresh validation documentation closeout.
 - [ ] Local test-mode Create Campaign validation.
 - [ ] Local test-mode Connected Platforms validation.
 - [x] Local Campaign DeepDive aggregate validation through focused regression suite.
 - [x] Local Meta + Instagram no-double-counting validation through focused regression suite.
 - [ ] Local scheduler validation.
+- [x] Local Commit 11 scheduler/refresh regression validation through focused regression suite.
 - [ ] Local report validation.
 - [ ] Deployed or production-like live OAuth validation.
 
@@ -1632,7 +1752,10 @@ Evidence:
 - User validation passed for Instagram Commit 7D Campaign Overview regression and validation closeout by connecting to the Instagram test account.
 - User validation passed for Instagram Commit 8A-8F analytics page foundation by connecting to the Instagram test account; the connected source opened the analytics page and correctly showed the selected-campaign unavailable state when no persisted daily rows existed.
 - User validation passed for Instagram Commit 9A-9E Campaign DeepDive aggregate source wiring by connecting to the Instagram test account.
-- Local implementation complete for Instagram Commit 10A financial platform-context allowlist; user validation is pending.
-- Local implementation complete for Instagram Commit 10B spend source identity guard; user validation is pending.
-- Local implementation complete for Instagram Commit 10C revenue source identity guard; user validation is pending.
-- Local implementation complete for Instagram Commit 10D revenue/spend validation closeout; user validation is pending.
+- User validation passed for Instagram Commit 10A-10D financial platform-context isolation by connecting to the Instagram test account and running `npm run check` plus the focused regression suite.
+- Local implementation complete for Instagram Commit 11A provider/client adapter research and refresh boundary trace; user validation is pending.
+- Local implementation complete for Instagram Commit 11B explicit test-mode daily metric refresh route; user validation is pending.
+- Local implementation complete for Instagram Commit 11C selected-source manual refresh route; user validation is pending.
+- Local implementation complete for Instagram Commit 11D fail-closed scheduler refresh wrapper; user validation is pending.
+- Local implementation complete for Instagram Commit 11E scheduler snapshot aggregate input; user validation is pending.
+- Local implementation complete for Instagram Commit 11F scheduler/refresh validation documentation closeout; user validation is pending.

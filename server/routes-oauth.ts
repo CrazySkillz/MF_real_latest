@@ -14651,8 +14651,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfg = {};
       }
       const requestedPlatformContext = String((req.query as any)?.platformContext || "").trim().toLowerCase();
-      const requestedContexts = (["ga4", "linkedin", "meta", "google_ads"] as const).includes(requestedPlatformContext as any)
-        ? [requestedPlatformContext as "ga4" | "linkedin" | "meta" | "google_ads"]
+      const requestedContexts = (["ga4", "linkedin", "meta", "google_ads", "instagram"] as const).includes(requestedPlatformContext as any)
+        ? [requestedPlatformContext as "ga4" | "linkedin" | "meta" | "google_ads" | "instagram"]
         : ["ga4", "linkedin", "meta"] as const;
       if (requestedPlatformContext && String(cfg?.platformContext || cfg?.platform || "").trim().toLowerCase() !== requestedPlatformContext) {
         cfg = {};
@@ -15057,8 +15057,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfg = {};
       }
       const requestedPlatformContext = String((req.query as any)?.platformContext || "").trim().toLowerCase();
-      const requestedContexts = (["ga4", "linkedin", "meta", "google_ads"] as const).includes(requestedPlatformContext as any)
-        ? [requestedPlatformContext as "ga4" | "linkedin" | "meta" | "google_ads"]
+      const requestedContexts = (["ga4", "linkedin", "meta", "google_ads", "instagram"] as const).includes(requestedPlatformContext as any)
+        ? [requestedPlatformContext as "ga4" | "linkedin" | "meta" | "google_ads" | "instagram"]
         : ["ga4", "linkedin", "meta"] as const;
       if (requestedPlatformContext && String(cfg?.platformContext || cfg?.platform || "").trim().toLowerCase() !== requestedPlatformContext) {
         cfg = {};

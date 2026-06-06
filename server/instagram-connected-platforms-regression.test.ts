@@ -487,10 +487,16 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);');
     expect(routes).toContain("platformContextRaw === \"instagram\" ? \"instagram\"");
     expect(routes).toContain("purpose === \"spend\" || purpose === \"revenue\" || purpose === \"general\" || purpose === \"linkedin_revenue\" || purpose === \"google_ads_revenue\" || purpose === \"instagram_revenue\"");
+    expect(routes).toContain('["ga4", "linkedin", "meta", "google_ads", "instagram"]');
     expect(page).toContain("AddRevenueWizardModal");
     expect(page).toContain("platformContext=\"instagram\"");
     expect(page).toContain("revenue-sources?platformContext=instagram");
     expect(page).toContain("revenue-totals?platformContext=instagram&dateRange=90days");
+    expect(page).toContain("pipeline-proxy?platformContext=instagram");
+    expect(page).toContain('queryKey: ["/api/hubspot", campaignId, "pipeline-proxy", "instagram"]');
+    expect(page).toContain('queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "instagram"]');
+    expect(page).toContain('label: "Pipeline Proxy"');
+    expect(page).toContain("not counted in revenue, ROI, or ROAS");
     expect(page).toContain("hasInstagramAttributedRevenue = activeInstagramRevenueSources.length > 0");
     expect(page).toContain("instagramAttributedRevenueFromSources");
     expect(page).toContain("instagramRevenueTotalsData?.totalRevenue");

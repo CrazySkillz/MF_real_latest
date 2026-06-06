@@ -231,6 +231,32 @@ export default function InstagramAnalytics() {
       return { success: !!json?.success, totalRevenue: Number(json?.totalRevenue || 0) };
     },
   });
+  const { data: hubspotPipelineProxyData } = useQuery<any>({
+    queryKey: ["/api/hubspot", campaignId, "pipeline-proxy", "instagram"],
+    enabled: !!campaignId && connected,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    retry: false,
+    queryFn: async () => {
+      const response = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=instagram`);
+      if (!response.ok) return null;
+      return response.json().catch(() => null);
+    },
+  });
+  const { data: salesforcePipelineProxyData } = useQuery<any>({
+    queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "instagram"],
+    enabled: !!campaignId && connected,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    retry: false,
+    queryFn: async () => {
+      const response = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=instagram`);
+      if (!response.ok) return null;
+      return response.json().catch(() => null);
+    },
+  });
   const activeInstagramRevenueSources = useMemo(() => {
     const sources = Array.isArray(instagramRevenueSourcesData?.sources) ? instagramRevenueSourcesData.sources : [];
     return sources.filter((source: any) => source?.isActive !== false);
@@ -265,6 +291,7 @@ export default function InstagramAnalytics() {
   const instagramAttributedProfit = instagramAttributedRevenue - overviewTotals.spend;
   const instagramAttributedRoas = overviewTotals.spend > 0 ? instagramAttributedRevenue / overviewTotals.spend : 0;
   const instagramAttributedRoi = overviewTotals.spend > 0 ? ((instagramAttributedRevenue - overviewTotals.spend) / overviewTotals.spend) * 100 : 0;
+  const pipelineProxyData = hubspotPipelineProxyData?.success ? hubspotPipelineProxyData : salesforcePipelineProxyData?.success ? salesforcePipelineProxyData : null;
   const instagramComparisonRows = useMemo(() => {
     const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
     const grouped = new Map<string, any>();
@@ -837,6 +864,12 @@ export default function InstagramAnalytics() {
                         { label: "ROAS", value: hasInstagramAttributedRevenue && overviewTotals.spend > 0 ? `${instagramAttributedRoas.toFixed(2)}x` : "Unavailable", Icon: TrendingUp, helper: hasInstagramAttributedRevenue ? "Attributed revenue / spend" : "Requires source-backed revenue" },
                         { label: "ROI", value: hasInstagramAttributedRevenue && overviewTotals.spend > 0 ? `${instagramAttributedRoi.toFixed(1)}%` : "Unavailable", Icon: Percent, helper: hasInstagramAttributedRevenue ? "Attributed revenue ROI" : "Requires source-backed revenue" },
                         { label: "Profit", value: hasInstagramAttributedRevenue ? formatCurrency(instagramAttributedProfit) : "Unavailable", Icon: DollarSign, helper: hasInstagramAttributedRevenue ? "Attributed revenue - spend" : "Requires source-backed revenue" },
+                        ...(pipelineProxyData?.success ? [{
+                          label: "Pipeline Proxy",
+                          value: formatCurrency(Number(pipelineProxyData.totalToDate || 0)),
+                          Icon: Target,
+                          helper: `${pipelineProxyData.pipelineStageLabel || "Selected stage"} open CRM value; not counted in revenue, ROI, or ROAS`,
+                        }] : []),
                         { label: "CTR", value: overviewTotals.ctr === null ? "Unavailable" : `${overviewTotals.ctr.toFixed(2)}%`, Icon: Percent },
                         { label: "CPC", value: overviewTotals.cpc === null ? "Unavailable" : `$${overviewTotals.cpc.toFixed(2)}`, Icon: DollarSign },
                         { label: "CPM", value: overviewTotals.cpm === null ? "Unavailable" : `$${overviewTotals.cpm.toFixed(2)}`, Icon: BarChart3 },

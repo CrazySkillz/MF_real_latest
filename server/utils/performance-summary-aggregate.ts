@@ -268,13 +268,10 @@ export function buildPerformanceSummaryAggregate(input: PerformanceSummaryAggreg
     });
   }
 
-  const hasMetaInstagramOverlapRisk = sourceBreakdown.some((source) => source.id === "meta" && source.connected)
-    && sourceBreakdown.some((source) => source.id === "instagram" && source.connected);
   const paidSources = sourceBreakdown.filter((source) => source.category === "paid_media" || source.id === "custom_integration");
   const paidMetricSources = (metricName: string) =>
     paidSources.filter((source) =>
       source.includedMetrics.includes(metricName)
-      && !(hasMetaInstagramOverlapRisk && source.id === "instagram")
     );
   const sumPaidMetric = (metricName: string) =>
     paidMetricSources(metricName).reduce((sum, source) => sum + parseNum(source.metrics[metricName]), 0);

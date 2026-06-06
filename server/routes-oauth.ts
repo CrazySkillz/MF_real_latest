@@ -11455,7 +11455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Unified spend rule:
       // - If the user imported spend (persistedSpend > 0), use that as campaign marketing spend.
       // - Otherwise, fall back to sum of connected ad-platform spends.
-      const instagramSpendForAggregate = meta?.connected === true && instagram?.connected === true ? 0 : instagramSpend;
+      const instagramSpendForAggregate = instagramSpend;
       const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate).toFixed(2));
       const unifiedSpend = persistedSpend > 0 ? persistedSpend : platformSpendFallback;
       const spendSource = persistedSpend > 0 ? "persisted_spend_sources" : "platform_spend_fallback";
@@ -26844,7 +26844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const webAnalyticsProvider = hasGA4Connection ? "ga4" : hasCustomIntegration ? "custom_integration" : null;
-      const instagramSpendForAggregate = hasMetaConnection && instagram?.connected === true ? 0 : instagramSpend;
+      const instagramSpendForAggregate = instagramSpend;
       const platformSpend = linkedinSpend + metaMetrics.spend + customMetrics.spend + googleAdsSpend + instagramSpendForAggregate;
       const platformRevenue = parseNum(linkedinMetrics.revenue) + metaMetrics.revenue + customMetrics.revenue + parseNum(googleAds?.metrics?.attributedRevenue);
       const aggregateRevenue = hasGA4Connection

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, AlertCircle, Loader2, Eye, MousePointer, DollarSign, Target } from "lucide-react";
+import { ArrowLeft, AlertCircle, Loader2, Eye, MousePointer, DollarSign, Target, BarChart3, Percent, Video } from "lucide-react";
 import { SiInstagram } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -42,13 +42,22 @@ export default function InstagramAnalytics() {
   });
   const overviewTotals = useMemo(() => {
     const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
-    return rows.reduce((acc: any, row: any) => {
+    const totals = rows.reduce((acc: any, row: any) => {
       acc.impressions += Number(row.impressions || 0);
       acc.clicks += Number(row.clicks || 0);
       acc.spend += Number(row.spend || 0);
       acc.conversions += Number(row.conversions || 0);
+      acc.videoViews += Number(row.videoViews || 0);
       return acc;
-    }, { impressions: 0, clicks: 0, spend: 0, conversions: 0 });
+    }, { impressions: 0, clicks: 0, spend: 0, conversions: 0, videoViews: 0 });
+    return {
+      ...totals,
+      ctr: totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : null,
+      cpc: totals.clicks > 0 ? totals.spend / totals.clicks : null,
+      cpm: totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : null,
+      costPerConversion: totals.conversions > 0 ? totals.spend / totals.conversions : null,
+      conversionRate: totals.clicks > 0 ? (totals.conversions / totals.clicks) * 100 : null,
+    };
   }, [dailyMetrics]);
   const latestImportedAt = useMemo(() => {
     const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
@@ -196,6 +205,12 @@ export default function InstagramAnalytics() {
                         { label: "Clicks", value: overviewTotals.clicks.toLocaleString(), Icon: MousePointer },
                         { label: "Spend", value: `$${overviewTotals.spend.toFixed(2)}`, Icon: DollarSign },
                         { label: "Conversions", value: overviewTotals.conversions.toLocaleString(), Icon: Target },
+                        { label: "CTR", value: overviewTotals.ctr === null ? "Unavailable" : `${overviewTotals.ctr.toFixed(2)}%`, Icon: Percent },
+                        { label: "CPC", value: overviewTotals.cpc === null ? "Unavailable" : `$${overviewTotals.cpc.toFixed(2)}`, Icon: DollarSign },
+                        { label: "CPM", value: overviewTotals.cpm === null ? "Unavailable" : `$${overviewTotals.cpm.toFixed(2)}`, Icon: BarChart3 },
+                        { label: "Cost / Conversion", value: overviewTotals.costPerConversion === null ? "Unavailable" : `$${overviewTotals.costPerConversion.toFixed(2)}`, Icon: Target },
+                        { label: "Conversion Rate", value: overviewTotals.conversionRate === null ? "Unavailable" : `${overviewTotals.conversionRate.toFixed(2)}%`, Icon: Percent },
+                        { label: "Video Views", value: overviewTotals.videoViews.toLocaleString(), Icon: Video },
                       ].map(({ label, value, Icon }) => (
                         <Card key={label}>
                           <CardContent className="p-4">

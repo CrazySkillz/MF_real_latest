@@ -239,13 +239,13 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 5, sources: ["conversions", "clicks"] });
   });
 
-  it("does not double-count Instagram paid-media metrics when Meta is also connected", () => {
+  it("includes source-backed Instagram paid-media metrics when Meta is also connected", () => {
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "campaign-meta-instagram",
       dateRange: "30days",
       ga4: { connected: false },
       webAnalytics: { connected: false, provider: null },
-      spend: { unifiedSpend: 50, spendSource: "platform_spend_fallback" },
+      spend: { unifiedSpend: 75, spendSource: "platform_spend_fallback" },
       platforms: {
         meta: { connected: true, impressions: 2000, clicks: 80, spend: 50, conversions: 8 },
       },
@@ -265,10 +265,10 @@ describe("Performance Summary aggregate contract", () => {
     });
 
     expect(aggregate.sources.map((source) => source.id)).toEqual(["meta", "instagram"]);
-    expect(aggregate.totals.impressions).toMatchObject({ available: true, value: 2000, sources: ["meta"] });
-    expect(aggregate.totals.clicks).toMatchObject({ available: true, value: 80, sources: ["meta"] });
-    expect(aggregate.totals.conversions).toMatchObject({ available: true, value: 8, sources: ["meta"] });
-    expect(aggregate.totals.spend).toMatchObject({ available: true, value: 50, sources: ["meta"] });
+    expect(aggregate.totals.impressions).toMatchObject({ available: true, value: 3000, sources: ["meta", "instagram"] });
+    expect(aggregate.totals.clicks).toMatchObject({ available: true, value: 120, sources: ["meta", "instagram"] });
+    expect(aggregate.totals.conversions).toMatchObject({ available: true, value: 12, sources: ["meta", "instagram"] });
+    expect(aggregate.totals.spend).toMatchObject({ available: true, value: 75, sources: ["meta", "instagram"] });
   });
 
   it("does not count native Google Ads conversion value as aggregate revenue without an imported source", () => {

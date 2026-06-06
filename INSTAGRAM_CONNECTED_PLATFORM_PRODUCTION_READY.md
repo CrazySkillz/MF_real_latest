@@ -65,6 +65,7 @@ This table is the single source of truth for what is done, pending, and where ea
 | 12C | Existing damaged-data cleanup plan if stale Instagram rows can exist | Implemented locally; user validation pending | Data cleanup plan only |
 | 12D | Lifecycle regression and validation docs | Implemented locally; user validation pending | None |
 | 12E | Test-mode connect seeds selected Instagram daily rows | Implemented locally; user validation pending | Backend test-mode data writer |
+| 12F | Instagram core metric display and Campaign DeepDive source-backed inclusion | Implemented locally; user validation pending | Instagram analytics UI and aggregate |
 | 13A | Instagram KPI current-value source contract | Pending | KPI backend/UI |
 | 13B | Instagram Benchmark current-value source contract | Pending | Benchmark backend/UI |
 | 13C | Instagram report route/source contract | Pending | Report backend/UI |
@@ -205,6 +206,8 @@ Commit 12D lifecycle regression and validation closeout is implemented locally a
 
 Commit 12E test-mode connect seed correction is implemented locally. Instagram test connection now writes selected `publisherPlatform="instagram"` daily rows immediately after the source contract is created, so Create Campaign and Connected Platforms test connects have data for Instagram Analytics and Campaign DeepDive without requiring a hidden manual API call.
 
+Commit 12F Instagram core metrics and Campaign DeepDive inclusion is implemented locally. Instagram Analytics now displays the selected-row core stored/derived metrics beyond the initial four-card summary, and Campaign DeepDive paid-media totals include source-backed Instagram rows instead of suppressing Instagram whenever Meta/Facebook is also connected.
+
 ## Root Cause Analysis
 
 The current gap is not one isolated UI bug. It is a missing source contract and lifecycle implementation:
@@ -263,6 +266,7 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 12C, the tracker did not explicitly separate forward-path lifecycle fixes from existing damaged-data handling. A cleanup migration would be unsafe without first proving stale Instagram rows by exact source identity and campaign boundary. Commit 12C records a read-only inventory-first cleanup plan and blocks automatic deletion until stale rows are proven.
 - Before Commit 12D, the lifecycle fixes and source-safety coverage existed locally but the tracker did not explicitly close the Commit 12 validation boundary. Commit 12D records the regression commands and leaves user validation pending instead of implying production readiness.
 - Before Commit 12E, Instagram test connections persisted the selected source contract but wrote no daily metric rows unless the separate `/api/instagram/:campaignId/refresh-test` endpoint was called manually. The UI did not call that endpoint, so View Detailed Analytics and Campaign DeepDive correctly showed no source-backed Instagram rows. Commit 12E seeds the same selected-source test rows during `connect-test`, matching the existing Google Ads test-mode pattern and covering both Create Campaign and Connected Platforms entry points.
+- Before Commit 12F, Instagram Analytics rendered only impressions, clicks, spend, and conversions even though the Instagram row contract also persisted video views, CTR, CPC, CPM, cost per conversion, and conversion rate. Campaign DeepDive also suppressed Instagram paid-media contributions whenever Meta/Facebook was connected, even when Instagram had explicit selected source-backed rows. Commit 12F displays the stored core metrics and includes source-backed Instagram in paid-media aggregate totals.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`; Commit 9A supplies an Instagram source builder and Commit 9D wires it into the two current aggregate route consumers.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
 - Meta/Facebook currently includes Instagram-related placement data in some contexts; promoting that data to a standalone Instagram platform without explicit source boundaries would risk double-counting and misleading source attribution.
@@ -1402,7 +1406,7 @@ Commit 11F validation:
 - User validation passed for Commit 11A-11F as one bundled Commit 11 validation.
 - Live provider validation remains pending until a production-like Instagram token-backed connection exists.
 
-### Details For Commits 12A-12E: Disconnect, Reconnect, Stale Data Safety, And Test Data Availability
+### Details For Commits 12A-12F: Disconnect, Reconnect, Stale Data Safety, Test Data Availability, And Core Metric Inclusion
 
 Goal:
 
@@ -1435,6 +1439,8 @@ Status:
 - [ ] User validation pending for Commit 12D.
 - [x] Commit 12E implemented locally: test-mode connect seeds selected Instagram daily rows immediately after creating the source contract.
 - [ ] User validation pending for Commit 12E.
+- [x] Commit 12F implemented locally: Instagram Analytics displays core selected-row metrics and Campaign DeepDive includes source-backed Instagram paid-media metrics.
+- [ ] User validation pending for Commit 12F.
 
 Commit 12A root-cause trace:
 
@@ -1557,6 +1563,20 @@ Commit 12E validation:
 - Test rows use only `publisherPlatform="instagram"` and the selected Instagram campaign IDs.
 - `spendOnly` Instagram test connections still skip daily metric seeding.
 - No live OAuth, provider refresh, scheduler behavior, KPI, Benchmark, or report behavior is added.
+
+Commit 12F root-cause trace:
+
+- `instagram_daily_metrics` already stores the core selected Instagram Ads fields: impressions, clicks, spend, conversions, video views, CTR, CPC, CPM, cost per conversion, conversion rate, and action details.
+- The Instagram analytics page was rendering only impressions, clicks, spend, and conversions.
+- Campaign DeepDive consumed Instagram through the selected-source aggregate object, but the aggregate utility excluded Instagram metric contributions whenever Meta/Facebook was also connected.
+- The route also zeroed Instagram spend in the fallback platform spend calculation when Meta/Facebook was connected.
+
+Commit 12F validation:
+
+- Instagram Analytics Overview now renders impressions, clicks, spend, conversions, CTR, CPC, CPM, cost per conversion, conversion rate, and video views from the selected daily rows.
+- Campaign DeepDive aggregate totals include source-backed Instagram impressions, clicks, spend, and conversions from selected `publisherPlatform="instagram"` rows.
+- The change does not add provider refresh, scheduler writes, OAuth behavior, KPI, Benchmark, or report behavior.
+- Meta/Facebook Instagram-exclusion remains a future source-contract refinement for live production no-double-count proof; this commit only includes the explicit standalone Instagram selected-source rows already persisted by the Instagram contract.
 
 ### Details For Commits 13A-13F: KPI, Benchmark, Reports, And Scheduled Output Parity
 
@@ -1848,6 +1868,7 @@ Evidence:
 - [x] Commit 12C local existing damaged-data cleanup plan.
 - [x] Commit 12D local lifecycle regression and validation documentation closeout.
 - [x] Commit 12E local test-mode connect daily-row seed correction.
+- [x] Commit 12F local Instagram core metric display and Campaign DeepDive source-backed inclusion.
 - [ ] Local test-mode Create Campaign validation.
 - [ ] Local test-mode Connected Platforms validation.
 - [x] Local Campaign DeepDive aggregate validation through focused regression suite.
@@ -1909,3 +1930,4 @@ Evidence:
 - Local implementation complete for Instagram Commit 12C existing damaged-data cleanup plan; user validation is pending.
 - Local implementation complete for Instagram Commit 12D lifecycle regression and validation documentation closeout; user validation is pending.
 - Local implementation complete for Instagram Commit 12E test-mode connect daily-row seed correction; user validation is pending.
+- Local implementation complete for Instagram Commit 12F core metric display and Campaign DeepDive source-backed inclusion; user validation is pending.

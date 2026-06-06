@@ -145,13 +145,13 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(helper).toContain("source?.connected === true");
   });
 
-  it("fails closed for Meta plus Instagram combined paid-media aggregate totals", () => {
+  it("allows source-backed Instagram paid-media metrics into aggregate totals", () => {
     const aggregate = readFileSync(join(process.cwd(), "server", "utils", "performance-summary-aggregate.ts"), "utf-8");
 
-    expect(aggregate).toContain("hasMetaInstagramOverlapRisk");
-    expect(aggregate).toContain('source.id === "meta" && source.connected');
-    expect(aggregate).toContain('source.id === "instagram" && source.connected');
-    expect(aggregate).toContain('!(hasMetaInstagramOverlapRisk && source.id === "instagram")');
+    expect(aggregate).toContain("const paidMetricSources = (metricName: string)");
+    expect(aggregate).toContain("source.includedMetrics.includes(metricName)");
+    expect(aggregate).not.toContain("hasMetaInstagramOverlapRisk");
+    expect(aggregate).not.toContain('source.id === "instagram"');
   });
 
   it("wires Instagram into Campaign DeepDive aggregate routes without refresh or write behavior", () => {
@@ -166,7 +166,7 @@ describe("Instagram Connected Platforms regression guard", () => {
     for (const route of [outcomeRoute, executiveRoute]) {
       expect(route).toContain("buildInstagramPlatformSourceForAggregate");
       expect(route).toContain("mainPlatformSources: { googleAds, instagram }");
-      expect(route).toContain("instagramSpendForAggregate");
+      expect(route).toContain("const instagramSpendForAggregate = instagramSpend;");
       expect(route).not.toContain("upsertInstagramDailyMetrics");
       expect(route).not.toContain("refreshInstagram");
       expect(route).not.toContain("/api/instagram/oauth");
@@ -334,6 +334,18 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("overviewTotals.clicks");
     expect(page).toContain("overviewTotals.spend");
     expect(page).toContain("overviewTotals.conversions");
+    expect(page).toContain("overviewTotals.videoViews");
+    expect(page).toContain("overviewTotals.ctr");
+    expect(page).toContain("overviewTotals.cpc");
+    expect(page).toContain("overviewTotals.cpm");
+    expect(page).toContain("overviewTotals.costPerConversion");
+    expect(page).toContain("overviewTotals.conversionRate");
+    expect(page).toContain('{ label: "CTR"');
+    expect(page).toContain('{ label: "CPC"');
+    expect(page).toContain('{ label: "CPM"');
+    expect(page).toContain('{ label: "Cost / Conversion"');
+    expect(page).toContain('{ label: "Conversion Rate"');
+    expect(page).toContain('{ label: "Video Views"');
     expect(page).toContain("No selected source-backed Instagram metric rows are available yet.");
     expect(page).not.toContain("upsertInstagramDailyMetrics");
     expect(page).not.toContain("refreshInstagram");

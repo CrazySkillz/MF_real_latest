@@ -64,6 +64,7 @@ This table is the single source of truth for what is done, pending, and where ea
 | 12B | Reconnect stale-row safety and selected-scope replacement proof | Implemented locally; user validation pending | Backend lifecycle behavior |
 | 12C | Existing damaged-data cleanup plan if stale Instagram rows can exist | Implemented locally; user validation pending | Data cleanup plan only |
 | 12D | Lifecycle regression and validation docs | Implemented locally; user validation pending | None |
+| 12E | Test-mode connect seeds selected Instagram daily rows | Implemented locally; user validation pending | Backend test-mode data writer |
 | 13A | Instagram KPI current-value source contract | Pending | KPI backend/UI |
 | 13B | Instagram Benchmark current-value source contract | Pending | Benchmark backend/UI |
 | 13C | Instagram report route/source contract | Pending | Report backend/UI |
@@ -202,6 +203,8 @@ Commit 12C existing damaged-data cleanup plan is implemented locally as document
 
 Commit 12D lifecycle regression and validation closeout is implemented locally as documentation only. It records the exact local validation commands for the Commit 12 lifecycle bundle and keeps user/browser validation separate.
 
+Commit 12E test-mode connect seed correction is implemented locally. Instagram test connection now writes selected `publisherPlatform="instagram"` daily rows immediately after the source contract is created, so Create Campaign and Connected Platforms test connects have data for Instagram Analytics and Campaign DeepDive without requiring a hidden manual API call.
+
 ## Root Cause Analysis
 
 The current gap is not one isolated UI bug. It is a missing source contract and lifecycle implementation:
@@ -259,6 +262,7 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 12B, selected-campaign updates deleted only daily metrics when scope changed, leaving Instagram-scoped spend/revenue children from the previous selected scope active. Commit 12B calls the centralized Instagram financial cleanup before updating selected campaign IDs.
 - Before Commit 12C, the tracker did not explicitly separate forward-path lifecycle fixes from existing damaged-data handling. A cleanup migration would be unsafe without first proving stale Instagram rows by exact source identity and campaign boundary. Commit 12C records a read-only inventory-first cleanup plan and blocks automatic deletion until stale rows are proven.
 - Before Commit 12D, the lifecycle fixes and source-safety coverage existed locally but the tracker did not explicitly close the Commit 12 validation boundary. Commit 12D records the regression commands and leaves user validation pending instead of implying production readiness.
+- Before Commit 12E, Instagram test connections persisted the selected source contract but wrote no daily metric rows unless the separate `/api/instagram/:campaignId/refresh-test` endpoint was called manually. The UI did not call that endpoint, so View Detailed Analytics and Campaign DeepDive correctly showed no source-backed Instagram rows. Commit 12E seeds the same selected-source test rows during `connect-test`, matching the existing Google Ads test-mode pattern and covering both Create Campaign and Connected Platforms entry points.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`; Commit 9A supplies an Instagram source builder and Commit 9D wires it into the two current aggregate route consumers.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
 - Meta/Facebook currently includes Instagram-related placement data in some contexts; promoting that data to a standalone Instagram platform without explicit source boundaries would risk double-counting and misleading source attribution.
@@ -1398,7 +1402,7 @@ Commit 11F validation:
 - User validation passed for Commit 11A-11F as one bundled Commit 11 validation.
 - Live provider validation remains pending until a production-like Instagram token-backed connection exists.
 
-### Details For Commits 12A-12D: Disconnect, Reconnect, And Stale Data Safety
+### Details For Commits 12A-12E: Disconnect, Reconnect, Stale Data Safety, And Test Data Availability
 
 Goal:
 
@@ -1429,6 +1433,8 @@ Status:
 - [ ] User validation pending for Commit 12C.
 - [x] Commit 12D implemented locally: lifecycle regression and validation docs close the Commit 12 local evidence boundary.
 - [ ] User validation pending for Commit 12D.
+- [x] Commit 12E implemented locally: test-mode connect seeds selected Instagram daily rows immediately after creating the source contract.
+- [ ] User validation pending for Commit 12E.
 
 Commit 12A root-cause trace:
 
@@ -1534,6 +1540,23 @@ Commit 12 remaining validation boundary:
 
 - User validation remains pending for Commit 12A-12D until Instagram is disconnected/reconnected from the UI and the user confirms Connected Platforms, Campaign Overview, Instagram Analytics, and Campaign DeepDive no longer show stale Instagram data after disconnect or selected-scope replacement.
 - Production/deployed damaged-data cleanup remains pending until the read-only inventory queries in Commit 12C are run against the target database and reviewed.
+
+Commit 12E root-cause trace:
+
+- View Detailed Analytics reads only persisted rows from `GET /api/instagram/:campaignId/daily-metrics`.
+- Campaign DeepDive reads Instagram only from the selected-source aggregate built from persisted `instagram_daily_metrics` rows.
+- `POST /api/instagram/:campaignId/connect-test` created the Instagram source contract and selected campaign IDs, but did not write daily rows.
+- `POST /api/instagram/:campaignId/refresh-test` could write test rows, but neither Create Campaign nor Connected Platforms called it after connect.
+- Therefore the UI correctly showed `ig_test_2` as selected while also showing no Instagram metric data.
+
+Commit 12E validation:
+
+- Test connect remains campaign-access guarded.
+- Test connect still requires non-empty selected Instagram campaign IDs before replacing the source.
+- Test rows are written only after the connection is created.
+- Test rows use only `publisherPlatform="instagram"` and the selected Instagram campaign IDs.
+- `spendOnly` Instagram test connections still skip daily metric seeding.
+- No live OAuth, provider refresh, scheduler behavior, KPI, Benchmark, or report behavior is added.
 
 ### Details For Commits 13A-13F: KPI, Benchmark, Reports, And Scheduled Output Parity
 
@@ -1824,6 +1847,7 @@ Evidence:
 - [x] Commit 12B local reconnect stale-row safety and selected-scope replacement proof.
 - [x] Commit 12C local existing damaged-data cleanup plan.
 - [x] Commit 12D local lifecycle regression and validation documentation closeout.
+- [x] Commit 12E local test-mode connect daily-row seed correction.
 - [ ] Local test-mode Create Campaign validation.
 - [ ] Local test-mode Connected Platforms validation.
 - [x] Local Campaign DeepDive aggregate validation through focused regression suite.
@@ -1884,3 +1908,4 @@ Evidence:
 - Local implementation complete for Instagram Commit 12B reconnect stale-row safety and selected-scope replacement proof; user validation is pending.
 - Local implementation complete for Instagram Commit 12C existing damaged-data cleanup plan; user validation is pending.
 - Local implementation complete for Instagram Commit 12D lifecycle regression and validation documentation closeout; user validation is pending.
+- Local implementation complete for Instagram Commit 12E test-mode connect daily-row seed correction; user validation is pending.

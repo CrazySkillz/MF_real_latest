@@ -347,7 +347,10 @@ describe("source safety regression guards", () => {
     expect(route).toContain("selectedCampaignIds: JSON.stringify(selectedCampaignIds)");
     expect(route).toContain('publisherPlatformFilter: "instagram"');
     expect(route).toContain('sourceContractVersion: "instagram_publisher_platform_v1"');
-    expect(route).not.toContain("upsertInstagramDailyMetrics");
+    expect(route).toContain("if (!(req.body as any)?.spendOnly)");
+    expect(route).toContain('publisherPlatform: "instagram"');
+    expect(route).toContain("storage.upsertInstagramDailyMetrics(rows as any)");
+    expect(route.indexOf("storage.createInstagramConnection")).toBeLessThan(route.indexOf("storage.upsertInstagramDailyMetrics"));
     expect(route).not.toContain("refreshInstagram");
   });
 

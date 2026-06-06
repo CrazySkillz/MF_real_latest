@@ -187,12 +187,22 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(validation).not.toContain("upsertInstagramDailyMetrics");
   });
 
-  it("writes Instagram test daily metrics only through the explicit test refresh route", () => {
+  it("writes Instagram test daily metrics from test connect and explicit test refresh only", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const connectStart = routes.indexOf('app.post("/api/instagram/:campaignId/connect-test"');
+    const connectEnd = routes.indexOf("/**\n   * Update selected Instagram campaigns", connectStart);
+    const connectRoute = routes.slice(connectStart, connectEnd);
     const routeStart = routes.indexOf('app.post("/api/instagram/:campaignId/refresh-test"');
     const routeEnd = routes.indexOf("/**\n   * Manually refresh live Instagram daily metrics", routeStart);
     const route = routes.slice(routeStart, routeEnd);
 
+    expect(connectStart).toBeGreaterThanOrEqual(0);
+    expect(connectRoute).toContain("ensureCampaignAccess");
+    expect(connectRoute).toContain("selectedCampaignIds.length === 0");
+    expect(connectRoute).toContain('publisherPlatform: "instagram"');
+    expect(connectRoute).toContain('platformPosition: "instagram_feed"');
+    expect(connectRoute).toContain("storage.upsertInstagramDailyMetrics(rows as any)");
+    expect(connectRoute).not.toContain("MetaGraphAPIClient");
     expect(routeStart).toBeGreaterThanOrEqual(0);
     expect(route).toContain("ensureCampaignAccess");
     expect(route).toContain("storage.getInstagramConnection(parsedId.data)");

@@ -409,6 +409,8 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("Revenue attribution required");
     expect(page).toContain("Instagram revenue, ROAS, ROI, and profit are unavailable until an Instagram-scoped revenue source is imported.");
     expect(page).toContain("Missing data to unlock richer Instagram Insights");
+    expect(page).toContain("instagramMissingInsightInputs");
+    expect(page).toContain('...(!hasInstagramAttributedRevenue ? ["Instagram-attributed revenue for Total Revenue, ROAS, ROI, and profit."] : [])');
     expect(page).toContain("Ad or creative-level rows for winner/loser creative diagnostics.");
     expect(page).toContain("Audience, placement, and device breakdowns for budget allocation guidance.");
     expect(page).toContain("Performance Trend");
@@ -496,9 +498,11 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("instagramAttributedRoas");
     expect(page).toContain("instagramAttributedRoi");
     expect(page).toContain('{ key: "totalRevenue", label: "Total Revenue", unit: "$" }');
-    expect(page).toContain('{ key: "roas", label: "ROAS", unit: "x" }');
+    expect(page).toContain('{ key: "roas", label: "ROAS", unit: "ratio" }');
     expect(page).toContain('{ key: "roi", label: "ROI", unit: "%" }');
     expect(page).toContain('{ key: "profit", label: "Profit", unit: "$" }');
+    expect(page).toContain("formatInstagramMetricInputValue");
+    expect(page).toContain('["roas", "roi"].includes');
     expect(page).toContain("totalRevenue: hasInstagramAttributedRevenue ? instagramAttributedRevenue : null");
     expect(page).toContain("roas: hasInstagramAttributedRevenue && overviewTotals.spend > 0 ? instagramAttributedRoas : null");
     expect(page).toContain("Revenue efficiency available");

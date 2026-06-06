@@ -32,7 +32,7 @@ const INSTAGRAM_KPI_METRICS = [
   { key: "costPerConversion", label: "Cost per Conversion", unit: "$" },
   { key: "conversionRate", label: "Conversion Rate", unit: "%" },
   { key: "totalRevenue", label: "Total Revenue", unit: "$" },
-  { key: "roas", label: "ROAS", unit: "x" },
+  { key: "roas", label: "ROAS", unit: "ratio" },
   { key: "roi", label: "ROI", unit: "%" },
   { key: "profit", label: "Profit", unit: "$" },
 ];
@@ -49,8 +49,15 @@ function formatInstagramKpiValue(metricKey: string, rawValue: any) {
   const unit = getInstagramKpiMetric(metricKey).unit;
   if (unit === "$") return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   if (unit === "%") return `${value.toFixed(2)}%`;
-  if (unit === "x") return `${value.toFixed(2)}x`;
+  if (unit === "ratio") return value.toFixed(2);
   return value.toLocaleString();
+}
+
+function formatInstagramMetricInputValue(metricKey: string, rawValue: number | null) {
+  if (rawValue === null || rawValue === undefined) return "";
+  const value = Number(rawValue || 0);
+  if (!Number.isFinite(value)) return "";
+  return ["roas", "roi"].includes(String(metricKey || "").toLowerCase()) ? value.toFixed(2) : String(value);
 }
 
 function stripNumberFormatting(value: string) {
@@ -400,6 +407,12 @@ export default function InstagramAnalytics() {
       recommendation: "Continue monitoring trends as more source-backed history accumulates.",
     }];
   }, [hasInstagramAttributedRevenue, instagramAttributedProfit, instagramAttributedRoas, instagramAttributedRoi, instagramInsightTrendRows.length, overviewTotals]);
+  const instagramMissingInsightInputs = useMemo(() => [
+    ...(!hasInstagramAttributedRevenue ? ["Instagram-attributed revenue for Total Revenue, ROAS, ROI, and profit."] : []),
+    "Ad or creative-level rows for winner/loser creative diagnostics.",
+    "Audience, placement, and device breakdowns for budget allocation guidance.",
+    "At least 14 days of daily history for reliable short-term trend comparison.",
+  ], [hasInstagramAttributedRevenue]);
   const latestImportedAt = useMemo(() => {
     const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
     const latest = rows
@@ -506,7 +519,7 @@ export default function InstagramAnalytics() {
       metric: metricDef.key,
       unit: metricDef.unit,
       description: `Track Instagram ${metricDef.label.toLowerCase()} against target.`,
-      currentValue: currentByMetric[metricDef.key] === null ? "" : String(currentByMetric[metricDef.key] || 0),
+      currentValue: formatInstagramMetricInputValue(metricDef.key, currentByMetric[metricDef.key]),
       targetValue: "",
     }));
   };
@@ -538,7 +551,7 @@ export default function InstagramAnalytics() {
       metric: metricDef.key,
       unit: metricDef.unit,
       description: `Compare Instagram ${metricDef.label.toLowerCase()} against benchmark targets.`,
-      currentValue: currentByMetric[metricDef.key] === null ? "" : String(currentByMetric[metricDef.key] || 0),
+      currentValue: formatInstagramMetricInputValue(metricDef.key, currentByMetric[metricDef.key]),
       benchmarkValue: "",
     }));
   };
@@ -1230,24 +1243,21 @@ export default function InstagramAnalytics() {
                         <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Trend Days</p><p className="text-2xl font-bold text-foreground">{instagramInsightTrendRows.length}</p></CardContent></Card>
                       </div>
 
-                      <Card>
-                        <CardContent className="p-5">
-                          <h3 className="text-lg font-semibold text-foreground mb-3">Missing data to unlock richer Instagram Insights</h3>
-                          <div className="grid gap-3 md:grid-cols-2">
-                            {[
-                              "Instagram-attributed revenue for Total Revenue, ROAS, ROI, and profit.",
-                              "Ad or creative-level rows for winner/loser creative diagnostics.",
-                              "Audience, placement, and device breakdowns for budget allocation guidance.",
-                              "At least 14 days of daily history for reliable short-term trend comparison.",
-                            ].map((item) => (
-                              <div key={item} className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm text-muted-foreground">
-                                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                                <span>{item}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
+                      {instagramMissingInsightInputs.length > 0 && (
+                        <Card>
+                          <CardContent className="p-5">
+                            <h3 className="text-lg font-semibold text-foreground mb-3">Missing data to unlock richer Instagram Insights</h3>
+                            <div className="grid gap-3 md:grid-cols-2">
+                              {instagramMissingInsightInputs.map((item) => (
+                                <div key={item} className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm text-muted-foreground">
+                                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                  <span>{item}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
 
                       <Card>
                         <CardContent className="p-5">
@@ -1700,7 +1710,7 @@ export default function InstagramAnalytics() {
                     ...form,
                     metric: value,
                     unit: form.unit || metricDef.unit,
-                    currentValue: currentByMetric[value] === null ? "" : String(currentByMetric[value] || 0),
+                    currentValue: formatInstagramMetricInputValue(value, currentByMetric[value]),
                   }));
                 }}
               >

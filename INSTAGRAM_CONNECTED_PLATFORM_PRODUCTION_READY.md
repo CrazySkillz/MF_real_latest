@@ -71,11 +71,13 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13C | Instagram analytics tab shell parity and obsolete status/breakdown cleanup | Done and pushed; user validation pending | Instagram analytics UI |
 | 13D | Instagram KPI tab management UI parity | Done and pushed; user validation pending | Instagram analytics KPI UI |
 | 13E | Instagram test-mode missing daily-row self-heal | Done and pushed; user validation pending | Backend analytics data route |
-| 13F | Instagram Create KPI modal parity with GA4 pattern | Implemented locally; user validation pending | Instagram analytics KPI UI |
-| 13G | Instagram report route/source contract | Pending | Report backend/UI |
-| 13H | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
-| 13I | Instagram PDF/export output source proof | Pending | Report exports |
-| 13J | KPI/Benchmark/Report regression and validation docs | Pending | None |
+| 13F | Instagram Create KPI modal parity with GA4 pattern | Done and pushed; user validation pending | Instagram analytics KPI UI |
+| 13G | Instagram Create KPI modal input constraints | Implemented locally; user validation pending | Instagram analytics KPI UI |
+| 13H | Instagram analytics refresh loading-state stability | Implemented locally; user validation pending | Instagram analytics UI |
+| 13I | Instagram report route/source contract | Pending | Report backend/UI |
+| 13J | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
+| 13K | Instagram PDF/export output source proof | Pending | Report exports |
+| 13L | KPI/Benchmark/Report regression and validation docs | Pending | None |
 | 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
 | 14B | End-to-end local test-mode Connected Platforms validation | Pending | Validation only |
 | 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending | Validation only |
@@ -222,7 +224,11 @@ Commit 13D Instagram KPI tab management UI parity is implemented locally. The In
 
 Commit 13E Instagram test-mode missing daily-row self-heal is implemented locally. The Instagram daily metrics endpoint now repairs missing test-mode rows only when a campaign has a test-mode Instagram connection, selected campaign IDs, no persisted rows in the requested window, and is not spend-only; it does not alter live OAuth, scheduler, provider refresh, or production import behavior.
 
-Commit 13F Instagram Create KPI modal parity with the GA4 pattern is implemented locally. The Instagram Create/Edit KPI modal now uses the GA4-style template picker, required KPI name/target fields, description textarea with counter, current value, unit, priority, tracking period, and alert controls while still saving through the existing Instagram KPI routes.
+Commit 13F Instagram Create KPI modal parity with the GA4 pattern is done and pushed. The Instagram Create/Edit KPI modal now uses the GA4-style template picker, required KPI name/target fields, description textarea with counter, current value, unit, priority, and alert controls while still saving through the existing Instagram KPI routes.
+
+Commit 13G Instagram Create KPI modal input constraints are implemented locally. The modal now opens with no selected metric/template, the Target Value input accepts only numeric characters and auto-formats as the user types, and the Tracking Period field is removed from the modal while retaining the existing backend default.
+
+Commit 13H Instagram analytics refresh loading-state stability is implemented locally. The Instagram analytics page no longer renders a visible transient connection-loading message during the initial connection query; it reserves a stable blank content area until the campaign-scoped Instagram connection resolves, then renders the connected tab content or the final error/disconnected state.
 
 ## Root Cause Analysis
 
@@ -289,6 +295,8 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 13D, the Instagram KPI tab only listed existing KPI rows and showed a plain empty message when none existed. Unlike GA4, LinkedIn, and Google Ads, it had no KPI header, Create KPI action, tracker summary, progress cards, edit path, or confirmation-gated delete path. Commit 13D adds those UI affordances while continuing to use the already-scoped backend KPI contract from Commit 13A.
 - Before Commit 13E, existing test-mode Instagram connections could be connected but have zero `instagram_daily_metrics` rows in the current 30-day window, especially if the connection predated the test-row seed behavior or rows had been cleaned during lifecycle work. The analytics page correctly showed the empty selected-row state because the daily metrics endpoint had no missing-row repair path. Commit 13E adds a test-mode-only self-heal that reseeds selected rows and rereads them before returning the response.
 - Before Commit 13F, the Instagram KPI create/edit modal was a small generic form with only name, metric, target, tracking period, and description. GA4 uses a richer campaign KPI modal pattern with template selection, current/target/unit, priority, and alert configuration. Commit 13F updates the Instagram modal to follow that pattern without adding backend or analytics behavior.
+- Before Commit 13G, the Instagram Create KPI modal still selected the first metric template by default, accepted arbitrary text in Target Value, and exposed Tracking Period. Commit 13G removes those UI gaps without changing the backend KPI route or the stored tracking-period default.
+- Before Commit 13H, the Instagram analytics page rendered its connection guard while the initial connection query was still loading. Because `connection` is undefined during a hard refresh, the page briefly showed visible loading/disconnected text above the eventual analytics tabs. Commit 13H removes that transient text branch and only displays final error/disconnected copy after the connection request resolves.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`; Commit 9A supplies an Instagram source builder and Commit 9D wires it into the two current aggregate route consumers.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
 - Meta/Facebook currently includes Instagram-related placement data in some contexts; promoting that data to a standalone Instagram platform without explicit source boundaries would risk double-counting and misleading source attribution.
@@ -1634,12 +1642,16 @@ Status:
 - [ ] User validation pending for Commit 13D.
 - [x] Commit 13E done and pushed: Instagram daily metrics self-heals missing selected test-mode rows.
 - [ ] User validation pending for Commit 13E.
-- [x] Commit 13F implemented locally: Instagram Create KPI modal follows the GA4 modal structure while using existing Instagram KPI routes.
+- [x] Commit 13F done and pushed: Instagram Create KPI modal follows the GA4 modal structure while using existing Instagram KPI routes.
 - [ ] User validation pending for Commit 13F.
-- [ ] Commit 13G pending: Instagram report route/source contract.
-- [ ] Commit 13H pending: Instagram scheduled report snapshot/send guard.
-- [ ] Commit 13I pending: Instagram PDF/export output source proof.
-- [ ] Commit 13J pending: KPI/Benchmark/Report regression and validation docs.
+- [x] Commit 13G implemented locally: Instagram Create KPI modal opens with no selected metric, formats numeric target input, and hides Tracking Period.
+- [ ] User validation pending for Commit 13G.
+- [x] Commit 13H implemented locally: Instagram analytics refresh no longer flashes transient connection-loading text before connected content loads.
+- [ ] User validation pending for Commit 13H.
+- [ ] Commit 13I pending: Instagram report route/source contract.
+- [ ] Commit 13J pending: Instagram scheduled report snapshot/send guard.
+- [ ] Commit 13K pending: Instagram PDF/export output source proof.
+- [ ] Commit 13L pending: KPI/Benchmark/Report regression and validation docs.
 
 Commit 13A root-cause trace:
 
@@ -1730,10 +1742,42 @@ Commit 13F validation:
 
 - Open `/campaigns/:id/instagram-analytics`, then open the `KPIs` tab.
 - Click `Create KPI`.
-- Confirm the modal shows `Create Campaign KPI`, `Select KPI Template`, Instagram metric templates, `Create Custom KPI`, KPI name, description counter, current value, target value, unit, priority, tracking period, and alert controls.
+- Confirm the modal shows `Create Campaign KPI`, `Select KPI Template`, Instagram metric templates, `Create Custom KPI`, KPI name, description counter, current value, target value, unit, priority, and alert controls.
 - Select a metric template and confirm the name, unit, description, and current value prefill from the current Instagram overview totals.
 - Save a KPI and confirm it appears in the KPI tab.
 - This commit does not change backend routes, scheduler behavior, OAuth, provider refresh, reports, PDF output, or Benchmark UI.
+
+Commit 13G root-cause trace:
+
+- `kpiForm.metric` initialized to `impressions`, so the Impressions template appeared selected on modal open.
+- Target Value was stored directly from the input event, so non-numeric characters could be typed into the field before API submission.
+- Tracking Period remained in the Instagram modal even though the requested GA4-style Instagram workflow should not expose it.
+
+Commit 13G validation:
+
+- Open `/campaigns/:id/instagram-analytics`, then open the `KPIs` tab.
+- Click `Create KPI`.
+- Confirm no metric template is selected by default.
+- Type letters or symbols into `Target Value` and confirm only numeric decimal input remains.
+- Type a large number and confirm it formats with separators as typed.
+- Confirm `Tracking Period` is not shown.
+- Select a template or create a custom KPI, save it, and confirm the KPI appears in the tab.
+- This commit does not change backend routes, scheduler behavior, OAuth, provider refresh, reports, PDF output, or Benchmark UI.
+
+Commit 13H root-cause trace:
+
+- On a hard refresh, the Instagram analytics connection query starts with `connection` undefined.
+- The page used `(isLoading || error || !connected)` to render a visible status card, so the initial loading branch could flash text before the connected analytics tabs replaced it.
+- Commit 13H gates visible error/disconnected messages behind `!isLoading`, removes the transient `Loading Instagram analytics...` text, and keeps an invisible stable content area during the initial connection query.
+
+Commit 13H validation:
+
+- Open `/campaigns/:id/instagram-analytics` for a campaign with Instagram connected.
+- Hard-refresh the browser page.
+- Confirm the top of the page does not flash `Loading Instagram analytics...` or disconnected copy before the tabs load.
+- Confirm the Overview, KPIs, Benchmarks, Ad Comparison, and Reports tabs still render after the connection resolves.
+- Confirm a truly disconnected campaign still shows `Connect Instagram Ads from the campaign Connected Platforms section before opening Instagram analytics.` after the connection check resolves.
+- This commit does not change backend routes, metrics, KPI saves, scheduler behavior, OAuth, provider refresh, reports, PDF output, or source aggregation.
 
 ### Details For Commits 14A-14E: Regression Coverage And Final Evidence
 

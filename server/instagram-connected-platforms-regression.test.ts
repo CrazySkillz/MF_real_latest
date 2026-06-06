@@ -321,7 +321,11 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("`/api/instagram/${campaignId}/connection`");
     expect(page).toContain("connection?.connected === true");
     expect(page).toContain("connection.selectedCampaignIds.length > 0");
+    expect(page).toContain("showConnectionError");
+    expect(page).toContain("showDisconnectedState");
+    expect(page).toContain('aria-hidden="true"');
     expect(page).toContain("Connect Instagram Ads from the campaign Connected Platforms section");
+    expect(page).not.toContain("Loading Instagram analytics...");
     expect(page).not.toContain("overview-summary");
     expect(page).not.toContain("upsertInstagramDailyMetrics");
     expect(page).not.toContain("refreshInstagram");
@@ -397,6 +401,10 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("Target Value *");
     expect(page).toContain("Enable alerts for this KPI");
     expect(page).toContain("KPI_DESC_MAX");
+    expect(page).toContain('metric: ""');
+    expect(page).toContain("formatNumericInput");
+    expect(page).toContain("stripNumberFormatting(kpiForm.targetValue)");
+    expect(page).not.toContain("Tracking Period");
     expect(page).not.toContain("runGA4DailyKPIAndBenchmarkJobs");
     expect(page).not.toContain("refreshInstagram(");
     expect(page).not.toContain("/api/instagram/oauth");

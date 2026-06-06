@@ -46,6 +46,18 @@ function formatInstagramKpiValue(metricKey: string, rawValue: any) {
   return value.toLocaleString();
 }
 
+function stripNumberFormatting(value: string) {
+  return String(value || "").replace(/,/g, "");
+}
+
+function formatNumericInput(value: string) {
+  const cleaned = String(value || "").replace(/[^\d.]/g, "");
+  const [integerPart, ...decimalParts] = cleaned.split(".");
+  const integer = integerPart.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const decimal = decimalParts.join("").slice(0, 2);
+  return decimalParts.length > 0 ? `${integer || "0"}.${decimal}` : integer;
+}
+
 function getInstagramKpiProgress(kpi: any) {
   const metricKey = String(kpi?.metric || "");
   const current = Number(kpi?.currentValue || 0);
@@ -68,7 +80,7 @@ export default function InstagramAnalytics() {
   const [editingKpi, setEditingKpi] = useState<any>(null);
   const [kpiForm, setKpiForm] = useState({
     name: "",
-    metric: "impressions",
+    metric: "",
     currentValue: "",
     targetValue: "",
     unit: "",
@@ -97,6 +109,8 @@ export default function InstagramAnalytics() {
   });
 
   const connected = connection?.connected === true && Array.isArray(connection?.selectedCampaignIds) && connection.selectedCampaignIds.length > 0;
+  const showConnectionError = !isLoading && !!error;
+  const showDisconnectedState = !isLoading && !error && !connected;
   const { data: dailyMetrics, isLoading: metricsLoading, error: metricsError } = useQuery<any>({
     queryKey: [`/api/instagram/${campaignId}/daily-metrics`, "30days"],
     enabled: !!campaignId && connected,
@@ -179,14 +193,14 @@ export default function InstagramAnalytics() {
     };
   }, [kpis]);
   const resetKpiForm = (kpi?: any) => {
-    const metric = String(kpi?.metric || "impressions");
+    const metric = String(kpi?.metric || "");
     const metricDef = getInstagramKpiMetric(metric);
     setEditingKpi(kpi || null);
     setKpiForm({
       name: String(kpi?.name || ""),
       metric,
       currentValue: String(kpi?.currentValue || ""),
-      targetValue: String(kpi?.targetValue || ""),
+      targetValue: formatNumericInput(String(kpi?.targetValue || "")),
       unit: String(kpi?.unit || metricDef.unit || ""),
       description: String(kpi?.description || ""),
       priority: String(kpi?.priority || "medium"),
@@ -229,9 +243,9 @@ export default function InstagramAnalytics() {
       const payload = {
         campaignId,
         name: kpiForm.name || metricDef.label,
-        metric: kpiForm.metric,
-        targetValue: kpiForm.targetValue || "0",
-        currentValue: kpiForm.currentValue || "0",
+        metric: kpiForm.metric || "",
+        targetValue: stripNumberFormatting(kpiForm.targetValue) || "0",
+        currentValue: stripNumberFormatting(kpiForm.currentValue) || "0",
         unit: kpiForm.unit || metricDef.unit,
         description: kpiForm.description,
         priority: kpiForm.priority,
@@ -351,15 +365,12 @@ export default function InstagramAnalytics() {
               </div>
             </div>
 
-            {(isLoading || error || !connected) && (
+            {isLoading && <div className="min-h-[260px]" aria-hidden="true" />}
+
+            {(showConnectionError || showDisconnectedState) && (
               <Card>
                 <CardContent className="p-4">
-                  {isLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Loading Instagram analytics...
-                    </div>
-                  ) : error ? (
+                  {showConnectionError ? (
                     <div className="flex items-start gap-2 text-sm bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
                       <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
                       <p className="text-red-700 dark:text-red-300">{(error as Error).message}</p>
@@ -376,7 +387,7 @@ export default function InstagramAnalytics() {
               </Card>
             )}
 
-            {connected && (
+            {!isLoading && connected && (
               <Tabs defaultValue="overview" className="space-y-4">
                 <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -713,7 +724,7 @@ export default function InstagramAnalytics() {
                   type="text"
                   inputMode="decimal"
                   value={kpiForm.targetValue}
-                  onChange={(event) => setKpiForm((form) => ({ ...form, targetValue: event.target.value }))}
+                  onChange={(event) => setKpiForm((form) => ({ ...form, targetValue: formatNumericInput(event.target.value) }))}
                   placeholder="0"
                 />
               </div>
@@ -741,16 +752,6 @@ export default function InstagramAnalytics() {
                     <SelectItem value="high">High</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="instagram-kpi-period">Tracking Period</Label>
-                <Input
-                  id="instagram-kpi-period"
-                  type="number"
-                  min="1"
-                  value={kpiForm.trackingPeriod}
-                  onChange={(event) => setKpiForm((form) => ({ ...form, trackingPeriod: event.target.value }))}
-                />
               </div>
             </div>
 
@@ -842,7 +843,7 @@ export default function InstagramAnalytics() {
             <Button variant="outline" onClick={() => setKpiDialogOpen(false)}>Cancel</Button>
             <Button
               onClick={() => saveKpiMutation.mutate()}
-              disabled={saveKpiMutation.isPending || !kpiForm.name || !kpiForm.metric || !kpiForm.targetValue || (kpiForm.alertsEnabled && !kpiForm.alertThreshold)}
+              disabled={saveKpiMutation.isPending || !kpiForm.name || !kpiForm.targetValue || (kpiForm.alertsEnabled && !kpiForm.alertThreshold)}
             >
               {saveKpiMutation.isPending ? "Saving..." : editingKpi ? "Update KPI" : "Create KPI"}
             </Button>

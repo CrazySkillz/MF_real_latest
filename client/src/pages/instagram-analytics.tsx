@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -30,6 +32,7 @@ const INSTAGRAM_KPI_METRICS = [
 ];
 
 const LOWER_IS_BETTER_KPIS = new Set(["cpc", "cpm", "costPerConversion"]);
+const KPI_DESC_MAX = 200;
 
 function getInstagramKpiMetric(metricKey: string) {
   return INSTAGRAM_KPI_METRICS.find((metric) => metric.key === metricKey) || INSTAGRAM_KPI_METRICS[0];
@@ -63,7 +66,22 @@ export default function InstagramAnalytics() {
   const { toast } = useToast();
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const [editingKpi, setEditingKpi] = useState<any>(null);
-  const [kpiForm, setKpiForm] = useState({ name: "", metric: "impressions", targetValue: "", description: "", trackingPeriod: "30" });
+  const [kpiForm, setKpiForm] = useState({
+    name: "",
+    metric: "impressions",
+    currentValue: "",
+    targetValue: "",
+    unit: "",
+    description: "",
+    priority: "medium",
+    trackingPeriod: "30",
+    alertsEnabled: false,
+    alertThreshold: "",
+    alertCondition: "below",
+    alertFrequency: "daily",
+    emailNotifications: false,
+    emailRecipients: "",
+  });
 
   const { data: connection, isLoading, error } = useQuery<any>({
     queryKey: [`/api/instagram/${campaignId}/connection`],
@@ -162,14 +180,48 @@ export default function InstagramAnalytics() {
   }, [kpis]);
   const resetKpiForm = (kpi?: any) => {
     const metric = String(kpi?.metric || "impressions");
+    const metricDef = getInstagramKpiMetric(metric);
     setEditingKpi(kpi || null);
     setKpiForm({
       name: String(kpi?.name || ""),
       metric,
+      currentValue: String(kpi?.currentValue || ""),
       targetValue: String(kpi?.targetValue || ""),
+      unit: String(kpi?.unit || metricDef.unit || ""),
       description: String(kpi?.description || ""),
+      priority: String(kpi?.priority || "medium"),
       trackingPeriod: String(kpi?.trackingPeriod || "30"),
+      alertsEnabled: !!kpi?.alertsEnabled,
+      alertThreshold: String(kpi?.alertThreshold || ""),
+      alertCondition: String(kpi?.alertCondition || "below"),
+      alertFrequency: String(kpi?.alertFrequency || "daily"),
+      emailNotifications: !!kpi?.emailNotifications,
+      emailRecipients: String(kpi?.emailRecipients || ""),
     });
+  };
+  const applyKpiTemplate = (metricKey: string) => {
+    const metricDef = getInstagramKpiMetric(metricKey);
+    const currentByMetric: Record<string, number | null> = {
+      impressions: overviewTotals.impressions,
+      clicks: overviewTotals.clicks,
+      spend: overviewTotals.spend,
+      conversions: overviewTotals.conversions,
+      videoViews: overviewTotals.videoViews,
+      ctr: overviewTotals.ctr,
+      cpc: overviewTotals.cpc,
+      cpm: overviewTotals.cpm,
+      costPerConversion: overviewTotals.costPerConversion,
+      conversionRate: overviewTotals.conversionRate,
+    };
+    setKpiForm((form) => ({
+      ...form,
+      name: metricDef.label,
+      metric: metricDef.key,
+      unit: metricDef.unit,
+      description: `Track Instagram ${metricDef.label.toLowerCase()} against target.`,
+      currentValue: currentByMetric[metricDef.key] === null ? "" : String(currentByMetric[metricDef.key] || 0),
+      targetValue: "",
+    }));
   };
   const saveKpiMutation = useMutation({
     mutationFn: async () => {
@@ -179,15 +231,21 @@ export default function InstagramAnalytics() {
         name: kpiForm.name || metricDef.label,
         metric: kpiForm.metric,
         targetValue: kpiForm.targetValue || "0",
-        currentValue: "0",
-        unit: metricDef.unit,
+        currentValue: kpiForm.currentValue || "0",
+        unit: kpiForm.unit || metricDef.unit,
         description: kpiForm.description,
-        priority: "high",
+        priority: kpiForm.priority,
         status: "active",
         category: "performance",
         timeframe: "monthly",
         trackingPeriod: Number(kpiForm.trackingPeriod || 30),
         applyTo: "all",
+        alertsEnabled: kpiForm.alertsEnabled,
+        alertThreshold: kpiForm.alertsEnabled && kpiForm.alertThreshold ? kpiForm.alertThreshold : null,
+        alertCondition: kpiForm.alertCondition,
+        alertFrequency: kpiForm.alertFrequency,
+        emailNotifications: kpiForm.emailNotifications,
+        emailRecipients: kpiForm.emailNotifications ? kpiForm.emailRecipients : null,
       };
       const response = await fetch(editingKpi ? `/api/platforms/instagram/kpis/${editingKpi.id}` : "/api/platforms/instagram/kpis", {
         method: editingKpi ? "PATCH" : "POST",
@@ -578,76 +636,213 @@ export default function InstagramAnalytics() {
         </main>
       </div>
       <Dialog open={kpiDialogOpen} onOpenChange={setKpiDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingKpi ? "Edit Instagram KPI" : "Create Instagram KPI"}</DialogTitle>
-            <DialogDescription>Track one selected-source Instagram metric against a target.</DialogDescription>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+          <DialogHeader className="pb-4 pr-8">
+            <DialogTitle>{editingKpi ? "Edit Campaign KPI" : "Create Campaign KPI"}</DialogTitle>
+            <DialogDescription>Set up a key performance indicator for this Instagram campaign.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {!editingKpi && (
+              <div className="space-y-4 p-4 bg-muted rounded-lg">
+                <h4 className="font-medium text-foreground">Select KPI Template</h4>
+                <p className="text-sm text-muted-foreground">
+                  Choose a predefined KPI that will automatically calculate from your Instagram source data, or create a custom one.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {INSTAGRAM_KPI_METRICS.map((metric) => (
+                    <button
+                      key={metric.key}
+                      type="button"
+                      className={`p-3 text-left border-2 rounded-lg transition-all ${kpiForm.metric === metric.key ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-300"}`}
+                      onClick={() => applyKpiTemplate(metric.key)}
+                    >
+                      <div className="font-medium text-sm text-foreground">{metric.label}</div>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="p-3 text-left border-2 rounded-lg border-border hover:border-blue-300 transition-all"
+                    onClick={() => resetKpiForm()}
+                  >
+                    <div className="font-medium text-sm text-foreground">Create Custom KPI</div>
+                    <div className="mt-1 text-xs text-muted-foreground">Choose name + unit, then set values</div>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label htmlFor="instagram-kpi-name">Name</Label>
+              <Label htmlFor="instagram-kpi-name">KPI Name *</Label>
               <Input
                 id="instagram-kpi-name"
                 value={kpiForm.name}
                 onChange={(event) => setKpiForm((form) => ({ ...form, name: event.target.value }))}
-                placeholder="Instagram Impressions"
+                placeholder="e.g., Overall Instagram CTR"
               />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="instagram-kpi-description">Description</Label>
+              <Textarea
+                id="instagram-kpi-description"
+                value={kpiForm.description}
+                maxLength={KPI_DESC_MAX}
+                rows={3}
+                onChange={(event) => setKpiForm((form) => ({ ...form, description: event.target.value.slice(0, KPI_DESC_MAX) }))}
+                placeholder="Describe what this KPI measures and why it's important"
+              />
+              <div className="text-xs text-muted-foreground text-right">{kpiForm.description.length}/{KPI_DESC_MAX}</div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="instagram-kpi-current">Current Value</Label>
+                <Input
+                  id="instagram-kpi-current"
+                  type="text"
+                  inputMode="decimal"
+                  value={kpiForm.currentValue}
+                  onChange={(event) => setKpiForm((form) => ({ ...form, currentValue: event.target.value }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="instagram-kpi-target">Target Value *</Label>
+                <Input
+                  id="instagram-kpi-target"
+                  type="text"
+                  inputMode="decimal"
+                  value={kpiForm.targetValue}
+                  onChange={(event) => setKpiForm((form) => ({ ...form, targetValue: event.target.value }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="instagram-kpi-unit">Unit</Label>
+                <Input
+                  id="instagram-kpi-unit"
+                  value={kpiForm.unit}
+                  onChange={(event) => setKpiForm((form) => ({ ...form, unit: event.target.value }))}
+                  placeholder="%, $, etc."
+                />
+              </div>
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>Metric</Label>
-                <Select
-                  value={kpiForm.metric}
-                  onValueChange={(value) => setKpiForm((form) => ({ ...form, metric: value }))}
-                >
-                  <SelectTrigger>
+                <Label htmlFor="instagram-kpi-priority">Priority</Label>
+                <Select value={kpiForm.priority} onValueChange={(value) => setKpiForm((form) => ({ ...form, priority: value }))}>
+                  <SelectTrigger id="instagram-kpi-priority">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {INSTAGRAM_KPI_METRICS.map((metric) => (
-                      <SelectItem key={metric.key} value={metric.key}>{metric.label}</SelectItem>
-                    ))}
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="instagram-kpi-target">Target</Label>
+                <Label htmlFor="instagram-kpi-period">Tracking Period</Label>
                 <Input
-                  id="instagram-kpi-target"
+                  id="instagram-kpi-period"
                   type="number"
-                  min="0"
-                  step="0.01"
-                  value={kpiForm.targetValue}
-                  onChange={(event) => setKpiForm((form) => ({ ...form, targetValue: event.target.value }))}
-                  placeholder="1000"
+                  min="1"
+                  value={kpiForm.trackingPeriod}
+                  onChange={(event) => setKpiForm((form) => ({ ...form, trackingPeriod: event.target.value }))}
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="instagram-kpi-period">Tracking Period</Label>
-              <Input
-                id="instagram-kpi-period"
-                type="number"
-                min="1"
-                value={kpiForm.trackingPeriod}
-                onChange={(event) => setKpiForm((form) => ({ ...form, trackingPeriod: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="instagram-kpi-description">Description</Label>
-              <Input
-                id="instagram-kpi-description"
-                value={kpiForm.description}
-                onChange={(event) => setKpiForm((form) => ({ ...form, description: event.target.value }))}
-                placeholder="Optional"
-              />
+
+            <div className="space-y-4 pt-4 border-t border-border">
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="instagram-kpi-alerts-enabled"
+                    checked={kpiForm.alertsEnabled}
+                    onCheckedChange={(checked) => setKpiForm((form) => ({ ...form, alertsEnabled: checked === true }))}
+                  />
+                  <Label htmlFor="instagram-kpi-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                    Enable alerts for this KPI
+                  </Label>
+                </div>
+                <p className="text-sm text-muted-foreground pl-6">
+                  Receive notifications for KPI performance alerts on the bell icon &amp; in your Notifications center
+                </p>
+              </div>
+
+              {kpiForm.alertsEnabled && (
+                <div className="space-y-4 pl-6">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="instagram-kpi-alert-threshold">Alert Threshold *</Label>
+                      <Input
+                        id="instagram-kpi-alert-threshold"
+                        type="text"
+                        inputMode="decimal"
+                        value={kpiForm.alertThreshold}
+                        onChange={(event) => setKpiForm((form) => ({ ...form, alertThreshold: event.target.value }))}
+                        placeholder="e.g., 80"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="instagram-kpi-alert-condition">Alert When</Label>
+                      <Select value={kpiForm.alertCondition} onValueChange={(value) => setKpiForm((form) => ({ ...form, alertCondition: value }))}>
+                        <SelectTrigger id="instagram-kpi-alert-condition">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="below">Value Goes Below</SelectItem>
+                          <SelectItem value="above">Value Goes Above</SelectItem>
+                          <SelectItem value="equals">Value Equals</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="instagram-kpi-alert-frequency">Alert Frequency</Label>
+                      <Select value={kpiForm.alertFrequency} onValueChange={(value) => setKpiForm((form) => ({ ...form, alertFrequency: value }))}>
+                        <SelectTrigger id="instagram-kpi-alert-frequency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="immediate">Immediate</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2 pt-1">
+                        <Checkbox
+                          id="instagram-kpi-email-notifications"
+                          checked={kpiForm.emailNotifications}
+                          onCheckedChange={(checked) => setKpiForm((form) => ({ ...form, emailNotifications: checked === true }))}
+                        />
+                        <Label htmlFor="instagram-kpi-email-notifications" className="cursor-pointer font-medium">
+                          Send email notifications
+                        </Label>
+                      </div>
+                      {kpiForm.emailNotifications && (
+                        <Input
+                          type="text"
+                          value={kpiForm.emailRecipients}
+                          onChange={(event) => setKpiForm((form) => ({ ...form, emailRecipients: event.target.value }))}
+                          placeholder="email1@example.com, email2@example.com"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setKpiDialogOpen(false)}>Cancel</Button>
             <Button
               onClick={() => saveKpiMutation.mutate()}
-              disabled={saveKpiMutation.isPending || !kpiForm.metric || !kpiForm.targetValue}
+              disabled={saveKpiMutation.isPending || !kpiForm.name || !kpiForm.metric || !kpiForm.targetValue || (kpiForm.alertsEnabled && !kpiForm.alertThreshold)}
             >
               {saveKpiMutation.isPending ? "Saving..." : editingKpi ? "Update KPI" : "Create KPI"}
             </Button>

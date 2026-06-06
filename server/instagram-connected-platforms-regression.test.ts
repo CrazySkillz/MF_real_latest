@@ -389,8 +389,14 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain('method: editingKpi ? "PATCH" : "POST"');
     expect(page).toContain('method: "DELETE"');
     expect(page).toContain("AlertDialog");
-    expect(page).toContain("Edit Instagram KPI");
-    expect(page).toContain("Create Instagram KPI");
+    expect(page).toContain("Create Campaign KPI");
+    expect(page).toContain("Select KPI Template");
+    expect(page).toContain("Create Custom KPI");
+    expect(page).toContain("KPI Name *");
+    expect(page).toContain("Current Value");
+    expect(page).toContain("Target Value *");
+    expect(page).toContain("Enable alerts for this KPI");
+    expect(page).toContain("KPI_DESC_MAX");
     expect(page).not.toContain("runGA4DailyKPIAndBenchmarkJobs");
     expect(page).not.toContain("refreshInstagram(");
     expect(page).not.toContain("/api/instagram/oauth");

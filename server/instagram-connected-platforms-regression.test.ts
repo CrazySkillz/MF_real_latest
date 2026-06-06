@@ -111,6 +111,68 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(route).not.toContain("/api/instagram/oauth");
   });
 
+  it("builds Instagram aggregate sources only from selected persisted Instagram daily rows", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const helperStart = routes.indexOf("async function buildInstagramPlatformSourceForAggregate");
+    const helperEnd = routes.indexOf("async function buildLinkedInPlatformSourceForAggregate", helperStart);
+    const helper = routes.slice(helperStart, helperEnd);
+
+    expect(helperStart).toBeGreaterThanOrEqual(0);
+    expect(helper).toContain("storage.getInstagramConnection(campaignId)");
+    expect(helper).toContain("selectedCampaignIds.length > 0");
+    expect(helper).toContain("storage.getInstagramDailyMetrics(campaignId, startDate, endDate)");
+    expect(helper).toContain("selectedSet.has(String(row?.instagramCampaignId))");
+    expect(helper).toContain('String(row?.publisherPlatform || "instagram") === "instagram"');
+    expect(helper).toContain('id: "instagram"');
+    expect(helper).toContain('label: "Instagram Ads"');
+    expect(helper).toContain('category: "paid_media"');
+    expect(helper).toContain('attributedRevenueSource: "unavailable"');
+    expect(helper).not.toContain("getMetaDailyMetrics");
+    expect(helper).not.toContain("MetaGraphAPIClient");
+    expect(helper).not.toContain("upsertInstagramDailyMetrics");
+    expect(helper).not.toContain("refreshInstagram");
+  });
+
+  it("allows Instagram through the aggregate main platform source composition without route wiring", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const helperStart = routes.indexOf("function buildMainPlatformSourcesForAggregate");
+    const helperEnd = routes.indexOf("function buildCampaignPerformanceSummaryAggregate", helperStart);
+    const helper = routes.slice(helperStart, helperEnd);
+
+    expect(helperStart).toBeGreaterThanOrEqual(0);
+    expect(helper).toContain("sources: { googleAds?: any; instagram?: any } = {}");
+    expect(helper).toContain("[sources.googleAds, sources.instagram]");
+    expect(helper).toContain("source?.connected === true");
+  });
+
+  it("fails closed for Meta plus Instagram combined paid-media aggregate totals", () => {
+    const aggregate = readFileSync(join(process.cwd(), "server", "utils", "performance-summary-aggregate.ts"), "utf-8");
+
+    expect(aggregate).toContain("hasMetaInstagramOverlapRisk");
+    expect(aggregate).toContain('source.id === "meta" && source.connected');
+    expect(aggregate).toContain('source.id === "instagram" && source.connected');
+    expect(aggregate).toContain('!(hasMetaInstagramOverlapRisk && source.id === "instagram")');
+  });
+
+  it("wires Instagram into Campaign DeepDive aggregate routes without refresh or write behavior", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const outcomeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
+    const outcomeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"', outcomeStart);
+    const outcomeRoute = routes.slice(outcomeStart, outcomeEnd);
+    const executiveStart = routes.indexOf('app.get("/api/campaigns/:id/executive-summary"');
+    const executiveEnd = routes.indexOf('app.get("/api/campaigns/:id/utm-performance"', executiveStart);
+    const executiveRoute = routes.slice(executiveStart, executiveEnd);
+
+    for (const route of [outcomeRoute, executiveRoute]) {
+      expect(route).toContain("buildInstagramPlatformSourceForAggregate");
+      expect(route).toContain("mainPlatformSources: { googleAds, instagram }");
+      expect(route).toContain("instagramSpendForAggregate");
+      expect(route).not.toContain("upsertInstagramDailyMetrics");
+      expect(route).not.toContain("refreshInstagram");
+      expect(route).not.toContain("/api/instagram/oauth");
+    }
+  });
+
   it("registers an Instagram analytics route shell guarded by the campaign connection", () => {
     const app = readFileSync(join(process.cwd(), "client", "src", "App.tsx"), "utf-8");
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "instagram-analytics.tsx"), "utf-8");

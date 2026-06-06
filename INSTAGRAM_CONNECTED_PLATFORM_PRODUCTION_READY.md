@@ -39,17 +39,17 @@ This table is the single source of truth for what is done, pending, and where ea
 | 7B | Campaign Overview unavailable metric states for connected-without-rows | Done and pushed; user validation passed | Overview metric states |
 | 7C | Campaign Overview source-backed metrics from Instagram daily rows only | Done and pushed; user validation passed | Overview metrics |
 | 7D | Campaign Overview regression and validation docs | Done and pushed; user validation passed | None |
-| 8A | Instagram analytics route shell and access guard | Implemented locally; user validation pending | Instagram analytics page route |
-| 8B | Instagram analytics daily metrics endpoint | Implemented locally; user validation pending | Backend analytics data route |
-| 8C | Instagram analytics Overview tab from source-backed rows | Implemented locally; user validation pending | Analytics UI |
-| 8D | Instagram analytics Campaign Breakdown tab from selected campaign rows | Implemented locally; user validation pending | Analytics UI |
-| 8E | Instagram analytics unavailable/error/freshness states | Implemented locally; user validation pending | Analytics UI state |
-| 8F | Instagram analytics guarded Connected Platforms link, regression, and validation docs | Implemented locally; user validation pending | Connected Platforms analytics link |
-| 9A | Instagram aggregate resolver reads only `instagram_daily_metrics` | Pending | Campaign DeepDive backend aggregate |
-| 9B | Instagram aggregate capabilities and unavailable-reason contract | Pending | Campaign DeepDive source contract |
-| 9C | Meta/Facebook plus Instagram no-double-counting guard | Pending | Campaign DeepDive source safety |
-| 9D | Campaign DeepDive consumers accept Instagram through existing `platformSources` contract | Pending | Campaign DeepDive UI values |
-| 9E | Campaign DeepDive regression and validation docs | Pending | None |
+| 8A | Instagram analytics route shell and access guard | Done and pushed; user validation passed | Instagram analytics page route |
+| 8B | Instagram analytics daily metrics endpoint | Done and pushed; user validation passed | Backend analytics data route |
+| 8C | Instagram analytics Overview tab from source-backed rows | Done and pushed; user validation passed | Analytics UI |
+| 8D | Instagram analytics Campaign Breakdown tab from selected campaign rows | Done and pushed; user validation passed | Analytics UI |
+| 8E | Instagram analytics unavailable/error/freshness states | Done and pushed; user validation passed | Analytics UI state |
+| 8F | Instagram analytics guarded Connected Platforms link, regression, and validation docs | Done and pushed; user validation passed | Connected Platforms analytics link |
+| 9A | Instagram aggregate resolver reads only `instagram_daily_metrics` | Implemented locally; user validation pending | Campaign DeepDive backend aggregate |
+| 9B | Aggregate source composition accepts Instagram without route wiring | Implemented locally; user validation pending | Campaign DeepDive source contract |
+| 9C | Meta/Facebook plus Instagram no-double-counting guard | Implemented locally; user validation pending | Campaign DeepDive source safety |
+| 9D | Campaign DeepDive consumers accept Instagram through existing `platformSources` contract | Implemented locally; user validation pending | Campaign DeepDive UI values |
+| 9E | Campaign DeepDive regression and validation docs | Implemented locally; user validation pending | None |
 | 10A | Add `instagram` platform context allowlist only where storage/source proof exists | Pending | Financial import backend |
 | 10B | Instagram spend import/edit source identity uses `instagram_api` only | Pending | Spend import path |
 | 10C | Instagram attributed revenue import/edit source identity uses `platformContext="instagram"` only | Pending | Revenue import path |
@@ -146,17 +146,27 @@ Commit 7D Campaign Overview closeout is implemented locally. It documents the co
 
 User validation passed for Instagram Commit 7A through Commit 7D by connecting to the Instagram test account and checking the Campaign Overview Connected Platforms card.
 
-Commit 8A Instagram analytics route shell and access guard is implemented locally. The app now has `/campaigns/:id/instagram-analytics` with a page shell that verifies the persisted Instagram campaign connection through `/api/instagram/:campaignId/connection` before showing the shell; it does not read metrics, expose analytics tabs, add refresh, aggregate, revenue, scheduler, reports, KPI, Benchmark, or live OAuth behavior.
+Commit 8A Instagram analytics route shell and access guard is done, pushed, and user-validated. The app now has `/campaigns/:id/instagram-analytics` with a page shell that verifies the persisted Instagram campaign connection through `/api/instagram/:campaignId/connection` before showing the shell; it does not add refresh, aggregate, revenue, scheduler, reports, KPI, Benchmark, or live OAuth behavior.
 
-Commit 8B Instagram analytics daily metrics endpoint is implemented locally. `GET /api/instagram/:campaignId/daily-metrics` is campaign-access guarded and returns only persisted `instagram_daily_metrics` rows for selected Instagram campaign IDs where `publisherPlatform` is `instagram`; it does not write rows, refresh provider data, expose UI tabs, add aggregate behavior, revenue, scheduler, reports, KPI, Benchmark, or live OAuth behavior.
+Commit 8B Instagram analytics daily metrics endpoint is done, pushed, and user-validated. `GET /api/instagram/:campaignId/daily-metrics` is campaign-access guarded and returns only persisted `instagram_daily_metrics` rows for selected Instagram campaign IDs where `publisherPlatform` is `instagram`; it does not write rows, refresh provider data, add aggregate behavior, revenue, scheduler, reports, KPI, Benchmark, or live OAuth behavior.
 
-Commit 8C Instagram analytics Overview tab is implemented locally. The Instagram analytics page reads `GET /api/instagram/:campaignId/daily-metrics?dateRange=30days` only after the persisted Instagram connection is present and aggregates returned selected-source rows into Overview totals; it keeps empty-row unavailable state and does not add Campaign Breakdown, refresh, aggregate, revenue, scheduler, reports, KPI, Benchmark, or live OAuth behavior.
+Commit 8C Instagram analytics Overview tab is done, pushed, and user-validated. The Instagram analytics page reads `GET /api/instagram/:campaignId/daily-metrics?dateRange=30days` only after the persisted Instagram connection is present and aggregates returned selected-source rows into Overview totals; it keeps empty-row unavailable state and does not add refresh, aggregate, revenue, scheduler, reports, KPI, Benchmark, or live OAuth behavior.
 
-Commit 8D Instagram analytics Campaign Breakdown tab is implemented locally. The page derives campaign-level rows from the same selected-source daily metrics response, grouped only by `instagramCampaignId`, and does not add backend behavior, refresh, aggregate, revenue, scheduler, reports, KPI, Benchmark, or live OAuth behavior.
+Commit 8D Instagram analytics Campaign Breakdown tab is done, pushed, and user-validated. The page derives campaign-level rows from the same selected-source daily metrics response, grouped only by `instagramCampaignId`, and does not add backend behavior, refresh, aggregate, revenue, scheduler, reports, KPI, Benchmark, or live OAuth behavior.
 
-Commit 8E Instagram analytics unavailable/error/freshness states are implemented locally. The analytics page now shows daily-metrics request errors, connected-without-row unavailable states, and latest persisted row import freshness when available; it does not add provider refresh, row writes, aggregate, revenue, scheduler, reports, KPI, Benchmark, or live OAuth behavior.
+Commit 8E Instagram analytics unavailable/error/freshness states are done, pushed, and user-validated. The analytics page now shows daily-metrics request errors, connected-without-row unavailable states, and latest persisted row import freshness when available; it does not add provider refresh, row writes, aggregate, revenue, scheduler, reports, KPI, Benchmark, or live OAuth behavior.
 
-Commit 8F Instagram analytics closeout is implemented locally. Connected Platforms now exposes `View Detailed Analytics` for Instagram only when the persisted Instagram source contract is connected, and the tracker documents the completed Commit 8 validation boundary; it does not add provider refresh, row writes, aggregate, revenue, scheduler, reports, KPI, Benchmark, or live OAuth behavior.
+Commit 8A-8F Instagram analytics page validation passed by connecting to the Instagram test account. The page opens from Connected Platforms, preserves the selected Instagram campaign ID, and correctly shows the source-backed unavailable state when no persisted daily rows exist; it does not add provider refresh, row writes, aggregate, revenue, scheduler, reports, KPI, Benchmark, or live OAuth behavior.
+
+Commit 9A Instagram aggregate source builder is implemented locally. The helper reads only the persisted Instagram connection and selected `instagram_daily_metrics` rows with `publisherPlatform` constrained to `instagram`; it does not add scheduler snapshots, reports, KPIs, Benchmarks, revenue context, refresh, or live OAuth behavior.
+
+Commit 9B aggregate source composition is implemented locally. `buildMainPlatformSourcesForAggregate(...)` now accepts a normalized Instagram source object alongside Google Ads, but no route passes Instagram into the helper yet; it does not change Campaign DeepDive output, scheduler snapshots, reports, KPIs, Benchmarks, revenue context, refresh, or live OAuth behavior.
+
+Commit 9C Meta/Facebook plus Instagram no-double-counting guard is implemented locally. The shared Performance Summary aggregate now treats connected Meta and connected Instagram as overlapping paid-media sources unless Meta is later proven Instagram-excluded, so Instagram is not added into combined paid-media totals when Meta is also connected.
+
+Commit 9D Campaign DeepDive aggregate route wiring is implemented locally. `/api/campaigns/:id/outcome-totals` and `/api/campaigns/:id/executive-summary` now pass the normalized Instagram source through the existing `platformSources` contract, with Instagram spend included only when Meta is not also connected; it does not add scheduler snapshots, reports, KPIs, Benchmarks, revenue context, refresh, or live OAuth behavior.
+
+Commit 9E Campaign DeepDive aggregate closeout is implemented locally. It records the completed Commit 9 boundary, regression coverage, and validation path for Instagram aggregate source wiring; it does not add runtime behavior beyond Commits 9A-9D.
 
 ## Root Cause Analysis
 
@@ -195,8 +205,13 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 8D, the Instagram analytics page had no selected-campaign breakdown even when daily rows existed. Commit 8D adds a breakdown derived only from the filtered daily metrics response.
 - Before Commit 8E, the Instagram analytics page had loading and empty states but no explicit daily-metrics error state or persisted-row freshness indicator. Commit 8E adds those UI states without adding refresh behavior.
 - Before Commit 8F, the Instagram analytics page existed but the Connected Platforms card still could not open it, leaving the Commit 8 validation path incomplete. Commit 8F exposes the guarded analytics link only after the Instagram source is connected.
+- Before Commit 9A, Campaign DeepDive had no Instagram source builder for the shared aggregate contract. Commit 9A adds the source builder only, reading selected persisted Instagram daily rows and excluding Meta/Facebook placement data.
+- Before Commit 9B, the shared route-local `mainPlatformSources` composition accepted only Google Ads, so an Instagram source object would be dropped before reaching the existing aggregate helper. Commit 9B allows Instagram through that local composition without wiring route callers yet.
+- Before Commit 9C, once Instagram became eligible for the aggregate source contract, a future Meta plus Instagram route wiring could sum Meta campaign rows and standalone Instagram rows even though Meta rows are not proven to exclude Instagram delivery. Commit 9C adds a fail-closed combined-total guard before route wiring.
+- Before Commit 9D, the Instagram aggregate source builder and source composition existed but no Campaign DeepDive aggregate route passed Instagram into the shared aggregate contract. Commit 9D wires `/outcome-totals` and `/executive-summary` through the existing contract with the 9C overlap guard.
+- Before Commit 9E, Commit 9A-9D implementation and regression proof existed locally but the tracker did not explicitly close the Campaign DeepDive aggregate validation boundary. Commit 9E records that boundary without runtime changes.
 - `server/scheduler.ts` and platform schedulers have no Instagram refresh or snapshot input.
-- `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`, but no Instagram resolver currently supplies one.
+- `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`; Commit 9A supplies an Instagram source builder and Commit 9D wires it into the two current aggregate route consumers.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
 - Meta/Facebook currently includes Instagram-related placement data in some contexts; promoting that data to a standalone Instagram platform without explicit source boundaries would risk double-counting and misleading source attribution.
 
@@ -1128,12 +1143,12 @@ Status:
 - [x] Commit 8D implemented locally: Instagram analytics Campaign Breakdown groups selected daily rows only.
 - [x] Commit 8E implemented locally: Instagram analytics unavailable, error, and freshness states are shown.
 - [x] Commit 8F implemented locally: Connected Platforms exposes the guarded Instagram analytics link and validation boundary is documented.
-- [ ] User validation pending for Commit 8A.
-- [ ] User validation pending for Commit 8B.
-- [ ] User validation pending for Commit 8C.
-- [ ] User validation pending for Commit 8D.
-- [ ] User validation pending for Commit 8E.
-- [ ] User validation pending for Commit 8F.
+- [x] User validation passed for Commit 8A by connecting to the Instagram test account.
+- [x] User validation passed for Commit 8B by connecting to the Instagram test account.
+- [x] User validation passed for Commit 8C by connecting to the Instagram test account.
+- [x] User validation passed for Commit 8D by connecting to the Instagram test account.
+- [x] User validation passed for Commit 8E by connecting to the Instagram test account.
+- [x] User validation passed for Commit 8F by connecting to the Instagram test account.
 
 ### Details For Commits 9A-9E: Campaign DeepDive Aggregate Resolver
 
@@ -1158,7 +1173,29 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Commit 9A implemented locally: `buildInstagramPlatformSourceForAggregate(...)` reads only selected persisted Instagram daily rows and returns a normalized source object.
+- [ ] User validation pending for Commit 9A.
+- [x] Commit 9B implemented locally: aggregate source composition accepts Instagram as a main platform source without changing route consumers yet.
+- [ ] User validation pending for Commit 9B.
+- [x] Commit 9C implemented locally: Meta/Facebook plus Instagram combined paid-media totals fail closed instead of double-counting overlapping source scopes.
+- [ ] User validation pending for Commit 9C.
+- [x] Commit 9D implemented locally: `/api/campaigns/:id/outcome-totals` and `/api/campaigns/:id/executive-summary` pass Instagram through the existing `platformSources` contract.
+- [ ] User validation pending for Commit 9D.
+- [x] Commit 9E implemented locally: Campaign DeepDive aggregate regression and validation boundary is documented.
+- [ ] User validation pending for Commit 9E.
+
+Commit 9 local validation:
+
+- `git diff --check`
+- `npm run check`
+- `npm test -- server/instagram-connected-platforms-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts server/performance-summary-aggregate.test.ts`
+
+Commit 9 user validation:
+
+- For an Instagram-only test campaign with persisted Instagram daily rows, `/api/campaigns/:id/outcome-totals?dateRange=30days` should include `instagram` once in `performanceSummary.sources`.
+- For that same campaign, `/api/campaigns/:id/executive-summary?period=30d` should include Instagram through the shared aggregate-derived metrics.
+- For a Meta plus Instagram campaign, `performanceSummary.sources` may show both source records, but combined paid-media totals must not add Instagram rows on top of Meta rows until Meta is proven Instagram-excluded.
+- No Instagram refresh, OAuth, scheduler, revenue context, KPI, Benchmark, or report behavior should appear from Commit 9.
 
 ### Details For Commits 10A-10D: Revenue, Spend, And Derived Metric Semantics
 
@@ -1367,8 +1404,8 @@ Proven:
 
 - The existing architecture requires new main Connected Platforms to plug into Campaign DeepDive through the shared connected-source aggregate contract.
 - The current aggregate can consume generic future `platformSources`.
-- The current Create Campaign and Connected Platforms paths do not expose Instagram.
-- The current scheduler/report paths do not include Instagram lifecycle support; schema/storage foundation exists locally after Commit 3, backend-only connection/status, test connection, selected-campaign update, disconnect, and selected-campaign list routes exist after Commit 4A-4E, Commit 4F documents that this backend contract is closed without UI/runtime exposure, Commit 5A added the Create Campaign option, Commit 5B adds a test setup path only, Commit 5C adds a persisted-source finalization guard, Commit 5D broadens post-finalization cache invalidation only, Commit 5E closes the Create Campaign documentation boundary, Commit 6A adds backend Connected Platforms status only, Commit 6B adds a card shell, Commit 6C adds test source-contract setup only, Commit 6D broadens Connected Platforms success invalidation only, Commit 6E closes the Connected Platforms documentation boundary, Commit 6F maps the Connected Platforms disconnect UI to the existing backend route, Commit 7A locks the read-only Campaign Overview source-status boundary, Commit 7B adds the connected-without-rows unavailable metric state, Commit 7C adds selected-row-only Campaign Overview metrics, Commit 7D documents the Campaign Overview validation boundary, Commit 8A adds the Instagram analytics route shell and connection guard, Commit 8B adds the read-only analytics daily-row endpoint, Commit 8C adds the source-backed Overview tab, Commit 8D adds the selected-campaign breakdown tab, Commit 8E adds analytics unavailable/error/freshness states, and Commit 8F exposes the guarded Connected Platforms analytics link and closes the validation boundary.
+- The current Create Campaign, Connected Platforms, Campaign Overview, and Instagram analytics page paths expose Instagram through the test-mode source contract; live OAuth and aggregate route exposure remain pending.
+- The current scheduler/report paths do not include Instagram lifecycle support; schema/storage foundation exists locally after Commit 3, backend-only connection/status, test connection, selected-campaign update, disconnect, and selected-campaign list routes exist after Commit 4A-4E, Commit 4F documents that this backend contract is closed without UI/runtime exposure, Commit 5A added the Create Campaign option, Commit 5B adds a test setup path only, Commit 5C adds a persisted-source finalization guard, Commit 5D broadens post-finalization cache invalidation only, Commit 5E closes the Create Campaign documentation boundary, Commit 6A adds backend Connected Platforms status only, Commit 6B adds a card shell, Commit 6C adds test source-contract setup only, Commit 6D broadens Connected Platforms success invalidation only, Commit 6E closes the Connected Platforms documentation boundary, Commit 6F maps the Connected Platforms disconnect UI to the existing backend route, Commit 7A locks the read-only Campaign Overview source-status boundary, Commit 7B adds the connected-without-rows unavailable metric state, Commit 7C adds selected-row-only Campaign Overview metrics, Commit 7D documents the Campaign Overview validation boundary, Commit 8A adds the Instagram analytics route shell and connection guard, Commit 8B adds the read-only analytics daily-row endpoint, Commit 8C adds the source-backed Overview tab, Commit 8D adds the selected-campaign breakdown tab, Commit 8E adds analytics unavailable/error/freshness states, Commit 8F exposes the guarded Connected Platforms analytics link and closes the validation boundary, Commit 9A adds the Instagram aggregate source builder, Commit 9B allows aggregate source composition, Commit 9C adds the Meta/Facebook plus Instagram no-double-counting guard, Commit 9D wires aggregate routes, and Commit 9E documents the validation boundary.
 - Meta/Facebook currently has Instagram-related placement concepts, but not a standalone Instagram source contract.
 - Instagram Commit 1 documentation and acceptance-contract validation passed after user review.
 - Instagram Commit 2 API/source-contract research and local design trace passed user validation.
@@ -1395,12 +1432,17 @@ Proven:
 - Instagram Commit 7B Campaign Overview unavailable metric state is done, pushed, and user-validated without financial import platform context, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, or report exposure.
 - Instagram Commit 7C Campaign Overview selected-row metric read is done, pushed, and user-validated without financial import platform context, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, analytics page, or report exposure.
 - Instagram Commit 7D Campaign Overview regression and validation closeout is done, pushed, and user-validated as documentation/regression-boundary tracking only.
-- Instagram Commit 8A analytics route shell and connection guard is implemented locally without daily metrics endpoint usage, analytics tabs, Campaign Overview button exposure, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
-- Instagram Commit 8B analytics daily metrics endpoint is implemented locally without UI consumption, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
-- Instagram Commit 8C analytics Overview tab is implemented locally without Campaign Breakdown, Campaign Overview button exposure, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
-- Instagram Commit 8D analytics Campaign Breakdown tab is implemented locally without Campaign Overview button exposure, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
-- Instagram Commit 8E analytics unavailable/error/freshness states are implemented locally without Campaign Overview button exposure, live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
-- Instagram Commit 8F guarded Connected Platforms analytics link and validation closeout is implemented locally without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
+- Instagram Commit 8A analytics route shell and connection guard is done, pushed, and user-validated without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
+- Instagram Commit 8B analytics daily metrics endpoint is done, pushed, and user-validated without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
+- Instagram Commit 8C analytics Overview tab is done, pushed, and user-validated without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
+- Instagram Commit 8D analytics Campaign Breakdown tab is done, pushed, and user-validated without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
+- Instagram Commit 8E analytics unavailable/error/freshness states are done, pushed, and user-validated without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
+- Instagram Commit 8F guarded Connected Platforms analytics link and validation closeout is done, pushed, and user-validated without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
+- Instagram Commit 9A aggregate source builder is implemented locally without `/outcome-totals`, `/executive-summary`, scheduler, revenue, KPI, Benchmark, report, refresh, or live OAuth exposure.
+- Instagram Commit 9B aggregate source composition is implemented locally without route consumer wiring, scheduler, revenue, KPI, Benchmark, report, refresh, or live OAuth exposure.
+- Instagram Commit 9C Meta/Facebook plus Instagram no-double-counting guard is implemented locally without route consumer wiring, scheduler, revenue, KPI, Benchmark, report, refresh, or live OAuth exposure.
+- Instagram Commit 9D Campaign DeepDive aggregate route wiring is implemented locally without scheduler, revenue context, KPI, Benchmark, report, refresh, or live OAuth exposure.
+- Instagram Commit 9E Campaign DeepDive aggregate validation closeout is implemented locally without runtime behavior.
 
 Partially reviewed:
 
@@ -1442,11 +1484,11 @@ Implementation:
 - [x] Add Create Campaign query invalidation.
 - [x] Close Create Campaign validation and documentation boundary.
 - [x] Add Connected Platforms backend Instagram status.
-- [ ] Add write connection flow.
-- [ ] Add Create Campaign integration.
-- [ ] Add Connected Platforms integration.
+- [ ] Add live write connection flow.
+- [x] Add Create Campaign test-mode integration.
+- [x] Add Connected Platforms test-mode integration.
 - [x] Add Instagram analytics page.
-- [ ] Add aggregate resolver.
+- [x] Add aggregate resolver source builder.
 - [ ] Add revenue/spend context.
 - [ ] Add scheduler.
 - [ ] Add disconnect/reconnect cleanup.
@@ -1486,10 +1528,16 @@ Evidence:
 - [x] Commit 8D local Instagram analytics Campaign Breakdown tab implementation.
 - [x] Commit 8E local Instagram analytics unavailable/error/freshness state implementation.
 - [x] Commit 8F local guarded analytics link and validation closeout.
+- [x] Commit 8A-8F user validation passed by connecting to the Instagram test account.
+- [x] Commit 9A local Instagram aggregate source builder implementation.
+- [x] Commit 9B local aggregate source composition implementation.
+- [x] Commit 9C local Meta/Facebook plus Instagram no-double-counting guard implementation.
+- [x] Commit 9D local Campaign DeepDive aggregate route wiring implementation.
+- [x] Commit 9E local Campaign DeepDive aggregate validation closeout.
 - [ ] Local test-mode Create Campaign validation.
 - [ ] Local test-mode Connected Platforms validation.
-- [ ] Local Campaign DeepDive aggregate validation.
-- [ ] Local Meta + Instagram no-double-counting validation.
+- [x] Local Campaign DeepDive aggregate validation through focused regression suite.
+- [x] Local Meta + Instagram no-double-counting validation through focused regression suite.
 - [ ] Local scheduler validation.
 - [ ] Local report validation.
 - [ ] Deployed or production-like live OAuth validation.
@@ -1537,9 +1585,9 @@ Evidence:
 - User validation passed for Instagram Commit 7B Campaign Overview unavailable metric state by connecting to the Instagram test account.
 - User validation passed for Instagram Commit 7C Campaign Overview selected-row metric read by connecting to the Instagram test account.
 - User validation passed for Instagram Commit 7D Campaign Overview regression and validation closeout by connecting to the Instagram test account.
-- Local implementation complete for Instagram Commit 8A analytics route shell and connection guard; user validation is pending.
-- Local implementation complete for Instagram Commit 8B analytics daily metrics endpoint; user validation is pending.
-- Local implementation complete for Instagram Commit 8C analytics Overview tab; user validation is pending.
-- Local implementation complete for Instagram Commit 8D analytics Campaign Breakdown tab; user validation is pending.
-- Local implementation complete for Instagram Commit 8E analytics unavailable/error/freshness states; user validation is pending.
-- Local implementation complete for Instagram Commit 8F guarded analytics link and validation closeout; user validation is pending.
+- User validation passed for Instagram Commit 8A-8F analytics page foundation by connecting to the Instagram test account; the connected source opened the analytics page and correctly showed the selected-campaign unavailable state when no persisted daily rows existed.
+- Local implementation complete for Instagram Commit 9A aggregate source builder; user validation is pending.
+- Local implementation complete for Instagram Commit 9B aggregate source composition; user validation is pending.
+- Local implementation complete for Instagram Commit 9C Meta/Facebook plus Instagram no-double-counting guard; user validation is pending.
+- Local implementation complete for Instagram Commit 9D Campaign DeepDive aggregate route wiring; user validation is pending.
+- Local implementation complete for Instagram Commit 9E Campaign DeepDive aggregate validation closeout; user validation is pending.

@@ -168,6 +168,77 @@ async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, star
   return { googleAds, googleAdsSpend, googleAdsLastUpdate };
 }
 
+async function buildInstagramPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string) {
+  const parseNum = (v: any): number => {
+    if (v === null || typeof v === "undefined" || v === "") return 0;
+    const n = typeof v === "string" ? parseFloat(v) : Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  let instagram: any = { connected: false };
+  let instagramSpend = 0;
+  let instagramLastUpdate: string | null = null;
+  let hasInstagramConnection = false;
+
+  try {
+    const instagramConn = await storage.getInstagramConnection(campaignId).catch(() => null);
+    hasInstagramConnection = !!instagramConn;
+    const selectedCampaignIds = (() => {
+      try {
+        const parsed = JSON.parse(String((instagramConn as any)?.selectedCampaignIds || "[]"));
+        return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+      } catch {
+        return [];
+      }
+    })();
+    if (instagramConn && !(instagramConn as any).spendOnly && selectedCampaignIds.length > 0) {
+      const selectedSet = new Set(selectedCampaignIds);
+      const instagramRows = (await storage.getInstagramDailyMetrics(campaignId, startDate, endDate))
+        .filter((row: any) => selectedSet.has(String(row?.instagramCampaignId)) && String(row?.publisherPlatform || "instagram") === "instagram");
+      const totals = instagramRows.reduce((sum: any, row: any) => ({
+        impressions: sum.impressions + parseNum(row?.impressions),
+        clicks: sum.clicks + parseNum(row?.clicks),
+        spend: sum.spend + parseNum(row?.spend),
+        conversions: sum.conversions + parseNum(row?.conversions),
+      }), { impressions: 0, clicks: 0, spend: 0, conversions: 0 });
+      instagramSpend = parseNum(totals.spend);
+      const lastRow = instagramRows[instagramRows.length - 1];
+      instagramLastUpdate = (lastRow as any)?.date || null;
+      instagram = {
+        id: "instagram",
+        label: "Instagram Ads",
+        category: "paid_media",
+        connected: true,
+        capabilities: ["impressions", "clicks", "spend", "conversions"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions"],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+          { metric: "attributedRevenue", reason: "Instagram attributed revenue requires an Instagram-scoped imported revenue source" },
+        ],
+        metrics: {
+          impressions: parseNum(totals.impressions),
+          clicks: parseNum(totals.clicks),
+          spend: instagramSpend,
+          conversions: parseNum(totals.conversions),
+        },
+        revenueSemantics: {
+          attributedRevenueSource: "unavailable",
+          attributedRevenueLabel: "Unavailable",
+        },
+        freshness: {
+          selectedCampaignIds,
+          publisherPlatformFilter: "instagram",
+        },
+      };
+    }
+  } catch (err: any) {
+    instagram = { connected: hasInstagramConnection, error: err?.message || "Instagram unavailable" };
+  }
+
+  return { instagram, instagramSpend, instagramLastUpdate };
+}
+
 async function buildLinkedInPlatformSourceForAggregate(campaignId: string, linkedInConn?: any) {
   const parseNum = (v: any): number => {
     if (v === null || typeof v === "undefined" || v === "") return 0;
@@ -244,8 +315,8 @@ const parseMetaSelectedCampaignIds = (connection: any): string[] => {
   }
 };
 
-function buildMainPlatformSourcesForAggregate(sources: { googleAds?: any } = {}) {
-  return [sources.googleAds].filter((source) => source?.connected === true);
+function buildMainPlatformSourcesForAggregate(sources: { googleAds?: any; instagram?: any } = {}) {
+  return [sources.googleAds, sources.instagram].filter((source) => source?.connected === true);
 }
 
 function buildCampaignPerformanceSummaryAggregate(input: any) {
@@ -11306,6 +11377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate(campaignId, startDate, endDate);
+      const { instagram, instagramSpend } = await buildInstagramPlatformSourceForAggregate(campaignId, startDate, endDate);
 
       // Custom integration inputs (webhook-fed)
       let custom: any = { connected: false };
@@ -11370,7 +11442,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Unified spend rule:
       // - If the user imported spend (persistedSpend > 0), use that as campaign marketing spend.
       // - Otherwise, fall back to sum of connected ad-platform spends.
-      const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend).toFixed(2));
+      const instagramSpendForAggregate = meta?.connected === true && instagram?.connected === true ? 0 : instagramSpend;
+      const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate).toFixed(2));
       const unifiedSpend = persistedSpend > 0 ? persistedSpend : platformSpendFallback;
       const spendSource = persistedSpend > 0 ? "persisted_spend_sources" : "platform_spend_fallback";
 
@@ -11455,7 +11528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           meta,
           customIntegration: custom,
         },
-        mainPlatformSources: { googleAds },
+        mainPlatformSources: { googleAds, instagram },
         revenue: {
           onsiteRevenue,
           offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
@@ -11482,6 +11555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           linkedin: linkedIn,
           meta,
           googleAds,
+          instagram,
           customIntegration: custom,
         },
         revenue: {
@@ -26514,8 +26588,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('No custom integration metrics found for campaign', id);
       }
 
-      // Fetch Google Ads metrics as a normalized platform source
+      // Fetch Google Ads and Instagram metrics as normalized platform sources
       const { googleAds, googleAdsSpend, googleAdsLastUpdate } = await buildGoogleAdsPlatformSourceForAggregate(id, startDate, endDate);
+      const { instagram, instagramSpend, instagramLastUpdate } = await buildInstagramPlatformSourceForAggregate(id, startDate, endDate);
 
       // Fetch canonical spend/revenue sources (ground truth)
       let canonicalSpend = 0;
@@ -26557,7 +26632,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const webAnalyticsProvider = hasGA4Connection ? "ga4" : hasCustomIntegration ? "custom_integration" : null;
-      const platformSpend = linkedinSpend + metaMetrics.spend + customMetrics.spend + googleAdsSpend;
+      const instagramSpendForAggregate = hasMetaConnection && instagram?.connected === true ? 0 : instagramSpend;
+      const platformSpend = linkedinSpend + metaMetrics.spend + customMetrics.spend + googleAdsSpend + instagramSpendForAggregate;
       const platformRevenue = parseNum(linkedinMetrics.revenue) + metaMetrics.revenue + customMetrics.revenue + parseNum(googleAds?.metrics?.attributedRevenue);
       const aggregateRevenue = hasGA4Connection
         ? parseFloat((ga4Metrics.revenue + importedRevenueToDateTotal).toFixed(2))
@@ -26587,7 +26663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           meta: { connected: hasMetaConnection, ...metaMetrics, attributedRevenue: metaMetrics.revenue },
           customIntegration: { connected: hasCustomIntegration, ...customMetrics, users: parseNum(customIntegrationRawData?.users), sessions: parseNum(customIntegrationRawData?.sessions), pageviews: parseNum(customIntegrationRawData?.pageviews), revenue: customMetrics.revenue },
         },
-        mainPlatformSources: { googleAds },
+        mainPlatformSources: { googleAds, instagram },
         revenue: {
           onsiteRevenue: ga4Metrics.revenue,
           offsiteRevenue: aggregateRevenue > ga4Metrics.revenue ? aggregateRevenue - ga4Metrics.revenue : 0,
@@ -26750,6 +26826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       checkFreshness(ga4LastUpdate, 'Google Analytics');
       checkFreshness(customIntegrationLastUpdate, 'Custom Integration');
       checkFreshness(googleAdsLastUpdate, 'Google Ads');
+      checkFreshness(instagramLastUpdate, 'Instagram Ads');
 
       // Aggregate totals across connected sources
       const totalImpressions = aggregateMetricValue("impressions");

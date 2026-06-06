@@ -239,6 +239,38 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.cvr).toMatchObject({ available: true, value: 5, sources: ["conversions", "clicks"] });
   });
 
+  it("does not double-count Instagram paid-media metrics when Meta is also connected", () => {
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-meta-instagram",
+      dateRange: "30days",
+      ga4: { connected: false },
+      webAnalytics: { connected: false, provider: null },
+      spend: { unifiedSpend: 50, spendSource: "platform_spend_fallback" },
+      platforms: {
+        meta: { connected: true, impressions: 2000, clicks: 80, spend: 50, conversions: 8 },
+      },
+      platformSources: [{
+        id: "instagram",
+        label: "Instagram Ads",
+        category: "paid_media",
+        connected: true,
+        capabilities: ["impressions", "clicks", "spend", "conversions"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions"],
+        excludedMetrics: [{ metric: "sessions", reason: "Sessions are web analytics metrics" }],
+        metrics: { impressions: 1000, clicks: 40, spend: 25, conversions: 4 },
+        freshness: { publisherPlatformFilter: "instagram" },
+      }],
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [],
+    });
+
+    expect(aggregate.sources.map((source) => source.id)).toEqual(["meta", "instagram"]);
+    expect(aggregate.totals.impressions).toMatchObject({ available: true, value: 2000, sources: ["meta"] });
+    expect(aggregate.totals.clicks).toMatchObject({ available: true, value: 80, sources: ["meta"] });
+    expect(aggregate.totals.conversions).toMatchObject({ available: true, value: 8, sources: ["meta"] });
+    expect(aggregate.totals.spend).toMatchObject({ available: true, value: 50, sources: ["meta"] });
+  });
+
   it("does not count native Google Ads conversion value as aggregate revenue without an imported source", () => {
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "campaign-google-ads-no-imported-revenue",

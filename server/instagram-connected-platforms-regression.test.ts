@@ -372,6 +372,15 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("/api/platforms/instagram/kpis");
     expect(page).toContain("/api/platforms/instagram/benchmarks");
     expect(page).toContain("/api/platforms/instagram/reports");
+    expect(page).toContain("Performance Benchmarks");
+    expect(page).toContain("Create Benchmark");
+    expect(page).toContain("benchmarkTracker");
+    expect(page).toContain("getInstagramBenchmarkProgress");
+    expect(page).toContain('method: editingBenchmark ? "PUT" : "POST"');
+    expect(page).toContain('method: "DELETE"');
+    expect(page).toContain("Create Custom Benchmark");
+    expect(page).toContain("Benchmark Value *");
+    expect(page).toContain("No Benchmarks Yet");
     expect(page).toContain("No source-backed Instagram ad comparison rows are available yet.");
     expect(page).not.toContain("Connection Status");
     expect(page).not.toContain('<TabsTrigger value="campaign-breakdown">Campaign Breakdown</TabsTrigger>');
@@ -419,7 +428,7 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("latestImportedAt");
     expect(page).toContain("No selected source-backed Instagram metric rows are available yet.");
     expect(page).toContain("No KPIs yet");
-    expect(page).toContain("No Instagram Benchmarks have been created yet.");
+    expect(page).toContain("No Benchmarks Yet");
     expect(page).toContain("No Instagram Reports have been created yet.");
     expect(page).toContain("Connect Instagram Ads from the campaign Connected Platforms section");
     expect(page).not.toContain("upsertInstagramDailyMetrics");

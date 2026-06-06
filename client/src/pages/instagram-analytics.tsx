@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, AlertCircle, CheckCircle2, Loader2, Eye, MousePointer, DollarSign, Target, BarChart3, Percent, Video, Plus, TrendingUp, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, AlertTriangle, CheckCircle2, Loader2, Eye, MousePointer, DollarSign, Target, BarChart3, Percent, Video, Plus, TrendingUp, Pencil, Trash2 } from "lucide-react";
 import { SiInstagram } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -71,6 +71,19 @@ function getInstagramKpiProgress(kpi: any) {
   return { pct: boundedPct, status };
 }
 
+function getInstagramBenchmarkProgress(benchmark: any) {
+  const metricKey = String(benchmark?.metric || "");
+  const current = Number(benchmark?.currentValue || 0);
+  const target = Number(benchmark?.benchmarkValue || benchmark?.targetValue || 0);
+  if (target <= 0) return { pct: 0, status: "blocked" };
+  const pct = LOWER_IS_BETTER_KPIS.has(metricKey)
+    ? target > 0 ? (target / Math.max(current, 0.000001)) * 100 : 0
+    : (current / target) * 100;
+  const boundedPct = Math.max(0, Math.min(100, pct));
+  const status = pct >= 90 ? "onTrack" : pct >= 70 ? "needsAttention" : "behind";
+  return { pct: boundedPct, status };
+}
+
 export default function InstagramAnalytics() {
   const [, params] = useRoute("/campaigns/:id/instagram-analytics");
   const campaignId = params?.id;
@@ -78,6 +91,8 @@ export default function InstagramAnalytics() {
   const { toast } = useToast();
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const [editingKpi, setEditingKpi] = useState<any>(null);
+  const [benchmarkDialogOpen, setBenchmarkDialogOpen] = useState(false);
+  const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
   const [kpiForm, setKpiForm] = useState({
     name: "",
     metric: "",
@@ -87,6 +102,21 @@ export default function InstagramAnalytics() {
     description: "",
     priority: "medium",
     trackingPeriod: "30",
+    alertsEnabled: false,
+    alertThreshold: "",
+    alertCondition: "below",
+    alertFrequency: "daily",
+    emailNotifications: false,
+    emailRecipients: "",
+  });
+  const [benchmarkForm, setBenchmarkForm] = useState({
+    name: "",
+    metric: "",
+    currentValue: "",
+    benchmarkValue: "",
+    unit: "",
+    description: "",
+    industry: "",
     alertsEnabled: false,
     alertThreshold: "",
     alertCondition: "below",
@@ -192,6 +222,29 @@ export default function InstagramAnalytics() {
       avgPct: scored.length > 0 ? scored.reduce((sum, item) => sum + item.pct, 0) / scored.length : 0,
     };
   }, [kpis]);
+  const currentByMetric = useMemo<Record<string, number | null>>(() => ({
+    impressions: overviewTotals.impressions,
+    clicks: overviewTotals.clicks,
+    spend: overviewTotals.spend,
+    conversions: overviewTotals.conversions,
+    videoViews: overviewTotals.videoViews,
+    ctr: overviewTotals.ctr,
+    cpc: overviewTotals.cpc,
+    cpm: overviewTotals.cpm,
+    costPerConversion: overviewTotals.costPerConversion,
+    conversionRate: overviewTotals.conversionRate,
+  }), [overviewTotals]);
+  const benchmarkTracker = useMemo(() => {
+    const rows = Array.isArray(benchmarks) ? benchmarks : [];
+    const scored = rows.map(getInstagramBenchmarkProgress).filter((item) => item.status !== "blocked");
+    return {
+      total: rows.length,
+      onTrack: scored.filter((item) => item.status === "onTrack").length,
+      needsAttention: scored.filter((item) => item.status === "needsAttention").length,
+      behind: scored.filter((item) => item.status === "behind").length,
+      avgPct: scored.length > 0 ? scored.reduce((sum, item) => sum + item.pct, 0) / scored.length : 0,
+    };
+  }, [benchmarks]);
   const resetKpiForm = (kpi?: any) => {
     const metric = String(kpi?.metric || "");
     const metricDef = getInstagramKpiMetric(metric);
@@ -215,18 +268,6 @@ export default function InstagramAnalytics() {
   };
   const applyKpiTemplate = (metricKey: string) => {
     const metricDef = getInstagramKpiMetric(metricKey);
-    const currentByMetric: Record<string, number | null> = {
-      impressions: overviewTotals.impressions,
-      clicks: overviewTotals.clicks,
-      spend: overviewTotals.spend,
-      conversions: overviewTotals.conversions,
-      videoViews: overviewTotals.videoViews,
-      ctr: overviewTotals.ctr,
-      cpc: overviewTotals.cpc,
-      cpm: overviewTotals.cpm,
-      costPerConversion: overviewTotals.costPerConversion,
-      conversionRate: overviewTotals.conversionRate,
-    };
     setKpiForm((form) => ({
       ...form,
       name: metricDef.label,
@@ -235,6 +276,38 @@ export default function InstagramAnalytics() {
       description: `Track Instagram ${metricDef.label.toLowerCase()} against target.`,
       currentValue: currentByMetric[metricDef.key] === null ? "" : String(currentByMetric[metricDef.key] || 0),
       targetValue: "",
+    }));
+  };
+  const resetBenchmarkForm = (benchmark?: any) => {
+    const metric = String(benchmark?.metric || "");
+    const metricDef = getInstagramKpiMetric(metric);
+    setEditingBenchmark(benchmark || null);
+    setBenchmarkForm({
+      name: String(benchmark?.name || ""),
+      metric,
+      currentValue: String(benchmark?.currentValue || ""),
+      benchmarkValue: formatNumericInput(String(benchmark?.benchmarkValue || benchmark?.targetValue || "")),
+      unit: String(benchmark?.unit || metricDef.unit || ""),
+      description: String(benchmark?.description || ""),
+      industry: String(benchmark?.industry || ""),
+      alertsEnabled: !!benchmark?.alertsEnabled,
+      alertThreshold: String(benchmark?.alertThreshold || ""),
+      alertCondition: String(benchmark?.alertCondition || "below"),
+      alertFrequency: String(benchmark?.alertFrequency || "daily"),
+      emailNotifications: !!benchmark?.emailNotifications,
+      emailRecipients: String(benchmark?.emailRecipients || ""),
+    });
+  };
+  const applyBenchmarkTemplate = (metricKey: string) => {
+    const metricDef = getInstagramKpiMetric(metricKey);
+    setBenchmarkForm((form) => ({
+      ...form,
+      name: metricDef.label,
+      metric: metricDef.key,
+      unit: metricDef.unit,
+      description: `Compare Instagram ${metricDef.label.toLowerCase()} against benchmark targets.`,
+      currentValue: currentByMetric[metricDef.key] === null ? "" : String(currentByMetric[metricDef.key] || 0),
+      benchmarkValue: "",
     }));
   };
   const saveKpiMutation = useMutation({
@@ -297,6 +370,67 @@ export default function InstagramAnalytics() {
     },
     onError: (mutationError: any) => {
       toast({ title: "Failed to delete KPI", description: mutationError?.message || "Try again.", variant: "destructive" });
+    },
+  });
+  const saveBenchmarkMutation = useMutation({
+    mutationFn: async () => {
+      const metricDef = getInstagramKpiMetric(benchmarkForm.metric);
+      const payload = {
+        campaignId,
+        name: benchmarkForm.name || metricDef.label,
+        metric: benchmarkForm.metric || "",
+        benchmarkValue: stripNumberFormatting(benchmarkForm.benchmarkValue) || "0",
+        targetValue: stripNumberFormatting(benchmarkForm.benchmarkValue) || "0",
+        currentValue: stripNumberFormatting(benchmarkForm.currentValue) || "0",
+        unit: benchmarkForm.unit || metricDef.unit,
+        description: benchmarkForm.description,
+        industry: benchmarkForm.industry,
+        benchmarkType: "custom",
+        status: "active",
+        category: "performance",
+        alertsEnabled: benchmarkForm.alertsEnabled,
+        alertThreshold: benchmarkForm.alertsEnabled && benchmarkForm.alertThreshold ? benchmarkForm.alertThreshold : null,
+        alertCondition: benchmarkForm.alertCondition,
+        alertFrequency: benchmarkForm.alertFrequency,
+        emailNotifications: benchmarkForm.emailNotifications,
+        emailRecipients: benchmarkForm.emailNotifications ? benchmarkForm.emailRecipients : null,
+      };
+      const response = await fetch(editingBenchmark ? `/api/platforms/instagram/benchmarks/${editingBenchmark.id}` : "/api/platforms/instagram/benchmarks", {
+        method: editingBenchmark ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || "Failed to save Instagram Benchmark");
+      }
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/platforms/instagram/benchmarks", campaignId] });
+      setBenchmarkDialogOpen(false);
+      resetBenchmarkForm();
+      toast({ title: editingBenchmark ? "Benchmark updated" : "Benchmark created" });
+    },
+    onError: (mutationError: any) => {
+      toast({ title: "Failed to save Benchmark", description: mutationError?.message || "Check the Benchmark values and try again.", variant: "destructive" });
+    },
+  });
+  const deleteBenchmarkMutation = useMutation({
+    mutationFn: async (benchmarkId: string | number) => {
+      const response = await fetch(`/api/platforms/instagram/benchmarks/${benchmarkId}`, { method: "DELETE" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || "Failed to delete Instagram Benchmark");
+      }
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/platforms/instagram/benchmarks", campaignId] });
+      toast({ title: "Benchmark deleted" });
+    },
+    onError: (mutationError: any) => {
+      toast({ title: "Failed to delete Benchmark", description: mutationError?.message || "Try again.", variant: "destructive" });
     },
   });
   const renderSimpleRows = (rows: any[], loading: boolean, rowError: unknown, emptyText: string, renderRow: (row: any) => any) => {
@@ -585,29 +719,113 @@ export default function InstagramAnalytics() {
                     </div>
                   )}
                 </TabsContent>
-                <TabsContent value="benchmarks" className="space-y-4">
-                  {renderSimpleRows(benchmarks, benchmarksLoading, benchmarksError, "No Instagram Benchmarks have been created yet.", (benchmark: any) => (
-                    <Card key={benchmark.id}>
+                <TabsContent value="benchmarks" className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold text-foreground">Performance Benchmarks</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Track Instagram performance against selected source-backed targets.</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        resetBenchmarkForm();
+                        setBenchmarkDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Benchmark
+                    </Button>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                    <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Total Benchmarks</p><p className="text-2xl font-bold text-foreground">{benchmarkTracker.total}</p></div><Target className="w-8 h-8 text-purple-500" /></div></CardContent></Card>
+                    <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">On Track</p><p className="text-2xl font-bold text-green-600">{benchmarkTracker.onTrack}</p><p className="text-xs text-muted-foreground">90% or more of benchmark</p></div><CheckCircle2 className="w-8 h-8 text-green-500" /></div></CardContent></Card>
+                    <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Needs Attention</p><p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p><p className="text-xs text-muted-foreground">70% to under 90% of benchmark</p></div><AlertCircle className="w-8 h-8 text-amber-500" /></div></CardContent></Card>
+                    <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Behind</p><p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p><p className="text-xs text-muted-foreground">below 70% of benchmark</p></div><AlertTriangle className="w-8 h-8 text-red-500" /></div></CardContent></Card>
+                    <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Avg. Progress</p><p className="text-2xl font-bold text-foreground">{benchmarkTracker.avgPct.toFixed(1)}%</p></div><TrendingUp className="w-8 h-8 text-violet-600" /></div></CardContent></Card>
+                  </div>
+
+                  {benchmarksError ? (
+                    <Card>
                       <CardContent className="p-4">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                          <div>
-                            <p className="font-medium text-foreground">{benchmark.name || benchmark.metric || "Instagram Benchmark"}</p>
-                            <p className="text-xs text-muted-foreground">{benchmark.metric || "Metric"} benchmark: {benchmark.benchmarkValue ?? "Not set"}</p>
-                          </div>
-                          <div className="grid grid-cols-2 gap-6 text-sm md:text-right">
-                            <div>
-                              <p className="text-muted-foreground">Current Value</p>
-                              <p className="font-medium">{benchmark.currentValue ?? "Unavailable"}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Variance</p>
-                              <p className="font-medium">{benchmark.variance ?? "Unavailable"}</p>
-                            </div>
-                          </div>
+                        <div className="flex items-start gap-2 text-sm bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                          <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                          <p className="text-red-700 dark:text-red-300">{(benchmarksError as Error).message}</p>
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                  ) : benchmarksLoading ? (
+                    <div className="min-h-[140px]" aria-hidden="true" />
+                  ) : Array.isArray(benchmarks) && benchmarks.length > 0 ? (
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      {benchmarks.map((benchmark: any) => {
+                        const metricKey = String(benchmark.metric || "");
+                        const metricDef = getInstagramKpiMetric(metricKey);
+                        const progress = getInstagramBenchmarkProgress(benchmark);
+                        const progressColor = progress.status === "onTrack" ? "bg-green-500" : progress.status === "needsAttention" ? "bg-amber-500" : "bg-red-500";
+                        return (
+                          <Card key={benchmark.id}>
+                            <CardContent className="p-6 space-y-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className="text-lg font-semibold text-foreground">{benchmark.name || metricDef.label}</h3>
+                                    <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{metricDef.label}</span>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">{benchmark.description || `Benchmark Instagram ${metricDef.label.toLowerCase()} against selected source-backed performance.`}</p>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { resetBenchmarkForm(benchmark); setBenchmarkDialogOpen(true); }}>
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600"><Trash2 className="h-4 w-4" /></Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Benchmark</AlertDialogTitle>
+                                        <AlertDialogDescription>Delete "{benchmark.name || metricDef.label}"? This action cannot be undone.</AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => deleteBenchmarkMutation.mutate(benchmark.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="p-3 bg-muted rounded-lg">
+                                  <p className="text-sm font-medium text-muted-foreground mb-1">Current</p>
+                                  <p className="text-xl font-bold text-foreground">{formatInstagramKpiValue(metricKey, benchmark.currentValue)}</p>
+                                </div>
+                                <div className="p-3 bg-muted rounded-lg">
+                                  <p className="text-sm font-medium text-muted-foreground mb-1">Benchmark</p>
+                                  <p className="text-xl font-bold text-foreground">{formatInstagramKpiValue(metricKey, benchmark.benchmarkValue || benchmark.targetValue)}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span>Progress</span>
+                                  <span>{progress.pct.toFixed(1)}%</span>
+                                </div>
+                                <Progress value={progress.pct} className="h-2" indicatorClassName={progressColor} />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <Card>
+                      <CardContent className="p-10 text-center">
+                        <TrendingUp className="w-10 h-10 mx-auto mb-4 text-muted-foreground" />
+                        <h3 className="text-lg font-semibold text-foreground mb-2">No Benchmarks Yet</h3>
+                        <p className="text-sm text-muted-foreground">Create your first benchmark to start tracking Instagram performance against selected source-backed targets.</p>
+                      </CardContent>
+                    </Card>
+                  )}
                 </TabsContent>
                 <TabsContent value="ads" className="space-y-4">
                   <Card>
@@ -839,6 +1057,184 @@ export default function InstagramAnalytics() {
               disabled={saveKpiMutation.isPending || !kpiForm.name || !kpiForm.targetValue || (kpiForm.alertsEnabled && !kpiForm.alertThreshold)}
             >
               {saveKpiMutation.isPending ? "Saving..." : editingKpi ? "Update KPI" : "Create KPI"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={benchmarkDialogOpen} onOpenChange={setBenchmarkDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+          <DialogHeader className="pb-4 pr-8">
+            <DialogTitle>{editingBenchmark ? "Edit Benchmark" : "Create Benchmark"}</DialogTitle>
+            <DialogDescription>Set up a performance benchmark for this Instagram campaign.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            {!editingBenchmark && (
+              <div className="space-y-4 p-4 bg-muted rounded-lg">
+                <h4 className="font-medium text-foreground">Select Benchmark Template</h4>
+                <p className="text-sm text-muted-foreground">
+                  Choose a predefined Instagram metric or create a custom benchmark.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {INSTAGRAM_KPI_METRICS.map((metric) => (
+                    <button
+                      key={metric.key}
+                      type="button"
+                      className={`p-3 text-left border-2 rounded-lg transition-all ${benchmarkForm.metric === metric.key ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-300"}`}
+                      onClick={() => applyBenchmarkTemplate(metric.key)}
+                    >
+                      <div className="font-medium text-sm text-foreground">{metric.label}</div>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="p-3 text-left border-2 rounded-lg border-border hover:border-blue-300 transition-all"
+                    onClick={() => resetBenchmarkForm()}
+                  >
+                    <div className="font-medium text-sm text-foreground">Create Custom Benchmark</div>
+                    <div className="mt-1 text-xs text-muted-foreground">Choose name + unit, then set values</div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="instagram-benchmark-name">Benchmark Name *</Label>
+              <Input
+                id="instagram-benchmark-name"
+                value={benchmarkForm.name}
+                onChange={(event) => setBenchmarkForm((form) => ({ ...form, name: event.target.value }))}
+                placeholder="e.g., Instagram CTR Benchmark"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="instagram-benchmark-description">Description</Label>
+              <Textarea
+                id="instagram-benchmark-description"
+                value={benchmarkForm.description}
+                maxLength={KPI_DESC_MAX}
+                rows={3}
+                onChange={(event) => setBenchmarkForm((form) => ({ ...form, description: event.target.value.slice(0, KPI_DESC_MAX) }))}
+                placeholder="Describe what this benchmark measures and why it's important"
+              />
+              <div className="text-xs text-muted-foreground text-right">{benchmarkForm.description.length}/{KPI_DESC_MAX}</div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="instagram-benchmark-metric">Metric *</Label>
+              <Select
+                value={benchmarkForm.metric}
+                onValueChange={(value) => {
+                  const metricDef = getInstagramKpiMetric(value);
+                  setBenchmarkForm((form) => ({
+                    ...form,
+                    metric: value,
+                    unit: form.unit || metricDef.unit,
+                    currentValue: currentByMetric[value] === null ? "" : String(currentByMetric[value] || 0),
+                  }));
+                }}
+              >
+                <SelectTrigger id="instagram-benchmark-metric">
+                  <SelectValue placeholder="Select metric" />
+                </SelectTrigger>
+                <SelectContent>
+                  {INSTAGRAM_KPI_METRICS.map((metric) => (
+                    <SelectItem key={metric.key} value={metric.key}>{metric.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="instagram-benchmark-current">Current Value</Label>
+                <Input
+                  id="instagram-benchmark-current"
+                  type="text"
+                  inputMode="decimal"
+                  value={benchmarkForm.currentValue}
+                  onChange={(event) => setBenchmarkForm((form) => ({ ...form, currentValue: event.target.value }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="instagram-benchmark-value">Benchmark Value *</Label>
+                <Input
+                  id="instagram-benchmark-value"
+                  type="text"
+                  inputMode="decimal"
+                  value={benchmarkForm.benchmarkValue}
+                  onChange={(event) => setBenchmarkForm((form) => ({ ...form, benchmarkValue: formatNumericInput(event.target.value) }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="instagram-benchmark-unit">Unit</Label>
+                <Input
+                  id="instagram-benchmark-unit"
+                  value={benchmarkForm.unit}
+                  onChange={(event) => setBenchmarkForm((form) => ({ ...form, unit: event.target.value }))}
+                  placeholder="%, $, etc."
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-border">
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="instagram-benchmark-alerts-enabled"
+                    checked={benchmarkForm.alertsEnabled}
+                    onCheckedChange={(checked) => setBenchmarkForm((form) => ({ ...form, alertsEnabled: checked === true }))}
+                  />
+                  <Label htmlFor="instagram-benchmark-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                    Enable alerts for this benchmark
+                  </Label>
+                </div>
+                <p className="text-sm text-muted-foreground pl-6">
+                  Receive notifications for benchmark performance alerts on the bell icon &amp; in your Notifications center
+                </p>
+              </div>
+
+              {benchmarkForm.alertsEnabled && (
+                <div className="space-y-4 pl-6">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="instagram-benchmark-alert-threshold">Alert Threshold *</Label>
+                      <Input
+                        id="instagram-benchmark-alert-threshold"
+                        type="text"
+                        inputMode="decimal"
+                        value={benchmarkForm.alertThreshold}
+                        onChange={(event) => setBenchmarkForm((form) => ({ ...form, alertThreshold: event.target.value }))}
+                        placeholder="e.g., 80"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="instagram-benchmark-alert-condition">Alert When</Label>
+                      <Select value={benchmarkForm.alertCondition} onValueChange={(value) => setBenchmarkForm((form) => ({ ...form, alertCondition: value }))}>
+                        <SelectTrigger id="instagram-benchmark-alert-condition">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="below">Value Goes Below</SelectItem>
+                          <SelectItem value="above">Value Goes Above</SelectItem>
+                          <SelectItem value="equals">Value Equals</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBenchmarkDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => saveBenchmarkMutation.mutate()}
+              disabled={saveBenchmarkMutation.isPending || !benchmarkForm.name || !benchmarkForm.metric || !benchmarkForm.benchmarkValue || (benchmarkForm.alertsEnabled && !benchmarkForm.alertThreshold)}
+            >
+              {saveBenchmarkMutation.isPending ? "Saving..." : editingBenchmark ? "Update Benchmark" : "Create Benchmark"}
             </Button>
           </DialogFooter>
         </DialogContent>

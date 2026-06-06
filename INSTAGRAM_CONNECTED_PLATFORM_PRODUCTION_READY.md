@@ -74,11 +74,12 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13F | Instagram Create KPI modal parity with GA4 pattern | Done and pushed; user validation pending | Instagram analytics KPI UI |
 | 13G | Instagram Create KPI modal input constraints | Done and pushed; user validation pending | Instagram analytics KPI UI |
 | 13H | Instagram analytics connection loading-state stability | Done and pushed; user validation pending | Instagram analytics UI |
-| 13I | Instagram Overview metrics loading-state stability | Implemented locally; user validation pending | Instagram analytics UI |
-| 13J | Instagram report route/source contract | Pending | Report backend/UI |
-| 13K | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
-| 13L | Instagram PDF/export output source proof | Pending | Report exports |
-| 13M | KPI/Benchmark/Report regression and validation docs | Pending | None |
+| 13I | Instagram Overview metrics loading-state stability | Done and pushed; user validation pending | Instagram analytics UI |
+| 13J | Instagram Benchmark tab management UI parity | Implemented locally; user validation pending | Instagram analytics Benchmark UI |
+| 13K | Instagram report route/source contract | Pending | Report backend/UI |
+| 13L | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
+| 13M | Instagram PDF/export output source proof | Pending | Report exports |
+| 13N | KPI/Benchmark/Report regression and validation docs | Pending | None |
 | 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
 | 14B | End-to-end local test-mode Connected Platforms validation | Pending | Validation only |
 | 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending | Validation only |
@@ -231,7 +232,9 @@ Commit 13G Instagram Create KPI modal input constraints are done and pushed. The
 
 Commit 13H Instagram analytics connection loading-state stability is done and pushed. The Instagram analytics page no longer renders a visible transient connection-loading message during the initial connection query; it reserves a stable blank content area until the campaign-scoped Instagram connection resolves, then renders the connected tab content or the final error/disconnected state.
 
-Commit 13I Instagram Overview metrics loading-state stability is implemented locally. The Overview tab no longer renders visible transient daily-metrics loading text after the connection resolves; it reserves a stable blank content area until source-backed metrics resolve, then renders metrics, the final empty state, or the final error state.
+Commit 13I Instagram Overview metrics loading-state stability is done and pushed. The Overview tab no longer renders visible transient daily-metrics loading text after the connection resolves; it reserves a stable blank content area until source-backed metrics resolve, then renders metrics, the final empty state, or the final error state.
+
+Commit 13J Instagram Benchmark tab management UI parity is implemented locally. The Instagram Benchmarks tab now follows the established GA4/Google Ads-style pattern with a Benchmark header, Create Benchmark action, tracker cards, Benchmark cards with current/benchmark/progress, edit support, and confirmation-gated delete support, using only the existing shared Instagram Benchmark routes.
 
 ## Root Cause Analysis
 
@@ -301,6 +304,7 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 13G, the Instagram Create KPI modal still selected the first metric template by default, accepted arbitrary text in Target Value, and exposed Tracking Period. Commit 13G removes those UI gaps without changing the backend KPI route or the stored tracking-period default.
 - Before Commit 13H, the Instagram analytics page rendered its connection guard while the initial connection query was still loading. Because `connection` is undefined during a hard refresh, the page briefly showed visible loading/disconnected text above the eventual analytics tabs. Commit 13H removes that transient text branch and only displays final error/disconnected copy after the connection request resolves.
 - Before Commit 13I, the Instagram analytics Overview tab rendered a second visible loading branch while `/api/instagram/:campaignId/daily-metrics` was loading. Even after Commit 13H removed the connection-query flash, this metrics-query branch could still flash `Loading source-backed Instagram metrics...` before source-backed metric cards rendered. Commit 13I removes that transient text and keeps final metric/empty/error states unchanged.
+- Before Commit 13J, the Instagram Benchmarks tab still rendered through the generic read-only row helper. It had no Benchmark header, Create Benchmark action, tracker summary, progress cards, edit path, or confirmation-gated delete path, even though the shared Instagram Benchmark routes and selected-row current-value refresh already existed. Commit 13J adds that UI parity without adding backend routes, provider refresh, scheduler behavior, reports, or source aggregation.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`; Commit 9A supplies an Instagram source builder and Commit 9D wires it into the two current aggregate route consumers.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
 - Meta/Facebook currently includes Instagram-related placement data in some contexts; promoting that data to a standalone Instagram platform without explicit source boundaries would risk double-counting and misleading source attribution.
@@ -1652,12 +1656,14 @@ Status:
 - [ ] User validation pending for Commit 13G.
 - [x] Commit 13H done and pushed: Instagram analytics refresh no longer flashes transient connection-loading text before connected content loads.
 - [ ] User validation pending for Commit 13H.
-- [x] Commit 13I implemented locally: Instagram Overview no longer flashes transient daily-metrics loading text before source-backed content loads.
+- [x] Commit 13I done and pushed: Instagram Overview no longer flashes transient daily-metrics loading text before source-backed content loads.
 - [ ] User validation pending for Commit 13I.
-- [ ] Commit 13J pending: Instagram report route/source contract.
-- [ ] Commit 13K pending: Instagram scheduled report snapshot/send guard.
-- [ ] Commit 13L pending: Instagram PDF/export output source proof.
-- [ ] Commit 13M pending: KPI/Benchmark/Report regression and validation docs.
+- [x] Commit 13J implemented locally: Instagram Benchmark tab provides create/edit/delete and tracker-card UI parity through existing shared Benchmark routes.
+- [ ] User validation pending for Commit 13J.
+- [ ] Commit 13K pending: Instagram report route/source contract.
+- [ ] Commit 13L pending: Instagram scheduled report snapshot/send guard.
+- [ ] Commit 13M pending: Instagram PDF/export output source proof.
+- [ ] Commit 13N pending: KPI/Benchmark/Report regression and validation docs.
 
 Commit 13A root-cause trace:
 
@@ -1799,6 +1805,22 @@ Commit 13I validation:
 - Confirm the Instagram metric cards still appear after the daily metrics request resolves.
 - Confirm the final empty state still appears only when there are no selected source-backed Instagram rows.
 - This commit does not change backend routes, metric calculations, KPI saves, scheduler behavior, OAuth, provider refresh, reports, PDF output, or source aggregation.
+
+Commit 13J root-cause trace:
+
+- The Instagram analytics page already queried `/api/platforms/instagram/benchmarks`, and shared routes already support create, update, delete, and selected-row current-value refresh for Instagram Benchmarks.
+- The Benchmarks tab rendered those rows through `renderSimpleRows`, which only showed a plain empty message or a minimal read-only row.
+- Commit 13J replaces that tab body with the same management pattern used by established source analytics pages: header, Create Benchmark action, tracker cards, Benchmark cards, edit action, and confirmation-gated delete action.
+
+Commit 13J validation:
+
+- Open `/campaigns/:id/instagram-analytics`, then open the `Benchmarks` tab.
+- Confirm the tab shows `Performance Benchmarks`, the five tracker cards, and a `Create Benchmark` button.
+- With no Benchmarks, confirm the empty card says `No Benchmarks Yet`.
+- Click `Create Benchmark`, select an Instagram metric, enter a Benchmark name and value, save, and confirm the Benchmark appears in the tab with Current, Benchmark, and Progress.
+- Edit the Benchmark and confirm the saved changes render after the modal closes.
+- Delete the Benchmark through the confirmation dialog and confirm it is removed.
+- This commit does not change backend routes, metric calculations, KPI behavior, scheduler behavior, OAuth, provider refresh, reports, PDF output, or source aggregation.
 
 ### Details For Commits 14A-14E: Regression Coverage And Final Evidence
 

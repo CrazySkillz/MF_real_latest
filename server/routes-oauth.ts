@@ -10540,7 +10540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: "instagram",
           name: "Instagram Ads",
           connected: instagramConnected,
-          analyticsPath: null,
+          analyticsPath: instagramConnected ? `/campaigns/${campaignId}/instagram-analytics` : null,
           lastConnectedAt: instagramConnection?.connectedAt,
           method: instagramConnection?.method,
           selectedCampaignIds: instagramSelectedCampaignIds,
@@ -19818,6 +19818,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[Instagram] Overview summary error:', error);
       res.status(500).json({ error: error.message || 'Failed to get Instagram overview summary' });
+    }
+  });
+
+  /**
+   * Read Instagram analytics daily rows from persisted selected Instagram source rows only
+   */
+  app.get("/api/instagram/:campaignId/daily-metrics", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getInstagramConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "Instagram connection not found" });
+      }
+
+      const selectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      if (selectedCampaignIds.length === 0) {
+        return res.status(400).json({ error: "No selected Instagram campaigns" });
+      }
+
+      const dateRange = String(req.query.dateRange || "30days");
+      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const selected = new Set(selectedCampaignIds);
+      const rows = (await storage.getInstagramDailyMetrics(parsedId.data, startDate, endDate).catch(() => []))
+        .filter((row: any) => selected.has(String(row.instagramCampaignId)) && String(row.publisherPlatform || "instagram") === "instagram")
+        .map((row: any) => ({
+          date: row.date,
+          instagramCampaignId: row.instagramCampaignId,
+          instagramCampaignName: row.instagramCampaignName,
+          publisherPlatform: row.publisherPlatform,
+          platformPosition: row.platformPosition,
+          impressions: Number(row.impressions || 0),
+          clicks: Number(row.clicks || 0),
+          spend: Number(row.spend || 0),
+          conversions: Number(row.conversions || 0),
+          videoViews: Number(row.videoViews || 0),
+          ctr: row.ctr === null || row.ctr === undefined ? null : Number(row.ctr),
+          cpc: row.cpc === null || row.cpc === undefined ? null : Number(row.cpc),
+          cpm: row.cpm === null || row.cpm === undefined ? null : Number(row.cpm),
+          costPerConversion: row.costPerConversion === null || row.costPerConversion === undefined ? null : Number(row.costPerConversion),
+          conversionRate: row.conversionRate === null || row.conversionRate === undefined ? null : Number(row.conversionRate),
+          ga4Revenue: row.ga4Revenue === null || row.ga4Revenue === undefined ? null : Number(row.ga4Revenue),
+          ga4UtmName: row.ga4UtmName,
+          importedAt: row.importedAt,
+        }));
+
+      res.json({
+        success: true,
+        connected: true,
+        dateRange,
+        startDate,
+        endDate,
+        selectedCampaignIds,
+        rowCount: rows.length,
+        rows,
+      });
+    } catch (error: any) {
+      console.error('[Instagram] Daily metrics error:', error);
+      res.status(500).json({ error: error.message || 'Failed to get Instagram daily metrics' });
     }
   });
 

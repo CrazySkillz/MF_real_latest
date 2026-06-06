@@ -4798,7 +4798,7 @@ export default function CampaignDetail() {
       spend: instagramSpend.toFixed(2),
       ctr: instagramCtr,
       cpc: instagramCpc,
-      analyticsPath: null,
+      analyticsPath: isInstagramConnected ? (platformStatusMap.get("instagram")?.analyticsPath || `/campaigns/${campaign?.id}/instagram-analytics`) : null,
       unavailableReason: instagramHasSourceRows ? undefined : "Source-backed Instagram metrics are not available yet."
     },
     {

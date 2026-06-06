@@ -15,25 +15,24 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(route).toContain('id: "instagram"');
     expect(route).toContain('name: "Instagram Ads"');
     expect(route).toContain("connected: instagramConnected");
-    expect(route).toContain("analyticsPath: null");
+    expect(route).toContain('analyticsPath: instagramConnected ? `/campaigns/${campaignId}/instagram-analytics` : null');
     expect(route).toContain("sourceContractVersion: instagramConnection?.sourceContractVersion");
-    expect(route).not.toContain("/instagram-analytics");
     expect(route).not.toContain("upsertInstagramDailyMetrics");
     expect(route).not.toContain("refreshInstagram");
   });
 
-  it("renders the Instagram Connected Platforms card shell without analytics exposure", () => {
+  it("renders the Instagram Connected Platforms card shell with guarded analytics exposure", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"), "utf-8");
 
     expect(page).toContain('import { SiGoogle, SiFacebook, SiInstagram');
     expect(page).toContain('const isInstagramConnected = platformStatusMap.get("instagram")?.connected === true;');
     expect(page).toContain('platform: "Instagram Ads"');
     expect(page).toContain("connected: isInstagramConnected");
-    expect(page).toContain("analyticsPath: null");
+    expect(page).toContain("platformStatusMap.get(\"instagram\")?.analyticsPath || `/campaigns/${campaign?.id}/instagram-analytics`");
     expect(page).toContain('case "Instagram Ads":');
     expect(page).toContain("p === 'Instagram Ads'");
     expect(page).toContain("`/api/instagram/${campaignId}/connection`");
-    expect(page).not.toContain("/campaigns/${campaign?.id}/instagram");
+    expect(page).toContain("button-view-${platform.platform.toLowerCase().replace");
     expect(page).not.toContain("InstagramConnectionFlow");
   });
 
@@ -67,7 +66,7 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain('const isInstagramConnected = platformStatusMap.get("instagram")?.connected === true;');
     expect(page).toContain('platform: "Instagram Ads"');
     expect(page).toContain("connected: isInstagramConnected");
-    expect(page).toContain("analyticsPath: null");
+    expect(page).toContain("platformStatusMap.get(\"instagram\")?.analyticsPath || `/campaigns/${campaign?.id}/instagram-analytics`");
     expect(page).toContain('instagramHasSourceRows ? undefined : "Source-backed Instagram metrics are not available yet."');
     expect(page).toContain("platform.platform === \"Instagram Ads\" && platform.unavailableReason");
     expect(page).toContain("`/api/instagram/${campaignId}/overview-summary`");
@@ -91,5 +90,85 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(route).toContain("hasRows: rows.length > 0");
     expect(route).not.toContain("upsertInstagramDailyMetrics");
     expect(route).not.toContain("refreshInstagram");
+  });
+
+  it("exposes Instagram analytics daily metrics only from selected persisted daily rows", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.get("/api/instagram/:campaignId/daily-metrics"');
+    const routeEnd = routes.indexOf('app.post("/api/meta/transfer-connection"', routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(route).toContain("ensureCampaignAccess");
+    expect(route).toContain("storage.getInstagramConnection(parsedId.data)");
+    expect(route).toContain("selectedCampaignIds");
+    expect(route).toContain("storage.getInstagramDailyMetrics(parsedId.data, startDate, endDate)");
+    expect(route).toContain("selected.has(String(row.instagramCampaignId))");
+    expect(route).toContain('String(row.publisherPlatform || "instagram") === "instagram"');
+    expect(route).toContain("rowCount: rows.length");
+    expect(route).toContain("rows,");
+    expect(route).not.toContain("upsertInstagramDailyMetrics");
+    expect(route).not.toContain("refreshInstagram");
+    expect(route).not.toContain("/api/instagram/oauth");
+  });
+
+  it("registers an Instagram analytics route shell guarded by the campaign connection", () => {
+    const app = readFileSync(join(process.cwd(), "client", "src", "App.tsx"), "utf-8");
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "instagram-analytics.tsx"), "utf-8");
+
+    expect(app).toContain('const InstagramAnalytics = lazy(() => import("@/pages/instagram-analytics"));');
+    expect(app).toContain('<Route path="/campaigns/:id/instagram-analytics" component={InstagramAnalytics} />');
+    expect(page).toContain('useRoute("/campaigns/:id/instagram-analytics")');
+    expect(page).toContain("`/api/instagram/${campaignId}/connection`");
+    expect(page).toContain("connection?.connected === true");
+    expect(page).toContain("connection.selectedCampaignIds.length > 0");
+    expect(page).toContain("Connect Instagram Ads from the campaign Connected Platforms section");
+    expect(page).not.toContain("overview-summary");
+    expect(page).not.toContain("upsertInstagramDailyMetrics");
+    expect(page).not.toContain("refreshInstagram");
+    expect(page).not.toContain("/api/instagram/oauth");
+  });
+
+  it("renders Instagram analytics Overview from the selected daily metrics endpoint only", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "instagram-analytics.tsx"), "utf-8");
+
+    expect(page).toContain("`/api/instagram/${campaignId}/daily-metrics`");
+    expect(page).toContain("`/api/instagram/${campaignId}/daily-metrics?dateRange=30days`");
+    expect(page).toContain('<TabsTrigger value="overview">Overview</TabsTrigger>');
+    expect(page).toContain("overviewTotals.impressions");
+    expect(page).toContain("overviewTotals.clicks");
+    expect(page).toContain("overviewTotals.spend");
+    expect(page).toContain("overviewTotals.conversions");
+    expect(page).toContain("No selected source-backed Instagram metric rows are available yet.");
+    expect(page).not.toContain("upsertInstagramDailyMetrics");
+    expect(page).not.toContain("refreshInstagram");
+    expect(page).not.toContain("/api/instagram/oauth");
+  });
+
+  it("renders Instagram analytics Campaign Breakdown from selected daily rows only", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "instagram-analytics.tsx"), "utf-8");
+
+    expect(page).toContain('<TabsTrigger value="campaign-breakdown">Campaign Breakdown</TabsTrigger>');
+    expect(page).toContain("const campaignBreakdown = useMemo");
+    expect(page).toContain("row.instagramCampaignId");
+    expect(page).toContain("instagramCampaignName");
+    expect(page).toContain("campaignBreakdown.map");
+    expect(page).toContain("No selected Instagram campaign rows are available yet.");
+    expect(page).not.toContain("upsertInstagramDailyMetrics");
+    expect(page).not.toContain("refreshInstagram");
+    expect(page).not.toContain("/api/instagram/oauth");
+  });
+
+  it("renders Instagram analytics unavailable, error, and freshness states without refresh behavior", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "instagram-analytics.tsx"), "utf-8");
+
+    expect(page).toContain("error: metricsError");
+    expect(page).toContain("Latest Instagram row import:");
+    expect(page).toContain("latestImportedAt");
+    expect(page).toContain("No selected source-backed Instagram metric rows are available yet.");
+    expect(page).toContain("No selected Instagram campaign rows are available yet.");
+    expect(page).toContain("Connect Instagram Ads from the campaign Connected Platforms section");
+    expect(page).not.toContain("upsertInstagramDailyMetrics");
+    expect(page).not.toContain("refreshInstagram");
+    expect(page).not.toContain("/api/instagram/oauth");
   });
 });

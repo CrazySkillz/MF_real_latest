@@ -864,11 +864,13 @@ export default function InstagramAnalytics() {
                         { label: "ROAS", value: hasInstagramAttributedRevenue && overviewTotals.spend > 0 ? `${instagramAttributedRoas.toFixed(2)}x` : "Unavailable", Icon: TrendingUp, helper: hasInstagramAttributedRevenue ? "Attributed revenue / spend" : "Requires source-backed revenue" },
                         { label: "ROI", value: hasInstagramAttributedRevenue && overviewTotals.spend > 0 ? `${instagramAttributedRoi.toFixed(1)}%` : "Unavailable", Icon: Percent, helper: hasInstagramAttributedRevenue ? "Attributed revenue ROI" : "Requires source-backed revenue" },
                         { label: "Profit", value: hasInstagramAttributedRevenue ? formatCurrency(instagramAttributedProfit) : "Unavailable", Icon: DollarSign, helper: hasInstagramAttributedRevenue ? "Attributed revenue - spend" : "Requires source-backed revenue" },
-                        ...(pipelineProxyData?.success ? [{
+                        ...(hasInstagramAttributedRevenue || pipelineProxyData?.success ? [{
                           label: "Pipeline Proxy",
-                          value: formatCurrency(Number(pipelineProxyData.totalToDate || 0)),
+                          value: pipelineProxyData?.success ? formatCurrency(Number(pipelineProxyData.totalToDate || 0)) : "Not configured",
                           Icon: Target,
-                          helper: `${pipelineProxyData.pipelineStageLabel || "Selected stage"} open CRM value; not counted in revenue, ROI, or ROAS`,
+                          helper: pipelineProxyData?.success
+                            ? `${pipelineProxyData.pipelineStageLabel || "Selected stage"} open CRM value; not counted in revenue, ROI, or ROAS`
+                            : "Select Total Revenue + Pipeline (Proxy) in the revenue wizard",
                         }] : []),
                         { label: "CTR", value: overviewTotals.ctr === null ? "Unavailable" : `${overviewTotals.ctr.toFixed(2)}%`, Icon: Percent },
                         { label: "CPC", value: overviewTotals.cpc === null ? "Unavailable" : `$${overviewTotals.cpc.toFixed(2)}`, Icon: DollarSign },

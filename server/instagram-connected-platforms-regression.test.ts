@@ -496,6 +496,8 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain('queryKey: ["/api/hubspot", campaignId, "pipeline-proxy", "instagram"]');
     expect(page).toContain('queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "instagram"]');
     expect(page).toContain('label: "Pipeline Proxy"');
+    expect(page).toContain('value: pipelineProxyData?.success ? formatCurrency(Number(pipelineProxyData.totalToDate || 0)) : "Not configured"');
+    expect(page).toContain("Select Total Revenue + Pipeline (Proxy) in the revenue wizard");
     expect(page).toContain("not counted in revenue, ROI, or ROAS");
     expect(page).toContain("hasInstagramAttributedRevenue = activeInstagramRevenueSources.length > 0");
     expect(page).toContain("instagramAttributedRevenueFromSources");

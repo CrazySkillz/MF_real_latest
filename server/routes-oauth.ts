@@ -19754,6 +19754,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * Read Instagram Campaign Overview metrics from persisted Instagram daily rows only
+   */
+  app.get("/api/instagram/:campaignId/overview-summary", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getInstagramConnection(parsedId.data);
+      if (!connection) {
+        return res.json({ success: true, connected: false, hasRows: false, metrics: null });
+      }
+
+      const selectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      if (selectedCampaignIds.length === 0) {
+        return res.json({ success: true, connected: true, hasRows: false, metrics: null });
+      }
+
+      const dateRange = String(req.query.dateRange || "30days");
+      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const selected = new Set(selectedCampaignIds);
+      const rows = (await storage.getInstagramDailyMetrics(parsedId.data, startDate, endDate).catch(() => []))
+        .filter((row: any) => selected.has(String(row.instagramCampaignId)) && String(row.publisherPlatform || "instagram") === "instagram");
+
+      const metrics = rows.reduce((acc: any, row: any) => {
+        acc.impressions += Number(row.impressions || 0);
+        acc.clicks += Number(row.clicks || 0);
+        acc.spend += Number(row.spend || 0);
+        acc.conversions += Number(row.conversions || 0);
+        return acc;
+      }, { impressions: 0, clicks: 0, spend: 0, conversions: 0 });
+
+      res.json({
+        success: true,
+        connected: true,
+        hasRows: rows.length > 0,
+        dateRange,
+        startDate,
+        endDate,
+        rowCount: rows.length,
+        metrics: rows.length > 0 ? {
+          impressions: metrics.impressions,
+          clicks: metrics.clicks,
+          spend: Number(metrics.spend.toFixed(2)),
+          conversions: Number(metrics.conversions.toFixed(2)),
+          ctr: metrics.impressions > 0 ? Number(((metrics.clicks / metrics.impressions) * 100).toFixed(2)) : 0,
+          cpc: metrics.clicks > 0 ? Number((metrics.spend / metrics.clicks).toFixed(2)) : 0,
+        } : null,
+      });
+    } catch (error: any) {
+      console.error('[Instagram] Overview summary error:', error);
+      res.status(500).json({ error: error.message || 'Failed to get Instagram overview summary' });
+    }
+  });
+
+  /**
    * Transfer Meta connection from temporary campaign to real campaign
    */
   app.post("/api/meta/transfer-connection", async (req, res) => {

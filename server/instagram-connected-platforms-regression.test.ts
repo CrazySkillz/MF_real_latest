@@ -60,4 +60,36 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).not.toContain("refreshInstagram");
     expect(page).not.toContain("upsertInstagramDailyMetrics");
   });
+
+  it("keeps Campaign Overview Instagram status read-only until source-backed metrics and financial context exist", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"), "utf-8");
+
+    expect(page).toContain('const isInstagramConnected = platformStatusMap.get("instagram")?.connected === true;');
+    expect(page).toContain('platform: "Instagram Ads"');
+    expect(page).toContain("connected: isInstagramConnected");
+    expect(page).toContain("analyticsPath: null");
+    expect(page).toContain('instagramHasSourceRows ? undefined : "Source-backed Instagram metrics are not available yet."');
+    expect(page).toContain("platform.platform === \"Instagram Ads\" && platform.unavailableReason");
+    expect(page).toContain("`/api/instagram/${campaignId}/overview-summary`");
+    expect(page).toContain("instagramHasSourceRows ? undefined");
+    expect(page).not.toContain('{ label: "Instagram", value: "instagram"');
+    expect(page).not.toContain('{ label: "Instagram Ads", value: "instagram"');
+  });
+
+  it("reads Campaign Overview Instagram metrics only from selected persisted daily rows", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.get("/api/instagram/:campaignId/overview-summary"');
+    const routeEnd = routes.indexOf('app.post("/api/meta/transfer-connection"', routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(route).toContain("ensureCampaignAccess");
+    expect(route).toContain("storage.getInstagramConnection(parsedId.data)");
+    expect(route).toContain("selectedCampaignIds");
+    expect(route).toContain("storage.getInstagramDailyMetrics(parsedId.data, startDate, endDate)");
+    expect(route).toContain("selected.has(String(row.instagramCampaignId))");
+    expect(route).toContain('String(row.publisherPlatform || "instagram") === "instagram"');
+    expect(route).toContain("hasRows: rows.length > 0");
+    expect(route).not.toContain("upsertInstagramDailyMetrics");
+    expect(route).not.toContain("refreshInstagram");
+  });
 });

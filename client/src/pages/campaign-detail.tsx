@@ -74,6 +74,7 @@ interface PlatformMetrics {
   ctr: string;
   cpc: string;
   analyticsPath?: string | null;
+  unavailableReason?: string;
 }
 
 const devLog = (...args: any[]) => {
@@ -4379,6 +4380,7 @@ export default function CampaignDetail() {
     queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
     queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
     queryClientHook.invalidateQueries({ queryKey: [`/api/instagram/${campaignId}/connection`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/instagram/${campaignId}/overview-summary`], exact: false });
     queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
     queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "executive-summary"], exact: false });
     queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/executive-summary`], exact: false });
@@ -4701,6 +4703,23 @@ export default function CampaignDetail() {
   const googleAdsCtr = googleAdsImpressions > 0 ? formatPct((googleAdsClicks / googleAdsImpressions) * 100) : "0.00%";
   const googleAdsCpc = googleAdsClicks > 0 ? `$${(googleAdsSpend / googleAdsClicks).toFixed(2)}` : "$0.00";
   const isInstagramConnected = platformStatusMap.get("instagram")?.connected === true;
+  const { data: instagramOverviewSummary } = useQuery<any>({
+    queryKey: [`/api/instagram/${campaignId}/overview-summary`, "30days"],
+    enabled: !!campaignId && isInstagramConnected,
+    queryFn: async () => {
+      const response = await fetch(`/api/instagram/${campaignId}/overview-summary?dateRange=30days`);
+      if (!response.ok) return { success: false, hasRows: false, metrics: null };
+      return response.json().catch(() => ({ success: false, hasRows: false, metrics: null }));
+    },
+  });
+  const instagramHasSourceRows = isInstagramConnected && instagramOverviewSummary?.hasRows === true;
+  const instagramMetrics = instagramOverviewSummary?.metrics || {};
+  const instagramImpressions = instagramHasSourceRows ? Number(instagramMetrics.impressions || 0) : 0;
+  const instagramClicks = instagramHasSourceRows ? Number(instagramMetrics.clicks || 0) : 0;
+  const instagramSpend = instagramHasSourceRows ? Number(instagramMetrics.spend || 0) : 0;
+  const instagramConversions = instagramHasSourceRows ? Number(instagramMetrics.conversions || 0) : 0;
+  const instagramCtr = instagramHasSourceRows ? `${Number(instagramMetrics.ctr || 0).toFixed(2)}%` : "0.00%";
+  const instagramCpc = instagramHasSourceRows ? `$${Number(instagramMetrics.cpc || 0).toFixed(2)}` : "$0.00";
   
   // Build platformMetrics array dynamically based on connected platforms
   const allPlatformMetrics: PlatformMetrics[] = [
@@ -4773,13 +4792,14 @@ export default function CampaignDetail() {
     {
       platform: "Instagram Ads",
       connected: isInstagramConnected,
-      impressions: 0,
-      clicks: 0,
-      conversions: 0,
-      spend: "0.00",
-      ctr: "0.00%",
-      cpc: "$0.00",
-      analyticsPath: null
+      impressions: instagramImpressions,
+      clicks: instagramClicks,
+      conversions: instagramConversions,
+      spend: instagramSpend.toFixed(2),
+      ctr: instagramCtr,
+      cpc: instagramCpc,
+      analyticsPath: null,
+      unavailableReason: instagramHasSourceRows ? undefined : "Source-backed Instagram metrics are not available yet."
     },
     {
       platform: "Custom Integration",
@@ -4954,6 +4974,7 @@ export default function CampaignDetail() {
       void queryClient.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
       void queryClient.invalidateQueries({ queryKey: ['/api/google-ads', campaignId, 'connection'] });
       void queryClient.invalidateQueries({ queryKey: [`/api/instagram/${campaignId}/connection`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/instagram/${campaignId}/overview-summary`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`] });
       void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports'], exact: false });
@@ -5576,6 +5597,36 @@ export default function CampaignDetail() {
                                 >
                                   Reconnect Google Sheets
                                 </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {platform.platform === "Instagram Ads" && platform.unavailableReason && (
+                          <div className="pt-2 border-t">
+                            <div className="flex items-start gap-2 text-sm bg-muted/60 border border-border rounded-lg p-3">
+                              <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                              <p className="text-xs text-muted-foreground">{platform.unavailableReason}</p>
+                            </div>
+                          </div>
+                        )}
+                        {platform.platform === "Instagram Ads" && !platform.unavailableReason && (
+                          <div className="pt-2 border-t">
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <p className="text-muted-foreground">Impressions</p>
+                                <p className="font-medium">{platform.impressions.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Clicks</p>
+                                <p className="font-medium">{platform.clicks.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Spend</p>
+                                <p className="font-medium">${platform.spend}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Conversions</p>
+                                <p className="font-medium">{platform.conversions.toLocaleString()}</p>
                               </div>
                             </div>
                           </div>

@@ -237,7 +237,7 @@ Commit 13I Instagram Overview metrics loading-state stability is done and pushed
 
 Commit 13J Instagram Benchmark tab management UI parity is done and pushed. The Instagram Benchmarks tab now follows the established GA4/Google Ads-style pattern with a Benchmark header, Create Benchmark action, tracker cards, Benchmark cards with current/benchmark/progress, edit support, and confirmation-gated delete support, using only the existing shared Instagram Benchmark routes.
 
-Commit 13K Instagram Ad Comparison selected-campaign UI parity is implemented locally. The Ad Comparison tab now compares selected source-backed Instagram campaign rows grouped by `instagramCampaignId`; it does not claim ad-creative-level comparison because the current Instagram daily metrics contract is campaign-level.
+Commit 13K Instagram Ad Comparison selected-campaign UI parity is implemented locally. The Ad Comparison tab now compares selected source-backed Instagram campaign rows grouped by `instagramCampaignId` with comparative charts, leader cards, and a ranked table; it does not claim ad-creative-level comparison because the current Instagram daily metrics contract is campaign-level.
 
 ## Root Cause Analysis
 
@@ -308,7 +308,7 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 13H, the Instagram analytics page rendered its connection guard while the initial connection query was still loading. Because `connection` is undefined during a hard refresh, the page briefly showed visible loading/disconnected text above the eventual analytics tabs. Commit 13H removes that transient text branch and only displays final error/disconnected copy after the connection request resolves.
 - Before Commit 13I, the Instagram analytics Overview tab rendered a second visible loading branch while `/api/instagram/:campaignId/daily-metrics` was loading. Even after Commit 13H removed the connection-query flash, this metrics-query branch could still flash `Loading source-backed Instagram metrics...` before source-backed metric cards rendered. Commit 13I removes that transient text and keeps final metric/empty/error states unchanged.
 - Before Commit 13J, the Instagram Benchmarks tab still rendered through the generic read-only row helper. It had no Benchmark header, Create Benchmark action, tracker summary, progress cards, edit path, or confirmation-gated delete path, even though the shared Instagram Benchmark routes and selected-row current-value refresh already existed. Commit 13J adds that UI parity without adding backend routes, provider refresh, scheduler behavior, reports, or source aggregation.
-- Before Commit 13K, the Instagram Ad Comparison tab was hard-coded to an empty unavailable card. The selected daily metrics response already contained campaign-level rows grouped by `instagramCampaignId`, so the UI had source-backed campaign comparison data but never rendered it. Commit 13K renders selected-campaign comparison from those rows only and does not add ad-level import, backend routes, provider refresh, scheduler behavior, reports, or source aggregation.
+- Before Commit 13K, the Instagram Ad Comparison tab was hard-coded to an empty unavailable card, then the first selected-campaign view presented repeated metric cards that duplicated the Overview tab instead of helping executives compare campaigns. The selected daily metrics response already contained campaign-level rows grouped by `instagramCampaignId`, so Commit 13K renders comparative charts and a ranked table from those rows only and does not add ad-level import, backend routes, provider refresh, scheduler behavior, reports, or source aggregation.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`; Commit 9A supplies an Instagram source builder and Commit 9D wires it into the two current aggregate route consumers.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
 - Meta/Facebook currently includes Instagram-related placement data in some contexts; promoting that data to a standalone Instagram platform without explicit source boundaries would risk double-counting and misleading source attribution.
@@ -1840,7 +1840,8 @@ Commit 13K validation:
 - Open `/campaigns/:id/instagram-analytics`, then open the `Ad Comparison` tab.
 - Confirm the tab shows `Campaign Comparison` and `Compare selected source-backed Instagram campaigns.`
 - Confirm it shows selected campaign count, highest spend, best CTR, and lowest CPC summary cards.
-- Confirm each selected Instagram campaign row shows impressions, clicks, spend, conversions, CTR, CPC, cost per conversion, and video views.
+- Confirm it shows `Spend vs Conversions` and `Efficiency: CTR vs CPC` charts.
+- Confirm the ranked comparison table shows spend, conversions, CTR, CPC, cost per conversion, and video views for each selected Instagram campaign.
 - If the campaign has no selected source-backed Instagram daily rows, confirm the final empty state says `No selected source-backed Instagram campaign comparison rows are available yet.`
 - This commit does not add ad-level import, backend routes, metric calculations, KPI/Benchmark behavior, scheduler behavior, OAuth, provider refresh, reports, PDF output, or source aggregation.
 

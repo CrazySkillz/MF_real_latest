@@ -387,6 +387,10 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("Highest Spend");
     expect(page).toContain("Best CTR");
     expect(page).toContain("Lowest CPC");
+    expect(page).toContain("ResponsiveContainer");
+    expect(page).toContain("Spend vs Conversions");
+    expect(page).toContain("Efficiency: CTR vs CPC");
+    expect(page).toContain("instagramComparisonChartRows");
     expect(page).toContain("No selected source-backed Instagram campaign comparison rows are available yet.");
     expect(page).not.toContain("No source-backed Instagram ad comparison rows are available yet.");
     expect(page).not.toContain("Connection Status");

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, AlertCircle, AlertTriangle, CheckCircle2, Loader2, Eye, MousePointer, DollarSign, Target, BarChart3, Percent, Video, Plus, TrendingUp, Pencil, Trash2 } from "lucide-react";
 import { SiInstagram } from "react-icons/si";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -234,6 +235,19 @@ export default function InstagramAnalytics() {
       }))
       .sort((a: any, b: any) => b.spend - a.spend);
   }, [dailyMetrics]);
+  const instagramComparisonChartRows = useMemo(() => instagramComparisonRows.map((row: any) => ({
+    name: String(row.name || row.id).slice(0, 18),
+    spend: Number(row.spend || 0),
+    conversions: Number(row.conversions || 0),
+    ctr: Number(row.ctr || 0),
+    cpc: Number(row.cpc || 0),
+    costPerConversion: Number(row.costPerConversion || 0),
+  })), [instagramComparisonRows]);
+  const instagramComparisonLeaders = useMemo(() => ({
+    highestSpend: instagramComparisonRows[0],
+    bestCtr: [...instagramComparisonRows].filter((row: any) => row.ctr !== null).sort((a: any, b: any) => Number(b.ctr || 0) - Number(a.ctr || 0))[0],
+    lowestCpc: [...instagramComparisonRows].filter((row: any) => row.cpc !== null).sort((a: any, b: any) => Number(a.cpc || 0) - Number(b.cpc || 0))[0],
+  }), [instagramComparisonRows]);
   const latestImportedAt = useMemo(() => {
     const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
     const latest = rows
@@ -870,33 +884,77 @@ export default function InstagramAnalytics() {
                     <>
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                         <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Selected Campaigns</p><p className="text-2xl font-bold text-foreground">{instagramComparisonRows.length}</p></CardContent></Card>
-                        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Highest Spend</p><p className="text-xl font-bold text-foreground">{instagramComparisonRows[0]?.name || "Unavailable"}</p><p className="text-xs text-muted-foreground">${Number(instagramComparisonRows[0]?.spend || 0).toFixed(2)}</p></CardContent></Card>
-                        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Best CTR</p><p className="text-xl font-bold text-foreground">{[...instagramComparisonRows].filter((row: any) => row.ctr !== null).sort((a: any, b: any) => Number(b.ctr || 0) - Number(a.ctr || 0))[0]?.name || "Unavailable"}</p><p className="text-xs text-muted-foreground">{(([...instagramComparisonRows].filter((row: any) => row.ctr !== null).sort((a: any, b: any) => Number(b.ctr || 0) - Number(a.ctr || 0))[0]?.ctr) ?? 0).toFixed(2)}%</p></CardContent></Card>
-                        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Lowest CPC</p><p className="text-xl font-bold text-foreground">{[...instagramComparisonRows].filter((row: any) => row.cpc !== null).sort((a: any, b: any) => Number(a.cpc || 0) - Number(b.cpc || 0))[0]?.name || "Unavailable"}</p><p className="text-xs text-muted-foreground">${Number(([...instagramComparisonRows].filter((row: any) => row.cpc !== null).sort((a: any, b: any) => Number(a.cpc || 0) - Number(b.cpc || 0))[0]?.cpc) || 0).toFixed(2)}</p></CardContent></Card>
+                        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Highest Spend</p><p className="text-xl font-bold text-foreground">{instagramComparisonLeaders.highestSpend?.name || "Unavailable"}</p><p className="text-xs text-muted-foreground">${Number(instagramComparisonLeaders.highestSpend?.spend || 0).toFixed(2)}</p></CardContent></Card>
+                        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Best CTR</p><p className="text-xl font-bold text-foreground">{instagramComparisonLeaders.bestCtr?.name || "Unavailable"}</p><p className="text-xs text-muted-foreground">{Number(instagramComparisonLeaders.bestCtr?.ctr || 0).toFixed(2)}%</p></CardContent></Card>
+                        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Lowest CPC</p><p className="text-xl font-bold text-foreground">{instagramComparisonLeaders.lowestCpc?.name || "Unavailable"}</p><p className="text-xs text-muted-foreground">${Number(instagramComparisonLeaders.lowestCpc?.cpc || 0).toFixed(2)}</p></CardContent></Card>
                       </div>
                       <div className="grid gap-4 lg:grid-cols-2">
-                        {instagramComparisonRows.map((row: any) => (
-                          <Card key={row.id}>
-                            <CardContent className="p-5 space-y-4">
-                              <div>
-                                <h3 className="text-lg font-semibold text-foreground">{row.name}</h3>
-                                <p className="text-xs text-muted-foreground">{row.id}</p>
-                              </div>
-                              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                                <div className="p-3 bg-muted rounded-lg"><p className="text-xs text-muted-foreground">Impressions</p><p className="text-lg font-semibold">{row.impressions.toLocaleString()}</p></div>
-                                <div className="p-3 bg-muted rounded-lg"><p className="text-xs text-muted-foreground">Clicks</p><p className="text-lg font-semibold">{row.clicks.toLocaleString()}</p></div>
-                                <div className="p-3 bg-muted rounded-lg"><p className="text-xs text-muted-foreground">Spend</p><p className="text-lg font-semibold">${row.spend.toFixed(2)}</p></div>
-                                <div className="p-3 bg-muted rounded-lg"><p className="text-xs text-muted-foreground">Conversions</p><p className="text-lg font-semibold">{row.conversions.toLocaleString()}</p></div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-3 md:grid-cols-4 text-sm">
-                                <div><p className="text-muted-foreground">CTR</p><p className="font-medium">{row.ctr === null ? "Unavailable" : `${row.ctr.toFixed(2)}%`}</p></div>
-                                <div><p className="text-muted-foreground">CPC</p><p className="font-medium">{row.cpc === null ? "Unavailable" : `$${row.cpc.toFixed(2)}`}</p></div>
-                                <div><p className="text-muted-foreground">Cost / Conv.</p><p className="font-medium">{row.costPerConversion === null ? "Unavailable" : `$${row.costPerConversion.toFixed(2)}`}</p></div>
-                                <div><p className="text-muted-foreground">Video Views</p><p className="font-medium">{row.videoViews.toLocaleString()}</p></div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+                        <Card>
+                          <CardContent className="p-5">
+                            <h3 className="text-lg font-semibold text-foreground mb-4">Spend vs Conversions</h3>
+                            <div className="h-[280px]">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={instagramComparisonChartRows}>
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis dataKey="name" />
+                                  <YAxis yAxisId="left" />
+                                  <YAxis yAxisId="right" orientation="right" />
+                                  <Tooltip />
+                                  <Legend />
+                                  <Bar yAxisId="left" dataKey="spend" name="Spend" fill="#f97316" />
+                                  <Bar yAxisId="right" dataKey="conversions" name="Conversions" fill="#2563eb" />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <h3 className="text-lg font-semibold text-foreground mb-4">Efficiency: CTR vs CPC</h3>
+                            <div className="h-[280px]">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={instagramComparisonChartRows}>
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis dataKey="name" />
+                                  <YAxis yAxisId="left" />
+                                  <YAxis yAxisId="right" orientation="right" />
+                                  <Tooltip />
+                                  <Legend />
+                                  <Bar yAxisId="left" dataKey="ctr" name="CTR %" fill="#16a34a" />
+                                  <Bar yAxisId="right" dataKey="cpc" name="CPC $" fill="#7c3aed" />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+                        <table className="w-full text-sm">
+                          <thead className="bg-muted text-muted-foreground">
+                            <tr>
+                              <th className="px-4 py-3 text-left font-medium">Campaign</th>
+                              <th className="px-4 py-3 text-right font-medium">Spend</th>
+                              <th className="px-4 py-3 text-right font-medium">Conversions</th>
+                              <th className="px-4 py-3 text-right font-medium">CTR</th>
+                              <th className="px-4 py-3 text-right font-medium">CPC</th>
+                              <th className="px-4 py-3 text-right font-medium">Cost / Conv.</th>
+                              <th className="px-4 py-3 text-right font-medium">Video Views</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {instagramComparisonRows.map((row: any) => (
+                              <tr key={row.id} className="border-t border-border">
+                                <td className="px-4 py-3"><p className="font-medium text-foreground">{row.name}</p><p className="text-xs text-muted-foreground">{row.id}</p></td>
+                                <td className="px-4 py-3 text-right">${row.spend.toFixed(2)}</td>
+                                <td className="px-4 py-3 text-right">{row.conversions.toLocaleString()}</td>
+                                <td className="px-4 py-3 text-right">{row.ctr === null ? "Unavailable" : `${row.ctr.toFixed(2)}%`}</td>
+                                <td className="px-4 py-3 text-right">{row.cpc === null ? "Unavailable" : `$${row.cpc.toFixed(2)}`}</td>
+                                <td className="px-4 py-3 text-right">{row.costPerConversion === null ? "Unavailable" : `$${row.costPerConversion.toFixed(2)}`}</td>
+                                <td className="px-4 py-3 text-right">{row.videoViews.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </>
                   ) : (

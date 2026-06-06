@@ -78,7 +78,7 @@ describe("Instagram Connected Platforms regression guard", () => {
   it("reads Campaign Overview Instagram metrics only from selected persisted daily rows", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/instagram/:campaignId/overview-summary"');
-    const routeEnd = routes.indexOf('app.post("/api/meta/transfer-connection"', routeStart);
+    const routeEnd = routes.indexOf('app.get("/api/instagram/:campaignId/daily-metrics"', routeStart);
     const route = routes.slice(routeStart, routeEnd);
 
     expect(route).toContain("ensureCampaignAccess");
@@ -92,7 +92,7 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(route).not.toContain("refreshInstagram");
   });
 
-  it("exposes Instagram analytics daily metrics only from selected persisted daily rows", () => {
+  it("exposes Instagram analytics daily metrics only from selected rows with test-mode missing-row self-heal", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/instagram/:campaignId/daily-metrics"');
     const routeEnd = routes.indexOf('app.post("/api/meta/transfer-connection"', routeStart);
@@ -104,9 +104,11 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(route).toContain("storage.getInstagramDailyMetrics(parsedId.data, startDate, endDate)");
     expect(route).toContain("selected.has(String(row.instagramCampaignId))");
     expect(route).toContain('String(row.publisherPlatform || "instagram") === "instagram"');
+    expect(route).toContain('String((connection as any).method || "") === "test_mode"');
+    expect(route).toContain("persistedRows.length === 0");
+    expect(route).toContain("storage.upsertInstagramDailyMetrics(seedRows as any)");
     expect(route).toContain("rowCount: rows.length");
     expect(route).toContain("rows,");
-    expect(route).not.toContain("upsertInstagramDailyMetrics");
     expect(route).not.toContain("refreshInstagram");
     expect(route).not.toContain("/api/instagram/oauth");
   });

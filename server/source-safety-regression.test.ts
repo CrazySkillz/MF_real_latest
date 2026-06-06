@@ -424,7 +424,7 @@ describe("source safety regression guards", () => {
   it("Instagram campaign list route is campaign-scoped, read-only, and selector-contract only", () => {
     const routesSource = readRoutesSource();
     const routeStart = routesSource.indexOf('app.get("/api/instagram/:campaignId/campaigns"');
-    const routeEnd = routesSource.indexOf("/**\n   * Transfer Meta connection", routeStart);
+    const routeEnd = routesSource.indexOf('app.get("/api/instagram/:campaignId/overview-summary"', routeStart);
     const route = routesSource.slice(routeStart, routeEnd);
 
     expect(routeStart).toBeGreaterThanOrEqual(0);

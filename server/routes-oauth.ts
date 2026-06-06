@@ -19974,7 +19974,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dateRange = String(req.query.dateRange || "30days");
       const { startDate, endDate } = getDateRangeBounds(dateRange);
       const selected = new Set(selectedCampaignIds);
-      const rows = (await storage.getInstagramDailyMetrics(parsedId.data, startDate, endDate).catch(() => []))
+      let persistedRows = await storage.getInstagramDailyMetrics(parsedId.data, startDate, endDate).catch(() => []);
+      if (persistedRows.length === 0 && String((connection as any).method || "") === "test_mode" && !(connection as any).spendOnly) {
+        const date = yesterdayUTC();
+        const seedRows = selectedCampaignIds.map((id: string, index: number) => {
+          const impressions = 2500 + (index * 375);
+          const clicks = 90 + (index * 17);
+          const spend = 85 + (index * 12.5);
+          const conversions = 4 + index;
+          return {
+            campaignId: parsedId.data,
+            instagramCampaignId: id,
+            instagramCampaignName: id,
+            date,
+            publisherPlatform: "instagram",
+            platformPosition: "instagram_feed",
+            impressions,
+            clicks,
+            spend: spend.toFixed(2),
+            conversions: conversions.toFixed(2),
+            videoViews: 300 + (index * 45),
+            actions: [{ action_type: "lead", value: String(conversions) }],
+            ctr: ((clicks / impressions) * 100).toFixed(2),
+            cpc: (spend / clicks).toFixed(2),
+            cpm: ((spend / impressions) * 1000).toFixed(2),
+            costPerConversion: (spend / conversions).toFixed(2),
+            conversionRate: ((conversions / clicks) * 100).toFixed(2),
+          };
+        });
+        await storage.upsertInstagramDailyMetrics(seedRows as any);
+        await storage.updateInstagramConnection(parsedId.data, { lastRefreshAt: new Date() } as any);
+        persistedRows = await storage.getInstagramDailyMetrics(parsedId.data, startDate, endDate).catch(() => []);
+      }
+      const rows = persistedRows
         .filter((row: any) => selected.has(String(row.instagramCampaignId)) && String(row.publisherPlatform || "instagram") === "instagram")
         .map((row: any) => ({
           date: row.date,

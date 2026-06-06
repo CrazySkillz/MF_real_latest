@@ -63,6 +63,7 @@ export function HubSpotRevenueWizard(props: {
   const isLinkedIn = platformContext === "linkedin";
   const isGoogleAds = platformContext === "google_ads";
   const isMeta = platformContext === "meta";
+  const isInstagram = platformContext === "instagram";
 
   type Step = "value-source" | "campaign-field" | "crosswalk" | "pipeline" | "revenue" | "review" | "complete";
   // Start at the value-source step so the user can choose Revenue-only vs Revenue+Pipeline.
@@ -180,9 +181,9 @@ export function HubSpotRevenueWizard(props: {
   }, [campaignId, mode, initialMappingConfig, isLinkedIn]);
 
   useEffect(() => {
-    if ((!isGoogleAds && !isMeta) || !campaignId) return;
+    if ((!isGoogleAds && !isMeta && !isInstagram) || !campaignId) return;
     let cancelled = false;
-    const url = isMeta ? `/api/meta/${campaignId}/campaigns` : `/api/google-ads/${campaignId}/campaigns`;
+    const url = isInstagram ? `/api/instagram/${campaignId}/campaigns` : isMeta ? `/api/meta/${campaignId}/campaigns` : `/api/google-ads/${campaignId}/campaigns`;
     fetch(url, { credentials: "include" })
       .then((r) => r.ok ? r.json() : { campaigns: [] })
       .then((data) => {
@@ -190,7 +191,7 @@ export function HubSpotRevenueWizard(props: {
         const campaigns = Array.isArray(data?.campaigns) ? data.campaigns : [];
         const selectedIds = new Set(Array.isArray(data?.selectedCampaignIds) ? data.selectedCampaignIds.map((id: any) => String(id)) : []);
         setPlatformCampaigns(campaigns
-          .filter((campaign: any) => isMeta ? (selectedIds.size > 0 ? selectedIds.has(String(campaign?.id || "")) : campaign?.selected !== false) : campaign?.selected !== false)
+          .filter((campaign: any) => isMeta || isInstagram ? (selectedIds.size > 0 ? selectedIds.has(String(campaign?.id || "")) : campaign?.selected !== false) : campaign?.selected !== false)
           .map((campaign: any) => ({ id: String(campaign?.id || campaign?.name || ""), name: String(campaign?.name || campaign?.id || "Unknown") }))
           .filter((campaign: any) => !!campaign.id));
       })
@@ -198,7 +199,7 @@ export function HubSpotRevenueWizard(props: {
         if (!cancelled) setPlatformCampaigns([]);
       });
     return () => { cancelled = true; };
-  }, [isGoogleAds, isMeta, campaignId]);
+  }, [isGoogleAds, isInstagram, isMeta, campaignId]);
 
   const platformCampaignOptions = useMemo(() => {
     const options = new Map<string, { id: string; name: string }>();
@@ -213,13 +214,13 @@ export function HubSpotRevenueWizard(props: {
   }, [campaignMappings, platformCampaigns]);
 
   const selectedCampaignMappings = useMemo(() => {
-    if (!isGoogleAds && !isMeta) return [];
+    if (!isGoogleAds && !isMeta && !isInstagram) return [];
     const selectedSet = new Set(selectedValues.map((value) => String(value || "").trim()).filter(Boolean));
     return campaignMappings.filter((mapping) => (
       selectedSet.has(String(mapping.crmValue || "").trim()) &&
       platformCampaignOptions.some((campaign) => campaign.id === mapping.linkedinCampaignUrn)
     ));
-  }, [campaignMappings, isGoogleAds, isMeta, platformCampaignOptions, selectedValues]);
+  }, [campaignMappings, isGoogleAds, isInstagram, isMeta, platformCampaignOptions, selectedValues]);
 
   const updateCampaignMapping = (crmValue: string, campaignIdValue: string) => {
     const value = String(crmValue || "").trim();
@@ -233,8 +234,8 @@ export function HubSpotRevenueWizard(props: {
   };
 
   const renderAdPlatformCampaignMappings = () => {
-    if ((!isGoogleAds && !isMeta) || selectedValues.length === 0) return null;
-    const platformLabel = isMeta ? "Meta" : "Google Ads";
+    if ((!isGoogleAds && !isMeta && !isInstagram) || selectedValues.length === 0) return null;
+    const platformLabel = isInstagram ? "Instagram" : isMeta ? "Meta" : "Google Ads";
     return (
       <div className="rounded border p-3 space-y-3">
         <Label>{platformLabel} campaign mapping</Label>

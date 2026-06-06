@@ -11,6 +11,8 @@ describe("Instagram Create Campaign flow regression guard", () => {
     expect(page).toContain("const isComingSoon = ['twitter'].includes(platform.id);");
     expect(page).toContain("selectedWizardPlatform === 'instagram'");
     expect(page).toContain("connectInstagramTestMode");
+    expect(page).toContain('useState("ig_test_1, ig_test_2, ig_test_3")');
+    expect(page).toContain('setInstagramSelectedCampaignIds("ig_test_1, ig_test_2, ig_test_3")');
     expect(page).toContain("selectedCampaignIds.length === 0");
     expect(page).toContain("`/api/instagram/${draftCampaignId}/connect-test`");
     expect(page).toContain("selectedPlatforms.includes('instagram')");

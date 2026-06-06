@@ -4873,7 +4873,7 @@ export default function CampaignDetail() {
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
   const [instagramAdAccountId, setInstagramAdAccountId] = useState("act_instagram_test");
   const [instagramAdAccountName, setInstagramAdAccountName] = useState("Test Instagram Ad Account");
-  const [instagramSelectedCampaignIds, setInstagramSelectedCampaignIds] = useState("ig_test_1");
+  const [instagramSelectedCampaignIds, setInstagramSelectedCampaignIds] = useState("ig_test_1, ig_test_2, ig_test_3");
   const [isInstagramConnecting, setIsInstagramConnecting] = useState(false);
   const [addRevenueWizardOpen, setAddRevenueWizardOpen] = useState(false);
   const [revenueWizardInitialStep, setRevenueWizardInitialStep] = useState<string | undefined>(undefined);

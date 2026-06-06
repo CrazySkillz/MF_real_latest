@@ -156,7 +156,7 @@ export default function Campaigns() {
   const [wizardGA4TestMode, setWizardGA4TestMode] = useState(false);
   const [instagramAdAccountId, setInstagramAdAccountId] = useState("act_instagram_test");
   const [instagramAdAccountName, setInstagramAdAccountName] = useState("Test Instagram Ad Account");
-  const [instagramSelectedCampaignIds, setInstagramSelectedCampaignIds] = useState("ig_test_1");
+  const [instagramSelectedCampaignIds, setInstagramSelectedCampaignIds] = useState("ig_test_1, ig_test_2, ig_test_3");
   const [isInstagramConnecting, setIsInstagramConnecting] = useState(false);
   const { toast } = useToast();
 
@@ -671,7 +671,7 @@ export default function Campaigns() {
     setWizardGA4TestMode(false);
     setInstagramAdAccountId("act_instagram_test");
     setInstagramAdAccountName("Test Instagram Ad Account");
-    setInstagramSelectedCampaignIds("ig_test_1");
+    setInstagramSelectedCampaignIds("ig_test_1, ig_test_2, ig_test_3");
     setIsInstagramConnecting(false);
     form.reset();
   };

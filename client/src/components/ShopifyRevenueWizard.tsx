@@ -42,6 +42,7 @@ export function ShopifyRevenueWizard(props: {
   const isLinkedIn = platformContext === "linkedin";
   const isGoogleAds = platformContext === "google_ads";
   const isMeta = platformContext === "meta";
+  const isInstagram = platformContext === "instagram";
 
   const [step, setStep] = useState<Step>("campaign-field");
   // Allow parent (outer modal Back button) to drive navigation back to the connect screen.
@@ -122,9 +123,11 @@ export function ShopifyRevenueWizard(props: {
 
   // Fetch selected platform campaigns when per-campaign mapping is supported.
   useEffect(() => {
-    if ((!isLinkedIn && !isGoogleAds && !isMeta) || !campaignId) return;
+    if ((!isLinkedIn && !isGoogleAds && !isMeta && !isInstagram) || !campaignId) return;
     const url = isGoogleAds
       ? `/api/google-ads/${campaignId}/campaigns`
+      : isInstagram
+        ? `/api/instagram/${campaignId}/campaigns`
       : isMeta
         ? `/api/meta/${campaignId}/campaigns`
         : `/api/campaigns/${campaignId}/linkedin-campaigns`;
@@ -134,7 +137,7 @@ export function ShopifyRevenueWizard(props: {
         const campaigns = Array.isArray(data?.campaigns) ? data.campaigns : [];
         const selectedIds = new Set(Array.isArray(data?.selectedCampaignIds) ? data.selectedCampaignIds.map((id: any) => String(id)) : []);
         setPlatformCampaigns(campaigns
-          .filter((campaign: any) => isMeta
+          .filter((campaign: any) => isMeta || isInstagram
             ? (selectedIds.size > 0 ? selectedIds.has(String(campaign?.id || "")) : campaign?.selected !== false)
             : (!isGoogleAds || campaign?.selected !== false))
           .map((campaign: any) => ({
@@ -144,7 +147,7 @@ export function ShopifyRevenueWizard(props: {
           .filter((campaign: any) => !!campaign.id));
       })
       .catch(() => setPlatformCampaigns([]));
-  }, [isLinkedIn, isGoogleAds, isMeta, campaignId]);
+  }, [isLinkedIn, isGoogleAds, isInstagram, isMeta, campaignId]);
 
   const platformCampaignOptions = useMemo(() => {
     const options = new Map<string, { id: string; name: string }>();
@@ -159,13 +162,13 @@ export function ShopifyRevenueWizard(props: {
   }, [campaignMappings, platformCampaigns]);
 
   const selectedCampaignMappings = useMemo(() => {
-    if (!isLinkedIn && !isGoogleAds && !isMeta) return [];
+    if (!isLinkedIn && !isGoogleAds && !isMeta && !isInstagram) return [];
     const selectedSet = new Set(selectedValues.map((value) => String(value || "").trim()).filter(Boolean));
     return campaignMappings.filter((mapping) => (
       selectedSet.has(String(mapping.crmValue || "").trim()) &&
       platformCampaignOptions.some((campaign) => campaign.id === mapping.linkedinCampaignUrn)
     ));
-  }, [campaignMappings, isGoogleAds, isLinkedIn, isMeta, platformCampaignOptions, selectedValues]);
+  }, [campaignMappings, isGoogleAds, isInstagram, isLinkedIn, isMeta, platformCampaignOptions, selectedValues]);
 
   const updateCampaignMapping = (crmValue: string, campaignIdValue: string) => {
     const value = String(crmValue || "").trim();
@@ -179,8 +182,8 @@ export function ShopifyRevenueWizard(props: {
   };
 
   const renderPlatformCampaignMappings = () => {
-    if ((!isLinkedIn && !isGoogleAds && !isMeta) || selectedValues.length === 0) return null;
-    const platformLabel = isGoogleAds ? "Google Ads" : isMeta ? "Meta" : "LinkedIn";
+    if ((!isLinkedIn && !isGoogleAds && !isMeta && !isInstagram) || selectedValues.length === 0) return null;
+    const platformLabel = isInstagram ? "Instagram" : isGoogleAds ? "Google Ads" : isMeta ? "Meta" : "LinkedIn";
     return (
       <div className="rounded border p-3 space-y-3">
         <Label>{platformLabel} campaign mapping</Label>
@@ -511,7 +514,7 @@ export function ShopifyRevenueWizard(props: {
             platformContext,
             valueSource: "revenue",
             revenueClassification: isLinkedIn ? "offsite_not_in_ga4" : "onsite_in_ga4",
-            ...((isLinkedIn || isGoogleAds || isMeta) && selectedCampaignMappings.length > 0 ? { campaignMappings: selectedCampaignMappings } : {}),
+            ...((isLinkedIn || isGoogleAds || isMeta || isInstagram) && selectedCampaignMappings.length > 0 ? { campaignMappings: selectedCampaignMappings } : {}),
           }),
         });
         const json = await resp.json().catch(() => ({}));

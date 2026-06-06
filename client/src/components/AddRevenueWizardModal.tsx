@@ -520,7 +520,7 @@ export function AddRevenueWizardModal(props: {
   useEffect(() => {
     if (!open) return;
     const campaignPlatform = step === 'manual' ? manualPlatform : platformContext;
-    const needsCampaignMapping = (platformContext === 'google_ads' || platformContext === 'meta') && (step === 'csv_map' || step === 'sheets_map');
+    const needsCampaignMapping = (platformContext === 'google_ads' || platformContext === 'meta' || platformContext === 'instagram') && (step === 'csv_map' || step === 'sheets_map');
     if (step !== 'manual' && !needsCampaignMapping) return;
     if (campaignPlatform === 'ga4') {
       setPlatformCampaigns([]);
@@ -553,6 +553,15 @@ export function AddRevenueWizardModal(props: {
           if (!cancelled && Array.isArray(json?.campaigns)) {
             setPlatformCampaigns(json.campaigns
               .filter((c: any) => c?.selected !== false)
+              .map((c: any) => ({ id: c.id || c.name, name: c.name || c.id || 'Unknown' })));
+          }
+        } else if (campaignPlatform === 'instagram') {
+          const resp = await fetch(`/api/instagram/${campaignId}/campaigns`, { credentials: "include" });
+          const json = await resp.json().catch(() => ({}));
+          if (!cancelled && Array.isArray(json?.campaigns)) {
+            const selectedIds = new Set(Array.isArray(json?.selectedCampaignIds) ? json.selectedCampaignIds.map((id: any) => String(id)) : []);
+            setPlatformCampaigns(json.campaigns
+              .filter((c: any) => selectedIds.size > 0 ? selectedIds.has(String(c?.id || "")) : c?.selected !== false)
               .map((c: any) => ({ id: c.id || c.name, name: c.name || c.id || 'Unknown' })));
           }
         }
@@ -851,8 +860,8 @@ export function AddRevenueWizardModal(props: {
 
   const renderPlatformCampaignMapping = (values: string[]) => {
     const selectedValues = values.map((v) => String(v ?? "").trim()).filter(Boolean);
-    if ((platformContext !== "google_ads" && platformContext !== "meta") || selectedValues.length === 0) return null;
-    const platformLabel = platformContext === "meta" ? "Meta" : "Google Ads";
+    if ((platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram") || selectedValues.length === 0) return null;
+    const platformLabel = platformContext === "instagram" ? "Instagram" : platformContext === "meta" ? "Meta" : "Google Ads";
     return (
       <div className="pt-2 border-t space-y-3">
         <Label className="font-normal">{platformLabel} campaign mapping</Label>

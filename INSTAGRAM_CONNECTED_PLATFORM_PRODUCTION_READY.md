@@ -82,8 +82,10 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13N-A | Shared revenue wizard Instagram context foundation | Done and pushed; user validation passed | Shared revenue wizard/backend purpose contract |
 | 13N-B | Instagram Overview revenue source controls | Done and pushed; user validation passed | Instagram analytics revenue UI |
 | 13N-C | Instagram revenue resolver and Overview financial metrics | Done and pushed; user validation passed | Instagram analytics revenue backend/UI |
-| 13N-D | Instagram KPI/Benchmark/Insights revenue current values | Implemented locally; user validation pending | Instagram analytics KPI/Benchmark/Insights |
-| 13N-E | Instagram revenue lifecycle invalidation and regression closeout | Implemented locally; user validation pending | Revenue lifecycle/tests/docs |
+| 13N-D | Instagram KPI/Benchmark/Insights revenue current values | Done and pushed; user validation pending | Instagram analytics KPI/Benchmark/Insights |
+| 13N-E | Instagram revenue lifecycle invalidation and regression closeout | Done and pushed; user validation pending | Revenue lifecycle/tests/docs |
+| 13N-F | Instagram revenue wizard selected-campaign mapping | Implemented locally; user validation pending | Revenue wizard UI/backend attribution |
+| 13N-G | Instagram multi-campaign test setup default | Implemented locally; user validation pending | Create Campaign and Connected Platforms test setup |
 | 13O | Instagram report route/source contract | Pending | Report backend/UI |
 | 13P | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
 | 13Q | Instagram PDF/export output source proof | Pending | Report exports |
@@ -104,9 +106,9 @@ Instagram must be treated as a campaign-scoped main paid-media connected source 
 
 ## Current Status
 
-Instagram is not implemented as a first-class connected platform in the current local codebase.
+Instagram is partially implemented as a first-class connected platform in the current local codebase, but final production readiness is still pending.
 
-Initial code supported Meta/Facebook Ads and could surface Instagram placement names inside Meta analytics, but that was not the same as a standalone Instagram connected platform. The current implementation now has a test-mode Instagram source contract, schema/storage, guarded routes, Create Campaign and Connected Platforms flows, Campaign Overview metrics, analytics page, Campaign DeepDive aggregate wiring, financial platform-context isolation, the Commit 11A provider/refresh design trace, an explicit test-mode Instagram daily metric refresh route, a manual live refresh route that imports selected Instagram publisher-platform rows only, a fail-closed Instagram scheduler refresh wrapper, scheduler snapshot integration through the same aggregate source contract as the UI, local backend lifecycle cleanup for disconnect and selected-scope replacement, a non-destructive stale-data cleanup plan, and local lifecycle regression/validation documentation; live OAuth connect UI, reports, and KPI/Benchmark parity remain pending.
+Initial code supported Meta/Facebook Ads and could surface Instagram placement names inside Meta analytics, but that was not the same as a standalone Instagram connected platform. The current implementation now has a test-mode Instagram source contract, schema/storage, guarded routes, Create Campaign and Connected Platforms flows, Campaign Overview metrics, analytics page, Campaign DeepDive aggregate wiring, financial platform-context isolation, the Commit 11A provider/refresh design trace, an explicit test-mode Instagram daily metric refresh route, a manual live refresh route that imports selected Instagram publisher-platform rows only, a fail-closed Instagram scheduler refresh wrapper, scheduler snapshot integration through the same aggregate source contract as the UI, local backend lifecycle cleanup for disconnect and selected-scope replacement, a non-destructive stale-data cleanup plan, Instagram-scoped revenue controls and selected-campaign revenue mapping, and local lifecycle regression/validation documentation; live OAuth connect UI and reports remain pending.
 
 No production-ready claim can be made for Instagram until the implementation and validation items in this tracker are completed.
 
@@ -1698,9 +1700,13 @@ Status:
 - [x] User validation passed for Commit 13N-B.
 - [x] Commit 13N-C done and pushed: Instagram revenue resolver and Overview financial metrics.
 - [x] User validation passed for Commit 13N-C.
-- [x] Commit 13N-D implemented locally: Instagram KPI/Benchmark/Insights revenue current values.
-- [x] Commit 13N-E implemented locally: Instagram revenue lifecycle invalidation and regression closeout.
+- [x] Commit 13N-D done and pushed: Instagram KPI/Benchmark/Insights revenue current values.
+- [x] Commit 13N-E done and pushed: Instagram revenue lifecycle invalidation and regression closeout.
 - [ ] User validation pending for Commit 13N-D through Commit 13N-E.
+- [x] Commit 13N-F implemented locally: Instagram revenue wizard selected-campaign mapping.
+- [ ] User validation pending for Commit 13N-F.
+- [x] Commit 13N-G implemented locally: Instagram multi-campaign test setup default.
+- [ ] User validation pending for Commit 13N-G.
 - [ ] Commit 13O pending: Instagram report route/source contract.
 - [ ] Commit 13P pending: Instagram scheduled report snapshot/send guard.
 - [ ] Commit 13Q pending: Instagram PDF/export output source proof.
@@ -1939,6 +1945,8 @@ Commit 13N subcommit split:
 - 13N-C: `resolveInstagramRevenueContext(...)` plus Overview Total Revenue, ROAS, ROI, and Profit when Instagram-scoped revenue exists.
 - 13N-D: Instagram KPI, Benchmark, and Insights current-value mappings for revenue-derived metrics only after resolver proof.
 - 13N-E: Revenue add/edit/delete invalidation, disconnect/reconnect checks, focused regression coverage, and validation documentation.
+- 13N-F: Selected Instagram campaign mapping for CSV, Sheets, HubSpot, Salesforce, and Shopify revenue imports.
+- 13N-G: Multi-campaign test setup default so normal validation exercises campaign comparison and campaign mapping.
 
 Commit 13N-A root-cause trace:
 
@@ -2013,6 +2021,36 @@ Commit 13N-E validation:
 - Confirm the KPI and Benchmark tabs refresh after the source change without a full browser reload.
 - Delete the Instagram revenue source and confirm revenue-derived KPI/Benchmark current values no longer appear as connected values after refresh.
 - Confirm delivery metrics, reports, scheduler behavior, live OAuth, and non-Instagram platform revenue are unchanged.
+
+Commit 13N-F root-cause trace:
+
+- Instagram connections already persist `selectedCampaignIds`, and `/api/instagram/:campaignId/campaigns` already returns only the campaign-scoped persisted Instagram selection.
+- The shared revenue wizard and CRM/ecommerce child wizards supported campaign mapping for LinkedIn, Meta, and Google Ads, but Instagram was missing from the mapping allowlists.
+- Backend revenue materialization also skipped Instagram when resolving exact mapped campaign IDs, so Instagram revenue imports could be stored as aggregate Instagram revenue but could not safely preserve per-Instagram-campaign attribution.
+- The smallest safe fix is to reuse the existing selected-source contract: expose the Instagram campaign mapping selector from the existing endpoint, accept only mapped IDs that are in the selected Instagram campaign set, and write exact `subCampaignUrn` revenue records without changing aggregate total semantics.
+
+Commit 13N-F validation:
+
+- Open Instagram Analytics -> Overview -> Total Revenue `+`.
+- In CSV or Google Sheets revenue import, select a campaign column and at least one value; confirm an `Instagram campaign mapping` selector appears.
+- In HubSpot, Salesforce, or Shopify revenue import, select campaign values; confirm the same Instagram mapping selector appears.
+- Map one CRM/import value to a selected Instagram campaign ID and save.
+- Confirm Instagram Overview Total Revenue, ROAS, ROI, and Profit still use only Instagram-scoped revenue and do not double-count mapped sub-campaign records.
+- Confirm non-Instagram revenue wizards still show their existing LinkedIn, Meta, or Google Ads mapping labels and behavior.
+
+Commit 13N-G root-cause trace:
+
+- The Instagram backend test connection already accepts multiple selected campaign IDs and seeds one selected-source daily row per selected ID.
+- Create Campaign and Connected Platforms both prefilled only `ig_test_1`, so the default validation path looked connected but did not exercise multi-campaign comparison, selected-campaign revenue mapping, or per-campaign source filtering.
+- The smallest safe fix is UI-default only: prefill the existing comma-separated selected campaign ID field with `ig_test_1, ig_test_2, ig_test_3` in both entry points.
+
+Commit 13N-G validation:
+
+- In Create Campaign -> Instagram test setup, confirm the Selected Instagram Campaign IDs field defaults to `ig_test_1, ig_test_2, ig_test_3`.
+- In Connected Platforms -> Instagram Ads setup, confirm the same default appears.
+- Connect the test account and open Instagram Analytics -> Ad Comparison; confirm the selected campaign count is 3 and multiple campaign rows/charts render.
+- Open Instagram Analytics -> Overview and confirm metrics aggregate across the selected test campaigns.
+- Open Total Revenue `+` and confirm the Instagram campaign mapping selector offers the selected test campaign IDs.
 
 Commit 13N validation:
 

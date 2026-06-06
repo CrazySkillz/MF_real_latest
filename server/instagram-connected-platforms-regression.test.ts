@@ -41,6 +41,7 @@ describe("Instagram Connected Platforms regression guard", () => {
 
     expect(page).toContain("connectInstagramTestMode");
     expect(page).toContain("invalidateInstagramConnectedPlatformQueries");
+    expect(page).toContain('useState("ig_test_1, ig_test_2, ig_test_3")');
     expect(page).toContain("selectedCampaignIds.length === 0");
     expect(page).toContain('title: "Instagram campaign required"');
     expect(page).toContain('title: "Connection Failed"');
@@ -188,6 +189,33 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(routes).not.toContain("refreshInstagram(");
     expect(routes).not.toContain("refreshInstagramForCampaign");
     expect(validation).not.toContain("upsertInstagramDailyMetrics");
+  });
+
+  it("allows Instagram revenue wizards to map only persisted selected Instagram campaigns", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const salesforce = readFileSync(join(process.cwd(), "client", "src", "components", "SalesforceRevenueWizard.tsx"), "utf-8");
+    const hubspot = readFileSync(join(process.cwd(), "client", "src", "components", "HubSpotRevenueWizard.tsx"), "utf-8");
+    const shopify = readFileSync(join(process.cwd(), "client", "src", "components", "ShopifyRevenueWizard.tsx"), "utf-8");
+    const modal = readFileSync(join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"), "utf-8");
+
+    expect(routes).toContain("const getActiveInstagramCampaignIdSet = async (campaignId: string): Promise<Set<string>>");
+    expect(routes).toContain("storage.getInstagramConnection(campaignId)");
+    expect(routes).toContain('platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram"');
+    expect(routes).toContain("mapping?.googleAdsCampaignId || mapping?.metaCampaignId || mapping?.instagramCampaignId || mapping?.linkedinCampaignUrn");
+    expect(routes).toContain('platformCtx === "instagram"');
+    expect(routes).toContain('platformContext === "instagram"');
+    expect(salesforce).toContain('const isInstagram = platformContext === "instagram";');
+    expect(salesforce).toContain('`/api/instagram/${campaignId}/campaigns`');
+    expect(salesforce).toContain('const platformLabel = isInstagram ? "Instagram"');
+    expect(hubspot).toContain('const isInstagram = platformContext === "instagram";');
+    expect(hubspot).toContain('`/api/instagram/${campaignId}/campaigns`');
+    expect(hubspot).toContain('const platformLabel = isInstagram ? "Instagram"');
+    expect(shopify).toContain('const isInstagram = platformContext === "instagram";');
+    expect(shopify).toContain('`/api/instagram/${campaignId}/campaigns`');
+    expect(shopify).toContain('isLinkedIn || isGoogleAds || isMeta || isInstagram');
+    expect(modal).toContain("platformContext === 'google_ads' || platformContext === 'meta' || platformContext === 'instagram'");
+    expect(modal).toContain('`/api/instagram/${campaignId}/campaigns`');
+    expect(modal).toContain('const platformLabel = platformContext === "instagram" ? "Instagram"');
   });
 
   it("writes Instagram test daily metrics from test connect and explicit test refresh only", () => {

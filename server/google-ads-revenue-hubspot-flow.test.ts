@@ -54,7 +54,7 @@ describe("Google Ads revenue HubSpot flow", () => {
     expect(route).toContain('const activeGoogleAdsCampaignIds = platformCtx === "google_ads"');
     expect(route).toContain("googleAdsCampaignIdFromValueOrMapping(platformCtx, campaignValue, campaignMappings, activeGoogleAdsCampaignIds)");
     expect(route).toContain('} else if (platformCtx === "linkedin" && campaignMappings.length > 0) {');
-    expect(route).toContain('if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta") && revenueByLinkedinCampaign.size > 0)');
+    expect(route).toContain('if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta" || platformCtx === "instagram") && revenueByLinkedinCampaign.size > 0)');
     expect(route).toContain("subCampaignUrn: urn,");
     expect(route).not.toContain("spend weight");
   });
@@ -82,7 +82,7 @@ describe("Google Ads revenue HubSpot flow", () => {
       "// Clear HubSpot pipeline proxy config"
     );
 
-    expect(pipelineRoute).toContain('["ga4", "linkedin", "meta", "google_ads"]');
+    expect(pipelineRoute).toContain('["ga4", "linkedin", "meta", "google_ads", "instagram"]');
     expect(pipelineRoute).toContain(': ["ga4", "linkedin", "meta"] as const;');
     expect(pipelineRoute).toContain('String(cfg?.platformContext || cfg?.platform || "").trim().toLowerCase() !== requestedPlatformContext');
     expect(pipelineRoute).toContain("totalToDate: Number(cfg.pipelineTotalToDate || 0)");

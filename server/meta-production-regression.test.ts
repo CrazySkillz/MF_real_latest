@@ -378,25 +378,25 @@ describe("Meta production readiness regression guard", () => {
     );
 
     expect(modal).toContain('platformContext === "meta" ? "Meta" : "Google Ads"');
-    expect(modal).toContain('const needsCampaignMapping = (platformContext === \'google_ads\' || platformContext === \'meta\')');
+    expect(modal).toContain("const needsCampaignMapping = (platformContext === 'google_ads' || platformContext === 'meta' || platformContext === 'instagram')");
     expect(modal).toContain('fetch(`/api/meta/${campaignId}/campaigns`');
     expect(modal).toContain('selectedIds.has(String(c?.id || ""))');
     expect(modal).toContain('renderPlatformCampaignMapping(csvCampaignValues)');
     expect(modal).toContain('renderPlatformCampaignMapping(sheetsCampaignValues)');
 
     expect(hubspot).toContain('const isMeta = platformContext === "meta";');
-    expect(hubspot).toContain('const url = isMeta ? `/api/meta/${campaignId}/campaigns`');
+    expect(hubspot).toContain('isMeta ? `/api/meta/${campaignId}/campaigns`');
     expect(hubspot).toContain('renderAdPlatformCampaignMappings()');
     expect(salesforce).toContain('const isMeta = platformContext === "meta";');
-    expect(salesforce).toContain('const url = isMeta ? `/api/meta/${campaignId}/campaigns`');
+    expect(salesforce).toContain('isMeta ? `/api/meta/${campaignId}/campaigns`');
     expect(salesforce).toContain('renderAdPlatformCampaignMappings()');
     expect(shopify).toContain('const isMeta = platformContext === "meta";');
     expect(shopify).toContain('? `/api/meta/${campaignId}/campaigns`');
-    expect(shopify).toContain('(isLinkedIn || isGoogleAds || isMeta) && selectedCampaignMappings.length > 0');
+    expect(shopify).toContain('(isLinkedIn || isGoogleAds || isMeta || isInstagram) && selectedCampaignMappings.length > 0');
 
     expect(routes).toContain("const getActiveMetaCampaignIdSet = async (campaignId: string): Promise<Set<string>> => {");
-    expect(routes).toContain('if (!id || (platformContext !== "google_ads" && platformContext !== "meta")) return null;');
-    expect(routes).toContain('mapping?.metaCampaignId || mapping?.linkedinCampaignUrn');
+    expect(routes).toContain('if (!id || (platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram")) return null;');
+    expect(routes).toContain('mapping?.metaCampaignId || mapping?.instagramCampaignId || mapping?.linkedinCampaignUrn');
     expect(metaCampaignRevenueRoute).toContain("const activeMetaCampaignIds = await getActiveMetaCampaignIdSet(campaignId);");
     expect(metaCampaignRevenueRoute).toContain("rs.platform_context = 'meta'");
     expect(metaCampaignRevenueRoute).toContain("activeMetaCampaignIds.has(metaCampaignId)");

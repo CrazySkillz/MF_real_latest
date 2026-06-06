@@ -2504,9 +2504,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return new Set(selectedIds);
   };
 
+  const getActiveInstagramCampaignIdSet = async (campaignId: string): Promise<Set<string>> => {
+    const connection: any = await storage.getInstagramConnection(campaignId).catch(() => null);
+    if (!connection || connection.spendOnly) return new Set<string>();
+    const selectedIds = (() => {
+      try {
+        const parsed = JSON.parse(String(connection.selectedCampaignIds || "[]"));
+        return Array.isArray(parsed) ? parsed.map((id: any) => String(id || "").trim()).filter(Boolean) : [];
+      } catch {
+        return [];
+      }
+    })();
+    return new Set(selectedIds);
+  };
+
   const exactGoogleAdsCampaignIdOrNull = (platformContext: string, value: any, activeGoogleAdsCampaignIds: Set<string>): string | null => {
     const id = String(value || "").trim();
-    if (!id || (platformContext !== "google_ads" && platformContext !== "meta")) return null;
+    if (!id || (platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram")) return null;
     return activeGoogleAdsCampaignIds.has(id) ? id : null;
   };
 
@@ -2518,11 +2532,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   ): string | null => {
     const exact = exactGoogleAdsCampaignIdOrNull(platformContext, sourceValue, activeGoogleAdsCampaignIds);
     if (exact) return exact;
-    if (platformContext !== "google_ads" && platformContext !== "meta") return null;
+    if (platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram") return null;
     const value = String(sourceValue || "").trim();
     if (!value || !Array.isArray(campaignMappings)) return null;
     const mapping = campaignMappings.find((m: any) => String(m?.crmValue || "").trim() === value);
-    const mappedId = String(mapping?.googleAdsCampaignId || mapping?.metaCampaignId || mapping?.linkedinCampaignUrn || "").trim();
+    const mappedId = String(mapping?.googleAdsCampaignId || mapping?.metaCampaignId || mapping?.instagramCampaignId || mapping?.linkedinCampaignUrn || "").trim();
     return mappedId && activeGoogleAdsCampaignIds.has(mappedId) ? mappedId : null;
   };
 
@@ -2902,7 +2916,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? await getActiveGoogleAdsCampaignIdSet(campaignId)
           : platformContext === "meta"
             ? await getActiveMetaCampaignIdSet(campaignId)
-            : new Set<string>();
+            : platformContext === "instagram"
+              ? await getActiveInstagramCampaignIdSet(campaignId)
+              : new Set<string>();
         const campaignMappings = Array.isArray(mapping.campaignMappings) ? mapping.campaignMappings : [];
         const fallbackRecordDate = yesterdayUTC();
 
@@ -3443,7 +3459,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? await getActiveGoogleAdsCampaignIdSet(campaignId)
         : platformContext === "meta"
           ? await getActiveMetaCampaignIdSet(campaignId)
-          : new Set<string>();
+          : platformContext === "instagram"
+            ? await getActiveInstagramCampaignIdSet(campaignId)
+            : new Set<string>();
       const campaignMappings = Array.isArray(mapping.campaignMappings) ? mapping.campaignMappings : [];
       const fallbackRecordDate = yesterdayUTC();
 
@@ -14004,7 +14022,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? await getActiveGoogleAdsCampaignIdSet(campaignId)
         : platformCtx === "meta"
           ? await getActiveMetaCampaignIdSet(campaignId)
-          : new Set<string>();
+          : platformCtx === "instagram"
+            ? await getActiveInstagramCampaignIdSet(campaignId)
+            : new Set<string>();
       if (existingSourceIdOrNull) {
         const existingSource = await storage.getRevenueSource(campaignId, existingSourceIdOrNull);
         const existingCtx = String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase();
@@ -14559,7 +14579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })) as any[];
 
         // Add exact platform-campaign revenue records when available.
-      if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta") && revenueByDateAndCampaign.size > 0) {
+      if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta" || platformCtx === "instagram") && revenueByDateAndCampaign.size > 0) {
         for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
           const [date, ...urnParts] = key.split(":");
           const urn = urnParts.join(":");
@@ -15439,7 +15459,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? await getActiveGoogleAdsCampaignIdSet(campaignId)
         : platformCtx === "meta"
           ? await getActiveMetaCampaignIdSet(campaignId)
-          : new Set<string>();
+          : platformCtx === "instagram"
+            ? await getActiveInstagramCampaignIdSet(campaignId)
+            : new Set<string>();
       const requestedSourceId = String((body.data as any).sourceId || "").trim();
       if (requestedSourceId) {
         const existingSource = await storage.getRevenueSource(campaignId, requestedSourceId);
@@ -15846,7 +15868,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
         const recordDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-        if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta") && revenueByLinkedinCampaign.size > 0) {
+        if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta" || platformCtx === "instagram") && revenueByLinkedinCampaign.size > 0) {
           // Create exact platform-campaign revenue records with subCampaignUrn.
           const records = Array.from(revenueByLinkedinCampaign.entries()).map(([urn, rev]) => ({
             campaignId,
@@ -29902,7 +29924,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? await getActiveGoogleAdsCampaignIdSet(campaignId)
         : platformCtx === "meta"
           ? await getActiveMetaCampaignIdSet(campaignId)
-          : new Set<string>();
+          : platformCtx === "instagram"
+            ? await getActiveInstagramCampaignIdSet(campaignId)
+            : new Set<string>();
       const requestedSourceId = String(body.data.sourceId || "").trim();
       if (requestedSourceId) {
         const existingSource = await storage.getRevenueSource(campaignId, requestedSourceId);
@@ -30206,7 +30230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } as any));
 
         // Add exact platform-campaign revenue records when available.
-        if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta") && revenueByDateAndCampaign.size > 0) {
+        if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta" || platformCtx === "instagram") && revenueByDateAndCampaign.size > 0) {
           for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
             const [date, ...urnParts] = key.split(":");
             const urn = urnParts.join(":");

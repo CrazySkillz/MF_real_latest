@@ -474,6 +474,7 @@ describe("Instagram Connected Platforms regression guard", () => {
     const sheetsAuth = readFileSync(join(process.cwd(), "client", "src", "components", "SimpleGoogleSheetsAuth.tsx"), "utf-8");
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "instagram-analytics.tsx"), "utf-8");
+    const kpiRefresh = readFileSync(join(process.cwd(), "server", "utils", "kpi-refresh.ts"), "utf-8");
 
     expect(modal).toContain("type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram';");
     expect(modal).toContain("platformContext === 'instagram' ? 'instagram_revenue' : 'revenue'");
@@ -494,6 +495,23 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("instagramAttributedProfit");
     expect(page).toContain("instagramAttributedRoas");
     expect(page).toContain("instagramAttributedRoi");
+    expect(page).toContain('{ key: "totalRevenue", label: "Total Revenue", unit: "$" }');
+    expect(page).toContain('{ key: "roas", label: "ROAS", unit: "x" }');
+    expect(page).toContain('{ key: "roi", label: "ROI", unit: "%" }');
+    expect(page).toContain('{ key: "profit", label: "Profit", unit: "$" }');
+    expect(page).toContain("totalRevenue: hasInstagramAttributedRevenue ? instagramAttributedRevenue : null");
+    expect(page).toContain("roas: hasInstagramAttributedRevenue && overviewTotals.spend > 0 ? instagramAttributedRoas : null");
+    expect(page).toContain("Revenue efficiency available");
+    expect(page).toContain("Revenue efficiency risk");
+    expect(page).toContain('queryKey: ["/api/platforms/instagram/kpis", campaignId]');
+    expect(page).toContain('queryKey: ["/api/platforms/instagram/benchmarks", campaignId]');
+    expect(kpiRefresh).toContain('totalrevenue: "totalRevenue"');
+    expect(kpiRefresh).toContain('revenue: "totalRevenue"');
+    expect(kpiRefresh).toContain('roas: "roas"');
+    expect(kpiRefresh).toContain('roi: "roi"');
+    expect(kpiRefresh).toContain('profit: "profit"');
+    expect(kpiRefresh).toContain('getRevenueTotalForRange(campaignId, startDate, endDate, "instagram")');
+    expect(kpiRefresh).toContain("sourceIds.length > 0");
     expect(page).toContain("Instagram Revenue Sources");
     expect(page).toContain("Add Instagram revenue source");
     expect(page).toContain("Sources ({sourceCount})");

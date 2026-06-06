@@ -31,6 +31,10 @@ const INSTAGRAM_KPI_METRICS = [
   { key: "cpm", label: "CPM", unit: "$" },
   { key: "costPerConversion", label: "Cost per Conversion", unit: "$" },
   { key: "conversionRate", label: "Conversion Rate", unit: "%" },
+  { key: "totalRevenue", label: "Total Revenue", unit: "$" },
+  { key: "roas", label: "ROAS", unit: "x" },
+  { key: "roi", label: "ROI", unit: "%" },
+  { key: "profit", label: "Profit", unit: "$" },
 ];
 
 const LOWER_IS_BETTER_KPIS = new Set(["cpc", "cpm", "costPerConversion"]);
@@ -45,6 +49,7 @@ function formatInstagramKpiValue(metricKey: string, rawValue: any) {
   const unit = getInstagramKpiMetric(metricKey).unit;
   if (unit === "$") return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   if (unit === "%") return `${value.toFixed(2)}%`;
+  if (unit === "x") return `${value.toFixed(2)}x`;
   return value.toLocaleString();
 }
 
@@ -373,19 +378,28 @@ export default function InstagramAnalytics() {
         recommendation: "Use this as the benchmark for KPI targets and campaign-level optimization decisions.",
       });
     }
-    insights.push({
-      title: "Revenue attribution required",
-      severity: "medium",
-      description: "Instagram revenue, ROAS, ROI, and profit are unavailable until an Instagram-scoped revenue source is imported.",
-      recommendation: "Use delivery metrics for media diagnostics, then add source-backed Instagram revenue before making budget-return decisions.",
-    });
+    if (hasInstagramAttributedRevenue) {
+      insights.push({
+        title: instagramAttributedProfit >= 0 ? "Revenue efficiency available" : "Revenue efficiency risk",
+        severity: instagramAttributedProfit >= 0 ? "positive" : "high",
+        description: `Instagram ROAS is ${instagramAttributedRoas.toFixed(2)}x and ROI is ${instagramAttributedRoi.toFixed(1)}%.`,
+        recommendation: "Use Instagram revenue-derived KPIs and Benchmarks to monitor budget-return performance against targets.",
+      });
+    } else {
+      insights.push({
+        title: "Revenue attribution required",
+        severity: "medium",
+        description: "Instagram revenue, ROAS, ROI, and profit are unavailable until an Instagram-scoped revenue source is imported.",
+        recommendation: "Use delivery metrics for media diagnostics, then add source-backed Instagram revenue before making budget-return decisions.",
+      });
+    }
     return insights.length > 0 ? insights : [{
       title: "No major issues detected",
       severity: "positive",
       description: "Selected Instagram source-backed rows do not show obvious CTR, CPC, or conversion-rate risks.",
       recommendation: "Continue monitoring trends as more source-backed history accumulates.",
     }];
-  }, [instagramInsightTrendRows.length, overviewTotals]);
+  }, [hasInstagramAttributedRevenue, instagramAttributedProfit, instagramAttributedRoas, instagramAttributedRoi, instagramInsightTrendRows.length, overviewTotals]);
   const latestImportedAt = useMemo(() => {
     const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
     const latest = rows
@@ -417,7 +431,11 @@ export default function InstagramAnalytics() {
     cpm: overviewTotals.cpm,
     costPerConversion: overviewTotals.costPerConversion,
     conversionRate: overviewTotals.conversionRate,
-  }), [overviewTotals]);
+    totalRevenue: hasInstagramAttributedRevenue ? instagramAttributedRevenue : null,
+    roas: hasInstagramAttributedRevenue && overviewTotals.spend > 0 ? instagramAttributedRoas : null,
+    roi: hasInstagramAttributedRevenue && overviewTotals.spend > 0 ? instagramAttributedRoi : null,
+    profit: hasInstagramAttributedRevenue ? instagramAttributedProfit : null,
+  }), [hasInstagramAttributedRevenue, instagramAttributedProfit, instagramAttributedRevenue, instagramAttributedRoas, instagramAttributedRoi, overviewTotals]);
   const benchmarkTracker = useMemo(() => {
     const rows = Array.isArray(benchmarks) ? benchmarks : [];
     const scored = rows.map(getInstagramBenchmarkProgress).filter((item) => item.status !== "blocked");
@@ -666,6 +684,8 @@ export default function InstagramAnalytics() {
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=instagram&dateRange=90days`], exact: false });
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
       await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["/api/platforms/instagram/kpis", campaignId], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["/api/platforms/instagram/benchmarks", campaignId], exact: false });
     },
     onError: (mutationError: any) => {
       setDeletingRevenueSourceId(null);
@@ -1323,6 +1343,8 @@ export default function InstagramAnalytics() {
             void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "instagram"], exact: false });
             void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=instagram&dateRange=90days`], exact: false });
             void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+            void queryClient.invalidateQueries({ queryKey: ["/api/platforms/instagram/kpis", campaignId], exact: false });
+            void queryClient.invalidateQueries({ queryKey: ["/api/platforms/instagram/benchmarks", campaignId], exact: false });
           }}
         />
       )}

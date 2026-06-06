@@ -324,6 +324,11 @@ function mapKPIMetricToInstagramKey(kpiMetric: string): string {
     costperconversion: "costPerConversion",
     conversionrate: "conversionRate",
     cvr: "conversionRate",
+    totalrevenue: "totalRevenue",
+    revenue: "totalRevenue",
+    roas: "roas",
+    roi: "roi",
+    profit: "profit",
   };
   return metricMap[normalized] || normalized;
 }
@@ -366,7 +371,7 @@ async function getInstagramMetricsForTarget(campaignId: string, target: KPI | Be
     return sum;
   }, { impressions: 0, clicks: 0, spend: 0, conversions: 0, videoViews: 0 });
 
-  return {
+  const metrics: Record<string, number> = {
     impressions: totals.impressions,
     clicks: totals.clicks,
     spend: parseFloat(totals.spend.toFixed(2)),
@@ -378,6 +383,17 @@ async function getInstagramMetricsForTarget(campaignId: string, target: KPI | Be
     costPerConversion: totals.conversions > 0 ? parseFloat((totals.spend / totals.conversions).toFixed(2)) : 0,
     conversionRate: totals.clicks > 0 ? parseFloat(((totals.conversions / totals.clicks) * 100).toFixed(2)) : 0,
   };
+  const revenue = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, "instagram").catch(() => null);
+  const totalRevenue = Number((revenue as any)?.totalRevenue || 0);
+  const sourceIds = Array.isArray((revenue as any)?.sourceIds) ? (revenue as any).sourceIds : [];
+  if (sourceIds.length > 0) {
+    metrics.totalRevenue = parseFloat(totalRevenue.toFixed(2));
+    metrics.revenue = metrics.totalRevenue;
+    metrics.profit = parseFloat((totalRevenue - totals.spend).toFixed(2));
+    metrics.roas = totals.spend > 0 ? parseFloat((totalRevenue / totals.spend).toFixed(2)) : 0;
+    metrics.roi = totals.spend > 0 ? parseFloat((((totalRevenue - totals.spend) / totals.spend) * 100).toFixed(2)) : 0;
+  }
+  return metrics;
 }
 
 /**
@@ -412,7 +428,7 @@ function calculateInstagramKPIValue(kpi: KPI, metrics: Record<string, number>): 
   const metricKey = mapKPIMetricToInstagramKey(kpi.metric);
   const value = metrics[metricKey];
   if (value === undefined || value === null) return null;
-  return (kpi.unit === "%" || kpi.unit === "$") ? Number(value).toFixed(2) : String(value);
+  return (kpi.unit === "%" || kpi.unit === "$" || kpi.unit === "x") ? Number(value).toFixed(2) : String(value);
 }
 
 export async function refreshInstagramKPIsForCampaign(campaignId: string): Promise<{ updated: number; errors: number }> {

@@ -79,11 +79,11 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13K | Instagram Ad Comparison selected-campaign UI parity | Done and pushed; user validation pending | Instagram analytics Ad Comparison UI |
 | 13L | Instagram Insights tab source-backed UI parity | Done and pushed; user validation pending | Instagram analytics Insights UI |
 | 13M | Instagram Insights missing-data and revenue-readiness guidance | Implemented locally; user validation pending | Instagram analytics Insights/Overview UI |
-| 13N-A | Shared revenue wizard Instagram context foundation | Implemented locally; user validation pending | Shared revenue wizard/backend purpose contract |
-| 13N-B | Instagram Overview revenue source controls | Implemented locally; user validation pending | Instagram analytics revenue UI |
-| 13N-C | Instagram revenue resolver and Overview financial metrics | Implemented locally; user validation pending | Instagram analytics revenue backend/UI |
-| 13N-D | Instagram KPI/Benchmark/Insights revenue current values | Pending | Instagram analytics KPI/Benchmark/Insights |
-| 13N-E | Instagram revenue lifecycle invalidation and regression closeout | Pending | Revenue lifecycle/tests/docs |
+| 13N-A | Shared revenue wizard Instagram context foundation | Done and pushed; user validation passed | Shared revenue wizard/backend purpose contract |
+| 13N-B | Instagram Overview revenue source controls | Done and pushed; user validation passed | Instagram analytics revenue UI |
+| 13N-C | Instagram revenue resolver and Overview financial metrics | Done and pushed; user validation passed | Instagram analytics revenue backend/UI |
+| 13N-D | Instagram KPI/Benchmark/Insights revenue current values | Implemented locally; user validation pending | Instagram analytics KPI/Benchmark/Insights |
+| 13N-E | Instagram revenue lifecycle invalidation and regression closeout | Implemented locally; user validation pending | Revenue lifecycle/tests/docs |
 | 13O | Instagram report route/source contract | Pending | Report backend/UI |
 | 13P | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
 | 13Q | Instagram PDF/export output source proof | Pending | Report exports |
@@ -250,11 +250,15 @@ Commit 13L Instagram Insights tab source-backed UI parity is done and pushed. Th
 
 Commit 13M Instagram Insights missing-data and revenue-readiness guidance is implemented locally. The Instagram Overview now shows Total Revenue and ROAS as unavailable until an Instagram-scoped revenue source exists, and the Insights tab names the missing revenue, ad/creative, audience/placement, and history inputs needed for richer executive recommendations. This does not add financial import UI, revenue math, storage changes, provider refresh, scheduler behavior, reports, PDF output, or source aggregation.
 
-Commit 13N-A shared revenue wizard Instagram context foundation is implemented locally. The shared revenue wizard, CRM/ecommerce child wizard prop contracts, Google Sheets purpose handling, and server revenue-source platform validators now accept `instagram`/`instagram_revenue` without calculating revenue, changing scheduler behavior, or changing reports.
+Commit 13N-A shared revenue wizard Instagram context foundation is done, pushed, and user-validated. The shared revenue wizard, CRM/ecommerce child wizard prop contracts, Google Sheets purpose handling, and server revenue-source platform validators now accept `instagram`/`instagram_revenue` without calculating revenue, changing scheduler behavior, or changing reports.
 
-Commit 13N-B Instagram Overview revenue source controls is implemented locally. The Overview Total Revenue card now exposes the shared Instagram-scoped revenue wizard, active source list, edit action, and delete confirmation using existing campaign-scoped revenue-source routes.
+Commit 13N-B Instagram Overview revenue source controls is done, pushed, and user-validated. The Overview Total Revenue card now exposes the shared Instagram-scoped revenue wizard, active source list, edit action, and delete confirmation using existing campaign-scoped revenue-source routes.
 
-Commit 13N-C Instagram revenue resolver and Overview financial metrics is implemented locally. The Instagram Analytics Overview now reads the existing shared revenue totals route with `platformContext=instagram`, treats only active Instagram revenue sources as the revenue-connected gate, and populates Total Revenue, ROAS, ROI, and Profit only from Instagram-scoped revenue. Commit 13N-D through Commit 13N-E remain pending and must be implemented before Commit 14 final validation. Instagram is a paid-media source, so revenue-derived KPI/Benchmark/Insights values may appear only after the user imports an explicit Instagram-scoped revenue attribution source using the same source-scoped pattern proven for LinkedIn revenue. This revenue bundle belongs before reports and final validation because Commit 14 should validate a complete Instagram platform parity scope, not a spend-only platform with revenue still missing.
+Commit 13N-C Instagram revenue resolver and Overview financial metrics is done, pushed, and user-validated. The Instagram Analytics Overview now reads the existing shared revenue totals route with `platformContext=instagram`, treats only active Instagram revenue sources as the revenue-connected gate, and populates Total Revenue, ROAS, ROI, and Profit only from Instagram-scoped revenue.
+
+Commit 13N-D Instagram KPI/Benchmark/Insights revenue current values is implemented locally. Instagram KPI and Benchmark metric templates now include Total Revenue, ROAS, ROI, and Profit; current values use the same Instagram-scoped revenue boundary as Overview. Instagram Insights now switches from the revenue-required warning to a revenue-efficiency insight when Instagram attributed revenue exists.
+
+Commit 13N-E Instagram revenue lifecycle invalidation and regression closeout is implemented locally. Instagram revenue source add/edit/delete now invalidates Instagram revenue totals, KPI, and Benchmark queries, and regression coverage proves revenue metrics stay scoped to `platformContext=instagram`. Commit 13O through Commit 13R remain pending before Commit 14 final validation.
 
 ## Root Cause Analysis
 
@@ -1688,14 +1692,15 @@ Status:
 - [ ] User validation pending for Commit 13L.
 - [x] Commit 13M implemented locally: Instagram Insights and Overview name missing revenue/attribution inputs instead of implying financial metrics exist.
 - [ ] User validation pending for Commit 13M.
-- [x] Commit 13N-A implemented locally: shared revenue wizard and revenue-source purpose contracts accept Instagram without UI exposure.
-- [ ] User validation pending for Commit 13N-A.
-- [x] Commit 13N-B implemented locally: Instagram Overview revenue source controls.
-- [ ] User validation pending for Commit 13N-B.
-- [x] Commit 13N-C implemented locally: Instagram revenue resolver and Overview financial metrics.
-- [ ] User validation pending for Commit 13N-C.
-- [ ] Commit 13N-D pending: Instagram KPI/Benchmark/Insights revenue current values.
-- [ ] Commit 13N-E pending: Instagram revenue lifecycle invalidation and regression closeout.
+- [x] Commit 13N-A done and pushed: shared revenue wizard and revenue-source purpose contracts accept Instagram.
+- [x] User validation passed for Commit 13N-A.
+- [x] Commit 13N-B done and pushed: Instagram Overview revenue source controls.
+- [x] User validation passed for Commit 13N-B.
+- [x] Commit 13N-C done and pushed: Instagram revenue resolver and Overview financial metrics.
+- [x] User validation passed for Commit 13N-C.
+- [x] Commit 13N-D implemented locally: Instagram KPI/Benchmark/Insights revenue current values.
+- [x] Commit 13N-E implemented locally: Instagram revenue lifecycle invalidation and regression closeout.
+- [ ] User validation pending for Commit 13N-D through Commit 13N-E.
 - [ ] Commit 13O pending: Instagram report route/source contract.
 - [ ] Commit 13P pending: Instagram scheduled report snapshot/send guard.
 - [ ] Commit 13Q pending: Instagram PDF/export output source proof.
@@ -1980,6 +1985,34 @@ Commit 13N-C validation:
 - Confirm ROI shows attributed revenue ROI, and Profit shows attributed revenue minus Instagram spend.
 - Confirm deleting the Instagram revenue source returns the revenue-derived cards to unavailable.
 - This commit does not add KPI/Benchmark/Insights revenue current values, report output, scheduler refresh, live OAuth behavior, or cross-platform revenue sharing.
+
+Commit 13N-D root-cause trace:
+
+- Instagram Overview could resolve source-backed revenue after Commit 13N-C, but Instagram KPI and Benchmark templates still exposed only delivery metrics.
+- The backend Instagram KPI/Benchmark refresh utility also mapped only delivery metrics, so a revenue KPI or Benchmark would not retain a correct current value after the server-side refresh path ran.
+- Instagram Insights still always showed `Revenue attribution required`, even when Instagram attributed revenue existed.
+- The smallest safe fix is to add Total Revenue, ROAS, ROI, and Profit to the existing Instagram metric list and to the existing Instagram KPI/Benchmark refresh utility using only `storage.getRevenueTotalForRange(..., "instagram")` plus selected Instagram daily spend.
+
+Commit 13N-D validation:
+
+- Open Instagram Analytics -> KPIs -> Create KPI and confirm Total Revenue, ROAS, ROI, and Profit appear as templates.
+- With no Instagram revenue source, confirm revenue-derived KPI/Benchmark current values are not populated from another platform.
+- After adding an Instagram revenue source, create a Total Revenue KPI and confirm the current value uses Instagram attributed revenue.
+- Create ROAS or ROI KPI/Benchmark entries and confirm current values derive from Instagram attributed revenue divided by Instagram spend.
+- Open Insights and confirm the revenue-required warning changes to a revenue-efficiency insight when Instagram attributed revenue exists.
+
+Commit 13N-E root-cause trace:
+
+- Revenue source add/edit/delete changes can affect Instagram Overview revenue totals and any revenue-derived KPI/Benchmark current values.
+- Before this closeout, Instagram source changes invalidated revenue source/totals queries but not the Instagram KPI and Benchmark query families that consume revenue-derived current values.
+- The smallest safe fix is to invalidate the existing Instagram KPI and Benchmark query keys after Instagram revenue source add/edit/delete, and to extend regression coverage for the revenue metric mapping and invalidation boundary.
+
+Commit 13N-E validation:
+
+- Add or edit an Instagram revenue source and confirm the Overview revenue cards refresh.
+- Confirm the KPI and Benchmark tabs refresh after the source change without a full browser reload.
+- Delete the Instagram revenue source and confirm revenue-derived KPI/Benchmark current values no longer appear as connected values after refresh.
+- Confirm delivery metrics, reports, scheduler behavior, live OAuth, and non-Instagram platform revenue are unchanged.
 
 Commit 13N validation:
 

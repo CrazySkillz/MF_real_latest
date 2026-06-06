@@ -202,6 +202,38 @@ export default function InstagramAnalytics() {
       conversionRate: totals.clicks > 0 ? (totals.conversions / totals.clicks) * 100 : null,
     };
   }, [dailyMetrics]);
+  const instagramComparisonRows = useMemo(() => {
+    const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
+    const grouped = new Map<string, any>();
+    rows.forEach((row: any) => {
+      const id = String(row.instagramCampaignId || "").trim();
+      if (!id) return;
+      const existing = grouped.get(id) || {
+        id,
+        name: String(row.instagramCampaignName || id),
+        impressions: 0,
+        clicks: 0,
+        spend: 0,
+        conversions: 0,
+        videoViews: 0,
+      };
+      existing.impressions += Number(row.impressions || 0);
+      existing.clicks += Number(row.clicks || 0);
+      existing.spend += Number(row.spend || 0);
+      existing.conversions += Number(row.conversions || 0);
+      existing.videoViews += Number(row.videoViews || 0);
+      grouped.set(id, existing);
+    });
+    return Array.from(grouped.values())
+      .map((row: any) => ({
+        ...row,
+        ctr: row.impressions > 0 ? (row.clicks / row.impressions) * 100 : null,
+        cpc: row.clicks > 0 ? row.spend / row.clicks : null,
+        costPerConversion: row.conversions > 0 ? row.spend / row.conversions : null,
+        conversionRate: row.clicks > 0 ? (row.conversions / row.clicks) * 100 : null,
+      }))
+      .sort((a: any, b: any) => b.spend - a.spend);
+  }, [dailyMetrics]);
   const latestImportedAt = useMemo(() => {
     const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
     const latest = rows
@@ -827,15 +859,56 @@ export default function InstagramAnalytics() {
                     </Card>
                   )}
                 </TabsContent>
-                <TabsContent value="ads" className="space-y-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-2 text-sm bg-muted/60 border border-border rounded-lg p-3">
-                        <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                        <p className="text-muted-foreground">No source-backed Instagram ad comparison rows are available yet.</p>
+                <TabsContent value="ads" className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-foreground">Campaign Comparison</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Compare selected source-backed Instagram campaigns.</p>
+                  </div>
+                  {metricsError ? null : metricsLoading ? (
+                    <div className="min-h-[140px]" aria-hidden="true" />
+                  ) : instagramComparisonRows.length > 0 ? (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Selected Campaigns</p><p className="text-2xl font-bold text-foreground">{instagramComparisonRows.length}</p></CardContent></Card>
+                        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Highest Spend</p><p className="text-xl font-bold text-foreground">{instagramComparisonRows[0]?.name || "Unavailable"}</p><p className="text-xs text-muted-foreground">${Number(instagramComparisonRows[0]?.spend || 0).toFixed(2)}</p></CardContent></Card>
+                        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Best CTR</p><p className="text-xl font-bold text-foreground">{[...instagramComparisonRows].filter((row: any) => row.ctr !== null).sort((a: any, b: any) => Number(b.ctr || 0) - Number(a.ctr || 0))[0]?.name || "Unavailable"}</p><p className="text-xs text-muted-foreground">{(([...instagramComparisonRows].filter((row: any) => row.ctr !== null).sort((a: any, b: any) => Number(b.ctr || 0) - Number(a.ctr || 0))[0]?.ctr) ?? 0).toFixed(2)}%</p></CardContent></Card>
+                        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Lowest CPC</p><p className="text-xl font-bold text-foreground">{[...instagramComparisonRows].filter((row: any) => row.cpc !== null).sort((a: any, b: any) => Number(a.cpc || 0) - Number(b.cpc || 0))[0]?.name || "Unavailable"}</p><p className="text-xs text-muted-foreground">${Number(([...instagramComparisonRows].filter((row: any) => row.cpc !== null).sort((a: any, b: any) => Number(a.cpc || 0) - Number(b.cpc || 0))[0]?.cpc) || 0).toFixed(2)}</p></CardContent></Card>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        {instagramComparisonRows.map((row: any) => (
+                          <Card key={row.id}>
+                            <CardContent className="p-5 space-y-4">
+                              <div>
+                                <h3 className="text-lg font-semibold text-foreground">{row.name}</h3>
+                                <p className="text-xs text-muted-foreground">{row.id}</p>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                                <div className="p-3 bg-muted rounded-lg"><p className="text-xs text-muted-foreground">Impressions</p><p className="text-lg font-semibold">{row.impressions.toLocaleString()}</p></div>
+                                <div className="p-3 bg-muted rounded-lg"><p className="text-xs text-muted-foreground">Clicks</p><p className="text-lg font-semibold">{row.clicks.toLocaleString()}</p></div>
+                                <div className="p-3 bg-muted rounded-lg"><p className="text-xs text-muted-foreground">Spend</p><p className="text-lg font-semibold">${row.spend.toFixed(2)}</p></div>
+                                <div className="p-3 bg-muted rounded-lg"><p className="text-xs text-muted-foreground">Conversions</p><p className="text-lg font-semibold">{row.conversions.toLocaleString()}</p></div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3 md:grid-cols-4 text-sm">
+                                <div><p className="text-muted-foreground">CTR</p><p className="font-medium">{row.ctr === null ? "Unavailable" : `${row.ctr.toFixed(2)}%`}</p></div>
+                                <div><p className="text-muted-foreground">CPC</p><p className="font-medium">{row.cpc === null ? "Unavailable" : `$${row.cpc.toFixed(2)}`}</p></div>
+                                <div><p className="text-muted-foreground">Cost / Conv.</p><p className="font-medium">{row.costPerConversion === null ? "Unavailable" : `$${row.costPerConversion.toFixed(2)}`}</p></div>
+                                <div><p className="text-muted-foreground">Video Views</p><p className="font-medium">{row.videoViews.toLocaleString()}</p></div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-2 text-sm bg-muted/60 border border-border rounded-lg p-3">
+                          <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <p className="text-muted-foreground">No selected source-backed Instagram campaign comparison rows are available yet.</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </TabsContent>
                 <TabsContent value="reports" className="space-y-4">
                   {renderSimpleRows(reports, reportsLoading, reportsError, "No Instagram Reports have been created yet.", (report: any) => (

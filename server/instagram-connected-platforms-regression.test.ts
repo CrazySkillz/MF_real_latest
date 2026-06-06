@@ -381,7 +381,14 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("Create Custom Benchmark");
     expect(page).toContain("Benchmark Value *");
     expect(page).toContain("No Benchmarks Yet");
-    expect(page).toContain("No source-backed Instagram ad comparison rows are available yet.");
+    expect(page).toContain("instagramComparisonRows");
+    expect(page).toContain("Compare selected source-backed Instagram campaigns.");
+    expect(page).toContain("Selected Campaigns");
+    expect(page).toContain("Highest Spend");
+    expect(page).toContain("Best CTR");
+    expect(page).toContain("Lowest CPC");
+    expect(page).toContain("No selected source-backed Instagram campaign comparison rows are available yet.");
+    expect(page).not.toContain("No source-backed Instagram ad comparison rows are available yet.");
     expect(page).not.toContain("Connection Status");
     expect(page).not.toContain('<TabsTrigger value="campaign-breakdown">Campaign Breakdown</TabsTrigger>');
     expect(page).not.toContain("const campaignBreakdown = useMemo");

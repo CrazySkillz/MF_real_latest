@@ -136,7 +136,7 @@ export const spendRecords = pgTable("spend_records", {
   date: text("date").notNull(), // YYYY-MM-DD
   spend: decimal("spend", { precision: 12, scale: 2 }).notNull(),
   currency: text("currency"),
-  sourceType: varchar("source_type", { length: 50 }), // 'google_sheets', 'csv', 'paste', 'google_ads_api', 'meta_api', 'linkedin_api', 'legacy_cumulative'
+  sourceType: varchar("source_type", { length: 50 }), // 'google_sheets', 'csv', 'paste', 'google_ads_api', 'meta_api', 'linkedin_api', 'instagram_api', 'legacy_cumulative'
   subCampaignUrn: text("sub_campaign_urn"), // Platform campaign ID/URN for per-campaign spend attribution
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -146,7 +146,7 @@ export const revenueSources = pgTable("revenue_sources", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
   sourceType: text("source_type").notNull(), // 'manual' | 'csv' | 'google_sheets' | 'shopify' | 'hubspot' | 'salesforce' | 'custom'
-  // Platform scoping for revenue sources to avoid cross-platform leakage (e.g., LinkedIn vs GA4)
+  // Platform scoping for revenue sources to avoid cross-platform leakage (e.g., LinkedIn vs GA4 vs Instagram)
   // Legacy rows may be null; treat null as "ga4".
   platformContext: text("platform_context"),
   displayName: text("display_name"),

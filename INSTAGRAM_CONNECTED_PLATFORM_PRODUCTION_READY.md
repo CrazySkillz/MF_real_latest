@@ -45,15 +45,15 @@ This table is the single source of truth for what is done, pending, and where ea
 | 8D | Instagram analytics Campaign Breakdown tab from selected campaign rows | Done and pushed; user validation passed | Analytics UI |
 | 8E | Instagram analytics unavailable/error/freshness states | Done and pushed; user validation passed | Analytics UI state |
 | 8F | Instagram analytics guarded Connected Platforms link, regression, and validation docs | Done and pushed; user validation passed | Connected Platforms analytics link |
-| 9A | Instagram aggregate resolver reads only `instagram_daily_metrics` | Implemented locally; user validation pending | Campaign DeepDive backend aggregate |
-| 9B | Aggregate source composition accepts Instagram without route wiring | Implemented locally; user validation pending | Campaign DeepDive source contract |
-| 9C | Meta/Facebook plus Instagram no-double-counting guard | Implemented locally; user validation pending | Campaign DeepDive source safety |
-| 9D | Campaign DeepDive consumers accept Instagram through existing `platformSources` contract | Implemented locally; user validation pending | Campaign DeepDive UI values |
-| 9E | Campaign DeepDive regression and validation docs | Implemented locally; user validation pending | None |
-| 10A | Add `instagram` platform context allowlist only where storage/source proof exists | Pending | Financial import backend |
-| 10B | Instagram spend import/edit source identity uses `instagram_api` only | Pending | Spend import path |
-| 10C | Instagram attributed revenue import/edit source identity uses `platformContext="instagram"` only | Pending | Revenue import path |
-| 10D | Revenue/spend regression and validation docs | Pending | None |
+| 9A | Instagram aggregate resolver reads only `instagram_daily_metrics` | Done and pushed; user validation passed | Campaign DeepDive backend aggregate |
+| 9B | Aggregate source composition accepts Instagram without route wiring | Done and pushed; user validation passed | Campaign DeepDive source contract |
+| 9C | Meta/Facebook plus Instagram no-double-counting guard | Done and pushed; user validation passed | Campaign DeepDive source safety |
+| 9D | Campaign DeepDive consumers accept Instagram through existing `platformSources` contract | Done and pushed; user validation passed | Campaign DeepDive UI values |
+| 9E | Campaign DeepDive regression and validation docs | Done and pushed; user validation passed | None |
+| 10A | Add `instagram` platform context allowlist only where storage/source proof exists | Implemented locally; user validation pending | Financial import backend |
+| 10B | Instagram spend import/edit source identity uses `instagram_api` only | Implemented locally; user validation pending | Spend import path |
+| 10C | Instagram attributed revenue import/edit source identity uses `platformContext="instagram"` only | Implemented locally; user validation pending | Revenue import path |
+| 10D | Revenue/spend regression and validation docs | Implemented locally; user validation pending | None |
 | 11A | Instagram provider/client adapter research refresh before live behavior | Pending | None |
 | 11B | Test-mode Instagram daily metric generation behind explicit refresh only | Pending | Backend refresh route |
 | 11C | Manual refresh route imports selected Instagram-only rows | Pending | Backend refresh route |
@@ -88,7 +88,7 @@ Instagram must be treated as a campaign-scoped main paid-media connected source 
 
 Instagram is not implemented as a first-class connected platform in the current local codebase.
 
-Current code supports Meta/Facebook Ads and can surface Instagram placement names inside Meta analytics, but that is not the same as a standalone Instagram connected platform. There is no dedicated Instagram connection flow, route, schema table, storage method, scheduler, aggregate resolver, analytics route, report path, KPI/Benchmark platform context, or disconnect/reconnect lifecycle.
+Initial code supported Meta/Facebook Ads and could surface Instagram placement names inside Meta analytics, but that was not the same as a standalone Instagram connected platform. The current implementation now has a test-mode Instagram source contract, schema/storage, guarded routes, Create Campaign and Connected Platforms flows, Campaign Overview metrics, analytics page, Campaign DeepDive aggregate wiring, and financial platform-context allowlist; live OAuth, scheduler, reports, KPI/Benchmark parity, and full revenue/spend source identity remain pending.
 
 No production-ready claim can be made for Instagram until the implementation and validation items in this tracker are completed.
 
@@ -168,6 +168,16 @@ Commit 9D Campaign DeepDive aggregate route wiring is implemented locally. `/api
 
 Commit 9E Campaign DeepDive aggregate closeout is implemented locally. It records the completed Commit 9 boundary, regression coverage, and validation path for Instagram aggregate source wiring; it does not add runtime behavior beyond Commits 9A-9D.
 
+User validation passed for Instagram Commit 9A through Commit 9E by connecting to the Instagram test account and validating the Campaign DeepDive aggregate path.
+
+Commit 10A Instagram platform-context allowlist is implemented locally. The shared financial platform-context validators and storage revenue platform-context type now accept `instagram` after Instagram connection/storage/source-backed aggregate proof exists; this does not add financial import UI, source identity changes, campaign attribution, revenue math, scheduler, reports, KPI, Benchmark, refresh, or live OAuth behavior.
+
+Commit 10B Instagram spend source identity is implemented locally. The shared manual spend write path now normalizes `platformContext="instagram"` to `sourceType="instagram_api"` for spend sources and records, and existing-source edits fail closed unless the existing source already belongs to the same platform context; this does not add financial import UI, revenue attribution, derived revenue math, scheduler, reports, KPI, Benchmark, refresh, or live OAuth behavior.
+
+Commit 10C Instagram revenue source identity is implemented locally. Shared manual, CSV, and Google Sheets revenue edit paths now explicitly preserve `platformContext` on update after their existing cross-context guards pass, so Instagram-scoped revenue sources remain isolated as `platformContext="instagram"`; this does not add financial import UI, campaign attribution, derived revenue math, scheduler, reports, KPI, Benchmark, refresh, or live OAuth behavior.
+
+Commit 10D revenue/spend closeout is implemented locally. It records the completed Commit 10 boundary, regression coverage, and validation path for Instagram financial platform-context isolation; it does not add runtime behavior beyond Commits 10A-10C.
+
 ## Root Cause Analysis
 
 The current gap is not one isolated UI bug. It is a missing source contract and lifecycle implementation:
@@ -210,6 +220,10 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 9C, once Instagram became eligible for the aggregate source contract, a future Meta plus Instagram route wiring could sum Meta campaign rows and standalone Instagram rows even though Meta rows are not proven to exclude Instagram delivery. Commit 9C adds a fail-closed combined-total guard before route wiring.
 - Before Commit 9D, the Instagram aggregate source builder and source composition existed but no Campaign DeepDive aggregate route passed Instagram into the shared aggregate contract. Commit 9D wires `/outcome-totals` and `/executive-summary` through the existing contract with the 9C overlap guard.
 - Before Commit 9E, Commit 9A-9D implementation and regression proof existed locally but the tracker did not explicitly close the Campaign DeepDive aggregate validation boundary. Commit 9E records that boundary without runtime changes.
+- Before Commit 10A, shared financial platform-context validators rejected `instagram`, so future Instagram-scoped revenue/spend work could not preserve platform isolation through the existing validation path. Commit 10A adds `instagram` to those allowlists only after the Instagram source contract and aggregate path are proven.
+- Before Commit 10B, an Instagram-scoped spend write could still use a generic or caller-supplied source type, which would make source provenance ambiguous and risk cross-platform spend leakage. Commit 10B forces Instagram spend identity to `instagram_api` and prevents editing a non-Instagram spend source as Instagram.
+- Before Commit 10C, shared revenue edit paths validated platform context but did not explicitly re-persist the context during source updates. Commit 10C makes the platform-context identity explicit for manual, CSV, and Google Sheets revenue edits.
+- Before Commit 10D, Commit 10A-10C implementation and regression proof existed locally but the tracker did not explicitly close the revenue/spend validation boundary. Commit 10D records that boundary without runtime changes.
 - `server/scheduler.ts` and platform schedulers have no Instagram refresh or snapshot input.
 - `server/utils/performance-summary-aggregate.ts` can consume generic future `platformSources`; Commit 9A supplies an Instagram source builder and Commit 9D wires it into the two current aggregate route consumers.
 - Revenue/spend context validation currently allows `ga4`, `linkedin`, `meta`, and `google_ads`, but not `instagram`.
@@ -1174,15 +1188,15 @@ Validation:
 Status:
 
 - [x] Commit 9A implemented locally: `buildInstagramPlatformSourceForAggregate(...)` reads only selected persisted Instagram daily rows and returns a normalized source object.
-- [ ] User validation pending for Commit 9A.
+- [x] User validation passed for Commit 9A by connecting to the Instagram test account.
 - [x] Commit 9B implemented locally: aggregate source composition accepts Instagram as a main platform source without changing route consumers yet.
-- [ ] User validation pending for Commit 9B.
+- [x] User validation passed for Commit 9B by connecting to the Instagram test account.
 - [x] Commit 9C implemented locally: Meta/Facebook plus Instagram combined paid-media totals fail closed instead of double-counting overlapping source scopes.
-- [ ] User validation pending for Commit 9C.
+- [x] User validation passed for Commit 9C by connecting to the Instagram test account.
 - [x] Commit 9D implemented locally: `/api/campaigns/:id/outcome-totals` and `/api/campaigns/:id/executive-summary` pass Instagram through the existing `platformSources` contract.
-- [ ] User validation pending for Commit 9D.
+- [x] User validation passed for Commit 9D by connecting to the Instagram test account.
 - [x] Commit 9E implemented locally: Campaign DeepDive aggregate regression and validation boundary is documented.
-- [ ] User validation pending for Commit 9E.
+- [x] User validation passed for Commit 9E by connecting to the Instagram test account.
 
 Commit 9 local validation:
 
@@ -1220,7 +1234,28 @@ Validation:
 
 Status:
 
-- [ ] Not started.
+- [x] Commit 10A implemented locally: shared financial platform-context validators and storage revenue platform-context type accept `instagram`.
+- [ ] User validation pending for Commit 10A.
+- [x] Commit 10B implemented locally: Instagram-scoped manual spend writes use `instagram_api` source identity only.
+- [ ] User validation pending for Commit 10B.
+- [x] Commit 10C implemented locally: shared manual, CSV, and Google Sheets revenue edits preserve `platformContext="instagram"`.
+- [ ] User validation pending for Commit 10C.
+- [x] Commit 10D implemented locally: revenue/spend regression and validation boundary is documented.
+- [ ] User validation pending for Commit 10D.
+
+Commit 10 local validation:
+
+- `git diff --check`
+- `npm run check`
+- `npm test -- server/instagram-connected-platforms-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts server/performance-summary-aggregate.test.ts`
+
+Commit 10 user validation:
+
+- Confirm existing Instagram Create Campaign and Connected Platforms test-account flows still connect without errors.
+- Confirm Campaign Detail, Instagram analytics, and Campaign DeepDive still load for the Instagram test account.
+- If validating via API, an Instagram-scoped manual spend write with `platformContext="instagram"` should create/update a spend source using `sourceType="instagram_api"`.
+- If validating via API, Instagram-scoped manual, CSV, or Google Sheets revenue source edits should retain `platformContext="instagram"` and must not edit a source from another platform context.
+- No Instagram revenue UI, derived revenue math, scheduler, reports, KPI, Benchmark, refresh, or live OAuth behavior should appear from Commit 10.
 
 ### Details For Commits 11A-11F: Scheduler And Freshness Hardening
 
@@ -1404,7 +1439,7 @@ Proven:
 
 - The existing architecture requires new main Connected Platforms to plug into Campaign DeepDive through the shared connected-source aggregate contract.
 - The current aggregate can consume generic future `platformSources`.
-- The current Create Campaign, Connected Platforms, Campaign Overview, and Instagram analytics page paths expose Instagram through the test-mode source contract; live OAuth and aggregate route exposure remain pending.
+- The current Create Campaign, Connected Platforms, Campaign Overview, Instagram analytics page, and Campaign DeepDive aggregate routes expose Instagram through the test-mode source contract; live OAuth remains pending.
 - The current scheduler/report paths do not include Instagram lifecycle support; schema/storage foundation exists locally after Commit 3, backend-only connection/status, test connection, selected-campaign update, disconnect, and selected-campaign list routes exist after Commit 4A-4E, Commit 4F documents that this backend contract is closed without UI/runtime exposure, Commit 5A added the Create Campaign option, Commit 5B adds a test setup path only, Commit 5C adds a persisted-source finalization guard, Commit 5D broadens post-finalization cache invalidation only, Commit 5E closes the Create Campaign documentation boundary, Commit 6A adds backend Connected Platforms status only, Commit 6B adds a card shell, Commit 6C adds test source-contract setup only, Commit 6D broadens Connected Platforms success invalidation only, Commit 6E closes the Connected Platforms documentation boundary, Commit 6F maps the Connected Platforms disconnect UI to the existing backend route, Commit 7A locks the read-only Campaign Overview source-status boundary, Commit 7B adds the connected-without-rows unavailable metric state, Commit 7C adds selected-row-only Campaign Overview metrics, Commit 7D documents the Campaign Overview validation boundary, Commit 8A adds the Instagram analytics route shell and connection guard, Commit 8B adds the read-only analytics daily-row endpoint, Commit 8C adds the source-backed Overview tab, Commit 8D adds the selected-campaign breakdown tab, Commit 8E adds analytics unavailable/error/freshness states, Commit 8F exposes the guarded Connected Platforms analytics link and closes the validation boundary, Commit 9A adds the Instagram aggregate source builder, Commit 9B allows aggregate source composition, Commit 9C adds the Meta/Facebook plus Instagram no-double-counting guard, Commit 9D wires aggregate routes, and Commit 9E documents the validation boundary.
 - Meta/Facebook currently has Instagram-related placement concepts, but not a standalone Instagram source contract.
 - Instagram Commit 1 documentation and acceptance-contract validation passed after user review.
@@ -1438,11 +1473,15 @@ Proven:
 - Instagram Commit 8D analytics Campaign Breakdown tab is done, pushed, and user-validated without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
 - Instagram Commit 8E analytics unavailable/error/freshness states are done, pushed, and user-validated without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
 - Instagram Commit 8F guarded Connected Platforms analytics link and validation closeout is done, pushed, and user-validated without live OAuth, refresh, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
-- Instagram Commit 9A aggregate source builder is implemented locally without `/outcome-totals`, `/executive-summary`, scheduler, revenue, KPI, Benchmark, report, refresh, or live OAuth exposure.
-- Instagram Commit 9B aggregate source composition is implemented locally without route consumer wiring, scheduler, revenue, KPI, Benchmark, report, refresh, or live OAuth exposure.
-- Instagram Commit 9C Meta/Facebook plus Instagram no-double-counting guard is implemented locally without route consumer wiring, scheduler, revenue, KPI, Benchmark, report, refresh, or live OAuth exposure.
-- Instagram Commit 9D Campaign DeepDive aggregate route wiring is implemented locally without scheduler, revenue context, KPI, Benchmark, report, refresh, or live OAuth exposure.
-- Instagram Commit 9E Campaign DeepDive aggregate validation closeout is implemented locally without runtime behavior.
+- Instagram Commit 9A aggregate source builder is done, pushed, and user-validated without scheduler, revenue, KPI, Benchmark, report, refresh, or live OAuth exposure.
+- Instagram Commit 9B aggregate source composition is done, pushed, and user-validated without scheduler, revenue, KPI, Benchmark, report, refresh, or live OAuth exposure.
+- Instagram Commit 9C Meta/Facebook plus Instagram no-double-counting guard is done, pushed, and user-validated without scheduler, revenue, KPI, Benchmark, report, refresh, or live OAuth exposure.
+- Instagram Commit 9D Campaign DeepDive aggregate route wiring is done, pushed, and user-validated without scheduler, revenue context, KPI, Benchmark, report, refresh, or live OAuth exposure.
+- Instagram Commit 9E Campaign DeepDive aggregate validation closeout is done, pushed, and user-validated without runtime behavior.
+- Instagram Commit 10A financial platform-context allowlist is implemented locally without financial import UI, source identity changes, campaign attribution, revenue math, scheduler, report, KPI, Benchmark, refresh, or live OAuth exposure.
+- Instagram Commit 10B spend source identity guard is implemented locally without financial import UI, revenue attribution, derived revenue math, scheduler, report, KPI, Benchmark, refresh, or live OAuth exposure.
+- Instagram Commit 10C revenue source identity guard is implemented locally without financial import UI, campaign attribution, derived revenue math, scheduler, report, KPI, Benchmark, refresh, or live OAuth exposure.
+- Instagram Commit 10D revenue/spend validation closeout is implemented locally without runtime behavior.
 
 Partially reviewed:
 
@@ -1489,7 +1528,8 @@ Implementation:
 - [x] Add Connected Platforms test-mode integration.
 - [x] Add Instagram analytics page.
 - [x] Add aggregate resolver source builder.
-- [ ] Add revenue/spend context.
+- [x] Add Instagram financial platform-context allowlist.
+- [ ] Add Instagram revenue/spend source identity and attribution.
 - [ ] Add scheduler.
 - [ ] Add disconnect/reconnect cleanup.
 - [ ] Add KPI/Benchmark/report parity.
@@ -1534,6 +1574,11 @@ Evidence:
 - [x] Commit 9C local Meta/Facebook plus Instagram no-double-counting guard implementation.
 - [x] Commit 9D local Campaign DeepDive aggregate route wiring implementation.
 - [x] Commit 9E local Campaign DeepDive aggregate validation closeout.
+- [x] Commit 9A-9E user validation passed by connecting to the Instagram test account.
+- [x] Commit 10A local financial platform-context allowlist implementation.
+- [x] Commit 10B local Instagram spend source identity guard implementation.
+- [x] Commit 10C local Instagram revenue source identity guard implementation.
+- [x] Commit 10D local revenue/spend validation closeout.
 - [ ] Local test-mode Create Campaign validation.
 - [ ] Local test-mode Connected Platforms validation.
 - [x] Local Campaign DeepDive aggregate validation through focused regression suite.
@@ -1586,8 +1631,8 @@ Evidence:
 - User validation passed for Instagram Commit 7C Campaign Overview selected-row metric read by connecting to the Instagram test account.
 - User validation passed for Instagram Commit 7D Campaign Overview regression and validation closeout by connecting to the Instagram test account.
 - User validation passed for Instagram Commit 8A-8F analytics page foundation by connecting to the Instagram test account; the connected source opened the analytics page and correctly showed the selected-campaign unavailable state when no persisted daily rows existed.
-- Local implementation complete for Instagram Commit 9A aggregate source builder; user validation is pending.
-- Local implementation complete for Instagram Commit 9B aggregate source composition; user validation is pending.
-- Local implementation complete for Instagram Commit 9C Meta/Facebook plus Instagram no-double-counting guard; user validation is pending.
-- Local implementation complete for Instagram Commit 9D Campaign DeepDive aggregate route wiring; user validation is pending.
-- Local implementation complete for Instagram Commit 9E Campaign DeepDive aggregate validation closeout; user validation is pending.
+- User validation passed for Instagram Commit 9A-9E Campaign DeepDive aggregate source wiring by connecting to the Instagram test account.
+- Local implementation complete for Instagram Commit 10A financial platform-context allowlist; user validation is pending.
+- Local implementation complete for Instagram Commit 10B spend source identity guard; user validation is pending.
+- Local implementation complete for Instagram Commit 10C revenue source identity guard; user validation is pending.
+- Local implementation complete for Instagram Commit 10D revenue/spend validation closeout; user validation is pending.

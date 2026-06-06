@@ -173,6 +173,65 @@ describe("Instagram Connected Platforms regression guard", () => {
     }
   });
 
+  it("allows Instagram as a validated financial platform context without adding refresh behavior", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const validationStart = routes.indexOf("const zPlatformContext = z.enum");
+    const validationEnd = routes.indexOf("const zRevenueMapping = z", validationStart);
+    const validation = routes.slice(validationStart, validationEnd);
+
+    expect(validation).toContain('z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"])');
+    expect(routes).toContain("RevenueReadPlatformContext[] = ['ga4', 'linkedin', 'meta', 'google_ads', 'instagram']");
+    expect(validation).toContain('"instagram" | null');
+    expect(routes).not.toContain("/api/instagram/oauth");
+    expect(routes).not.toContain("refreshInstagram");
+    expect(routes).not.toContain("upsertInstagramDailyMetrics");
+  });
+
+  it("uses only instagram_api source identity for Instagram-scoped manual spend", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const helperStart = routes.indexOf("const spendSourceTypeForPlatformContext");
+    const helperEnd = routes.indexOf("const recalcCampaignSpend", helperStart);
+    const helper = routes.slice(helperStart, helperEnd);
+    const routeStart = routes.indexOf('app.post("/api/campaigns/:id/spend/process/manual"');
+    const routeEnd = routes.indexOf("const processConnectorDerivedSpend", routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(helper).toContain('ctx === "instagram"');
+    expect(helper).toContain('return "instagram_api"');
+    expect(route).toContain("spendSourceTypeForPlatformContext(platformContext, overrideSourceType)");
+    expect(route).toContain('sourceType: effectiveSourceType');
+    expect(route).toContain('platformContext: platformContext || null');
+    expect(route).toContain('sourceType: effectiveSourceType');
+    expect(route).toContain('existingSource as any)?.platformContext');
+    expect(route).not.toContain('sourceType: "meta_api"');
+    expect(route).not.toContain('sourceType: "google_ads_api"');
+    expect(route).not.toContain('sourceType: "linkedin_api"');
+  });
+
+  it("preserves Instagram platform context on shared revenue source edits", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const manualStart = routes.indexOf('app.post("/api/campaigns/:id/revenue/process/manual"');
+    const manualEnd = routes.indexOf('app.post("/api/campaigns/:id/revenue/csv/preview"', manualStart);
+    const manualRoute = routes.slice(manualStart, manualEnd);
+    const csvStart = routes.indexOf('"/api/campaigns/:id/revenue/csv/process"');
+    const csvEnd = routes.indexOf('app.post("/api/campaigns/:id/revenue/sheets/preview"', csvStart);
+    const csvRoute = routes.slice(csvStart, csvEnd);
+    const sheetsStart = routes.indexOf('app.post("/api/campaigns/:id/revenue/sheets/process"');
+    const sheetsEnd = routes.indexOf("  // Keep spend totals predictable", sheetsStart);
+    const sheetsRoute = routes.slice(sheetsStart, sheetsEnd);
+
+    for (const route of [manualRoute, csvRoute, sheetsRoute]) {
+      expect(route).toContain("platformContext");
+      expect(route).toContain("updateRevenueSource");
+      expect(route).toContain('platformContext,');
+    }
+    expect(manualRoute).toContain('String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== platformContext');
+    expect(csvRoute).toContain('String((existingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== platformContext');
+    expect(sheetsRoute).toContain("storage.getRevenueSources(campaignId, platformContext)");
+    expect(routes).not.toContain("/api/instagram/oauth");
+    expect(routes).not.toContain("refreshInstagram");
+  });
+
   it("registers an Instagram analytics route shell guarded by the campaign connection", () => {
     const app = readFileSync(join(process.cwd(), "client", "src", "App.tsx"), "utf-8");
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "instagram-analytics.tsx"), "utf-8");

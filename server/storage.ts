@@ -13,7 +13,7 @@ const devLog = (...args: any[]) => {
   }
 };
 
-export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads';
+export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram';
 
 function hydrateDecryptedTokens<T extends Record<string, any>>(row: T): T {
   const enc = (row as any)?.encryptedTokens as EncryptedTokens | undefined;

@@ -1651,13 +1651,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Request validation helpers (enterprise-grade consistency)
-  const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
-  const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
-  const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
-  const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
-  const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
-  const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
-  const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);
+  const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);
+  const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);
+  const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);
+  const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);
+  const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);
+  const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);
+  const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);
   type CsvRevenuePlatformContext = z.infer<typeof zCsvRevenuePlatformContext>;
   type RevenueReadPlatformContext = z.infer<typeof zRevenueReadPlatformContext>;
   const zValueSource = z.enum(["revenue", "conversion_value"]);
@@ -1685,9 +1685,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const parsePlatformContext = (
     raw: any,
-    fallback: "ga4" | "linkedin" | "meta" | "google_ads",
+    fallback: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram",
     res: any
-  ): "ga4" | "linkedin" | "meta" | "google_ads" | null => {
+  ): "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | null => {
     const s = raw === null || typeof raw === "undefined" ? "" : String(raw).trim().toLowerCase();
     if (!s) return fallback;
     const parsed = zPlatformContext.safeParse(s);
@@ -2287,7 +2287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteRevenueRecordsBySource(sourceId);
 
       if ((sourceType === 'hubspot' || sourceType === 'salesforce') && sourceCfg?.pipelineEnabled === true) {
-        const contexts: RevenueReadPlatformContext[] = ['ga4', 'linkedin', 'meta', 'google_ads'];
+        const contexts: RevenueReadPlatformContext[] = ['ga4', 'linkedin', 'meta', 'google_ads', 'instagram'];
         const candidates: Array<{ source: any; cfg: any }> = [];
         for (const context of contexts) {
           const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
@@ -2630,6 +2630,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Edit mode: update existing source
         source = await storage.updateRevenueSource(existingSourceId, {
           sourceType: "manual",
+          platformContext,
           displayName,
           currency: cur,
           mappingConfig,
@@ -2997,6 +2998,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Edit mode: update existing source, delete old records
         source = await storage.updateRevenueSource(existingSourceIdOrNull, {
             sourceType: "csv",
+            platformContext,
             displayName: mapping.displayName || file?.originalname || (existingSourceIdOrNull ? "CSV" : "CSV"),
             currency,
             mappingConfig: JSON.stringify(normalizedMapping),
@@ -3545,6 +3547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Keep as the active source and refresh metadata.
         await storage.updateRevenueSource(String((source as any).id), {
+          platformContext,
           displayName: mapping.displayName || (conn.spreadsheetName ? `Google Sheets: ${conn.spreadsheetName}` : "Google Sheets revenue"),
           currency,
           mappingConfig: nextMappingConfig,
@@ -3686,6 +3689,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Unified campaign.spend recalculation — sums spend_records (via breakdown) + mappingConfig.amount for sources without records
+  const spendSourceTypeForPlatformContext = (platformContext?: string, requestedSourceType?: string | null) => {
+    const ctx = String(platformContext || "").trim().toLowerCase();
+    if (ctx === "instagram") return "instagram_api";
+    return requestedSourceType || "manual";
+  };
+
   const recalcCampaignSpend = async (campaignId: string) => {
     const campaign = await storage.getCampaign(campaignId);
     const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
@@ -3728,7 +3737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) return;
       const cur = currency || (campaign as any)?.currency || "USD";
 
-      const effectiveSourceType = overrideSourceType || "manual";
+      const effectiveSourceType = spendSourceTypeForPlatformContext(platformContext, overrideSourceType);
       const effectiveDisplayName = overrideDisplayName || (platformContext ? `Manual spend – ${platformContext}` : "Manual entry");
 
       // Build mappingConfig: use client-provided config if available, otherwise default
@@ -3740,6 +3749,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingSourceId) {
         const existingSource = await storage.getSpendSource(campaignId, existingSourceId);
         if (!existingSource) return res.status(404).json({ success: false, error: "Spend source not found" });
+        if (platformContext && String((existingSource as any)?.platformContext || "").trim().toLowerCase() !== String(platformContext).trim().toLowerCase()) {
+          return res.status(404).json({ success: false, error: "Spend source not found" });
+        }
         if (overrideSourceType && String((existingSource as any)?.sourceType || "").trim() !== effectiveSourceType) {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
@@ -3749,6 +3761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update existing source instead of creating a new one
         source = await storage.updateSpendSource(existingSourceId, {
           sourceType: effectiveSourceType,
+          platformContext: platformContext || null,
           displayName: effectiveDisplayName,
           currency: cur,
           mappingConfig: finalMappingConfig,

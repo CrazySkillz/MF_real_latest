@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 
 const INSTAGRAM_KPI_METRICS = [
   { key: "impressions", label: "Impressions", unit: "" },
@@ -98,6 +99,10 @@ export default function InstagramAnalytics() {
   const [editingKpi, setEditingKpi] = useState<any>(null);
   const [benchmarkDialogOpen, setBenchmarkDialogOpen] = useState(false);
   const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
+  const [isRevenueWizardOpen, setIsRevenueWizardOpen] = useState(false);
+  const [revenueWizardInitialSource, setRevenueWizardInitialSource] = useState<any>(null);
+  const [showRevenueSourcesDialog, setShowRevenueSourcesDialog] = useState(false);
+  const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState<string | null>(null);
   const [kpiForm, setKpiForm] = useState({
     name: "",
     metric: "",
@@ -188,6 +193,36 @@ export default function InstagramAnalytics() {
       return Array.isArray(json) ? json : [];
     },
   });
+  const { data: instagramRevenueSourcesData } = useQuery<{ success: boolean; sources: any[] }>({
+    queryKey: ["/api/campaigns", campaignId, "revenue-sources", "instagram"],
+    enabled: !!campaignId && connected,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=instagram`);
+      if (!response.ok) return { success: false, sources: [] };
+      const json = await response.json().catch(() => ({}));
+      return { success: !!json?.success, sources: Array.isArray(json?.sources) ? json.sources : [] };
+    },
+  });
+  const { data: instagramRevenueTotalsData } = useQuery<{ success: boolean; totalRevenue: number }>({
+    queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=instagram&dateRange=90days`],
+    enabled: !!campaignId && connected,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=instagram&dateRange=90days`);
+      if (!response.ok) return { success: false, totalRevenue: 0 };
+      const json = await response.json().catch(() => ({}));
+      return { success: !!json?.success, totalRevenue: Number(json?.totalRevenue || 0) };
+    },
+  });
+  const activeInstagramRevenueSources = useMemo(() => {
+    const sources = Array.isArray(instagramRevenueSourcesData?.sources) ? instagramRevenueSourcesData.sources : [];
+    return sources.filter((source: any) => source?.isActive !== false);
+  }, [instagramRevenueSourcesData]);
   const overviewTotals = useMemo(() => {
     const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
     const totals = rows.reduce((acc: any, row: any) => {
@@ -207,6 +242,17 @@ export default function InstagramAnalytics() {
       conversionRate: totals.clicks > 0 ? (totals.conversions / totals.clicks) * 100 : null,
     };
   }, [dailyMetrics]);
+  const hasInstagramAttributedRevenue = activeInstagramRevenueSources.length > 0;
+  const instagramAttributedRevenueFromSources = activeInstagramRevenueSources.reduce(
+    (sum: number, source: any) => sum + Number(source?.lastTotalRevenue || 0),
+    0
+  );
+  const instagramAttributedRevenue = instagramAttributedRevenueFromSources > 0
+    ? instagramAttributedRevenueFromSources
+    : Number(instagramRevenueTotalsData?.totalRevenue || 0);
+  const instagramAttributedProfit = instagramAttributedRevenue - overviewTotals.spend;
+  const instagramAttributedRoas = overviewTotals.spend > 0 ? instagramAttributedRevenue / overviewTotals.spend : 0;
+  const instagramAttributedRoi = overviewTotals.spend > 0 ? ((instagramAttributedRevenue - overviewTotals.spend) / overviewTotals.spend) * 100 : 0;
   const instagramComparisonRows = useMemo(() => {
     const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
     const grouped = new Map<string, any>();
@@ -383,6 +429,36 @@ export default function InstagramAnalytics() {
       avgPct: scored.length > 0 ? scored.reduce((sum, item) => sum + item.pct, 0) / scored.length : 0,
     };
   }, [benchmarks]);
+  const formatCurrency = (value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const parseRevenueSourceConfig = (source: any): any => {
+    try {
+      return source?.mappingConfig
+        ? (typeof source.mappingConfig === "string" ? JSON.parse(source.mappingConfig) : source.mappingConfig)
+        : {};
+    } catch {
+      return {};
+    }
+  };
+  const revenueSourceTypeLabel = (type: any) => {
+    const map: Record<string, string> = {
+      csv: "CSV",
+      google_sheets: "Google Sheets",
+      hubspot: "HubSpot",
+      salesforce: "Salesforce",
+      shopify: "Shopify",
+      manual: "Manual",
+      connector_derived: "Imported",
+    };
+    return map[String(type || "").trim().toLowerCase()] || "Imported";
+  };
+  const instagramRevenueSourceLabel = (source: any) => {
+    const displayName = String(source?.displayName || "").trim();
+    return displayName || revenueSourceTypeLabel(source?.sourceType);
+  };
+  const openInstagramRevenueModal = (source?: any) => {
+    setRevenueWizardInitialSource(source || null);
+    setIsRevenueWizardOpen(true);
+  };
   const resetKpiForm = (kpi?: any) => {
     const metric = String(kpi?.metric || "");
     const metricDef = getInstagramKpiMetric(metric);
@@ -571,6 +647,31 @@ export default function InstagramAnalytics() {
       toast({ title: "Failed to delete Benchmark", description: mutationError?.message || "Try again.", variant: "destructive" });
     },
   });
+  const deleteInstagramRevenueSourceMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json?.success === false) {
+        throw new Error(json?.error || "Failed to remove Instagram revenue source");
+      }
+      return json;
+    },
+    onSuccess: async () => {
+      setDeletingRevenueSourceId(null);
+      toast({ title: "Revenue source removed", description: "Instagram revenue source controls have been refreshed." });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "instagram"], exact: false });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=instagram&dateRange=90days`], exact: false });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+      await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+    },
+    onError: (mutationError: any) => {
+      setDeletingRevenueSourceId(null);
+      toast({ title: "Failed to remove revenue source", description: mutationError?.message || "Try again.", variant: "destructive" });
+    },
+  });
   const renderSimpleRows = (rows: any[], loading: boolean, rowError: unknown, emptyText: string, renderRow: (row: any) => any) => {
     if (rowError) {
       return (
@@ -692,24 +793,54 @@ export default function InstagramAnalytics() {
                         { label: "Clicks", value: overviewTotals.clicks.toLocaleString(), Icon: MousePointer },
                         { label: "Spend", value: `$${overviewTotals.spend.toFixed(2)}`, Icon: DollarSign },
                         { label: "Conversions", value: overviewTotals.conversions.toLocaleString(), Icon: Target },
-                        { label: "Total Revenue", value: "Not connected", Icon: DollarSign, helper: "Requires Instagram-scoped revenue import" },
-                        { label: "ROAS", value: "Unavailable", Icon: TrendingUp, helper: "Requires source-backed revenue" },
+                        {
+                          label: "Total Revenue",
+                          value: hasInstagramAttributedRevenue ? formatCurrency(instagramAttributedRevenue) : "Not connected",
+                          Icon: DollarSign,
+                          helper: hasInstagramAttributedRevenue ? "Imported Instagram attributed revenue" : "Connect attributed revenue",
+                          onAdd: () => openInstagramRevenueModal(),
+                          sourceCount: activeInstagramRevenueSources.length,
+                        },
+                        { label: "ROAS", value: hasInstagramAttributedRevenue && overviewTotals.spend > 0 ? `${instagramAttributedRoas.toFixed(2)}x` : "Unavailable", Icon: TrendingUp, helper: hasInstagramAttributedRevenue ? "Attributed revenue / spend" : "Requires source-backed revenue" },
+                        { label: "ROI", value: hasInstagramAttributedRevenue && overviewTotals.spend > 0 ? `${instagramAttributedRoi.toFixed(1)}%` : "Unavailable", Icon: Percent, helper: hasInstagramAttributedRevenue ? "Attributed revenue ROI" : "Requires source-backed revenue" },
+                        { label: "Profit", value: hasInstagramAttributedRevenue ? formatCurrency(instagramAttributedProfit) : "Unavailable", Icon: DollarSign, helper: hasInstagramAttributedRevenue ? "Attributed revenue - spend" : "Requires source-backed revenue" },
                         { label: "CTR", value: overviewTotals.ctr === null ? "Unavailable" : `${overviewTotals.ctr.toFixed(2)}%`, Icon: Percent },
                         { label: "CPC", value: overviewTotals.cpc === null ? "Unavailable" : `$${overviewTotals.cpc.toFixed(2)}`, Icon: DollarSign },
                         { label: "CPM", value: overviewTotals.cpm === null ? "Unavailable" : `$${overviewTotals.cpm.toFixed(2)}`, Icon: BarChart3 },
                         { label: "Cost / Conversion", value: overviewTotals.costPerConversion === null ? "Unavailable" : `$${overviewTotals.costPerConversion.toFixed(2)}`, Icon: Target },
                         { label: "Conversion Rate", value: overviewTotals.conversionRate === null ? "Unavailable" : `${overviewTotals.conversionRate.toFixed(2)}%`, Icon: Percent },
                         { label: "Video Views", value: overviewTotals.videoViews.toLocaleString(), Icon: Video },
-                      ].map(({ label, value, Icon, helper }) => (
+                      ].map(({ label, value, Icon, helper, onAdd, sourceCount }: any) => (
                         <Card key={label}>
                           <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-start justify-between gap-3">
                               <div>
                                 <p className="text-sm text-muted-foreground">{label}</p>
                                 <p className="text-2xl font-semibold text-foreground">{value}</p>
                                 {helper && <p className="text-xs text-muted-foreground mt-1">{helper}</p>}
+                                {sourceCount > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowRevenueSourcesDialog(true)}
+                                    className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+                                  >
+                                    Sources ({sourceCount})
+                                  </button>
+                                )}
                               </div>
-                              <Icon className="w-5 h-5 text-muted-foreground" />
+                              {onAdd ? (
+                                <button
+                                  type="button"
+                                  onClick={onAdd}
+                                  className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
+                                  title="Add Instagram revenue source"
+                                  aria-label="Add Instagram revenue source"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <Icon className="w-5 h-5 text-muted-foreground" />
+                              )}
                             </div>
                           </CardContent>
                         </Card>
@@ -1176,6 +1307,104 @@ export default function InstagramAnalytics() {
           </div>
         </main>
       </div>
+      {campaignId && (
+        <AddRevenueWizardModal
+          open={isRevenueWizardOpen}
+          onOpenChange={(open) => {
+            setIsRevenueWizardOpen(open);
+            if (!open) setRevenueWizardInitialSource(null);
+          }}
+          campaignId={campaignId}
+          currency="USD"
+          dateRange="90days"
+          platformContext="instagram"
+          initialSource={revenueWizardInitialSource || undefined}
+          onSuccess={() => {
+            void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "instagram"], exact: false });
+            void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=instagram&dateRange=90days`], exact: false });
+            void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
+          }}
+        />
+      )}
+      <Dialog open={showRevenueSourcesDialog} onOpenChange={setShowRevenueSourcesDialog}>
+        <DialogContent className="bg-card border-border max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Instagram Revenue Sources</DialogTitle>
+            <DialogDescription className="text-muted-foreground/70">
+              Sources connected for Instagram Total Revenue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+            {activeInstagramRevenueSources.length > 0 ? activeInstagramRevenueSources.map((source: any) => {
+              const config = parseRevenueSourceConfig(source);
+              const selectedCount = Array.isArray(config?.selectedValues) ? config.selectedValues.length : 0;
+              return (
+                <div key={source.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground" title={instagramRevenueSourceLabel(source)}>
+                      {instagramRevenueSourceLabel(source)}
+                    </p>
+                    <p className="text-xs text-muted-foreground/70">
+                      {revenueSourceTypeLabel(source.sourceType)}{selectedCount > 0 ? ` - ${selectedCount} selected attribution value${selectedCount === 1 ? "" : "s"}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium tabular-nums text-foreground">
+                      {formatCurrency(Number(source.lastTotalRevenue || 0))}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowRevenueSourcesDialog(false);
+                        openInstagramRevenueModal(source);
+                      }}
+                      className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                      title="Edit revenue source"
+                      aria-label="Edit revenue source"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingRevenueSourceId(String(source.id))}
+                      className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
+                      title="Remove revenue source"
+                      aria-label="Remove revenue source"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            }) : (
+              <p className="text-sm text-muted-foreground/70">No Instagram revenue sources connected.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog open={!!deletingRevenueSourceId} onOpenChange={(open) => { if (!open) setDeletingRevenueSourceId(null); }}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">Remove revenue source?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground/70">
+              This removes only the selected Instagram revenue source. Financial totals are not recalculated until the Instagram revenue resolver is implemented.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => {
+                if (deletingRevenueSourceId) {
+                  deleteInstagramRevenueSourceMutation.mutate(deletingRevenueSourceId);
+                }
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Dialog open={kpiDialogOpen} onOpenChange={setKpiDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
           <DialogHeader className="pb-4 pr-8">

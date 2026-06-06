@@ -2327,7 +2327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Deactivate Google Sheets connections for this platform
         try {
           const conns = await storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]);
-          const purposeKey = sourcePlatformContext === 'linkedin' ? 'linkedin_revenue' : sourcePlatformContext === 'meta' ? 'meta_revenue' : sourcePlatformContext === 'google_ads' ? 'google_ads_revenue' : 'revenue';
+          const purposeKey = sourcePlatformContext === 'linkedin' ? 'linkedin_revenue' : sourcePlatformContext === 'meta' ? 'meta_revenue' : sourcePlatformContext === 'google_ads' ? 'google_ads_revenue' : sourcePlatformContext === 'instagram' ? 'instagram_revenue' : 'revenue';
           const platformConns = (Array.isArray(conns) ? conns : []).filter((c: any) => {
             const purpose = String(c?.purpose || '').toLowerCase();
             return purpose === purposeKey;
@@ -3135,7 +3135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!body.success) return sendBadRequest(res, "Invalid request body", body.error.errors);
       const connectionId = body.data.connectionId;
       const platformContext = body.data.platformContext || "ga4";
-      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'meta' ? 'meta_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : 'revenue';
+      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'meta' ? 'meta_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : platformContext === 'instagram' ? 'instagram_revenue' : 'revenue';
 
       let connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
@@ -3300,7 +3300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'meta' ? 'meta_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : 'revenue';
+      const purpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'meta' ? 'meta_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : platformContext === 'instagram' ? 'instagram_revenue' : 'revenue';
       let connections = await storage.getGoogleSheetsConnections(campaignId, purpose);
       let conn = (connections as any[]).find((c) => String(c.id) === connectionId);
       // Fall back to purpose-agnostic lookup — the connection may have a different purpose value
@@ -7419,7 +7419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId, purpose } = req.body;
       const sheetsPurpose =
-        (purpose === "spend" || purpose === "revenue" || purpose === "general" || purpose === "linkedin_revenue" || purpose === "google_ads_revenue")
+        (purpose === "spend" || purpose === "revenue" || purpose === "general" || purpose === "linkedin_revenue" || purpose === "google_ads_revenue" || purpose === "instagram_revenue")
           ? purpose
           : undefined;
 
@@ -7663,7 +7663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ---- Google Sheets OAuth flow ----
       const [campaignId, sheetsPurpose] = rawState.includes(':') ? rawState.split(':') : [rawState, undefined];
       const purpose =
-        sheetsPurpose === 'spend' || sheetsPurpose === 'revenue' || sheetsPurpose === 'general' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue'
+        sheetsPurpose === 'spend' || sheetsPurpose === 'revenue' || sheetsPurpose === 'general' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue' || sheetsPurpose === 'instagram_revenue'
           ? sheetsPurpose
           : null;
       devLog(`[Google Sheets OAuth] Processing callback for campaign ${campaignId}`);
@@ -12375,7 +12375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId, spreadsheetId, sheetNames, selectionMode, purpose } = req.body;
       const mode: 'replace' | 'append' = (selectionMode === 'append' || selectionMode === 'replace') ? selectionMode : 'replace';
       const sheetsPurpose =
-        (purpose === 'spend' || purpose === 'revenue' || purpose === 'general' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue')
+        (purpose === 'spend' || purpose === 'revenue' || purpose === 'general' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue')
           ? purpose
           : undefined;
 
@@ -12395,7 +12395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Enterprise-grade guardrail: revenue connectors must be single-tab to avoid ambiguity/double-counting.
-      if ((sheetsPurpose === 'revenue' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue') && Array.isArray(sheetNames) && sheetNames.length > 1) {
+      if ((sheetsPurpose === 'revenue' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue' || sheetsPurpose === 'instagram_revenue') && Array.isArray(sheetNames) && sheetNames.length > 1) {
         return res.status(400).json({ error: 'Revenue connections support 1 tab only. Please select a single tab.' });
       }
 
@@ -13999,7 +13999,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
       const dateFieldChoice = body.data.dateField || "CloseDate";
       const platformContextRaw = String(platformContext || "ga4").trim().toLowerCase();
-      const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : "ga4";
+      const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : "ga4";
       const activeGoogleAdsCampaignIds = platformCtx === "google_ads"
         ? await getActiveGoogleAdsCampaignIdSet(campaignId)
         : platformCtx === "meta"
@@ -15434,7 +15434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pipelineStageLabel = String(body.data.pipelineStageLabel || "").trim();
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
       const platformContextRaw = String(platformContext || "ga4").trim().toLowerCase();
-      const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : "ga4";
+      const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : "ga4";
       const activeGoogleAdsCampaignIds = platformCtx === "google_ads"
         ? await getActiveGoogleAdsCampaignIdSet(campaignId)
         : platformCtx === "meta"

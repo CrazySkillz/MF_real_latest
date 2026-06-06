@@ -15,7 +15,7 @@ interface SimpleGoogleSheetsAuthProps {
   onSuccess: (connectionInfo?: { connectionId: string; spreadsheetId: string; connectionIds?: string[]; sheetNames?: string[] }) => void;
   onError: (error: string) => void;
   selectionMode?: 'replace' | 'append';
-  purpose?: 'spend' | 'revenue' | 'general' | 'linkedin_revenue' | 'meta_revenue' | 'google_ads_revenue';
+  purpose?: 'spend' | 'revenue' | 'general' | 'linkedin_revenue' | 'meta_revenue' | 'google_ads_revenue' | 'instagram_revenue';
 }
 
 interface Spreadsheet {
@@ -39,7 +39,7 @@ export function SimpleGoogleSheetsAuth({ campaignId, onSuccess, onError, selecti
   const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<string>("");
   const [availableSheets, setAvailableSheets] = useState<Sheet[]>([]);
   const [selectedSheetNames, setSelectedSheetNames] = useState<string[]>([]);
-  const isRevenueConnector = purpose === 'revenue' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue';
+  const isRevenueConnector = purpose === 'revenue' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue';
   // Keep a ref in sync to avoid any edge-case where the latest checkbox selection
   // isn't reflected yet when the user immediately clicks "Connect".
   const selectedSheetNamesRef = useRef<string[]>([]);

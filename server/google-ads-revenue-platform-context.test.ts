@@ -8,7 +8,7 @@ describe("Google Ads revenue platform context", () => {
   it("adds Google Ads to storage revenue context filtering without routing non-GA4 totals through LinkedIn", () => {
     const storageFile = readSource("server/storage.ts");
 
-    expect(storageFile).toContain("export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads';");
+    expect(storageFile).toContain("export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram';");
     expect(storageFile).toContain("getRevenueTotalForRange(campaignId: string, startDate: string, endDate: string, platformContext?: RevenuePlatformContext)");
     expect(storageFile).toContain("platformContext: RevenuePlatformContext = 'ga4'");
     expect(storageFile).toContain("eq(revenueSources.platformContext, platformContext as any)");
@@ -18,11 +18,11 @@ describe("Google Ads revenue platform context", () => {
   it("permits Google Ads on revenue read and manual source endpoints", () => {
     const routesFile = readSource("server/routes-oauth.ts");
 
-    expect(routesFile).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);');
-    expect(routesFile).toContain('const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads"]);');
+    expect(routesFile).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);');
+    expect(routesFile).toContain('const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);');
     expect(routesFile).toContain("const parseRevenueReadPlatformContext = (");
     expect(routesFile).toContain('storage.getRevenueSources(campaignId, \'google_ads\').catch(() => [] as any[])');
-    expect(routesFile).toContain("sourcePlatformContext === 'google_ads' ? 'google_ads_revenue' : 'revenue'");
+    expect(routesFile).toContain("sourcePlatformContext === 'google_ads' ? 'google_ads_revenue' : sourcePlatformContext === 'instagram' ? 'instagram_revenue' : 'revenue'");
     expect(routesFile).toContain("subCampaignUrn: subCampaignUrn || null,");
 
     const totalsRoute = routesFile.slice(

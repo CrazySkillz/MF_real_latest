@@ -55,7 +55,7 @@ export function HubSpotRevenueWizard(props: {
    * Used to prevent cross-platform leakage of revenue metrics.
    * Example: GA4 revenue sources must not unlock LinkedIn revenue metrics.
    */
-  platformContext?: "ga4" | "linkedin" | "meta" | "google_ads";
+  platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram";
 }) {
   const { campaignId, sourceId, mode = "connect", initialMappingConfig = null, onBack, onSuccess, onClose, externalBackNonce, platformContext = "ga4" } =
     props;

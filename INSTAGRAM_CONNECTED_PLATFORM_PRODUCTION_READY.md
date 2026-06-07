@@ -87,7 +87,7 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13N-F | Instagram revenue wizard selected-campaign mapping | Done and pushed; user validation pending | Revenue wizard UI/backend attribution |
 | 13N-G | Instagram multi-campaign test setup default | Done and pushed; user validation pending | Create Campaign and Connected Platforms test setup |
 | 13N-H | Instagram live-like simulated account/campaign picker | Done and pushed; user validation passed | Create Campaign and Connected Platforms test setup |
-| 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | In progress locally | Report backend/UI, scheduled reports, report exports, validation docs |
+| 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | 13O-R-A implemented locally; report UI slice user validation passed for now | Report backend/UI, scheduled reports, report exports, validation docs |
 | 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
 | 14B | End-to-end local test-mode Connected Platforms validation | Pending | Validation only |
 | 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending | Validation only |
@@ -1713,7 +1713,10 @@ Status:
 - [ ] User validation pending for Commit 13N-G.
 - [x] Commit 13N-H done and pushed: Instagram live-like simulated account/campaign picker.
 - [x] User validation passed for Commit 13N-H.
-- [ ] Commit 13O-R in progress locally: bundled Instagram report readiness closeout.
+- [x] Commit 13O-R report UI/custom-report slice done and pushed: Instagram report lifecycle UI, GA4-style modal, Schedule Automated Reports fields, expandable Custom Report sections, KPI/Benchmark row selection, and always-visible Pipeline Proxy card.
+- [x] User validation passed for Commit 13O-R report UI/custom-report slice for now.
+- [x] Commit 13O-R-A implemented locally: scheduled report discovery includes Instagram, but scheduled send/test-send fail closed before any Instagram PDF/email output until source-backed PDF proof is complete; invalid campaign/source scope disables or skips safely.
+- [ ] Commit 13O-R remaining report backend/export closeout pending: PDF/export source proof and regression/validation docs.
 
 Commit 13O-R bundle guardrails:
 
@@ -1723,6 +1726,21 @@ Commit 13O-R bundle guardrails:
 - The first implementation inside the bundle should be the smallest report route/source contract fix only if the trace proves the existing shared report route can safely support `platformType="instagram"`.
 - Scheduler/PDF/export changes should be added only after the route/source contract is proven and covered by focused regression tests.
 - Current local 13O-R slice: the shared campaign-guarded platform report route and storage contract already support `platformType="instagram"` through the existing `linkedin_reports` generic platform report table, but the Instagram Reports tab only rendered read-only rows and then used a small generic create/edit form. The smallest safe fix wires Create/Edit/Delete controls, refines the Instagram report modal to follow the GA4 Standard Templates / Custom Report pattern, exposes the shared Schedule Automated Reports fields, and makes Custom Report sections expandable with source-page options and current KPI/Benchmark row selection. The Instagram Overview Pipeline Proxy card is now always visible so users can discover the proxy setup path. This does not change schema, storage, scheduler selection, report email rendering, snapshot, PDF/export, provider refresh, KPI, Benchmark, or revenue behavior.
+- User validation for the current 13O-R report UI/custom-report slice passed for now. A more thorough cross-source report review will be carried out after additional source integrations are added, including TikTok, because final report-readiness must prove the behavior across the expanded source mix rather than only the current Instagram test-mode setup.
+
+Commit 13O-R-A root-cause trace:
+
+- Instagram report UI can now persist scheduled report fields, but `server/report-scheduler.ts` only discovered LinkedIn, GA4, and Google Ads platform reports.
+- Test-send platform lookup used the same limited platform list, so Instagram report IDs could be missed or later fall into unproven generic report output behavior.
+- Instagram PDF/export output is not source-proven yet, so the safest scheduler behavior is to discover Instagram scheduled reports but skip them before snapshot/email/PDF generation until the output path is implemented.
+
+Commit 13O-R-A validation:
+
+- Scheduler discovery includes `storage.getPlatformReports('instagram')`.
+- Due Instagram scheduled reports with missing campaign/source scope are skipped and schedule-disabled.
+- Due Instagram scheduled reports with valid source scope are skipped without snapshot/email/PDF generation until source-backed PDF proof is complete.
+- Test-send can find Instagram reports through platform report lookup and returns a fail-closed message before PDF/email generation.
+- No schema, UI, provider refresh, KPI, Benchmark, revenue, or PDF rendering behavior changes are included.
 
 Commit 13O-R validation:
 

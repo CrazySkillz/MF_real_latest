@@ -177,6 +177,18 @@ describe("scheduled report email regression guard", () => {
     expect(routesSource).not.toContain("Email recipients are optional");
   });
 
+  it("discovers Instagram scheduled reports but fails closed before source-proven PDF output", () => {
+    const source = readReportScheduler();
+
+    expect(source).toContain("const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram']");
+    expect(source).toContain("storage.getPlatformReports('instagram')");
+    expect(source).toContain("Found ${instagramReports.length} Instagram platform reports");
+    expect(source).toContain("validateInstagramScheduledReportScope(report)");
+    expect(source).toContain("Instagram source scope is invalid; skipped scheduled report");
+    expect(source).toContain("Instagram scheduled report output is pending source-backed PDF proof");
+    expect(source).toContain("...(await storage.getPlatformReports('instagram'))");
+  });
+
   it("disables orphaned scheduled reports after campaign-missing proof", () => {
     const source = readReportScheduler();
     const missingCampaignBlock = source.slice(

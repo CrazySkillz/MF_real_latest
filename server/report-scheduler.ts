@@ -19,6 +19,8 @@ interface ReportWithCampaign extends LinkedInReport {
   platformType: string;
 }
 
+const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram'];
+
 // Monitoring metrics for scheduler health
 const schedulerMetrics = {
   totalChecks: 0,
@@ -181,6 +183,27 @@ function parseReportConfiguration(configuration: any): Record<string, any> {
     }
   }
   return typeof configuration === "object" ? configuration : {};
+}
+
+async function validateInstagramScheduledReportScope(report: any): Promise<{ ok: boolean; message?: string; disableSchedule?: boolean }> {
+  if (String(report?.platformType || "").trim().toLowerCase() !== "instagram") return { ok: true };
+  const campaignId = String(report?.campaignId || "").trim();
+  if (!campaignId) return { ok: false, message: "Instagram scheduled report campaign is missing", disableSchedule: true };
+  const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaignId)).limit(1).catch(() => []);
+  if (!campaign) return { ok: false, message: "Campaign not found; skipped scheduled report", disableSchedule: true };
+  const connection = await storage.getInstagramConnection(campaignId).catch(() => null as any);
+  const selectedCampaignIds = (() => {
+    try {
+      const parsed = JSON.parse(String(connection?.selectedCampaignIds || "[]"));
+      return Array.isArray(parsed) ? parsed.map((id: any) => String(id || "").trim()).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  })();
+  if (!connection || (connection as any).spendOnly || selectedCampaignIds.length === 0) {
+    return { ok: false, message: "Instagram source scope is invalid; skipped scheduled report", disableSchedule: true };
+  }
+  return { ok: false, message: "Instagram scheduled report output is pending source-backed PDF proof", disableSchedule: false };
 }
 
 const campaignDeepDiveReportTypeLabels: Record<string, string> = {
@@ -1099,6 +1122,14 @@ export async function checkScheduledReports(): Promise<void> {
       console.log('[Report Scheduler] No Google Ads platform reports found');
     }
 
+    try {
+      const instagramReports = await storage.getPlatformReports('instagram');
+      allReports = allReports.concat(instagramReports);
+      console.log(`[Report Scheduler] Found ${instagramReports.length} Instagram platform reports`);
+    } catch (error) {
+      console.log('[Report Scheduler] No Instagram platform reports found');
+    }
+
     if (allReports.length === 0) {
       console.log('[Report Scheduler] No reports found in either storage');
       return;
@@ -1175,6 +1206,25 @@ export async function checkScheduledReports(): Promise<void> {
       }
 
       console.log(`[Report Scheduler] Report "${report.name}" is due now (${due.scheduledKey})`);
+
+      const instagramScope = await validateInstagramScheduledReportScope(report);
+      if (!instagramScope.ok) {
+        const message = instagramScope.message || "Instagram scheduled report skipped";
+        console.warn(`[Report Scheduler] ${message}: report=${report.id}, campaign=${(report as any).campaignId || "none"}`);
+        if (instagramScope.disableSchedule) {
+          await db
+            .update(linkedinReports)
+            .set({ scheduleEnabled: false, updatedAt: new Date() } as any)
+            .where(eq(linkedinReports.id, String((report as any).id)))
+            .catch(() => { });
+        }
+        await db
+          .update(reportSendEvents)
+          .set({ status: "skipped", error: message } as any)
+          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .catch(() => { });
+        continue;
+      }
 
       // Get recipients
       const recipients = report.scheduleRecipients || [];
@@ -1389,7 +1439,7 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
 
     // If not found, try platform reports
     if (!report) {
-      for (const platformType of ['linkedin', 'google_analytics', 'google_ads']) {
+      for (const platformType of SCHEDULED_REPORT_PLATFORM_TYPES) {
         const allReports = await storage.getPlatformReports(platformType);
         report = allReports.find(r => r.id === reportId);
         if (report) break;
@@ -1407,6 +1457,7 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
           ...(await storage.getPlatformReports('linkedin')),
           ...(await storage.getPlatformReports('google_analytics')),
           ...(await storage.getPlatformReports('google_ads')),
+          ...(await storage.getPlatformReports('instagram')),
         ];
         console.log(`[Report Scheduler] DEBUG - Available LinkedIn reports: ${linkedInReports.length}`);
         console.log(`[Report Scheduler] DEBUG - Available platform reports: ${platformReports.length}`);
@@ -1430,6 +1481,11 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
     const reportCampaignId = String((report as any)?.campaignId || "").trim();
     if (!reportCampaignId) {
       return { success: false, message: "Report campaign is missing" };
+    }
+
+    const instagramScope = await validateInstagramScheduledReportScope(report);
+    if (!instagramScope.ok) {
+      return { success: false, message: instagramScope.message || "Instagram scheduled report skipped", recipients: (report as any).scheduleRecipients || [] };
     }
 
     const recipients = report.scheduleRecipients || [];

@@ -203,7 +203,115 @@ async function validateInstagramScheduledReportScope(report: any): Promise<{ ok:
   if (!connection || (connection as any).spendOnly || selectedCampaignIds.length === 0) {
     return { ok: false, message: "Instagram source scope is invalid; skipped scheduled report", disableSchedule: true };
   }
-  return { ok: false, message: "Instagram scheduled report output is pending source-backed PDF proof", disableSchedule: false };
+  return { ok: true };
+}
+
+async function buildInstagramScheduledPdfAttachment(args: {
+  report: any;
+  windowStart: string;
+  windowEnd: string;
+  campaignName: string | null;
+}): Promise<Buffer | null> {
+  const { report, windowStart, windowEnd, campaignName } = args;
+  const campaignId = String(report?.campaignId || "").trim();
+  if (!campaignId) return null;
+  const connection = await storage.getInstagramConnection(campaignId).catch(() => null as any);
+  const selectedCampaignIds = (() => {
+    try {
+      const parsed = JSON.parse(String(connection?.selectedCampaignIds || "[]"));
+      return Array.isArray(parsed) ? parsed.map((id: any) => String(id || "").trim()).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  })();
+  const selectedIds = new Set(selectedCampaignIds);
+  if (!connection || selectedIds.size === 0) return null;
+  const rows = (await storage.getInstagramDailyMetrics(campaignId, windowStart, windowEnd).catch(() => []))
+    .filter((row: any) => selectedIds.has(String(row?.instagramCampaignId || "")))
+    .filter((row: any) => String(row?.publisherPlatform || "instagram").trim().toLowerCase() === "instagram");
+  if (rows.length === 0) return null;
+
+  const totals = rows.reduce((acc: any, row: any) => {
+    acc.impressions += Number(row?.impressions || 0);
+    acc.clicks += Number(row?.clicks || 0);
+    acc.spend += Number(row?.spend || 0);
+    acc.conversions += Number(row?.conversions || 0);
+    acc.videoViews += Number(row?.videoViews || 0);
+    acc.revenue += Number(row?.ga4Revenue || 0);
+    return acc;
+  }, { impressions: 0, clicks: 0, spend: 0, conversions: 0, videoViews: 0, revenue: 0 });
+  const derived = {
+    ctr: totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0,
+    cpc: totals.clicks > 0 ? totals.spend / totals.clicks : 0,
+    cpm: totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0,
+    costPerConversion: totals.conversions > 0 ? totals.spend / totals.conversions : 0,
+    conversionRate: totals.clicks > 0 ? (totals.conversions / totals.clicks) * 100 : 0,
+    roas: totals.spend > 0 && totals.revenue > 0 ? totals.revenue / totals.spend : null,
+    roi: totals.spend > 0 && totals.revenue > 0 ? ((totals.revenue - totals.spend) / totals.spend) * 100 : null,
+    profit: totals.revenue > 0 ? totals.revenue - totals.spend : null,
+  };
+  const byCampaign = Array.from(rows.reduce((map: Map<string, any>, row: any) => {
+    const key = String(row?.instagramCampaignId || "");
+    const current = map.get(key) || { id: key, name: row?.instagramCampaignName || key, impressions: 0, clicks: 0, spend: 0, conversions: 0 };
+    current.impressions += Number(row?.impressions || 0);
+    current.clicks += Number(row?.clicks || 0);
+    current.spend += Number(row?.spend || 0);
+    current.conversions += Number(row?.conversions || 0);
+    map.set(key, current);
+    return map;
+  }, new Map<string, any>()).values()).sort((a: any, b: any) => b.spend - a.spend);
+
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF();
+  const margin = 18;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  let y = margin;
+  const addText = (value: string, opts: { size?: number; bold?: boolean; indent?: number } = {}) => {
+    const indent = opts.indent || 0;
+    doc.setFontSize(opts.size || 10);
+    doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+    const lines = doc.splitTextToSize(String(value || ""), pageWidth - margin * 2 - indent);
+    lines.forEach((line: string) => {
+      if (y > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(line, margin + indent, y);
+      y += opts.size && opts.size >= 14 ? 8 : 6;
+    });
+  };
+  const money = (value: number) => `$${formatNumberLike(value)}`;
+  const pct = (value: number) => `${formatNumberLike(value)}%`;
+
+  addText(String(report?.name || "Instagram Report"), { size: 18, bold: true });
+  addText(`Campaign: ${campaignName || "Campaign"}`);
+  addText(`Report Type: ${String(report?.reportType || "overview")}`);
+  addText(`Window: ${windowStart} to ${windowEnd}`);
+  addText(`Source: selected Instagram daily metric rows only`);
+  y += 4;
+  addText("Overview", { size: 14, bold: true });
+  addText(`- Impressions: ${formatNumberLike(totals.impressions)}`, { indent: 4 });
+  addText(`- Clicks: ${formatNumberLike(totals.clicks)}`, { indent: 4 });
+  addText(`- Spend: ${money(totals.spend)}`, { indent: 4 });
+  addText(`- Conversions: ${formatNumberLike(totals.conversions)}`, { indent: 4 });
+  addText(`- Video Views: ${formatNumberLike(totals.videoViews)}`, { indent: 4 });
+  addText(`- CTR: ${pct(derived.ctr)}`, { indent: 4 });
+  addText(`- CPC: ${money(derived.cpc)}`, { indent: 4 });
+  addText(`- CPM: ${money(derived.cpm)}`, { indent: 4 });
+  addText(`- Cost / Conversion: ${money(derived.costPerConversion)}`, { indent: 4 });
+  addText(`- Conversion Rate: ${pct(derived.conversionRate)}`, { indent: 4 });
+  addText(`- Total Revenue: ${totals.revenue > 0 ? money(totals.revenue) : "Unavailable"}`, { indent: 4 });
+  addText(`- ROAS: ${derived.roas === null ? "Unavailable" : `${formatNumberLike(derived.roas)} ratio`}`, { indent: 4 });
+  addText(`- ROI: ${derived.roi === null ? "Unavailable" : pct(derived.roi)}`, { indent: 4 });
+  addText(`- Profit: ${derived.profit === null ? "Unavailable" : money(derived.profit)}`, { indent: 4 });
+  y += 4;
+  addText("Selected Instagram Campaigns", { size: 14, bold: true });
+  byCampaign.slice(0, 10).forEach((row: any) => {
+    addText(`- ${row.name}: ${formatNumberLike(row.impressions)} impressions, ${formatNumberLike(row.clicks)} clicks, ${money(row.spend)} spend, ${formatNumberLike(row.conversions)} conversions`, { indent: 4 });
+  });
+
+  return coercePdfBufferFromDoc(doc);
 }
 
 const campaignDeepDiveReportTypeLabels: Record<string, string> = {
@@ -574,6 +682,10 @@ export async function buildPdfAttachmentForReport(args: {
       }
       console.error(`[Report Scheduler] Refusing generic fallback for GA4 ${ga4ReportType || "report"} PDF`);
       return null;
+    }
+
+    if (String((report as any)?.platformType || "") === "instagram") {
+      return buildInstagramScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });
     }
 
     const { jsPDF } = await import("jspdf");
@@ -1315,6 +1427,16 @@ export async function checkScheduledReports(): Promise<void> {
         isTest: false,
       });
       console.log(`[Report Scheduler] PDF attachment bytes: ${pdfBuffer ? pdfBuffer.length : 0}`);
+      if (snapshotPlatformType === "instagram" && !pdfBuffer) {
+        const error = "Instagram source-backed PDF output unavailable; skipped scheduled report";
+        console.warn(`[Report Scheduler] ${error}: report=${report.id}, campaign=${(report as any).campaignId || "none"}`);
+        await db
+          .update(reportSendEvents)
+          .set({ status: "failed", error } as any)
+          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .catch(() => { });
+        continue;
+      }
 
       // Send email with retry mechanism (with PDF attachment when possible)
       const sent = await sendReportEmailWithRetry(report, recipients, {
@@ -1525,6 +1647,9 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
       isTest: true,
     });
     console.log(`[Report Scheduler] PDF attachment bytes (test): ${pdfBuffer ? pdfBuffer.length : 0}`);
+    if (String((report as any)?.platformType || "") === "instagram" && !pdfBuffer) {
+      return { success: false, message: "Instagram source-backed PDF output unavailable; test report skipped", recipients };
+    }
 
     const safeName = String((report as any)?.name || "MimoSaaS_Report").replace(/\s+/g, "_");
     const result = await sendReportEmail(report, recipients, {

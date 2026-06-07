@@ -177,7 +177,7 @@ describe("scheduled report email regression guard", () => {
     expect(routesSource).not.toContain("Email recipients are optional");
   });
 
-  it("discovers Instagram scheduled reports but fails closed before source-proven PDF output", () => {
+  it("discovers Instagram scheduled reports and requires source-backed Instagram PDF output", () => {
     const source = readReportScheduler();
 
     expect(source).toContain("const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram']");
@@ -185,7 +185,12 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain("Found ${instagramReports.length} Instagram platform reports");
     expect(source).toContain("validateInstagramScheduledReportScope(report)");
     expect(source).toContain("Instagram source scope is invalid; skipped scheduled report");
-    expect(source).toContain("Instagram scheduled report output is pending source-backed PDF proof");
+    expect(source).toContain("buildInstagramScheduledPdfAttachment");
+    expect(source).toContain("storage.getInstagramDailyMetrics(campaignId, windowStart, windowEnd)");
+    expect(source).toContain("selectedIds.has(String(row?.instagramCampaignId || \"\"))");
+    expect(source).toContain("Source: selected Instagram daily metric rows only");
+    expect(source).toContain("Instagram source-backed PDF output unavailable; skipped scheduled report");
+    expect(source).toContain("Instagram source-backed PDF output unavailable; test report skipped");
     expect(source).toContain("...(await storage.getPlatformReports('instagram'))");
   });
 

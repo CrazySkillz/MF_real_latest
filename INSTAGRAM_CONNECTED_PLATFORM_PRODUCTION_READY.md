@@ -87,7 +87,7 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13N-F | Instagram revenue wizard selected-campaign mapping | Done and pushed; user validation pending | Revenue wizard UI/backend attribution |
 | 13N-G | Instagram multi-campaign test setup default | Done and pushed; user validation pending | Create Campaign and Connected Platforms test setup |
 | 13N-H | Instagram live-like simulated account/campaign picker | Done and pushed; user validation passed | Create Campaign and Connected Platforms test setup |
-| 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | 13O-R-A implemented locally; report UI slice user validation passed for now | Report backend/UI, scheduled reports, report exports, validation docs |
+| 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | 13O-R-A user validation passed; 13O-R-B implemented locally | Report backend/UI, scheduled reports, report exports, validation docs |
 | 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
 | 14B | End-to-end local test-mode Connected Platforms validation | Pending | Validation only |
 | 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending | Validation only |
@@ -1718,7 +1718,9 @@ Status:
 - [x] Commit 13O-R report modal action polish done locally: new Instagram reports require an explicit template/custom selection before the footer action enables; unscheduled creates show `Generate & Download Report`; scheduled creates show `Schedule Report`.
 - [x] Commit 13O-R scheduled report card polish done locally: Instagram report library rows now follow the GA4 card layout with report type, schedule cadence/timezone, last-sent date, created date, and edit/delete controls; the Download control remains disabled until Instagram source-backed PDF/export proof is completed.
 - [x] Commit 13O-R-A implemented locally: scheduled report discovery includes Instagram, but scheduled send/test-send fail closed before any Instagram PDF/email output until source-backed PDF proof is complete; invalid campaign/source scope disables or skips safely.
-- [ ] Commit 13O-R remaining report backend/export closeout pending: PDF/export source proof and regression/validation docs.
+- [x] User validation passed for Commit 13O-R-A.
+- [x] Commit 13O-R-B implemented locally: Instagram scheduled/test-send PDF output now uses an explicit source-backed builder that reads only selected `instagram_daily_metrics` rows for the report window; scheduler/test-send still fail closed before email when no selected rows are available.
+- [ ] Commit 13O-R remaining report backend/export closeout pending: direct report-library download enablement and final regression/validation docs.
 
 Commit 13O-R bundle guardrails:
 
@@ -1743,6 +1745,19 @@ Commit 13O-R-A validation:
 - Due Instagram scheduled reports with valid source scope are skipped without snapshot/email/PDF generation until source-backed PDF proof is complete.
 - Test-send can find Instagram reports through platform report lookup and returns a fail-closed message before PDF/email generation.
 - No schema, UI, provider refresh, KPI, Benchmark, revenue, or PDF rendering behavior changes are included.
+
+Commit 13O-R-B root-cause trace:
+
+- After 13O-R-A validation, Instagram scheduled reports were discoverable but intentionally blocked before output because the shared scheduler PDF builder only had GA4-specific source-proofed handling plus a generic fallback for other platforms.
+- Generic fallback output is not acceptable for Instagram because scheduled PDFs must be built from the campaign's selected Instagram source rows, not broad platform-level or placeholder content.
+- The smallest safe fix adds an explicit Instagram branch in `server/report-scheduler.ts` that reads the campaign connection, filters `instagram_daily_metrics` to selected Instagram campaign IDs and `publisherPlatform="instagram"`, and returns no PDF when source-backed rows are unavailable.
+
+Commit 13O-R-B validation:
+
+- Scheduled/test-send Instagram reports with invalid campaign/source scope still fail closed through the 13O-R-A guard.
+- Scheduled/test-send Instagram reports with valid source scope produce PDF output only when selected source-backed Instagram daily rows exist for the scheduled window.
+- If selected source-backed Instagram daily rows are missing, scheduler/test-send stop before email delivery and do not create a misleading scheduled snapshot.
+- No schema, UI, provider refresh, KPI, Benchmark, revenue import, or direct report-library download enablement is included.
 
 Commit 13O-R validation:
 

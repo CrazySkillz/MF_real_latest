@@ -45,6 +45,19 @@ const INSTAGRAM_REPORT_TEMPLATES = [
   { key: "insights", title: "Insights", desc: "Executive financials, trends, and recommended checks", Icon: Info, chips: ["Executive", "Trends", "Actions"] },
 ];
 
+const INSTAGRAM_CUSTOM_REPORT_DEFAULT_CONFIG = {
+  sections: { overview: true, kpis: false, benchmarks: false, ads: false, insights: false },
+  subsections: {
+    overview: { summary: true, revenueFinancial: true, pipelineProxy: true, efficiencyMetrics: true },
+    kpis: {},
+    benchmarks: {},
+    ads: { leaderCards: true, comparisonCharts: true, rankedTable: true },
+    insights: { trendCharts: true, recommendations: true, missingData: true },
+  },
+  selectedKpiIds: [] as string[],
+  selectedBenchmarkIds: [] as string[],
+};
+
 const LOWER_IS_BETTER_KPIS = new Set(["cpc", "cpm", "costPerConversion"]);
 const KPI_DESC_MAX = 200;
 
@@ -125,6 +138,10 @@ function instagramFrom24HourTo12Hour(value: any) {
   return `${hours}:${match[2]} ${suffix}`;
 }
 
+function cloneInstagramCustomReportConfig() {
+  return JSON.parse(JSON.stringify(INSTAGRAM_CUSTOM_REPORT_DEFAULT_CONFIG));
+}
+
 function formatPctValue(value: number | null) {
   return value === null ? "Unavailable" : `${value.toFixed(2)}%`;
 }
@@ -202,10 +219,12 @@ export default function InstagramAnalytics() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [editingReport, setEditingReport] = useState<any>(null);
   const [reportModalStep, setReportModalStep] = useState<"standard" | "custom">("standard");
+  const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({ overview: true });
   const [reportForm, setReportForm] = useState({
     name: "",
     description: "",
     reportType: "overview",
+    configuration: cloneInstagramCustomReportConfig(),
     scheduleEnabled: false,
     scheduleFrequency: "daily",
     scheduleDayOfWeek: "monday",
@@ -653,12 +672,31 @@ export default function InstagramAnalytics() {
   };
   const resetReportForm = (report?: any) => {
     const reportType = String(report?.reportType || "overview");
+    const parsedConfiguration = (() => {
+      if (!report?.configuration) return cloneInstagramCustomReportConfig();
+      try {
+        const parsed = typeof report.configuration === "string" ? JSON.parse(report.configuration) : report.configuration;
+        const defaults = cloneInstagramCustomReportConfig();
+        return {
+          ...defaults,
+          ...parsed,
+          sections: { ...defaults.sections, ...(parsed?.sections || {}) },
+          subsections: { ...defaults.subsections, ...(parsed?.subsections || {}) },
+          selectedKpiIds: Array.isArray(parsed?.selectedKpiIds) ? parsed.selectedKpiIds : [],
+          selectedBenchmarkIds: Array.isArray(parsed?.selectedBenchmarkIds) ? parsed.selectedBenchmarkIds : [],
+        };
+      } catch {
+        return cloneInstagramCustomReportConfig();
+      }
+    })();
     setEditingReport(report || null);
     setReportModalStep(reportType === "custom" ? "custom" : "standard");
+    setExpandedCustomReportSections({ overview: true });
     setReportForm({
       name: String(report?.name || ""),
       description: String(report?.description || ""),
       reportType,
+      configuration: parsedConfiguration || cloneInstagramCustomReportConfig(),
       scheduleEnabled: !!report?.scheduleEnabled,
       scheduleFrequency: String(report?.scheduleFrequency || "daily"),
       scheduleDayOfWeek: instagramDayOfWeekIntToKey(report?.scheduleDayOfWeek),
@@ -674,6 +712,16 @@ export default function InstagramAnalytics() {
     setReportForm((form) => ({
       ...form,
       reportType,
+      configuration: {
+        ...form.configuration,
+        sections: {
+          overview: reportType === "overview",
+          kpis: reportType === "kpis",
+          benchmarks: reportType === "benchmarks",
+          ads: reportType === "ads",
+          insights: reportType === "insights",
+        },
+      },
       name: template ? `Instagram ${template.title} Report` : "Instagram Report",
     }));
   };
@@ -683,6 +731,7 @@ export default function InstagramAnalytics() {
       ...form,
       reportType: "custom",
       name: form.name || "Custom Report",
+      configuration: form.configuration || cloneInstagramCustomReportConfig(),
     }));
   };
   const validateReportForm = () => {
@@ -824,6 +873,7 @@ export default function InstagramAnalytics() {
         name: reportForm.name || "Instagram Report",
         description: reportForm.description,
         reportType: reportForm.reportType || "overview",
+        configuration: reportForm.reportType === "custom" ? reportForm.configuration : { sections: reportForm.configuration?.sections || {} },
         status: "active",
         scheduleEnabled: reportForm.scheduleEnabled,
         scheduleFrequency: reportForm.scheduleEnabled ? reportForm.scheduleFrequency : undefined,
@@ -991,14 +1041,14 @@ export default function InstagramAnalytics() {
                         { label: "ROAS", value: hasInstagramAttributedRevenue && overviewTotals.spend > 0 ? `${instagramAttributedRoas.toFixed(2)}x` : "Unavailable", Icon: TrendingUp, helper: hasInstagramAttributedRevenue ? "Attributed revenue / spend" : "Requires source-backed revenue" },
                         { label: "ROI", value: hasInstagramAttributedRevenue && overviewTotals.spend > 0 ? `${instagramAttributedRoi.toFixed(1)}%` : "Unavailable", Icon: Percent, helper: hasInstagramAttributedRevenue ? "Attributed revenue ROI" : "Requires source-backed revenue" },
                         { label: "Profit", value: hasInstagramAttributedRevenue ? formatCurrency(instagramAttributedProfit) : "Unavailable", Icon: DollarSign, helper: hasInstagramAttributedRevenue ? "Attributed revenue - spend" : "Requires source-backed revenue" },
-                        ...(hasInstagramAttributedRevenue || pipelineProxyData?.success ? [{
+                        {
                           label: "Pipeline Proxy",
                           value: pipelineProxyData?.success ? formatCurrency(Number(pipelineProxyData.totalToDate || 0)) : "Not configured",
                           Icon: Target,
                           helper: pipelineProxyData?.success
                             ? `${pipelineProxyData.pipelineStageLabel || "Selected stage"} open CRM value; not counted in revenue, ROI, or ROAS`
                             : "Select Total Revenue + Pipeline (Proxy) in the revenue wizard",
-                        }] : []),
+                        },
                         { label: "CTR", value: overviewTotals.ctr === null ? "Unavailable" : `${overviewTotals.ctr.toFixed(2)}%`, Icon: Percent },
                         { label: "CPC", value: overviewTotals.cpc === null ? "Unavailable" : `$${overviewTotals.cpc.toFixed(2)}`, Icon: DollarSign },
                         { label: "CPM", value: overviewTotals.cpm === null ? "Unavailable" : `$${overviewTotals.cpm.toFixed(2)}`, Icon: BarChart3 },
@@ -1649,16 +1699,128 @@ export default function InstagramAnalytics() {
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-bold text-foreground mb-2">Custom Report</h3>
-                  <p className="text-sm text-muted-foreground/70">Save a custom Instagram report definition for this campaign.</p>
+                  <p className="text-sm text-muted-foreground/70">Choose which Instagram sections to include in your PDF.</p>
                 </div>
                 <div className="rounded-lg border border-border p-4">
-                  <div className="text-sm font-medium text-foreground mb-3">Available Instagram sections</div>
-                  <div className="grid gap-2 sm:grid-cols-2 text-sm text-muted-foreground">
-                    <div>Overview</div>
-                    <div>KPIs</div>
-                    <div>Benchmarks</div>
-                    <div>Ad Comparison</div>
-                    <div>Insights</div>
+                  <div className="text-sm font-medium text-foreground mb-3">Sections</div>
+                  <div className="space-y-4 text-sm">
+                    {[
+                      { key: "overview", label: "Overview", options: [["summary", "Summary"], ["revenueFinancial", "Revenue & Financial"], ["pipelineProxy", "Pipeline Proxy"], ["efficiencyMetrics", "Efficiency Metrics"]] as Array<[string, string]> },
+                      { key: "kpis", label: "KPIs", options: [] as Array<[string, string]> },
+                      { key: "benchmarks", label: "Benchmarks", options: [] as Array<[string, string]> },
+                      { key: "ads", label: "Ad Comparison", options: [["leaderCards", "Leader Cards"], ["comparisonCharts", "Comparison Charts"], ["rankedTable", "Ranked Campaign Table"]] as Array<[string, string]> },
+                      { key: "insights", label: "Insights", options: [["trendCharts", "Trend Charts"], ["recommendations", "Recommendations"], ["missingData", "Missing Data Guidance"]] as Array<[string, string]> },
+                    ].map((section) => {
+                      const expanded = !!expandedCustomReportSections[section.key];
+                      const sectionChecked = !!reportForm.configuration?.sections?.[section.key];
+                      const subsectionConfig = reportForm.configuration?.subsections?.[section.key] || {};
+                      return (
+                        <div key={section.key} className="rounded-md border border-border p-3 space-y-3">
+                          <button
+                            type="button"
+                            className={`w-full text-left font-medium ${sectionChecked ? "text-foreground" : "text-muted-foreground/80"}`}
+                            onClick={() => setExpandedCustomReportSections((sections) => ({ ...sections, [section.key]: !sections[section.key] }))}
+                          >
+                            {section.label}
+                          </button>
+                          {expanded && (
+                            <div className="pl-6 space-y-2">
+                              {section.key === "kpis" ? (
+                                Array.isArray(kpis) && kpis.length > 0 ? (
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    {kpis.map((kpi: any) => {
+                                      const id = String(kpi.id);
+                                      const selectedIds = Array.isArray(reportForm.configuration?.selectedKpiIds) ? reportForm.configuration.selectedKpiIds.map(String) : [];
+                                      return (
+                                        <label key={id} className="flex items-center gap-2">
+                                          <Checkbox
+                                            checked={selectedIds.includes(id)}
+                                            onCheckedChange={(checked) => {
+                                              const nextIds = new Set(selectedIds);
+                                              if (checked === true) nextIds.add(id); else nextIds.delete(id);
+                                              setReportForm((form) => ({
+                                                ...form,
+                                                configuration: {
+                                                  ...form.configuration,
+                                                  sections: { ...form.configuration.sections, kpis: nextIds.size > 0 },
+                                                  selectedKpiIds: Array.from(nextIds),
+                                                },
+                                              }));
+                                            }}
+                                          />
+                                          <span>{String(kpi.name || kpi.metric || "KPI")}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <p className="text-muted-foreground/70">No Instagram KPIs have been created yet.</p>
+                                )
+                              ) : section.key === "benchmarks" ? (
+                                Array.isArray(benchmarks) && benchmarks.length > 0 ? (
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    {benchmarks.map((benchmark: any) => {
+                                      const id = String(benchmark.id);
+                                      const selectedIds = Array.isArray(reportForm.configuration?.selectedBenchmarkIds) ? reportForm.configuration.selectedBenchmarkIds.map(String) : [];
+                                      return (
+                                        <label key={id} className="flex items-center gap-2">
+                                          <Checkbox
+                                            checked={selectedIds.includes(id)}
+                                            onCheckedChange={(checked) => {
+                                              const nextIds = new Set(selectedIds);
+                                              if (checked === true) nextIds.add(id); else nextIds.delete(id);
+                                              setReportForm((form) => ({
+                                                ...form,
+                                                configuration: {
+                                                  ...form.configuration,
+                                                  sections: { ...form.configuration.sections, benchmarks: nextIds.size > 0 },
+                                                  selectedBenchmarkIds: Array.from(nextIds),
+                                                },
+                                              }));
+                                            }}
+                                          />
+                                          <span>{String(benchmark.name || benchmark.metric || "Benchmark")}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <p className="text-muted-foreground/70">No Instagram Benchmarks have been created yet.</p>
+                                )
+                              ) : (
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                  {section.options.map(([optionKey, optionLabel]) => (
+                                    <label key={optionKey} className="flex items-center gap-2">
+                                      <Checkbox
+                                        checked={subsectionConfig[optionKey] === true}
+                                        onCheckedChange={(checked) => {
+                                          setReportForm((form) => {
+                                            const nextSubsections = {
+                                              ...form.configuration.subsections,
+                                              [section.key]: { ...(form.configuration.subsections?.[section.key] || {}), [optionKey]: checked === true },
+                                            };
+                                            const hasSelectedOption = Object.values(nextSubsections[section.key] || {}).some(Boolean);
+                                            return {
+                                              ...form,
+                                              configuration: {
+                                                ...form.configuration,
+                                                sections: { ...form.configuration.sections, [section.key]: hasSelectedOption },
+                                                subsections: nextSubsections,
+                                              },
+                                            };
+                                          });
+                                        }}
+                                      />
+                                      <span>{optionLabel}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

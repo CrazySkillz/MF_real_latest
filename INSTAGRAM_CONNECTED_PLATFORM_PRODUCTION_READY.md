@@ -86,11 +86,8 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13N-E | Instagram revenue lifecycle invalidation and regression closeout | Done and pushed; user validation pending | Revenue lifecycle/tests/docs |
 | 13N-F | Instagram revenue wizard selected-campaign mapping | Done and pushed; user validation pending | Revenue wizard UI/backend attribution |
 | 13N-G | Instagram multi-campaign test setup default | Done and pushed; user validation pending | Create Campaign and Connected Platforms test setup |
-| 13N-H | Instagram live-like simulated account/campaign picker | Implemented locally; user validation pending | Create Campaign and Connected Platforms test setup |
-| 13O | Instagram report route/source contract | Pending | Report backend/UI |
-| 13P | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
-| 13Q | Instagram PDF/export output source proof | Pending | Report exports |
-| 13R | KPI/Benchmark/Ad Comparison/Insights/Revenue/Report regression and validation docs | Pending | None |
+| 13N-H | Instagram live-like simulated account/campaign picker | Done and pushed; user validation passed | Create Campaign and Connected Platforms test setup |
+| 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | In progress locally | Report backend/UI, scheduled reports, report exports, validation docs |
 | 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
 | 14B | End-to-end local test-mode Connected Platforms validation | Pending | Validation only |
 | 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending | Validation only |
@@ -259,9 +256,15 @@ Commit 13N-B Instagram Overview revenue source controls is done, pushed, and use
 
 Commit 13N-C Instagram revenue resolver and Overview financial metrics is done, pushed, and user-validated. The Instagram Analytics Overview now reads the existing shared revenue totals route with `platformContext=instagram`, treats only active Instagram revenue sources as the revenue-connected gate, and populates Total Revenue, ROAS, ROI, and Profit only from Instagram-scoped revenue.
 
-Commit 13N-D Instagram KPI/Benchmark/Insights revenue current values is implemented locally. Instagram KPI and Benchmark metric templates now include Total Revenue, ROAS, ROI, and Profit; current values use the same Instagram-scoped revenue boundary as Overview. Instagram Insights now switches from the revenue-required warning to a revenue-efficiency insight when Instagram attributed revenue exists.
+Commit 13N-D Instagram KPI/Benchmark/Insights revenue current values is done and pushed. Instagram KPI and Benchmark metric templates now include Total Revenue, ROAS, ROI, and Profit; current values use the same Instagram-scoped revenue boundary as Overview. Instagram Insights now switches from the revenue-required warning to a revenue-efficiency insight when Instagram attributed revenue exists.
 
-Commit 13N-E Instagram revenue lifecycle invalidation and regression closeout is implemented locally. Instagram revenue source add/edit/delete now invalidates Instagram revenue totals, KPI, and Benchmark queries, and regression coverage proves revenue metrics stay scoped to `platformContext=instagram`. Commit 13O through Commit 13R remain pending before Commit 14 final validation.
+Commit 13N-E Instagram revenue lifecycle invalidation and regression closeout is done and pushed. Instagram revenue source add/edit/delete now invalidates Instagram revenue totals, KPI, and Benchmark queries, and regression coverage proves revenue metrics stay scoped to `platformContext=instagram`.
+
+Commit 13N-F Instagram revenue wizard selected-campaign mapping is done and pushed. CSV, Sheets, HubSpot, Salesforce, and Shopify revenue imports can map CRM/import campaign values to selected Instagram campaign IDs while retaining Instagram-only revenue scope.
+
+Commit 13N-G Instagram multi-campaign test setup default is done and pushed. The normal test setup defaults to three selected Instagram campaigns so validation exercises multi-campaign aggregation, Ad Comparison, and revenue mapping.
+
+Commit 13N-H Instagram live-like simulated account/campaign picker is done, pushed, and user-validated. The test setup now presents a simulated ad-account selector and campaign checkbox list instead of manual campaign-ID entry. Commit 13O-R remains pending before Commit 14 final validation.
 
 ## Root Cause Analysis
 
@@ -1708,12 +1711,27 @@ Status:
 - [ ] User validation pending for Commit 13N-F.
 - [x] Commit 13N-G done and pushed: Instagram multi-campaign test setup default.
 - [ ] User validation pending for Commit 13N-G.
-- [x] Commit 13N-H implemented locally: Instagram live-like simulated account/campaign picker.
-- [ ] User validation pending for Commit 13N-H.
-- [ ] Commit 13O pending: Instagram report route/source contract.
-- [ ] Commit 13P pending: Instagram scheduled report snapshot/send guard.
-- [ ] Commit 13Q pending: Instagram PDF/export output source proof.
-- [ ] Commit 13R pending: KPI/Benchmark/Ad Comparison/Insights/Revenue/Report regression and validation docs.
+- [x] Commit 13N-H done and pushed: Instagram live-like simulated account/campaign picker.
+- [x] User validation passed for Commit 13N-H.
+- [ ] Commit 13O-R in progress locally: bundled Instagram report readiness closeout.
+
+Commit 13O-R bundle guardrails:
+
+- Scope is report-only: report route/source contract, scheduled report snapshot/send guard, PDF/export output source proof, and focused report regression/validation documentation.
+- Do not add live Instagram OAuth, provider account discovery, provider campaign discovery, live refresh changes, analytics tab redesign, KPI/Benchmark behavior changes, or non-report financial logic.
+- Before editing, trace the current shared platform report routes, report scheduler selection, direct snapshot/download routes, report PDF builder, and Instagram analytics Reports tab caller.
+- The first implementation inside the bundle should be the smallest report route/source contract fix only if the trace proves the existing shared report route can safely support `platformType="instagram"`.
+- Scheduler/PDF/export changes should be added only after the route/source contract is proven and covered by focused regression tests.
+- Current local 13O-R slice: the shared campaign-guarded platform report route and storage contract already support `platformType="instagram"` through the existing `linkedin_reports` generic platform report table, but the Instagram Reports tab only rendered read-only rows. The smallest safe fix wires Create/Edit/Delete controls on the Instagram Reports tab to `/api/platforms/instagram/reports` without changing schema, storage, scheduler, report email, snapshot, PDF/export, provider refresh, KPI, Benchmark, or revenue behavior.
+
+Commit 13O-R validation:
+
+- Create an Instagram report from Instagram Analytics -> Reports.
+- Confirm the report is campaign-scoped and `platformType="instagram"`.
+- Confirm report update/delete returns accurate success/failure.
+- Generate or preview report output and confirm it uses selected Instagram source-backed rows, not Meta/Facebook or placeholder data.
+- Confirm scheduled report handling does not snapshot or send when the campaign/platform contract is invalid.
+- Confirm direct snapshot/download routes verify report access and campaign-platform consistency.
 
 Commit 13A root-cause trace:
 
@@ -1951,6 +1969,7 @@ Commit 13N subcommit split:
 - 13N-F: Selected Instagram campaign mapping for CSV, Sheets, HubSpot, Salesforce, and Shopify revenue imports.
 - 13N-G: Multi-campaign test setup default so normal validation exercises campaign comparison and campaign mapping.
 - 13N-H: Replace manual test campaign ID entry with a simulated ad-account and campaign picker while live OAuth remains pending.
+- 13O-R: Bundle the remaining report-only work after tracing report routes, scheduler send/snapshot paths, and PDF/export consumers. This bundle must not include live OAuth, provider refresh, analytics tab redesign, KPI/Benchmark behavior changes, or non-report financial logic.
 
 Commit 13N-A root-cause trace:
 

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, AlertCircle, AlertTriangle, CheckCircle2, Loader2, Eye, MousePointer, DollarSign, Target, BarChart3, Percent, Video, Plus, TrendingUp, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, AlertTriangle, CheckCircle2, Eye, MousePointer, DollarSign, Target, BarChart3, Percent, Video, Plus, TrendingUp, Pencil, Trash2 } from "lucide-react";
 import { SiInstagram } from "react-icons/si";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import Navigation from "@/components/layout/navigation";
@@ -145,6 +145,13 @@ export default function InstagramAnalytics() {
     alertFrequency: "daily",
     emailNotifications: false,
     emailRecipients: "",
+  });
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [editingReport, setEditingReport] = useState<any>(null);
+  const [reportForm, setReportForm] = useState({
+    name: "",
+    description: "",
+    reportType: "overview",
   });
 
   const { data: connection, isLoading, error } = useQuery<any>({
@@ -582,6 +589,14 @@ export default function InstagramAnalytics() {
       benchmarkValue: "",
     }));
   };
+  const resetReportForm = (report?: any) => {
+    setEditingReport(report || null);
+    setReportForm({
+      name: String(report?.name || ""),
+      description: String(report?.description || ""),
+      reportType: String(report?.reportType || "overview"),
+    });
+  };
   const saveKpiMutation = useMutation({
     mutationFn: async () => {
       const metricDef = getInstagramKpiMetric(kpiForm.metric);
@@ -705,6 +720,54 @@ export default function InstagramAnalytics() {
       toast({ title: "Failed to delete Benchmark", description: mutationError?.message || "Try again.", variant: "destructive" });
     },
   });
+  const saveReportMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        campaignId,
+        name: reportForm.name || "Instagram Report",
+        description: reportForm.description,
+        reportType: reportForm.reportType || "overview",
+        status: "active",
+        scheduleEnabled: false,
+      };
+      const response = await fetch(editingReport ? `/api/platforms/instagram/reports/${editingReport.id}` : "/api/platforms/instagram/reports", {
+        method: editingReport ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || "Failed to save Instagram Report");
+      }
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/platforms/instagram/reports", campaignId] });
+      setReportDialogOpen(false);
+      resetReportForm();
+      toast({ title: editingReport ? "Report updated" : "Report created" });
+    },
+    onError: (mutationError: any) => {
+      toast({ title: "Failed to save Report", description: mutationError?.message || "Check the report values and try again.", variant: "destructive" });
+    },
+  });
+  const deleteReportMutation = useMutation({
+    mutationFn: async (reportId: string | number) => {
+      const response = await fetch(`/api/platforms/instagram/reports/${reportId}`, { method: "DELETE" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || "Failed to delete Instagram Report");
+      }
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/platforms/instagram/reports", campaignId] });
+      toast({ title: "Report deleted" });
+    },
+    onError: (mutationError: any) => {
+      toast({ title: "Failed to delete Report", description: mutationError?.message || "Try again.", variant: "destructive" });
+    },
+  });
   const deleteInstagramRevenueSourceMutation = useMutation({
     mutationFn: async (sourceId: string) => {
       const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`, {
@@ -732,46 +795,6 @@ export default function InstagramAnalytics() {
       toast({ title: "Failed to remove revenue source", description: mutationError?.message || "Try again.", variant: "destructive" });
     },
   });
-  const renderSimpleRows = (rows: any[], loading: boolean, rowError: unknown, emptyText: string, renderRow: (row: any) => any) => {
-    if (rowError) {
-      return (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-start gap-2 text-sm bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-              <p className="text-red-700 dark:text-red-300">{(rowError as Error).message}</p>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-    if (loading) {
-      return (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Loading Instagram rows...
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-    if (rows.length === 0) {
-      return (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-start gap-2 text-sm bg-muted/60 border border-border rounded-lg p-3">
-              <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-              <p className="text-muted-foreground">{emptyText}</p>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-    return <div className="space-y-3">{rows.map(renderRow)}</div>;
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -1353,25 +1376,146 @@ export default function InstagramAnalytics() {
                   )}
                 </TabsContent>
                 <TabsContent value="reports" className="space-y-4">
-                  {renderSimpleRows(reports, reportsLoading, reportsError, "No Instagram Reports have been created yet.", (report: any) => (
-                    <Card key={report.id}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold text-foreground">Instagram Reports</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Create and manage campaign-scoped Instagram analytics reports.</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        resetReportForm();
+                        setReportDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Report
+                    </Button>
+                  </div>
+                  {reportsError ? (
+                    <Card>
                       <CardContent className="p-4">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                          <div>
-                            <p className="font-medium text-foreground">{report.name || "Instagram Report"}</p>
-                            <p className="text-xs text-muted-foreground">{report.reportType || "report"}</p>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{report.scheduleEnabled ? "Scheduled" : "Standard"}</p>
+                        <div className="flex items-start gap-2 text-sm bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                          <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                          <p className="text-red-700 dark:text-red-300">{(reportsError as Error).message}</p>
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                  ) : reportsLoading ? (
+                    <div className="min-h-[140px]" aria-hidden="true" />
+                  ) : reports.length === 0 ? (
+                    <Card>
+                      <CardContent className="p-8 text-center">
+                        <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-foreground mb-2">No reports yet</h3>
+                        <p className="text-muted-foreground mb-4">No Instagram Reports have been created yet.</p>
+                        <Button
+                          onClick={() => {
+                            resetReportForm();
+                            setReportDialogOpen(true);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Report
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid gap-4">
+                      {reports.map((report: any) => (
+                        <Card key={report.id}>
+                          <CardContent className="p-4">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                              <div>
+                                <p className="font-medium text-foreground">{report.name || "Instagram Report"}</p>
+                                <p className="text-xs text-muted-foreground">{report.reportType || "overview"} report</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-muted-foreground">{report.scheduleEnabled ? "Scheduled" : "Standard"}</span>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { resetReportForm(report); setReportDialogOpen(true); }}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700" disabled={deleteReportMutation.isPending}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Report</AlertDialogTitle>
+                                      <AlertDialogDescription>Delete "{report.name || "Instagram Report"}" from this Instagram campaign?</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => deleteReportMutation.mutate(report.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             )}
           </div>
         </main>
       </div>
+      <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+        <DialogContent className="max-w-lg bg-card border-border">
+          <DialogHeader className="pb-4 pr-8">
+            <DialogTitle>{editingReport ? "Edit Instagram Report" : "Create Instagram Report"}</DialogTitle>
+            <DialogDescription>Save a campaign-scoped report definition for Instagram analytics.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="instagram-report-name">Report Name *</Label>
+              <Input
+                id="instagram-report-name"
+                value={reportForm.name}
+                onChange={(event) => setReportForm((form) => ({ ...form, name: event.target.value }))}
+                placeholder="e.g., Instagram Weekly Performance"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="instagram-report-type">Report Type</Label>
+              <Select value={reportForm.reportType} onValueChange={(value) => setReportForm((form) => ({ ...form, reportType: value }))}>
+                <SelectTrigger id="instagram-report-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="overview">Overview</SelectItem>
+                  <SelectItem value="kpis">KPIs</SelectItem>
+                  <SelectItem value="benchmarks">Benchmarks</SelectItem>
+                  <SelectItem value="ads">Ad Comparison</SelectItem>
+                  <SelectItem value="insights">Insights</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="instagram-report-description">Description</Label>
+              <Textarea
+                id="instagram-report-description"
+                value={reportForm.description}
+                rows={3}
+                onChange={(event) => setReportForm((form) => ({ ...form, description: event.target.value }))}
+                placeholder="Describe what this report should cover"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReportDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => saveReportMutation.mutate()} disabled={saveReportMutation.isPending || !reportForm.name.trim()}>
+              {saveReportMutation.isPending ? "Saving..." : editingReport ? "Update Report" : "Create Report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {campaignId && (
         <AddRevenueWizardModal
           open={isRevenueWizardOpen}

@@ -87,7 +87,7 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13N-F | Instagram revenue wizard selected-campaign mapping | Done and pushed; user validation pending | Revenue wizard UI/backend attribution |
 | 13N-G | Instagram multi-campaign test setup default | Done and pushed; user validation pending | Create Campaign and Connected Platforms test setup |
 | 13N-H | Instagram live-like simulated account/campaign picker | Done and pushed; user validation passed | Create Campaign and Connected Platforms test setup |
-| 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | 13O-R-A user validation passed; 13O-R-B implemented locally | Report backend/UI, scheduled reports, report exports, validation docs |
+| 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | 13O-R-A and 13O-R-B user validation passed; 13O-R-C implemented locally | Report backend/UI, scheduled reports, report exports, validation docs |
 | 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
 | 14B | End-to-end local test-mode Connected Platforms validation | Pending | Validation only |
 | 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending | Validation only |
@@ -1720,7 +1720,9 @@ Status:
 - [x] Commit 13O-R-A implemented locally: scheduled report discovery includes Instagram, but scheduled send/test-send fail closed before any Instagram PDF/email output until source-backed PDF proof is complete; invalid campaign/source scope disables or skips safely.
 - [x] User validation passed for Commit 13O-R-A.
 - [x] Commit 13O-R-B implemented locally: Instagram scheduled/test-send PDF output now uses an explicit source-backed builder that reads only selected `instagram_daily_metrics` rows for the report window; scheduler/test-send still fail closed before email when no selected rows are available.
-- [ ] Commit 13O-R remaining report backend/export closeout pending: direct report-library download enablement and final regression/validation docs.
+- [x] User validation passed for Commit 13O-R-B.
+- [x] Commit 13O-R-C implemented locally: Instagram report-library Download now creates a manual snapshot only after proving source-backed Instagram PDF output through the shared builder, then downloads the guarded snapshot PDF; missing selected Instagram rows return a failure instead of creating a misleading snapshot.
+- [ ] Commit 13O-R remaining report backend/export closeout pending: final validation/docs only.
 
 Commit 13O-R bundle guardrails:
 
@@ -1758,6 +1760,19 @@ Commit 13O-R-B validation:
 - Scheduled/test-send Instagram reports with valid source scope produce PDF output only when selected source-backed Instagram daily rows exist for the scheduled window.
 - If selected source-backed Instagram daily rows are missing, scheduler/test-send stop before email delivery and do not create a misleading scheduled snapshot.
 - No schema, UI, provider refresh, KPI, Benchmark, revenue import, or direct report-library download enablement is included.
+
+Commit 13O-R-C root-cause trace:
+
+- The Instagram report-library card had a Download control, but direct download was disabled because the existing manual snapshot route created report snapshots before proving the platform PDF output.
+- That route is safe for generic/manual report history only when the PDF path is separately proven; for Instagram it could have created a downloadable snapshot record even if selected Instagram source rows were missing.
+- The smallest safe fix keeps the existing snapshot/PDF route pattern but adds an Instagram-only pre-insert proof step that calls `buildPdfAttachmentForReport` for the same 30-day report window before inserting `report_snapshots`.
+
+Commit 13O-R-C validation:
+
+- Instagram report-library Download uses `POST /api/platforms/instagram/reports/:reportId/snapshots` followed by `GET /api/report-snapshots/:snapshotId/pdf`.
+- The manual snapshot route validates report access and platform match through the existing guards before any PDF proof or insert.
+- For Instagram only, manual snapshot creation fails before insert when selected source-backed Instagram rows cannot produce a PDF.
+- No schema, scheduler cadence, email delivery, provider refresh, KPI, Benchmark, revenue import, or analytics metric calculation behavior changes are included.
 
 Commit 13O-R validation:
 

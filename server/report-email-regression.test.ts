@@ -118,6 +118,19 @@ describe("scheduled report email regression guard", () => {
     expect(snapshotPdfRoute).not.toContain("This PDF is generated from an immutable snapshot.");
   });
 
+  it("proves Instagram manual report snapshots have source-backed PDF output before insertion", () => {
+    const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const manualSnapshotRoute = routesSource.slice(
+      routesSource.indexOf('app.post("/api/platforms/:platformType/reports/:reportId/snapshots"'),
+      routesSource.indexOf('app.get("/api/report-snapshots/:snapshotId"')
+    );
+
+    expect(manualSnapshotRoute).toContain('String(payload.platformType || "").trim().toLowerCase() === "instagram"');
+    expect(manualSnapshotRoute).toContain("buildPdfAttachmentForReport");
+    expect(manualSnapshotRoute).toContain("Instagram source-backed PDF output unavailable; snapshot not created");
+    expect(manualSnapshotRoute.indexOf("buildPdfAttachmentForReport")).toBeLessThan(manualSnapshotRoute.indexOf(".insert(reportSnapshots as any)"));
+  });
+
   it("keeps legacy Meta/Google Ads report updates from changing report ownership", () => {
     const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const metaUpdateRoute = routesSource.slice(

@@ -219,6 +219,7 @@ export default function InstagramAnalytics() {
   });
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [editingReport, setEditingReport] = useState<any>(null);
+  const [downloadingReportId, setDownloadingReportId] = useState<string | null>(null);
   const [reportModalStep, setReportModalStep] = useState<"standard" | "custom">("standard");
   const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({ overview: true });
   const [reportForm, setReportForm] = useState({
@@ -961,6 +962,38 @@ export default function InstagramAnalytics() {
     : reportForm.scheduleEnabled
       ? "Scheduling..."
       : "Generating...";
+  const downloadInstagramReport = async (report: any) => {
+    const reportId = String(report?.id || "");
+    if (!reportId) return;
+    setDownloadingReportId(reportId);
+    try {
+      const snapshotResponse = await fetch(`/api/platforms/instagram/reports/${encodeURIComponent(reportId)}/snapshots`, { method: "POST" });
+      const snapshotJson = await snapshotResponse.json().catch(() => ({}));
+      if (!snapshotResponse.ok || snapshotJson?.success === false) {
+        throw new Error(snapshotJson?.error || "Failed to generate Instagram report snapshot");
+      }
+      const snapshotId = String(snapshotJson?.snapshot?.id || "");
+      if (!snapshotId) throw new Error("Instagram report snapshot was not created");
+      const pdfResponse = await fetch(`/api/report-snapshots/${encodeURIComponent(snapshotId)}/pdf`);
+      if (!pdfResponse.ok) {
+        const body = await pdfResponse.json().catch(() => ({}));
+        throw new Error(body?.error || "Failed to download Instagram report PDF");
+      }
+      const blob = await pdfResponse.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${String(report?.name || "Instagram_Report").replace(/\s+/g, "_")}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      toast({ title: "Failed to download Report", description: error?.message || "Try again.", variant: "destructive" });
+    } finally {
+      setDownloadingReportId(null);
+    }
+  };
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -1619,9 +1652,9 @@ export default function InstagramAnalytics() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Button variant="outline" size="sm" disabled title="Instagram PDF export is pending source-backed proof">
+                                <Button variant="outline" size="sm" disabled={downloadingReportId === String(report.id)} onClick={() => downloadInstagramReport(report)}>
                                   <Download className="w-4 h-4 mr-2" />
-                                  Download
+                                  {downloadingReportId === String(report.id) ? "Downloading..." : "Download"}
                                 </Button>
                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { resetReportForm(report); setReportDialogOpen(true); }}>
                                   <Pencil className="h-4 w-4" />

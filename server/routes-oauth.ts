@@ -24525,6 +24525,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         source: "manual",
       };
 
+      if (String(payload.platformType || "").trim().toLowerCase() === "instagram") {
+        const { buildPdfAttachmentForReport } = await import("./report-scheduler.js");
+        const buf = await buildPdfAttachmentForReport({
+          report: existing,
+          windowStart,
+          windowEnd,
+          campaignName: campaignName || null,
+          isTest: true,
+        });
+        if (!buf) {
+          return res.status(422).json({ success: false, error: "Instagram source-backed PDF output unavailable; snapshot not created" });
+        }
+      }
+
       const [snap] = await db
         .insert(reportSnapshots as any)
         .values({

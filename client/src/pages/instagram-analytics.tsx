@@ -223,7 +223,7 @@ export default function InstagramAnalytics() {
   const [reportForm, setReportForm] = useState({
     name: "",
     description: "",
-    reportType: "overview",
+    reportType: "",
     configuration: cloneInstagramCustomReportConfig(),
     scheduleEnabled: false,
     scheduleFrequency: "daily",
@@ -671,7 +671,7 @@ export default function InstagramAnalytics() {
     }));
   };
   const resetReportForm = (report?: any) => {
-    const reportType = String(report?.reportType || "overview");
+    const reportType = report ? String(report?.reportType || "overview") : "";
     const parsedConfiguration = (() => {
       if (!report?.configuration) return cloneInstagramCustomReportConfig();
       try {
@@ -949,6 +949,17 @@ export default function InstagramAnalytics() {
       toast({ title: "Failed to remove revenue source", description: mutationError?.message || "Try again.", variant: "destructive" });
     },
   });
+  const reportSelectionMade = String(reportForm.reportType || "").trim().length > 0;
+  const reportActionLabel = editingReport
+    ? "Update Report"
+    : reportForm.scheduleEnabled
+      ? "Schedule Report"
+      : "Generate & Download Report";
+  const reportPendingLabel = editingReport
+    ? "Saving..."
+    : reportForm.scheduleEnabled
+      ? "Scheduling..."
+      : "Generating...";
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -1973,8 +1984,8 @@ export default function InstagramAnalytics() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setReportDialogOpen(false)}>Cancel</Button>
-            <Button onClick={() => saveReportMutation.mutate()} disabled={saveReportMutation.isPending || !reportForm.name.trim()}>
-              {saveReportMutation.isPending ? "Saving..." : editingReport ? "Update Report" : "Create Report"}
+            <Button onClick={() => saveReportMutation.mutate()} disabled={saveReportMutation.isPending || !reportForm.name.trim() || !reportSelectionMade}>
+              {saveReportMutation.isPending ? reportPendingLabel : reportActionLabel}
             </Button>
           </DialogFooter>
         </DialogContent>

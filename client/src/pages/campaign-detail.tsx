@@ -91,6 +91,17 @@ const devError = (...args: any[]) => {
   }
 };
 
+const SIMULATED_INSTAGRAM_AD_ACCOUNTS = [
+  { id: "act_instagram_test", name: "Test Instagram Ad Account" },
+  { id: "act_instagram_growth", name: "Growth Campaigns Account" },
+];
+
+const SIMULATED_INSTAGRAM_CAMPAIGNS = [
+  { id: "ig_test_1", name: "Instagram Prospecting - Reels" },
+  { id: "ig_test_2", name: "Instagram Retargeting - Stories" },
+  { id: "ig_test_3", name: "Instagram Lead Gen - Feed" },
+];
+
 const KPI_DESC_MAX = 200;
 const BENCHMARK_DESC_MAX = 200;
 
@@ -4397,7 +4408,7 @@ export default function CampaignDetail() {
       .map((id) => id.trim())
       .filter(Boolean);
     if (selectedCampaignIds.length === 0) {
-      toastHook({ title: "Instagram campaign required", description: "Enter at least one Instagram campaign ID.", variant: "destructive" });
+      toastHook({ title: "Instagram campaign required", description: "Select at least one Instagram campaign.", variant: "destructive" });
       return;
     }
 
@@ -4875,6 +4886,16 @@ export default function CampaignDetail() {
   const [instagramAdAccountName, setInstagramAdAccountName] = useState("Test Instagram Ad Account");
   const [instagramSelectedCampaignIds, setInstagramSelectedCampaignIds] = useState("ig_test_1, ig_test_2, ig_test_3");
   const [isInstagramConnecting, setIsInstagramConnecting] = useState(false);
+  const selectedInstagramCampaignIdList = instagramSelectedCampaignIds
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  const updateInstagramCampaignSelection = (id: string, checked: boolean) => {
+    const selected = new Set(selectedInstagramCampaignIdList);
+    if (checked) selected.add(id);
+    else selected.delete(id);
+    setInstagramSelectedCampaignIds(Array.from(selected).join(", "));
+  };
   const [addRevenueWizardOpen, setAddRevenueWizardOpen] = useState(false);
   const [revenueWizardInitialStep, setRevenueWizardInitialStep] = useState<string | undefined>(undefined);
   const [revenueWizardPlatformContext, setRevenueWizardPlatformContext] = useState<'ga4' | 'linkedin' | 'meta'>('ga4');
@@ -5781,37 +5802,65 @@ export default function CampaignDetail() {
                       ) : platform.platform === "Instagram Ads" ? (
                         <div className="space-y-4">
                           <div className="space-y-2">
-                            <Label htmlFor="instagram-detail-ad-account-id">Ad Account ID</Label>
-                            <Input
-                              id="instagram-detail-ad-account-id"
+                            <Label>Simulated Instagram Ad Account</Label>
+                            <Select
                               value={instagramAdAccountId}
-                              onChange={(event) => setInstagramAdAccountId(event.target.value)}
-                            />
+                              onValueChange={(value) => {
+                                const account = SIMULATED_INSTAGRAM_AD_ACCOUNTS.find((item) => item.id === value);
+                                setInstagramAdAccountId(value);
+                                setInstagramAdAccountName(account?.name || value);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select an Instagram ad account" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SIMULATED_INSTAGRAM_AD_ACCOUNTS.map((account) => (
+                                  <SelectItem key={account.id} value={account.id}>
+                                    {account.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">{instagramAdAccountId}</p>
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="instagram-detail-ad-account-name">Ad Account Name</Label>
-                            <Input
-                              id="instagram-detail-ad-account-name"
-                              value={instagramAdAccountName}
-                              onChange={(event) => setInstagramAdAccountName(event.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="instagram-detail-selected-campaign-ids">Selected Instagram Campaign IDs</Label>
-                            <Input
-                              id="instagram-detail-selected-campaign-ids"
-                              value={instagramSelectedCampaignIds}
-                              onChange={(event) => setInstagramSelectedCampaignIds(event.target.value)}
-                            />
+                            <div className="flex items-center justify-between gap-3">
+                              <Label>Available Instagram Campaigns</Label>
+                              <button
+                                type="button"
+                                className="text-xs text-primary"
+                                onClick={() => setInstagramSelectedCampaignIds(SIMULATED_INSTAGRAM_CAMPAIGNS.map((campaign) => campaign.id).join(", "))}
+                              >
+                                Select all
+                              </button>
+                            </div>
+                            <div className="rounded-md border p-2 space-y-1">
+                              {SIMULATED_INSTAGRAM_CAMPAIGNS.map((campaign) => {
+                                const checked = selectedInstagramCampaignIdList.includes(campaign.id);
+                                return (
+                                  <label key={campaign.id} className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-muted">
+                                    <Checkbox
+                                      checked={checked}
+                                      onCheckedChange={(next) => updateInstagramCampaignSelection(campaign.id, !!next)}
+                                    />
+                                    <span className="min-w-0 flex-1">
+                                      <span className="block truncate text-sm">{campaign.name}</span>
+                                      <span className="block truncate text-xs text-muted-foreground">{campaign.id}</span>
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
                           </div>
                           <Button
                             type="button"
                             size="sm"
                             onClick={connectInstagramTestMode}
-                            disabled={isInstagramConnecting}
+                            disabled={isInstagramConnecting || selectedInstagramCampaignIdList.length === 0}
                           >
                             {isInstagramConnecting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            Connect Instagram Test Account
+                            Connect {selectedInstagramCampaignIdList.length} Campaign{selectedInstagramCampaignIdList.length === 1 ? "" : "s"}
                           </Button>
                         </div>
                       ) : platform.platform === "Custom Integration" ? (

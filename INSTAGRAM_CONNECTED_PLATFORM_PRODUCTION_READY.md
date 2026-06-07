@@ -84,8 +84,9 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13N-C | Instagram revenue resolver and Overview financial metrics | Done and pushed; user validation passed | Instagram analytics revenue backend/UI |
 | 13N-D | Instagram KPI/Benchmark/Insights revenue current values | Done and pushed; user validation pending | Instagram analytics KPI/Benchmark/Insights |
 | 13N-E | Instagram revenue lifecycle invalidation and regression closeout | Done and pushed; user validation pending | Revenue lifecycle/tests/docs |
-| 13N-F | Instagram revenue wizard selected-campaign mapping | Implemented locally; user validation pending | Revenue wizard UI/backend attribution |
-| 13N-G | Instagram multi-campaign test setup default | Implemented locally; user validation pending | Create Campaign and Connected Platforms test setup |
+| 13N-F | Instagram revenue wizard selected-campaign mapping | Done and pushed; user validation pending | Revenue wizard UI/backend attribution |
+| 13N-G | Instagram multi-campaign test setup default | Done and pushed; user validation pending | Create Campaign and Connected Platforms test setup |
+| 13N-H | Instagram live-like simulated account/campaign picker | Implemented locally; user validation pending | Create Campaign and Connected Platforms test setup |
 | 13O | Instagram report route/source contract | Pending | Report backend/UI |
 | 13P | Instagram scheduled report snapshot/send guard | Pending | Scheduled reports |
 | 13Q | Instagram PDF/export output source proof | Pending | Report exports |
@@ -1703,10 +1704,12 @@ Status:
 - [x] Commit 13N-D done and pushed: Instagram KPI/Benchmark/Insights revenue current values.
 - [x] Commit 13N-E done and pushed: Instagram revenue lifecycle invalidation and regression closeout.
 - [ ] User validation pending for Commit 13N-D through Commit 13N-E.
-- [x] Commit 13N-F implemented locally: Instagram revenue wizard selected-campaign mapping.
+- [x] Commit 13N-F done and pushed: Instagram revenue wizard selected-campaign mapping.
 - [ ] User validation pending for Commit 13N-F.
-- [x] Commit 13N-G implemented locally: Instagram multi-campaign test setup default.
+- [x] Commit 13N-G done and pushed: Instagram multi-campaign test setup default.
 - [ ] User validation pending for Commit 13N-G.
+- [x] Commit 13N-H implemented locally: Instagram live-like simulated account/campaign picker.
+- [ ] User validation pending for Commit 13N-H.
 - [ ] Commit 13O pending: Instagram report route/source contract.
 - [ ] Commit 13P pending: Instagram scheduled report snapshot/send guard.
 - [ ] Commit 13Q pending: Instagram PDF/export output source proof.
@@ -1947,6 +1950,7 @@ Commit 13N subcommit split:
 - 13N-E: Revenue add/edit/delete invalidation, disconnect/reconnect checks, focused regression coverage, and validation documentation.
 - 13N-F: Selected Instagram campaign mapping for CSV, Sheets, HubSpot, Salesforce, and Shopify revenue imports.
 - 13N-G: Multi-campaign test setup default so normal validation exercises campaign comparison and campaign mapping.
+- 13N-H: Replace manual test campaign ID entry with a simulated ad-account and campaign picker while live OAuth remains pending.
 
 Commit 13N-A root-cause trace:
 
@@ -2051,6 +2055,21 @@ Commit 13N-G validation:
 - Connect the test account and open Instagram Analytics -> Ad Comparison; confirm the selected campaign count is 3 and multiple campaign rows/charts render.
 - Open Instagram Analytics -> Overview and confirm metrics aggregate across the selected test campaigns.
 - Open Total Revenue `+` and confirm the Instagram campaign mapping selector offers the selected test campaign IDs.
+
+Commit 13N-H root-cause trace:
+
+- The test-mode backend was already source-backed enough to validate account ID, account name, selected campaign IDs, seeded rows, analytics aggregation, and revenue mapping.
+- The UI still exposed raw `Ad Account ID`, `Ad Account Name`, and `Selected Instagram Campaign IDs` text fields, which is not close to the production user journey and incorrectly made manual campaign-ID entry look like normal user behavior.
+- The smallest safe fix is UI-only: keep the same test backend contract, but present a simulated ad-account selector and campaign checkbox list in both Create Campaign and Connected Platforms.
+- This does not add live OAuth, provider account discovery, provider campaign discovery, or live refresh behavior.
+
+Commit 13N-H validation:
+
+- In Create Campaign -> Instagram setup, confirm the form shows `Simulated Instagram Ad Account` and `Available Instagram Campaigns` instead of raw campaign ID entry.
+- In Connected Platforms -> Instagram Ads setup, confirm the same simulated selector appears.
+- Select or deselect campaigns and confirm the Connect button count changes.
+- Connect with multiple selected campaigns and confirm Instagram Analytics -> Ad Comparison shows the selected campaign rows.
+- Confirm this remains simulated/test behavior and does not imply live OAuth is complete.
 
 Commit 13N validation:
 

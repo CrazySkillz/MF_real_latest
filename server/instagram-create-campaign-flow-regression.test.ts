@@ -13,6 +13,11 @@ describe("Instagram Create Campaign flow regression guard", () => {
     expect(page).toContain("connectInstagramTestMode");
     expect(page).toContain('useState("ig_test_1, ig_test_2, ig_test_3")');
     expect(page).toContain('setInstagramSelectedCampaignIds("ig_test_1, ig_test_2, ig_test_3")');
+    expect(page).toContain("Simulated Instagram Ad Account");
+    expect(page).toContain("Available Instagram Campaigns");
+    expect(page).toContain("SIMULATED_INSTAGRAM_CAMPAIGNS");
+    expect(page).toContain("updateInstagramCampaignSelection");
+    expect(page).toContain('Connect {selectedInstagramCampaignIdList.length} Campaign');
     expect(page).toContain("selectedCampaignIds.length === 0");
     expect(page).toContain("`/api/instagram/${draftCampaignId}/connect-test`");
     expect(page).toContain("selectedPlatforms.includes('instagram')");

@@ -1722,7 +1722,7 @@ Commit 13O-R bundle guardrails:
 - Before editing, trace the current shared platform report routes, report scheduler selection, direct snapshot/download routes, report PDF builder, and Instagram analytics Reports tab caller.
 - The first implementation inside the bundle should be the smallest report route/source contract fix only if the trace proves the existing shared report route can safely support `platformType="instagram"`.
 - Scheduler/PDF/export changes should be added only after the route/source contract is proven and covered by focused regression tests.
-- Current local 13O-R slice: the shared campaign-guarded platform report route and storage contract already support `platformType="instagram"` through the existing `linkedin_reports` generic platform report table, but the Instagram Reports tab only rendered read-only rows. The smallest safe fix wires Create/Edit/Delete controls on the Instagram Reports tab to `/api/platforms/instagram/reports` without changing schema, storage, scheduler, report email, snapshot, PDF/export, provider refresh, KPI, Benchmark, or revenue behavior.
+- Current local 13O-R slice: the shared campaign-guarded platform report route and storage contract already support `platformType="instagram"` through the existing `linkedin_reports` generic platform report table, but the Instagram Reports tab only rendered read-only rows and then used a small generic create/edit form. The smallest safe fix wires Create/Edit/Delete controls and refines the Instagram report modal to follow the GA4 Standard Templates / Custom Report pattern without changing schema, storage, scheduler, report email, snapshot, PDF/export, provider refresh, KPI, Benchmark, or revenue behavior.
 
 Commit 13O-R validation:
 

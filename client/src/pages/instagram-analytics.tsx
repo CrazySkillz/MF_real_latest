@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, AlertCircle, AlertTriangle, CheckCircle2, Eye, MousePointer, DollarSign, Target, BarChart3, Percent, Video, Plus, TrendingUp, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, AlertTriangle, CheckCircle2, Eye, MousePointer, DollarSign, Target, BarChart3, Percent, Video, Plus, TrendingUp, Pencil, Trash2, FileText, Settings, Trophy, Activity, Info } from "lucide-react";
 import { SiInstagram } from "react-icons/si";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import Navigation from "@/components/layout/navigation";
@@ -35,6 +35,14 @@ const INSTAGRAM_KPI_METRICS = [
   { key: "roas", label: "ROAS", unit: "ratio" },
   { key: "roi", label: "ROI", unit: "%" },
   { key: "profit", label: "Profit", unit: "$" },
+];
+
+const INSTAGRAM_REPORT_TEMPLATES = [
+  { key: "overview", title: "Overview", desc: "Comprehensive overview of Instagram campaign performance metrics", Icon: BarChart3, chips: ["Overview", "Metrics", "Insights"] },
+  { key: "kpis", title: "KPIs", desc: "Key performance indicators and progress tracking", Icon: Target, chips: ["Metrics", "Targets", "Progress"] },
+  { key: "benchmarks", title: "Benchmarks", desc: "Performance benchmarks and comparisons", Icon: Trophy, chips: ["Industry", "Historical", "Goals"] },
+  { key: "ads", title: "Ad Comparison", desc: "Campaign-level Instagram performance comparison", Icon: Activity, chips: ["Performance", "Ranking", "Insights"] },
+  { key: "insights", title: "Insights", desc: "Executive financials, trends, and recommended checks", Icon: Info, chips: ["Executive", "Trends", "Actions"] },
 ];
 
 const LOWER_IS_BETTER_KPIS = new Set(["cpc", "cpm", "costPerConversion"]);
@@ -148,6 +156,7 @@ export default function InstagramAnalytics() {
   });
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [editingReport, setEditingReport] = useState<any>(null);
+  const [reportModalStep, setReportModalStep] = useState<"standard" | "custom">("standard");
   const [reportForm, setReportForm] = useState({
     name: "",
     description: "",
@@ -590,12 +599,30 @@ export default function InstagramAnalytics() {
     }));
   };
   const resetReportForm = (report?: any) => {
+    const reportType = String(report?.reportType || "overview");
     setEditingReport(report || null);
+    setReportModalStep(reportType === "custom" ? "custom" : "standard");
     setReportForm({
       name: String(report?.name || ""),
       description: String(report?.description || ""),
-      reportType: String(report?.reportType || "overview"),
+      reportType,
     });
+  };
+  const handleReportTypeSelect = (reportType: string) => {
+    const template = INSTAGRAM_REPORT_TEMPLATES.find((item) => item.key === reportType);
+    setReportForm((form) => ({
+      ...form,
+      reportType,
+      name: template ? `Instagram ${template.title} Report` : "Instagram Report",
+    }));
+  };
+  const handleCustomReportSelect = () => {
+    setReportModalStep("custom");
+    setReportForm((form) => ({
+      ...form,
+      reportType: "custom",
+      name: form.name || "Custom Report",
+    }));
   };
   const saveKpiMutation = useMutation({
     mutationFn: async () => {
@@ -1465,49 +1492,124 @@ export default function InstagramAnalytics() {
           </div>
         </main>
       </div>
-      <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
-        <DialogContent className="max-w-lg bg-card border-border">
-          <DialogHeader className="pb-4 pr-8">
-            <DialogTitle>{editingReport ? "Edit Instagram Report" : "Create Instagram Report"}</DialogTitle>
-            <DialogDescription>Save a campaign-scoped report definition for Instagram analytics.</DialogDescription>
+      <Dialog
+        open={reportDialogOpen}
+        onOpenChange={(open) => {
+          setReportDialogOpen(open);
+          if (!open) setEditingReport(null);
+        }}
+      >
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Report Type</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="instagram-report-name">Report Name *</Label>
-              <Input
-                id="instagram-report-name"
-                value={reportForm.name}
-                onChange={(event) => setReportForm((form) => ({ ...form, name: event.target.value }))}
-                placeholder="e.g., Instagram Weekly Performance"
-              />
+
+          <div className="py-4">
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div
+                className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${reportModalStep === "standard" ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-border"}`}
+                onClick={() => {
+                  setReportModalStep("standard");
+                  if (reportForm.reportType === "custom") handleReportTypeSelect("overview");
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <FileText className="w-6 h-6 text-blue-600 mt-1" />
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground">Standard Templates</h3>
+                    <p className="text-sm text-muted-foreground/70 mt-1">Pre-built professional report templates</p>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${reportModalStep === "custom" ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-border"}`}
+                onClick={handleCustomReportSelect}
+              >
+                <div className="flex items-start gap-3">
+                  <Settings className="w-6 h-6 text-blue-600 mt-1" />
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground">Custom Report</h3>
+                    <p className="text-sm text-muted-foreground/70 mt-1">Build your own customized report</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="instagram-report-type">Report Type</Label>
-              <Select value={reportForm.reportType} onValueChange={(value) => setReportForm((form) => ({ ...form, reportType: value }))}>
-                <SelectTrigger id="instagram-report-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="overview">Overview</SelectItem>
-                  <SelectItem value="kpis">KPIs</SelectItem>
-                  <SelectItem value="benchmarks">Benchmarks</SelectItem>
-                  <SelectItem value="ads">Ad Comparison</SelectItem>
-                  <SelectItem value="insights">Insights</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="instagram-report-description">Description</Label>
-              <Textarea
-                id="instagram-report-description"
-                value={reportForm.description}
-                rows={3}
-                onChange={(event) => setReportForm((form) => ({ ...form, description: event.target.value }))}
-                placeholder="Describe what this report should cover"
-              />
+
+            {reportModalStep === "standard" ? (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-bold text-foreground mb-4">Choose Template</h3>
+                  <div className="space-y-4">
+                    {INSTAGRAM_REPORT_TEMPLATES.map((template) => {
+                      const selected = reportForm.reportType === template.key;
+                      const Icon = template.Icon;
+                      return (
+                        <div
+                          key={template.key}
+                          className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${selected ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-border"}`}
+                          onClick={() => handleReportTypeSelect(template.key)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <Icon className="w-5 h-5 text-foreground mt-0.5" />
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-foreground">{template.title}</h4>
+                              <p className="text-sm text-muted-foreground/70 mt-1">{template.desc}</p>
+                              <div className="flex gap-2 mt-3 flex-wrap">
+                                {template.chips.map((chip) => (
+                                  <span key={chip} className="text-xs px-2 py-1 bg-muted rounded">{chip}</span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-bold text-foreground mb-2">Custom Report</h3>
+                  <p className="text-sm text-muted-foreground/70">Save a custom Instagram report definition for this campaign.</p>
+                </div>
+                <div className="rounded-lg border border-border p-4">
+                  <div className="text-sm font-medium text-foreground mb-3">Available Instagram sections</div>
+                  <div className="grid gap-2 sm:grid-cols-2 text-sm text-muted-foreground">
+                    <div>Overview</div>
+                    <div>KPIs</div>
+                    <div>Benchmarks</div>
+                    <div>Ad Comparison</div>
+                    <div>Insights</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-4 border-t mt-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="instagram-report-name">Report Name</Label>
+                <Input
+                  id="instagram-report-name"
+                  value={reportForm.name}
+                  onChange={(event) => setReportForm((form) => ({ ...form, name: event.target.value }))}
+                  placeholder="Enter report name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="instagram-report-description">Description (Optional)</Label>
+                <Textarea
+                  id="instagram-report-description"
+                  value={reportForm.description}
+                  rows={3}
+                  onChange={(event) => setReportForm((form) => ({ ...form, description: event.target.value }))}
+                  placeholder="Add a description for this report"
+                />
+              </div>
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setReportDialogOpen(false)}>Cancel</Button>
             <Button onClick={() => saveReportMutation.mutate()} disabled={saveReportMutation.isPending || !reportForm.name.trim()}>

@@ -80,6 +80,51 @@ function formatNumericInput(value: string) {
   return decimalParts.length > 0 ? `${integer || "0"}.${decimal}` : integer;
 }
 
+function instagramDayOfWeekKeyToInt(value: string) {
+  const map: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+  return map[String(value || "").toLowerCase()] ?? null;
+}
+
+function instagramDayOfWeekIntToKey(value: any) {
+  const map: Record<number, string> = { 0: "sunday", 1: "monday", 2: "tuesday", 3: "wednesday", 4: "thursday", 5: "friday", 6: "saturday" };
+  return map[Number(value)] || "monday";
+}
+
+function instagramDayOfMonthToInt(value: string) {
+  const raw = String(value || "").toLowerCase();
+  if (raw === "last") return 0;
+  if (raw === "first") return 1;
+  const day = parseInt(raw, 10);
+  return Number.isFinite(day) ? Math.max(0, Math.min(31, day)) : null;
+}
+
+function instagramDayOfMonthToKey(value: any) {
+  const day = Number(value);
+  if (day === 0) return "last";
+  if (day === 1) return "first";
+  return Number.isFinite(day) && day > 0 ? String(day) : "first";
+}
+
+function instagramTo24HourHHMM(value: string) {
+  const input = String(value || "").trim();
+  const match = input.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return /^\d{1,2}:\d{2}$/.test(input) ? input : "09:00";
+  let hours = parseInt(match[1], 10);
+  if (match[3].toUpperCase() === "AM" && hours === 12) hours = 0;
+  if (match[3].toUpperCase() === "PM" && hours !== 12) hours += 12;
+  return `${String(hours).padStart(2, "0")}:${match[2]}`;
+}
+
+function instagramFrom24HourTo12Hour(value: any) {
+  const match = String(value || "").match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return "9:00 AM";
+  let hours = parseInt(match[1], 10);
+  const suffix = hours >= 12 ? "PM" : "AM";
+  if (hours === 0) hours = 12;
+  if (hours > 12) hours -= 12;
+  return `${hours}:${match[2]} ${suffix}`;
+}
+
 function formatPctValue(value: number | null) {
   return value === null ? "Unavailable" : `${value.toFixed(2)}%`;
 }
@@ -161,7 +206,15 @@ export default function InstagramAnalytics() {
     name: "",
     description: "",
     reportType: "overview",
+    scheduleEnabled: false,
+    scheduleFrequency: "daily",
+    scheduleDayOfWeek: "monday",
+    scheduleDayOfMonth: "first",
+    quarterTiming: "end",
+    scheduleTime: "9:00 AM",
+    emailRecipients: "",
   });
+  const [reportFormErrors, setReportFormErrors] = useState<{ emailRecipients?: string }>({});
 
   const { data: connection, isLoading, error } = useQuery<any>({
     queryKey: [`/api/instagram/${campaignId}/connection`],
@@ -606,7 +659,15 @@ export default function InstagramAnalytics() {
       name: String(report?.name || ""),
       description: String(report?.description || ""),
       reportType,
+      scheduleEnabled: !!report?.scheduleEnabled,
+      scheduleFrequency: String(report?.scheduleFrequency || "daily"),
+      scheduleDayOfWeek: instagramDayOfWeekIntToKey(report?.scheduleDayOfWeek),
+      scheduleDayOfMonth: instagramDayOfMonthToKey(report?.scheduleDayOfMonth),
+      quarterTiming: String(report?.quarterTiming || "end"),
+      scheduleTime: instagramFrom24HourTo12Hour(report?.scheduleTime),
+      emailRecipients: Array.isArray(report?.scheduleRecipients) ? report.scheduleRecipients.join(", ") : "",
     });
+    setReportFormErrors({});
   };
   const handleReportTypeSelect = (reportType: string) => {
     const template = INSTAGRAM_REPORT_TEMPLATES.find((item) => item.key === reportType);
@@ -623,6 +684,14 @@ export default function InstagramAnalytics() {
       reportType: "custom",
       name: form.name || "Custom Report",
     }));
+  };
+  const validateReportForm = () => {
+    if (reportForm.scheduleEnabled && !String(reportForm.emailRecipients || "").trim()) {
+      setReportFormErrors({ emailRecipients: "Email recipients are required for scheduled reports" });
+      return false;
+    }
+    setReportFormErrors({});
+    return true;
   };
   const saveKpiMutation = useMutation({
     mutationFn: async () => {
@@ -749,13 +818,21 @@ export default function InstagramAnalytics() {
   });
   const saveReportMutation = useMutation({
     mutationFn: async () => {
+      if (!validateReportForm()) throw new Error("Email recipients are required for scheduled reports");
       const payload = {
         campaignId,
         name: reportForm.name || "Instagram Report",
         description: reportForm.description,
         reportType: reportForm.reportType || "overview",
         status: "active",
-        scheduleEnabled: false,
+        scheduleEnabled: reportForm.scheduleEnabled,
+        scheduleFrequency: reportForm.scheduleEnabled ? reportForm.scheduleFrequency : undefined,
+        scheduleDayOfWeek: reportForm.scheduleEnabled && reportForm.scheduleFrequency === "weekly" ? instagramDayOfWeekKeyToInt(reportForm.scheduleDayOfWeek) : undefined,
+        scheduleDayOfMonth: reportForm.scheduleEnabled && (reportForm.scheduleFrequency === "monthly" || reportForm.scheduleFrequency === "quarterly") ? instagramDayOfMonthToInt(reportForm.scheduleDayOfMonth) : undefined,
+        scheduleTime: reportForm.scheduleEnabled ? instagramTo24HourHHMM(reportForm.scheduleTime) : undefined,
+        scheduleTimeZone: reportForm.scheduleEnabled ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined,
+        quarterTiming: reportForm.scheduleEnabled && reportForm.scheduleFrequency === "quarterly" ? reportForm.quarterTiming : undefined,
+        scheduleRecipients: reportForm.scheduleEnabled ? reportForm.emailRecipients.split(",").map((email) => email.trim()).filter(Boolean) : undefined,
       };
       const response = await fetch(editingReport ? `/api/platforms/instagram/reports/${editingReport.id}` : "/api/platforms/instagram/reports", {
         method: editingReport ? "PATCH" : "POST",
@@ -1586,6 +1663,128 @@ export default function InstagramAnalytics() {
                 </div>
               </div>
             )}
+
+            <div className="pt-4 border-t mt-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Checkbox
+                  id="instagram-schedule-reports"
+                  checked={reportForm.scheduleEnabled}
+                  onCheckedChange={(checked) => {
+                    const enabled = checked === true;
+                    setReportForm((form) => ({ ...form, scheduleEnabled: enabled }));
+                    if (!enabled) setReportFormErrors({});
+                  }}
+                />
+                <Label htmlFor="instagram-schedule-reports" className="text-base font-semibold cursor-pointer">
+                  Schedule Automated Reports
+                </Label>
+              </div>
+
+              {reportForm.scheduleEnabled && (
+                <div className="bg-muted/50 rounded-lg p-4 space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="instagram-schedule-frequency">Frequency</Label>
+                    <Select value={reportForm.scheduleFrequency} onValueChange={(value) => setReportForm((form) => ({ ...form, scheduleFrequency: value }))}>
+                      <SelectTrigger id="instagram-schedule-frequency"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="quarterly">Quarterly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {reportForm.scheduleFrequency === "weekly" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="instagram-schedule-day">Day of Week</Label>
+                      <Select value={reportForm.scheduleDayOfWeek} onValueChange={(value) => setReportForm((form) => ({ ...form, scheduleDayOfWeek: value }))}>
+                        <SelectTrigger id="instagram-schedule-day"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monday">Monday</SelectItem>
+                          <SelectItem value="tuesday">Tuesday</SelectItem>
+                          <SelectItem value="wednesday">Wednesday</SelectItem>
+                          <SelectItem value="thursday">Thursday</SelectItem>
+                          <SelectItem value="friday">Friday</SelectItem>
+                          <SelectItem value="saturday">Saturday</SelectItem>
+                          <SelectItem value="sunday">Sunday</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {reportForm.scheduleFrequency === "quarterly" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="instagram-quarter-timing">Quarter Timing</Label>
+                      <Select value={reportForm.quarterTiming} onValueChange={(value) => setReportForm((form) => ({ ...form, quarterTiming: value }))}>
+                        <SelectTrigger id="instagram-quarter-timing"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="end">End of Quarter (Mar, Jun, Sep, Dec)</SelectItem>
+                          <SelectItem value="start">Start of Quarter (Jan, Apr, Jul, Oct)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {(reportForm.scheduleFrequency === "monthly" || reportForm.scheduleFrequency === "quarterly") && (
+                    <div className="space-y-2">
+                      <Label htmlFor="instagram-schedule-day-month">Day of Month</Label>
+                      <Select value={reportForm.scheduleDayOfMonth} onValueChange={(value) => setReportForm((form) => ({ ...form, scheduleDayOfMonth: value }))}>
+                        <SelectTrigger id="instagram-schedule-day-month"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="first">First day of month</SelectItem>
+                          <SelectItem value="last">Last day of month</SelectItem>
+                          <SelectItem value="15">Mid-month (15th)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="instagram-schedule-time">Time</Label>
+                    <Select value={reportForm.scheduleTime} onValueChange={(value) => setReportForm((form) => ({ ...form, scheduleTime: value }))}>
+                      <SelectTrigger id="instagram-schedule-time"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="6:00 AM">6:00 AM</SelectItem>
+                        <SelectItem value="7:00 AM">7:00 AM</SelectItem>
+                        <SelectItem value="8:00 AM">8:00 AM</SelectItem>
+                        <SelectItem value="9:00 AM">9:00 AM</SelectItem>
+                        <SelectItem value="10:00 AM">10:00 AM</SelectItem>
+                        <SelectItem value="11:00 AM">11:00 AM</SelectItem>
+                        <SelectItem value="12:00 PM">12:00 PM</SelectItem>
+                        <SelectItem value="1:00 PM">1:00 PM</SelectItem>
+                        <SelectItem value="2:00 PM">2:00 PM</SelectItem>
+                        <SelectItem value="3:00 PM">3:00 PM</SelectItem>
+                        <SelectItem value="4:00 PM">4:00 PM</SelectItem>
+                        <SelectItem value="5:00 PM">5:00 PM</SelectItem>
+                        <SelectItem value="6:00 PM">6:00 PM</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground/70">All times are in your browser time zone: {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="instagram-email-recipients">Email Recipients *</Label>
+                    <Input
+                      id="instagram-email-recipients"
+                      value={reportForm.emailRecipients}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setReportForm((form) => ({ ...form, emailRecipients: value }));
+                        if (reportFormErrors.emailRecipients && value.trim()) setReportFormErrors({});
+                      }}
+                      placeholder="Enter email addresses (comma-separated)"
+                      className={reportFormErrors.emailRecipients ? "border-red-500 focus-visible:ring-red-500" : undefined}
+                    />
+                    {reportFormErrors.emailRecipients ? (
+                      <p className="text-sm text-red-600 dark:text-red-400">{reportFormErrors.emailRecipients}</p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground/70">Reports will be automatically generated and sent to these email addresses.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="pt-4 border-t mt-6 space-y-4">
               <div className="space-y-2">

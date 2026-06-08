@@ -705,6 +705,9 @@ Status:
 - [x] Commit 7 test-mode refresh fix completed locally: added explicit `POST /api/tiktok/:campaignId/refresh-test` that writes simulated persisted rows only for selected TikTok campaign IDs and only for test-mode connections.
 - [x] Commit 7 test-mode refresh keeps analytics reads pure: `GET /api/tiktok/:campaignId/daily-metrics` still does not seed or invent rows.
 - [x] Commit 7 test-mode refresh local validation passed: targeted TikTok regression tests, endpoint auth/source-safety regression tests, and `npm run check`.
+- [x] Commit 7 browser follow-up root cause traced: the analytics page required a manual test refresh after the first no-row read, and Campaign Detail always attached a static TikTok no-row warning.
+- [x] Commit 7 browser follow-up completed locally: TikTok analytics now automatically triggers the explicit test-mode refresh when selected rows are missing, removes the visible `Refresh test metrics` button, and removes the static Connected Platforms warning.
+- [x] Commit 7 browser follow-up local validation passed: targeted TikTok regression tests, endpoint auth/source-safety regression tests, and `npm run check`.
 
 ### Commit 8: Campaign DeepDive Aggregate Participation
 
@@ -1005,5 +1008,8 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - Commit 7 no-row root cause traced from browser validation: TikTok test-mode connection exists, but no selected TikTok daily rows have been persisted yet.
 - Commit 7 no-row fix was implemented locally with an explicit test-mode refresh action that persists current-campaign selected TikTok source rows only.
 - Commit 7 no-row fix validation passed: targeted TikTok regression tests, endpoint auth/source-safety regression tests, and `npm run check`.
+- Commit 7 display follow-up root cause traced from browser validation: the test refresh existed but required a visible manual button, and Connected Platforms displayed a static no-row warning for TikTok.
+- Commit 7 display follow-up was implemented locally: first analytics load auto-runs the explicit test-mode refresh when selected TikTok rows are missing, and the Connected Platforms static TikTok no-row warning was removed.
+- Commit 7 display follow-up validation passed: targeted TikTok regression tests, endpoint auth/source-safety regression tests, and `npm run check`.
 - No TikTok scheduler, aggregate, revenue import, KPI, Benchmark, report, or provider OAuth code has been changed.
 - Live OAuth/provider validation is deferred.

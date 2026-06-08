@@ -4880,8 +4880,7 @@ export default function CampaignDetail() {
       spend: "0.00",
       ctr: "0.00%",
       cpc: "$0.00",
-      analyticsPath: isTikTokConnected ? (platformStatusMap.get("tiktok")?.analyticsPath || `/campaigns/${campaign?.id}/tiktok-analytics`) : null,
-      unavailableReason: "Source-backed TikTok metrics are not available until persisted TikTok metric rows exist."
+      analyticsPath: isTikTokConnected ? (platformStatusMap.get("tiktok")?.analyticsPath || `/campaigns/${campaign?.id}/tiktok-analytics`) : null
     },
     {
       platform: "Custom Integration",

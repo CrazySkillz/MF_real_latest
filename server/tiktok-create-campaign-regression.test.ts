@@ -88,7 +88,20 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(routes).toContain("storage.upsertTikTokDailyMetrics(rows as any)");
     expect(routes).toContain("isSimulated: true");
     expect(routes).toContain('metricAvailability: { revenue: "unavailable_until_tiktok_scoped_attributed_revenue_exists" }');
-    expect(page).toContain("Refresh test metrics");
+    expect(page).toContain("shouldAutoRefreshTestMetrics");
     expect(page).toContain("refreshTestMetrics.mutate()");
+    expect(page).not.toContain("Refresh test metrics");
+  });
+
+  it("does not show a static TikTok no-row warning on Connected Platforms", () => {
+    const campaignDetail = readCampaignDetailPage();
+    const tiktokCardStart = campaignDetail.indexOf('platform: "TikTok Ads"');
+    const customIntegrationStart = campaignDetail.indexOf('platform: "Custom Integration"', tiktokCardStart);
+    const tiktokCard = campaignDetail.slice(tiktokCardStart, customIntegrationStart);
+
+    expect(tiktokCardStart).toBeGreaterThanOrEqual(0);
+    expect(tiktokCard).toContain("platformStatusMap.get(\"tiktok\")?.analyticsPath");
+    expect(tiktokCard).not.toContain("unavailableReason");
+    expect(campaignDetail).not.toContain("Source-backed TikTok metrics are not available until persisted TikTok metric rows exist.");
   });
 });

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, AlertCircle, BarChart3, DollarSign, Eye, MousePointer, Percent, Target, Video } from "lucide-react";
@@ -86,6 +86,20 @@ export default function TikTokAnalytics() {
       await queryClient.invalidateQueries({ queryKey: [`/api/tiktok/${campaignId}/connection`], exact: false });
     },
   });
+  const shouldAutoRefreshTestMetrics =
+    connection?.method === "test_mode" &&
+    !!dailyMetrics &&
+    !metricsLoading &&
+    !metricsError &&
+    !hasRows &&
+    !refreshTestMetrics.isPending &&
+    !refreshTestMetrics.isSuccess &&
+    !refreshTestMetrics.error;
+  useEffect(() => {
+    if (shouldAutoRefreshTestMetrics) {
+      refreshTestMetrics.mutate();
+    }
+  }, [shouldAutoRefreshTestMetrics, refreshTestMetrics]);
   const totals = useMemo(() => {
     const summed = rows.reduce((acc: any, row: any) => {
       acc.impressions += Number(row.impressions || 0);
@@ -203,30 +217,16 @@ export default function TikTokAnalytics() {
                 <TabsContent value="overview" className="space-y-4">
                   {metricsLoading ? (
                     <div className="min-h-[140px]" aria-hidden="true" />
+                  ) : !hasRows && (shouldAutoRefreshTestMetrics || refreshTestMetrics.isPending || refreshTestMetrics.isSuccess) ? (
+                    <div className="min-h-[140px]" aria-hidden="true" />
                   ) : !hasRows ? (
                     <Card>
                       <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-3 text-sm bg-muted/60 border border-border rounded-lg p-3">
-                          <div className="flex items-start gap-2">
+                        <div className="flex items-start gap-2 text-sm bg-muted/60 border border-border rounded-lg p-3">
                           <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="text-muted-foreground">{unavailableReason}</p>
-                              {refreshTestMetrics.error && (
-                                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{(refreshTestMetrics.error as Error).message}</p>
-                              )}
-                            </div>
+                          <div>
+                            <p className="text-muted-foreground">{refreshTestMetrics.error ? (refreshTestMetrics.error as Error).message : unavailableReason}</p>
                           </div>
-                          {connection?.method === "test_mode" && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => refreshTestMetrics.mutate()}
-                              disabled={refreshTestMetrics.isPending}
-                            >
-                              {refreshTestMetrics.isPending ? "Refreshing..." : "Refresh test metrics"}
-                            </Button>
-                          )}
                         </div>
                       </CardContent>
                     </Card>

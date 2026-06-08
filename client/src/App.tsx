@@ -29,6 +29,7 @@ const LinkedInAnalytics = lazy(() => import("@/pages/linkedin-analytics"));
 const MetaAnalytics = lazy(() => import("@/pages/meta-analytics"));
 const GoogleAdsAnalytics = lazy(() => import("@/pages/google-ads-analytics"));
 const InstagramAnalytics = lazy(() => import("@/pages/instagram-analytics"));
+const TikTokAnalytics = lazy(() => import("@/pages/tiktok-analytics"));
 const CustomIntegrationAnalytics = lazy(() => import("@/pages/custom-integration-analytics"));
 import KPIs from "@/pages/kpis";
 import PlatformKPIs from "@/pages/platform-kpis";
@@ -131,6 +132,7 @@ function ProtectedRouter() {
             <Route path="/campaigns/:id/meta-analytics" component={MetaAnalytics} />
             <Route path="/campaigns/:id/google-ads-analytics" component={GoogleAdsAnalytics} />
             <Route path="/campaigns/:id/instagram-analytics" component={InstagramAnalytics} />
+            <Route path="/campaigns/:id/tiktok-analytics" component={TikTokAnalytics} />
             <Route path="/campaigns/:id/custom-integration-analytics" component={CustomIntegrationAnalytics} />
             <Route path="/integrations/:id/analytics" component={CustomIntegrationAnalytics} />
             <Route path="/campaigns/:id/kpis" component={KPIs} />

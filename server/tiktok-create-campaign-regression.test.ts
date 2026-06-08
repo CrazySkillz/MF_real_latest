@@ -4,6 +4,9 @@ import { join } from "path";
 
 const readCampaignsPage = () => readFileSync(join(process.cwd(), "client", "src", "pages", "campaigns.tsx"), "utf8");
 const readCampaignDetailPage = () => readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"), "utf8");
+const readTikTokAnalyticsPage = () => readFileSync(join(process.cwd(), "client", "src", "pages", "tiktok-analytics.tsx"), "utf8");
+const readApp = () => readFileSync(join(process.cwd(), "client", "src", "App.tsx"), "utf8");
+const readRoutes = () => readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
 
 describe("TikTok Create Campaign source-contract regression guard", () => {
   it("exposes TikTok only through the Create Campaign test source contract", () => {
@@ -50,8 +53,26 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(campaignDetail).toContain("connectTikTokTestMode");
     expect(campaignDetail).toContain('apiRequest("POST", `/api/tiktok/${campaignId}/connect-test`');
     expect(campaignDetail).toContain('platform: "TikTok Ads"');
-    expect(campaignDetail).toContain('analyticsPath: null');
+    expect(campaignDetail).toContain("platformStatusMap.get(\"tiktok\")?.analyticsPath");
     expect(campaignDetail).toContain('url = `/api/tiktok/${campaignId}/connection`');
-    expect(campaignDetail).not.toContain("tiktok-analytics");
+  });
+
+  it("reads TikTok analytics from selected persisted rows only", () => {
+    const routes = readRoutes();
+    const app = readApp();
+    const page = readTikTokAnalyticsPage();
+
+    expect(routes).toContain('app.get("/api/tiktok/:campaignId/daily-metrics"');
+    expect(routes).toContain("ensureCampaignAccess(req as any, res as any, parsedId.data)");
+    expect(routes).toContain("storage.getTikTokConnection(parsedId.data)");
+    expect(routes).toContain("storage.getTikTokDailyMetrics(parsedId.data, startDate, endDate)");
+    expect(routes).toContain("selected.has(String(row.tiktokCampaignId))");
+    expect(routes).not.toContain("upsertTikTokDailyMetrics");
+    expect(app).toContain('const TikTokAnalytics = lazy(() => import("@/pages/tiktok-analytics"))');
+    expect(app).toContain('<Route path="/campaigns/:id/tiktok-analytics" component={TikTokAnalytics} />');
+    expect(page).toContain("TikTok Ads Analytics");
+    expect(page).toContain("Revenue / ROI / ROAS");
+    expect(page).toContain("Requires TikTok-scoped attributed revenue.");
+    expect(page).toContain("No persisted TikTok metric rows exist");
   });
 });

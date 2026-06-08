@@ -52,13 +52,13 @@ Bundling rule:
 | 6D | Connected Platforms success/error/empty states and query invalidation | Done locally; validation pending | Connected Platforms UI state |
 | 6E | Connected Platforms disconnect UI route mapping | Done locally; validation pending | Connected Platforms lifecycle |
 | 6F | Commit 6 regression and validation docs | Done locally; validation pending | None |
-| 7A | TikTok analytics route shell and campaign-access guard | Pending | TikTok analytics route |
-| 7B | TikTok analytics daily metrics endpoint | Pending | Backend analytics data |
-| 7C | TikTok Overview tab from persisted selected daily rows only | Pending | Analytics UI |
-| 7D | TikTok Campaign Breakdown from selected campaign rows only | Pending | Analytics UI |
-| 7E | TikTok Ad Comparison and Insights source-backed tab parity | Pending | Analytics UI |
-| 7F | TikTok unavailable/error/freshness states | Pending | Analytics UI state |
-| 7G | Commit 7 regression and validation docs | Pending | None |
+| 7A | TikTok analytics route shell and campaign-access guard | Done locally; validation pending | TikTok analytics route |
+| 7B | TikTok analytics daily metrics endpoint | Done locally; validation pending | Backend analytics data |
+| 7C | TikTok Overview tab from persisted selected daily rows only | Done locally; validation pending | Analytics UI |
+| 7D | TikTok Campaign Breakdown from selected TikTok campaign rows only | Done locally; validation pending | Analytics UI |
+| 7E | TikTok Ad Comparison and Insights source-backed tab parity | Done locally; validation pending | Analytics UI |
+| 7F | TikTok unavailable/error/freshness states | Done locally; validation pending | Analytics UI state |
+| 7G | Commit 7 regression and validation docs | Done locally; validation pending | None |
 | 8A | TikTok aggregate resolver reads only selected `tiktok_daily_metrics` rows | Pending | Campaign DeepDive backend aggregate |
 | 8B | `/outcome-totals` source composition accepts TikTok through `platformSources` | Pending | Campaign DeepDive aggregate |
 | 8C | `/executive-summary` uses same TikTok source composition | Pending | Campaign DeepDive aggregate |
@@ -666,6 +666,12 @@ Goal:
 
 - Add platform-specific TikTok analytics from selected persisted rows only.
 
+Root cause analysis:
+
+- TikTok can now be connected from Create Campaign and Connected Platforms, but there is no TikTok analytics route, frontend page, or selected-row analytics endpoint.
+- Without a TikTok analytics endpoint, the UI would either have to hide analytics forever or risk reading unscoped/generic paid-media values.
+- The smallest safe Commit 7 fix is to add a campaign-access guarded TikTok daily-metrics endpoint that filters persisted `tiktok_daily_metrics` rows by the connection's selected TikTok campaign IDs, then add a minimal analytics page that renders unavailable states when rows or revenue are missing. It must not seed test rows, invent placeholder values, or wire Campaign DeepDive, scheduler, KPI, Benchmark, Reports, revenue, ROI, or ROAS behavior.
+
 Subcommits:
 
 - 7A: Add TikTok analytics route shell and campaign-access guard.
@@ -682,6 +688,19 @@ Validation:
 - TikTok Overview values match persisted selected rows.
 - Campaign Breakdown excludes unselected TikTok campaign rows.
 - Missing metrics show unavailable reasons.
+
+Status:
+
+- [x] Commit 7A completed locally: added `/campaigns/:id/tiktok-analytics` route and a campaign-scoped TikTok analytics page shell.
+- [x] Commit 7B completed locally: added `GET /api/tiktok/:campaignId/daily-metrics`, guarded by campaign access and selected TikTok campaign IDs.
+- [x] Commit 7C completed locally: Overview cards aggregate only returned persisted TikTok rows.
+- [x] Commit 7D completed locally: Campaign Breakdown groups only selected TikTok campaign rows.
+- [x] Commit 7E completed locally: Ad Comparison and Insights render source-backed/unavailable states without ad-level or revenue inventions.
+- [x] Commit 7F completed locally: disconnected, error, no-row, and revenue-unavailable states render explicit reasons.
+- [x] Commit 7G completed locally: regression guard updated for selected-row TikTok analytics.
+- [x] Commit 7 preserved adjacent boundaries: no Campaign DeepDive aggregate, scheduler, revenue import, KPI, Benchmark, Reports, or TikTok provider OAuth code was added.
+- [x] Commit 7 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
+- [x] Commit 7 local validation passed: `npm run check`.
 
 ### Commit 8: Campaign DeepDive Aggregate Participation
 
@@ -975,5 +994,9 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - Commit 6 root cause traced: Connected Platforms cannot add TikTok later because `/api/campaigns/:id/connected-platforms` does not include TikTok and Campaign Detail has no TikTok setup card/branch despite the backend TikTok source-contract routes existing.
 - Commit 6 Connected Platforms add-source flow was implemented locally.
 - Commit 6 local validation passed: Connected Platforms/Create Campaign regression tests, endpoint auth/source-safety regression tests, `npm run check`, and `git diff --check`.
-- No TikTok analytics page, scheduler, aggregate, revenue, KPI, Benchmark, or report code has been changed.
+- User validation passed for Commit 6.
+- Commit 7 root cause traced: TikTok has connected-source setup but no selected-row analytics endpoint or campaign-scoped analytics page.
+- Commit 7 TikTok analytics page and daily-metrics endpoint were implemented locally from selected persisted TikTok rows only.
+- Commit 7 local validation passed: selected-row analytics regression tests, endpoint auth/source-safety regression tests, and `npm run check`.
+- No TikTok scheduler, aggregate, revenue import, KPI, Benchmark, report, or provider OAuth code has been changed.
 - Live OAuth/provider validation is deferred.

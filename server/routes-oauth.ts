@@ -10664,7 +10664,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: "tiktok",
           name: "TikTok Ads",
           connected: tiktokConnected,
-          analyticsPath: null,
+          analyticsPath: tiktokConnected ? `/campaigns/${campaignId}/tiktok-analytics` : null,
           lastConnectedAt: tiktokConnection?.connectedAt,
           method: tiktokConnection?.method,
           selectedCampaignIds: tiktokSelectedCampaignIds,
@@ -20169,6 +20169,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[TikTok] List campaigns error:', error);
       res.status(500).json({ error: error.message || 'Failed to list TikTok campaigns' });
+    }
+  });
+
+  /**
+   * Read TikTok analytics daily rows from persisted selected TikTok source rows only
+   */
+  app.get("/api/tiktok/:campaignId/daily-metrics", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getTikTokConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "TikTok connection not found" });
+      }
+
+      const selectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      if (selectedCampaignIds.length === 0) {
+        return res.status(400).json({ error: "No selected TikTok campaigns" });
+      }
+
+      const dateRange = String(req.query.dateRange || "30days");
+      const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const selected = new Set(selectedCampaignIds);
+      const rows = (await storage.getTikTokDailyMetrics(parsedId.data, startDate, endDate).catch(() => []))
+        .filter((row: any) => selected.has(String(row.tiktokCampaignId)))
+        .map((row: any) => ({
+          date: row.date,
+          advertiserId: row.advertiserId,
+          tiktokCampaignId: row.tiktokCampaignId,
+          tiktokCampaignName: row.tiktokCampaignName,
+          impressions: Number(row.impressions || 0),
+          clicks: Number(row.clicks || 0),
+          spend: Number(row.spend || 0),
+          currency: row.currency,
+          conversions: Number(row.conversions || 0),
+          videoViews: Number(row.videoViews || 0),
+          engagements: Number(row.engagements || 0),
+          ctr: row.ctr === null || row.ctr === undefined ? null : Number(row.ctr),
+          cpc: row.cpc === null || row.cpc === undefined ? null : Number(row.cpc),
+          cpm: row.cpm === null || row.cpm === undefined ? null : Number(row.cpm),
+          costPerConversion: row.costPerConversion === null || row.costPerConversion === undefined ? null : Number(row.costPerConversion),
+          conversionRate: row.conversionRate === null || row.conversionRate === undefined ? null : Number(row.conversionRate),
+          metricAvailability: row.metricAvailability,
+          isEstimated: row.isEstimated,
+          isSimulated: row.isSimulated,
+          sourceContractVersion: row.sourceContractVersion,
+          lastSyncedAt: row.lastSyncedAt,
+        }));
+
+      res.json({
+        success: true,
+        connected: true,
+        dateRange,
+        startDate,
+        endDate,
+        selectedCampaignIds,
+        rowCount: rows.length,
+        rows,
+        unavailableReason: rows.length === 0 ? "No persisted TikTok metric rows exist for the selected campaigns and date range." : null,
+      });
+    } catch (error: any) {
+      console.error('[TikTok] Daily metrics error:', error);
+      res.status(500).json({ error: error.message || 'Failed to get TikTok daily metrics' });
     }
   });
 

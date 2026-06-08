@@ -41,11 +41,11 @@ Bundling rule:
 | 4D | backend campaign-list/selector contract | Done locally; validation pending | Backend route only |
 | 4E | backend disconnect route and storage cleanup proof | Done locally; validation pending | Backend lifecycle route |
 | 4F | Commit 4 backend contract finalization docs | Done locally; validation pending | None |
-| 5A | Create Campaign TikTok platform option | Pending | Create Campaign UI option |
-| 5B | Create Campaign TikTok test setup using backend source contract | Pending | Create Campaign setup |
-| 5C | Create Campaign selected-campaign finalization guard | Pending | Create Campaign finalization |
-| 5D | Create Campaign query invalidation after successful TikTok setup | Pending | Cache behavior |
-| 5E | Create Campaign regression and validation docs | Pending | None |
+| 5A | Create Campaign TikTok platform option | Done locally; validation pending | Create Campaign UI option |
+| 5B | Create Campaign TikTok test setup using backend source contract | Done locally; validation pending | Create Campaign setup |
+| 5C | Create Campaign selected-campaign finalization guard | Done locally; validation pending | Create Campaign finalization |
+| 5D | Create Campaign query invalidation after successful TikTok setup | Done locally; validation pending | Cache behavior |
+| 5E | Create Campaign regression and validation docs | Done locally; validation pending | None |
 | 6A | Connected Platforms status endpoint includes TikTok from source contract | Pending | Backend status payload |
 | 6B | Connected Platforms TikTok card with no placeholder metrics | Pending | Connected Platforms UI |
 | 6C | Connected Platforms add-source setup flow | Pending | Connected Platforms setup |
@@ -595,6 +595,12 @@ Goal:
 
 - Allow TikTok setup during initial campaign creation only after backend source validation exists.
 
+Root cause analysis:
+
+- TikTok backend source-contract routes exist after Commit 4, but the Create Campaign wizard still has no TikTok option or setup UI.
+- Without a Create Campaign finalization guard, a future TikTok platform selection could mark a campaign active without a persisted TikTok connection or selected TikTok campaign IDs.
+- The smallest safe Commit 5 fix is to expose TikTok only inside the existing Create Campaign connector flow, call the backend test-mode source contract, require selected TikTok campaigns before finalization, and invalidate campaign/source aggregate queries after activation. It must not add Connected Platforms card behavior, TikTok analytics, Campaign DeepDive aggregate participation, scheduler refresh, revenue, KPI, Benchmark, or report wiring.
+
 Subcommits:
 
 - 5A: Add TikTok to the Create Campaign platform list.
@@ -608,6 +614,17 @@ Validation:
 - Create Campaign -> TikTok -> select account/campaigns -> finalize works in test mode.
 - Failed/cancelled TikTok setup does not mark the campaign source connected.
 - Finalized campaign shows TikTok in Connected Platforms only after source contract is valid.
+
+Status:
+
+- [x] Commit 5A completed locally: added TikTok Ads to the Create Campaign platform list.
+- [x] Commit 5B completed locally: added Create Campaign TikTok test setup using `POST /api/tiktok/:campaignId/connect-test`.
+- [x] Commit 5C completed locally: finalization now requires `GET /api/tiktok/:campaignId/connection` to return a connected source with selected campaign IDs.
+- [x] Commit 5D completed locally: successful finalization invalidates the TikTok connection query plus existing campaign/source aggregate queries.
+- [x] Commit 5E completed locally: tracker status and regression boundary documented.
+- [x] Commit 5 preserved no adjacent exposure: no Connected Platforms TikTok card, TikTok analytics page, Campaign DeepDive aggregate, scheduler, revenue, KPI, Benchmark, or report wiring was added.
+- [x] Commit 5 validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
+- [x] Commit 5 validation passed: `npm run check`.
 
 ### Commit 6: Connected Platforms Add-Source Flow
 
@@ -933,6 +950,9 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - User validation passed for Commit 3C-3E.
 - Commit 4 backend source-contract routes were implemented locally.
 - Commit 4 local validation passed: endpoint auth/source-safety regression tests and `npm run check`.
+- User validation passed for Commit 4.
+- Commit 5 Create Campaign TikTok flow was implemented locally.
+- Commit 5 local validation passed: Create Campaign regression tests, endpoint auth/source-safety regression tests, and `npm run check`.
 - `git status --short` was checked before editing, as required.
 - Current TikTok code-path inventory was traced with local search.
 - No TikTok frontend UI, analytics page, Connected Platforms card, scheduler, aggregate, revenue, KPI, Benchmark, or report code has been changed.

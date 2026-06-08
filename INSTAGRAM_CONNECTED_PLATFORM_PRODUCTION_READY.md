@@ -87,7 +87,7 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13N-F | Instagram revenue wizard selected-campaign mapping | Done and pushed; user validation pending | Revenue wizard UI/backend attribution |
 | 13N-G | Instagram multi-campaign test setup default | Done and pushed; user validation pending | Create Campaign and Connected Platforms test setup |
 | 13N-H | Instagram live-like simulated account/campaign picker | Done and pushed; user validation passed | Create Campaign and Connected Platforms test setup |
-| 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | 13O-R-A and 13O-R-B user validation passed; 13O-R-C implemented locally | Report backend/UI, scheduled reports, report exports, validation docs |
+| 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | Done locally through 13O-R-D; 13O-R-A through 13O-R-C user validation passed | Report backend/UI, scheduled reports, report exports, validation docs |
 | 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
 | 14B | End-to-end local test-mode Connected Platforms validation | Pending | Validation only |
 | 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending | Validation only |
@@ -106,7 +106,7 @@ Instagram must be treated as a campaign-scoped main paid-media connected source 
 
 Instagram is partially implemented as a first-class connected platform in the current local codebase, but final production readiness is still pending.
 
-Initial code supported Meta/Facebook Ads and could surface Instagram placement names inside Meta analytics, but that was not the same as a standalone Instagram connected platform. The current implementation now has a test-mode Instagram source contract, schema/storage, guarded routes, Create Campaign and Connected Platforms flows, Campaign Overview metrics, analytics page, Campaign DeepDive aggregate wiring, financial platform-context isolation, the Commit 11A provider/refresh design trace, an explicit test-mode Instagram daily metric refresh route, a manual live refresh route that imports selected Instagram publisher-platform rows only, a fail-closed Instagram scheduler refresh wrapper, scheduler snapshot integration through the same aggregate source contract as the UI, local backend lifecycle cleanup for disconnect and selected-scope replacement, a non-destructive stale-data cleanup plan, Instagram-scoped revenue controls and selected-campaign revenue mapping, and local lifecycle regression/validation documentation; live OAuth connect UI and reports remain pending.
+Initial code supported Meta/Facebook Ads and could surface Instagram placement names inside Meta analytics, but that was not the same as a standalone Instagram connected platform. The current implementation now has a test-mode Instagram source contract, schema/storage, guarded routes, Create Campaign and Connected Platforms flows, Campaign Overview metrics, analytics page, Campaign DeepDive aggregate wiring, financial platform-context isolation, the Commit 11A provider/refresh design trace, an explicit test-mode Instagram daily metric refresh route, a manual live refresh route that imports selected Instagram publisher-platform rows only, a fail-closed Instagram scheduler refresh wrapper, scheduler snapshot integration through the same aggregate source contract as the UI, local backend lifecycle cleanup for disconnect and selected-scope replacement, a non-destructive stale-data cleanup plan, Instagram-scoped revenue controls and selected-campaign revenue mapping, source-backed Instagram report UI/scheduler/PDF/download paths, and local lifecycle regression/validation documentation; live OAuth connect UI remains pending.
 
 No production-ready claim can be made for Instagram until the implementation and validation items in this tracker are completed.
 
@@ -264,7 +264,7 @@ Commit 13N-F Instagram revenue wizard selected-campaign mapping is done and push
 
 Commit 13N-G Instagram multi-campaign test setup default is done and pushed. The normal test setup defaults to three selected Instagram campaigns so validation exercises multi-campaign aggregation, Ad Comparison, and revenue mapping.
 
-Commit 13N-H Instagram live-like simulated account/campaign picker is done, pushed, and user-validated. The test setup now presents a simulated ad-account selector and campaign checkbox list instead of manual campaign-ID entry. Commit 13O-R remains pending before Commit 14 final validation.
+Commit 13N-H Instagram live-like simulated account/campaign picker is done, pushed, and user-validated. The test setup now presents a simulated ad-account selector and campaign checkbox list instead of manual campaign-ID entry. Commit 13O-R is implemented through the report UI, scheduler, source-backed PDF, and guarded download paths; Commit 14 final validation remains pending.
 
 ## Root Cause Analysis
 
@@ -1716,13 +1716,15 @@ Status:
 - [x] Commit 13O-R report UI/custom-report slice done and pushed: Instagram report lifecycle UI, GA4-style modal, Schedule Automated Reports fields, expandable Custom Report sections, KPI/Benchmark row selection, and always-visible Pipeline Proxy card.
 - [x] User validation passed for Commit 13O-R report UI/custom-report slice for now.
 - [x] Commit 13O-R report modal action polish done locally: new Instagram reports require an explicit template/custom selection before the footer action enables; unscheduled creates show `Generate & Download Report`; scheduled creates show `Schedule Report`.
-- [x] Commit 13O-R scheduled report card polish done locally: Instagram report library rows now follow the GA4 card layout with report type, schedule cadence/timezone, last-sent date, created date, and edit/delete controls; the Download control remains disabled until Instagram source-backed PDF/export proof is completed.
+- [x] Commit 13O-R scheduled report card polish done locally: Instagram report library rows now follow the GA4 card layout with report type, schedule cadence/timezone, last-sent date, created date, and edit/delete controls.
 - [x] Commit 13O-R-A implemented locally: scheduled report discovery includes Instagram, but scheduled send/test-send fail closed before any Instagram PDF/email output until source-backed PDF proof is complete; invalid campaign/source scope disables or skips safely.
 - [x] User validation passed for Commit 13O-R-A.
 - [x] Commit 13O-R-B implemented locally: Instagram scheduled/test-send PDF output now uses an explicit source-backed builder that reads only selected `instagram_daily_metrics` rows for the report window; scheduler/test-send still fail closed before email when no selected rows are available.
 - [x] User validation passed for Commit 13O-R-B.
 - [x] Commit 13O-R-C implemented locally: Instagram report-library Download now creates a manual snapshot only after proving source-backed Instagram PDF output through the shared builder, then downloads the guarded snapshot PDF; missing selected Instagram rows return a failure instead of creating a misleading snapshot.
-- [ ] Commit 13O-R remaining report backend/export closeout pending: final validation/docs only.
+- [x] User validation passed for Commit 13O-R-C.
+- [x] Commit 13O-R-D implemented locally: final report closeout docs align the roadmap, status summary, validation state, and remaining-risk boundary with the implemented report UI/scheduler/PDF/download behavior.
+- [x] Commit 13O-R report bundle closed locally; Commit 14 end-to-end validation remains pending.
 
 Commit 13O-R bundle guardrails:
 
@@ -1731,7 +1733,7 @@ Commit 13O-R bundle guardrails:
 - Before editing, trace the current shared platform report routes, report scheduler selection, direct snapshot/download routes, report PDF builder, and Instagram analytics Reports tab caller.
 - The first implementation inside the bundle should be the smallest report route/source contract fix only if the trace proves the existing shared report route can safely support `platformType="instagram"`.
 - Scheduler/PDF/export changes should be added only after the route/source contract is proven and covered by focused regression tests.
-- Current local 13O-R slice: the shared campaign-guarded platform report route and storage contract already support `platformType="instagram"` through the existing `linkedin_reports` generic platform report table, but the Instagram Reports tab only rendered read-only rows and then used a small generic create/edit form. The smallest safe fix wires Create/Edit/Delete controls, refines the Instagram report modal to follow the GA4 Standard Templates / Custom Report pattern, exposes the shared Schedule Automated Reports fields, makes Custom Report sections expandable with source-page options and current KPI/Benchmark row selection, aligns the create action label/disabled state with schedule mode and explicit report selection, and aligns report-library card layout with GA4 while keeping Instagram Download disabled until PDF/export proof is complete. The Instagram Overview Pipeline Proxy card is now always visible so users can discover the proxy setup path. This does not change schema, storage, scheduler selection, report email rendering, snapshot, PDF/export, provider refresh, KPI, Benchmark, or revenue behavior.
+- Current 13O-R slice: the shared campaign-guarded platform report route and storage contract support `platformType="instagram"` through the existing `linkedin_reports` generic platform report table. The completed fix wires Create/Edit/Delete controls, refines the Instagram report modal to follow the GA4 Standard Templates / Custom Report pattern, exposes the shared Schedule Automated Reports fields, makes Custom Report sections expandable with source-page options and current KPI/Benchmark row selection, aligns the create action label/disabled state with schedule mode and explicit report selection, aligns report-library card layout with GA4, adds source-backed Instagram scheduled/test-send PDF generation, and enables guarded report-library PDF download only after source-backed output is proven. The Instagram Overview Pipeline Proxy card is always visible so users can discover the proxy setup path. This does not change schema, provider refresh, KPI, Benchmark, revenue import, or analytics metric calculation behavior.
 - User validation for the current 13O-R report UI/custom-report slice passed for now. A more thorough cross-source report review will be carried out after additional source integrations are added, including TikTok, because final report-readiness must prove the behavior across the expanded source mix rather than only the current Instagram test-mode setup.
 
 Commit 13O-R-A root-cause trace:
@@ -1773,6 +1775,19 @@ Commit 13O-R-C validation:
 - The manual snapshot route validates report access and platform match through the existing guards before any PDF proof or insert.
 - For Instagram only, manual snapshot creation fails before insert when selected source-backed Instagram rows cannot produce a PDF.
 - No schema, scheduler cadence, email delivery, provider refresh, KPI, Benchmark, revenue import, or analytics metric calculation behavior changes are included.
+- User validation passed after guarded report-library download checks.
+
+Commit 13O-R-D root-cause trace:
+
+- After 13O-R-B and 13O-R-C validation, the implementation state and tracker diverged: the top-level summary still said reports were pending, the 13O-R roadmap still said final closeout was pending, and the detailed report-card note still said Download remained disabled.
+- The smallest safe fix is documentation-only because the report UI, scheduled/test-send source-backed PDF path, guarded manual snapshot route, and report-library Download path were already implemented and validated.
+
+Commit 13O-R-D validation:
+
+- Roadmap status now marks 13O-R as implemented locally through 13O-R-D, with 13O-R-A through 13O-R-C user validation passed.
+- The detailed 13O-R checklist no longer claims Download is disabled or that report backend/export implementation remains pending.
+- The remaining work is Commit 14 end-to-end validation, not additional 13O-R implementation.
+- No code, schema, scheduler, email, PDF builder, UI behavior, provider refresh, KPI, Benchmark, revenue import, or analytics metric calculation changes are included.
 
 Commit 13O-R validation:
 

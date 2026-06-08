@@ -47,11 +47,15 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain('title: "Connection Failed"');
     expect(page).toContain("`/api/instagram/${campaignId}/connect-test`");
     expect(page).toContain('platform.platform === "Instagram Ads" ?');
+    expect(page).toContain("SIMULATED_INSTAGRAM_AD_ACCOUNTS");
+    expect(page).toContain("setInstagramAdAccountId(value)");
+    expect(page).toContain("setInstagramAdAccountName(account?.name || value)");
     expect(page).toContain("Simulated Instagram Ad Account");
     expect(page).toContain("Available Instagram Campaigns");
     expect(page).toContain("SIMULATED_INSTAGRAM_CAMPAIGNS");
     expect(page).toContain("updateInstagramCampaignSelection");
     expect(page).toContain('Connect {selectedInstagramCampaignIdList.length} Campaign');
+    expect(page).toContain("disabled={isInstagramConnecting || selectedInstagramCampaignIdList.length === 0}");
     expect(page).toContain('queryKey: ["/api/campaigns", campaignId, "connected-platforms"]');
     expect(page).toContain("`/api/instagram/${campaignId}/connection`");
     expect(page).toContain("`/api/campaigns/${campaignId}/outcome-totals`");

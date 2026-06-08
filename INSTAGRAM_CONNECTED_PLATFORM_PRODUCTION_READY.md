@@ -88,8 +88,8 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13N-G | Instagram multi-campaign test setup default | Done and pushed; validation reconciled in 13 status cleanup | Create Campaign and Connected Platforms test setup |
 | 13N-H | Instagram live-like simulated account/campaign picker | Done and pushed; user validation passed | Create Campaign and Connected Platforms test setup |
 | 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | Done locally through 13O-R-D; 13O-R-A through 13O-R-C user validation passed | Report backend/UI, scheduled reports, report exports, validation docs |
-| 14A | End-to-end local test-mode Create Campaign validation | Local regression guard implemented; browser validation pending | Validation only |
-| 14B | End-to-end local test-mode Connected Platforms validation | Pending in Commit 14 Local Validation Bundle | Validation only |
+| 14A | End-to-end local test-mode Create Campaign validation | Local regression validation passed; browser validation pending | Validation only |
+| 14B | End-to-end local test-mode Connected Platforms validation | Local regression guard implemented; browser validation pending | Validation only |
 | 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending in Commit 14 Local Validation Bundle | Validation only |
 | 14D | Production-like or deployed live OAuth/API validation | Deferred until other integrations are finalized | Validation only |
 | 14E | Final local evidence update before deferred live OAuth | Pending in Commit 14 Local Validation Bundle | Documentation only |
@@ -2218,9 +2218,11 @@ Validation:
 
 Status:
 
-- [x] Commit 14A local regression guard implemented: Create Campaign Instagram setup defaults to the simulated multi-campaign scope, connects only through `/api/instagram/:campaignId/connect-test`, and finalization requires an existing connected Instagram source with selected campaign IDs.
+- [x] Commit 14A local regression guard implemented and validation passed: Create Campaign Instagram setup defaults to the simulated multi-campaign scope, connects only through `/api/instagram/:campaignId/connect-test`, and finalization requires an existing connected Instagram source with selected campaign IDs.
 - [ ] Commit 14A browser validation pending.
-- [ ] Commit 14 Local Validation Bundle remaining: 14B, 14C, and 14E.
+- [x] Commit 14B local regression guard implemented: Connected Platforms Instagram add-source uses the simulated account/campaign selector, requires at least one selected campaign, connects through `/api/instagram/:campaignId/connect-test`, invalidates downstream campaign analytics queries, and does not call live OAuth or unscoped refresh paths.
+- [ ] Commit 14B browser validation pending.
+- [ ] Commit 14 Local Validation Bundle remaining: 14C and 14E.
 - [ ] Commit 14D Deferred Live OAuth Bundle postponed by product decision until after other integrations are finalized.
 
 Commit 14A root-cause trace:
@@ -2232,7 +2234,20 @@ Commit 14A root-cause trace:
 Commit 14A validation:
 
 - `npm test -- server/instagram-connected-platforms-regression.test.ts` passes with the new Create Campaign finalization guard.
+- User validation passed on 2026-06-08 for `npm run check` and `npm test -- server/instagram-connected-platforms-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - Browser validation remains pending for the full Create Campaign user journey.
+- No runtime code, schema, provider refresh, live OAuth, analytics calculation, revenue, KPI, Benchmark, scheduler, or report behavior changes are included.
+
+Commit 14B root-cause trace:
+
+- Connected Platforms already had a test-mode Instagram add-source implementation, but Commit 14 needed final local evidence that this path remains close to the live account/campaign selection model while live OAuth is deferred.
+- The smallest safe fix extends the existing Connected Platforms regression guard instead of changing runtime behavior.
+- The guard proves the simulated account selector, simulated selected-campaign list, empty-selection disable/validation, `/api/instagram/:campaignId/connect-test` usage, downstream query invalidations, and no live OAuth/refresh dependency.
+
+Commit 14B validation:
+
+- `npm test -- server/instagram-connected-platforms-regression.test.ts` should pass with the reinforced Connected Platforms source-contract guard.
+- Browser validation remains pending for the full Connected Platforms add-source user journey.
 - No runtime code, schema, provider refresh, live OAuth, analytics calculation, revenue, KPI, Benchmark, scheduler, or report behavior changes are included.
 
 ## Validation Checklist

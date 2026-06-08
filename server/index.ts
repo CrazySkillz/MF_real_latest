@@ -814,6 +814,74 @@ process.on('uncaughtException', (error: Error) => {
             ON instagram_daily_metrics(campaign_id, date DESC);
           `);
 
+          // Migration 19: TikTok connected platform foundation
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS tiktok_connections (
+              id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              advertiser_id TEXT NOT NULL,
+              advertiser_name TEXT,
+              access_token TEXT,
+              refresh_token TEXT,
+              encrypted_tokens JSONB,
+              method TEXT NOT NULL,
+              selected_campaign_ids TEXT,
+              selected_campaign_metadata TEXT,
+              reporting_dimensions TEXT,
+              reporting_metrics TEXT,
+              source_contract_version TEXT NOT NULL DEFAULT 'tiktok_campaign_daily_v1',
+              last_refresh_at TIMESTAMP,
+              last_error TEXT,
+              spend_only BOOLEAN DEFAULT FALSE,
+              expires_at TIMESTAMP,
+              connected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+          await db.execute(sql`
+            CREATE INDEX IF NOT EXISTS idx_tiktok_connections_campaign_id
+            ON tiktok_connections(campaign_id);
+          `);
+          await db.execute(sql`
+            CREATE TABLE IF NOT EXISTS tiktok_daily_metrics (
+              id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+              campaign_id TEXT NOT NULL,
+              advertiser_id TEXT NOT NULL,
+              tiktok_campaign_id TEXT NOT NULL,
+              tiktok_campaign_name TEXT,
+              date TEXT NOT NULL,
+              impressions INTEGER NOT NULL DEFAULT 0,
+              clicks INTEGER NOT NULL DEFAULT 0,
+              spend DECIMAL(10, 2) NOT NULL DEFAULT 0,
+              currency TEXT,
+              conversions DECIMAL(10, 2) NOT NULL DEFAULT 0,
+              video_views INTEGER NOT NULL DEFAULT 0,
+              engagements INTEGER NOT NULL DEFAULT 0,
+              ctr DECIMAL(5, 2),
+              cpc DECIMAL(10, 2),
+              cpm DECIMAL(10, 2),
+              cost_per_conversion DECIMAL(10, 2),
+              conversion_rate DECIMAL(5, 2),
+              raw_metrics JSONB,
+              metric_availability JSONB,
+              is_estimated BOOLEAN NOT NULL DEFAULT FALSE,
+              source_contract_version TEXT NOT NULL DEFAULT 'tiktok_campaign_daily_v1',
+              is_simulated BOOLEAN NOT NULL DEFAULT FALSE,
+              last_synced_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+          await db.execute(sql`
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_tiktok_daily_metrics_unique
+            ON tiktok_daily_metrics(campaign_id, advertiser_id, tiktok_campaign_id, date, source_contract_version);
+          `);
+          await db.execute(sql`
+            CREATE INDEX IF NOT EXISTS idx_tiktok_daily_metrics_campaign_date
+            ON tiktok_daily_metrics(campaign_id, date DESC);
+          `);
+
           log('✅ Database migrations completed successfully');
         } catch (error) {
           console.error('⚠️  Migration warning (may already exist):', error instanceof Error ? error.message : String(error));

@@ -1,5 +1,5 @@
 import { type Client, type InsertClient, type Campaign, type InsertCampaign, type Metric, type InsertMetric, type Integration, type InsertIntegration, type PerformanceData, type InsertPerformanceData, type GA4Connection, type InsertGA4Connection, type GA4DailyMetric, type InsertGA4DailyMetric, type LinkedInDailyMetric, type InsertLinkedInDailyMetric, type SpendSource, type InsertSpendSource, type SpendRecord, type InsertSpendRecord, type RevenueSource, type InsertRevenueSource, type RevenueRecord, type InsertRevenueRecord, type GoogleSheetsConnection, type InsertGoogleSheetsConnection, type HubspotConnection, type InsertHubspotConnection, type SalesforceConnection, type InsertSalesforceConnection, type ShopifyConnection, type InsertShopifyConnection, type LinkedInConnection, type InsertLinkedInConnection, type MetaConnection, type InsertMetaConnection, type MetaDailyMetric, type InsertMetaDailyMetric, type MetaKpi, type InsertMetaKpi, type MetaBenchmark, type InsertMetaBenchmark, type MetaReport, type InsertMetaReport, type GoogleAdsConnection, type InsertGoogleAdsConnection, type GoogleAdsDailyMetric, type InsertGoogleAdsDailyMetric, type LinkedInImportSession, type InsertLinkedInImportSession, type LinkedInImportMetric, type InsertLinkedInImportMetric, type LinkedInAdPerformance, type InsertLinkedInAdPerformance, type LinkedInReport, type InsertLinkedInReport, type CustomIntegration, type InsertCustomIntegration, type CustomIntegrationMetrics, type InsertCustomIntegrationMetrics, type ConversionEvent, type InsertConversionEvent, type KPI, type InsertKPI, type KPIPeriod, type KPIProgress, type InsertKPIProgress, type KPIAlert, type InsertKPIAlert, type KPIReport, type InsertKPIReport, type Benchmark, type InsertBenchmark, type BenchmarkHistory, type InsertBenchmarkHistory, type MetricSnapshot, type InsertMetricSnapshot, type Notification, type InsertNotification, type ABTest, type InsertABTest, type ABTestVariant, type InsertABTestVariant, type ABTestResult, type InsertABTestResult, type ABTestEvent, type InsertABTestEvent, type AttributionModel, type InsertAttributionModel, type CustomerJourney, type InsertCustomerJourney, type Touchpoint, type InsertTouchpoint, type AttributionResult, type InsertAttributionResult, type AttributionInsight, type InsertAttributionInsight, clients, campaigns, metrics, integrations, performanceData, ga4Connections, ga4DailyMetrics, linkedinDailyMetrics, spendSources, spendRecords, revenueSources, revenueRecords, notifications, emailAlertEvents, googleSheetsConnections, hubspotConnections, salesforceConnections, shopifyConnections, linkedinConnections, metaConnections, metaDailyMetrics, metaKpis, metaBenchmarks, metaReports, googleAdsConnections, googleAdsDailyMetrics, linkedinImportSessions, linkedinImportMetrics, linkedinAdPerformance, linkedinReports, reportSnapshots, reportSendEvents, customIntegrations, customIntegrationMetrics, conversionEvents, kpis, kpiPeriods, kpiProgress, kpiAlerts, kpiReports, benchmarks, benchmarkHistory, metricSnapshots, abTests, abTestVariants, abTestResults, abTestEvents, attributionModels, customerJourneys, touchpoints, attributionResults, attributionInsights } from "@shared/schema";
-import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, instagramConnections, instagramDailyMetrics } from "@shared/schema";
+import { type InstagramConnection, type InsertInstagramConnection, type InstagramDailyMetric, type InsertInstagramDailyMetric, type TikTokConnection, type InsertTikTokConnection, type TikTokDailyMetric, type InsertTikTokDailyMetric, instagramConnections, instagramDailyMetrics, tiktokConnections, tiktokDailyMetrics } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db, pool } from "./db";
 import { eq, and, or, isNull, desc, sql, gte, lte, inArray } from "drizzle-orm";
@@ -180,6 +180,17 @@ export interface IStorage {
   // Instagram Daily Metrics
   getInstagramDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<InstagramDailyMetric[]>;
   upsertInstagramDailyMetrics(metrics: InsertInstagramDailyMetric[]): Promise<{ upserted: number }>;
+
+  // TikTok Connections
+  getTikTokConnection(campaignId: string): Promise<TikTokConnection | undefined>;
+  createTikTokConnection(connection: InsertTikTokConnection): Promise<TikTokConnection>;
+  updateTikTokConnection(campaignId: string, connection: Partial<InsertTikTokConnection>): Promise<TikTokConnection | undefined>;
+  deleteTikTokConnection(campaignId: string): Promise<boolean>;
+  deleteTikTokDailyMetrics(campaignId: string): Promise<boolean>;
+
+  // TikTok Daily Metrics
+  getTikTokDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<TikTokDailyMetric[]>;
+  upsertTikTokDailyMetrics(metrics: InsertTikTokDailyMetric[]): Promise<{ upserted: number }>;
 
   // Google Ads Connections
   getGoogleAdsConnection(campaignId: string): Promise<GoogleAdsConnection | undefined>;
@@ -541,6 +552,7 @@ export class DatabaseStorage implements IStorage {
     await tx.delete(linkedinDailyMetrics).where(eq(linkedinDailyMetrics.campaignId, campaignId));
     await tx.delete(metaDailyMetrics).where(eq(metaDailyMetrics.campaignId, campaignId));
     await tx.delete(instagramDailyMetrics).where(eq(instagramDailyMetrics.campaignId, campaignId));
+    await tx.delete(tiktokDailyMetrics).where(eq(tiktokDailyMetrics.campaignId, campaignId));
     await tx.delete(googleAdsDailyMetrics).where(eq(googleAdsDailyMetrics.campaignId, campaignId));
     await tx.delete(ga4Connections).where(eq(ga4Connections.campaignId, campaignId));
     await tx.delete(googleSheetsConnections).where(eq(googleSheetsConnections.campaignId, campaignId));
@@ -550,6 +562,7 @@ export class DatabaseStorage implements IStorage {
     await tx.delete(linkedinConnections).where(eq(linkedinConnections.campaignId, campaignId));
     await tx.delete(metaConnections).where(eq(metaConnections.campaignId, campaignId));
     await tx.delete(instagramConnections).where(eq(instagramConnections.campaignId, campaignId));
+    await tx.delete(tiktokConnections).where(eq(tiktokConnections.campaignId, campaignId));
     await tx.delete(googleAdsConnections).where(eq(googleAdsConnections.campaignId, campaignId));
     await deleteOptionalCampaignTable("meta_kpis");
     await deleteOptionalCampaignTable("meta_benchmarks");
@@ -2579,6 +2592,125 @@ export class DatabaseStorage implements IStorage {
           ga4Revenue: sql`COALESCE(EXCLUDED.ga4_revenue, ${instagramDailyMetrics.ga4Revenue})`,
           ga4UtmName: sql`COALESCE(EXCLUDED.ga4_utm_name, ${instagramDailyMetrics.ga4UtmName})`,
           importedAt: sql`CURRENT_TIMESTAMP`,
+        },
+      });
+    return { upserted: metrics.length };
+  }
+
+  // TikTok Connection methods
+  async getTikTokConnection(campaignId: string): Promise<TikTokConnection | undefined> {
+    const [connection] = await db.select().from(tiktokConnections).where(eq(tiktokConnections.campaignId, campaignId));
+    if (!connection) return undefined;
+    return hydrateDecryptedTokens(connection) as any;
+  }
+
+  async createTikTokConnection(connection: InsertTikTokConnection): Promise<TikTokConnection> {
+    const enc = buildEncryptedTokens({
+      accessToken: (connection as any).accessToken,
+      refreshToken: (connection as any).refreshToken,
+    } as any);
+    const [tiktokConnection] = await db
+      .insert(tiktokConnections)
+      .values({
+        ...connection,
+        accessToken: null,
+        refreshToken: null,
+        encryptedTokens: enc as any,
+      } as any)
+      .returning();
+    return hydrateDecryptedTokens(tiktokConnection) as any;
+  }
+
+  async updateTikTokConnection(campaignId: string, connection: Partial<InsertTikTokConnection>): Promise<TikTokConnection | undefined> {
+    const [existing] = await db.select().from(tiktokConnections).where(eq(tiktokConnections.campaignId, campaignId));
+    if (!existing) return undefined;
+
+    const tokenFieldsProvided =
+      Object.prototype.hasOwnProperty.call(connection, "accessToken") ||
+      Object.prototype.hasOwnProperty.call(connection, "refreshToken");
+
+    const setObj: any = { ...connection };
+    if (tokenFieldsProvided || (existing as any).encryptedTokens) {
+      setObj.encryptedTokens = buildEncryptedTokens({
+        accessToken: (connection as any).accessToken,
+        refreshToken: (connection as any).refreshToken,
+        prev: (existing as any).encryptedTokens,
+      } as any);
+      setObj.accessToken = null;
+      setObj.refreshToken = null;
+    }
+
+    const [updated] = await db
+      .update(tiktokConnections)
+      .set({ ...setObj, updatedAt: new Date() } as any)
+      .where(eq(tiktokConnections.campaignId, campaignId))
+      .returning();
+    return updated ? (hydrateDecryptedTokens(updated) as any) : undefined;
+  }
+
+  async deleteTikTokConnection(campaignId: string): Promise<boolean> {
+    return await db.transaction(async (tx: any) => {
+      const result = await tx
+        .delete(tiktokConnections)
+        .where(eq(tiktokConnections.campaignId, campaignId));
+      const deleted = (result.rowCount || 0) > 0;
+      if (deleted) {
+        await tx.delete(tiktokDailyMetrics).where(eq(tiktokDailyMetrics.campaignId, campaignId));
+      }
+      return deleted;
+    });
+  }
+
+  async deleteTikTokDailyMetrics(campaignId: string): Promise<boolean> {
+    const result = await db
+      .delete(tiktokDailyMetrics)
+      .where(eq(tiktokDailyMetrics.campaignId, campaignId));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getTikTokDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<TikTokDailyMetric[]> {
+    return await db.select().from(tiktokDailyMetrics)
+      .where(and(
+        eq(tiktokDailyMetrics.campaignId, campaignId),
+        gte(tiktokDailyMetrics.date, startDate),
+        lte(tiktokDailyMetrics.date, endDate),
+      ))
+      .orderBy(tiktokDailyMetrics.date);
+  }
+
+  async upsertTikTokDailyMetrics(metrics: InsertTikTokDailyMetric[]): Promise<{ upserted: number }> {
+    if (metrics.length === 0) return { upserted: 0 };
+    await db
+      .insert(tiktokDailyMetrics)
+      .values(metrics)
+      .onConflictDoUpdate({
+        target: [
+          tiktokDailyMetrics.campaignId,
+          tiktokDailyMetrics.advertiserId,
+          tiktokDailyMetrics.tiktokCampaignId,
+          tiktokDailyMetrics.date,
+          tiktokDailyMetrics.sourceContractVersion,
+        ],
+        set: {
+          tiktokCampaignName: sql`COALESCE(EXCLUDED.tiktok_campaign_name, ${tiktokDailyMetrics.tiktokCampaignName})`,
+          impressions: sql`EXCLUDED.impressions`,
+          clicks: sql`EXCLUDED.clicks`,
+          spend: sql`EXCLUDED.spend`,
+          currency: sql`COALESCE(EXCLUDED.currency, ${tiktokDailyMetrics.currency})`,
+          conversions: sql`EXCLUDED.conversions`,
+          videoViews: sql`EXCLUDED.video_views`,
+          engagements: sql`EXCLUDED.engagements`,
+          ctr: sql`EXCLUDED.ctr`,
+          cpc: sql`EXCLUDED.cpc`,
+          cpm: sql`EXCLUDED.cpm`,
+          costPerConversion: sql`EXCLUDED.cost_per_conversion`,
+          conversionRate: sql`EXCLUDED.conversion_rate`,
+          rawMetrics: sql`EXCLUDED.raw_metrics`,
+          metricAvailability: sql`EXCLUDED.metric_availability`,
+          isEstimated: sql`EXCLUDED.is_estimated`,
+          isSimulated: sql`EXCLUDED.is_simulated`,
+          lastSyncedAt: sql`CURRENT_TIMESTAMP`,
+          updatedAt: sql`CURRENT_TIMESTAMP`,
         },
       });
     return { upserted: metrics.length };

@@ -15,6 +15,13 @@ No runtime code has been implemented in this tracker commit. This file is the im
 
 This table is the single source of truth for what is done, pending, validated, and deferred. If a future finding requires splitting or adding a commit, the new subcommit must be added here before implementation starts.
 
+Bundling rule:
+
+- Subcommits remain the validation checklist inside this tracker.
+- Git commits should bundle by parent commit/risk boundary when safe, not by every subcommit.
+- Do not bundle across a new runtime exposure boundary. Backend-only foundation, Create Campaign UI, Connected Platforms UI, analytics, aggregate, revenue/spend, KPI/Benchmark, reports, scheduler, lifecycle cleanup, and final validation should remain separate parent commits.
+- Continue updating this tracker as each subcommit is completed, then commit and push once per parent commit bundle after validation passes.
+
 | Commit | Scope | Status | Runtime/UI exposure |
 | --- | --- | --- | --- |
 | 1 | Documentation, root cause, and acceptance contract | Done locally in this tracker | None |
@@ -25,9 +32,9 @@ This table is the single source of truth for what is done, pending, validated, a
 | 2E | Commit 2 validation docs and no-runtime closeout | Done locally in this tracker | None |
 | 3A | `tiktok_connections` schema/type foundation | Done and user-validated | Shared schema only |
 | 3B | `tiktok_daily_metrics` schema/type foundation | Done locally; validation pending | Shared schema only |
-| 3C | startup migration/table-existence coverage | Pending | Backend startup only |
-| 3D | schema-derived campaign/client delete cascade coverage | Pending | Destructive-path guard only |
-| 3E | Commit 3 validation docs | Pending | None |
+| 3C | storage methods and startup migration/table-existence coverage | Done locally; validation pending | Backend storage/startup only |
+| 3D | schema-derived campaign/client delete cascade coverage | Done locally; validation pending | Destructive-path guard only |
+| 3E | Commit 3 validation docs | Done locally; validation pending | None |
 | 4A | read-only TikTok connection/status route | Pending | Backend route only |
 | 4B | backend test-mode connection route requiring selected TikTok campaigns | Pending | Backend route only |
 | 4C | backend selected-campaign update route for an existing connection | Pending | Backend route only |
@@ -507,14 +514,17 @@ Root cause analysis:
 - The smallest safe fix is to add only the shared `tiktok_connections` schema/type foundation first, with no routes, storage methods, migration, UI, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
 - TikTok also cannot safely feed analytics or Campaign DeepDive until the daily fact row shape is defined. The current code has no `tiktok_daily_metrics` table or shared insert/select type, so any analytics, refresh, scheduler, or aggregate work would have to invent a runtime-only metric contract.
 - The smallest safe 3B fix is therefore only the shared `tiktok_daily_metrics` schema/type foundation, still without any runtime reads or writes.
+- After 3A and 3B, later backend routes still cannot safely run in local or deployed databases unless startup migration creates both TikTok tables and storage exposes campaign-scoped read/write/delete methods.
+- The schema-derived campaign/client delete cascade guard also requires every direct `campaignId` table to be cleaned up during campaign/client deletion. Once `tiktokConnections` and `tiktokDailyMetrics` exist in `shared/schema.ts`, failing to cover them in `deleteCampaignChildren` would leave orphaned TikTok source rows after campaign/client deletion.
+- The smallest safe 3C-3E bundle is backend-only: add storage methods, startup table/index creation, delete cascade cleanup, regression guard expectations, and tracker closeout without adding TikTok routes, UI, scheduler, aggregate, revenue, KPI, Benchmark, or report behavior.
 
 Subcommits:
 
 - 3A: Add `tiktok_connections` with campaign ID, advertiser ID/name, selected campaign IDs, tokens or encrypted token payload, method, active state, freshness, selected-scope version, and timestamps.
 - 3B: Add `tiktok_daily_metrics` with campaign ID, TikTok advertiser ID, TikTok campaign ID/name, date, impressions, clicks, spend, conversions, video metrics where supported, source metadata, and timestamps.
-- 3C: Add insert schemas/types and storage methods in `server/storage.ts`.
-- 3D: Add startup migration/table-existence coverage consistent with Instagram.
-- 3E: Add campaign/client delete cascade coverage for new campaign-scoped TikTok tables.
+- 3C: Add campaign-scoped storage methods in `server/storage.ts` and startup migration/table-existence coverage consistent with Instagram.
+- 3D: Add campaign/client delete cascade coverage for new campaign-scoped TikTok tables.
+- 3E: Add Commit 3 validation docs and bundle closeout.
 
 Validation:
 
@@ -532,9 +542,12 @@ Status:
 - [x] Commit 3B completed locally: added `tiktokDailyMetrics`, `insertTikTokDailyMetricSchema`, `TikTokDailyMetric`, and `InsertTikTokDailyMetric` in `shared/schema.ts`.
 - [x] Commit 3B preserved no runtime exposure: no routes, storage methods, startup migration, UI, scheduler, aggregate, revenue, KPI, Benchmark, or report code was added.
 - [x] Commit 3B validation passed: `npm run check`.
-- [ ] Commit 3C pending.
-- [ ] Commit 3D pending.
-- [ ] Commit 3E pending.
+- [x] Commit 3C completed locally: added TikTok storage methods and startup migration/table/index creation.
+- [x] Commit 3D completed locally: added TikTok campaign/client delete cascade cleanup through `deleteCampaignChildren`.
+- [x] Commit 3E completed locally: added bundled validation/status documentation.
+- [x] Commit 3C-3E preserved no UI/runtime exposure: no TikTok routes, Create Campaign UI, Connected Platforms UI, scheduler, aggregate, revenue, KPI, Benchmark, or report code was added.
+- [x] Commit 3C-3E validation passed: `npm test -- server/instagram-startup-migration-regression.test.ts server/campaign-delete-cascade-regression.test.ts`.
+- [x] Commit 3C-3E validation passed: `npm run check`.
 
 ### Commit 4: Backend Source Contract Routes
 
@@ -896,6 +909,9 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - User validation passed for Commit 3A.
 - Commit 3B `tiktok_daily_metrics` shared schema/type foundation was implemented locally.
 - Commit 3B local validation passed: `npm run check`.
+- Commit bundling policy documented: use one commit/push per parent commit/risk boundary when safe.
+- Commit 3C-3E backend-only foundation bundle was implemented locally.
+- Commit 3C-3E local validation passed: targeted startup/cascade regression tests and `npm run check`.
 - `git status --short` was checked before editing, as required.
 - Current TikTok code-path inventory was traced with local search.
 - No TikTok runtime route, UI, scheduler, aggregate, revenue, KPI, Benchmark, or report code has been changed.

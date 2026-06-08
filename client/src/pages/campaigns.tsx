@@ -190,7 +190,7 @@ export default function Campaigns() {
   const [isInstagramConnecting, setIsInstagramConnecting] = useState(false);
   const [tiktokAdvertiserId, setTikTokAdvertiserId] = useState("act_tiktok_test");
   const [tiktokAdvertiserName, setTikTokAdvertiserName] = useState("Test TikTok Advertiser");
-  const [tiktokSelectedCampaignIds, setTikTokSelectedCampaignIds] = useState("tt_test_1, tt_test_2, tt_test_3");
+  const [tiktokSelectedCampaignIds, setTikTokSelectedCampaignIds] = useState("");
   const [isTikTokConnecting, setIsTikTokConnecting] = useState(false);
   const { toast } = useToast();
 
@@ -732,7 +732,7 @@ export default function Campaigns() {
     setIsInstagramConnecting(false);
     setTikTokAdvertiserId("act_tiktok_test");
     setTikTokAdvertiserName("Test TikTok Advertiser");
-    setTikTokSelectedCampaignIds("tt_test_1, tt_test_2, tt_test_3");
+    setTikTokSelectedCampaignIds("");
     setIsTikTokConnecting(false);
     form.reset();
   };

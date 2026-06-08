@@ -35,6 +35,15 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(guard).toContain("connection.selectedCampaignIds.length === 0");
   });
 
+  it("keeps TikTok campaigns deselected until the user selects them", () => {
+    const source = readCampaignsPage();
+
+    expect(source).toContain('const [tiktokSelectedCampaignIds, setTikTokSelectedCampaignIds] = useState("");');
+    expect(source).toContain('setTikTokSelectedCampaignIds("");');
+    expect(source).toContain("Select all");
+    expect(source).toContain("updateTikTokCampaignSelection");
+  });
+
   it("keeps TikTok out of Connected Platforms until the dedicated add-source commit", () => {
     const campaignDetail = readCampaignDetailPage();
 

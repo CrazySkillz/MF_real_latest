@@ -550,6 +550,35 @@ export const instagramDailyMetrics = pgTable("instagram_daily_metrics", {
   importedAt: timestamp("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const tiktokDailyMetrics = pgTable("tiktok_daily_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  advertiserId: text("advertiser_id").notNull(),
+  tiktokCampaignId: text("tiktok_campaign_id").notNull(),
+  tiktokCampaignName: text("tiktok_campaign_name"),
+  date: text("date").notNull(),
+  impressions: integer("impressions").notNull().default(0),
+  clicks: integer("clicks").notNull().default(0),
+  spend: decimal("spend", { precision: 10, scale: 2 }).notNull().default(sql`0`),
+  currency: text("currency"),
+  conversions: decimal("conversions", { precision: 10, scale: 2 }).notNull().default(sql`0`),
+  videoViews: integer("video_views").notNull().default(0),
+  engagements: integer("engagements").notNull().default(0),
+  ctr: decimal("ctr", { precision: 5, scale: 2 }),
+  cpc: decimal("cpc", { precision: 10, scale: 2 }),
+  cpm: decimal("cpm", { precision: 10, scale: 2 }),
+  costPerConversion: decimal("cost_per_conversion", { precision: 10, scale: 2 }),
+  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }),
+  rawMetrics: jsonb("raw_metrics"),
+  metricAvailability: jsonb("metric_availability"),
+  isEstimated: boolean("is_estimated").notNull().default(false),
+  sourceContractVersion: text("source_contract_version").notNull().default("tiktok_campaign_daily_v1"),
+  isSimulated: boolean("is_simulated").notNull().default(false),
+  lastSyncedAt: timestamp("last_synced_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const linkedinImportSessions = pgTable("linkedin_import_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
@@ -1439,6 +1468,32 @@ export const insertInstagramDailyMetricSchema = createInsertSchema(instagramDail
   ga4UtmName: true,
 });
 
+export const insertTikTokDailyMetricSchema = createInsertSchema(tiktokDailyMetrics).pick({
+  campaignId: true,
+  advertiserId: true,
+  tiktokCampaignId: true,
+  tiktokCampaignName: true,
+  date: true,
+  impressions: true,
+  clicks: true,
+  spend: true,
+  currency: true,
+  conversions: true,
+  videoViews: true,
+  engagements: true,
+  ctr: true,
+  cpc: true,
+  cpm: true,
+  costPerConversion: true,
+  conversionRate: true,
+  rawMetrics: true,
+  metricAvailability: true,
+  isEstimated: true,
+  sourceContractVersion: true,
+  isSimulated: true,
+  lastSyncedAt: true,
+});
+
 export const insertGoogleAdsConnectionSchema = createInsertSchema(googleAdsConnections).pick({
   campaignId: true,
   customerId: true,
@@ -1900,6 +1955,8 @@ export type MetaDailyMetric = typeof metaDailyMetrics.$inferSelect;
 export type InsertMetaDailyMetric = z.infer<typeof insertMetaDailyMetricSchema>;
 export type InstagramDailyMetric = typeof instagramDailyMetrics.$inferSelect;
 export type InsertInstagramDailyMetric = z.infer<typeof insertInstagramDailyMetricSchema>;
+export type TikTokDailyMetric = typeof tiktokDailyMetrics.$inferSelect;
+export type InsertTikTokDailyMetric = z.infer<typeof insertTikTokDailyMetricSchema>;
 export type KPI = typeof kpis.$inferSelect;
 export type InsertKPI = z.infer<typeof insertKPISchema>;
 export type KPIProgress = typeof kpiProgress.$inferSelect;

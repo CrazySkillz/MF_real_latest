@@ -23,8 +23,8 @@ This table is the single source of truth for what is done, pending, validated, a
 | 2C | TikTok schema/storage field contract design | Done locally in this tracker | None |
 | 2D | Test-mode versus live-mode boundary | Done locally in this tracker | None |
 | 2E | Commit 2 validation docs and no-runtime closeout | Done locally in this tracker | None |
-| 3A | `tiktok_connections` schema/type foundation | Done locally; validation pending | Shared schema only |
-| 3B | `tiktok_daily_metrics` schema/storage foundation | Pending | Backend storage only |
+| 3A | `tiktok_connections` schema/type foundation | Done and user-validated | Shared schema only |
+| 3B | `tiktok_daily_metrics` schema/type foundation | Done locally; validation pending | Shared schema only |
 | 3C | startup migration/table-existence coverage | Pending | Backend startup only |
 | 3D | schema-derived campaign/client delete cascade coverage | Pending | Destructive-path guard only |
 | 3E | Commit 3 validation docs | Pending | None |
@@ -505,6 +505,8 @@ Root cause analysis:
 - TikTok cannot safely move to backend routes until the shared contract defines the campaign-scoped connection row shape.
 - The current code has no `tiktok_connections` table or shared insert/select type, so any route or UI work would either invent an untracked shape or reuse unrelated Google Sheets/generic integration state.
 - The smallest safe fix is to add only the shared `tiktok_connections` schema/type foundation first, with no routes, storage methods, migration, UI, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
+- TikTok also cannot safely feed analytics or Campaign DeepDive until the daily fact row shape is defined. The current code has no `tiktok_daily_metrics` table or shared insert/select type, so any analytics, refresh, scheduler, or aggregate work would have to invent a runtime-only metric contract.
+- The smallest safe 3B fix is therefore only the shared `tiktok_daily_metrics` schema/type foundation, still without any runtime reads or writes.
 
 Subcommits:
 
@@ -526,7 +528,10 @@ Status:
 - [x] Commit 3A completed locally: added `tiktokConnections`, `insertTikTokConnectionSchema`, `TikTokConnection`, and `InsertTikTokConnection` in `shared/schema.ts`.
 - [x] Commit 3A preserved no runtime exposure: no routes, storage methods, startup migration, UI, scheduler, aggregate, revenue, KPI, Benchmark, or report code was added.
 - [x] Commit 3A validation passed: `npm run check`.
-- [ ] Commit 3B pending.
+- [x] User validation passed for Commit 3A.
+- [x] Commit 3B completed locally: added `tiktokDailyMetrics`, `insertTikTokDailyMetricSchema`, `TikTokDailyMetric`, and `InsertTikTokDailyMetric` in `shared/schema.ts`.
+- [x] Commit 3B preserved no runtime exposure: no routes, storage methods, startup migration, UI, scheduler, aggregate, revenue, KPI, Benchmark, or report code was added.
+- [x] Commit 3B validation passed: `npm run check`.
 - [ ] Commit 3C pending.
 - [ ] Commit 3D pending.
 - [ ] Commit 3E pending.
@@ -888,6 +893,9 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - User validation passed for Commit 1 and Commit 2.
 - Commit 3A `tiktok_connections` shared schema/type foundation was implemented locally.
 - Commit 3A local validation passed: `npm run check`.
+- User validation passed for Commit 3A.
+- Commit 3B `tiktok_daily_metrics` shared schema/type foundation was implemented locally.
+- Commit 3B local validation passed: `npm run check`.
 - `git status --short` was checked before editing, as required.
 - Current TikTok code-path inventory was traced with local search.
 - No TikTok runtime route, UI, scheduler, aggregate, revenue, KPI, Benchmark, or report code has been changed.

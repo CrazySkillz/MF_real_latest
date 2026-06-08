@@ -65,6 +65,31 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).not.toContain("upsertInstagramDailyMetrics");
   });
 
+  it("keeps Create Campaign Instagram finalization gated by selected test-mode source scope", () => {
+    const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaigns.tsx"), "utf-8");
+    const connectStart = page.indexOf("const connectInstagramTestMode = async () =>");
+    const connectEnd = page.indexOf("const selectedInstagramCampaignIdList", connectStart);
+    const connectBlock = page.slice(connectStart, connectEnd);
+    const finalizeStart = page.indexOf("const handleConnectorsComplete = async");
+    const finalizeEnd = page.indexOf("// Finalize: update the already-created campaign", finalizeStart);
+    const finalizeGuard = page.slice(finalizeStart, finalizeEnd);
+
+    expect(page).toContain('useState("ig_test_1, ig_test_2, ig_test_3")');
+    expect(connectStart).toBeGreaterThanOrEqual(0);
+    expect(connectBlock).toContain("selectedCampaignIds.length === 0");
+    expect(connectBlock).toContain('title: "Instagram campaign required"');
+    expect(connectBlock).toContain("`/api/instagram/${draftCampaignId}/connect-test`");
+    expect(connectBlock).toContain("setWizardStep(5)");
+    expect(finalizeStart).toBeGreaterThanOrEqual(0);
+    expect(finalizeGuard).toContain("selectedPlatforms.includes('instagram')");
+    expect(finalizeGuard).toContain("`/api/instagram/${draftCampaignId}/connection`");
+    expect(finalizeGuard).toContain("!connection.connected");
+    expect(finalizeGuard).toContain("connection.selectedCampaignIds.length === 0");
+    expect(finalizeGuard).toContain('title: "Instagram campaign required"');
+    expect(finalizeGuard).not.toContain("/api/instagram/oauth");
+    expect(finalizeGuard).not.toContain("refreshInstagram");
+  });
+
   it("keeps Campaign Overview Instagram status read-only until source-backed metrics and financial context exist", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"), "utf-8");
 

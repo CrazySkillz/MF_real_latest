@@ -88,11 +88,11 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13N-G | Instagram multi-campaign test setup default | Done and pushed; validation reconciled in 13 status cleanup | Create Campaign and Connected Platforms test setup |
 | 13N-H | Instagram live-like simulated account/campaign picker | Done and pushed; user validation passed | Create Campaign and Connected Platforms test setup |
 | 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | Done locally through 13O-R-D; 13O-R-A through 13O-R-C user validation passed | Report backend/UI, scheduled reports, report exports, validation docs |
-| 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
-| 14B | End-to-end local test-mode Connected Platforms validation | Pending | Validation only |
-| 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending | Validation only |
-| 14D | Production-like or deployed live OAuth/API validation | Pending | Validation only |
-| 14E | Final production-ready evidence update | Pending | Documentation only |
+| 14A | End-to-end local test-mode Create Campaign validation | Local regression guard implemented; browser validation pending | Validation only |
+| 14B | End-to-end local test-mode Connected Platforms validation | Pending in Commit 14 Local Validation Bundle | Validation only |
+| 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending in Commit 14 Local Validation Bundle | Validation only |
+| 14D | Production-like or deployed live OAuth/API validation | Deferred until other integrations are finalized | Validation only |
+| 14E | Final local evidence update before deferred live OAuth | Pending in Commit 14 Local Validation Bundle | Documentation only |
 
 Commit 4 is intentionally split into backend-only subcommits because this area is analytics-sensitive. No Commit 4 subcommit should expose Instagram in Create Campaign, Connected Platforms, Campaign DeepDive, reports, scheduler, revenue, KPIs, or Benchmarks.
 
@@ -2181,29 +2181,59 @@ Commit 13N validation:
 
 Goal:
 
-- Prove Instagram production readiness with automated tests and user/browser validation.
+- Prove the local/test-mode Instagram integration is end-to-end complete, while explicitly deferring live OAuth/API production evidence until after other source integrations are finalized.
+
+Commit 14 bundling decision:
+
+- Commit 14 Local Validation Bundle: includes 14A, 14B, 14C, and 14E. This bundle validates the already-implemented test-mode/source-backed Instagram integration through Create Campaign, Connected Platforms, Meta/Facebook no-double-counting, analytics, aggregate, revenue, KPI, Benchmark, report, lifecycle, scheduler, and final local evidence documentation.
+- Commit 14D Deferred Live OAuth Bundle: postponed by product decision until after other integrations are finalized. This bundle will later validate live OAuth, provider account discovery, provider campaign discovery, selected-campaign live import, live refresh, deployed/provider token behavior, and live report output.
+- Commit 14 Local Validation Bundle must not add live OAuth UI, provider account discovery, provider campaign discovery, live-token requirements, new source contracts, schema changes, or analytics behavior changes.
 
 Tasks:
 
-- Add regression coverage for Create Campaign flow.
-- Add regression coverage for Connected Platforms add-source flow.
-- Add regression coverage for source-backed aggregate inclusion.
-- Add regression coverage for Meta + Instagram no-double-counting.
-- Add regression coverage for spend-only and revenue-attributed financial states.
-- Add regression coverage for scheduler fail-closed behavior.
-- Add regression coverage for disconnect/reconnect stale-data exclusion.
-- Add regression coverage for KPI/Benchmark/report source safety.
-- Record deployed or production-like live OAuth evidence before calling live Instagram production-ready.
+Commit 14 Local Validation Bundle:
+
+- Run local regression coverage for Create Campaign flow.
+- Run local regression coverage for Connected Platforms add-source flow.
+- Run local regression coverage for source-backed aggregate inclusion.
+- Run local regression coverage for Meta + Instagram no-double-counting.
+- Run local regression coverage for spend-only and revenue-attributed financial states.
+- Run local regression coverage for scheduler fail-closed behavior.
+- Run local regression coverage for disconnect/reconnect stale-data exclusion.
+- Run local regression coverage for KPI/Benchmark/report source safety.
+- Record final local/test-mode evidence and update this tracker.
+
+Commit 14D Deferred Live OAuth Bundle:
+
+- Re-check official Meta/Instagram Marketing API requirements before live validation.
+- Record deployed or production-like live OAuth evidence before calling the live path production-ready.
+- Validate live OAuth, account discovery, campaign discovery, selected-campaign import, refresh, and report output after other integrations are finalized.
 
 Validation:
 
-- Local tests pass.
-- Browser validation passes for Create Campaign and Connected Platforms.
-- Deployed or production-like validation proves live OAuth, account discovery, campaign discovery, selected-campaign import, refresh, and report output.
+- Local tests pass for the Commit 14 Local Validation Bundle.
+- Browser validation passes for Create Campaign and Connected Platforms test-mode flows.
+- Meta/Facebook plus Instagram local no-double-counting validation passes.
+- Final evidence update clearly states that live OAuth/API validation is deferred and the live path is not yet production-proven.
 
 Status:
 
-- [ ] Not started.
+- [x] Commit 14A local regression guard implemented: Create Campaign Instagram setup defaults to the simulated multi-campaign scope, connects only through `/api/instagram/:campaignId/connect-test`, and finalization requires an existing connected Instagram source with selected campaign IDs.
+- [ ] Commit 14A browser validation pending.
+- [ ] Commit 14 Local Validation Bundle remaining: 14B, 14C, and 14E.
+- [ ] Commit 14D Deferred Live OAuth Bundle postponed by product decision until after other integrations are finalized.
+
+Commit 14A root-cause trace:
+
+- Create Campaign already used the test-mode Instagram source contract, but Commit 14 needed final local evidence that the flow cannot finalize a campaign with Instagram selected unless a campaign-scoped Instagram connection exists with selected campaign IDs.
+- The smallest safe fix adds a focused static regression guard for the existing Create Campaign code path instead of changing runtime behavior.
+- The guard proves the simulated multi-campaign default, selected-campaign empty-state validation, `/api/instagram/:campaignId/connect-test` usage, finalization connection lookup, and no live OAuth/refresh dependency.
+
+Commit 14A validation:
+
+- `npm test -- server/instagram-connected-platforms-regression.test.ts` passes with the new Create Campaign finalization guard.
+- Browser validation remains pending for the full Create Campaign user journey.
+- No runtime code, schema, provider refresh, live OAuth, analytics calculation, revenue, KPI, Benchmark, scheduler, or report behavior changes are included.
 
 ## Validation Checklist
 
@@ -2259,9 +2289,9 @@ Status:
 - [ ] Reconnect does not resurrect stale rows from an old source contract.
 - [ ] Campaign deletion removes only that campaign's Instagram rows and does not affect unrelated campaigns.
 
-## Production-Ready Exit Criteria
+## Local/Test-Mode Production-Readiness Exit Criteria
 
-Instagram can be marked production-ready only when:
+Instagram can be marked locally/test-mode production-ready only when:
 
 - Create Campaign flow is implemented and validated.
 - Connected Platforms add-source flow is implemented and validated.
@@ -2274,7 +2304,13 @@ Instagram can be marked production-ready only when:
 - Disconnect/reconnect behavior is campaign-scoped and stale-data safe.
 - Meta/Facebook plus Instagram no-double-counting behavior is proven.
 - Regression tests cover critical lifecycle paths.
-- Live OAuth/API behavior has deployed or production-like evidence before the live path is called production-ready.
+- Live OAuth/API behavior remains deferred and must not be called production-ready until Commit 14D is completed later with deployed or production-like evidence.
+
+Full live Instagram production-ready status additionally requires:
+
+- Commit 14D production-like or deployed live OAuth/API validation after other integrations are finalized.
+- Current Meta/Instagram Marketing API requirements rechecked before live validation.
+- Live OAuth, account discovery, campaign discovery, selected-campaign import, refresh, and report output proven with real provider behavior.
 
 ## Current Evidence Map
 
@@ -2452,7 +2488,7 @@ Evidence:
 - [x] Local Commit 11 scheduler/refresh regression validation through focused regression suite.
 - [x] Local Commit 12 lifecycle validation through focused regression suite.
 - [ ] Local report validation.
-- [ ] Deployed or production-like live OAuth validation.
+- [ ] Deployed or production-like live OAuth validation, deferred until after other integrations are finalized.
 
 ## Relevant Documentation
 

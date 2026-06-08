@@ -90,9 +90,9 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | Done locally through 13O-R-D; 13O-R-A through 13O-R-C user validation passed | Report backend/UI, scheduled reports, report exports, validation docs |
 | 14A | End-to-end local test-mode Create Campaign validation | Local regression validation passed; browser validation pending | Validation only |
 | 14B | End-to-end local test-mode Connected Platforms validation | Local regression validation passed; browser validation pending | Validation only |
-| 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Local regression guard implemented; browser validation pending | Validation only |
+| 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Local regression validation passed; browser validation pending | Validation only |
 | 14D | Production-like or deployed live OAuth/API validation | Deferred until other integrations are finalized | Validation only |
-| 14E | Final local evidence update before deferred live OAuth | Pending in Commit 14 Local Validation Bundle | Documentation only |
+| 14E | Final local evidence update before deferred live OAuth | Done locally; local bundle closed | Documentation only |
 
 Commit 4 is intentionally split into backend-only subcommits because this area is analytics-sensitive. No Commit 4 subcommit should expose Instagram in Create Campaign, Connected Platforms, Campaign DeepDive, reports, scheduler, revenue, KPIs, or Benchmarks.
 
@@ -264,7 +264,7 @@ Commit 13N-F Instagram revenue wizard selected-campaign mapping is done and push
 
 Commit 13N-G Instagram multi-campaign test setup default is done and pushed. The normal test setup defaults to three selected Instagram campaigns so validation exercises multi-campaign aggregation, Ad Comparison, and revenue mapping.
 
-Commit 13N-H Instagram live-like simulated account/campaign picker is done, pushed, and user-validated. The test setup now presents a simulated ad-account selector and campaign checkbox list instead of manual campaign-ID entry. Commit 13O-R is implemented through the report UI, scheduler, source-backed PDF, and guarded download paths; Commit 14 final validation remains pending.
+Commit 13N-H Instagram live-like simulated account/campaign picker is done, pushed, and user-validated. The test setup now presents a simulated ad-account selector and campaign checkbox list instead of manual campaign-ID entry. Commit 13O-R is implemented through the report UI, scheduler, source-backed PDF, and guarded download paths. Commit 14 local regression evidence is closed through 14E; live OAuth/provider evidence remains deferred as 14D.
 
 ## Root Cause Analysis
 
@@ -1724,7 +1724,7 @@ Status:
 - [x] Commit 13O-R-C implemented locally: Instagram report-library Download now creates a manual snapshot only after proving source-backed Instagram PDF output through the shared builder, then downloads the guarded snapshot PDF; missing selected Instagram rows return a failure instead of creating a misleading snapshot.
 - [x] User validation passed for Commit 13O-R-C.
 - [x] Commit 13O-R-D implemented locally: final report closeout docs align the roadmap, status summary, validation state, and remaining-risk boundary with the implemented report UI/scheduler/PDF/download behavior.
-- [x] Commit 13O-R report bundle closed locally; Commit 14 end-to-end validation remains pending.
+- [x] Commit 13O-R report bundle closed locally; Commit 14 local regression evidence is closed through 14E, with live OAuth/provider validation deferred as 14D.
 
 Commit 13O-R bundle guardrails:
 
@@ -1786,7 +1786,7 @@ Commit 13O-R-D validation:
 
 - Roadmap status now marks 13O-R as implemented locally through 13O-R-D, with 13O-R-A through 13O-R-C user validation passed.
 - The detailed 13O-R checklist no longer claims Download is disabled or that report backend/export implementation remains pending.
-- The remaining work is Commit 14 end-to-end validation, not additional 13O-R implementation.
+- The remaining work is deferred Commit 14D live OAuth/provider validation, not additional 13O-R implementation.
 - No code, schema, scheduler, email, PDF builder, UI behavior, provider refresh, KPI, Benchmark, revenue import, or analytics metric calculation changes are included.
 
 Commit 13 status reconciliation root-cause trace:
@@ -1798,7 +1798,7 @@ Commit 13 status reconciliation root-cause trace:
 Commit 13 status reconciliation validation:
 
 - No `user validation pending` labels remain for Commit 13A through Commit 13M or Commit 13N-D through Commit 13N-G.
-- The only top-level roadmap entries still marked `Pending` are Commit 14A through Commit 14E.
+- The only top-level roadmap entry still not closed locally is deferred Commit 14D live OAuth/provider validation.
 - Live OAuth/connect UI remains pending as Commit 14D validation evidence, not as a pre-14 implementation task.
 
 Commit 13O-R validation:
@@ -2222,9 +2222,10 @@ Status:
 - [ ] Commit 14A browser validation pending.
 - [x] Commit 14B local regression guard implemented and validation passed: Connected Platforms Instagram add-source uses the simulated account/campaign selector, requires at least one selected campaign, connects through `/api/instagram/:campaignId/connect-test`, invalidates downstream campaign analytics queries, and does not call live OAuth or unscoped refresh paths.
 - [ ] Commit 14B browser validation pending.
-- [x] Commit 14C local regression guard implemented: Meta/Facebook and Instagram are proven as distinct paid-media aggregate sources with separate source IDs, exact one-time metric contribution, and no Meta placement fallback for Instagram.
+- [x] Commit 14C local regression guard implemented and validation passed: Meta/Facebook and Instagram are proven as distinct paid-media aggregate sources with separate source IDs, exact one-time metric contribution, and no Meta placement fallback for Instagram.
 - [ ] Commit 14C browser validation pending.
-- [ ] Commit 14 Local Validation Bundle remaining: 14E.
+- [x] Commit 14E final local evidence update done locally: Commit 14A, 14B, and 14C command validation is recorded; the local bundle is closed without adding live OAuth, provider discovery, schema, refresh, analytics, revenue, KPI, Benchmark, scheduler, or report behavior changes.
+- [x] Commit 14 Local Validation Bundle remaining: none.
 - [ ] Commit 14D Deferred Live OAuth Bundle postponed by product decision until after other integrations are finalized.
 
 Commit 14A root-cause trace:
@@ -2262,8 +2263,22 @@ Commit 14C root-cause trace:
 Commit 14C validation:
 
 - `npm test -- server/instagram-connected-platforms-regression.test.ts` should pass with the new Meta/Facebook plus Instagram no-double-counting aggregate guard.
+- User validation passed on 2026-06-08 for `npm run check` and `npm test -- server/instagram-connected-platforms-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - Browser validation remains pending for a campaign with both Meta/Facebook and Instagram connected.
 - No runtime code, schema, provider refresh, live OAuth, analytics calculation, revenue, KPI, Benchmark, scheduler, or report behavior changes are included.
+
+Commit 14E root-cause trace:
+
+- After 14A through 14C validation, the tracker still had stale `pending` language for Commit 14 local evidence, which made the remaining work look like more local implementation instead of the explicitly deferred live OAuth/provider validation bundle.
+- The smallest safe fix is documentation-only: reconcile the validated local regression evidence, close the local Commit 14 bundle, and keep the live OAuth/API path clearly excluded from local production-readiness claims.
+- This does not change runtime behavior or broaden any source, aggregate, revenue, scheduler, report, KPI, Benchmark, or provider contract.
+
+Commit 14E validation:
+
+- Local command validation recorded for 14A, 14B, and 14C: `npm run check` and `npm test -- server/instagram-connected-platforms-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
+- Latest focused result: 3 test files passed, 70 tests passed, including 25 Instagram regression tests.
+- Local/test-mode evidence is closed for the implemented source-backed path; browser QA and live OAuth/provider behavior remain separate validation boundaries.
+- Commit 14D remains deferred until after other integrations are finalized and must re-check current Meta/Instagram Marketing API requirements before live validation.
 
 ## Validation Checklist
 
@@ -2348,8 +2363,8 @@ Proven:
 
 - The existing architecture requires new main Connected Platforms to plug into Campaign DeepDive through the shared connected-source aggregate contract.
 - The current aggregate can consume generic future `platformSources`.
-- The current Create Campaign, Connected Platforms, Campaign Overview, Instagram analytics page, and Campaign DeepDive aggregate routes expose Instagram through the test-mode source contract; live OAuth remains pending.
-- The current scheduler/report paths do not include Instagram lifecycle support; schema/storage foundation exists locally after Commit 3, backend-only connection/status, test connection, selected-campaign update, disconnect, and selected-campaign list routes exist after Commit 4A-4E, Commit 4F documents that this backend contract is closed without UI/runtime exposure, Commit 5A added the Create Campaign option, Commit 5B adds a test setup path only, Commit 5C adds a persisted-source finalization guard, Commit 5D broadens post-finalization cache invalidation only, Commit 5E closes the Create Campaign documentation boundary, Commit 6A adds backend Connected Platforms status only, Commit 6B adds a card shell, Commit 6C adds test source-contract setup only, Commit 6D broadens Connected Platforms success invalidation only, Commit 6E closes the Connected Platforms documentation boundary, Commit 6F maps the Connected Platforms disconnect UI to the existing backend route, Commit 7A locks the read-only Campaign Overview source-status boundary, Commit 7B adds the connected-without-rows unavailable metric state, Commit 7C adds selected-row-only Campaign Overview metrics, Commit 7D documents the Campaign Overview validation boundary, Commit 8A adds the Instagram analytics route shell and connection guard, Commit 8B adds the read-only analytics daily-row endpoint, Commit 8C adds the source-backed Overview tab, Commit 8D adds the selected-campaign breakdown tab, Commit 8E adds analytics unavailable/error/freshness states, Commit 8F exposes the guarded Connected Platforms analytics link and closes the validation boundary, Commit 9A adds the Instagram aggregate source builder, Commit 9B allows aggregate source composition, Commit 9C adds the Meta/Facebook plus Instagram no-double-counting guard, Commit 9D wires aggregate routes, and Commit 9E documents the validation boundary.
+- The current Create Campaign, Connected Platforms, Campaign Overview, Instagram analytics page, Campaign DeepDive aggregate routes, KPI/Benchmark/revenue/report UI, scheduler report discovery, source-backed scheduled/test-send PDF path, and guarded report-library PDF download expose Instagram through the implemented test-mode source contract; live OAuth remains pending.
+- The implemented local/test-mode source-backed path is evidenced through the staged commit series: schema/storage foundation, backend source lifecycle routes, Create Campaign setup/finalization guards, Connected Platforms setup/disconnect, Campaign Overview selected-row reads, Instagram analytics tabs, Campaign DeepDive aggregate wiring, revenue/KPI/Benchmark/report parity, scheduler/report fail-closed behavior, source-backed PDF output, final local regression guards for Create Campaign and Connected Platforms, and the Meta/Facebook plus Instagram no-double-counting aggregate guard.
 - Meta/Facebook currently has Instagram-related placement concepts, but not a standalone Instagram source contract.
 - Instagram Commit 1 documentation and acceptance-contract validation passed after user review.
 - Instagram Commit 2 API/source-contract research and local design trace passed user validation.
@@ -2407,7 +2422,7 @@ Unverified:
 - Whether product wants standalone Instagram or Instagram as a Meta/Facebook breakdown only.
 - Live OAuth behavior.
 - Provider rate limits, token lifetime, and permission review requirements.
-- Full report scheduler behavior for a new Instagram platform.
+- Live provider scheduled-report behavior for Instagram after OAuth/provider validation.
 
 ## Outstanding Items
 

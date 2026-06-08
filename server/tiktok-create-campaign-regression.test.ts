@@ -104,4 +104,19 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(tiktokCard).not.toContain("unavailableReason");
     expect(campaignDetail).not.toContain("Source-backed TikTok metrics are not available until persisted TikTok metric rows exist.");
   });
+
+  it("feeds TikTok into Campaign DeepDive aggregate through selected persisted rows only", () => {
+    const routes = readRoutes();
+
+    expect(routes).toContain("async function buildTikTokPlatformSourceForAggregate");
+    expect(routes).toContain("storage.getTikTokConnection(campaignId)");
+    expect(routes).toContain("storage.getTikTokDailyMetrics(campaignId, startDate, endDate)");
+    expect(routes).toContain("selectedSet.has(String(row?.tiktokCampaignId))");
+    expect(routes).toContain('id: "tiktok"');
+    expect(routes).toContain('label: "TikTok Ads"');
+    expect(routes).toContain('reason: "TikTok attributed revenue requires a TikTok-scoped imported revenue source"');
+    expect(routes).toContain("mainPlatformSources: { googleAds, instagram, tiktok }");
+    expect(routes).toContain("linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend");
+    expect(routes).toContain("hasTikTokData");
+  });
 });

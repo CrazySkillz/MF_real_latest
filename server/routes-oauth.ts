@@ -239,6 +239,75 @@ async function buildInstagramPlatformSourceForAggregate(campaignId: string, star
   return { instagram, instagramSpend, instagramLastUpdate };
 }
 
+async function buildTikTokPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string) {
+  const parseNum = (v: any): number => {
+    if (v === null || typeof v === "undefined" || v === "") return 0;
+    const n = typeof v === "string" ? parseFloat(v) : Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  let tiktok: any = { connected: false };
+  let tiktokSpend = 0;
+  let tiktokLastUpdate: string | null = null;
+  let hasTikTokConnection = false;
+
+  try {
+    const tiktokConn = await storage.getTikTokConnection(campaignId).catch(() => null);
+    hasTikTokConnection = !!tiktokConn;
+    const selectedCampaignIds = (() => {
+      try {
+        const parsed = JSON.parse(String((tiktokConn as any)?.selectedCampaignIds || "[]"));
+        return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+      } catch {
+        return [];
+      }
+    })();
+    if (tiktokConn && !(tiktokConn as any).spendOnly && selectedCampaignIds.length > 0) {
+      const selectedSet = new Set(selectedCampaignIds);
+      const tiktokRows = (await storage.getTikTokDailyMetrics(campaignId, startDate, endDate))
+        .filter((row: any) => selectedSet.has(String(row?.tiktokCampaignId)));
+      const totals = tiktokRows.reduce((sum: any, row: any) => ({
+        impressions: sum.impressions + parseNum(row?.impressions),
+        clicks: sum.clicks + parseNum(row?.clicks),
+        spend: sum.spend + parseNum(row?.spend),
+        conversions: sum.conversions + parseNum(row?.conversions),
+      }), { impressions: 0, clicks: 0, spend: 0, conversions: 0 });
+      tiktokSpend = parseNum(totals.spend);
+      const lastRow = tiktokRows[tiktokRows.length - 1];
+      tiktokLastUpdate = (lastRow as any)?.date || null;
+      tiktok = {
+        id: "tiktok",
+        label: "TikTok Ads",
+        category: "paid_media",
+        connected: true,
+        capabilities: ["impressions", "clicks", "spend", "conversions"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions"],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+          { metric: "pageviews", reason: "Pageviews are web analytics metrics" },
+          { metric: "attributedRevenue", reason: "TikTok attributed revenue requires a TikTok-scoped imported revenue source" },
+        ],
+        metrics: {
+          impressions: parseNum(totals.impressions),
+          clicks: parseNum(totals.clicks),
+          spend: tiktokSpend,
+          conversions: parseNum(totals.conversions),
+        },
+        revenueSemantics: {
+          attributedRevenueSource: "unavailable",
+          attributedRevenueLabel: "Unavailable",
+        },
+        freshness: { selectedCampaignIds },
+      };
+    }
+  } catch (err: any) {
+    tiktok = { connected: hasTikTokConnection, error: err?.message || "TikTok unavailable" };
+  }
+
+  return { tiktok, tiktokSpend, tiktokLastUpdate };
+}
+
 async function buildLinkedInPlatformSourceForAggregate(campaignId: string, linkedInConn?: any) {
   const parseNum = (v: any): number => {
     if (v === null || typeof v === "undefined" || v === "") return 0;
@@ -316,7 +385,7 @@ const parseMetaSelectedCampaignIds = (connection: any): string[] => {
 };
 
 function buildMainPlatformSourcesForAggregate(sources: { googleAds?: any; instagram?: any } = {}) {
-  return [sources.googleAds, sources.instagram].filter((source) => source?.connected === true);
+  return [sources.googleAds, sources.instagram, (sources as any).tiktok].filter((source) => source?.connected === true);
 }
 
 function buildCampaignPerformanceSummaryAggregate(input: any) {
@@ -11430,6 +11499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate(campaignId, startDate, endDate);
       const { instagram, instagramSpend } = await buildInstagramPlatformSourceForAggregate(campaignId, startDate, endDate);
+      const { tiktok, tiktokSpend } = await buildTikTokPlatformSourceForAggregate(campaignId, startDate, endDate);
 
       // Custom integration inputs (webhook-fed)
       let custom: any = { connected: false };
@@ -11495,7 +11565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // - If the user imported spend (persistedSpend > 0), use that as campaign marketing spend.
       // - Otherwise, fall back to sum of connected ad-platform spends.
       const instagramSpendForAggregate = instagramSpend;
-      const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate).toFixed(2));
+      const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend).toFixed(2));
       const unifiedSpend = persistedSpend > 0 ? persistedSpend : platformSpendFallback;
       const spendSource = persistedSpend > 0 ? "persisted_spend_sources" : "platform_spend_fallback";
 
@@ -11580,7 +11650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           meta,
           customIntegration: custom,
         },
-        mainPlatformSources: { googleAds, instagram },
+        mainPlatformSources: { googleAds, instagram, tiktok },
         revenue: {
           onsiteRevenue,
           offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
@@ -11608,6 +11678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           meta,
           googleAds,
           instagram,
+          tiktok,
           customIntegration: custom,
         },
         revenue: {
@@ -27356,6 +27427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch Google Ads and Instagram metrics as normalized platform sources
       const { googleAds, googleAdsSpend, googleAdsLastUpdate } = await buildGoogleAdsPlatformSourceForAggregate(id, startDate, endDate);
       const { instagram, instagramSpend, instagramLastUpdate } = await buildInstagramPlatformSourceForAggregate(id, startDate, endDate);
+      const { tiktok, tiktokSpend, tiktokLastUpdate } = await buildTikTokPlatformSourceForAggregate(id, startDate, endDate);
 
       // Fetch canonical spend/revenue sources (ground truth)
       let canonicalSpend = 0;
@@ -27398,7 +27470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const webAnalyticsProvider = hasGA4Connection ? "ga4" : hasCustomIntegration ? "custom_integration" : null;
       const instagramSpendForAggregate = instagramSpend;
-      const platformSpend = linkedinSpend + metaMetrics.spend + customMetrics.spend + googleAdsSpend + instagramSpendForAggregate;
+      const platformSpend = linkedinSpend + metaMetrics.spend + customMetrics.spend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend;
       const platformRevenue = parseNum(linkedinMetrics.revenue) + metaMetrics.revenue + customMetrics.revenue + parseNum(googleAds?.metrics?.attributedRevenue);
       const aggregateRevenue = hasGA4Connection
         ? parseFloat((ga4Metrics.revenue + importedRevenueToDateTotal).toFixed(2))
@@ -27428,7 +27500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           meta: { connected: hasMetaConnection, ...metaMetrics, attributedRevenue: metaMetrics.revenue },
           customIntegration: { connected: hasCustomIntegration, ...customMetrics, users: parseNum(customIntegrationRawData?.users), sessions: parseNum(customIntegrationRawData?.sessions), pageviews: parseNum(customIntegrationRawData?.pageviews), revenue: customMetrics.revenue },
         },
-        mainPlatformSources: { googleAds, instagram },
+        mainPlatformSources: { googleAds, instagram, tiktok },
         revenue: {
           onsiteRevenue: ga4Metrics.revenue,
           offsiteRevenue: aggregateRevenue > ga4Metrics.revenue ? aggregateRevenue - ga4Metrics.revenue : 0,
@@ -27592,6 +27664,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       checkFreshness(customIntegrationLastUpdate, 'Custom Integration');
       checkFreshness(googleAdsLastUpdate, 'Google Ads');
       checkFreshness(instagramLastUpdate, 'Instagram Ads');
+      checkFreshness(tiktokLastUpdate, 'TikTok Ads');
 
       // Aggregate totals across connected sources
       const totalImpressions = aggregateMetricValue("impressions");
@@ -27671,6 +27744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasGA4Data = mainAggregateSources.some((source: any) => source.id === "ga4");
       const hasCustomIntegrationData = mainAggregateSources.some((source: any) => source.id === "custom_integration");
       const hasGoogleAdsData = mainAggregateSources.some((source: any) => source.id === "google_ads");
+      const hasTikTokData = mainAggregateSources.some((source: any) => source.id === "tiktok");
       // Top / bottom performers
       const topPlatform = platforms.length > 0 ? platforms.reduce((top, p) => p.roas > top.roas ? p : top) : null;
       const bottomPlatform = platforms.length > 1 ? platforms.reduce((bottom, p) => p.roas < bottom.roas ? p : bottom) : null;
@@ -27817,6 +27891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             hasGA4Data,
             hasCustomIntegrationData,
             hasGoogleAdsData,
+            hasTikTokData,
             platformsExcludedFromRecommendations: platformsForDisplay.filter((p: any) => !platforms.some((pd: any) => pd.name === p.name)).map((p: any) => p.name),
           },
         },

@@ -59,12 +59,12 @@ Bundling rule:
 | 7E | TikTok Ad Comparison and Insights source-backed tab parity | Done locally; validation pending | Analytics UI |
 | 7F | TikTok unavailable/error/freshness states | Done locally; validation pending | Analytics UI state |
 | 7G | Commit 7 regression and validation docs | Done locally; validation pending | None |
-| 8A | TikTok aggregate resolver reads only selected `tiktok_daily_metrics` rows | Pending | Campaign DeepDive backend aggregate |
-| 8B | `/outcome-totals` source composition accepts TikTok through `platformSources` | Pending | Campaign DeepDive aggregate |
-| 8C | `/executive-summary` uses same TikTok source composition | Pending | Campaign DeepDive aggregate |
+| 8A | TikTok aggregate resolver reads only selected `tiktok_daily_metrics` rows | Done locally; validation pending | Campaign DeepDive backend aggregate |
+| 8B | `/outcome-totals` source composition accepts TikTok through `platformSources` | Done locally; validation pending | Campaign DeepDive aggregate |
+| 8C | `/executive-summary` uses same TikTok source composition | Done locally; validation pending | Campaign DeepDive aggregate |
 | 8D | scheduler snapshot input uses same TikTok aggregate contract | Pending | Background snapshots |
-| 8E | no-double-counting guard for TikTok plus other paid sources | Pending | Aggregate safety |
-| 8F | Commit 8 regression and validation docs | Pending | None |
+| 8E | no-double-counting guard for TikTok plus other paid sources | Done locally; validation pending | Aggregate safety |
+| 8F | Commit 8 regression and validation docs | Done locally; validation pending | None |
 | 9A | TikTok spend source identity uses `tiktok_api` and `platformContext="tiktok"` | Pending | Spend import path |
 | 9B | TikTok attributed revenue import identity uses `platformContext="tiktok"` only | Pending | Revenue import path |
 | 9C | selected TikTok campaign mapping for imported revenue | Pending | Revenue attribution |
@@ -715,6 +715,12 @@ Goal:
 
 - Feed TikTok into all Campaign DeepDive sections through the shared connected-source aggregate contract.
 
+Root cause analysis:
+
+- TikTok has selected persisted daily rows and a campaign-scoped analytics page, but Campaign DeepDive aggregate endpoints do not yet build a TikTok `platformSources` source.
+- `/api/campaigns/:campaignId/outcome-totals` and `/api/campaigns/:campaignId/executive-summary` only pass Google Ads and Instagram through `mainPlatformSources`, so TikTok cannot participate in Performance Summary, Platform Comparison, Trend Analysis, Executive Summary, or report consumers that rely on the shared aggregate.
+- The smallest safe Commit 8 fix is to add a TikTok aggregate resolver that reads only selected persisted `tiktok_daily_metrics` rows, pass it into the existing shared aggregate contract, and leave revenue, scheduler snapshots, KPI, Benchmark, Reports, and live OAuth behavior unchanged.
+
 Subcommits:
 
 - 8A: Add `buildTikTokPlatformSourceForAggregate` reading only selected `tiktok_daily_metrics`.
@@ -729,6 +735,18 @@ Validation:
 - TikTok-only campaign shows paid-media metrics in Performance Summary, Platform Comparison, Trend Analysis, Executive Summary, and Custom Report only where available.
 - GA4 plus TikTok combines GA4 web/outcome metrics with TikTok paid-media metrics without inventing GA4 ad metrics.
 - TikTok appears once in `performanceSummary.sources`.
+
+Status:
+
+- [x] Commit 8A completed locally: added `buildTikTokPlatformSourceForAggregate`, scoped to selected TikTok campaign IDs and persisted `tiktok_daily_metrics` rows.
+- [x] Commit 8B completed locally: `/outcome-totals` now passes TikTok through `mainPlatformSources`/`platformSources` and includes TikTok spend in platform fallback spend.
+- [x] Commit 8C completed locally: `/executive-summary` uses the same TikTok source composition and freshness labeling.
+- [ ] Commit 8D pending: scheduler snapshot input remains a separate background-job boundary and was not changed in this smallest safe fix.
+- [x] Commit 8E completed locally: TikTok enters as a separate `tiktok` source, so it does not borrow Google Ads, Meta, LinkedIn, Instagram, GA4, or canonical financial rows.
+- [x] Commit 8F completed locally: regression guard updated for selected-row TikTok aggregate participation.
+- [x] Commit 8 preserved financial boundaries: TikTok attributed revenue remains unavailable until a TikTok-scoped imported revenue source exists.
+- [x] Commit 8 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/performance-summary-aggregate.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
+- [x] Commit 8 local validation passed: `npm run check`.
 
 ### Commit 9: Revenue, Spend, ROI, And ROAS
 
@@ -1011,5 +1029,10 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - Commit 7 display follow-up root cause traced from browser validation: the test refresh existed but required a visible manual button, and Connected Platforms displayed a static no-row warning for TikTok.
 - Commit 7 display follow-up was implemented locally: first analytics load auto-runs the explicit test-mode refresh when selected TikTok rows are missing, and the Connected Platforms static TikTok no-row warning was removed.
 - Commit 7 display follow-up validation passed: targeted TikTok regression tests, endpoint auth/source-safety regression tests, and `npm run check`.
-- No TikTok scheduler, aggregate, revenue import, KPI, Benchmark, report, or provider OAuth code has been changed.
+- User validation passed for the Commit 7 display follow-up.
+- Commit 8 root cause traced: TikTok selected persisted rows exist, but Campaign DeepDive aggregate endpoints did not build or pass a TikTok `platformSources` source.
+- Commit 8 aggregate participation was implemented locally for `/outcome-totals` and `/executive-summary`, using selected persisted TikTok daily rows only.
+- Commit 8D scheduler snapshot wiring remains pending and was not changed in this smallest safe fix.
+- Commit 8 local validation passed: TikTok aggregate regression tests, performance-summary aggregate tests, endpoint auth/source-safety regression tests, and `npm run check`.
+- No TikTok scheduler, revenue import, KPI, Benchmark, report, or provider OAuth code has been changed.
 - Live OAuth/provider validation is deferred.

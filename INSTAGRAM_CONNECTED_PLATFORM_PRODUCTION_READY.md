@@ -89,8 +89,8 @@ This table is the single source of truth for what is done, pending, and where ea
 | 13N-H | Instagram live-like simulated account/campaign picker | Done and pushed; user validation passed | Create Campaign and Connected Platforms test setup |
 | 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | Done locally through 13O-R-D; 13O-R-A through 13O-R-C user validation passed | Report backend/UI, scheduled reports, report exports, validation docs |
 | 14A | End-to-end local test-mode Create Campaign validation | Local regression validation passed; browser validation pending | Validation only |
-| 14B | End-to-end local test-mode Connected Platforms validation | Local regression guard implemented; browser validation pending | Validation only |
-| 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Pending in Commit 14 Local Validation Bundle | Validation only |
+| 14B | End-to-end local test-mode Connected Platforms validation | Local regression validation passed; browser validation pending | Validation only |
+| 14C | Local Meta/Facebook plus Instagram no-double-counting validation | Local regression guard implemented; browser validation pending | Validation only |
 | 14D | Production-like or deployed live OAuth/API validation | Deferred until other integrations are finalized | Validation only |
 | 14E | Final local evidence update before deferred live OAuth | Pending in Commit 14 Local Validation Bundle | Documentation only |
 
@@ -2220,9 +2220,11 @@ Status:
 
 - [x] Commit 14A local regression guard implemented and validation passed: Create Campaign Instagram setup defaults to the simulated multi-campaign scope, connects only through `/api/instagram/:campaignId/connect-test`, and finalization requires an existing connected Instagram source with selected campaign IDs.
 - [ ] Commit 14A browser validation pending.
-- [x] Commit 14B local regression guard implemented: Connected Platforms Instagram add-source uses the simulated account/campaign selector, requires at least one selected campaign, connects through `/api/instagram/:campaignId/connect-test`, invalidates downstream campaign analytics queries, and does not call live OAuth or unscoped refresh paths.
+- [x] Commit 14B local regression guard implemented and validation passed: Connected Platforms Instagram add-source uses the simulated account/campaign selector, requires at least one selected campaign, connects through `/api/instagram/:campaignId/connect-test`, invalidates downstream campaign analytics queries, and does not call live OAuth or unscoped refresh paths.
 - [ ] Commit 14B browser validation pending.
-- [ ] Commit 14 Local Validation Bundle remaining: 14C and 14E.
+- [x] Commit 14C local regression guard implemented: Meta/Facebook and Instagram are proven as distinct paid-media aggregate sources with separate source IDs, exact one-time metric contribution, and no Meta placement fallback for Instagram.
+- [ ] Commit 14C browser validation pending.
+- [ ] Commit 14 Local Validation Bundle remaining: 14E.
 - [ ] Commit 14D Deferred Live OAuth Bundle postponed by product decision until after other integrations are finalized.
 
 Commit 14A root-cause trace:
@@ -2247,7 +2249,20 @@ Commit 14B root-cause trace:
 Commit 14B validation:
 
 - `npm test -- server/instagram-connected-platforms-regression.test.ts` should pass with the reinforced Connected Platforms source-contract guard.
+- User validation passed on 2026-06-08 for `npm run check` and `npm test -- server/instagram-connected-platforms-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - Browser validation remains pending for the full Connected Platforms add-source user journey.
+- No runtime code, schema, provider refresh, live OAuth, analytics calculation, revenue, KPI, Benchmark, scheduler, or report behavior changes are included.
+
+Commit 14C root-cause trace:
+
+- Instagram and Meta/Facebook both depend on Meta Marketing API concepts, so the final local validation bundle needs explicit proof that source-backed aggregate math treats them as separate main sources instead of folding Instagram into Meta or counting the same paid-media rows twice.
+- Earlier implementation already scoped Instagram rows by `publisherPlatform === "instagram"` and keeps Meta/Facebook in the existing Meta adapter, while Instagram enters the aggregate as a normalized main platform source.
+- The smallest safe fix adds a direct aggregate regression guard that feeds Meta/Facebook and Instagram together and verifies each source appears once and contributes impressions, clicks, conversions, and spend exactly once.
+
+Commit 14C validation:
+
+- `npm test -- server/instagram-connected-platforms-regression.test.ts` should pass with the new Meta/Facebook plus Instagram no-double-counting aggregate guard.
+- Browser validation remains pending for a campaign with both Meta/Facebook and Instagram connected.
 - No runtime code, schema, provider refresh, live OAuth, analytics calculation, revenue, KPI, Benchmark, scheduler, or report behavior changes are included.
 
 ## Validation Checklist

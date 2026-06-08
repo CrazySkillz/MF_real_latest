@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 
 describe("Instagram Connected Platforms regression guard", () => {
   it("surfaces Instagram status only from the persisted source contract", () => {
@@ -188,6 +189,54 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(aggregate).toContain("source.includedMetrics.includes(metricName)");
     expect(aggregate).not.toContain("hasMetaInstagramOverlapRisk");
     expect(aggregate).not.toContain('source.id === "instagram"');
+  });
+
+  it("keeps Meta/Facebook and Instagram as distinct paid-media aggregate sources", () => {
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-1",
+      dateRange: "30days",
+      platforms: {
+        meta: {
+          connected: true,
+          impressions: 1000,
+          clicks: 40,
+          spend: 120,
+          conversions: 6,
+        },
+      },
+      platformSources: [
+        {
+          id: "instagram",
+          label: "Instagram Ads",
+          category: "paid_media",
+          connected: true,
+          capabilities: ["impressions", "clicks", "spend", "conversions"],
+          includedMetrics: ["impressions", "clicks", "spend", "conversions"],
+          excludedMetrics: [],
+          metrics: {
+            impressions: 2500,
+            clicks: 90,
+            spend: 85,
+            conversions: 4,
+          },
+          freshness: { publisherPlatformFilter: "instagram", selectedCampaignIds: ["ig_test_1"] },
+        },
+      ],
+      spend: {
+        unifiedSpend: 205,
+        spendSource: "platform_spend_fallback",
+      },
+      revenue: { totalRevenue: 0 },
+    } as any);
+
+    expect(aggregate.sources.map((source) => source.id)).toContain("meta");
+    expect(aggregate.sources.map((source) => source.id)).toContain("instagram");
+    expect(aggregate.sources.filter((source) => source.id === "meta")).toHaveLength(1);
+    expect(aggregate.sources.filter((source) => source.id === "instagram")).toHaveLength(1);
+    expect(aggregate.totals.impressions).toMatchObject({ value: 3500, sources: ["meta", "instagram"] });
+    expect(aggregate.totals.clicks).toMatchObject({ value: 130, sources: ["meta", "instagram"] });
+    expect(aggregate.totals.conversions).toMatchObject({ value: 10, sources: ["meta", "instagram"] });
+    expect(aggregate.totals.spend).toMatchObject({ value: 205, sources: ["meta", "instagram"] });
   });
 
   it("wires Instagram into Campaign DeepDive aggregate routes without refresh or write behavior", () => {

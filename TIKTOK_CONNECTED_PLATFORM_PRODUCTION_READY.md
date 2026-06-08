@@ -23,7 +23,7 @@ This table is the single source of truth for what is done, pending, validated, a
 | 2C | TikTok schema/storage field contract design | Done locally in this tracker | None |
 | 2D | Test-mode versus live-mode boundary | Done locally in this tracker | None |
 | 2E | Commit 2 validation docs and no-runtime closeout | Done locally in this tracker | None |
-| 3A | `tiktok_connections` schema/storage foundation | Pending | Backend storage only |
+| 3A | `tiktok_connections` schema/type foundation | Done locally; validation pending | Shared schema only |
 | 3B | `tiktok_daily_metrics` schema/storage foundation | Pending | Backend storage only |
 | 3C | startup migration/table-existence coverage | Pending | Backend startup only |
 | 3D | schema-derived campaign/client delete cascade coverage | Pending | Destructive-path guard only |
@@ -462,7 +462,7 @@ Status:
 - [x] Required reading complete for documentation planning.
 - [x] Current TikTok absence traced locally.
 - [x] Tracker created locally.
-- [ ] User review complete.
+- [x] User validation passed for Commit 1.
 
 ### Commit 2: Provider Research And Local Design Trace
 
@@ -492,13 +492,19 @@ Status:
 - [x] Commit 2D future `tiktok_daily_metrics` field contract documented.
 - [x] Commit 2E test-mode versus live-mode boundary documented.
 - [x] No runtime code changed.
-- [ ] User review complete.
+- [x] User validation passed for Commit 2.
 
 ### Commit 3: Schema And Storage Foundation
 
 Goal:
 
 - Add TikTok persistence without exposing TikTok in UI or aggregate outputs.
+
+Root cause analysis:
+
+- TikTok cannot safely move to backend routes until the shared contract defines the campaign-scoped connection row shape.
+- The current code has no `tiktok_connections` table or shared insert/select type, so any route or UI work would either invent an untracked shape or reuse unrelated Google Sheets/generic integration state.
+- The smallest safe fix is to add only the shared `tiktok_connections` schema/type foundation first, with no routes, storage methods, migration, UI, scheduler, aggregate, revenue, KPI, Benchmark, or report exposure.
 
 Subcommits:
 
@@ -514,6 +520,16 @@ Validation:
 - Storage methods are campaign-scoped.
 - Campaign/client delete guard includes TikTok tables.
 - No UI or aggregate path can show TikTok yet.
+
+Status:
+
+- [x] Commit 3A completed locally: added `tiktokConnections`, `insertTikTokConnectionSchema`, `TikTokConnection`, and `InsertTikTokConnection` in `shared/schema.ts`.
+- [x] Commit 3A preserved no runtime exposure: no routes, storage methods, startup migration, UI, scheduler, aggregate, revenue, KPI, Benchmark, or report code was added.
+- [x] Commit 3A validation passed: `npm run check`.
+- [ ] Commit 3B pending.
+- [ ] Commit 3C pending.
+- [ ] Commit 3D pending.
+- [ ] Commit 3E pending.
 
 ### Commit 4: Backend Source Contract Routes
 
@@ -869,7 +885,10 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 
 - Commit 1 documentation was created locally.
 - Commit 2 provider/source-contract documentation was created locally.
+- User validation passed for Commit 1 and Commit 2.
+- Commit 3A `tiktok_connections` shared schema/type foundation was implemented locally.
+- Commit 3A local validation passed: `npm run check`.
 - `git status --short` was checked before editing, as required.
 - Current TikTok code-path inventory was traced with local search.
-- No runtime code was changed.
+- No TikTok runtime route, UI, scheduler, aggregate, revenue, KPI, Benchmark, or report code has been changed.
 - Live OAuth/provider validation is deferred.

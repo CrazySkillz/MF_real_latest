@@ -365,6 +365,29 @@ export const instagramConnections = pgTable("instagram_connections", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const tiktokConnections = pgTable("tiktok_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: text("campaign_id").notNull(),
+  advertiserId: text("advertiser_id").notNull(),
+  advertiserName: text("advertiser_name"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  encryptedTokens: jsonb("encrypted_tokens"),
+  method: text("method").notNull(),
+  selectedCampaignIds: text("selected_campaign_ids"),
+  selectedCampaignMetadata: text("selected_campaign_metadata"),
+  reportingDimensions: text("reporting_dimensions"),
+  reportingMetrics: text("reporting_metrics"),
+  sourceContractVersion: text("source_contract_version").notNull().default("tiktok_campaign_daily_v1"),
+  lastRefreshAt: timestamp("last_refresh_at"),
+  lastError: text("last_error"),
+  spendOnly: boolean("spend_only").default(false),
+  expiresAt: timestamp("expires_at"),
+  connectedAt: timestamp("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Google Ads connections
 export const googleAdsConnections = pgTable("google_ads_connections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1305,6 +1328,25 @@ export const insertInstagramConnectionSchema = createInsertSchema(instagramConne
   expiresAt: true,
 });
 
+export const insertTikTokConnectionSchema = createInsertSchema(tiktokConnections).pick({
+  campaignId: true,
+  advertiserId: true,
+  advertiserName: true,
+  accessToken: true,
+  refreshToken: true,
+  encryptedTokens: true,
+  method: true,
+  selectedCampaignIds: true,
+  selectedCampaignMetadata: true,
+  reportingDimensions: true,
+  reportingMetrics: true,
+  sourceContractVersion: true,
+  lastRefreshAt: true,
+  lastError: true,
+  spendOnly: true,
+  expiresAt: true,
+});
+
 export const insertMetaKpiSchema = createInsertSchema(metaKpis).pick({
   campaignId: true,
   name: true,
@@ -1842,6 +1884,8 @@ export type MetaConnection = typeof metaConnections.$inferSelect;
 export type InsertMetaConnection = z.infer<typeof insertMetaConnectionSchema>;
 export type InstagramConnection = typeof instagramConnections.$inferSelect;
 export type InsertInstagramConnection = z.infer<typeof insertInstagramConnectionSchema>;
+export type TikTokConnection = typeof tiktokConnections.$inferSelect;
+export type InsertTikTokConnection = z.infer<typeof insertTikTokConnectionSchema>;
 export type GoogleAdsConnection = typeof googleAdsConnections.$inferSelect;
 export type InsertGoogleAdsConnection = z.infer<typeof insertGoogleAdsConnectionSchema>;
 export type GoogleAdsDailyMetric = typeof googleAdsDailyMetrics.$inferSelect;

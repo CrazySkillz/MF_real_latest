@@ -44,12 +44,14 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(source).toContain("updateTikTokCampaignSelection");
   });
 
-  it("keeps TikTok out of Connected Platforms until the dedicated add-source commit", () => {
+  it("exposes TikTok in Connected Platforms only through the add-source contract", () => {
     const campaignDetail = readCampaignDetailPage();
 
-    expect(campaignDetail).not.toContain("connectTikTokTestMode");
-    expect(campaignDetail).not.toContain("isTikTokConnected");
-    expect(campaignDetail).not.toContain("/api/tiktok/");
+    expect(campaignDetail).toContain("connectTikTokTestMode");
+    expect(campaignDetail).toContain('apiRequest("POST", `/api/tiktok/${campaignId}/connect-test`');
+    expect(campaignDetail).toContain('platform: "TikTok Ads"');
+    expect(campaignDetail).toContain('analyticsPath: null');
+    expect(campaignDetail).toContain('url = `/api/tiktok/${campaignId}/connection`');
     expect(campaignDetail).not.toContain("tiktok-analytics");
   });
 });

@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { SiGoogle, SiFacebook, SiInstagram, SiLinkedin, SiX, SiHubspot, SiSalesforce, SiShopify } from "react-icons/si";
+import { SiGoogle, SiFacebook, SiInstagram, SiLinkedin, SiTiktok, SiX, SiHubspot, SiSalesforce, SiShopify } from "react-icons/si";
 import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
@@ -100,6 +100,17 @@ const SIMULATED_INSTAGRAM_CAMPAIGNS = [
   { id: "ig_test_1", name: "Instagram Prospecting - Reels" },
   { id: "ig_test_2", name: "Instagram Retargeting - Stories" },
   { id: "ig_test_3", name: "Instagram Lead Gen - Feed" },
+];
+
+const SIMULATED_TIKTOK_ADVERTISERS = [
+  { id: "act_tiktok_test", name: "Test TikTok Advertiser" },
+  { id: "act_tiktok_growth", name: "Growth TikTok Advertiser" },
+];
+
+const SIMULATED_TIKTOK_CAMPAIGNS = [
+  { id: "tt_test_1", name: "TikTok Prospecting - Spark Ads" },
+  { id: "tt_test_2", name: "TikTok Retargeting - Video Views" },
+  { id: "tt_test_3", name: "TikTok Lead Gen - In Feed" },
 ];
 
 const KPI_DESC_MAX = 200;
@@ -4401,6 +4412,20 @@ export default function CampaignDetail() {
     queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`], exact: false });
   };
 
+  const invalidateTikTokConnectedPlatformQueries = () => {
+    if (!campaignId) return;
+    queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
+    queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/tiktok/${campaignId}/connection`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "executive-summary"], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/executive-summary`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/trend-analysis`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpis`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`], exact: false });
+    queryClientHook.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`], exact: false });
+  };
+
   const connectInstagramTestMode = async () => {
     if (!campaignId) return;
     const selectedCampaignIds = instagramSelectedCampaignIds
@@ -4430,6 +4455,39 @@ export default function CampaignDetail() {
       toastHook({ title: "Connection Failed", description: error?.message || "Failed to connect Instagram", variant: "destructive" });
     } finally {
       setIsInstagramConnecting(false);
+    }
+  };
+
+  const connectTikTokTestMode = async () => {
+    if (!campaignId) return;
+    const selectedCampaignIds = tiktokSelectedCampaignIds
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (selectedCampaignIds.length === 0) {
+      toastHook({ title: "TikTok campaign required", description: "Select at least one TikTok campaign.", variant: "destructive" });
+      return;
+    }
+
+    setIsTikTokConnecting(true);
+    try {
+      const response = await apiRequest("POST", `/api/tiktok/${campaignId}/connect-test`, {
+        advertiserId: tiktokAdvertiserId.trim() || "act_tiktok_test",
+        advertiserName: tiktokAdvertiserName.trim() || "Test TikTok Advertiser",
+        selectedCampaignIds,
+        selectedCampaignMetadata: SIMULATED_TIKTOK_CAMPAIGNS.filter((campaign) => selectedCampaignIds.includes(campaign.id)),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || "Failed to connect TikTok");
+      }
+      setExpandedPlatform(null);
+      invalidateTikTokConnectedPlatformQueries();
+      toastHook({ title: "TikTok Ads Connected", description: "Successfully connected test TikTok campaign scope." });
+    } catch (error: any) {
+      toastHook({ title: "Connection Failed", description: error?.message || "Failed to connect TikTok", variant: "destructive" });
+    } finally {
+      setIsTikTokConnecting(false);
     }
   };
 
@@ -4731,6 +4789,7 @@ export default function CampaignDetail() {
   const instagramConversions = instagramHasSourceRows ? Number(instagramMetrics.conversions || 0) : 0;
   const instagramCtr = instagramHasSourceRows ? `${Number(instagramMetrics.ctr || 0).toFixed(2)}%` : "0.00%";
   const instagramCpc = instagramHasSourceRows ? `$${Number(instagramMetrics.cpc || 0).toFixed(2)}` : "$0.00";
+  const isTikTokConnected = platformStatusMap.get("tiktok")?.connected === true;
   
   // Build platformMetrics array dynamically based on connected platforms
   const allPlatformMetrics: PlatformMetrics[] = [
@@ -4813,6 +4872,18 @@ export default function CampaignDetail() {
       unavailableReason: instagramHasSourceRows ? undefined : "Source-backed Instagram metrics are not available yet."
     },
     {
+      platform: "TikTok Ads",
+      connected: isTikTokConnected,
+      impressions: 0,
+      clicks: 0,
+      conversions: 0,
+      spend: "0.00",
+      ctr: "0.00%",
+      cpc: "$0.00",
+      analyticsPath: null,
+      unavailableReason: "Source-backed TikTok metrics are not available until persisted TikTok metric rows exist."
+    },
+    {
       platform: "Custom Integration",
       connected: platformStatusMap.get("custom-integration")?.connected === true,
       impressions: 0,
@@ -4843,6 +4914,8 @@ export default function CampaignDetail() {
         return <SiFacebook className="w-5 h-5 text-blue-600" />;
       case "Instagram Ads":
         return <SiInstagram className="w-5 h-5 text-pink-600" />;
+      case "TikTok Ads":
+        return <SiTiktok className="w-5 h-5 text-foreground" />;
       case "LinkedIn Ads":
         return <SiLinkedin className="w-5 h-5 text-blue-700" />;
       case "Custom Integration":
@@ -4886,6 +4959,10 @@ export default function CampaignDetail() {
   const [instagramAdAccountName, setInstagramAdAccountName] = useState("Test Instagram Ad Account");
   const [instagramSelectedCampaignIds, setInstagramSelectedCampaignIds] = useState("ig_test_1, ig_test_2, ig_test_3");
   const [isInstagramConnecting, setIsInstagramConnecting] = useState(false);
+  const [tiktokAdvertiserId, setTikTokAdvertiserId] = useState("act_tiktok_test");
+  const [tiktokAdvertiserName, setTikTokAdvertiserName] = useState("Test TikTok Advertiser");
+  const [tiktokSelectedCampaignIds, setTikTokSelectedCampaignIds] = useState("");
+  const [isTikTokConnecting, setIsTikTokConnecting] = useState(false);
   const selectedInstagramCampaignIdList = instagramSelectedCampaignIds
     .split(",")
     .map((id) => id.trim())
@@ -4895,6 +4972,16 @@ export default function CampaignDetail() {
     if (checked) selected.add(id);
     else selected.delete(id);
     setInstagramSelectedCampaignIds(Array.from(selected).join(", "));
+  };
+  const selectedTikTokCampaignIdList = tiktokSelectedCampaignIds
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  const updateTikTokCampaignSelection = (id: string, checked: boolean) => {
+    const selected = new Set(selectedTikTokCampaignIdList);
+    if (checked) selected.add(id);
+    else selected.delete(id);
+    setTikTokSelectedCampaignIds(Array.from(selected).join(", "));
   };
   const [addRevenueWizardOpen, setAddRevenueWizardOpen] = useState(false);
   const [revenueWizardInitialStep, setRevenueWizardInitialStep] = useState<string | undefined>(undefined);
@@ -4978,6 +5065,8 @@ export default function CampaignDetail() {
         url = `/api/google-sheets/${campaignId}/connection`;
       } else if (p === 'Instagram Ads') {
         url = `/api/instagram/${campaignId}/connection`;
+      } else if (p === 'TikTok Ads') {
+        url = `/api/tiktok/${campaignId}/connection`;
       } else if (p === 'Custom Integration') {
         url = `/api/custom-integration/${campaignId}`;
       } else {
@@ -4996,6 +5085,7 @@ export default function CampaignDetail() {
       void queryClient.invalidateQueries({ queryKey: ['/api/google-ads', campaignId, 'connection'] });
       void queryClient.invalidateQueries({ queryKey: [`/api/instagram/${campaignId}/connection`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/instagram/${campaignId}/overview-summary`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/tiktok/${campaignId}/connection`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`] });
       void queryClient.invalidateQueries({ queryKey: ['/api/linkedin/imports'], exact: false });
@@ -5622,7 +5712,7 @@ export default function CampaignDetail() {
                             </div>
                           </div>
                         )}
-                        {platform.platform === "Instagram Ads" && platform.unavailableReason && (
+                        {(platform.platform === "Instagram Ads" || platform.platform === "TikTok Ads") && platform.unavailableReason && (
                           <div className="pt-2 border-t">
                             <div className="flex items-start gap-2 text-sm bg-muted/60 border border-border rounded-lg p-3">
                               <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
@@ -5861,6 +5951,70 @@ export default function CampaignDetail() {
                           >
                             {isInstagramConnecting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             Connect {selectedInstagramCampaignIdList.length} Campaign{selectedInstagramCampaignIdList.length === 1 ? "" : "s"}
+                          </Button>
+                        </div>
+                      ) : platform.platform === "TikTok Ads" ? (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Simulated TikTok Advertiser</Label>
+                            <Select
+                              value={tiktokAdvertiserId}
+                              onValueChange={(value) => {
+                                const advertiser = SIMULATED_TIKTOK_ADVERTISERS.find((item) => item.id === value);
+                                setTikTokAdvertiserId(value);
+                                setTikTokAdvertiserName(advertiser?.name || value);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a TikTok advertiser" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SIMULATED_TIKTOK_ADVERTISERS.map((advertiser) => (
+                                  <SelectItem key={advertiser.id} value={advertiser.id}>
+                                    {advertiser.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">{tiktokAdvertiserId}</p>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <Label>Available TikTok Campaigns</Label>
+                              <button
+                                type="button"
+                                className="text-xs text-primary"
+                                onClick={() => setTikTokSelectedCampaignIds(SIMULATED_TIKTOK_CAMPAIGNS.map((campaign) => campaign.id).join(", "))}
+                              >
+                                Select all
+                              </button>
+                            </div>
+                            <div className="rounded-md border p-2 space-y-1">
+                              {SIMULATED_TIKTOK_CAMPAIGNS.map((campaign) => {
+                                const checked = selectedTikTokCampaignIdList.includes(campaign.id);
+                                return (
+                                  <label key={campaign.id} className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-muted">
+                                    <Checkbox
+                                      checked={checked}
+                                      onCheckedChange={(next) => updateTikTokCampaignSelection(campaign.id, !!next)}
+                                    />
+                                    <span className="min-w-0 flex-1">
+                                      <span className="block truncate text-sm">{campaign.name}</span>
+                                      <span className="block truncate text-xs text-muted-foreground">{campaign.id}</span>
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={connectTikTokTestMode}
+                            disabled={isTikTokConnecting || selectedTikTokCampaignIdList.length === 0}
+                          >
+                            {isTikTokConnecting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Connect {selectedTikTokCampaignIdList.length} Campaign{selectedTikTokCampaignIdList.length === 1 ? "" : "s"}
                           </Button>
                         </div>
                       ) : platform.platform === "Custom Integration" ? (

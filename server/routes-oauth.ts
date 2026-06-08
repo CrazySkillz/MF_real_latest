@@ -10518,6 +10518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customIntegration,
         googleAdsConnection,
         instagramConnection,
+        tiktokConnection,
         hubspotConnection,
         shopifyConnection,
         salesforceConnection,
@@ -10529,6 +10530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getCustomIntegration(campaignId).catch(() => undefined),
         storage.getGoogleAdsConnection(campaignId).catch(() => undefined),
         storage.getInstagramConnection(campaignId).catch(() => undefined),
+        storage.getTikTokConnection(campaignId).catch(() => undefined),
         storage.getHubspotConnection(campaignId).catch(() => undefined),
         storage.getShopifyConnection(campaignId).catch(() => undefined),
         storage.getSalesforceConnection(campaignId).catch(() => undefined),
@@ -10577,6 +10579,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       })();
       const instagramConnected = !!(instagramConnection && !(instagramConnection as any).spendOnly && instagramSelectedCampaignIds.length > 0);
+      const tiktokSelectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((tiktokConnection as any)?.selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      const tiktokConnected = !!(tiktokConnection && !(tiktokConnection as any).spendOnly && tiktokSelectedCampaignIds.length > 0);
 
       // GA4 is only fully "connected" when a propertyId has been selected
       const activeGA4 = ga4Connections.find((c: any) => c.propertyId && c.propertyId !== '');
@@ -10648,6 +10659,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           selectedCampaignIds: instagramSelectedCampaignIds,
           publisherPlatformFilter: instagramConnection?.publisherPlatformFilter,
           sourceContractVersion: instagramConnection?.sourceContractVersion,
+        },
+        {
+          id: "tiktok",
+          name: "TikTok Ads",
+          connected: tiktokConnected,
+          analyticsPath: null,
+          lastConnectedAt: tiktokConnection?.connectedAt,
+          method: tiktokConnection?.method,
+          selectedCampaignIds: tiktokSelectedCampaignIds,
+          sourceContractVersion: tiktokConnection?.sourceContractVersion,
         },
         {
           id: "custom-integration",

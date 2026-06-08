@@ -46,12 +46,12 @@ Bundling rule:
 | 5C | Create Campaign selected-campaign finalization guard | Done locally; validation pending | Create Campaign finalization |
 | 5D | Create Campaign query invalidation after successful TikTok setup | Done locally; validation pending | Cache behavior |
 | 5E | Create Campaign regression and validation docs | Done locally; validation pending | None |
-| 6A | Connected Platforms status endpoint includes TikTok from source contract | Pending | Backend status payload |
-| 6B | Connected Platforms TikTok card with no placeholder metrics | Pending | Connected Platforms UI |
-| 6C | Connected Platforms add-source setup flow | Pending | Connected Platforms setup |
-| 6D | Connected Platforms success/error/empty states and query invalidation | Pending | Connected Platforms UI state |
-| 6E | Connected Platforms disconnect UI route mapping | Pending | Connected Platforms lifecycle |
-| 6F | Commit 6 regression and validation docs | Pending | None |
+| 6A | Connected Platforms status endpoint includes TikTok from source contract | Done locally; validation pending | Backend status payload |
+| 6B | Connected Platforms TikTok card with no placeholder metrics | Done locally; validation pending | Connected Platforms UI |
+| 6C | Connected Platforms add-source setup flow | Done locally; validation pending | Connected Platforms setup |
+| 6D | Connected Platforms success/error/empty states and query invalidation | Done locally; validation pending | Connected Platforms UI state |
+| 6E | Connected Platforms disconnect UI route mapping | Done locally; validation pending | Connected Platforms lifecycle |
+| 6F | Commit 6 regression and validation docs | Done locally; validation pending | None |
 | 7A | TikTok analytics route shell and campaign-access guard | Pending | TikTok analytics route |
 | 7B | TikTok analytics daily metrics endpoint | Pending | Backend analytics data |
 | 7C | TikTok Overview tab from persisted selected daily rows only | Pending | Analytics UI |
@@ -647,6 +647,19 @@ Validation:
 - Connected Platforms does not show fake TikTok metrics before persisted rows exist.
 - Disconnect hides TikTok and clears only current-campaign TikTok data.
 
+Status:
+
+- [x] Commit 6A completed locally: `/api/campaigns/:id/connected-platforms` now includes TikTok only when the persisted TikTok source contract has selected campaign IDs.
+- [x] Commit 6B completed locally: Campaign Detail includes a TikTok Ads card and renders unavailable metrics with a reason instead of fake source-backed values.
+- [x] Commit 6C completed locally: Connected Platforms TikTok setup calls `POST /api/tiktok/:campaignId/connect-test` with explicit selected campaigns and selected campaign metadata.
+- [x] Commit 6D completed locally: empty TikTok campaign selection blocks connect, connection failures show destructive errors, successful connect invalidates TikTok/campaign/source queries.
+- [x] Commit 6E completed locally: Connected Platforms disconnect maps TikTok Ads to `DELETE /api/tiktok/:campaignId/connection`.
+- [x] Commit 6F completed locally: regression guard updated for Connected Platforms add-source exposure while preserving no TikTok analytics route exposure.
+- [x] Commit 6 preserved analytics boundaries: no TikTok analytics page, Campaign DeepDive aggregate, scheduler, revenue, KPI, Benchmark, or report wiring was added.
+- [x] Commit 6 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
+- [x] Commit 6 local validation passed: `npm run check`.
+- [x] Commit 6 local validation passed: `git diff --check`.
+
 ### Commit 7: TikTok Analytics Page
 
 Goal:
@@ -953,7 +966,14 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - User validation passed for Commit 4.
 - Commit 5 Create Campaign TikTok flow was implemented locally.
 - Commit 5 local validation passed: Create Campaign regression tests, endpoint auth/source-safety regression tests, and `npm run check`.
+- User validation passed for Commit 5.
+- Commit 5 default-selection hotfix was implemented and pushed: TikTok Create Campaign campaign checkboxes now start deselected and reset deselected.
+- Commit 5 default-selection hotfix validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts` and `npm run check`.
+- User validation passed for the Commit 5 default-selection hotfix.
 - `git status --short` was checked before editing, as required.
 - Current TikTok code-path inventory was traced with local search.
-- No TikTok frontend UI, analytics page, Connected Platforms card, scheduler, aggregate, revenue, KPI, Benchmark, or report code has been changed.
+- Commit 6 root cause traced: Connected Platforms cannot add TikTok later because `/api/campaigns/:id/connected-platforms` does not include TikTok and Campaign Detail has no TikTok setup card/branch despite the backend TikTok source-contract routes existing.
+- Commit 6 Connected Platforms add-source flow was implemented locally.
+- Commit 6 local validation passed: Connected Platforms/Create Campaign regression tests, endpoint auth/source-safety regression tests, `npm run check`, and `git diff --check`.
+- No TikTok analytics page, scheduler, aggregate, revenue, KPI, Benchmark, or report code has been changed.
 - Live OAuth/provider validation is deferred.

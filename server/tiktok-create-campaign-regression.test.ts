@@ -61,18 +61,34 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     const routes = readRoutes();
     const app = readApp();
     const page = readTikTokAnalyticsPage();
+    const dailyRouteStart = routes.indexOf('app.get("/api/tiktok/:campaignId/daily-metrics"');
+    const instagramStart = routes.indexOf('app.get("/api/instagram/:campaignId/overview-summary"', dailyRouteStart);
+    const dailyRoute = routes.slice(dailyRouteStart, instagramStart);
 
     expect(routes).toContain('app.get("/api/tiktok/:campaignId/daily-metrics"');
     expect(routes).toContain("ensureCampaignAccess(req as any, res as any, parsedId.data)");
     expect(routes).toContain("storage.getTikTokConnection(parsedId.data)");
     expect(routes).toContain("storage.getTikTokDailyMetrics(parsedId.data, startDate, endDate)");
     expect(routes).toContain("selected.has(String(row.tiktokCampaignId))");
-    expect(routes).not.toContain("upsertTikTokDailyMetrics");
+    expect(dailyRoute).not.toContain("upsertTikTokDailyMetrics");
     expect(app).toContain('const TikTokAnalytics = lazy(() => import("@/pages/tiktok-analytics"))');
     expect(app).toContain('<Route path="/campaigns/:id/tiktok-analytics" component={TikTokAnalytics} />');
     expect(page).toContain("TikTok Ads Analytics");
     expect(page).toContain("Revenue / ROI / ROAS");
     expect(page).toContain("Requires TikTok-scoped attributed revenue.");
     expect(page).toContain("No persisted TikTok metric rows exist");
+  });
+
+  it("allows explicit test-mode TikTok refresh without hidden analytics seeding", () => {
+    const routes = readRoutes();
+    const page = readTikTokAnalyticsPage();
+
+    expect(routes).toContain('app.post("/api/tiktok/:campaignId/refresh-test"');
+    expect(routes).toContain('String((connection as any).method || "") !== "test_mode"');
+    expect(routes).toContain("storage.upsertTikTokDailyMetrics(rows as any)");
+    expect(routes).toContain("isSimulated: true");
+    expect(routes).toContain('metricAvailability: { revenue: "unavailable_until_tiktok_scoped_attributed_revenue_exists" }');
+    expect(page).toContain("Refresh test metrics");
+    expect(page).toContain("refreshTestMetrics.mutate()");
   });
 });

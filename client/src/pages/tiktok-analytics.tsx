@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { ArrowLeft, AlertCircle, BarChart3, DollarSign, Eye, MousePointer, Percent, Target, Video } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
@@ -41,6 +41,7 @@ function metricCard(label: string, value: string, Icon: any, helper?: string) {
 export default function TikTokAnalytics() {
   const [, params] = useRoute("/campaigns/:id/tiktok-analytics");
   const campaignId = params?.id;
+  const queryClient = useQueryClient();
 
   const { data: connection, isLoading: connectionLoading, error: connectionError } = useQuery<any>({
     queryKey: [`/api/tiktok/${campaignId}/connection`],
@@ -71,6 +72,20 @@ export default function TikTokAnalytics() {
 
   const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
   const hasRows = rows.length > 0;
+  const refreshTestMetrics = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/tiktok/${campaignId}/refresh-test`, { method: "POST" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.error || "Failed to refresh TikTok test metrics");
+      }
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [`/api/tiktok/${campaignId}/daily-metrics`], exact: false });
+      await queryClient.invalidateQueries({ queryKey: [`/api/tiktok/${campaignId}/connection`], exact: false });
+    },
+  });
   const totals = useMemo(() => {
     const summed = rows.reduce((acc: any, row: any) => {
       acc.impressions += Number(row.impressions || 0);
@@ -191,9 +206,27 @@ export default function TikTokAnalytics() {
                   ) : !hasRows ? (
                     <Card>
                       <CardContent className="p-4">
-                        <div className="flex items-start gap-2 text-sm bg-muted/60 border border-border rounded-lg p-3">
+                        <div className="flex items-start justify-between gap-3 text-sm bg-muted/60 border border-border rounded-lg p-3">
+                          <div className="flex items-start gap-2">
                           <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                          <p className="text-muted-foreground">{unavailableReason}</p>
+                            <div>
+                              <p className="text-muted-foreground">{unavailableReason}</p>
+                              {refreshTestMetrics.error && (
+                                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{(refreshTestMetrics.error as Error).message}</p>
+                              )}
+                            </div>
+                          </div>
+                          {connection?.method === "test_mode" && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => refreshTestMetrics.mutate()}
+                              disabled={refreshTestMetrics.isPending}
+                            >
+                              {refreshTestMetrics.isPending ? "Refreshing..." : "Refresh test metrics"}
+                            </Button>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

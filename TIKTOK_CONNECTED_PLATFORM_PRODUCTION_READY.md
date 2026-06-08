@@ -701,6 +701,10 @@ Status:
 - [x] Commit 7 preserved adjacent boundaries: no Campaign DeepDive aggregate, scheduler, revenue import, KPI, Benchmark, Reports, or TikTok provider OAuth code was added.
 - [x] Commit 7 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
 - [x] Commit 7 local validation passed: `npm run check`.
+- [x] Commit 7 no-row root cause traced: test-mode TikTok connection creates selected source scope but does not persist daily TikTok metric rows, so analytics correctly renders unavailable.
+- [x] Commit 7 test-mode refresh fix completed locally: added explicit `POST /api/tiktok/:campaignId/refresh-test` that writes simulated persisted rows only for selected TikTok campaign IDs and only for test-mode connections.
+- [x] Commit 7 test-mode refresh keeps analytics reads pure: `GET /api/tiktok/:campaignId/daily-metrics` still does not seed or invent rows.
+- [x] Commit 7 test-mode refresh local validation passed: targeted TikTok regression tests, endpoint auth/source-safety regression tests, and `npm run check`.
 
 ### Commit 8: Campaign DeepDive Aggregate Participation
 
@@ -998,5 +1002,8 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - Commit 7 root cause traced: TikTok has connected-source setup but no selected-row analytics endpoint or campaign-scoped analytics page.
 - Commit 7 TikTok analytics page and daily-metrics endpoint were implemented locally from selected persisted TikTok rows only.
 - Commit 7 local validation passed: selected-row analytics regression tests, endpoint auth/source-safety regression tests, and `npm run check`.
+- Commit 7 no-row root cause traced from browser validation: TikTok test-mode connection exists, but no selected TikTok daily rows have been persisted yet.
+- Commit 7 no-row fix was implemented locally with an explicit test-mode refresh action that persists current-campaign selected TikTok source rows only.
+- Commit 7 no-row fix validation passed: targeted TikTok regression tests, endpoint auth/source-safety regression tests, and `npm run check`.
 - No TikTok scheduler, aggregate, revenue import, KPI, Benchmark, report, or provider OAuth code has been changed.
 - Live OAuth/provider validation is deferred.

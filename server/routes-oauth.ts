@@ -20173,6 +20173,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * Explicit test-mode TikTok daily metric refresh
+   */
+  app.post("/api/tiktok/:campaignId/refresh-test", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getTikTokConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "TikTok connection not found" });
+      }
+      if (String((connection as any).method || "") !== "test_mode") {
+        return res.status(400).json({ error: "TikTok test refresh is available only for test-mode connections" });
+      }
+
+      const selectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      if (selectedCampaignIds.length === 0) {
+        return res.status(400).json({ error: "No selected TikTok campaigns" });
+      }
+
+      const metadataById = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignMetadata || "[]"));
+          if (!Array.isArray(parsed)) return new Map<string, any>();
+          return new Map(parsed.map((item: any) => [String(item?.id || item?.campaignId || ""), item]));
+        } catch {
+          return new Map<string, any>();
+        }
+      })();
+      const date = yesterdayUTC();
+      const rows = selectedCampaignIds.map((id: string, index: number) => {
+        const metadata = metadataById.get(id) || {};
+        const impressions = 3200 + (index * 450);
+        const clicks = 115 + (index * 21);
+        const spend = 96 + (index * 14.75);
+        const conversions = 5 + index;
+        const videoViews = 780 + (index * 95);
+        const engagements = 240 + (index * 36);
+        return {
+          campaignId: parsedId.data,
+          advertiserId: connection.advertiserId,
+          tiktokCampaignId: id,
+          tiktokCampaignName: String(metadata.name || metadata.campaignName || id),
+          date,
+          impressions,
+          clicks,
+          spend: spend.toFixed(2),
+          currency: "USD",
+          conversions: conversions.toFixed(2),
+          videoViews,
+          engagements,
+          ctr: ((clicks / impressions) * 100).toFixed(2),
+          cpc: (spend / clicks).toFixed(2),
+          cpm: ((spend / impressions) * 1000).toFixed(2),
+          costPerConversion: (spend / conversions).toFixed(2),
+          conversionRate: ((conversions / clicks) * 100).toFixed(2),
+          rawMetrics: { source: "tiktok_test_mode_refresh" },
+          metricAvailability: { revenue: "unavailable_until_tiktok_scoped_attributed_revenue_exists" },
+          isSimulated: true,
+          sourceContractVersion: "tiktok_campaign_daily_v1",
+        };
+      });
+
+      const result = await storage.upsertTikTokDailyMetrics(rows as any);
+      await storage.updateTikTokConnection(parsedId.data, { lastRefreshAt: new Date(), lastError: null } as any);
+      res.json({ success: true, selectedCampaignIds, upserted: result.upserted, date });
+    } catch (error: any) {
+      console.error('[TikTok] Test refresh error:', error);
+      res.status(500).json({ error: error.message || 'Failed to refresh TikTok test metrics' });
+    }
+  });
+
+  /**
    * Read TikTok analytics daily rows from persisted selected TikTok source rows only
    */
   app.get("/api/tiktok/:campaignId/daily-metrics", async (req, res) => {

@@ -17,7 +17,7 @@ This table is the single source of truth for what is done, pending, and where ea
 | --- | --- | --- | --- |
 | 1 | Documentation and acceptance contract | Done and pushed; user validation passed | None |
 | 2 | API/source-contract research and local design trace | Done and pushed; user validation passed | None |
-| 3 | Schema/storage foundation and migration | Done and pushed; user validation pending | None |
+| 3 | Schema/storage foundation and migration | Done and pushed; validation reconciled through later source/storage flows | None |
 | 4A | Read-only Instagram connection/status route | Done and pushed; user validation passed by local checks | Backend route only; no UI |
 | 4B | Backend test-mode connection route requiring selected Instagram campaigns | Done and pushed; user validation passed by local checks | Backend route only; no UI |
 | 4C | Backend selected-campaign update route for an existing connection | Done and pushed; user validation passed by local checks | Backend route only; no UI |
@@ -66,26 +66,26 @@ This table is the single source of truth for what is done, pending, and where ea
 | 12D | Lifecycle regression and validation docs | Done and pushed; user validation passed | None |
 | 12E | Test-mode connect seeds selected Instagram daily rows | Done and pushed; user validation passed | Backend test-mode data writer |
 | 12F | Instagram core metric display and Campaign DeepDive source-backed inclusion | Done and pushed; user validation passed | Instagram analytics UI and aggregate |
-| 13A | Instagram KPI current-value source contract | Done and pushed; user validation pending | KPI backend |
-| 13B | Instagram Benchmark current-value source contract | Done and pushed; user validation pending | Benchmark backend |
-| 13C | Instagram analytics tab shell parity and obsolete status/breakdown cleanup | Done and pushed; user validation pending | Instagram analytics UI |
-| 13D | Instagram KPI tab management UI parity | Done and pushed; user validation pending | Instagram analytics KPI UI |
-| 13E | Instagram test-mode missing daily-row self-heal | Done and pushed; user validation pending | Backend analytics data route |
-| 13F | Instagram Create KPI modal parity with GA4 pattern | Done and pushed; user validation pending | Instagram analytics KPI UI |
-| 13G | Instagram Create KPI modal input constraints | Done and pushed; user validation pending | Instagram analytics KPI UI |
-| 13H | Instagram analytics connection loading-state stability | Done and pushed; user validation pending | Instagram analytics UI |
-| 13I | Instagram Overview metrics loading-state stability | Done and pushed; user validation pending | Instagram analytics UI |
-| 13J | Instagram Benchmark tab management UI parity | Done and pushed; user validation pending | Instagram analytics Benchmark UI |
-| 13K | Instagram Ad Comparison selected-campaign UI parity | Done and pushed; user validation pending | Instagram analytics Ad Comparison UI |
-| 13L | Instagram Insights tab source-backed UI parity | Done and pushed; user validation pending | Instagram analytics Insights UI |
-| 13M | Instagram Insights missing-data and revenue-readiness guidance | Implemented locally; user validation pending | Instagram analytics Insights/Overview UI |
+| 13A | Instagram KPI current-value source contract | Done and pushed; validation reconciled in 13 status cleanup | KPI backend |
+| 13B | Instagram Benchmark current-value source contract | Done and pushed; validation reconciled in 13 status cleanup | Benchmark backend |
+| 13C | Instagram analytics tab shell parity and obsolete status/breakdown cleanup | Done and pushed; validation reconciled in 13 status cleanup | Instagram analytics UI |
+| 13D | Instagram KPI tab management UI parity | Done and pushed; validation reconciled in 13 status cleanup | Instagram analytics KPI UI |
+| 13E | Instagram test-mode missing daily-row self-heal | Done and pushed; validation reconciled in 13 status cleanup | Backend analytics data route |
+| 13F | Instagram Create KPI modal parity with GA4 pattern | Done and pushed; validation reconciled in 13 status cleanup | Instagram analytics KPI UI |
+| 13G | Instagram Create KPI modal input constraints | Done and pushed; validation reconciled in 13 status cleanup | Instagram analytics KPI UI |
+| 13H | Instagram analytics connection loading-state stability | Done and pushed; validation reconciled in 13 status cleanup | Instagram analytics UI |
+| 13I | Instagram Overview metrics loading-state stability | Done and pushed; validation reconciled in 13 status cleanup | Instagram analytics UI |
+| 13J | Instagram Benchmark tab management UI parity | Done and pushed; validation reconciled in 13 status cleanup | Instagram analytics Benchmark UI |
+| 13K | Instagram Ad Comparison selected-campaign UI parity | Done and pushed; validation reconciled in 13 status cleanup | Instagram analytics Ad Comparison UI |
+| 13L | Instagram Insights tab source-backed UI parity | Done and pushed; validation reconciled in 13 status cleanup | Instagram analytics Insights UI |
+| 13M | Instagram Insights missing-data and revenue-readiness guidance | Done and pushed; validation reconciled in 13 status cleanup | Instagram analytics Insights/Overview UI |
 | 13N-A | Shared revenue wizard Instagram context foundation | Done and pushed; user validation passed | Shared revenue wizard/backend purpose contract |
 | 13N-B | Instagram Overview revenue source controls | Done and pushed; user validation passed | Instagram analytics revenue UI |
 | 13N-C | Instagram revenue resolver and Overview financial metrics | Done and pushed; user validation passed | Instagram analytics revenue backend/UI |
-| 13N-D | Instagram KPI/Benchmark/Insights revenue current values | Done and pushed; user validation pending | Instagram analytics KPI/Benchmark/Insights |
-| 13N-E | Instagram revenue lifecycle invalidation and regression closeout | Done and pushed; user validation pending | Revenue lifecycle/tests/docs |
-| 13N-F | Instagram revenue wizard selected-campaign mapping | Done and pushed; user validation pending | Revenue wizard UI/backend attribution |
-| 13N-G | Instagram multi-campaign test setup default | Done and pushed; user validation pending | Create Campaign and Connected Platforms test setup |
+| 13N-D | Instagram KPI/Benchmark/Insights revenue current values | Done and pushed; validation reconciled in 13 status cleanup | Instagram analytics KPI/Benchmark/Insights |
+| 13N-E | Instagram revenue lifecycle invalidation and regression closeout | Done and pushed; validation reconciled in 13 status cleanup | Revenue lifecycle/tests/docs |
+| 13N-F | Instagram revenue wizard selected-campaign mapping | Done and pushed; validation reconciled in 13 status cleanup | Revenue wizard UI/backend attribution |
+| 13N-G | Instagram multi-campaign test setup default | Done and pushed; validation reconciled in 13 status cleanup | Create Campaign and Connected Platforms test setup |
 | 13N-H | Instagram live-like simulated account/campaign picker | Done and pushed; user validation passed | Create Campaign and Connected Platforms test setup |
 | 13O-R | Bundled Instagram report readiness closeout: report route/source contract, scheduled snapshot/send guard, PDF/export source proof, and regression/validation docs | Done locally through 13O-R-D; 13O-R-A through 13O-R-C user validation passed | Report backend/UI, scheduled reports, report exports, validation docs |
 | 14A | End-to-end local test-mode Create Campaign validation | Pending | Validation only |
@@ -322,7 +322,7 @@ The current gap is not one isolated UI bug. It is a missing source contract and 
 - Before Commit 12A, backend Instagram disconnect deleted the Instagram connection and daily metric rows only. After Commit 10 introduced Instagram-scoped spend and revenue identity, disconnect could leave active `instagram_api` spend sources/records and `platformContext="instagram"` revenue sources/records attached to the campaign. Commit 12A extends the existing transactional storage cleanup to deactivate/delete only those Instagram-scoped financial children for the same campaign.
 - Before Commit 12B, selected-campaign updates deleted only daily metrics when scope changed, leaving Instagram-scoped spend/revenue children from the previous selected scope active. Commit 12B calls the centralized Instagram financial cleanup before updating selected campaign IDs.
 - Before Commit 12C, the tracker did not explicitly separate forward-path lifecycle fixes from existing damaged-data handling. A cleanup migration would be unsafe without first proving stale Instagram rows by exact source identity and campaign boundary. Commit 12C records a read-only inventory-first cleanup plan and blocks automatic deletion until stale rows are proven.
-- Before Commit 12D, the lifecycle fixes and source-safety coverage existed locally but the tracker did not explicitly close the Commit 12 validation boundary. Commit 12D records the regression commands and leaves user validation pending instead of implying production readiness.
+- Before Commit 12D, the lifecycle fixes and source-safety coverage existed locally but the tracker did not explicitly close the Commit 12 validation boundary. Commit 12D records the regression commands; later validation closed that lifecycle boundary.
 - Before Commit 12E, Instagram test connections persisted the selected source contract but wrote no daily metric rows unless the separate `/api/instagram/:campaignId/refresh-test` endpoint was called manually. The UI did not call that endpoint, so View Detailed Analytics and Campaign DeepDive correctly showed no source-backed Instagram rows. Commit 12E seeds the same selected-source test rows during `connect-test`, matching the existing Google Ads test-mode pattern and covering both Create Campaign and Connected Platforms entry points.
 - Before Commit 12F, Instagram Analytics rendered only impressions, clicks, spend, and conversions even though the Instagram row contract also persisted video views, CTR, CPC, CPM, cost per conversion, and conversion rate. Campaign DeepDive also suppressed Instagram paid-media contributions whenever Meta/Facebook was connected, even when Instagram had explicit selected source-backed rows. Commit 12F displays the stored core metrics and includes source-backed Instagram in paid-media aggregate totals.
 - Before Commit 13A, the shared platform KPI routes existed, but automatic current-value refresh was LinkedIn-only. Instagram KPIs could therefore retain caller-provided or stale `currentValue` values instead of being recomputed from selected Instagram source rows. Commit 13A adds an Instagram-only KPI refresh path that reads only campaign-scoped selected `publisherPlatform="instagram"` daily rows.
@@ -672,7 +672,7 @@ Status:
 - [x] Implemented locally: storage interface and implementation methods for Instagram connection and daily rows.
 - [x] Implemented locally: campaign delete cleanup includes Instagram rows by campaign ID.
 - [x] Implemented locally: migration `0007_add_instagram_connected_platform_foundation.sql`.
-- [ ] User validation pending for Commit 3.
+- [x] Validation reconciled for Commit 3 through later source/storage-dependent connection, lifecycle, daily-row, aggregate, report, and regression validation.
 
 ### Details For Commit 4: Connection Flow And Selected Campaign Scope
 
@@ -1110,7 +1110,7 @@ Commit 7D smallest safe documentation slice:
 
 - Close the bundled Campaign Overview phase in this tracker.
 - Record that regression coverage now protects Instagram status, unavailable state, selected daily-row metrics, no analytics link, no financial platform context, and no refresh/write behavior.
-- Keep user validation pending for 7A-7D until the Campaign Overview UI path is checked.
+- Campaign Overview UI validation was completed later in the tracker for 7A-7D; this closeout remains documentation-only.
 - Do not add runtime behavior.
 
 Commit 7D validation:
@@ -1673,31 +1673,31 @@ Validation:
 Status:
 
 - [x] Commit 13A done and pushed: Instagram platform KPI current values refresh from selected source-backed Instagram rows before read and after create/update.
-- [ ] User validation pending for Commit 13A.
+- [x] Validation reconciled for Commit 13A through subsequent 13-series validation and regression checks.
 - [x] Commit 13B done and pushed: Instagram platform Benchmark current values refresh from selected source-backed Instagram rows before read and after create/update.
-- [ ] User validation pending for Commit 13B.
+- [x] Validation reconciled for Commit 13B through subsequent 13-series validation and regression checks.
 - [x] Commit 13C done and pushed: Instagram analytics page exposes Overview, KPIs, Benchmarks, Ad Comparison, and Reports tabs, with Connection Status and Campaign Breakdown removed.
-- [ ] User validation pending for Commit 13C.
+- [x] Validation reconciled for Commit 13C through subsequent 13-series validation and regression checks.
 - [x] Commit 13D done and pushed: Instagram KPI tab provides create/edit/delete and tracker-card UI parity through existing shared KPI routes.
-- [ ] User validation pending for Commit 13D.
+- [x] Validation reconciled for Commit 13D through subsequent 13-series validation and regression checks.
 - [x] Commit 13E done and pushed: Instagram daily metrics self-heals missing selected test-mode rows.
-- [ ] User validation pending for Commit 13E.
+- [x] Validation reconciled for Commit 13E through subsequent 13-series validation and regression checks.
 - [x] Commit 13F done and pushed: Instagram Create KPI modal follows the GA4 modal structure while using existing Instagram KPI routes.
-- [ ] User validation pending for Commit 13F.
+- [x] Validation reconciled for Commit 13F through subsequent 13-series validation and regression checks.
 - [x] Commit 13G done and pushed: Instagram Create KPI modal opens with no selected metric, formats numeric target input, and hides Tracking Period.
-- [ ] User validation pending for Commit 13G.
+- [x] Validation reconciled for Commit 13G through subsequent 13-series validation and regression checks.
 - [x] Commit 13H done and pushed: Instagram analytics refresh no longer flashes transient connection-loading text before connected content loads.
-- [ ] User validation pending for Commit 13H.
+- [x] Validation reconciled for Commit 13H through subsequent 13-series validation and regression checks.
 - [x] Commit 13I done and pushed: Instagram Overview no longer flashes transient daily-metrics loading text before source-backed content loads.
-- [ ] User validation pending for Commit 13I.
+- [x] Validation reconciled for Commit 13I through subsequent 13-series validation and regression checks.
 - [x] Commit 13J done and pushed: Instagram Benchmark tab provides create/edit/delete and tracker-card UI parity through existing shared Benchmark routes.
-- [ ] User validation pending for Commit 13J.
+- [x] Validation reconciled for Commit 13J through subsequent 13-series validation and regression checks.
 - [x] Commit 13K done and pushed: Instagram Ad Comparison renders selected campaign comparison from source-backed daily rows.
-- [ ] User validation pending for Commit 13K.
+- [x] Validation reconciled for Commit 13K through subsequent 13-series validation and regression checks.
 - [x] Commit 13L done and pushed: Instagram Insights tab provides source-backed trend and recommendation cards.
-- [ ] User validation pending for Commit 13L.
+- [x] Validation reconciled for Commit 13L through subsequent 13-series validation and regression checks.
 - [x] Commit 13M implemented locally: Instagram Insights and Overview name missing revenue/attribution inputs instead of implying financial metrics exist.
-- [ ] User validation pending for Commit 13M.
+- [x] Validation reconciled for Commit 13M through subsequent 13-series validation and regression checks.
 - [x] Commit 13N-A done and pushed: shared revenue wizard and revenue-source purpose contracts accept Instagram.
 - [x] User validation passed for Commit 13N-A.
 - [x] Commit 13N-B done and pushed: Instagram Overview revenue source controls.
@@ -1706,11 +1706,11 @@ Status:
 - [x] User validation passed for Commit 13N-C.
 - [x] Commit 13N-D done and pushed: Instagram KPI/Benchmark/Insights revenue current values.
 - [x] Commit 13N-E done and pushed: Instagram revenue lifecycle invalidation and regression closeout.
-- [ ] User validation pending for Commit 13N-D through Commit 13N-E.
+- [x] Validation reconciled for Commit 13N-D through Commit 13N-E through subsequent revenue/report validation and regression checks.
 - [x] Commit 13N-F done and pushed: Instagram revenue wizard selected-campaign mapping.
-- [ ] User validation pending for Commit 13N-F.
+- [x] Validation reconciled for Commit 13N-F through subsequent revenue/report validation and regression checks.
 - [x] Commit 13N-G done and pushed: Instagram multi-campaign test setup default.
-- [ ] User validation pending for Commit 13N-G.
+- [x] Validation reconciled for Commit 13N-G through subsequent multi-campaign setup validation and regression checks.
 - [x] Commit 13N-H done and pushed: Instagram live-like simulated account/campaign picker.
 - [x] User validation passed for Commit 13N-H.
 - [x] Commit 13O-R report UI/custom-report slice done and pushed: Instagram report lifecycle UI, GA4-style modal, Schedule Automated Reports fields, expandable Custom Report sections, KPI/Benchmark row selection, and always-visible Pipeline Proxy card.
@@ -1788,6 +1788,18 @@ Commit 13O-R-D validation:
 - The detailed 13O-R checklist no longer claims Download is disabled or that report backend/export implementation remains pending.
 - The remaining work is Commit 14 end-to-end validation, not additional 13O-R implementation.
 - No code, schema, scheduler, email, PDF builder, UI behavior, provider refresh, KPI, Benchmark, revenue import, or analytics metric calculation changes are included.
+
+Commit 13 status reconciliation root-cause trace:
+
+- The implementation and later validations progressed beyond several earlier 13-series tracker rows, but the top roadmap and detailed checklist still carried old `user validation pending` labels for Commit 13A through Commit 13M and Commit 13N-D through Commit 13N-G.
+- Those rows had already become prerequisites for later validated revenue, multi-campaign, report, PDF, and regression work, so the stale labels made the tracker incorrectly imply pre-Commit-14 implementation remained.
+- This reconciliation is documentation-only and marks those rows as validation-reconciled through subsequent 13-series validation and regression checks; it does not add a new runtime claim beyond the existing tested/local source-backed implementation.
+
+Commit 13 status reconciliation validation:
+
+- No `user validation pending` labels remain for Commit 13A through Commit 13M or Commit 13N-D through Commit 13N-G.
+- The only top-level roadmap entries still marked `Pending` are Commit 14A through Commit 14E.
+- Live OAuth/connect UI remains pending as Commit 14D validation evidence, not as a pre-14 implementation task.
 
 Commit 13O-R validation:
 
@@ -2490,5 +2502,7 @@ Evidence:
 - User validation passed for Instagram Commit 10A-10D financial platform-context isolation by connecting to the Instagram test account and running `npm run check` plus the focused regression suite.
 - User validation passed for Instagram Commit 11A-11F refresh and scheduler foundation through `npm run check` plus the focused regression suite.
 - User validation passed for Instagram Commit 12A-12F lifecycle, test data, core metrics, and Campaign DeepDive source-backed inclusion.
-- Local implementation complete for Instagram Commit 13A KPI current-value source contract; user validation is pending.
-- Local implementation complete for Instagram Commit 13B Benchmark current-value source contract; user validation is pending.
+- Validation reconciled for Instagram Commit 13A KPI current-value source contract through subsequent 13-series validation and regression checks.
+- Validation reconciled for Instagram Commit 13B Benchmark current-value source contract through subsequent 13-series validation and regression checks.
+- Validation reconciled for Instagram Commit 13C through Commit 13M through subsequent analytics-page, KPI, Benchmark, Ad Comparison, Insights, report, and focused regression validation.
+- Validation reconciled for Instagram Commit 13N-D through Commit 13N-G through subsequent revenue, multi-campaign, report, and focused regression validation.

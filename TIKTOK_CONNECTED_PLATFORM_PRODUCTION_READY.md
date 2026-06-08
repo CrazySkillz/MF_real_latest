@@ -35,12 +35,12 @@ Bundling rule:
 | 3C | storage methods and startup migration/table-existence coverage | Done locally; validation pending | Backend storage/startup only |
 | 3D | schema-derived campaign/client delete cascade coverage | Done locally; validation pending | Destructive-path guard only |
 | 3E | Commit 3 validation docs | Done locally; validation pending | None |
-| 4A | read-only TikTok connection/status route | Pending | Backend route only |
-| 4B | backend test-mode connection route requiring selected TikTok campaigns | Pending | Backend route only |
-| 4C | backend selected-campaign update route for an existing connection | Pending | Backend route only |
-| 4D | backend campaign-list/selector contract | Pending | Backend route only |
-| 4E | backend disconnect route and storage cleanup proof | Pending | Backend lifecycle route |
-| 4F | Commit 4 backend contract finalization docs | Pending | None |
+| 4A | read-only TikTok connection/status route | Done locally; validation pending | Backend route only |
+| 4B | backend test-mode connection route requiring selected TikTok campaigns | Done locally; validation pending | Backend route only |
+| 4C | backend selected-campaign update route for an existing connection | Done locally; validation pending | Backend route only |
+| 4D | backend campaign-list/selector contract | Done locally; validation pending | Backend route only |
+| 4E | backend disconnect route and storage cleanup proof | Done locally; validation pending | Backend lifecycle route |
+| 4F | Commit 4 backend contract finalization docs | Done locally; validation pending | None |
 | 5A | Create Campaign TikTok platform option | Pending | Create Campaign UI option |
 | 5B | Create Campaign TikTok test setup using backend source contract | Pending | Create Campaign setup |
 | 5C | Create Campaign selected-campaign finalization guard | Pending | Create Campaign finalization |
@@ -555,6 +555,12 @@ Goal:
 
 - Create backend-only TikTok connection lifecycle routes before UI exposure.
 
+Root cause analysis:
+
+- After Commit 3, TikTok tables and storage methods exist, but there is still no backend source contract that enforces campaign access, selected-campaign scope, stale-row cleanup when selected campaigns change, or fail-closed disconnect behavior.
+- The existing TikTok-adjacent labels and Google Sheets helpers still cannot create a campaign-scoped TikTok source. Without backend routes, Create Campaign or Connected Platforms work would have to invent UI-side state or call unrelated generic integration paths.
+- The smallest safe Commit 4 fix is backend-only route exposure: connection status, test-mode connect, selected-campaign update, disconnect, and selected campaign list. The routes must not seed analytics rows, wire UI, add Campaign DeepDive aggregation, add scheduler refresh, or unlock revenue/KPI/Benchmark/report behavior.
+
 Subcommits:
 
 - 4A: Add read-only `GET /api/tiktok/:campaignId/connection`.
@@ -570,6 +576,18 @@ Validation:
 - Test-mode connect cannot save empty selected campaigns.
 - Selected-campaign updates clear stale selected-scope rows only for the current campaign.
 - Disconnect removes TikTok from connection status and does not touch other platforms.
+
+Status:
+
+- [x] Commit 4A completed locally: added `GET /api/tiktok/:campaignId/connection`.
+- [x] Commit 4B completed locally: added `POST /api/tiktok/:campaignId/connect-test` requiring non-empty selected TikTok campaign IDs.
+- [x] Commit 4C completed locally: added `PATCH /api/tiktok/:campaignId/selected-campaigns`, requiring an existing connection and clearing TikTok daily rows when selected scope changes.
+- [x] Commit 4D completed locally: added `GET /api/tiktok/:campaignId/campaigns` from the persisted selected-source contract only.
+- [x] Commit 4E completed locally: added `DELETE /api/tiktok/:campaignId/connection`, fail-closed when no connection exists and deleting through storage cleanup.
+- [x] Commit 4F completed locally: added backend route/source-safety regression docs.
+- [x] Commit 4 preserved no frontend/runtime analytics exposure: no Create Campaign UI, Connected Platforms UI, TikTok analytics page, Campaign DeepDive aggregate, scheduler, revenue, KPI, Benchmark, or report wiring was added.
+- [x] Commit 4 validation passed: `npm test -- server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
+- [x] Commit 4 validation passed: `npm run check`.
 
 ### Commit 5: Create Campaign Flow
 
@@ -912,7 +930,10 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - Commit bundling policy documented: use one commit/push per parent commit/risk boundary when safe.
 - Commit 3C-3E backend-only foundation bundle was implemented locally.
 - Commit 3C-3E local validation passed: targeted startup/cascade regression tests and `npm run check`.
+- User validation passed for Commit 3C-3E.
+- Commit 4 backend source-contract routes were implemented locally.
+- Commit 4 local validation passed: endpoint auth/source-safety regression tests and `npm run check`.
 - `git status --short` was checked before editing, as required.
 - Current TikTok code-path inventory was traced with local search.
-- No TikTok runtime route, UI, scheduler, aggregate, revenue, KPI, Benchmark, or report code has been changed.
+- No TikTok frontend UI, analytics page, Connected Platforms card, scheduler, aggregate, revenue, KPI, Benchmark, or report code has been changed.
 - Live OAuth/provider validation is deferred.

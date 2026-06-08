@@ -172,6 +172,24 @@ describe("Endpoint auth guard audit", () => {
     expect(missing, `Instagram endpoints missing auth:\n${missing.join("\n")}`).toHaveLength(0);
   });
 
+  it("all TikTok :campaignId endpoints have ensureCampaignAccess", () => {
+    const content = readRoutes();
+    const lines = content.split("\n");
+    const missing: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.match(/app\.(get|post|put|patch|delete)\(\s*["'`]\/api\/tiktok\/:campaignId/)) continue;
+
+      const block = lines.slice(i, i + 30).join("\n");
+      if (!block.includes("ensureCampaignAccess")) {
+        missing.push(`routes-oauth.ts:${i + 1} - ${line.trim().slice(0, 100)}`);
+      }
+    }
+
+    expect(missing, `TikTok endpoints missing auth:\n${missing.join("\n")}`).toHaveLength(0);
+  });
+
   it("all LinkedIn :campaignId endpoints have ensureCampaignAccess", () => {
     const content = readRoutes();
     const lines = content.split("\n");

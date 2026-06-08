@@ -19895,6 +19895,263 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * Get TikTok connection status
+   */
+  app.get("/api/tiktok/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getTikTokConnection(parsedId.data);
+      if (!connection) {
+        return res.json({ connected: false, selectedCampaignIds: [] });
+      }
+
+      const selectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+
+      res.json({
+        connected: selectedCampaignIds.length > 0,
+        advertiserId: connection.advertiserId,
+        advertiserName: connection.advertiserName,
+        method: connection.method,
+        selectedCampaignIds,
+        selectedCampaignMetadata: connection.selectedCampaignMetadata,
+        reportingDimensions: connection.reportingDimensions,
+        reportingMetrics: connection.reportingMetrics,
+        sourceContractVersion: connection.sourceContractVersion,
+        lastRefreshAt: connection.lastRefreshAt,
+        lastError: connection.lastError,
+        spendOnly: connection.spendOnly,
+      });
+    } catch (error: any) {
+      console.error('[TikTok] Get connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to get TikTok connection status' });
+    }
+  });
+
+  /**
+   * Connect TikTok in test mode with explicit selected campaign scope
+   */
+  app.post("/api/tiktok/:campaignId/connect-test", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const selectedCampaignIdsRaw = (req.body as any)?.selectedCampaignIds;
+      const selectedCampaignIds = Array.isArray(selectedCampaignIdsRaw)
+        ? selectedCampaignIdsRaw.map((id: any) => String(id || "").trim()).filter(Boolean)
+        : [];
+      if (selectedCampaignIds.length === 0) {
+        return res.status(400).json({ error: "At least one TikTok campaign must be selected" });
+      }
+
+      const advertiserId = String((req.body as any)?.advertiserId || "act_tiktok_test").trim();
+      const advertiserName = String((req.body as any)?.advertiserName || "Test TikTok Advertiser").trim();
+      const selectedCampaignMetadata = Array.isArray((req.body as any)?.selectedCampaignMetadata)
+        ? JSON.stringify((req.body as any).selectedCampaignMetadata)
+        : undefined;
+
+      await storage.deleteTikTokConnection(parsedId.data).catch(() => {});
+      await storage.createTikTokConnection({
+        campaignId: parsedId.data,
+        advertiserId,
+        advertiserName,
+        accessToken: `tiktok_test_token_${Date.now()}`,
+        method: "test_mode",
+        selectedCampaignIds: JSON.stringify(selectedCampaignIds),
+        selectedCampaignMetadata,
+        reportingDimensions: JSON.stringify(["advertiser_id", "campaign_id", "stat_time_day"]),
+        reportingMetrics: JSON.stringify(["impressions", "clicks", "spend", "conversions", "video_views"]),
+        sourceContractVersion: "tiktok_campaign_daily_v1",
+        spendOnly: !!(req.body as any)?.spendOnly,
+      } as any);
+
+      res.json({
+        success: true,
+        connected: true,
+        advertiserId,
+        advertiserName,
+        selectedCampaignIds,
+        sourceContractVersion: "tiktok_campaign_daily_v1",
+      });
+    } catch (error: any) {
+      console.error('[TikTok] Test connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to connect TikTok test account' });
+    }
+  });
+
+  /**
+   * Update selected TikTok campaigns for an existing connection
+   */
+  app.patch("/api/tiktok/:campaignId/selected-campaigns", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getTikTokConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "TikTok connection not found" });
+      }
+
+      const selectedCampaignIdsRaw = (req.body as any)?.selectedCampaignIds;
+      const selectedCampaignIds = Array.isArray(selectedCampaignIdsRaw)
+        ? selectedCampaignIdsRaw.map((id: any) => String(id || "").trim()).filter(Boolean)
+        : [];
+      if (selectedCampaignIds.length === 0) {
+        return res.status(400).json({ error: "At least one TikTok campaign must be selected" });
+      }
+
+      const previousSelectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      const selectionChanged = previousSelectedCampaignIds.join("\n") !== selectedCampaignIds.join("\n");
+      if (selectionChanged) {
+        await storage.deleteTikTokDailyMetrics(parsedId.data);
+      }
+
+      const selectedCampaignMetadata = Array.isArray((req.body as any)?.selectedCampaignMetadata)
+        ? JSON.stringify((req.body as any).selectedCampaignMetadata)
+        : (connection as any).selectedCampaignMetadata;
+      const updated = await storage.updateTikTokConnection(parsedId.data, {
+        selectedCampaignIds: JSON.stringify(selectedCampaignIds),
+        selectedCampaignMetadata,
+      } as any);
+
+      res.json({
+        success: true,
+        connected: true,
+        selectedCampaignIds,
+        selectionChanged,
+        sourceContractVersion: updated?.sourceContractVersion,
+      });
+    } catch (error: any) {
+      console.error('[TikTok] Update selected campaigns error:', error);
+      res.status(500).json({ error: error.message || 'Failed to update selected TikTok campaigns' });
+    }
+  });
+
+  /**
+   * Delete TikTok connection
+   */
+  app.delete("/api/tiktok/:campaignId/connection", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getTikTokConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "TikTok connection not found" });
+      }
+
+      const deleted = await storage.deleteTikTokConnection(parsedId.data);
+      if (!deleted) {
+        return res.status(404).json({ error: "TikTok connection not found" });
+      }
+
+      res.json({ success: true, message: "TikTok connection deleted" });
+    } catch (error: any) {
+      console.error('[TikTok] Delete connection error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete TikTok connection' });
+    }
+  });
+
+  /**
+   * List TikTok campaigns from the persisted selected-source contract
+   */
+  app.get("/api/tiktok/:campaignId/campaigns", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getTikTokConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "TikTok connection not found" });
+      }
+
+      const selectedCampaignIds = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+          return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      })();
+      const metadataById = (() => {
+        try {
+          const parsed = JSON.parse(String((connection as any).selectedCampaignMetadata || "[]"));
+          if (!Array.isArray(parsed)) return new Map<string, any>();
+          return new Map(parsed.map((item: any) => [String(item?.id || item?.campaignId || ""), item]));
+        } catch {
+          return new Map<string, any>();
+        }
+      })();
+
+      const campaigns = selectedCampaignIds.map((id: string) => {
+        const metadata = metadataById.get(id) || {};
+        return {
+          id,
+          name: String(metadata.name || metadata.campaignName || id),
+          selected: true,
+          advertiserId: connection.advertiserId,
+        };
+      });
+
+      res.json({
+        success: true,
+        campaigns,
+        selectedCampaignIds,
+        advertiserId: connection.advertiserId,
+        sourceContractVersion: connection.sourceContractVersion,
+      });
+    } catch (error: any) {
+      console.error('[TikTok] List campaigns error:', error);
+      res.status(500).json({ error: error.message || 'Failed to list TikTok campaigns' });
+    }
+  });
+
+  /**
    * Read Instagram Campaign Overview metrics from persisted Instagram daily rows only
    */
   app.get("/api/instagram/:campaignId/overview-summary", async (req, res) => {

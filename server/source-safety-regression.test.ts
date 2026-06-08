@@ -424,7 +424,7 @@ describe("source safety regression guards", () => {
   it("Instagram campaign list route is campaign-scoped, read-only, and selector-contract only", () => {
     const routesSource = readRoutesSource();
     const routeStart = routesSource.indexOf('app.get("/api/instagram/:campaignId/campaigns"');
-    const routeEnd = routesSource.indexOf('app.get("/api/instagram/:campaignId/overview-summary"', routeStart);
+    const routeEnd = routesSource.indexOf("/**\n   * Get TikTok connection status", routeStart);
     const route = routesSource.slice(routeStart, routeEnd);
 
     expect(routeStart).toBeGreaterThanOrEqual(0);
@@ -441,6 +441,56 @@ describe("source safety regression guards", () => {
     expect(route).not.toContain("accessToken:");
     expect(route).not.toContain("refreshToken:");
     expect(route).not.toContain("encryptedTokens:");
+  });
+
+  it("TikTok backend source-contract routes are campaign-scoped and do not seed analytics", () => {
+    const routesSource = readRoutesSource();
+    const connectStart = routesSource.indexOf('app.post("/api/tiktok/:campaignId/connect-test"');
+    const updateStart = routesSource.indexOf('app.patch("/api/tiktok/:campaignId/selected-campaigns"', connectStart);
+    const deleteStart = routesSource.indexOf('app.delete("/api/tiktok/:campaignId/connection"', updateStart);
+    const listStart = routesSource.indexOf('app.get("/api/tiktok/:campaignId/campaigns"', deleteStart);
+    const nextRoute = routesSource.indexOf("/**\n   * Read Instagram Campaign Overview metrics", listStart);
+    const connectRoute = routesSource.slice(connectStart, updateStart);
+    const updateRoute = routesSource.slice(updateStart, deleteStart);
+    const deleteRoute = routesSource.slice(deleteStart, listStart);
+    const listRoute = routesSource.slice(listStart, nextRoute);
+
+    expect(connectStart).toBeGreaterThanOrEqual(0);
+    expect(connectRoute).toContain("ensureCampaignAccess");
+    expect(connectRoute).toContain("At least one TikTok campaign must be selected");
+    expect(connectRoute).toContain("storage.deleteTikTokConnection(parsedId.data)");
+    expect(connectRoute).toContain("storage.createTikTokConnection");
+    expect(connectRoute).toContain('sourceContractVersion: "tiktok_campaign_daily_v1"');
+    expect(connectRoute).not.toContain("upsertTikTokDailyMetrics");
+    expect(connectRoute).not.toContain("refreshTikTok");
+
+    expect(updateRoute).toContain("ensureCampaignAccess");
+    expect(updateRoute.indexOf("storage.getTikTokConnection")).toBeLessThan(updateRoute.indexOf("storage.updateTikTokConnection"));
+    expect(updateRoute).toContain("At least one TikTok campaign must be selected");
+    expect(updateRoute).toContain("await storage.deleteTikTokDailyMetrics(parsedId.data)");
+    expect(updateRoute.indexOf("storage.deleteTikTokDailyMetrics")).toBeLessThan(updateRoute.indexOf("storage.updateTikTokConnection"));
+    expect(updateRoute).not.toContain("storage.createTikTokConnection");
+    expect(updateRoute).not.toContain("upsertTikTokDailyMetrics");
+
+    expect(deleteRoute).toContain("ensureCampaignAccess");
+    expect(deleteRoute.indexOf("storage.getTikTokConnection")).toBeLessThan(deleteRoute.indexOf("storage.deleteTikTokConnection"));
+    expect(deleteRoute).toContain("TikTok connection not found");
+    expect(deleteRoute).toContain("const deleted = await storage.deleteTikTokConnection(parsedId.data);");
+    expect(deleteRoute).not.toContain("upsertTikTokDailyMetrics");
+    expect(deleteRoute).not.toContain("refreshTikTok");
+
+    expect(listRoute).toContain("ensureCampaignAccess");
+    expect(listRoute).toContain("storage.getTikTokConnection");
+    expect(listRoute).toContain("selectedCampaignIds");
+
+    const storageSource = readStorageSource();
+    const methodStart = storageSource.indexOf("async deleteTikTokConnection(campaignId: string)");
+    const methodEnd = storageSource.indexOf("async deleteTikTokDailyMetrics", methodStart);
+    const method = storageSource.slice(methodStart, methodEnd);
+
+    expect(method).toContain("db.transaction");
+    expect(method).toContain("eq(tiktokConnections.campaignId, campaignId)");
+    expect(method).toContain("tx.delete(tiktokDailyMetrics).where(eq(tiktokDailyMetrics.campaignId, campaignId))");
   });
 
   it("Instagram test refresh route is campaign-scoped, test-mode-only, and selected-source-only", () => {

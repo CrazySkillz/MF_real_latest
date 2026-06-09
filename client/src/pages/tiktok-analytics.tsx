@@ -151,6 +151,11 @@ export default function TikTokAnalytics() {
     })).sort((a: any, b: any) => b.spend - a.spend);
   }, [rows]);
 
+  const financialSummary = dailyMetrics?.financialSummary || {};
+  const hasAttributedRevenue = financialSummary?.hasAttributedRevenue === true && Number(financialSummary?.attributedRevenue || 0) > 0;
+  const attributedRevenue = hasAttributedRevenue ? Number(financialSummary.attributedRevenue || 0) : null;
+  const roi = hasAttributedRevenue && attributedRevenue !== null && totals.spend > 0 ? ((attributedRevenue - totals.spend) / totals.spend) * 100 : null;
+  const roas = hasAttributedRevenue && attributedRevenue !== null && totals.spend > 0 ? attributedRevenue / totals.spend : null;
   const unavailableReason = dailyMetrics?.unavailableReason || "No persisted TikTok metric rows exist for the selected campaigns yet.";
 
   return (
@@ -243,9 +248,9 @@ export default function TikTokAnalytics() {
                       {metricCard("CPM", totals.cpm === null ? "Unavailable" : formatCurrency(totals.cpm), BarChart3)}
                       {metricCard("Cost / Conversion", totals.costPerConversion === null ? "Unavailable" : formatCurrency(totals.costPerConversion), Target)}
                       {metricCard("Conversion Rate", formatPct(totals.conversionRate), Percent)}
-                      {metricCard("Total Revenue", "Unavailable", DollarSign, "Requires TikTok-scoped attributed revenue.")}
-                      {metricCard("ROI", "Unavailable", Percent, "Requires TikTok-scoped attributed revenue.")}
-                      {metricCard("ROAS", "Unavailable", TrendingUp, "Requires TikTok-scoped attributed revenue.")}
+                      {metricCard("Total Revenue", attributedRevenue === null ? "Unavailable" : formatCurrency(attributedRevenue), DollarSign, attributedRevenue === null ? "Requires TikTok-scoped attributed revenue." : undefined)}
+                      {metricCard("ROI", roi === null ? "Unavailable" : `${roi.toFixed(2)}%`, Percent, roi === null ? "Requires TikTok-scoped attributed revenue." : undefined)}
+                      {metricCard("ROAS", roas === null ? "Unavailable" : `${roas.toFixed(2)}x`, TrendingUp, roas === null ? "Requires TikTok-scoped attributed revenue." : undefined)}
                     </div>
                   )}
                 </TabsContent>

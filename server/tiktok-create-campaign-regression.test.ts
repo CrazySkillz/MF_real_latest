@@ -70,6 +70,9 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(routes).toContain("storage.getTikTokConnection(parsedId.data)");
     expect(routes).toContain("storage.getTikTokDailyMetrics(parsedId.data, startDate, endDate)");
     expect(routes).toContain("selected.has(String(row.tiktokCampaignId))");
+    expect(dailyRoute).toContain('storage.getRevenueTotalForRange(parsedId.data, startDate, endDate, "tiktok")');
+    expect(dailyRoute).toContain("financialSummary");
+    expect(dailyRoute).toContain("hasAttributedRevenue");
     expect(dailyRoute).not.toContain("upsertTikTokDailyMetrics");
     expect(app).toContain('const TikTokAnalytics = lazy(() => import("@/pages/tiktok-analytics"))');
     expect(app).toContain('<Route path="/campaigns/:id/tiktok-analytics" component={TikTokAnalytics} />');
@@ -79,6 +82,8 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("ROI");
     expect(page).toContain("ROAS");
     expect(page).toContain("Requires TikTok-scoped attributed revenue.");
+    expect(page).toContain("const financialSummary = dailyMetrics?.financialSummary || {};");
+    expect(page).toContain("const attributedRevenue = hasAttributedRevenue ? Number(financialSummary.attributedRevenue || 0) : null;");
     expect(page).toContain("No persisted TikTok metric rows exist");
   });
 

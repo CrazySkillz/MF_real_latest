@@ -793,7 +793,10 @@ Status:
 - [x] Commit 9D aggregate root cause traced: the TikTok Campaign DeepDive source builder always marked `attributedRevenue` unavailable and did not read TikTok-context revenue records, so even safely materialized TikTok revenue rows could not enter the shared aggregate.
 - [x] Commit 9D aggregate slice completed locally: TikTok aggregate participation now reads only `platformContext="tiktok"` revenue totals for the campaign/date range and includes `attributedRevenue` only when TikTok-scoped imported revenue exists.
 - [x] Commit 9D aggregate slice validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/performance-summary-aggregate.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
-- [ ] Commit 9D pending: platform-level TikTok Overview revenue cards, KPI current values, Benchmark current values, Insights copy/data, and Reports output still need separate scoped validation before this subcommit is complete.
+- [x] User validation passed for Commit 9D aggregate slice after deploy.
+- [x] Commit 9D platform Overview root cause traced: the TikTok daily-metrics endpoint returned selected TikTok rows but no TikTok-scoped revenue summary, so the Overview Total Revenue, ROI, and ROAS cards were hard-coded unavailable even if TikTok attributed revenue existed.
+- [x] Commit 9D platform Overview slice completed locally: `/api/tiktok/:campaignId/daily-metrics` now returns a TikTok-only `financialSummary`, and the TikTok Overview cards render revenue, ROI, and ROAS only when that summary proves TikTok-scoped attributed revenue exists.
+- [ ] Commit 9D pending: KPI current values, Benchmark current values, Insights copy/data, and Reports output still need separate scoped validation before this subcommit is complete.
 - [ ] Commit 9E pending: source-modal/edit/delete/scheduler refresh/no-damaged-data validation remains pending.
 
 ### Commit 10: KPI, Benchmark, Alerts, And Notifications
@@ -1080,5 +1083,8 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - Commit 9D aggregate root cause traced: the TikTok aggregate source builder still hard-coded attributed revenue as unavailable and did not read TikTok-context imported revenue records.
 - Commit 9D aggregate gate was implemented locally: TikTok aggregate participation now includes `attributedRevenue` only from `platformContext="tiktok"` revenue totals for the selected campaign/date range.
 - Commit 9D aggregate validation passed: TikTok source-contract regression tests, Performance Summary aggregate tests, source-safety regression tests, endpoint auth tests, and `npm run check`.
+- User validation passed for Commit 9D aggregate gate after deploy.
+- Commit 9D platform Overview root cause traced: the page could not unlock Total Revenue, ROI, or ROAS because the TikTok analytics endpoint exposed no TikTok-scoped attributed revenue summary.
+- Commit 9D platform Overview revenue gate was implemented locally: TikTok Overview cards now remain unavailable without TikTok-scoped attributed revenue and calculate revenue, ROI, and ROAS only from the endpoint's TikTok `financialSummary`.
 - No TikTok KPI, Benchmark, report, scheduler refresh, source modal lifecycle cleanup, visible revenue-import UI, or provider OAuth code has been changed.
 - Live OAuth/provider validation is deferred.

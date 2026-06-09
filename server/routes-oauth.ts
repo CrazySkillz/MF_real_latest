@@ -20420,6 +20420,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sourceContractVersion: row.sourceContractVersion,
           lastSyncedAt: row.lastSyncedAt,
         }));
+      const revenueTotals = await storage.getRevenueTotalForRange(parsedId.data, startDate, endDate, "tiktok")
+        .catch(() => ({ totalRevenue: 0, currency: undefined, sourceIds: [] as string[] }));
+      const attributedRevenue = Number((revenueTotals as any)?.totalRevenue || 0);
+      const hasAttributedRevenue = Number.isFinite(attributedRevenue) && attributedRevenue > 0;
 
       res.json({
         success: true,
@@ -20430,6 +20434,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         selectedCampaignIds,
         rowCount: rows.length,
         rows,
+        financialSummary: {
+          hasAttributedRevenue,
+          attributedRevenue: hasAttributedRevenue ? Number(attributedRevenue.toFixed(2)) : null,
+          currency: (revenueTotals as any)?.currency || null,
+          sourceIds: Array.isArray((revenueTotals as any)?.sourceIds) ? (revenueTotals as any).sourceIds : [],
+          unavailableReason: hasAttributedRevenue ? null : "Requires TikTok-scoped attributed revenue.",
+        },
         unavailableReason: rows.length === 0 ? "No persisted TikTok metric rows exist for the selected campaigns and date range." : null,
       });
     } catch (error: any) {

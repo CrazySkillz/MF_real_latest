@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, AlertCircle, BarChart3, DollarSign, Eye, MousePointer, Percent, Target, TrendingUp, Trophy, Video } from "lucide-react";
+import { ArrowLeft, AlertCircle, BarChart3, CheckCircle2, DollarSign, Eye, MousePointer, Percent, Target, TrendingUp, Trophy, Video } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -41,6 +41,70 @@ function formatGoalValue(row: any, hasAttributedRevenue: boolean) {
   if (unit === "%" || unit === "percent") return { value: `${numeric.toFixed(2)}%`, helper: undefined };
   if (unit === "ratio" || metricKey === "roas") return { value: `${numeric.toFixed(2)}x`, helper: undefined };
   return { value: numeric.toLocaleString(), helper: undefined };
+}
+
+function getGoalNumericValue(row: any, hasAttributedRevenue: boolean) {
+  const metricKey = normalizeMetricKey(row?.metric);
+  if (REVENUE_DEPENDENT_METRICS.has(metricKey) && !hasAttributedRevenue) return null;
+  const value = Number(row?.currentValue);
+  return Number.isFinite(value) ? value : null;
+}
+
+function getTargetNumericValue(row: any) {
+  const value = Number(row?.targetValue);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function getGoalProgress(row: any, hasAttributedRevenue: boolean) {
+  const current = getGoalNumericValue(row, hasAttributedRevenue);
+  const target = getTargetNumericValue(row);
+  if (current === null || target === null) return null;
+  return (current / target) * 100;
+}
+
+function buildGoalTracker(rows: any[], hasAttributedRevenue: boolean) {
+  const progress = rows
+    .map((row) => getGoalProgress(row, hasAttributedRevenue))
+    .filter((value): value is number => Number.isFinite(value));
+  return {
+    total: rows.length,
+    above: progress.filter((value) => value > 105).length,
+    near: progress.filter((value) => value >= 95 && value <= 105).length,
+    below: progress.filter((value) => value < 95).length,
+    avgPct: progress.length > 0 ? progress.reduce((sum, value) => sum + value, 0) / progress.length : 0,
+  };
+}
+
+function getBenchmarkNumericValue(row: any, hasAttributedRevenue: boolean) {
+  const metricKey = normalizeMetricKey(row?.metric);
+  if (REVENUE_DEPENDENT_METRICS.has(metricKey) && !hasAttributedRevenue) return null;
+  const value = Number(row?.currentValue);
+  return Number.isFinite(value) ? value : null;
+}
+
+function getBenchmarkTargetValue(row: any) {
+  const value = Number(row?.benchmarkValue ?? row?.targetValue);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function getBenchmarkProgress(row: any, hasAttributedRevenue: boolean) {
+  const current = getBenchmarkNumericValue(row, hasAttributedRevenue);
+  const benchmark = getBenchmarkTargetValue(row);
+  if (current === null || benchmark === null) return null;
+  return (current / benchmark) * 100;
+}
+
+function buildBenchmarkTracker(rows: any[], hasAttributedRevenue: boolean) {
+  const progress = rows
+    .map((row) => getBenchmarkProgress(row, hasAttributedRevenue))
+    .filter((value): value is number => Number.isFinite(value));
+  return {
+    total: rows.length,
+    onTrack: progress.filter((value) => value >= 90).length,
+    needsAttention: progress.filter((value) => value >= 70 && value < 90).length,
+    behind: progress.filter((value) => value < 70).length,
+    avgPct: progress.length > 0 ? progress.reduce((sum, value) => sum + value, 0) / progress.length : 0,
+  };
 }
 
 function metricCard(label: string, value: string, Icon: any, helper?: string) {
@@ -199,6 +263,10 @@ export default function TikTokAnalytics() {
   const roi = hasAttributedRevenue && attributedRevenue !== null && totals.spend > 0 ? ((attributedRevenue - totals.spend) / totals.spend) * 100 : null;
   const roas = hasAttributedRevenue && attributedRevenue !== null && totals.spend > 0 ? attributedRevenue / totals.spend : null;
   const unavailableReason = dailyMetrics?.unavailableReason || "No persisted TikTok metric rows exist for the selected campaigns yet.";
+  const platformKPIs = Array.isArray(kpisData) ? kpisData : [];
+  const kpiTracker = buildGoalTracker(platformKPIs, hasAttributedRevenue);
+  const platformBenchmarks = Array.isArray(benchmarksData) ? benchmarksData : [];
+  const benchmarkTracker = buildBenchmarkTracker(platformBenchmarks, hasAttributedRevenue);
 
   return (
     <div className="min-h-screen bg-background">
@@ -245,11 +313,11 @@ export default function TikTokAnalytics() {
               <Tabs defaultValue="overview" className="space-y-4">
                 <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="campaigns">Campaign Breakdown</TabsTrigger>
-                  <TabsTrigger value="ads">Ad Comparison</TabsTrigger>
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
+                  <TabsTrigger value="ads">Ad Comparison</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
+                  <TabsTrigger value="reports">Reports</TabsTrigger>
                 </TabsList>
 
                 {metricsError && (
@@ -299,79 +367,219 @@ export default function TikTokAnalytics() {
                   )}
                 </TabsContent>
 
-                <TabsContent value="campaigns" className="space-y-4">
-                  {hasRows ? (
-                    <div className="rounded-md border overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted/50">
-                          <tr>
-                            <th className="text-left p-3">Campaign</th>
-                            <th className="text-right p-3">Impressions</th>
-                            <th className="text-right p-3">Clicks</th>
-                            <th className="text-right p-3">Spend</th>
-                            <th className="text-right p-3">Conversions</th>
-                            <th className="text-right p-3">CTR</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {campaignRows.map((row: any) => (
-                            <tr key={row.id} className="border-t">
-                              <td className="p-3">
-                                <div className="font-medium">{row.name}</div>
-                                <div className="text-xs text-muted-foreground">{row.id}</div>
-                              </td>
-                              <td className="p-3 text-right">{formatNumber(row.impressions)}</td>
-                              <td className="p-3 text-right">{formatNumber(row.clicks)}</td>
-                              <td className="p-3 text-right">{formatCurrency(row.spend)}</td>
-                              <td className="p-3 text-right">{formatNumber(row.conversions)}</td>
-                              <td className="p-3 text-right">{formatPct(row.ctr)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <Card><CardContent className="p-4 text-sm text-muted-foreground">{unavailableReason}</CardContent></Card>
-                  )}
-                </TabsContent>
-
                 <TabsContent value="ads" className="space-y-4">
                   <Card>
                     <CardContent className="p-4">
                       <p className="text-sm text-muted-foreground">
-                        TikTok ad-level comparison is unavailable until persisted TikTok rows include ad-level source identifiers. Campaign-level selected rows are shown in Campaign Breakdown.
+                        TikTok ad-level comparison is unavailable until persisted TikTok rows include ad-level source identifiers.
                       </p>
                     </CardContent>
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="kpis" className="space-y-4">
-                  {kpisLoading ? (
-                    <div className="min-h-[120px]" aria-hidden="true" />
-                  ) : Array.isArray(kpisData) && kpisData.length > 0 ? (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {kpisData.map((kpi: any) => {
-                        const current = formatGoalValue(kpi, hasAttributedRevenue);
-                        return metricCard(String(kpi?.name || kpi?.metric || "TikTok KPI"), current.value, Target, current.helper || `Target: ${kpi?.targetValue ?? "Not set"}`);
-                      })}
+                <TabsContent value="kpis" className="space-y-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-lg font-semibold text-foreground">Key Performance Indicators</h2>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Track daily TikTok KPIs and progress toward targets.
+                      </p>
                     </div>
+                  </div>
+
+                  {kpisLoading ? (
+                    <div className="min-h-[180px]" aria-hidden="true" />
                   ) : (
-                    <Card><CardContent className="p-4 text-sm text-muted-foreground">No TikTok KPIs configured yet.</CardContent></Card>
+                    <>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                        {metricCard("Total KPIs", formatNumber(kpiTracker.total), Target)}
+                        {metricCard("Above Target", formatNumber(kpiTracker.above), TrendingUp, "more than +5% above target")}
+                        {metricCard("On Track", formatNumber(kpiTracker.near), CheckCircle2, "within +/-5% of target")}
+                        {metricCard("Below Target", formatNumber(kpiTracker.below), AlertCircle, "more than -5% below target")}
+                        {metricCard("Avg. Progress", `${kpiTracker.avgPct.toFixed(1)}%`, TrendingUp)}
+                      </div>
+
+                      {platformKPIs.length === 0 ? (
+                        <Card>
+                          <CardContent className="py-8 text-center text-muted-foreground">
+                            <Target className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                            <h3 className="text-lg font-semibold text-foreground mb-2">No KPIs yet</h3>
+                            <p>Create your first KPI to track TikTok performance for this campaign.</p>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {platformKPIs.map((kpi: any) => {
+                            const current = formatGoalValue(kpi, hasAttributedRevenue);
+                            const target = formatGoalValue({ ...kpi, currentValue: kpi?.targetValue }, true);
+                            const progress = getGoalProgress(kpi, hasAttributedRevenue);
+                            const boundedProgress = progress === null ? 0 : Math.min(Math.max(progress, 0), 100);
+                            const statusText = progress === null
+                              ? current.helper || "Current value unavailable."
+                              : progress > 105
+                                ? `${(progress - 100).toFixed(1)}% above target`
+                                : progress < 95
+                                  ? `${(100 - progress).toFixed(1)}% below target`
+                                  : "within +/-5% of target";
+                            const progressColor = progress === null
+                              ? "bg-muted"
+                              : progress > 105
+                                ? "bg-green-500"
+                                : progress < 95
+                                  ? "bg-red-500"
+                                  : "bg-blue-500";
+
+                            return (
+                              <Card key={kpi.id || kpi.name || kpi.metric}>
+                                <CardContent className="p-5 space-y-5">
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                                      <Target className="w-5 h-5 text-orange-500" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <h4 className="text-base font-semibold text-foreground">{kpi?.name || "TikTok KPI"}</h4>
+                                        <span className="rounded-full border px-2 py-0.5 text-xs font-medium text-foreground">{kpi?.metric || "KPI"}</span>
+                                      </div>
+                                      {kpi?.description && <p className="text-sm text-muted-foreground mt-1">{kpi.description}</p>}
+                                    </div>
+                                  </div>
+
+                                  <div className="grid gap-3 sm:grid-cols-2">
+                                    <div className="rounded-lg bg-muted p-4">
+                                      <p className="text-sm text-foreground">Current</p>
+                                      <p className="text-2xl font-semibold text-foreground">{current.value}</p>
+                                    </div>
+                                    <div className="rounded-lg bg-muted p-4">
+                                      <p className="text-sm text-foreground">Target</p>
+                                      <p className="text-2xl font-semibold text-foreground">{target.value}</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span>Progress</span>
+                                      <span>{progress === null ? "Unavailable" : `${progress.toFixed(1)}%`}</span>
+                                    </div>
+                                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                      <div className={`h-full rounded-full ${progressColor}`} style={{ width: `${boundedProgress}%` }} />
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{statusText}</p>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
                   )}
                 </TabsContent>
 
-                <TabsContent value="benchmarks" className="space-y-4">
-                  {benchmarksLoading ? (
-                    <div className="min-h-[120px]" aria-hidden="true" />
-                  ) : Array.isArray(benchmarksData) && benchmarksData.length > 0 ? (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {benchmarksData.map((benchmark: any) => {
-                        const current = formatGoalValue(benchmark, hasAttributedRevenue);
-                        return metricCard(String(benchmark?.name || benchmark?.metric || "TikTok Benchmark"), current.value, Trophy, current.helper || `Benchmark: ${benchmark?.benchmarkValue ?? benchmark?.targetValue ?? "Not set"}`);
-                      })}
+                <TabsContent value="benchmarks" className="space-y-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-lg font-semibold text-foreground">Performance Benchmarks</h2>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Track and measure TikTok performance against industry standards and custom targets.
+                      </p>
                     </div>
+                  </div>
+
+                  {benchmarksLoading ? (
+                    <div className="min-h-[180px]" aria-hidden="true" />
                   ) : (
-                    <Card><CardContent className="p-4 text-sm text-muted-foreground">No TikTok Benchmarks configured yet.</CardContent></Card>
+                    <>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                        {metricCard("Total Benchmarks", formatNumber(benchmarkTracker.total), Target)}
+                        {metricCard("On Track", formatNumber(benchmarkTracker.onTrack), CheckCircle2, "90% or more of benchmark")}
+                        {metricCard("Needs Attention", formatNumber(benchmarkTracker.needsAttention), AlertCircle, "70% to under 90% of benchmark")}
+                        {metricCard("Behind", formatNumber(benchmarkTracker.behind), AlertCircle, "below 70% of benchmark")}
+                        {metricCard("Avg. Progress", `${benchmarkTracker.avgPct.toFixed(1)}%`, TrendingUp)}
+                      </div>
+
+                      {platformBenchmarks.length === 0 ? (
+                        <Card>
+                          <CardContent className="py-12 text-center text-muted-foreground">
+                            <TrendingUp className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                            <h3 className="text-lg font-semibold text-foreground mb-2">No Benchmarks Yet</h3>
+                            <p>Create your first benchmark to start tracking performance against industry standards.</p>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {platformBenchmarks.map((benchmark: any) => {
+                            const current = formatGoalValue(benchmark, hasAttributedRevenue);
+                            const target = formatGoalValue({ ...benchmark, currentValue: benchmark?.benchmarkValue ?? benchmark?.targetValue }, true);
+                            const progress = getBenchmarkProgress(benchmark, hasAttributedRevenue);
+                            const boundedProgress = progress === null ? 0 : Math.min(Math.max(progress, 0), 100);
+                            const statusLabel = progress === null
+                              ? "Unavailable"
+                              : progress >= 90
+                                ? "On Track"
+                                : progress >= 70
+                                  ? "Needs Attention"
+                                  : "Behind";
+                            const statusText = progress === null
+                              ? current.helper || "Current value unavailable."
+                              : `${(progress - 100).toFixed(1)}% vs benchmark`;
+                            const progressColor = progress === null
+                              ? "bg-muted"
+                              : progress >= 90
+                                ? "bg-green-500"
+                                : progress >= 70
+                                  ? "bg-amber-500"
+                                  : "bg-red-500";
+
+                            return (
+                              <Card key={benchmark.id || benchmark.name || benchmark.metric}>
+                                <CardContent className="p-5 space-y-5">
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                                      <TrendingUp className="w-5 h-5 text-orange-500" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <h4 className="text-base font-semibold text-foreground">{benchmark?.name || "TikTok Benchmark"}</h4>
+                                        <span className="rounded-full border px-2 py-0.5 text-xs font-medium text-foreground">{benchmark?.metric || "Benchmark"}</span>
+                                      </div>
+                                      {benchmark?.description && <p className="text-sm text-muted-foreground mt-1">{benchmark.description}</p>}
+                                      {benchmark?.industry && <p className="text-xs text-muted-foreground mt-1">Industry: {benchmark.industry}</p>}
+                                    </div>
+                                  </div>
+
+                                  <div className="grid gap-3 sm:grid-cols-2">
+                                    <div className="rounded-lg bg-muted p-4">
+                                      <p className="text-sm text-foreground">Current Value</p>
+                                      <p className="text-2xl font-semibold text-foreground">{current.value}</p>
+                                    </div>
+                                    <div className="rounded-lg bg-muted p-4">
+                                      <p className="text-sm text-foreground">Benchmark Value</p>
+                                      <p className="text-2xl font-semibold text-foreground">{target.value}</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span>Progress</span>
+                                      <span>{progress === null ? "Unavailable" : `${progress.toFixed(1)}%`}</span>
+                                    </div>
+                                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                      <div className={`h-full rounded-full ${progressColor}`} style={{ width: `${boundedProgress}%` }} />
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span className="text-muted-foreground">Performance</span>
+                                      <span className="font-medium text-foreground">{statusLabel}</span>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{statusText}</p>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
                   )}
                 </TabsContent>
 
@@ -386,6 +594,16 @@ export default function TikTokAnalytics() {
                           {campaignRows.length} selected TikTok campaign{campaignRows.length === 1 ? "" : "s"} have persisted metric rows in this date range.
                         </p>
                       )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="reports" className="space-y-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="text-sm text-muted-foreground">
+                        TikTok Reports are unavailable until the campaign-scoped TikTok reports contract is implemented.
+                      </p>
                     </CardContent>
                   </Card>
                 </TabsContent>

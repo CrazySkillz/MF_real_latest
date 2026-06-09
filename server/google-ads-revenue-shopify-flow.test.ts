@@ -21,8 +21,8 @@ describe("Google Ads revenue Shopify flow", () => {
       'app.post("/api/campaigns/:id/chat"'
     );
 
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);');
-    expect(routes).toContain('const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);');
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
+    expect(routes).toContain('const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
     expect(route).toContain("platformContext: zShopifyRevenuePlatformContext.optional()");
     expect(route).not.toContain("platformContext: zPlatformContext.optional()");
   });
@@ -55,7 +55,7 @@ describe("Google Ads revenue Shopify flow", () => {
     expect(route).toContain('const activeGoogleAdsCampaignIds = platformCtx === "google_ads"');
     expect(route).toContain("googleAdsCampaignIdFromValueOrMapping(platformCtx, orderCrmValue, campaignMappings, activeGoogleAdsCampaignIds)");
     expect(route).toContain('} else if (platformCtx === "linkedin" && campaignMappings.length > 0) {');
-    expect(route).toContain('if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta") && revenueByDateAndCampaign.size > 0)');
+    expect(route).toContain('if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta" || platformCtx === "instagram") && revenueByDateAndCampaign.size > 0)');
     expect(route).toContain("subCampaignUrn: urn,");
     expect(route).not.toContain("spend weight");
   });
@@ -95,7 +95,7 @@ describe("Google Ads revenue Shopify flow", () => {
     const modal = readSource("client", "src", "components", "AddRevenueWizardModal.tsx");
     const scheduler = readSource("server", "auto-refresh-scheduler.ts");
 
-    expect(wizard).toContain('platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram";');
+    expect(wizard).toContain('platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok";');
     expect(wizard).toContain("platformContext = \"ga4\"");
     expect(wizard).toContain("...(initialMappingConfig?.sourceId ? { sourceId: initialMappingConfig.sourceId } : {})");
     expect(wizard).toContain("selectedValues,");

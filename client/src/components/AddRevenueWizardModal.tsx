@@ -19,7 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify";
 const SELECT_NONE = "__none__";
-type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram';
+type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok';
 type PlatformCampaignMapping = { crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string };
 
 type Preview = {
@@ -156,7 +156,7 @@ export function AddRevenueWizardModal(props: {
 
   const [step, setStep] = useState<Step>("select");
   const isEditing = !!initialSource;
-  const sheetsPurpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'meta' ? 'meta_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : platformContext === 'instagram' ? 'instagram_revenue' : 'revenue';
+  const sheetsPurpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'meta' ? 'meta_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : platformContext === 'instagram' ? 'instagram_revenue' : platformContext === 'tiktok' ? 'tiktok_revenue' : 'revenue';
   const [salesforceInitialMappingConfig, setSalesforceInitialMappingConfig] = useState<null | {
     campaignField?: string;
     selectedValues?: string[];
@@ -1396,7 +1396,7 @@ export function AddRevenueWizardModal(props: {
     }
   };
 
-  const title = step === "select" ? (platformContext === 'linkedin' ? "Add LinkedIn revenue attribution" : platformContext === 'google_ads' ? "Add Google Ads attributed revenue" : platformContext === 'instagram' ? "Add Instagram revenue attribution" : "Add revenue source") :
+  const title = step === "select" ? (platformContext === 'linkedin' ? "Add LinkedIn revenue attribution" : platformContext === 'google_ads' ? "Add Google Ads attributed revenue" : platformContext === 'instagram' ? "Add Instagram revenue attribution" : platformContext === 'tiktok' ? "Add TikTok attributed revenue" : "Add revenue source") :
     step === "manual" ? (isEditing ? "Edit manual revenue" : "Manual revenue") :
       step === "csv" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
         step === "csv_map" ? (isEditing ? "Edit CSV revenue" : "Map CSV columns") :
@@ -1408,7 +1408,7 @@ export function AddRevenueWizardModal(props: {
                     "Add revenue source";
 
   const description = step === "select"
-    ? (platformContext === 'linkedin' ? "Choose the source that attributes revenue back to LinkedIn ad activity." : platformContext === 'google_ads' ? "Choose the source that attributes revenue back to Google Ads activity." : platformContext === 'instagram' ? "Choose the source that attributes revenue back to Instagram ad activity." : "Choose where your revenue data comes from.")
+    ? (platformContext === 'linkedin' ? "Choose the source that attributes revenue back to LinkedIn ad activity." : platformContext === 'google_ads' ? "Choose the source that attributes revenue back to Google Ads activity." : platformContext === 'instagram' ? "Choose the source that attributes revenue back to Instagram ad activity." : platformContext === 'tiktok' ? "Choose the source that attributes revenue back to TikTok ad activity." : "Choose where your revenue data comes from.")
     : `Currency: ${currency} • Revenue is treated as “to date” (campaign lifetime)`;
 
   const isEmbeddedWizardStep = step === "hubspot" || step === "salesforce" || step === "shopify";

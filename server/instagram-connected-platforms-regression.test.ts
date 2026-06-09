@@ -103,7 +103,7 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(page).toContain("connected: isInstagramConnected");
     expect(page).toContain("platformStatusMap.get(\"instagram\")?.analyticsPath || `/campaigns/${campaign?.id}/instagram-analytics`");
     expect(page).toContain('instagramHasSourceRows ? undefined : "Source-backed Instagram metrics are not available yet."');
-    expect(page).toContain("platform.platform === \"Instagram Ads\" && platform.unavailableReason");
+    expect(page).toContain("(platform.platform === \"Instagram Ads\" || platform.platform === \"TikTok Ads\") && platform.unavailableReason");
     expect(page).toContain("`/api/instagram/${campaignId}/overview-summary`");
     expect(page).toContain("instagramHasSourceRows ? undefined");
     expect(page).not.toContain('{ label: "Instagram", value: "instagram"');
@@ -178,7 +178,7 @@ describe("Instagram Connected Platforms regression guard", () => {
 
     expect(helperStart).toBeGreaterThanOrEqual(0);
     expect(helper).toContain("sources: { googleAds?: any; instagram?: any } = {}");
-    expect(helper).toContain("[sources.googleAds, sources.instagram]");
+    expect(helper).toContain("[sources.googleAds, sources.instagram, (sources as any).tiktok]");
     expect(helper).toContain("source?.connected === true");
   });
 
@@ -250,7 +250,7 @@ describe("Instagram Connected Platforms regression guard", () => {
 
     for (const route of [outcomeRoute, executiveRoute]) {
       expect(route).toContain("buildInstagramPlatformSourceForAggregate");
-      expect(route).toContain("mainPlatformSources: { googleAds, instagram }");
+      expect(route).toContain("mainPlatformSources: { googleAds, instagram, tiktok }");
       expect(route).toContain("const instagramSpendForAggregate = instagramSpend;");
       expect(route).not.toContain("upsertInstagramDailyMetrics");
       expect(route).not.toContain("refreshInstagram");
@@ -264,8 +264,8 @@ describe("Instagram Connected Platforms regression guard", () => {
     const validationEnd = routes.indexOf("const zRevenueMapping = z", validationStart);
     const validation = routes.slice(validationStart, validationEnd);
 
-    expect(validation).toContain('z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"])');
-    expect(routes).toContain("RevenueReadPlatformContext[] = ['ga4', 'linkedin', 'meta', 'google_ads', 'instagram']");
+    expect(validation).toContain('z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"])');
+    expect(routes).toContain("RevenueReadPlatformContext[] = ['ga4', 'linkedin', 'meta', 'google_ads', 'instagram', 'tiktok']");
     expect(validation).toContain('"instagram" | null');
     expect(routes).not.toContain("/api/instagram/oauth");
     expect(routes).not.toContain("refreshInstagram(");
@@ -588,16 +588,16 @@ describe("Instagram Connected Platforms regression guard", () => {
     const page = readFileSync(join(process.cwd(), "client", "src", "pages", "instagram-analytics.tsx"), "utf-8");
     const kpiRefresh = readFileSync(join(process.cwd(), "server", "utils", "kpi-refresh.ts"), "utf-8");
 
-    expect(modal).toContain("type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram';");
-    expect(modal).toContain("platformContext === 'instagram' ? 'instagram_revenue' : 'revenue'");
+    expect(modal).toContain("type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok';");
+    expect(modal).toContain("platformContext === 'instagram' ? 'instagram_revenue' : platformContext === 'tiktok' ? 'tiktok_revenue' : 'revenue'");
     expect(modal).toContain('platformContext === \'instagram\' ? "Add Instagram revenue attribution"');
     expect(modal).toContain("Choose the source that attributes revenue back to Instagram ad activity.");
     expect(sheetsAuth).toContain("'instagram_revenue'");
-    expect(sheetsAuth).toContain("purpose === 'revenue' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue'");
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);');
+    expect(sheetsAuth).toContain("purpose === 'revenue' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue' || purpose === 'tiktok_revenue'");
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
     expect(routes).toContain("platformContextRaw === \"instagram\" ? \"instagram\"");
-    expect(routes).toContain("purpose === \"spend\" || purpose === \"revenue\" || purpose === \"general\" || purpose === \"linkedin_revenue\" || purpose === \"google_ads_revenue\" || purpose === \"instagram_revenue\"");
-    expect(routes).toContain('["ga4", "linkedin", "meta", "google_ads", "instagram"]');
+    expect(routes).toContain("purpose === \"spend\" || purpose === \"revenue\" || purpose === \"general\" || purpose === \"linkedin_revenue\" || purpose === \"google_ads_revenue\" || purpose === \"instagram_revenue\" || purpose === \"tiktok_revenue\"");
+    expect(routes).toContain('["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]');
     expect(page).toContain("AddRevenueWizardModal");
     expect(page).toContain("platformContext=\"instagram\"");
     expect(page).toContain("revenue-sources?platformContext=instagram");

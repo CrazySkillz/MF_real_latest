@@ -557,8 +557,34 @@ describe("source safety regression guards", () => {
     expect(manualRoute).toContain('sourceType || "").trim() !== effectiveSourceType');
     expect(manualRoute).toContain('displayName || "").trim() !== effectiveDisplayName');
     expect(importRoute).toContain("const requestedSourceId");
+    expect(importRoute).toContain('platformSourceType = "tiktok_api"');
+    expect(importRoute).toContain('platformContext = "tiktok"');
+    expect(importRoute).toContain("storage.getTikTokConnection(campaignId)");
+    expect(importRoute).toContain("selectedCampaignIds.length === 0");
+    expect(importRoute).toContain("storage.getTikTokDailyMetrics(campaignId, startDate, endDate)");
+    expect(importRoute).toContain('selectedSet.has(String(row?.tiktokCampaignId || ""))');
+    expect(importRoute).toContain("sourceType: platformSourceType");
+    expect(importRoute).toContain("platformContext,");
     expect(importRoute).toContain("`${platformLabel} spend source not found`");
     expect(importRoute.indexOf("storage.deleteSpendRecordsBySource")).toBeGreaterThan(importRoute.indexOf("requestedSourceId"));
+  });
+
+  it("TikTok attributed revenue source identity is platform-scoped without changing revenue mapping", () => {
+    const routesSource = readRoutesSource();
+    const storageSource = readStorageSource();
+    const schemaSource = fs.readFileSync(path.join(process.cwd(), "shared", "schema.ts"), "utf-8");
+
+    expect(storageSource).toContain("export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok';");
+    expect(schemaSource).toContain("export const insertRevenueSourceSchema");
+    expect(schemaSource).toContain("platformContext: true,");
+    expect(routesSource).toContain('const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
+    expect(routesSource).toContain('const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
+    expect(routesSource).toContain('const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
+    expect(routesSource).toContain('const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
+    expect(routesSource).toContain('const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
+    expect(routesSource).toContain("sourcePlatformContext === 'tiktok' ? 'tiktok_revenue' : 'revenue'");
+    expect(routesSource).toContain("platformContext === 'tiktok' ? 'tiktok_revenue' : 'revenue'");
+    expect(routesSource).not.toContain('platformCtx === "tiktok" || platformCtx === "google_ads"');
   });
 
   it("Google Ads disconnect route is campaign-scoped and fails closed when no row is deleted", () => {

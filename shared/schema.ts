@@ -1230,6 +1230,7 @@ export const insertGA4DailyMetricSchema = createInsertSchema(ga4DailyMetrics).pi
 export const insertSpendSourceSchema = createInsertSchema(spendSources).pick({
   campaignId: true,
   sourceType: true,
+  platformContext: true,
   displayName: true,
   currency: true,
   mappingConfig: true,
@@ -1242,11 +1243,14 @@ export const insertSpendRecordSchema = createInsertSchema(spendRecords).pick({
   date: true,
   spend: true,
   currency: true,
+  sourceType: true,
+  subCampaignUrn: true,
 });
 
 export const insertRevenueSourceSchema = createInsertSchema(revenueSources).pick({
   campaignId: true,
   sourceType: true,
+  platformContext: true,
   displayName: true,
   currency: true,
   mappingConfig: true,

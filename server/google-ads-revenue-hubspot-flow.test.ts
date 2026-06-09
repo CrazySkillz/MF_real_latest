@@ -21,8 +21,8 @@ describe("Google Ads revenue HubSpot flow", () => {
       "// Helper function to refresh Google Sheets access token"
     );
 
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);');
-    expect(routes).toContain('const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram"]);');
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
+    expect(routes).toContain('const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
     expect(route).toContain("platformContext: zHubSpotRevenuePlatformContext.optional()");
     expect(route).not.toContain("platformContext: zPlatformContext.optional()");
   });
@@ -35,7 +35,7 @@ describe("Google Ads revenue HubSpot flow", () => {
       "// Helper function to refresh Google Sheets access token"
     );
 
-    expect(route).toContain('platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : "ga4"');
+    expect(route).toContain('platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : platformContextRaw === "tiktok" ? "tiktok" : "ga4"');
     expect(route).toContain("const effectiveValueSource: 'revenue' | 'conversion_value' = (platformCtx === 'linkedin' ? parsedValueSource : 'revenue');");
     expect(route).toContain("storage.getRevenueSources(campaignId, platformCtx as any)");
     expect(route).toContain('sourceType: "hubspot"');
@@ -93,7 +93,7 @@ describe("Google Ads revenue HubSpot flow", () => {
     const modal = readSource("client", "src", "components", "AddRevenueWizardModal.tsx");
     const scheduler = readSource("server", "auto-refresh-scheduler.ts");
 
-    expect(wizard).toContain('platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram";');
+    expect(wizard).toContain('platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok";');
     expect(wizard).toContain("platformContext,");
     expect(wizard).toContain("selectedValues,");
     expect(wizard).toContain("...(sourceId ? { sourceId } : {})");

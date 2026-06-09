@@ -65,8 +65,8 @@ Bundling rule:
 | 8D | scheduler snapshot input uses same TikTok aggregate contract | Done locally and validated | Background snapshots |
 | 8E | no-double-counting guard for TikTok plus other paid sources | Done locally; validation pending | Aggregate safety |
 | 8F | Commit 8 regression and validation docs | Done locally; validation pending | None |
-| 9A | TikTok spend source identity uses `tiktok_api` and `platformContext="tiktok"` | Pending | Spend import path |
-| 9B | TikTok attributed revenue import identity uses `platformContext="tiktok"` only | Pending | Revenue import path |
+| 9A | TikTok spend source identity uses `tiktok_api` and `platformContext="tiktok"` | Done locally and validated | Spend import path |
+| 9B | TikTok attributed revenue import identity uses `platformContext="tiktok"` only | Done locally and validated | Revenue import path |
 | 9C | selected TikTok campaign mapping for imported revenue | Pending | Revenue attribution |
 | 9D | TikTok revenue-dependent metric gating across Overview, KPIs, Benchmarks, Insights, and reports | Pending | Financial/current-value paths |
 | 9E | Commit 9 regression and validation docs | Pending | None |
@@ -771,6 +771,22 @@ Validation:
 - GA4, LinkedIn, Google Ads, Meta, or Instagram revenue cannot unlock TikTok revenue metrics.
 - Unmapped TikTok revenue does not populate per-campaign rows.
 
+Status:
+
+- [x] Commit 9A root cause traced: the shared ad-platform spend import route recognized Google Ads, Meta, and LinkedIn only, and did not persist TikTok spend source identity with `platformContext="tiktok"`.
+- [x] Commit 9A completed locally: TikTok ad-platform spend import now reads only current-campaign selected persisted TikTok daily rows and creates TikTok spend identity with `sourceType="tiktok_api"` and `platformContext="tiktok"`.
+- [x] Commit 9A completed locally: shared spend insert schemas now expose existing `platformContext`, `sourceType`, and `subCampaignUrn` fields so source identity is contract-backed.
+- [x] Commit 9A local validation passed: `npm test -- server/source-safety-regression.test.ts server/tiktok-create-campaign-regression.test.ts server/performance-summary-aggregate.test.ts server/endpoint-auth-audit.test.ts`.
+- [x] Commit 9A local validation passed: `npm run check`.
+- [x] Commit 9B root cause traced: shared revenue context validators, storage context type, revenue insert schema, and revenue wizard purpose/type allowlists did not include TikTok, so TikTok attributed revenue could not be persisted or queried as `platformContext="tiktok"`.
+- [x] Commit 9B completed locally: TikTok is now accepted as a shared revenue `platformContext` across CSV, Google Sheets, HubSpot, Salesforce, Shopify, manual/read context helpers, and revenue wizard source identity.
+- [x] Commit 9B completed locally: Google Sheets revenue purposes now include `tiktok_revenue` and keep the existing single-tab revenue guard.
+- [x] Commit 9B local validation passed: revenue platform context/wizard/provider regression tests, Instagram regression tests, source-safety regression tests, TikTok Create Campaign regression tests, performance-summary aggregate tests, and endpoint auth tests.
+- [x] Commit 9B local validation passed: `npm run check`.
+- [ ] Commit 9C pending: TikTok imported revenue selected-campaign mapping is not implemented yet.
+- [ ] Commit 9D pending: TikTok revenue-dependent financial gating across KPI, Benchmark, Insights, and Reports remains pending.
+- [ ] Commit 9E pending: source-modal/edit/delete/scheduler refresh/no-damaged-data validation remains pending.
+
 ### Commit 10: KPI, Benchmark, Alerts, And Notifications
 
 Goal:
@@ -1039,5 +1055,12 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - Commit 8D root cause traced: scheduler snapshots build their own `performanceSummary` input and did not include a TikTok `platformSources` entry.
 - Commit 8D scheduler snapshot input was implemented locally with selected persisted TikTok rows only.
 - Commit 8D local validation passed: scheduler regression tests, TikTok aggregate tests, performance-summary aggregate tests, endpoint auth/source-safety regression tests, and `npm run check`.
-- No TikTok revenue import, KPI, Benchmark, report, or provider OAuth code has been changed.
+- User validation passed for Commit 8D and the Render redeploy trigger commit.
+- Commit 9A root cause traced: TikTok was absent from the existing ad-platform spend import identity path.
+- Commit 9A spend source identity was implemented locally with selected persisted TikTok rows only.
+- Commit 9A local validation passed: source-safety regression tests, TikTok Create Campaign regression tests, performance-summary aggregate tests, endpoint auth tests, and `npm run check`.
+- Commit 9B root cause traced: shared revenue-source identity allowlists did not include TikTok.
+- Commit 9B revenue source identity was implemented locally with `platformContext="tiktok"` and `tiktok_revenue` Google Sheets purpose support.
+- Commit 9B local validation passed: targeted revenue context/provider/wizard regression tests, Instagram/source-safety/TikTok aggregate tests, endpoint auth tests, and `npm run check`.
+- No TikTok selected-campaign revenue mapping, KPI, Benchmark, report, scheduler refresh, or provider OAuth code has been changed.
 - Live OAuth/provider validation is deferred.

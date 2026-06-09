@@ -69,7 +69,7 @@ Bundling rule:
 | 9B | TikTok attributed revenue import identity uses `platformContext="tiktok"` only | Done locally and validated | Revenue import path |
 | 9C | selected TikTok campaign mapping for imported revenue | Done locally and validated | Revenue attribution |
 | 9D | TikTok revenue-dependent metric gating across Overview, KPIs, Benchmarks, Insights, and reports | Partial: aggregate revenue gate done locally; KPI/Benchmark/report parity pending | Financial/current-value paths |
-| 9E | Commit 9 regression and validation docs | Pending | None |
+| 9E | Commit 9 regression and validation docs | Done locally and validated for completed Commit 9 slices | None |
 | 10A | TikTok KPI current-value source contract | Pending | KPI backend/UI |
 | 10B | TikTok Benchmark current-value source contract | Pending | Benchmark backend/UI |
 | 10C | TikTok alert/notification refresh behavior | Pending | Visibility path |
@@ -796,8 +796,14 @@ Status:
 - [x] User validation passed for Commit 9D aggregate slice after deploy.
 - [x] Commit 9D platform Overview root cause traced: the TikTok daily-metrics endpoint returned selected TikTok rows but no TikTok-scoped revenue summary, so the Overview Total Revenue, ROI, and ROAS cards were hard-coded unavailable even if TikTok attributed revenue existed.
 - [x] Commit 9D platform Overview slice completed locally: `/api/tiktok/:campaignId/daily-metrics` now returns a TikTok-only `financialSummary`, and the TikTok Overview cards render revenue, ROI, and ROAS only when that summary proves TikTok-scoped attributed revenue exists.
-- [ ] Commit 9D pending: KPI current values, Benchmark current values, Insights copy/data, and Reports output still need separate scoped validation before this subcommit is complete.
-- [ ] Commit 9E pending: source-modal/edit/delete/scheduler refresh/no-damaged-data validation remains pending.
+- [x] User validation passed for Commit 9D platform Overview revenue-card slice after deploy.
+- [x] Commit 9D KPI/Benchmark root cause traced: generic platform KPI/Benchmark routes refreshed Instagram current values from selected persisted rows, but TikTok had no equivalent refresh helper and would leave current values stale or manual.
+- [x] Commit 9D KPI/Benchmark slice completed locally: TikTok platform KPI and Benchmark refresh now reads selected persisted TikTok rows only and uses TikTok-scoped attributed revenue only for all-selected TikTok revenue-dependent metrics.
+- [ ] Commit 9D pending: Insights copy/data and Reports output still need separate scoped validation before this subcommit is complete.
+- [x] Commit 9E root cause traced: Commit 9 status did not clearly separate validated source-backed financial work from unimplemented UI import, lifecycle cleanup, scheduler refresh, Insights, and Reports work.
+- [x] Commit 9E completed locally: tracker now records 9D split validation, source-backed revenue rules, and current pending boundaries without marking unavailable paths production-ready.
+- [x] Commit 9E local validation passed: targeted TikTok/source-safety/aggregate/auth regression tests, `npm run check`, and `git diff --check`.
+- [ ] Commit 9E deferred evidence: visible TikTok revenue-import UI, source-modal edit/delete browser validation, scheduler refresh of live TikTok provider data, damaged-data cleanup, Insights, and Reports remain pending in later scoped commits.
 
 ### Commit 10: KPI, Benchmark, Alerts, And Notifications
 
@@ -1086,5 +1092,11 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - User validation passed for Commit 9D aggregate gate after deploy.
 - Commit 9D platform Overview root cause traced: the page could not unlock Total Revenue, ROI, or ROAS because the TikTok analytics endpoint exposed no TikTok-scoped attributed revenue summary.
 - Commit 9D platform Overview revenue gate was implemented locally: TikTok Overview cards now remain unavailable without TikTok-scoped attributed revenue and calculate revenue, ROI, and ROAS only from the endpoint's TikTok `financialSummary`.
-- No TikTok KPI, Benchmark, report, scheduler refresh, source modal lifecycle cleanup, visible revenue-import UI, or provider OAuth code has been changed.
+- User validation passed for Commit 9D platform Overview revenue-card slice after deploy.
+- Commit 9D KPI/Benchmark root cause traced: TikTok platform KPI/Benchmark current-value refresh had no selected-row source-backed implementation, unlike Instagram.
+- Commit 9D KPI/Benchmark current-value refresh was implemented locally from selected persisted TikTok rows only; revenue-dependent values use only TikTok-scoped attributed revenue and stay unavailable for specific-campaign rows until exact per-specific revenue reads are validated.
+- Commit 9E root cause traced: Commit 9 needed a documentation closeout that separates validated source-backed financial behavior from remaining unimplemented source lifecycle, scheduler, Insights, and Reports behavior.
+- Commit 9E documentation closeout was implemented locally: completed slices, validation commands, and deferred evidence boundaries are recorded without claiming full TikTok financial production readiness.
+- Commit 9E local validation passed with the 9D KPI/Benchmark slice: targeted TikTok/source-safety/aggregate/auth regression tests, `npm run check`, and `git diff --check`.
+- No TikTok report, scheduler refresh, source modal lifecycle cleanup, visible revenue-import UI, provider OAuth code, or live provider validation has been changed.
 - Live OAuth/provider validation is deferred.

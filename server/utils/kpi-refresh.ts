@@ -333,6 +333,31 @@ function mapKPIMetricToInstagramKey(kpiMetric: string): string {
   return metricMap[normalized] || normalized;
 }
 
+function mapKPIMetricToTikTokKey(kpiMetric: string): string {
+  const normalized = String(kpiMetric || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const metricMap: Record<string, string> = {
+    impressions: "impressions",
+    clicks: "clicks",
+    spend: "spend",
+    conversions: "conversions",
+    videoviews: "videoViews",
+    engagements: "engagements",
+    ctr: "ctr",
+    cpc: "cpc",
+    cpm: "cpm",
+    cpa: "costPerConversion",
+    costperconversion: "costPerConversion",
+    conversionrate: "conversionRate",
+    cvr: "conversionRate",
+    totalrevenue: "totalRevenue",
+    revenue: "totalRevenue",
+    roas: "roas",
+    roi: "roi",
+    profit: "profit",
+  };
+  return metricMap[normalized] || normalized;
+}
+
 async function getInstagramMetricsForTarget(campaignId: string, target: KPI | Benchmark): Promise<Record<string, number> | null> {
   const connection = await storage.getInstagramConnection(campaignId).catch(() => null);
   if (!connection || (connection as any).spendOnly) return null;
@@ -396,6 +421,74 @@ async function getInstagramMetricsForTarget(campaignId: string, target: KPI | Be
   return metrics;
 }
 
+async function getTikTokMetricsForTarget(campaignId: string, target: KPI | Benchmark): Promise<Record<string, number> | null> {
+  const connection = await storage.getTikTokConnection(campaignId).catch(() => null);
+  if (!connection || (connection as any).spendOnly) return null;
+
+  const selectedCampaignIds = (() => {
+    try {
+      const parsed = JSON.parse(String((connection as any).selectedCampaignIds || "[]"));
+      return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  })();
+  if (selectedCampaignIds.length === 0) return null;
+
+  const trackingPeriod = Math.max(1, Number((target as any).trackingPeriod || 30) || 30);
+  const endDate = yesterdayUTC();
+  const start = new Date(`${endDate}T00:00:00.000Z`);
+  start.setUTCDate(start.getUTCDate() - (trackingPeriod - 1));
+  const startDate = start.toISOString().slice(0, 10);
+  const selectedSet = new Set(selectedCampaignIds);
+  const specificId = String((target as any).applyTo || "") === "specific" ? String((target as any).specificCampaignId || "").trim() : "";
+  if (specificId && !selectedSet.has(specificId)) return null;
+
+  const rows = (await storage.getTikTokDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[]))
+    .filter((row: any) => selectedSet.has(String(row?.tiktokCampaignId || "")))
+    .filter((row: any) => !specificId || String(row?.tiktokCampaignId || "") === specificId);
+  if (rows.length === 0) return null;
+
+  const totals = rows.reduce((sum: any, row: any) => {
+    sum.impressions += Number(row?.impressions || 0);
+    sum.clicks += Number(row?.clicks || 0);
+    sum.spend += Number(row?.spend || 0);
+    sum.conversions += Number(row?.conversions || 0);
+    sum.videoViews += Number(row?.videoViews || 0);
+    sum.engagements += Number(row?.engagements || 0);
+    return sum;
+  }, { impressions: 0, clicks: 0, spend: 0, conversions: 0, videoViews: 0, engagements: 0 });
+
+  const metrics: Record<string, number> = {
+    impressions: totals.impressions,
+    clicks: totals.clicks,
+    spend: parseFloat(totals.spend.toFixed(2)),
+    conversions: totals.conversions,
+    videoViews: totals.videoViews,
+    engagements: totals.engagements,
+    ctr: totals.impressions > 0 ? parseFloat(((totals.clicks / totals.impressions) * 100).toFixed(2)) : 0,
+    cpc: totals.clicks > 0 ? parseFloat((totals.spend / totals.clicks).toFixed(2)) : 0,
+    cpm: totals.impressions > 0 ? parseFloat(((totals.spend / totals.impressions) * 1000).toFixed(2)) : 0,
+    costPerConversion: totals.conversions > 0 ? parseFloat((totals.spend / totals.conversions).toFixed(2)) : 0,
+    conversionRate: totals.clicks > 0 ? parseFloat(((totals.conversions / totals.clicks) * 100).toFixed(2)) : 0,
+  };
+
+  if (!specificId) {
+    const revenue = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, "tiktok").catch(() => null);
+    const totalRevenue = Number((revenue as any)?.totalRevenue || 0);
+    const sourceIds = Array.isArray((revenue as any)?.sourceIds) ? (revenue as any).sourceIds : [];
+    if (sourceIds.length > 0 && totalRevenue > 0) {
+      metrics.totalRevenue = parseFloat(totalRevenue.toFixed(2));
+      metrics.revenue = metrics.totalRevenue;
+      metrics.profit = parseFloat((totalRevenue - totals.spend).toFixed(2));
+      metrics.roas = totals.spend > 0 ? parseFloat((totalRevenue / totals.spend).toFixed(2)) : 0;
+      metrics.roi = totals.spend > 0 ? parseFloat((((totalRevenue - totals.spend) / totals.spend) * 100).toFixed(2)) : 0;
+    }
+  }
+
+  return metrics;
+}
+
 /**
  * Calculate currentValue for a KPI from LinkedIn metrics
  */
@@ -431,6 +524,14 @@ function calculateInstagramKPIValue(kpi: KPI, metrics: Record<string, number>): 
   return (kpi.unit === "%" || kpi.unit === "$" || kpi.unit === "x") ? Number(value).toFixed(2) : String(value);
 }
 
+function calculateTikTokKPIValue(kpi: KPI, metrics: Record<string, number>): string | null {
+  if (!kpi.metric) return null;
+  const metricKey = mapKPIMetricToTikTokKey(kpi.metric);
+  const value = metrics[metricKey];
+  if (value === undefined || value === null) return null;
+  return (kpi.unit === "%" || kpi.unit === "$" || kpi.unit === "x") ? Number(value).toFixed(2) : String(value);
+}
+
 export async function refreshInstagramKPIsForCampaign(campaignId: string): Promise<{ updated: number; errors: number }> {
   let updated = 0;
   let errors = 0;
@@ -451,6 +552,31 @@ export async function refreshInstagramKPIsForCampaign(campaignId: string): Promi
     }
   } catch (error) {
     console.error(`[KPI Refresh] Error refreshing Instagram KPIs for campaign ${campaignId}:`, error);
+    return { updated, errors: errors + 1 };
+  }
+  return { updated, errors };
+}
+
+export async function refreshTikTokKPIsForCampaign(campaignId: string): Promise<{ updated: number; errors: number }> {
+  let updated = 0;
+  let errors = 0;
+  try {
+    const kpis = await storage.getPlatformKPIs("tiktok", campaignId);
+    for (const kpi of Array.isArray(kpis) ? kpis : []) {
+      const metrics = await getTikTokMetricsForTarget(campaignId, kpi);
+      if (!metrics) continue;
+      const newCurrentValue = calculateTikTokKPIValue(kpi, metrics);
+      if (newCurrentValue === null) {
+        errors++;
+        continue;
+      }
+      if (kpi.currentValue !== newCurrentValue) {
+        await storage.updateKPI(kpi.id, { currentValue: newCurrentValue });
+        updated++;
+      }
+    }
+  } catch (error) {
+    console.error(`[KPI Refresh] Error refreshing TikTok KPIs for campaign ${campaignId}:`, error);
     return { updated, errors: errors + 1 };
   }
   return { updated, errors };
@@ -485,6 +611,40 @@ export async function refreshInstagramBenchmarksForCampaign(campaignId: string):
     }
   } catch (error) {
     console.error(`[KPI Refresh] Error refreshing Instagram Benchmarks for campaign ${campaignId}:`, error);
+    return { updated, errors: errors + 1 };
+  }
+  return { updated, errors };
+}
+
+export async function refreshTikTokBenchmarksForCampaign(campaignId: string): Promise<{ updated: number; errors: number }> {
+  let updated = 0;
+  let errors = 0;
+  try {
+    const benchmarks = await storage.getPlatformBenchmarks("tiktok", campaignId);
+    for (const benchmark of Array.isArray(benchmarks) ? benchmarks : []) {
+      const metrics = await getTikTokMetricsForTarget(campaignId, benchmark);
+      if (!metrics) continue;
+      const metricKey = mapKPIMetricToTikTokKey(String((benchmark as any).metric || ""));
+      const value = metrics[metricKey];
+      if (value === undefined || value === null) {
+        errors++;
+        continue;
+      }
+      const currentValue = String(value);
+      const benchmarkValue = parseFloat(String((benchmark as any).benchmarkValue ?? "0")) || 0;
+      const variance = benchmarkValue > 0
+        ? (((Number(value) || 0) - benchmarkValue) / benchmarkValue) * 100
+        : 0;
+      if (String((benchmark as any).currentValue ?? "") !== currentValue || String((benchmark as any).variance ?? "") !== String(variance)) {
+        await storage.updateBenchmark(String((benchmark as any).id), {
+          currentValue,
+          variance: String(variance),
+        } as any);
+        updated++;
+      }
+    }
+  } catch (error) {
+    console.error(`[KPI Refresh] Error refreshing TikTok Benchmarks for campaign ${campaignId}:`, error);
     return { updated, errors: errors + 1 };
   }
   return { updated, errors };

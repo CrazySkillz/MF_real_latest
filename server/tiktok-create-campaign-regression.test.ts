@@ -130,4 +130,21 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(routes).toContain("linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend");
     expect(routes).toContain("hasTikTokData");
   });
+
+  it("refreshes TikTok KPI and Benchmark current values from selected rows only", () => {
+    const routes = readRoutes();
+    const refresh = readFileSync(join(process.cwd(), "server", "utils", "kpi-refresh.ts"), "utf8");
+
+    expect(routes).toContain("refreshTikTokKPIsForCampaign");
+    expect(routes).toContain("refreshTikTokBenchmarksForCampaign");
+    expect(routes).toContain('if (platform === "tiktok") await refreshTikTokKPIsForCampaign(String(campaignId));');
+    expect(routes).toContain('if (platform === "tiktok") await refreshTikTokBenchmarksForCampaign(String(campaignId));');
+    expect(refresh).toContain('storage.getPlatformKPIs("tiktok", campaignId)');
+    expect(refresh).toContain('storage.getPlatformBenchmarks("tiktok", campaignId)');
+    expect(refresh).toContain("storage.getTikTokDailyMetrics(campaignId, startDate, endDate)");
+    expect(refresh).toContain('selectedSet.has(String(row?.tiktokCampaignId || ""))');
+    expect(refresh).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "tiktok")');
+    expect(refresh).toContain("if (!specificId) {");
+    expect(refresh).not.toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "ga4")');
+  });
 });

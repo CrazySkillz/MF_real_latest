@@ -24,7 +24,7 @@ import { toCanonicalFormatBatch } from "./utils/canonical-format";
 import { pickConversionValueFromRows } from "./utils/googleSheetsSelection";
 import { db } from "./db";
 import { eq, sql } from "drizzle-orm";
-import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign } from "./utils/kpi-refresh";
+import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign } from "./auto-refresh-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
@@ -23752,13 +23752,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const refreshInstagramKpisIfNeeded = async (platformType: unknown, campaignId: unknown) => {
-    if (String(platformType || "").trim().toLowerCase() !== "instagram" || !campaignId) return;
-    await refreshInstagramKPIsForCampaign(String(campaignId));
+    const platform = String(platformType || "").trim().toLowerCase();
+    if (!campaignId) return;
+    if (platform === "instagram") await refreshInstagramKPIsForCampaign(String(campaignId));
+    if (platform === "tiktok") await refreshTikTokKPIsForCampaign(String(campaignId));
   };
 
   const refreshInstagramBenchmarksIfNeeded = async (platformType: unknown, campaignId: unknown) => {
-    if (String(platformType || "").trim().toLowerCase() !== "instagram" || !campaignId) return;
-    await refreshInstagramBenchmarksForCampaign(String(campaignId));
+    const platform = String(platformType || "").trim().toLowerCase();
+    if (!campaignId) return;
+    if (platform === "instagram") await refreshInstagramBenchmarksForCampaign(String(campaignId));
+    if (platform === "tiktok") await refreshTikTokBenchmarksForCampaign(String(campaignId));
   };
 
   app.get("/api/campaigns/:id/kpis", async (req, res) => {

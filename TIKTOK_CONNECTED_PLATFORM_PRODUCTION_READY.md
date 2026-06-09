@@ -70,10 +70,10 @@ Bundling rule:
 | 9C | selected TikTok campaign mapping for imported revenue | Done locally and validated | Revenue attribution |
 | 9D | TikTok revenue-dependent metric gating across Overview, KPIs, Benchmarks, Insights, and reports | Done locally and validated | Financial/current-value paths |
 | 9E | Commit 9 regression and validation docs | Done locally and validated for completed Commit 9 slices | None |
-| 10A | TikTok KPI current-value source contract | Pending | KPI backend/UI |
-| 10B | TikTok Benchmark current-value source contract | Pending | Benchmark backend/UI |
-| 10C | TikTok alert/notification refresh behavior | Pending | Visibility path |
-| 10D | Commit 10 regression and validation docs | Pending | None |
+| 10A | TikTok KPI current-value source contract | Done locally and validated | KPI backend/UI |
+| 10B | TikTok Benchmark current-value source contract | Done locally and validated | Benchmark backend/UI |
+| 10C | TikTok alert/notification refresh behavior | Done locally and validated | Visibility path |
+| 10D | Commit 10 regression and validation docs | Done locally and validated | None |
 | 11A | TikTok platform report routes/cards use shared platform-report pattern | Pending | Reports UI/backend |
 | 11B | browser PDF/export uses latest TikTok source-backed values | Pending | Report exports |
 | 11C | scheduled TikTok reports fail closed and snapshot only successful sends | Pending | Scheduled reports |
@@ -818,12 +818,14 @@ Status:
 - [x] Commit 9E evidence boundary: source modal edit/delete browser validation remains unproven locally; delete/edit paths must be validated in a later browser pass before lifecycle safety is marked production-ready.
 - [x] Commit 9E evidence boundary: live TikTok scheduler/provider refresh remains deferred to Commit 12/15 because live OAuth/provider refresh is not implemented in Commit 9.
 - [x] Commit 9E evidence boundary: damaged-data cleanup remains a Commit 13 review item; no cleanup is required from Commit 9 unless stale or duplicate TikTok financial/source rows are proven.
+- [x] User validation passed for pushed Commit 9 closeout (`846ed50e`): targeted regression suite and type check passed after deploy/manual validation.
 
 ### Commit 10: KPI, Benchmark, Alerts, And Notifications
 
 Goal:
 
 - Align TikTok platform-level and campaign-level current values with the source-backed aggregate.
+- Bundle Commit 10 into one validated implementation/docs commit where safe, instead of pushing 10A/10B/10C/10D separately.
 
 Subcommits:
 
@@ -831,12 +833,24 @@ Subcommits:
 - 10B: Map TikTok Benchmark current values to selected TikTok metrics and aggregate totals.
 - 10C: Ensure KPI/Benchmark create/update/delete refreshes alert checks and visible queries.
 - 10D: Add regression coverage and validation docs.
+- Bundling rule: perform 10A, 10B, and 10C root-cause tracing first, implement the smallest safe combined fix in one working tree, validate once with the full targeted KPI/Benchmark/alert suite, then include 10D documentation in the same commit if the diff remains reviewable.
+- Split fallback: if implementation risk or diff size becomes too large, use only two commits: one implementation commit for 10A/10B/10C and one documentation/validation commit for 10D. Do not push each subcommit separately.
+- Planned bundled commit message: `feat: complete TikTok KPI benchmark alerts`.
 
 Validation:
 
 - TikTok KPI/Benchmark rows use current source-backed TikTok values.
 - Revenue-dependent TikTok KPIs remain unavailable until TikTok revenue exists.
 - Alerts are campaign/platform scoped and do not recreate unrelated notifications.
+- Create/update/delete of TikTok KPI and Benchmark rows refreshes visible queries and alert checks without changing unrelated platforms.
+
+Status:
+
+- [x] Commit 10 root cause traced: TikTok KPI/Benchmark selected-row refresh helpers existed, but the shared platform KPI fetch/create/update routes only invoked/refetched the refreshed response branch for Instagram, and platform Benchmark create did not run the benchmark alert scan.
+- [x] Commit 10 bundled implementation completed locally: TikTok KPI fetch/create/update now refreshes current values and returns refreshed rows through the same selected-row source contract; TikTok Benchmark create/update now returns refreshed rows; Benchmark create now runs the same benchmark alert scan used after updates.
+- [x] Commit 10 source-safety preserved: no schema changes, no storage bypass, no metric math changes, no unscoped revenue, and no generic campaign allocation were added.
+- [x] Commit 10 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
+- [x] Commit 10 local validation passed: `npm run check`.
 
 ### Commit 11: Reports And Scheduled Reports
 

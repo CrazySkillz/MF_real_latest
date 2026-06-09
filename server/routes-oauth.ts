@@ -23816,11 +23816,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.warn('[GET KPIs] KPI refresh failed (continuing with stored values):', e?.message || e);
         }
       }
-      if (String(platformType || '').toLowerCase() === 'instagram' && campaignId) {
+      if ((String(platformType || '').toLowerCase() === 'instagram' || String(platformType || '').toLowerCase() === 'tiktok') && campaignId) {
         try {
           await refreshInstagramKpisIfNeeded(platformType, campaignId);
         } catch (e: any) {
-          console.warn('[GET KPIs] Instagram KPI refresh failed (continuing with stored values):', e?.message || e);
+          console.warn('[GET KPIs] Platform KPI refresh failed (continuing with stored values):', e?.message || e);
         }
       }
 
@@ -23874,7 +23874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await refreshInstagramKpisIfNeeded(platformType, validatedKPI.campaignId).catch((e: any) => {
         console.warn("[KPI Create] Instagram KPI refresh failed:", e?.message || e);
       });
-      const responseKpi = String(platformType || "").trim().toLowerCase() === "instagram"
+      const responseKpi = (String(platformType || "").trim().toLowerCase() === "instagram" || String(platformType || "").trim().toLowerCase() === "tiktok")
         ? await storage.getKPI(kpi.id).catch(() => kpi)
         : kpi;
 
@@ -23953,7 +23953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await refreshInstagramKpisIfNeeded((okKpi as any)?.platformType, (okKpi as any)?.campaignId).catch((e: any) => {
         console.warn("[KPI Update] Instagram KPI refresh failed:", e?.message || e);
       });
-      const responseKPI = String((okKpi as any)?.platformType || "").trim().toLowerCase() === "instagram"
+      const responseKPI = (String((okKpi as any)?.platformType || "").trim().toLowerCase() === "instagram" || String((okKpi as any)?.platformType || "").trim().toLowerCase() === "tiktok")
         ? await storage.getKPI(kpiId).catch(() => updatedKPI)
         : updatedKPI;
 
@@ -24665,9 +24665,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await refreshInstagramBenchmarksIfNeeded(platformType, validatedData.campaignId).catch((e: any) => {
         console.warn("[Platform Benchmark Create] Instagram Benchmark refresh failed:", e?.message || e);
       });
-      const responseBenchmark = String(platformType || "").trim().toLowerCase() === "instagram"
+      const responseBenchmark = (String(platformType || "").trim().toLowerCase() === "instagram" || String(platformType || "").trim().toLowerCase() === "tiktok")
         ? await storage.getBenchmark(benchmark.id).catch(() => benchmark)
         : benchmark;
+      import("./benchmark-notifications.js")
+        .then(({ checkBenchmarkPerformanceAlerts }) => checkBenchmarkPerformanceAlerts())
+        .catch((e) => console.warn("[Platform Benchmark Create] Alert check failed:", (e as any)?.message || e));
       import("./services/alert-monitoring.js")
         .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(String((benchmark as any)?.id || "")))
         .catch((e) => console.warn("[Platform Benchmark Create] Immediate email alert check failed:", (e as any)?.message || e));
@@ -24717,7 +24720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await refreshInstagramBenchmarksIfNeeded((existing as any)?.platformType, (existing as any)?.campaignId).catch((e: any) => {
         console.warn("[Platform Benchmark Update] Instagram Benchmark refresh failed:", e?.message || e);
       });
-      const responseBenchmark = String((existing as any)?.platformType || "").trim().toLowerCase() === "instagram"
+      const responseBenchmark = (String((existing as any)?.platformType || "").trim().toLowerCase() === "instagram" || String((existing as any)?.platformType || "").trim().toLowerCase() === "tiktok")
         ? await storage.getBenchmark(benchmarkId).catch(() => benchmark)
         : benchmark;
 

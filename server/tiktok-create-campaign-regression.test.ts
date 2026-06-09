@@ -190,6 +190,11 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(routes).toContain("refreshTikTokBenchmarksForCampaign");
     expect(routes).toContain('if (platform === "tiktok") await refreshTikTokKPIsForCampaign(String(campaignId));');
     expect(routes).toContain('if (platform === "tiktok") await refreshTikTokBenchmarksForCampaign(String(campaignId));');
+    expect(routes).toContain("String(platformType || '').toLowerCase() === 'tiktok') && campaignId");
+    expect(routes).toContain('String(platformType || "").trim().toLowerCase() === "tiktok"');
+    expect(routes).toContain('String((okKpi as any)?.platformType || "").trim().toLowerCase() === "tiktok"');
+    expect(routes).toContain('String((existing as any)?.platformType || "").trim().toLowerCase() === "tiktok"');
+    expect(routes).toContain("checkBenchmarkPerformanceAlerts");
     expect(refresh).toContain('storage.getPlatformKPIs("tiktok", campaignId)');
     expect(refresh).toContain('storage.getPlatformBenchmarks("tiktok", campaignId)');
     expect(refresh).toContain("storage.getTikTokDailyMetrics(campaignId, startDate, endDate)");

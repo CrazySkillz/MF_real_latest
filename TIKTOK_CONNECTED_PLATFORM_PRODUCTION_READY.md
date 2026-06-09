@@ -1095,6 +1095,8 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - User validation passed for Commit 9D platform Overview revenue-card slice after deploy.
 - Commit 9D KPI/Benchmark root cause traced: TikTok platform KPI/Benchmark current-value refresh had no selected-row source-backed implementation, unlike Instagram.
 - Commit 9D KPI/Benchmark current-value refresh was implemented locally from selected persisted TikTok rows only; revenue-dependent values use only TikTok-scoped attributed revenue and stay unavailable for specific-campaign rows until exact per-specific revenue reads are validated.
+- Commit 9D KPI/Benchmark tab root cause traced: the TikTok analytics page exposed only Overview, Campaign Breakdown, Ad Comparison, and Insights, so the existing generic TikTok platform KPI/Benchmark endpoints had no visible TikTok tab entry.
+- Commit 9D KPI/Benchmark tab fix was implemented locally: TikTok analytics now shows KPI and Benchmark tabs that read `/api/platforms/tiktok/kpis` and `/api/platforms/tiktok/benchmarks`, while revenue-dependent rows render unavailable until TikTok-scoped attributed revenue exists.
 - Commit 9E root cause traced: Commit 9 needed a documentation closeout that separates validated source-backed financial behavior from remaining unimplemented source lifecycle, scheduler, Insights, and Reports behavior.
 - Commit 9E documentation closeout was implemented locally: completed slices, validation commands, and deferred evidence boundaries are recorded without claiming full TikTok financial production readiness.
 - Commit 9E local validation passed with the 9D KPI/Benchmark slice: targeted TikTok/source-safety/aggregate/auth regression tests, `npm run check`, and `git diff --check`.

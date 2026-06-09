@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, AlertCircle, BarChart3, DollarSign, Eye, MousePointer, Percent, Target, TrendingUp, Video } from "lucide-react";
+import { ArrowLeft, AlertCircle, BarChart3, DollarSign, Eye, MousePointer, Percent, Target, TrendingUp, Trophy, Video } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -19,6 +19,28 @@ function formatNumber(value: number) {
 
 function formatPct(value: number | null) {
   return value === null || value === undefined ? "Unavailable" : `${value.toFixed(2)}%`;
+}
+
+const REVENUE_DEPENDENT_METRICS = new Set(["totalrevenue", "revenue", "roi", "roas", "profit"]);
+
+function normalizeMetricKey(value: any) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function formatGoalValue(row: any, hasAttributedRevenue: boolean) {
+  const metricKey = normalizeMetricKey(row?.metric);
+  if (REVENUE_DEPENDENT_METRICS.has(metricKey) && !hasAttributedRevenue) {
+    return { value: "Unavailable", helper: "Requires TikTok-scoped attributed revenue." };
+  }
+  const raw = row?.currentValue;
+  if (raw === null || raw === undefined || raw === "") return { value: "Unavailable", helper: undefined };
+  const numeric = Number(raw);
+  if (!Number.isFinite(numeric)) return { value: String(raw), helper: undefined };
+  const unit = String(row?.unit || "").toLowerCase();
+  if (unit === "$" || unit === "currency") return { value: formatCurrency(numeric), helper: undefined };
+  if (unit === "%" || unit === "percent") return { value: `${numeric.toFixed(2)}%`, helper: undefined };
+  if (unit === "ratio" || metricKey === "roas") return { value: `${numeric.toFixed(2)}x`, helper: undefined };
+  return { value: numeric.toLocaleString(), helper: undefined };
 }
 
 function metricCard(label: string, value: string, Icon: any, helper?: string) {
@@ -66,6 +88,26 @@ export default function TikTokAnalytics() {
         const body = await response.json().catch(() => ({}));
         throw new Error(body?.error || "Failed to load TikTok metrics");
       }
+      return response.json();
+    },
+  });
+
+  const { data: kpisData, isLoading: kpisLoading } = useQuery<any[]>({
+    queryKey: [`/api/platforms/tiktok/kpis`, campaignId],
+    enabled: !!campaignId && connected,
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/tiktok/kpis?campaignId=${campaignId}`);
+      if (!response.ok) throw new Error("Failed to load TikTok KPIs");
+      return response.json();
+    },
+  });
+
+  const { data: benchmarksData, isLoading: benchmarksLoading } = useQuery<any[]>({
+    queryKey: [`/api/platforms/tiktok/benchmarks`, campaignId],
+    enabled: !!campaignId && connected,
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/tiktok/benchmarks?campaignId=${campaignId}`);
+      if (!response.ok) throw new Error("Failed to load TikTok Benchmarks");
       return response.json();
     },
   });
@@ -201,10 +243,12 @@ export default function TikTokAnalytics() {
 
             {!connectionLoading && connected && (
               <Tabs defaultValue="overview" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="campaigns">Campaign Breakdown</TabsTrigger>
                   <TabsTrigger value="ads">Ad Comparison</TabsTrigger>
+                  <TabsTrigger value="kpis">KPIs</TabsTrigger>
+                  <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                 </TabsList>
 
@@ -299,6 +343,36 @@ export default function TikTokAnalytics() {
                       </p>
                     </CardContent>
                   </Card>
+                </TabsContent>
+
+                <TabsContent value="kpis" className="space-y-4">
+                  {kpisLoading ? (
+                    <div className="min-h-[120px]" aria-hidden="true" />
+                  ) : Array.isArray(kpisData) && kpisData.length > 0 ? (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {kpisData.map((kpi: any) => {
+                        const current = formatGoalValue(kpi, hasAttributedRevenue);
+                        return metricCard(String(kpi?.name || kpi?.metric || "TikTok KPI"), current.value, Target, current.helper || `Target: ${kpi?.targetValue ?? "Not set"}`);
+                      })}
+                    </div>
+                  ) : (
+                    <Card><CardContent className="p-4 text-sm text-muted-foreground">No TikTok KPIs configured yet.</CardContent></Card>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="benchmarks" className="space-y-4">
+                  {benchmarksLoading ? (
+                    <div className="min-h-[120px]" aria-hidden="true" />
+                  ) : Array.isArray(benchmarksData) && benchmarksData.length > 0 ? (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {benchmarksData.map((benchmark: any) => {
+                        const current = formatGoalValue(benchmark, hasAttributedRevenue);
+                        return metricCard(String(benchmark?.name || benchmark?.metric || "TikTok Benchmark"), current.value, Trophy, current.helper || `Benchmark: ${benchmark?.benchmarkValue ?? benchmark?.targetValue ?? "Not set"}`);
+                      })}
+                    </div>
+                  ) : (
+                    <Card><CardContent className="p-4 text-sm text-muted-foreground">No TikTok Benchmarks configured yet.</CardContent></Card>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="insights" className="space-y-4">

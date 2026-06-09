@@ -81,6 +81,11 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("Total Revenue");
     expect(page).toContain("ROI");
     expect(page).toContain("ROAS");
+    expect(page).toContain('<TabsTrigger value="kpis">KPIs</TabsTrigger>');
+    expect(page).toContain('<TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>');
+    expect(page).toContain('fetch(`/api/platforms/tiktok/kpis?campaignId=${campaignId}`)');
+    expect(page).toContain('fetch(`/api/platforms/tiktok/benchmarks?campaignId=${campaignId}`)');
+    expect(page).toContain('REVENUE_DEPENDENT_METRICS.has(metricKey) && !hasAttributedRevenue');
     expect(page).toContain("Requires TikTok-scoped attributed revenue.");
     expect(page).toContain("const financialSummary = dailyMetrics?.financialSummary || {};");
     expect(page).toContain("const attributedRevenue = hasAttributedRevenue ? Number(financialSummary.attributedRevenue || 0) : null;");

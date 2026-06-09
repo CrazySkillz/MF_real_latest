@@ -118,6 +118,9 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(routes).toContain('id: "tiktok"');
     expect(routes).toContain('label: "TikTok Ads"');
     expect(routes).toContain('reason: "TikTok attributed revenue requires a TikTok-scoped imported revenue source"');
+    expect(routes).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "tiktok")');
+    expect(routes).toContain('...(hasImportedAttributedRevenue ? ["attributedRevenue"] : [])');
+    expect(routes).toContain('attributedRevenueSource: hasImportedAttributedRevenue ? "tiktok_imported_attributed_revenue" : "unavailable"');
     expect(routes).toContain("mainPlatformSources: { googleAds, instagram, tiktok }");
     expect(routes).toContain("linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend");
     expect(routes).toContain("hasTikTokData");

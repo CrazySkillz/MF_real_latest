@@ -272,6 +272,13 @@ async function buildTikTokPlatformSourceForAggregate(campaignId: string, startDa
         spend: sum.spend + parseNum(row?.spend),
         conversions: sum.conversions + parseNum(row?.conversions),
       }), { impressions: 0, clicks: 0, spend: 0, conversions: 0 });
+      const importedRevenueTotals = await storage.getRevenueTotalForRange(campaignId, startDate, endDate, "tiktok")
+        .catch(() => ({ totalRevenue: 0, sourceIds: [] as string[] }));
+      const importedAttributedRevenue = parseNum((importedRevenueTotals as any)?.totalRevenue);
+      const importedRevenueSourceIds = Array.isArray((importedRevenueTotals as any)?.sourceIds)
+        ? (importedRevenueTotals as any).sourceIds.map((id: any) => String(id)).filter(Boolean)
+        : [];
+      const hasImportedAttributedRevenue = importedAttributedRevenue > 0;
       tiktokSpend = parseNum(totals.spend);
       const lastRow = tiktokRows[tiktokRows.length - 1];
       tiktokLastUpdate = (lastRow as any)?.date || null;
@@ -280,23 +287,26 @@ async function buildTikTokPlatformSourceForAggregate(campaignId: string, startDa
         label: "TikTok Ads",
         category: "paid_media",
         connected: true,
-        capabilities: ["impressions", "clicks", "spend", "conversions"],
-        includedMetrics: ["impressions", "clicks", "spend", "conversions"],
+        capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions", ...(hasImportedAttributedRevenue ? ["attributedRevenue"] : [])],
         excludedMetrics: [
           { metric: "sessions", reason: "Sessions are web analytics metrics" },
           { metric: "users", reason: "Users are web analytics metrics" },
           { metric: "pageviews", reason: "Pageviews are web analytics metrics" },
-          { metric: "attributedRevenue", reason: "TikTok attributed revenue requires a TikTok-scoped imported revenue source" },
+          ...(hasImportedAttributedRevenue ? [] : [{ metric: "attributedRevenue", reason: "TikTok attributed revenue requires a TikTok-scoped imported revenue source" }]),
         ],
         metrics: {
           impressions: parseNum(totals.impressions),
           clicks: parseNum(totals.clicks),
           spend: tiktokSpend,
           conversions: parseNum(totals.conversions),
+          importedAttributedRevenue,
+          attributedRevenue: hasImportedAttributedRevenue ? importedAttributedRevenue : null,
         },
         revenueSemantics: {
-          attributedRevenueSource: "unavailable",
-          attributedRevenueLabel: "Unavailable",
+          attributedRevenueSource: hasImportedAttributedRevenue ? "tiktok_imported_attributed_revenue" : "unavailable",
+          attributedRevenueLabel: hasImportedAttributedRevenue ? "TikTok imported attributed revenue" : "Unavailable",
+          importedRevenueSourceIds,
         },
         freshness: { selectedCampaignIds },
       };

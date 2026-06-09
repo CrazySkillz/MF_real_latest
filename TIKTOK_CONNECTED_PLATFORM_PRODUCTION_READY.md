@@ -68,7 +68,7 @@ Bundling rule:
 | 9A | TikTok spend source identity uses `tiktok_api` and `platformContext="tiktok"` | Done locally and validated | Spend import path |
 | 9B | TikTok attributed revenue import identity uses `platformContext="tiktok"` only | Done locally and validated | Revenue import path |
 | 9C | selected TikTok campaign mapping for imported revenue | Done locally and validated | Revenue attribution |
-| 9D | TikTok revenue-dependent metric gating across Overview, KPIs, Benchmarks, Insights, and reports | Pending | Financial/current-value paths |
+| 9D | TikTok revenue-dependent metric gating across Overview, KPIs, Benchmarks, Insights, and reports | Partial: aggregate revenue gate done locally; KPI/Benchmark/report parity pending | Financial/current-value paths |
 | 9E | Commit 9 regression and validation docs | Pending | None |
 | 10A | TikTok KPI current-value source contract | Pending | KPI backend/UI |
 | 10B | TikTok Benchmark current-value source contract | Pending | Benchmark backend/UI |
@@ -789,7 +789,11 @@ Status:
 - [x] Commit 9C completed locally: unmapped TikTok revenue remains outside TikTok per-campaign attribution, and no spend-weighted or generic TikTok allocation was added.
 - [x] Commit 9C local validation passed: `npm test -- server/source-safety-regression.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-salesforce-flow.test.ts server/google-ads-revenue-shopify-flow.test.ts server/google-ads-revenue-platform-context.test.ts server/google-ads-revenue-wizard-context.test.ts server/instagram-connected-platforms-regression.test.ts server/meta-production-regression.test.ts server/tiktok-create-campaign-regression.test.ts server/performance-summary-aggregate.test.ts server/endpoint-auth-audit.test.ts`.
 - [x] Commit 9C local validation passed: `npm run check`.
-- [ ] Commit 9D pending: TikTok revenue-dependent financial gating across KPI, Benchmark, Insights, and Reports remains pending.
+- [x] User validation passed for Commit 9C: deployed TikTok Overview still shows selected-row paid metrics while Total Revenue, ROI, and ROAS remain unavailable without TikTok-scoped attributed revenue.
+- [x] Commit 9D aggregate root cause traced: the TikTok Campaign DeepDive source builder always marked `attributedRevenue` unavailable and did not read TikTok-context revenue records, so even safely materialized TikTok revenue rows could not enter the shared aggregate.
+- [x] Commit 9D aggregate slice completed locally: TikTok aggregate participation now reads only `platformContext="tiktok"` revenue totals for the campaign/date range and includes `attributedRevenue` only when TikTok-scoped imported revenue exists.
+- [x] Commit 9D aggregate slice validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/performance-summary-aggregate.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
+- [ ] Commit 9D pending: platform-level TikTok Overview revenue cards, KPI current values, Benchmark current values, Insights copy/data, and Reports output still need separate scoped validation before this subcommit is complete.
 - [ ] Commit 9E pending: source-modal/edit/delete/scheduler refresh/no-damaged-data validation remains pending.
 
 ### Commit 10: KPI, Benchmark, Alerts, And Notifications
@@ -1072,5 +1076,9 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - Commit 9C selected-campaign revenue mapping was implemented locally for CSV, Google Sheets, HubSpot, Salesforce, and Shopify using the current campaign's persisted selected TikTok campaign IDs only.
 - Commit 9C preserved financial safety: no generic TikTok allocation, no spend-weighted revenue split, and no unselected TikTok campaign revenue unlock.
 - Commit 9C local validation passed: targeted revenue source flow tests, Instagram/Meta shared-helper regression tests, TikTok regression tests, performance-summary aggregate tests, endpoint auth tests, and `npm run check`.
-- No TikTok KPI, Benchmark, report, scheduler refresh, source modal lifecycle cleanup, or provider OAuth code has been changed.
+- User validation passed for Commit 9C: deployed TikTok paid metrics remain visible and Total Revenue, ROI, and ROAS remain unavailable when no TikTok-scoped attributed revenue source exists.
+- Commit 9D aggregate root cause traced: the TikTok aggregate source builder still hard-coded attributed revenue as unavailable and did not read TikTok-context imported revenue records.
+- Commit 9D aggregate gate was implemented locally: TikTok aggregate participation now includes `attributedRevenue` only from `platformContext="tiktok"` revenue totals for the selected campaign/date range.
+- Commit 9D aggregate validation passed: TikTok source-contract regression tests, Performance Summary aggregate tests, source-safety regression tests, endpoint auth tests, and `npm run check`.
+- No TikTok KPI, Benchmark, report, scheduler refresh, source modal lifecycle cleanup, visible revenue-import UI, or provider OAuth code has been changed.
 - Live OAuth/provider validation is deferred.

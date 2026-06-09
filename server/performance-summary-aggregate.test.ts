@@ -314,6 +314,60 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.roi).toMatchObject({ available: false, value: null, sources: [] });
   });
 
+  it("gates TikTok attributed revenue through the generic paid-media source contract", () => {
+    const withoutRevenue = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-tiktok-no-revenue",
+      dateRange: "30days",
+      ga4: { connected: false },
+      webAnalytics: { connected: false, provider: null },
+      spend: { unifiedSpend: 96, spendSource: "platform_spend_fallback" },
+      platforms: {},
+      platformSources: [{
+        id: "tiktok",
+        label: "TikTok Ads",
+        category: "paid_media",
+        connected: true,
+        capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions"],
+        excludedMetrics: [{ metric: "attributedRevenue", reason: "TikTok attributed revenue requires a TikTok-scoped imported revenue source" }],
+        metrics: { impressions: 3200, clicks: 115, spend: 96, conversions: 5, attributedRevenue: null },
+      }],
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [],
+    });
+
+    expect(withoutRevenue.totals.revenue).toMatchObject({ available: false, value: 0, sources: [] });
+    expect(withoutRevenue.totals.roas).toMatchObject({ available: false, value: null, sources: [] });
+    expect(withoutRevenue.totals.roi).toMatchObject({ available: false, value: null, sources: [] });
+
+    const withRevenue = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-tiktok-revenue",
+      dateRange: "30days",
+      ga4: { connected: false },
+      webAnalytics: { connected: false, provider: null },
+      spend: { unifiedSpend: 96, spendSource: "platform_spend_fallback" },
+      platforms: {},
+      platformSources: [{
+        id: "tiktok",
+        label: "TikTok Ads",
+        category: "paid_media",
+        connected: true,
+        capabilities: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        includedMetrics: ["impressions", "clicks", "spend", "conversions", "attributedRevenue"],
+        excludedMetrics: [],
+        metrics: { impressions: 3200, clicks: 115, spend: 96, conversions: 5, attributedRevenue: 240 },
+        revenueSemantics: { attributedRevenueSource: "tiktok_imported_attributed_revenue" },
+      }],
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 240, totalRevenue: 240 },
+      revenueSources: [],
+    });
+
+    expect(withRevenue.sources.find((source) => source.id === "tiktok")?.includedMetrics).toContain("attributedRevenue");
+    expect(withRevenue.totals.revenue).toMatchObject({ available: true, value: 240, sources: ["tiktok"] });
+    expect(withRevenue.totals.roas).toMatchObject({ available: true, value: 2.5, sources: ["revenue", "spend"] });
+    expect(withRevenue.totals.roi).toMatchObject({ available: true, value: 150, sources: ["revenue", "spend"] });
+  });
+
   it("marks canonical spend and revenue-derived ratios available only when required inputs exist", () => {
     const aggregate = buildPerformanceSummaryAggregate({
       campaignId: "campaign-3",

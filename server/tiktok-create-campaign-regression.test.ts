@@ -102,6 +102,11 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain('REVENUE_DEPENDENT_METRICS.has(metricKey) && !hasAttributedRevenue');
     expect(page).toContain("Key Performance Indicators");
     expect(page).toContain("Track daily TikTok KPIs and progress toward targets.");
+    expect(page).toContain("Create KPI");
+    expect(page).toContain("Create New KPI");
+    expect(page).toContain("Select KPI Template");
+    expect(page).toContain("Choose a predefined KPI that will automatically calculate from your platform data, or create a custom one.");
+    expect(page).toContain('fetch("/api/platforms/tiktok/kpis"');
     expect(page).toContain("Total KPIs");
     expect(page).toContain("Above Target");
     expect(page).toContain("On Track");
@@ -114,6 +119,11 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain('"text-violet-600"');
     expect(page).toContain("Performance Benchmarks");
     expect(page).toContain("Track and measure TikTok performance against industry standards and custom targets.");
+    expect(page).toContain("Create Benchmark");
+    expect(page).toContain("Create New Benchmark");
+    expect(page).toContain("Select Benchmark Template");
+    expect(page).toContain("Choose a metric to benchmark, then fill in the benchmark details below.");
+    expect(page).toContain('fetch("/api/platforms/tiktok/benchmarks"');
     expect(page).toContain("Total Benchmarks");
     expect(page).toContain("Needs Attention");
     expect(page).toContain("Behind");

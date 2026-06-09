@@ -1,13 +1,43 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, AlertCircle, AlertTriangle, BarChart3, CheckCircle2, DollarSign, Eye, MousePointer, Percent, Target, TrendingUp, Trophy, Video } from "lucide-react";
+import { ArrowLeft, AlertCircle, AlertTriangle, BarChart3, CheckCircle2, DollarSign, Eye, MousePointer, Percent, Plus, Target, TrendingUp, Trophy, Video } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const TIKTOK_GOAL_METRICS = [
+  { key: "impressions", label: "Impressions", unit: "" },
+  { key: "clicks", label: "Clicks", unit: "" },
+  { key: "spend", label: "Spend", unit: "$" },
+  { key: "conversions", label: "Conversions", unit: "" },
+  { key: "videoViews", label: "Video Views", unit: "" },
+  { key: "engagements", label: "Engagements", unit: "" },
+  { key: "ctr", label: "CTR", unit: "%" },
+  { key: "cpc", label: "CPC", unit: "$" },
+  { key: "cpm", label: "CPM", unit: "$" },
+  { key: "costPerConversion", label: "Cost / Conversion", unit: "$" },
+  { key: "conversionRate", label: "Conversion Rate", unit: "%" },
+  { key: "totalRevenue", label: "Total Revenue", unit: "$" },
+  { key: "roi", label: "ROI", unit: "%" },
+  { key: "roas", label: "ROAS", unit: "x" },
+];
+
+function getTikTokGoalMetric(metricKey: string) {
+  return TIKTOK_GOAL_METRICS.find((metric) => metric.key === metricKey) || TIKTOK_GOAL_METRICS[0];
+}
+
+function stripNumberFormatting(value: any) {
+  return String(value || "").replace(/[$,%x,\s]/g, "");
+}
 
 function formatCurrency(value: number) {
   return `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -128,6 +158,44 @@ export default function TikTokAnalytics() {
   const [, params] = useRoute("/campaigns/:id/tiktok-analytics");
   const campaignId = params?.id;
   const queryClient = useQueryClient();
+  const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
+  const [benchmarkDialogOpen, setBenchmarkDialogOpen] = useState(false);
+  const [kpiForm, setKpiForm] = useState({
+    name: "",
+    metric: "impressions",
+    targetValue: "",
+    unit: "",
+    description: "",
+  });
+  const [benchmarkForm, setBenchmarkForm] = useState({
+    name: "",
+    metric: "impressions",
+    benchmarkValue: "",
+    unit: "",
+    description: "",
+  });
+
+  const resetKpiForm = (metricKey = "impressions") => {
+    const metric = getTikTokGoalMetric(metricKey);
+    setKpiForm({
+      name: metric.label,
+      metric: metric.key,
+      targetValue: "",
+      unit: metric.unit,
+      description: `Track TikTok ${metric.label.toLowerCase()} against a campaign target.`,
+    });
+  };
+
+  const resetBenchmarkForm = (metricKey = "impressions") => {
+    const metric = getTikTokGoalMetric(metricKey);
+    setBenchmarkForm({
+      name: `${metric.label} Benchmark`,
+      metric: metric.key,
+      benchmarkValue: "",
+      unit: metric.unit,
+      description: `Compare TikTok ${metric.label.toLowerCase()} against a campaign benchmark.`,
+    });
+  };
 
   const { data: connection, isLoading: connectionLoading, error: connectionError } = useQuery<any>({
     queryKey: [`/api/tiktok/${campaignId}/connection`],
@@ -173,6 +241,78 @@ export default function TikTokAnalytics() {
       const response = await fetch(`/api/platforms/tiktok/benchmarks?campaignId=${campaignId}`);
       if (!response.ok) throw new Error("Failed to load TikTok Benchmarks");
       return response.json();
+    },
+  });
+
+  const createKpiMutation = useMutation({
+    mutationFn: async () => {
+      const metric = getTikTokGoalMetric(kpiForm.metric);
+      const response = await fetch("/api/platforms/tiktok/kpis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          name: kpiForm.name || metric.label,
+          metric: kpiForm.metric,
+          targetValue: stripNumberFormatting(kpiForm.targetValue) || "0",
+          currentValue: "0",
+          unit: kpiForm.unit || metric.unit,
+          description: kpiForm.description,
+          priority: "medium",
+          status: "active",
+          category: "performance",
+          timeframe: "monthly",
+          trackingPeriod: 30,
+          applyTo: "all",
+          alertsEnabled: false,
+        }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || "Failed to create TikTok KPI");
+      }
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/kpis`, campaignId] });
+      setKpiDialogOpen(false);
+      resetKpiForm();
+    },
+  });
+
+  const createBenchmarkMutation = useMutation({
+    mutationFn: async () => {
+      const metric = getTikTokGoalMetric(benchmarkForm.metric);
+      const benchmarkValue = stripNumberFormatting(benchmarkForm.benchmarkValue) || "0";
+      const response = await fetch("/api/platforms/tiktok/benchmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          name: benchmarkForm.name || `${metric.label} Benchmark`,
+          metric: benchmarkForm.metric,
+          benchmarkValue,
+          targetValue: benchmarkValue,
+          currentValue: "0",
+          unit: benchmarkForm.unit || metric.unit,
+          description: benchmarkForm.description,
+          industry: "Custom",
+          benchmarkType: "custom",
+          status: "active",
+          category: "performance",
+          alertsEnabled: false,
+        }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || "Failed to create TikTok Benchmark");
+      }
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/benchmarks`, campaignId] });
+      setBenchmarkDialogOpen(false);
+      resetBenchmarkForm();
     },
   });
 
@@ -385,6 +525,10 @@ export default function TikTokAnalytics() {
                         Track daily TikTok KPIs and progress toward targets.
                       </p>
                     </div>
+                    <Button size="sm" onClick={() => { resetKpiForm(); setKpiDialogOpen(true); }}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create KPI
+                    </Button>
                   </div>
 
                   {kpisLoading ? (
@@ -484,6 +628,10 @@ export default function TikTokAnalytics() {
                         Track and measure TikTok performance against industry standards and custom targets.
                       </p>
                     </div>
+                    <Button size="sm" onClick={() => { resetBenchmarkForm(); setBenchmarkDialogOpen(true); }}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Benchmark
+                    </Button>
                   </div>
 
                   {benchmarksLoading ? (
@@ -610,6 +758,159 @@ export default function TikTokAnalytics() {
                 </TabsContent>
               </Tabs>
             )}
+
+            <Dialog open={kpiDialogOpen} onOpenChange={setKpiDialogOpen}>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+                <DialogHeader className="pb-4 pr-8">
+                  <DialogTitle>Create New KPI</DialogTitle>
+                  <DialogDescription>Set up a key performance indicator for TikTok Ads.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6">
+                  <div className="space-y-4 p-4 bg-muted rounded-lg">
+                    <h4 className="font-medium text-foreground">Select KPI Template</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Choose a predefined KPI that will automatically calculate from your platform data, or create a custom one.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {TIKTOK_GOAL_METRICS.map((metric) => (
+                        <button
+                          key={metric.key}
+                          type="button"
+                          className={`p-3 text-left border-2 rounded-lg transition-all ${kpiForm.metric === metric.key ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-300"}`}
+                          onClick={() => resetKpiForm(metric.key)}
+                        >
+                          <div className="font-medium text-sm text-foreground">{metric.label}</div>
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="p-3 text-left border-2 rounded-lg border-border hover:border-blue-300 transition-all"
+                        onClick={() => setKpiForm({ name: "", metric: "impressions", targetValue: "", unit: "", description: "" })}
+                      >
+                        <div className="font-medium text-sm text-foreground">Create Custom KPI</div>
+                        <div className="mt-1 text-xs text-muted-foreground">Choose name + unit, then set values</div>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tiktok-kpi-name">KPI Name *</Label>
+                    <Input id="tiktok-kpi-name" value={kpiForm.name} onChange={(event) => setKpiForm((form) => ({ ...form, name: event.target.value }))} />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="tiktok-kpi-metric">Metric</Label>
+                      <Select value={kpiForm.metric} onValueChange={(value) => resetKpiForm(value)}>
+                        <SelectTrigger id="tiktok-kpi-metric">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIKTOK_GOAL_METRICS.map((metric) => (
+                            <SelectItem key={metric.key} value={metric.key}>{metric.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="tiktok-kpi-target">Target Value</Label>
+                      <Input id="tiktok-kpi-target" inputMode="decimal" value={kpiForm.targetValue} onChange={(event) => setKpiForm((form) => ({ ...form, targetValue: event.target.value }))} placeholder="0" />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="tiktok-kpi-unit">Unit</Label>
+                      <Input id="tiktok-kpi-unit" value={kpiForm.unit} onChange={(event) => setKpiForm((form) => ({ ...form, unit: event.target.value }))} placeholder="%, $, x" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tiktok-kpi-description">Description</Label>
+                    <Textarea id="tiktok-kpi-description" rows={3} value={kpiForm.description} onChange={(event) => setKpiForm((form) => ({ ...form, description: event.target.value }))} />
+                  </div>
+                  {createKpiMutation.error && <p className="text-sm text-red-600">{(createKpiMutation.error as Error).message}</p>}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setKpiDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={() => createKpiMutation.mutate()} disabled={createKpiMutation.isPending || !kpiForm.name || !kpiForm.targetValue}>
+                    {createKpiMutation.isPending ? "Creating..." : "Create KPI"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={benchmarkDialogOpen} onOpenChange={setBenchmarkDialogOpen}>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+                <DialogHeader className="pb-4 pr-8">
+                  <DialogTitle>Create New Benchmark</DialogTitle>
+                  <DialogDescription>Set up a new performance benchmark to track against industry standards or custom targets.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6">
+                  <div className="space-y-4 p-4 bg-muted rounded-lg">
+                    <h4 className="font-medium text-foreground">Select Benchmark Template</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Choose a metric to benchmark, then fill in the benchmark details below.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {TIKTOK_GOAL_METRICS.map((metric) => (
+                        <button
+                          key={metric.key}
+                          type="button"
+                          className={`p-3 text-left border-2 rounded-lg transition-all ${benchmarkForm.metric === metric.key ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-300"}`}
+                          onClick={() => resetBenchmarkForm(metric.key)}
+                        >
+                          <div className="font-medium text-sm text-foreground">{metric.label}</div>
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="p-3 text-left border-2 rounded-lg border-border hover:border-blue-300 transition-all"
+                        onClick={() => setBenchmarkForm({ name: "", metric: "impressions", benchmarkValue: "", unit: "", description: "" })}
+                      >
+                        <div className="font-medium text-sm text-foreground">Create Custom Benchmark</div>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tiktok-benchmark-name">Benchmark Name *</Label>
+                    <Input id="tiktok-benchmark-name" value={benchmarkForm.name} onChange={(event) => setBenchmarkForm((form) => ({ ...form, name: event.target.value }))} />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="tiktok-benchmark-metric">Metric</Label>
+                      <Select value={benchmarkForm.metric} onValueChange={(value) => resetBenchmarkForm(value)}>
+                        <SelectTrigger id="tiktok-benchmark-metric">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIKTOK_GOAL_METRICS.map((metric) => (
+                            <SelectItem key={metric.key} value={metric.key}>{metric.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="tiktok-benchmark-value">Benchmark Value</Label>
+                      <Input id="tiktok-benchmark-value" inputMode="decimal" value={benchmarkForm.benchmarkValue} onChange={(event) => setBenchmarkForm((form) => ({ ...form, benchmarkValue: event.target.value }))} placeholder="0" />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="tiktok-benchmark-unit">Unit</Label>
+                      <Input id="tiktok-benchmark-unit" value={benchmarkForm.unit} onChange={(event) => setBenchmarkForm((form) => ({ ...form, unit: event.target.value }))} placeholder="%, $, x" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tiktok-benchmark-description">Description</Label>
+                    <Textarea id="tiktok-benchmark-description" rows={3} value={benchmarkForm.description} onChange={(event) => setBenchmarkForm((form) => ({ ...form, description: event.target.value }))} />
+                  </div>
+                  {createBenchmarkMutation.error && <p className="text-sm text-red-600">{(createBenchmarkMutation.error as Error).message}</p>}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setBenchmarkDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={() => createBenchmarkMutation.mutate()} disabled={createBenchmarkMutation.isPending || !benchmarkForm.name || !benchmarkForm.benchmarkValue}>
+                    {createBenchmarkMutation.isPending ? "Creating..." : "Create Benchmark"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </main>
       </div>

@@ -848,6 +848,9 @@ Status:
 
 - [x] Commit 10 root cause traced: TikTok KPI/Benchmark selected-row refresh helpers existed, but the shared platform KPI fetch/create/update routes only invoked/refetched the refreshed response branch for Instagram, and platform Benchmark create did not run the benchmark alert scan.
 - [x] Commit 10 bundled implementation completed locally: TikTok KPI fetch/create/update now refreshes current values and returns refreshed rows through the same selected-row source contract; TikTok Benchmark create/update now returns refreshed rows; Benchmark create now runs the same benchmark alert scan used after updates.
+- [x] Commit 10 UI follow-up root cause traced: TikTok KPI and Benchmark tabs had read-only cards and existing backend create endpoints, but no visible create controls matching the GA4 tab pattern.
+- [x] Commit 10 UI follow-up completed locally: TikTok KPI and Benchmark headers now include GA4-style Create KPI/Create Benchmark buttons that open minimal TikTok-scoped create dialogs backed by `/api/platforms/tiktok/kpis` and `/api/platforms/tiktok/benchmarks`.
+- [x] Commit 10 modal-format follow-up completed locally: TikTok Create KPI and Create Benchmark dialogs now follow the GA4 template-first modal structure with large scrollable dialogs, template selection panels, and detail fields.
 - [x] Commit 10 source-safety preserved: no schema changes, no storage bypass, no metric math changes, no unscoped revenue, and no generic campaign allocation were added.
 - [x] Commit 10 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
 - [x] Commit 10 local validation passed: `npm run check`.

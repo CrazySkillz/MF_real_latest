@@ -174,6 +174,31 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     console.log(`No Instagram metrics found for campaign ${campaignId}`);
   }
 
+  let tiktokConn: any = null;
+  let tiktokDailyRows: any[] = [];
+  let tiktokSelectedCampaignIds: string[] = [];
+  try {
+    tiktokConn = await storage.getTikTokConnection(campaignId);
+    if (tiktokConn && !(tiktokConn as any).spendOnly) {
+      const rawRows = await storage.getTikTokDailyMetrics(campaignId, startDate, endDate).catch(() => [] as any[]);
+      const selectedIds = (() => {
+        try {
+          const parsed = JSON.parse(String((tiktokConn as any)?.selectedCampaignIds || "[]"));
+          tiktokSelectedCampaignIds = Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+          return new Set(tiktokSelectedCampaignIds);
+        } catch {
+          tiktokSelectedCampaignIds = [];
+          return new Set<string>();
+        }
+      })();
+      tiktokDailyRows = selectedIds.size > 0
+        ? rawRows.filter((row: any) => selectedIds.has(String(row?.tiktokCampaignId || "")))
+        : [];
+    }
+  } catch (err) {
+    console.log(`No TikTok metrics found for campaign ${campaignId}`);
+  }
+
   // Aggregate legacy engagement only for the existing snapshot schema column.
   const linkedinClicks = parseNum(linkedinMetrics.clicks);
   const ciClicks = parseNum(customIntegrationData.clicks);
@@ -244,6 +269,14 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     videoViews: totals.videoViews + parseNum(row?.videoViews),
     ga4AttributedRevenue: totals.ga4AttributedRevenue + parseNum(row?.ga4Revenue),
   }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, videoViews: 0, ga4AttributedRevenue: 0 });
+  const tiktokData = tiktokDailyRows.reduce((totals: any, row: any) => ({
+    impressions: totals.impressions + parseNum(row?.impressions),
+    clicks: totals.clicks + parseNum(row?.clicks),
+    spend: totals.spend + parseNum(row?.spend),
+    conversions: totals.conversions + parseNum(row?.conversions),
+    videoViews: totals.videoViews + parseNum(row?.videoViews),
+    engagements: totals.engagements + parseNum(row?.engagements),
+  }), { impressions: 0, clicks: 0, spend: 0, conversions: 0, videoViews: 0, engagements: 0 });
 
   // Double-counting prevention: GA4 and CI both track website analytics.
   // When GA4 is connected, prefer GA4 for web metrics; otherwise use CI.
@@ -252,7 +285,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   // Advertising metrics: LinkedIn + CI(ads) + Meta — no overlap
   const advertisingEngagements = linkedinClicks + linkedinEngagement + ciClicks + ciEngagements + metaClicks;
   const totalEngagements = advertisingEngagements + webSessions;
-  const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend) + metaData.spend + googleAdsData.spend + instagramData.spend;
+  const totalSpend = parseNum(linkedinMetrics.spend) + parseNum(customIntegrationData.spend) + metaData.spend + googleAdsData.spend + instagramData.spend + tiktokData.spend;
 
   let persistedSpend = 0;
   let spendSourceIds: string[] = [];
@@ -380,6 +413,25 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
           ga4AttributedRevenueLabel: "GA4-matched revenue; not used as Instagram Total Revenue",
         },
         freshness: { selectedCampaignIds: instagramSelectedCampaignIds },
+      },
+      {
+        id: "tiktok",
+        label: "TikTok Ads",
+        category: "paid_media",
+        connected: Boolean(tiktokConn && !(tiktokConn as any).spendOnly && tiktokSelectedCampaignIds.length > 0),
+        capabilities: ["impressions", "clicks", "spend", "conversions"],
+        includedMetrics: tiktokConn && !(tiktokConn as any).spendOnly && tiktokSelectedCampaignIds.length > 0 ? ["impressions", "clicks", "spend", "conversions"] : [],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+          { metric: "attributedRevenue", reason: "TikTok attributed revenue is unavailable until a TikTok-scoped revenue source is configured" },
+        ],
+        metrics: tiktokData,
+        revenueSemantics: {
+          attributedRevenueSource: "unavailable",
+          attributedRevenueLabel: "Unavailable",
+        },
+        freshness: { selectedCampaignIds: tiktokSelectedCampaignIds },
       },
     ],
     revenue: {
@@ -521,6 +573,30 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
           },
         })),
         freshness: { selectedCampaignIds: instagramSelectedCampaignIds },
+      },
+      {
+        id: "tiktok",
+        label: "TikTok Ads",
+        category: "paid_media",
+        connected: Boolean(tiktokConn && !(tiktokConn as any).spendOnly && tiktokSelectedCampaignIds.length > 0),
+        capabilities: ["impressions", "clicks", "spend", "conversions"],
+        includedMetrics: tiktokConn && !(tiktokConn as any).spendOnly && tiktokSelectedCampaignIds.length > 0 ? ["impressions", "clicks", "spend", "conversions"] : [],
+        excludedMetrics: [
+          { metric: "sessions", reason: "Sessions are web analytics metrics" },
+          { metric: "users", reason: "Users are web analytics metrics" },
+        ],
+        dailyRows: tiktokDailyRows.map((row: any) => ({
+          date: row.date,
+          metrics: {
+            impressions: row.impressions,
+            clicks: row.clicks,
+            spend: row.spend,
+            conversions: row.conversions,
+            videoViews: row.videoViews,
+            engagements: row.engagements,
+          },
+        })),
+        freshness: { selectedCampaignIds: tiktokSelectedCampaignIds },
       },
       {
         id: "custom_integration",

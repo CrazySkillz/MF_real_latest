@@ -106,12 +106,17 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("Below Target");
     expect(page).toContain("Avg. Progress");
     expect(page).toContain("getGoalProgress(kpi, hasAttributedRevenue)");
+    expect(page).toContain('"text-green-600", "text-green-500"');
+    expect(page).toContain('"text-blue-600", "text-blue-500"');
+    expect(page).toContain('"text-red-600", "text-red-500"');
+    expect(page).toContain('"text-violet-600"');
     expect(page).toContain("Performance Benchmarks");
     expect(page).toContain("Track and measure TikTok performance against industry standards and custom targets.");
     expect(page).toContain("Total Benchmarks");
     expect(page).toContain("Needs Attention");
     expect(page).toContain("Behind");
     expect(page).toContain("getBenchmarkProgress(benchmark, hasAttributedRevenue)");
+    expect(page).toContain('"text-amber-600", "text-amber-500"');
     expect(page).toContain("No Benchmarks Yet");
     expect(page).toContain("TikTok Reports are unavailable until the campaign-scoped TikTok reports contract is implemented.");
     expect(page).toContain("Requires TikTok-scoped attributed revenue.");

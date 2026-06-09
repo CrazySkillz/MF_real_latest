@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, AlertCircle, BarChart3, CheckCircle2, DollarSign, Eye, MousePointer, Percent, Target, TrendingUp, Trophy, Video } from "lucide-react";
+import { ArrowLeft, AlertCircle, AlertTriangle, BarChart3, CheckCircle2, DollarSign, Eye, MousePointer, Percent, Target, TrendingUp, Trophy, Video } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -107,17 +107,17 @@ function buildBenchmarkTracker(rows: any[], hasAttributedRevenue: boolean) {
   };
 }
 
-function metricCard(label: string, value: string, Icon: any, helper?: string) {
+function metricCard(label: string, value: string, Icon: any, helper?: string, valueClass = "text-foreground", iconClass = "text-muted-foreground") {
   return (
     <Card key={label}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="text-2xl font-semibold text-foreground">{value}</p>
+            <p className={`text-2xl font-semibold ${valueClass}`}>{value}</p>
             {helper && <p className="text-xs text-muted-foreground mt-1">{helper}</p>}
           </div>
-          <Icon className="w-5 h-5 text-muted-foreground" />
+          <Icon className={`w-5 h-5 ${iconClass}`} />
         </div>
       </CardContent>
     </Card>
@@ -392,11 +392,11 @@ export default function TikTokAnalytics() {
                   ) : (
                     <>
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                        {metricCard("Total KPIs", formatNumber(kpiTracker.total), Target)}
-                        {metricCard("Above Target", formatNumber(kpiTracker.above), TrendingUp, "more than +5% above target")}
-                        {metricCard("On Track", formatNumber(kpiTracker.near), CheckCircle2, "within +/-5% of target")}
-                        {metricCard("Below Target", formatNumber(kpiTracker.below), AlertCircle, "more than -5% below target")}
-                        {metricCard("Avg. Progress", `${kpiTracker.avgPct.toFixed(1)}%`, TrendingUp)}
+                        {metricCard("Total KPIs", formatNumber(kpiTracker.total), Target, undefined, "text-foreground", "text-purple-500")}
+                        {metricCard("Above Target", formatNumber(kpiTracker.above), TrendingUp, "more than +5% above target", "text-green-600", "text-green-500")}
+                        {metricCard("On Track", formatNumber(kpiTracker.near), CheckCircle2, "within +/-5% of target", "text-blue-600", "text-blue-500")}
+                        {metricCard("Below Target", formatNumber(kpiTracker.below), AlertCircle, "more than -5% below target", "text-red-600", "text-red-500")}
+                        {metricCard("Avg. Progress", `${kpiTracker.avgPct.toFixed(1)}%`, TrendingUp, undefined, "text-foreground", "text-violet-600")}
                       </div>
 
                       {platformKPIs.length === 0 ? (
@@ -491,11 +491,11 @@ export default function TikTokAnalytics() {
                   ) : (
                     <>
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                        {metricCard("Total Benchmarks", formatNumber(benchmarkTracker.total), Target)}
-                        {metricCard("On Track", formatNumber(benchmarkTracker.onTrack), CheckCircle2, "90% or more of benchmark")}
-                        {metricCard("Needs Attention", formatNumber(benchmarkTracker.needsAttention), AlertCircle, "70% to under 90% of benchmark")}
-                        {metricCard("Behind", formatNumber(benchmarkTracker.behind), AlertCircle, "below 70% of benchmark")}
-                        {metricCard("Avg. Progress", `${benchmarkTracker.avgPct.toFixed(1)}%`, TrendingUp)}
+                        {metricCard("Total Benchmarks", formatNumber(benchmarkTracker.total), Target, undefined, "text-foreground", "text-purple-500")}
+                        {metricCard("On Track", formatNumber(benchmarkTracker.onTrack), CheckCircle2, "90% or more of benchmark", "text-green-600", "text-green-500")}
+                        {metricCard("Needs Attention", formatNumber(benchmarkTracker.needsAttention), AlertCircle, "70% to under 90% of benchmark", "text-amber-600", "text-amber-500")}
+                        {metricCard("Behind", formatNumber(benchmarkTracker.behind), AlertTriangle, "below 70% of benchmark", "text-red-600", "text-red-500")}
+                        {metricCard("Avg. Progress", `${benchmarkTracker.avgPct.toFixed(1)}%`, TrendingUp, undefined, "text-foreground", "text-violet-600")}
                       </div>
 
                       {platformBenchmarks.length === 0 ? (

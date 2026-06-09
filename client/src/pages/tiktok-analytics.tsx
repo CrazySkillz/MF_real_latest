@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, AlertCircle, BarChart3, DollarSign, Eye, MousePointer, Percent, Target, Video } from "lucide-react";
+import { ArrowLeft, AlertCircle, BarChart3, DollarSign, Eye, MousePointer, Percent, Target, TrendingUp, Video } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -243,7 +243,9 @@ export default function TikTokAnalytics() {
                       {metricCard("CPM", totals.cpm === null ? "Unavailable" : formatCurrency(totals.cpm), BarChart3)}
                       {metricCard("Cost / Conversion", totals.costPerConversion === null ? "Unavailable" : formatCurrency(totals.costPerConversion), Target)}
                       {metricCard("Conversion Rate", formatPct(totals.conversionRate), Percent)}
-                      {metricCard("Revenue / ROI / ROAS", "Unavailable", DollarSign, "Requires TikTok-scoped attributed revenue.")}
+                      {metricCard("Total Revenue", "Unavailable", DollarSign, "Requires TikTok-scoped attributed revenue.")}
+                      {metricCard("ROI", "Unavailable", Percent, "Requires TikTok-scoped attributed revenue.")}
+                      {metricCard("ROAS", "Unavailable", TrendingUp, "Requires TikTok-scoped attributed revenue.")}
                     </div>
                   )}
                 </TabsContent>

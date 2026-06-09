@@ -74,7 +74,10 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(app).toContain('const TikTokAnalytics = lazy(() => import("@/pages/tiktok-analytics"))');
     expect(app).toContain('<Route path="/campaigns/:id/tiktok-analytics" component={TikTokAnalytics} />');
     expect(page).toContain("TikTok Ads Analytics");
-    expect(page).toContain("Revenue / ROI / ROAS");
+    expect(page).not.toContain("Revenue / ROI / ROAS");
+    expect(page).toContain("Total Revenue");
+    expect(page).toContain("ROI");
+    expect(page).toContain("ROAS");
     expect(page).toContain("Requires TikTok-scoped attributed revenue.");
     expect(page).toContain("No persisted TikTok metric rows exist");
   });

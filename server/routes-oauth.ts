@@ -25112,7 +25112,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         source: "manual",
       };
 
-      if (String(payload.platformType || "").trim().toLowerCase() === "instagram") {
+      const sourceBackedReportPlatform = String(payload.platformType || "").trim().toLowerCase();
+      if (sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok") {
         const { buildPdfAttachmentForReport } = await import("./report-scheduler.js");
         const buf = await buildPdfAttachmentForReport({
           report: existing,
@@ -25122,7 +25123,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isTest: true,
         });
         if (!buf) {
-          return res.status(422).json({ success: false, error: "Instagram source-backed PDF output unavailable; snapshot not created" });
+          const label = sourceBackedReportPlatform === "tiktok" ? "TikTok" : "Instagram";
+          return res.status(422).json({ success: false, error: `${label} source-backed PDF output unavailable; snapshot not created` });
         }
       }
 

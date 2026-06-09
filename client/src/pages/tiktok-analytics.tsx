@@ -585,15 +585,16 @@ export default function TikTokAnalytics() {
 
                 <TabsContent value="insights" className="space-y-4">
                   <Card>
-                    <CardContent className="p-4 space-y-2">
+                    <CardContent className="p-4 space-y-4">
                       <p className="text-sm text-muted-foreground">
                         Insights are limited to selected persisted TikTok rows. Revenue, ROI, and ROAS remain unavailable until TikTok-scoped attributed revenue exists.
                       </p>
-                      {hasRows && (
-                        <p className="text-sm text-muted-foreground">
-                          {campaignRows.length} selected TikTok campaign{campaignRows.length === 1 ? "" : "s"} have persisted metric rows in this date range.
-                        </p>
-                      )}
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {metricCard("Selected Campaign Rows", hasRows ? formatNumber(campaignRows.length) : "Unavailable", Target, hasRows ? "Persisted TikTok metric rows only." : unavailableReason)}
+                        {metricCard("Spend", hasRows ? formatCurrency(totals.spend) : "Unavailable", DollarSign, hasRows ? "From selected TikTok rows." : unavailableReason)}
+                        {metricCard("Attributed Revenue", attributedRevenue === null ? "Unavailable" : formatCurrency(attributedRevenue), DollarSign, attributedRevenue === null ? "Requires TikTok-scoped attributed revenue." : "From TikTok-scoped revenue source.")}
+                        {metricCard("ROAS", roas === null ? "Unavailable" : `${roas.toFixed(2)}x`, TrendingUp, roas === null ? "Requires TikTok-scoped attributed revenue." : "Spend and revenue are TikTok-scoped.")}
+                      </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -602,7 +603,7 @@ export default function TikTokAnalytics() {
                   <Card>
                     <CardContent className="p-4">
                       <p className="text-sm text-muted-foreground">
-                        TikTok Reports are unavailable until the campaign-scoped TikTok reports contract is implemented.
+                        TikTok Reports are unavailable until the campaign-scoped TikTok source-backed reports contract is implemented. Snapshot, PDF, test-send, and scheduled-send output are blocked rather than generated from generic report data.
                       </p>
                     </CardContent>
                   </Card>

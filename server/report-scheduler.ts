@@ -185,6 +185,17 @@ function parseReportConfiguration(configuration: any): Record<string, any> {
   return typeof configuration === "object" ? configuration : {};
 }
 
+function platformRequiresSourceBackedReportOutput(platformType: any): boolean {
+  const normalized = String(platformType || "").trim().toLowerCase();
+  return normalized === "instagram" || normalized === "tiktok";
+}
+
+function sourceBackedReportOutputUnavailableMessage(platformType: any): string {
+  const normalized = String(platformType || "").trim().toLowerCase();
+  const label = normalized === "tiktok" ? "TikTok" : "Instagram";
+  return `${label} source-backed PDF output unavailable`;
+}
+
 async function validateInstagramScheduledReportScope(report: any): Promise<{ ok: boolean; message?: string; disableSchedule?: boolean }> {
   if (String(report?.platformType || "").trim().toLowerCase() !== "instagram") return { ok: true };
   const campaignId = String(report?.campaignId || "").trim();
@@ -686,6 +697,9 @@ export async function buildPdfAttachmentForReport(args: {
 
     if (String((report as any)?.platformType || "") === "instagram") {
       return buildInstagramScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });
+    }
+    if (String((report as any)?.platformType || "") === "tiktok") {
+      return null;
     }
 
     const { jsPDF } = await import("jspdf");
@@ -1427,8 +1441,8 @@ export async function checkScheduledReports(): Promise<void> {
         isTest: false,
       });
       console.log(`[Report Scheduler] PDF attachment bytes: ${pdfBuffer ? pdfBuffer.length : 0}`);
-      if (snapshotPlatformType === "instagram" && !pdfBuffer) {
-        const error = "Instagram source-backed PDF output unavailable; skipped scheduled report";
+      if (platformRequiresSourceBackedReportOutput(snapshotPlatformType) && !pdfBuffer) {
+        const error = `${sourceBackedReportOutputUnavailableMessage(snapshotPlatformType)}; skipped scheduled report`;
         console.warn(`[Report Scheduler] ${error}: report=${report.id}, campaign=${(report as any).campaignId || "none"}`);
         await db
           .update(reportSendEvents)
@@ -1647,8 +1661,8 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
       isTest: true,
     });
     console.log(`[Report Scheduler] PDF attachment bytes (test): ${pdfBuffer ? pdfBuffer.length : 0}`);
-    if (String((report as any)?.platformType || "") === "instagram" && !pdfBuffer) {
-      return { success: false, message: "Instagram source-backed PDF output unavailable; test report skipped", recipients };
+    if (platformRequiresSourceBackedReportOutput((report as any)?.platformType) && !pdfBuffer) {
+      return { success: false, message: `${sourceBackedReportOutputUnavailableMessage((report as any)?.platformType)}; test report skipped`, recipients };
     }
 
     const safeName = String((report as any)?.name || "MimoSaaS_Report").replace(/\s+/g, "_");

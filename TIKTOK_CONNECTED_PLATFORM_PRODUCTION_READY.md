@@ -68,7 +68,7 @@ Bundling rule:
 | 9A | TikTok spend source identity uses `tiktok_api` and `platformContext="tiktok"` | Done locally and validated | Spend import path |
 | 9B | TikTok attributed revenue import identity uses `platformContext="tiktok"` only | Done locally and validated | Revenue import path |
 | 9C | selected TikTok campaign mapping for imported revenue | Done locally and validated | Revenue attribution |
-| 9D | TikTok revenue-dependent metric gating across Overview, KPIs, Benchmarks, Insights, and reports | Partial: aggregate revenue gate done locally; KPI/Benchmark/report parity pending | Financial/current-value paths |
+| 9D | TikTok revenue-dependent metric gating across Overview, KPIs, Benchmarks, Insights, and reports | Done locally and validated | Financial/current-value paths |
 | 9E | Commit 9 regression and validation docs | Done locally and validated for completed Commit 9 slices | None |
 | 10A | TikTok KPI current-value source contract | Pending | KPI backend/UI |
 | 10B | TikTok Benchmark current-value source contract | Pending | Benchmark backend/UI |
@@ -771,6 +771,13 @@ Validation:
 - GA4, LinkedIn, Google Ads, Meta, or Instagram revenue cannot unlock TikTok revenue metrics.
 - Unmapped TikTok revenue does not populate per-campaign rows.
 
+9E Deferred-Evidence Review:
+
+- Visible revenue-import UI: backend/shared revenue context and wizard copy support TikTok, but `DataSourcesTab` currently exposes connected ad-platform choices only from its local platform metadata. TikTok is not present there, so visible TikTok revenue-import UI is not production-ready until a later scoped UI commit adds and browser-validates that entry point.
+- Source modal edit/delete: generic source list/delete code paths exist, but TikTok source edit/delete browser behavior has not been validated end to end. This remains deferred to the lifecycle/source-modal commit; do not claim source-modal production readiness from backend allowlist coverage alone.
+- Live scheduler/provider refresh: Commit 9 intentionally does not implement live TikTok OAuth or provider reporting refresh. Scheduler refresh remains deferred to Commit 12 and live-provider validation remains deferred to Commit 15.
+- Damaged-data cleanup: no cleanup is performed in Commit 9. If stale or duplicate TikTok financial/source rows are later proven, cleanup must be handled under Commit 13 with an exact damaged-record boundary.
+
 Status:
 
 - [x] Commit 9A root cause traced: the shared ad-platform spend import route recognized Google Ads, Meta, and LinkedIn only, and did not persist TikTok spend source identity with `platformContext="tiktok"`.
@@ -799,11 +806,18 @@ Status:
 - [x] User validation passed for Commit 9D platform Overview revenue-card slice after deploy.
 - [x] Commit 9D KPI/Benchmark root cause traced: generic platform KPI/Benchmark routes refreshed Instagram current values from selected persisted rows, but TikTok had no equivalent refresh helper and would leave current values stale or manual.
 - [x] Commit 9D KPI/Benchmark slice completed locally: TikTok platform KPI and Benchmark refresh now reads selected persisted TikTok rows only and uses TikTok-scoped attributed revenue only for all-selected TikTok revenue-dependent metrics.
-- [ ] Commit 9D pending: Insights copy/data and Reports output still need separate scoped validation before this subcommit is complete.
+- [x] Commit 9D Insights/Reports root cause traced: TikTok Insights showed only generic copy without explicit financial availability, while shared platform report output paths could still create/send generic report output for a stale/direct TikTok report row even though TikTok source-backed report output is not implemented.
+- [x] Commit 9D Insights/Reports slice completed locally: TikTok Insights now renders selected-row spend plus TikTok-attributed revenue/ROAS availability with explicit unavailable reasons, and TikTok report snapshot, PDF, test-send, and scheduled-send output now fails closed instead of using generic report fallback.
+- [x] Commit 9D local validation passed for all completed slices: `npm test -- server/tiktok-create-campaign-regression.test.ts server/performance-summary-aggregate.test.ts server/performance-summary-scheduler-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
+- [x] Commit 9D local validation passed: `npm run check`.
 - [x] Commit 9E root cause traced: Commit 9 status did not clearly separate validated source-backed financial work from unimplemented UI import, lifecycle cleanup, scheduler refresh, Insights, and Reports work.
 - [x] Commit 9E completed locally: tracker now records 9D split validation, source-backed revenue rules, and current pending boundaries without marking unavailable paths production-ready.
 - [x] Commit 9E local validation passed: targeted TikTok/source-safety/aggregate/auth regression tests, `npm run check`, and `git diff --check`.
-- [ ] Commit 9E deferred evidence: visible TikTok revenue-import UI, source-modal edit/delete browser validation, scheduler refresh of live TikTok provider data, damaged-data cleanup, Insights, and Reports remain pending in later scoped commits.
+- [x] Commit 9E deferred-evidence review completed locally: visible TikTok revenue-import UI, source-modal lifecycle, live scheduler/provider refresh, and damaged-data cleanup boundaries were reviewed and documented without claiming unvalidated behavior.
+- [x] Commit 9E evidence boundary: backend/shared revenue paths accept `platformContext="tiktok"` and the revenue wizard has TikTok labels/purpose support, but the current generic `DataSourcesTab` platform selector does not expose TikTok as a connected ad-platform choice, so visible TikTok revenue-import UI remains a later UI slice.
+- [x] Commit 9E evidence boundary: source modal edit/delete browser validation remains unproven locally; delete/edit paths must be validated in a later browser pass before lifecycle safety is marked production-ready.
+- [x] Commit 9E evidence boundary: live TikTok scheduler/provider refresh remains deferred to Commit 12/15 because live OAuth/provider refresh is not implemented in Commit 9.
+- [x] Commit 9E evidence boundary: damaged-data cleanup remains a Commit 13 review item; no cleanup is required from Commit 9 unless stale or duplicate TikTok financial/source rows are proven.
 
 ### Commit 10: KPI, Benchmark, Alerts, And Notifications
 
@@ -1097,8 +1111,12 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - Commit 9D KPI/Benchmark current-value refresh was implemented locally from selected persisted TikTok rows only; revenue-dependent values use only TikTok-scoped attributed revenue and stay unavailable for specific-campaign rows until exact per-specific revenue reads are validated.
 - Commit 9D KPI/Benchmark tab root cause traced: the TikTok analytics page exposed only Overview, Campaign Breakdown, Ad Comparison, and Insights, so the existing generic TikTok platform KPI/Benchmark endpoints had no visible TikTok tab entry.
 - Commit 9D KPI/Benchmark tab fix was implemented locally: TikTok analytics now shows KPI and Benchmark tabs that read `/api/platforms/tiktok/kpis` and `/api/platforms/tiktok/benchmarks`, while revenue-dependent rows render unavailable until TikTok-scoped attributed revenue exists.
-- Commit 9E root cause traced: Commit 9 needed a documentation closeout that separates validated source-backed financial behavior from remaining unimplemented source lifecycle, scheduler, Insights, and Reports behavior.
+- Commit 9D Insights/Reports root cause traced: TikTok Insights did not render explicit financial availability, and shared platform report output could still use generic snapshot/PDF/test/scheduled report paths for TikTok despite no TikTok source-backed report contract.
+- Commit 9D Insights/Reports fix was implemented locally: Insights now displays selected-row spend plus TikTok-attributed revenue/ROAS availability with reasons, and TikTok report output fails closed for snapshot, PDF, test-send, and scheduled-send paths.
+- Commit 9D is complete locally for the scoped financial gating contract; targeted TikTok, aggregate, scheduler, auth, and source-safety regressions plus `npm run check` passed.
+- Commit 9E root cause traced: Commit 9 needed a documentation closeout that separates validated source-backed financial behavior from remaining unimplemented source lifecycle and live scheduler/provider behavior.
 - Commit 9E documentation closeout was implemented locally: completed slices, validation commands, and deferred evidence boundaries are recorded without claiming full TikTok financial production readiness.
-- Commit 9E local validation passed with the 9D KPI/Benchmark slice: targeted TikTok/source-safety/aggregate/auth regression tests, `npm run check`, and `git diff --check`.
-- No TikTok report, scheduler refresh, source modal lifecycle cleanup, visible revenue-import UI, provider OAuth code, or live provider validation has been changed.
+- Commit 9E local validation passed with the completed 9D scope: targeted TikTok/source-safety/aggregate/scheduler/auth regression tests, `npm run check`, and `git diff --check`.
+- Commit 9E deferred-evidence review completed locally: TikTok revenue import UI exposure, source-modal edit/delete validation, scheduler/provider refresh, and damaged-data cleanup boundaries are documented as later scoped work instead of being treated as Commit 9 production-ready behavior.
+- No TikTok source-backed report creation UI, scheduler refresh implementation, source modal lifecycle cleanup, provider OAuth code, or live provider validation has been changed.
 - Live OAuth/provider validation is deferred.

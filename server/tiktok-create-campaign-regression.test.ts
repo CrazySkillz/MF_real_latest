@@ -7,6 +7,7 @@ const readCampaignDetailPage = () => readFileSync(join(process.cwd(), "client", 
 const readTikTokAnalyticsPage = () => readFileSync(join(process.cwd(), "client", "src", "pages", "tiktok-analytics.tsx"), "utf8");
 const readApp = () => readFileSync(join(process.cwd(), "client", "src", "App.tsx"), "utf8");
 const readRoutes = () => readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
+const readReportScheduler = () => readFileSync(join(process.cwd(), "server", "report-scheduler.ts"), "utf8");
 
 describe("TikTok Create Campaign source-contract regression guard", () => {
   it("exposes TikTok only through the Create Campaign test source contract", () => {
@@ -59,6 +60,7 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
 
   it("reads TikTok analytics from selected persisted rows only", () => {
     const routes = readRoutes();
+    const reportScheduler = readReportScheduler();
     const app = readApp();
     const page = readTikTokAnalyticsPage();
     const dailyRouteStart = routes.indexOf('app.get("/api/tiktok/:campaignId/daily-metrics"');
@@ -118,7 +120,18 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("getBenchmarkProgress(benchmark, hasAttributedRevenue)");
     expect(page).toContain('"text-amber-600", "text-amber-500"');
     expect(page).toContain("No Benchmarks Yet");
-    expect(page).toContain("TikTok Reports are unavailable until the campaign-scoped TikTok reports contract is implemented.");
+    expect(page).toContain("Selected Campaign Rows");
+    expect(page).toContain("Attributed Revenue");
+    expect(page).toContain("From TikTok-scoped revenue source.");
+    expect(page).toContain("TikTok Reports are unavailable until the campaign-scoped TikTok source-backed reports contract is implemented.");
+    expect(page).toContain("Snapshot, PDF, test-send, and scheduled-send output are blocked rather than generated from generic report data.");
+    expect(routes).toContain('sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok"');
+    expect(routes).toContain('const label = sourceBackedReportPlatform === "tiktok" ? "TikTok" : "Instagram";');
+    expect(routes).toContain("${label} source-backed PDF output unavailable; snapshot not created");
+    expect(reportScheduler).toContain('normalized === "instagram" || normalized === "tiktok"');
+    expect(reportScheduler).toContain('String((report as any)?.platformType || "") === "tiktok"');
+    expect(reportScheduler).toContain("sourceBackedReportOutputUnavailableMessage");
+    expect(reportScheduler).toContain('const label = normalized === "tiktok" ? "TikTok" : "Instagram";');
     expect(page).toContain("Requires TikTok-scoped attributed revenue.");
     expect(page).toContain("const financialSummary = dailyMetrics?.financialSummary || {};");
     expect(page).toContain("const attributedRevenue = hasAttributedRevenue ? Number(financialSummary.attributedRevenue || 0) : null;");

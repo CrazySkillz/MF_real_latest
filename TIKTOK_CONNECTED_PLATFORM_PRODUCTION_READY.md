@@ -67,7 +67,7 @@ Bundling rule:
 | 8F | Commit 8 regression and validation docs | Done locally; validation pending | None |
 | 9A | TikTok spend source identity uses `tiktok_api` and `platformContext="tiktok"` | Done locally and validated | Spend import path |
 | 9B | TikTok attributed revenue import identity uses `platformContext="tiktok"` only | Done locally and validated | Revenue import path |
-| 9C | selected TikTok campaign mapping for imported revenue | Pending | Revenue attribution |
+| 9C | selected TikTok campaign mapping for imported revenue | Done locally and validated | Revenue attribution |
 | 9D | TikTok revenue-dependent metric gating across Overview, KPIs, Benchmarks, Insights, and reports | Pending | Financial/current-value paths |
 | 9E | Commit 9 regression and validation docs | Pending | None |
 | 10A | TikTok KPI current-value source contract | Pending | KPI backend/UI |
@@ -783,7 +783,12 @@ Status:
 - [x] Commit 9B completed locally: Google Sheets revenue purposes now include `tiktok_revenue` and keep the existing single-tab revenue guard.
 - [x] Commit 9B local validation passed: revenue platform context/wizard/provider regression tests, Instagram regression tests, source-safety regression tests, TikTok Create Campaign regression tests, performance-summary aggregate tests, and endpoint auth tests.
 - [x] Commit 9B local validation passed: `npm run check`.
-- [ ] Commit 9C pending: TikTok imported revenue selected-campaign mapping is not implemented yet.
+- [x] User validation passed for Commit 9A/9B after manual deploy.
+- [x] Commit 9C root cause traced: TikTok revenue source identity existed, but imported revenue materialization did not resolve selected TikTok campaign IDs into per-campaign `subCampaignUrn` revenue rows.
+- [x] Commit 9C completed locally: CSV, Google Sheets, HubSpot, Salesforce, and Shopify revenue imports now resolve TikTok only through the current campaign's selected persisted TikTok campaign IDs, with optional explicit `tiktokCampaignId` mapping support if supplied by a future mapper.
+- [x] Commit 9C completed locally: unmapped TikTok revenue remains outside TikTok per-campaign attribution, and no spend-weighted or generic TikTok allocation was added.
+- [x] Commit 9C local validation passed: `npm test -- server/source-safety-regression.test.ts server/google-ads-revenue-csv-flow.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-hubspot-flow.test.ts server/google-ads-revenue-salesforce-flow.test.ts server/google-ads-revenue-shopify-flow.test.ts server/google-ads-revenue-platform-context.test.ts server/google-ads-revenue-wizard-context.test.ts server/instagram-connected-platforms-regression.test.ts server/meta-production-regression.test.ts server/tiktok-create-campaign-regression.test.ts server/performance-summary-aggregate.test.ts server/endpoint-auth-audit.test.ts`.
+- [x] Commit 9C local validation passed: `npm run check`.
 - [ ] Commit 9D pending: TikTok revenue-dependent financial gating across KPI, Benchmark, Insights, and Reports remains pending.
 - [ ] Commit 9E pending: source-modal/edit/delete/scheduler refresh/no-damaged-data validation remains pending.
 
@@ -1062,5 +1067,10 @@ Live TikTok OAuth/provider production readiness remains deferred until Commit 15
 - Commit 9B root cause traced: shared revenue-source identity allowlists did not include TikTok.
 - Commit 9B revenue source identity was implemented locally with `platformContext="tiktok"` and `tiktok_revenue` Google Sheets purpose support.
 - Commit 9B local validation passed: targeted revenue context/provider/wizard regression tests, Instagram/source-safety/TikTok aggregate tests, endpoint auth tests, and `npm run check`.
-- No TikTok selected-campaign revenue mapping, KPI, Benchmark, report, scheduler refresh, or provider OAuth code has been changed.
+- User validation passed for Commit 9A/9B after manual deploy.
+- Commit 9C root cause traced: TikTok revenue imports could be saved as `platformContext="tiktok"`, but the shared imported-revenue materialization path did not map source campaign values to the selected TikTok campaign IDs needed for TikTok-scoped per-campaign revenue rows.
+- Commit 9C selected-campaign revenue mapping was implemented locally for CSV, Google Sheets, HubSpot, Salesforce, and Shopify using the current campaign's persisted selected TikTok campaign IDs only.
+- Commit 9C preserved financial safety: no generic TikTok allocation, no spend-weighted revenue split, and no unselected TikTok campaign revenue unlock.
+- Commit 9C local validation passed: targeted revenue source flow tests, Instagram/Meta shared-helper regression tests, TikTok regression tests, performance-summary aggregate tests, endpoint auth tests, and `npm run check`.
+- No TikTok KPI, Benchmark, report, scheduler refresh, source modal lifecycle cleanup, or provider OAuth code has been changed.
 - Live OAuth/provider validation is deferred.

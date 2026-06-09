@@ -266,7 +266,7 @@ describe("Instagram Connected Platforms regression guard", () => {
 
     expect(validation).toContain('z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"])');
     expect(routes).toContain("RevenueReadPlatformContext[] = ['ga4', 'linkedin', 'meta', 'google_ads', 'instagram', 'tiktok']");
-    expect(validation).toContain('"instagram" | null');
+    expect(validation).toContain('"instagram" | "tiktok" | null');
     expect(routes).not.toContain("/api/instagram/oauth");
     expect(routes).not.toContain("refreshInstagram(");
     expect(routes).not.toContain("refreshInstagramForCampaign");
@@ -282,8 +282,8 @@ describe("Instagram Connected Platforms regression guard", () => {
 
     expect(routes).toContain("const getActiveInstagramCampaignIdSet = async (campaignId: string): Promise<Set<string>>");
     expect(routes).toContain("storage.getInstagramConnection(campaignId)");
-    expect(routes).toContain('platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram"');
-    expect(routes).toContain("mapping?.googleAdsCampaignId || mapping?.metaCampaignId || mapping?.instagramCampaignId || mapping?.linkedinCampaignUrn");
+    expect(routes).toContain('platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram" && platformContext !== "tiktok"');
+    expect(routes).toContain("mapping?.googleAdsCampaignId || mapping?.metaCampaignId || mapping?.instagramCampaignId || mapping?.tiktokCampaignId || mapping?.linkedinCampaignUrn");
     expect(routes).toContain('platformCtx === "instagram"');
     expect(routes).toContain('platformContext === "instagram"');
     expect(salesforce).toContain('const isInstagram = platformContext === "instagram";');

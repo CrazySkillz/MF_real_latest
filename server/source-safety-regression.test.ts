@@ -569,7 +569,7 @@ describe("source safety regression guards", () => {
     expect(importRoute.indexOf("storage.deleteSpendRecordsBySource")).toBeGreaterThan(importRoute.indexOf("requestedSourceId"));
   });
 
-  it("TikTok attributed revenue source identity is platform-scoped without changing revenue mapping", () => {
+  it("TikTok attributed revenue maps only exact selected TikTok campaign IDs", () => {
     const routesSource = readRoutesSource();
     const storageSource = readStorageSource();
     const schemaSource = fs.readFileSync(path.join(process.cwd(), "shared", "schema.ts"), "utf-8");
@@ -584,7 +584,14 @@ describe("source safety regression guards", () => {
     expect(routesSource).toContain('const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
     expect(routesSource).toContain("sourcePlatformContext === 'tiktok' ? 'tiktok_revenue' : 'revenue'");
     expect(routesSource).toContain("platformContext === 'tiktok' ? 'tiktok_revenue' : 'revenue'");
-    expect(routesSource).not.toContain('platformCtx === "tiktok" || platformCtx === "google_ads"');
+    expect(routesSource).toContain("const getActiveTikTokCampaignIdSet = async (campaignId: string): Promise<Set<string>> => {");
+    expect(routesSource).toContain('platformContext !== "tiktok"');
+    expect(routesSource).toContain("mapping?.tiktokCampaignId");
+    expect(routesSource).toContain('platformContext === "tiktok"');
+    expect(routesSource).toContain('platformCtx === "tiktok"');
+    expect(routesSource).toContain("await getActiveTikTokCampaignIdSet(campaignId)");
+    expect(routesSource).not.toContain("tiktok spend weight");
+    expect(routesSource).not.toContain("generic TikTok split");
   });
 
   it("Google Ads disconnect route is campaign-scoped and fails closed when no row is deleted", () => {

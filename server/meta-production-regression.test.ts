@@ -395,8 +395,8 @@ describe("Meta production readiness regression guard", () => {
     expect(shopify).toContain('(isLinkedIn || isGoogleAds || isMeta || isInstagram) && selectedCampaignMappings.length > 0');
 
     expect(routes).toContain("const getActiveMetaCampaignIdSet = async (campaignId: string): Promise<Set<string>> => {");
-    expect(routes).toContain('if (!id || (platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram")) return null;');
-    expect(routes).toContain('mapping?.metaCampaignId || mapping?.instagramCampaignId || mapping?.linkedinCampaignUrn');
+    expect(routes).toContain('if (!id || (platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram" && platformContext !== "tiktok")) return null;');
+    expect(routes).toContain('mapping?.metaCampaignId || mapping?.instagramCampaignId || mapping?.tiktokCampaignId || mapping?.linkedinCampaignUrn');
     expect(metaCampaignRevenueRoute).toContain("const activeMetaCampaignIds = await getActiveMetaCampaignIdSet(campaignId);");
     expect(metaCampaignRevenueRoute).toContain("rs.platform_context = 'meta'");
     expect(metaCampaignRevenueRoute).toContain("activeMetaCampaignIds.has(metaCampaignId)");

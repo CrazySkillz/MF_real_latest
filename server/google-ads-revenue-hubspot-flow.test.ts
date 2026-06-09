@@ -54,7 +54,7 @@ describe("Google Ads revenue HubSpot flow", () => {
     expect(route).toContain('const activeGoogleAdsCampaignIds = platformCtx === "google_ads"');
     expect(route).toContain("googleAdsCampaignIdFromValueOrMapping(platformCtx, campaignValue, campaignMappings, activeGoogleAdsCampaignIds)");
     expect(route).toContain('} else if (platformCtx === "linkedin" && campaignMappings.length > 0) {');
-    expect(route).toContain('if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta" || platformCtx === "instagram") && revenueByLinkedinCampaign.size > 0)');
+    expect(route).toContain('if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta" || platformCtx === "instagram" || platformCtx === "tiktok") && revenueByLinkedinCampaign.size > 0)');
     expect(route).toContain("subCampaignUrn: urn,");
     expect(route).not.toContain("spend weight");
   });

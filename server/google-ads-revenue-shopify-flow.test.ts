@@ -55,7 +55,7 @@ describe("Google Ads revenue Shopify flow", () => {
     expect(route).toContain('const activeGoogleAdsCampaignIds = platformCtx === "google_ads"');
     expect(route).toContain("googleAdsCampaignIdFromValueOrMapping(platformCtx, orderCrmValue, campaignMappings, activeGoogleAdsCampaignIds)");
     expect(route).toContain('} else if (platformCtx === "linkedin" && campaignMappings.length > 0) {');
-    expect(route).toContain('if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta" || platformCtx === "instagram") && revenueByDateAndCampaign.size > 0)');
+    expect(route).toContain('if ((campaignMappings.length > 0 || platformCtx === "google_ads" || platformCtx === "meta" || platformCtx === "instagram" || platformCtx === "tiktok") && revenueByDateAndCampaign.size > 0)');
     expect(route).toContain("subCampaignUrn: urn,");
     expect(route).not.toContain("spend weight");
   });

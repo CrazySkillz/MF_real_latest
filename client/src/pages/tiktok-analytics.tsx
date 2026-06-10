@@ -7,6 +7,7 @@ import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,7 @@ const TIKTOK_GOAL_METRICS = [
   { key: "roi", label: "ROI", unit: "%" },
   { key: "roas", label: "ROAS", unit: "x" },
 ];
+const TIKTOK_GOAL_DESC_MAX = 200;
 
 function getTikTokGoalMetric(metricKey: string) {
   return TIKTOK_GOAL_METRICS.find((metric) => metric.key === metricKey) || TIKTOK_GOAL_METRICS[0];
@@ -163,16 +165,31 @@ export default function TikTokAnalytics() {
   const [kpiForm, setKpiForm] = useState({
     name: "",
     metric: "impressions",
+    currentValue: "",
     targetValue: "",
     unit: "",
     description: "",
+    priority: "medium",
+    alertsEnabled: false,
+    alertThreshold: "",
+    alertCondition: "below",
+    alertFrequency: "daily",
+    emailNotifications: false,
+    emailRecipients: "",
   });
   const [benchmarkForm, setBenchmarkForm] = useState({
     name: "",
     metric: "impressions",
+    currentValue: "",
     benchmarkValue: "",
     unit: "",
     description: "",
+    alertsEnabled: false,
+    alertThreshold: "",
+    alertCondition: "below",
+    alertFrequency: "daily",
+    emailNotifications: false,
+    emailRecipients: "",
   });
 
   const resetKpiForm = (metricKey = "impressions") => {
@@ -180,9 +197,17 @@ export default function TikTokAnalytics() {
     setKpiForm({
       name: metric.label,
       metric: metric.key,
+      currentValue: "",
       targetValue: "",
       unit: metric.unit,
       description: `Track TikTok ${metric.label.toLowerCase()} against a campaign target.`,
+      priority: "medium",
+      alertsEnabled: false,
+      alertThreshold: "",
+      alertCondition: "below",
+      alertFrequency: "daily",
+      emailNotifications: false,
+      emailRecipients: "",
     });
   };
 
@@ -191,9 +216,16 @@ export default function TikTokAnalytics() {
     setBenchmarkForm({
       name: `${metric.label} Benchmark`,
       metric: metric.key,
+      currentValue: "",
       benchmarkValue: "",
       unit: metric.unit,
       description: `Compare TikTok ${metric.label.toLowerCase()} against a campaign benchmark.`,
+      alertsEnabled: false,
+      alertThreshold: "",
+      alertCondition: "below",
+      alertFrequency: "daily",
+      emailNotifications: false,
+      emailRecipients: "",
     });
   };
 
@@ -255,16 +287,21 @@ export default function TikTokAnalytics() {
           name: kpiForm.name || metric.label,
           metric: kpiForm.metric,
           targetValue: stripNumberFormatting(kpiForm.targetValue) || "0",
-          currentValue: "0",
+          currentValue: stripNumberFormatting(kpiForm.currentValue) || "0",
           unit: kpiForm.unit || metric.unit,
           description: kpiForm.description,
-          priority: "medium",
+          priority: kpiForm.priority,
           status: "active",
           category: "performance",
           timeframe: "monthly",
           trackingPeriod: 30,
           applyTo: "all",
-          alertsEnabled: false,
+          alertsEnabled: kpiForm.alertsEnabled,
+          alertThreshold: kpiForm.alertsEnabled && kpiForm.alertThreshold ? stripNumberFormatting(kpiForm.alertThreshold) : null,
+          alertCondition: kpiForm.alertCondition,
+          alertFrequency: kpiForm.alertFrequency,
+          emailNotifications: kpiForm.emailNotifications,
+          emailRecipients: kpiForm.emailNotifications ? kpiForm.emailRecipients : null,
         }),
       });
       if (!response.ok) {
@@ -293,14 +330,19 @@ export default function TikTokAnalytics() {
           metric: benchmarkForm.metric,
           benchmarkValue,
           targetValue: benchmarkValue,
-          currentValue: "0",
+          currentValue: stripNumberFormatting(benchmarkForm.currentValue) || "0",
           unit: benchmarkForm.unit || metric.unit,
           description: benchmarkForm.description,
           industry: "Custom",
           benchmarkType: "custom",
           status: "active",
           category: "performance",
-          alertsEnabled: false,
+          alertsEnabled: benchmarkForm.alertsEnabled,
+          alertThreshold: benchmarkForm.alertsEnabled && benchmarkForm.alertThreshold ? stripNumberFormatting(benchmarkForm.alertThreshold) : null,
+          alertCondition: benchmarkForm.alertCondition,
+          alertFrequency: benchmarkForm.alertFrequency,
+          emailNotifications: benchmarkForm.emailNotifications,
+          emailRecipients: benchmarkForm.emailNotifications ? benchmarkForm.emailRecipients : null,
         }),
       });
       if (!response.ok) {
@@ -785,7 +827,21 @@ export default function TikTokAnalytics() {
                       <button
                         type="button"
                         className="p-3 text-left border-2 rounded-lg border-border hover:border-blue-300 transition-all"
-                        onClick={() => setKpiForm({ name: "", metric: "impressions", targetValue: "", unit: "", description: "" })}
+                        onClick={() => setKpiForm({
+                          name: "",
+                          metric: "impressions",
+                          currentValue: "",
+                          targetValue: "",
+                          unit: "",
+                          description: "",
+                          priority: "medium",
+                          alertsEnabled: false,
+                          alertThreshold: "",
+                          alertCondition: "below",
+                          alertFrequency: "daily",
+                          emailNotifications: false,
+                          emailRecipients: "",
+                        })}
                       >
                         <div className="font-medium text-sm text-foreground">Create Custom KPI</div>
                         <div className="mt-1 text-xs text-muted-foreground">Choose name + unit, then set values</div>
@@ -796,40 +852,122 @@ export default function TikTokAnalytics() {
                     <Label htmlFor="tiktok-kpi-name">KPI Name *</Label>
                     <Input id="tiktok-kpi-name" value={kpiForm.name} onChange={(event) => setKpiForm((form) => ({ ...form, name: event.target.value }))} />
                   </div>
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="tiktok-kpi-description">Description</Label>
+                    <Textarea
+                      id="tiktok-kpi-description"
+                      rows={3}
+                      maxLength={TIKTOK_GOAL_DESC_MAX}
+                      value={kpiForm.description}
+                      onChange={(event) => setKpiForm((form) => ({ ...form, description: event.target.value.slice(0, TIKTOK_GOAL_DESC_MAX) }))}
+                      placeholder="Describe what this KPI measures and why it's important"
+                    />
+                    <div className="text-xs text-muted-foreground text-right">{kpiForm.description.length}/{TIKTOK_GOAL_DESC_MAX}</div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-3">
                     <div className="space-y-2">
-                      <Label htmlFor="tiktok-kpi-metric">Metric</Label>
-                      <Select value={kpiForm.metric} onValueChange={(value) => resetKpiForm(value)}>
-                        <SelectTrigger id="tiktok-kpi-metric">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TIKTOK_GOAL_METRICS.map((metric) => (
-                            <SelectItem key={metric.key} value={metric.key}>{metric.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="tiktok-kpi-current">Current Value</Label>
+                      <Input id="tiktok-kpi-current" inputMode="decimal" value={kpiForm.currentValue} onChange={(event) => setKpiForm((form) => ({ ...form, currentValue: event.target.value }))} placeholder="0" />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="tiktok-kpi-target">Target Value</Label>
+                      <Label htmlFor="tiktok-kpi-target">Target Value *</Label>
                       <Input id="tiktok-kpi-target" inputMode="decimal" value={kpiForm.targetValue} onChange={(event) => setKpiForm((form) => ({ ...form, targetValue: event.target.value }))} placeholder="0" />
                     </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="tiktok-kpi-unit">Unit</Label>
                       <Input id="tiktok-kpi-unit" value={kpiForm.unit} onChange={(event) => setKpiForm((form) => ({ ...form, unit: event.target.value }))} placeholder="%, $, x" />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tiktok-kpi-description">Description</Label>
-                    <Textarea id="tiktok-kpi-description" rows={3} value={kpiForm.description} onChange={(event) => setKpiForm((form) => ({ ...form, description: event.target.value }))} />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="tiktok-kpi-priority">Priority</Label>
+                      <Select value={kpiForm.priority} onValueChange={(value) => setKpiForm((form) => ({ ...form, priority: value }))}>
+                        <SelectTrigger id="tiktok-kpi-priority">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-4 pt-4 border-t border-border">
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="tiktok-kpi-alerts-enabled"
+                          checked={kpiForm.alertsEnabled}
+                          onCheckedChange={(checked) => setKpiForm((form) => ({ ...form, alertsEnabled: checked === true }))}
+                        />
+                        <Label htmlFor="tiktok-kpi-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                          Enable alerts for this KPI
+                        </Label>
+                      </div>
+                      <p className="text-sm text-muted-foreground pl-6">
+                        Receive notifications for KPI performance alerts on the bell icon &amp; in your Notifications center
+                      </p>
+                    </div>
+                    {kpiForm.alertsEnabled && (
+                      <div className="space-y-4 pl-6">
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="tiktok-kpi-alert-threshold">Alert Threshold *</Label>
+                            <Input id="tiktok-kpi-alert-threshold" inputMode="decimal" value={kpiForm.alertThreshold} onChange={(event) => setKpiForm((form) => ({ ...form, alertThreshold: event.target.value }))} placeholder="e.g., 80" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="tiktok-kpi-alert-condition">Alert When</Label>
+                            <Select value={kpiForm.alertCondition} onValueChange={(value) => setKpiForm((form) => ({ ...form, alertCondition: value }))}>
+                              <SelectTrigger id="tiktok-kpi-alert-condition">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="below">Value Goes Below</SelectItem>
+                                <SelectItem value="above">Value Goes Above</SelectItem>
+                                <SelectItem value="equals">Value Equals</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="tiktok-kpi-alert-frequency">Alert Frequency</Label>
+                            <Select value={kpiForm.alertFrequency} onValueChange={(value) => setKpiForm((form) => ({ ...form, alertFrequency: value }))}>
+                              <SelectTrigger id="tiktok-kpi-alert-frequency">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="immediate">Immediate</SelectItem>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2 pt-1">
+                              <Checkbox
+                                id="tiktok-kpi-email-notifications"
+                                checked={kpiForm.emailNotifications}
+                                onCheckedChange={(checked) => setKpiForm((form) => ({ ...form, emailNotifications: checked === true }))}
+                              />
+                              <Label htmlFor="tiktok-kpi-email-notifications" className="cursor-pointer font-medium">
+                                Send email notifications
+                              </Label>
+                            </div>
+                            {kpiForm.emailNotifications && (
+                              <Input value={kpiForm.emailRecipients} onChange={(event) => setKpiForm((form) => ({ ...form, emailRecipients: event.target.value }))} placeholder="email1@example.com, email2@example.com" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   {createKpiMutation.error && <p className="text-sm text-red-600">{(createKpiMutation.error as Error).message}</p>}
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setKpiDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={() => createKpiMutation.mutate()} disabled={createKpiMutation.isPending || !kpiForm.name || !kpiForm.targetValue}>
+                  <Button onClick={() => createKpiMutation.mutate()} disabled={createKpiMutation.isPending || !kpiForm.name || !kpiForm.targetValue || (kpiForm.alertsEnabled && !kpiForm.alertThreshold)}>
                     {createKpiMutation.isPending ? "Creating..." : "Create KPI"}
                   </Button>
                 </DialogFooter>
@@ -862,7 +1000,20 @@ export default function TikTokAnalytics() {
                       <button
                         type="button"
                         className="p-3 text-left border-2 rounded-lg border-border hover:border-blue-300 transition-all"
-                        onClick={() => setBenchmarkForm({ name: "", metric: "impressions", benchmarkValue: "", unit: "", description: "" })}
+                        onClick={() => setBenchmarkForm({
+                          name: "",
+                          metric: "impressions",
+                          currentValue: "",
+                          benchmarkValue: "",
+                          unit: "",
+                          description: "",
+                          alertsEnabled: false,
+                          alertThreshold: "",
+                          alertCondition: "below",
+                          alertFrequency: "daily",
+                          emailNotifications: false,
+                          emailRecipients: "",
+                        })}
                       >
                         <div className="font-medium text-sm text-foreground">Create Custom Benchmark</div>
                       </button>
@@ -870,42 +1021,117 @@ export default function TikTokAnalytics() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tiktok-benchmark-name">Benchmark Name *</Label>
-                    <Input id="tiktok-benchmark-name" value={benchmarkForm.name} onChange={(event) => setBenchmarkForm((form) => ({ ...form, name: event.target.value }))} />
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="tiktok-benchmark-metric">Metric</Label>
-                      <Select value={benchmarkForm.metric} onValueChange={(value) => resetBenchmarkForm(value)}>
-                        <SelectTrigger id="tiktok-benchmark-metric">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TIKTOK_GOAL_METRICS.map((metric) => (
-                            <SelectItem key={metric.key} value={metric.key}>{metric.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="tiktok-benchmark-value">Benchmark Value</Label>
-                      <Input id="tiktok-benchmark-value" inputMode="decimal" value={benchmarkForm.benchmarkValue} onChange={(event) => setBenchmarkForm((form) => ({ ...form, benchmarkValue: event.target.value }))} placeholder="0" />
-                    </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="tiktok-benchmark-unit">Unit</Label>
-                      <Input id="tiktok-benchmark-unit" value={benchmarkForm.unit} onChange={(event) => setBenchmarkForm((form) => ({ ...form, unit: event.target.value }))} placeholder="%, $, x" />
-                    </div>
+                    <Input id="tiktok-benchmark-name" value={benchmarkForm.name} onChange={(event) => setBenchmarkForm((form) => ({ ...form, name: event.target.value }))} placeholder="e.g., Target sessions for this campaign" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tiktok-benchmark-description">Description</Label>
-                    <Textarea id="tiktok-benchmark-description" rows={3} value={benchmarkForm.description} onChange={(event) => setBenchmarkForm((form) => ({ ...form, description: event.target.value }))} />
+                    <Textarea
+                      id="tiktok-benchmark-description"
+                      rows={3}
+                      maxLength={TIKTOK_GOAL_DESC_MAX}
+                      value={benchmarkForm.description}
+                      onChange={(event) => setBenchmarkForm((form) => ({ ...form, description: event.target.value.slice(0, TIKTOK_GOAL_DESC_MAX) }))}
+                      placeholder="What is this benchmark and why does it matter?"
+                    />
+                    <div className="text-xs text-muted-foreground text-right">{benchmarkForm.description.length}/{TIKTOK_GOAL_DESC_MAX}</div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="tiktok-benchmark-current">Current Value</Label>
+                      <Input id="tiktok-benchmark-current" inputMode="decimal" value={benchmarkForm.currentValue} onChange={(event) => setBenchmarkForm((form) => ({ ...form, currentValue: event.target.value }))} placeholder="Auto-filled from TikTok" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="tiktok-benchmark-value">Benchmark Value *</Label>
+                      <Input id="tiktok-benchmark-value" inputMode="decimal" value={benchmarkForm.benchmarkValue} onChange={(event) => setBenchmarkForm((form) => ({ ...form, benchmarkValue: event.target.value }))} placeholder="Enter benchmark value" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="tiktok-benchmark-unit">Unit</Label>
+                      <Input id="tiktok-benchmark-unit" value={benchmarkForm.unit} onChange={(event) => setBenchmarkForm((form) => ({ ...form, unit: event.target.value }))} placeholder="%, $, count, etc." />
+                    </div>
+                  </div>
+                  <div className="space-y-4 pt-4 border-t border-border">
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="tiktok-benchmark-alerts-enabled"
+                          checked={benchmarkForm.alertsEnabled}
+                          onCheckedChange={(checked) => setBenchmarkForm((form) => ({ ...form, alertsEnabled: checked === true }))}
+                        />
+                        <Label htmlFor="tiktok-benchmark-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                          Enable alerts for this Benchmark
+                        </Label>
+                      </div>
+                      <p className="text-sm text-muted-foreground pl-6">
+                        Receive notifications when this benchmark crosses a threshold you define.
+                      </p>
+                    </div>
+                    {benchmarkForm.alertsEnabled && (
+                      <div className="space-y-4 pl-6">
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="tiktok-benchmark-alert-threshold">Alert Threshold *</Label>
+                            <Input id="tiktok-benchmark-alert-threshold" inputMode="decimal" value={benchmarkForm.alertThreshold} onChange={(event) => setBenchmarkForm((form) => ({ ...form, alertThreshold: event.target.value }))} placeholder="e.g., 80" />
+                            <p className="text-xs text-muted-foreground">Value at which to trigger the alert</p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="tiktok-benchmark-alert-condition">Alert When</Label>
+                            <Select value={benchmarkForm.alertCondition} onValueChange={(value) => setBenchmarkForm((form) => ({ ...form, alertCondition: value }))}>
+                              <SelectTrigger id="tiktok-benchmark-alert-condition">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="below">Value Goes Below</SelectItem>
+                                <SelectItem value="above">Value Goes Above</SelectItem>
+                                <SelectItem value="equals">Value Equals</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="tiktok-benchmark-alert-frequency">Alert Frequency</Label>
+                            <Select value={benchmarkForm.alertFrequency} onValueChange={(value) => setBenchmarkForm((form) => ({ ...form, alertFrequency: value }))}>
+                              <SelectTrigger id="tiktok-benchmark-alert-frequency">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="immediate">Immediate</SelectItem>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                              Bell and Notifications keep one active alert record. This setting controls reminder emails while the breach stays unresolved.
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2 pt-1">
+                              <Checkbox
+                                id="tiktok-benchmark-email-notifications"
+                                checked={benchmarkForm.emailNotifications}
+                                onCheckedChange={(checked) => setBenchmarkForm((form) => ({ ...form, emailNotifications: checked === true }))}
+                              />
+                              <Label htmlFor="tiktok-benchmark-email-notifications" className="cursor-pointer font-medium">
+                                Send email notifications
+                              </Label>
+                            </div>
+                            {benchmarkForm.emailNotifications && (
+                              <div className="space-y-2">
+                                <Label>Email addresses *</Label>
+                                <Input value={benchmarkForm.emailRecipients} onChange={(event) => setBenchmarkForm((form) => ({ ...form, emailRecipients: event.target.value }))} placeholder="email1@example.com, email2@example.com" />
+                                <p className="text-xs text-muted-foreground">Comma-separated email addresses for alerts.</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   {createBenchmarkMutation.error && <p className="text-sm text-red-600">{(createBenchmarkMutation.error as Error).message}</p>}
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setBenchmarkDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={() => createBenchmarkMutation.mutate()} disabled={createBenchmarkMutation.isPending || !benchmarkForm.name || !benchmarkForm.benchmarkValue}>
+                  <Button onClick={() => createBenchmarkMutation.mutate()} disabled={createBenchmarkMutation.isPending || !benchmarkForm.name || !benchmarkForm.benchmarkValue || (benchmarkForm.alertsEnabled && !benchmarkForm.alertThreshold)}>
                     {createBenchmarkMutation.isPending ? "Creating..." : "Create Benchmark"}
                   </Button>
                 </DialogFooter>

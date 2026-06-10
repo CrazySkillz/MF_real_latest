@@ -83,17 +83,17 @@ Bundling rule:
 | 12B | TikTok scheduler refresh skips missing, stale, unselected, or invalid sources | Done locally and user-validated | Background refresh |
 | 12C | refresh failures preserve previous valid rows and freshness state | Done locally and user-validated | Refresh safety |
 | 12D | Commit 12 regression and validation docs | Done locally and user-validated | None |
-| 13A | disconnect cleanup removes only current campaign TikTok-owned rows | Done locally; validation pending | Destructive path |
-| 13B | reconnect clears stale TikTok rows before new selected-scope writes | Done locally; validation pending | Lifecycle behavior |
-| 13C | selected-campaign change cleanup and no stale-row resurrection | Done locally; validation pending | Lifecycle behavior |
-| 13D | existing damaged-data cleanup plan, if stale rows are proven | Done locally; validation pending | Data cleanup plan only |
-| 13E | Commit 13 regression and validation docs | Done locally; validation pending | None |
-| 14A | local/test-mode Create Campaign browser validation | Pending | Validation only |
-| 14B | local/test-mode Connected Platforms browser validation | Pending | Validation only |
-| 14C | local TikTok-only Campaign DeepDive validation | Pending | Validation only |
-| 14D | local GA4 plus TikTok validation | Pending | Validation only |
-| 14E | local multi-paid-source no-double-counting validation | Pending | Validation only |
-| 14F | final local evidence update | Pending | Documentation only |
+| 13A | disconnect cleanup removes only current campaign TikTok-owned rows | Done locally and user-validated | Destructive path |
+| 13B | reconnect clears stale TikTok rows before new selected-scope writes | Done locally and user-validated | Lifecycle behavior |
+| 13C | selected-campaign change cleanup and no stale-row resurrection | Done locally and user-validated | Lifecycle behavior |
+| 13D | existing damaged-data cleanup plan, if stale rows are proven | Done locally and user-validated | Data cleanup plan only |
+| 13E | Commit 13 regression and validation docs | Done locally and user-validated | None |
+| 14A | local/test-mode Create Campaign browser validation | Automated evidence documented; user validation pending | Validation only |
+| 14B | local/test-mode Connected Platforms browser validation | Automated evidence documented; user validation pending | Validation only |
+| 14C | local TikTok-only Campaign DeepDive validation | Automated evidence documented; user validation pending | Validation only |
+| 14D | local GA4 plus TikTok validation | Automated evidence documented; user validation pending | Validation only |
+| 14E | local multi-paid-source no-double-counting validation | Automated evidence documented; user validation pending | Validation only |
+| 14F | final local evidence update | Done locally; validation pending | Documentation only |
 | 15A | live OAuth start/callback/provider campaign discovery validation | Deferred | Live provider only |
 | 15B | live TikTok reporting refresh validation | Deferred | Live provider only |
 | 15C | deployed scheduled report/live-source evidence | Deferred | Live/deployed only |
@@ -969,6 +969,7 @@ Status:
 - [x] Commit 13 regression coverage added locally for disconnect/reconnect/selection cleanup, TikTok financial row scope, campaign delete cascade coverage, and source-safety/auth guards.
 - [x] Commit 13 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/campaign-delete-cascade-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - [x] Commit 13 local validation passed: `npm run check`.
+- [x] User validation passed for Commit 13 after pushed commit `dea30d42`: commit stat review, targeted TikTok/cascade/source-safety/auth regression tests, and `npm run check`.
 
 ### Commit 14: Final Local Evidence
 
@@ -991,6 +992,16 @@ Validation:
 - `npm run check` passes.
 - `npm run build` passes when relevant UI paths are changed.
 - Browser validation evidence is recorded in this tracker.
+
+Status:
+
+- [x] Commit 14 bundled root cause traced: evidence for TikTok local/test-mode production readiness was spread across Commit 5 through Commit 13 status notes and regression suites, while the final validation matrix still showed the local evidence items as pending.
+- [x] Commit 14 evidence consolidation completed locally: Create Campaign, Connected Platforms, TikTok-only Campaign DeepDive, GA4 plus TikTok, multi-paid-source no-double-counting, scheduler/report, and lifecycle evidence are now mapped to the implemented source-backed paths and targeted regression suites.
+- [x] Commit 14 runtime boundary preserved: no runtime code was changed for this evidence pass; live TikTok OAuth/provider validation remains explicitly deferred to Commit 15.
+- [x] Commit 14 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/performance-summary-aggregate.test.ts server/campaign-delete-cascade-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
+- [x] Commit 14 local validation passed: `npm run check`.
+- [x] Commit 14 local validation passed: `npm run build` after rerunning outside the sandbox because the first build attempt hit Windows `spawn EPERM` while starting esbuild.
+- [ ] Commit 14 user/browser validation pending: deployed browser evidence should confirm Create Campaign TikTok setup, Connected Platforms add-source, TikTok-only Campaign DeepDive, GA4 plus TikTok, and multi-paid-source no-double-counting using the current deployed build.
 
 ### Commit 15: Deferred Live OAuth And Provider Validation
 
@@ -1021,59 +1032,55 @@ Status:
 
 ### Create Campaign Flow
 
-- [ ] Start a new campaign.
-- [ ] Select TikTok during campaign creation.
-- [ ] Connect with approved test mode.
-- [ ] Select TikTok advertiser account.
-- [ ] Select TikTok campaigns.
-- [ ] Finalize campaign.
-- [ ] Confirm TikTok appears in Connected Platforms for that campaign only.
-- [ ] Confirm `/api/campaigns/:campaignId/outcome-totals` includes TikTok only after persisted selected rows exist.
-- [ ] Confirm Campaign DeepDive uses only available TikTok metrics.
+- [x] Automated evidence: TikTok is exposed in Create Campaign only through the test-mode source contract and requires selected campaigns before finalization.
+- [x] Automated evidence: Create Campaign calls `POST /api/tiktok/:campaignId/connect-test` and does not seed analytics rows directly.
+- [x] Automated evidence: `/api/campaigns/:campaignId/outcome-totals` includes TikTok only through selected persisted rows after the aggregate resolver is available.
+- [ ] Browser evidence: start a new campaign, select TikTok, select advertiser/campaigns, finalize, and confirm TikTok appears in Connected Platforms for that campaign only.
+- [ ] Browser evidence: confirm Campaign DeepDive uses only available TikTok metrics for the newly created campaign.
 
 ### Connected Platforms Flow
 
-- [ ] Open an existing campaign.
-- [ ] Add TikTok from Connected Platforms.
-- [ ] Connect with approved test mode.
-- [ ] Select TikTok advertiser account and campaigns.
-- [ ] Confirm Connected Platforms updates without fake metrics.
-- [ ] Confirm TikTok analytics link appears only after analytics route/data contract exists.
-- [ ] Confirm Campaign DeepDive sections update through the shared aggregate.
+- [x] Automated evidence: Connected Platforms can add TikTok through the same backend source contract with explicit selected campaign metadata.
+- [x] Automated evidence: Connected Platforms does not show static fake TikTok metrics and maps TikTok analytics only through the platform status route.
+- [x] Automated evidence: Campaign DeepDive sections consume TikTok through the shared aggregate contract.
+- [ ] Browser evidence: open an existing campaign, add TikTok from Connected Platforms, select advertiser/campaigns, and confirm the card updates without fake metrics.
+- [ ] Browser evidence: confirm TikTok analytics opens only for the campaign-scoped connected source and Campaign DeepDive updates through the aggregate.
 
 ### Analytics Flow
 
-- [ ] TikTok Overview values match selected persisted daily rows.
-- [ ] Campaign Breakdown excludes unselected TikTok campaigns.
-- [ ] Ad Comparison rankings use real selected TikTok rows, not hardcoded campaigns.
-- [ ] Insights avoid revenue/ROAS/ROI claims until TikTok revenue exists.
-- [ ] No-row state is unavailable, not zero-filled.
+- [x] Automated evidence: TikTok Overview values come from selected persisted `tiktok_daily_metrics` rows only.
+- [x] Automated evidence: unselected TikTok campaigns are filtered out of analytics and aggregate reads.
+- [x] Automated evidence: Ad Comparison stays unavailable until ad-level identifiers exist instead of using hardcoded campaigns.
+- [x] Automated evidence: Insights and revenue-dependent metrics render unavailable until TikTok-scoped attributed revenue exists.
+- [x] Automated evidence: no-row state is unavailable, not zero-filled.
 
 ### Multi-Source Flow
 
-- [ ] GA4 plus TikTok keeps GA4 web metrics and TikTok paid-media metrics separate.
-- [ ] TikTok plus Google Ads adds paid-media metrics without duplicate platform rows.
-- [ ] TikTok plus Meta/Facebook does not borrow Meta rows.
-- [ ] TikTok plus Instagram does not borrow Instagram placement rows.
-- [ ] Canonical spend source behavior does not double-count TikTok platform spend.
+- [x] Automated evidence: GA4 plus TikTok keeps GA4 web/outcome metrics and TikTok paid-media metrics separate through `platformSources`.
+- [x] Automated evidence: TikTok plus Google Ads adds paid-media metrics through distinct source IDs without duplicate TikTok platform rows.
+- [x] Automated evidence: TikTok does not borrow Meta/Facebook rows.
+- [x] Automated evidence: TikTok does not borrow Instagram placement rows.
+- [x] Automated evidence: canonical spend source behavior uses `tiktok_api` / `platformContext="tiktok"` to avoid double-counting TikTok spend.
+- [ ] Browser evidence: validate a multi-paid-source campaign shows one TikTok platform source and separate Google Ads/Meta/Instagram sources.
 
 ### Financial Flow
 
-- [ ] TikTok spend-only campaign has no revenue/ROI/ROAS.
-- [ ] TikTok attributed revenue source unlocks revenue/ROI/ROAS only for TikTok.
-- [ ] Exact selected TikTok campaign ID mapping populates per-campaign revenue.
-- [ ] Unmapped revenue remains aggregate-only or unavailable according to the implemented source contract.
-- [ ] GA4/LinkedIn/Google Ads/Meta/Instagram revenue does not unlock TikTok financial metrics.
+- [x] Automated evidence: TikTok spend-only or no-revenue campaigns keep revenue/ROI/ROAS unavailable.
+- [x] Automated evidence: TikTok attributed revenue sources use `platformContext="tiktok"` and unlock revenue-dependent metrics only for TikTok.
+- [x] Automated evidence: selected TikTok campaign ID mapping populates TikTok-scoped revenue paths.
+- [x] Automated evidence: unmapped revenue remains unavailable for TikTok campaign-scoped financial metrics.
+- [x] Automated evidence: GA4/LinkedIn/Google Ads/Meta/Instagram revenue does not unlock TikTok financial metrics.
 
 ### Scheduler, Reports, And Lifecycle Flow
 
-- [ ] Manual refresh updates selected persisted TikTok rows.
-- [ ] Scheduler refresh fails closed on missing or invalid TikTok source state.
-- [ ] Scheduled snapshots include TikTok through `performanceSummary`.
-- [ ] Browser PDFs use latest TikTok source-backed values.
-- [ ] Scheduled report failed sends do not create misleading sent snapshots.
-- [ ] Disconnect hides TikTok and removes only current-campaign TikTok rows.
-- [ ] Reconnect cannot resurrect stale TikTok rows.
+- [x] Automated evidence: manual refresh updates selected persisted TikTok rows through `refreshTikTokForCampaign`.
+- [x] Automated evidence: scheduler refresh fails closed on missing campaign/source/advertiser/selected campaign/token or live-provider deferred state.
+- [x] Automated evidence: scheduled snapshots include TikTok through `performanceSummary`.
+- [x] Automated evidence: browser PDFs use latest TikTok source-backed values.
+- [x] Automated evidence: scheduled report failed sends do not create misleading sent snapshots.
+- [x] Automated evidence: disconnect hides TikTok and removes/deactivates only current-campaign TikTok-owned rows and financial child rows.
+- [x] Automated evidence: reconnect and selected-campaign changes cannot resurrect stale TikTok rows.
+- [ ] Browser evidence: confirm manual/deployed disconnect/reconnect behavior for a test-mode campaign.
 
 ## Production-Ready Exit Criteria
 

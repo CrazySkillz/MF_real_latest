@@ -303,10 +303,10 @@ export function AddRevenueWizardModal(props: {
     let cancelled = false;
     (async () => {
       const [hubspotOAuth, salesforceOAuth, shopifyOAuth, dsResp] = await Promise.all([
-        fetch(`/api/hubspot/${campaignId}/status`).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
-        fetch(`/api/salesforce/${campaignId}/status`).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
-        fetch(`/api/shopify/${campaignId}/status`).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
-        fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include" }).then(r => r.json()).catch(() => ({})),
+        fetch(`/api/hubspot/${campaignId}/status`, { cache: "no-store" }).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
+        fetch(`/api/salesforce/${campaignId}/status`, { cache: "no-store" }).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
+        fetch(`/api/shopify/${campaignId}/status`, { cache: "no-store" }).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
+        fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include", cache: "no-store" }).then(r => r.json()).catch(() => ({})),
       ]);
       if (cancelled) return;
       setCrmOAuth({ hubspot: hubspotOAuth, salesforce: salesforceOAuth, shopify: shopifyOAuth });
@@ -445,7 +445,7 @@ export function AddRevenueWizardModal(props: {
     setCrmDisconnecting(platform);
     try {
       // Delete any active revenue source for this platform
-      const dsResp = await fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include" });
+      const dsResp = await fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include", cache: "no-store" });
       const dsJson = await dsResp.json().catch(() => ({}));
       const revSources = Array.isArray(dsJson?.revenueSources) ? dsJson.revenueSources : [];
       const entries = revSources.filter((s: any) => matchesRevenuePlatformContext(s, platform));

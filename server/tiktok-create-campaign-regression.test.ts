@@ -204,6 +204,7 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("Remove revenue source?");
     expect(page).toContain("This removes only the selected TikTok revenue source. Total Revenue will be recalculated.");
     expect(page).toContain('fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`');
+    expect(page).toContain('fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`, { credentials: "include", cache: "no-store" })');
     expect(page).toContain("setRevenueDialogVersion((version) => version + 1)");
     expect(page).toContain("queryClient.setQueryData([`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`]");
     expect(page).toContain("`/api/campaigns/${campaignId}/all-data-sources`");
@@ -362,6 +363,11 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(shopify).toContain('const platformLabel = isTikTok ? "TikTok"');
     expect(shopify).toContain('isLinkedIn || isGoogleAds || isMeta || isInstagram || isTikTok');
     expect(routes).toContain('app.get("/api/tiktok/:campaignId/campaigns"');
+    expect(routes).toContain('res.setHeader("Cache-Control", "no-store");');
+    expect(modal).toContain('fetch(`/api/hubspot/${campaignId}/status`, { cache: "no-store" })');
+    expect(modal).toContain('fetch(`/api/salesforce/${campaignId}/status`, { cache: "no-store" })');
+    expect(modal).toContain('fetch(`/api/shopify/${campaignId}/status`, { cache: "no-store" })');
+    expect(modal).toContain('fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include", cache: "no-store" })');
   });
 
   it("refreshes TikTok KPI and Benchmark current values from selected rows only", () => {

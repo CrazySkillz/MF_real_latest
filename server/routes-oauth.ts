@@ -2149,6 +2149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Revenue sources (manual/CSV/Sheets + connectors that materialize revenue rows)
   app.get("/api/campaigns/:id/revenue-sources", async (req, res) => {
     try {
+      res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
       const platformContext = parseRevenueReadPlatformContext((req.query as any)?.platformContext, "ga4", res);
       if (!platformContext) return;
@@ -2175,6 +2176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Unified data-sources endpoint — returns all revenue sources, spend sources, and CRM connections
   app.get("/api/campaigns/:id/all-data-sources", async (req, res) => {
     try {
+      res.setHeader("Cache-Control", "no-store");
       const campaignId = req.params.id;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;

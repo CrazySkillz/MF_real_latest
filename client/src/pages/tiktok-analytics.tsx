@@ -535,7 +535,7 @@ export default function TikTokAnalytics() {
     queryKey: [`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`],
     enabled: !!campaignId && connected,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`, { credentials: "include" });
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`, { credentials: "include", cache: "no-store" });
       if (!response.ok) return { success: false, sources: [] };
       return response.json().catch(() => ({ success: false, sources: [] }));
     },

@@ -79,15 +79,15 @@ Bundling rule:
 | 11C | scheduled TikTok reports fail closed and snapshot only successful sends | Done locally; validation pending | Scheduled reports |
 | 11D | Campaign DeepDive Custom Report includes TikTok through shared aggregate only | Done locally; validation pending | Campaign reports |
 | 11E | Commit 11 regression and validation docs | User validation passed | None |
-| 12A | manual TikTok refresh route writes selected rows only | Done locally; validation pending | Refresh route |
-| 12B | TikTok scheduler refresh skips missing, stale, unselected, or invalid sources | Done locally; validation pending | Background refresh |
-| 12C | refresh failures preserve previous valid rows and freshness state | Done locally; validation pending | Refresh safety |
-| 12D | Commit 12 regression and validation docs | Done locally; validation pending | None |
-| 13A | disconnect cleanup removes only current campaign TikTok-owned rows | Pending | Destructive path |
-| 13B | reconnect clears stale TikTok rows before new selected-scope writes | Pending | Lifecycle behavior |
-| 13C | selected-campaign change cleanup and no stale-row resurrection | Pending | Lifecycle behavior |
-| 13D | existing damaged-data cleanup plan, if stale rows are proven | Pending | Data cleanup plan only |
-| 13E | Commit 13 regression and validation docs | Pending | None |
+| 12A | manual TikTok refresh route writes selected rows only | Done locally and user-validated | Refresh route |
+| 12B | TikTok scheduler refresh skips missing, stale, unselected, or invalid sources | Done locally and user-validated | Background refresh |
+| 12C | refresh failures preserve previous valid rows and freshness state | Done locally and user-validated | Refresh safety |
+| 12D | Commit 12 regression and validation docs | Done locally and user-validated | None |
+| 13A | disconnect cleanup removes only current campaign TikTok-owned rows | Done locally; validation pending | Destructive path |
+| 13B | reconnect clears stale TikTok rows before new selected-scope writes | Done locally; validation pending | Lifecycle behavior |
+| 13C | selected-campaign change cleanup and no stale-row resurrection | Done locally; validation pending | Lifecycle behavior |
+| 13D | existing damaged-data cleanup plan, if stale rows are proven | Done locally; validation pending | Data cleanup plan only |
+| 13E | Commit 13 regression and validation docs | Done locally; validation pending | None |
 | 14A | local/test-mode Create Campaign browser validation | Pending | Validation only |
 | 14B | local/test-mode Connected Platforms browser validation | Pending | Validation only |
 | 14C | local TikTok-only Campaign DeepDive validation | Pending | Validation only |
@@ -938,6 +938,7 @@ Status:
 - [x] Commit 12 regression coverage added locally for manual route wiring, scheduler startup wiring, selected-row upsert behavior, live-provider deferred failure, and no `deleteTikTokDailyMetrics` call in the refresh function.
 - [x] Commit 12 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - [x] Commit 12 local validation passed: `npm run check`.
+- [x] User validation passed for Commit 12 after pushed commit `d61679f5`: commit stat review, targeted TikTok/scheduler/source-safety/auth regression tests, and `npm run check`.
 
 ### Commit 13: Disconnect, Reconnect, And Damaged Data
 
@@ -958,6 +959,16 @@ Validation:
 - Disconnect one campaign's TikTok source without affecting another campaign or platform.
 - Reconnect does not resurrect stale TikTok metrics.
 - Selected-campaign changes cannot leave old campaign rows visible.
+
+Status:
+
+- [x] Commit 13 bundled root cause traced: TikTok connection/daily-row cleanup existed for disconnect, reconnect, selected-campaign changes, and campaign deletion, but TikTok-scoped financial child rows could remain active after TikTok scope changed.
+- [x] Commit 13 bundled implementation completed locally: TikTok lifecycle cleanup now deactivates current-campaign TikTok spend sources (`sourceType="tiktok_api"` or `platformContext="tiktok"`), deletes their spend records, deactivates current-campaign TikTok revenue sources (`platformContext="tiktok"`), and deletes their revenue records.
+- [x] Commit 13 scope safety preserved: cleanup is limited to the current campaign and TikTok-owned financial rows; GA4, LinkedIn, Meta, Google Ads, Instagram, and unscoped revenue/spend rows are not targeted by the TikTok lifecycle helper.
+- [x] Commit 13 damaged-data boundary reviewed: no broad historical cleanup was run. Existing damaged-data cleanup remains plan-only unless stale/duplicate TikTok rows are proven in production data after the forward lifecycle paths are fixed.
+- [x] Commit 13 regression coverage added locally for disconnect/reconnect/selection cleanup, TikTok financial row scope, campaign delete cascade coverage, and source-safety/auth guards.
+- [x] Commit 13 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/campaign-delete-cascade-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
+- [x] Commit 13 local validation passed: `npm run check`.
 
 ### Commit 14: Final Local Evidence
 

@@ -468,7 +468,9 @@ describe("source safety regression guards", () => {
     expect(updateRoute.indexOf("storage.getTikTokConnection")).toBeLessThan(updateRoute.indexOf("storage.updateTikTokConnection"));
     expect(updateRoute).toContain("At least one TikTok campaign must be selected");
     expect(updateRoute).toContain("await storage.deleteTikTokDailyMetrics(parsedId.data)");
+    expect(updateRoute).toContain("await storage.deleteTikTokFinancialData(parsedId.data)");
     expect(updateRoute.indexOf("storage.deleteTikTokDailyMetrics")).toBeLessThan(updateRoute.indexOf("storage.updateTikTokConnection"));
+    expect(updateRoute.indexOf("storage.deleteTikTokFinancialData")).toBeLessThan(updateRoute.indexOf("storage.updateTikTokConnection"));
     expect(updateRoute).not.toContain("storage.createTikTokConnection");
     expect(updateRoute).not.toContain("upsertTikTokDailyMetrics");
 
@@ -491,6 +493,14 @@ describe("source safety regression guards", () => {
     expect(method).toContain("db.transaction");
     expect(method).toContain("eq(tiktokConnections.campaignId, campaignId)");
     expect(method).toContain("tx.delete(tiktokDailyMetrics).where(eq(tiktokDailyMetrics.campaignId, campaignId))");
+    expect(method).toContain("deleteTikTokFinancialDataForCampaign(tx, campaignId)");
+
+    expect(storageSource).toContain("const deleteTikTokFinancialDataForCampaign = async");
+    expect(storageSource).toContain('or(eq(spendSources.sourceType, "tiktok_api"), eq(spendSources.platformContext, "tiktok"))');
+    expect(storageSource).toContain('and(eq(spendRecords.campaignId, campaignId), eq(spendRecords.sourceType, "tiktok_api"))');
+    expect(storageSource).toContain('eq(revenueSources.platformContext, "tiktok")');
+    expect(storageSource).toContain("await tx.delete(revenueRecords).where(inArray(revenueRecords.revenueSourceId, tiktokRevenueSourceIds))");
+    expect(storageSource).toContain("async deleteTikTokFinancialData(campaignId: string)");
   });
 
   it("Instagram test refresh route is campaign-scoped, test-mode-only, and selected-source-only", () => {

@@ -20161,6 +20161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectionChanged = previousSelectedCampaignIds.join("\n") !== selectedCampaignIds.join("\n");
       if (selectionChanged) {
         await storage.deleteTikTokDailyMetrics(parsedId.data);
+        await storage.deleteTikTokFinancialData(parsedId.data);
       }
 
       const selectedCampaignMetadata = Array.isArray((req.body as any)?.selectedCampaignMetadata)

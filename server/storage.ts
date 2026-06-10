@@ -49,6 +49,40 @@ const deleteInstagramFinancialDataForCampaign = async (tx: any, campaignId: stri
   }
 };
 
+const deleteTikTokFinancialDataForCampaign = async (tx: any, campaignId: string): Promise<void> => {
+  const tiktokSpendSources = await tx
+    .select({ id: spendSources.id })
+    .from(spendSources)
+    .where(and(
+      eq(spendSources.campaignId, campaignId),
+      or(eq(spendSources.sourceType, "tiktok_api"), eq(spendSources.platformContext, "tiktok"))
+    ));
+  const tiktokSpendSourceIds = tiktokSpendSources.map((source: any) => String(source.id)).filter(Boolean);
+  if (tiktokSpendSourceIds.length > 0) {
+    await tx.delete(spendRecords).where(or(
+      inArray(spendRecords.spendSourceId, tiktokSpendSourceIds),
+      and(eq(spendRecords.campaignId, campaignId), eq(spendRecords.sourceType, "tiktok_api"))
+    ));
+    await tx.update(spendSources)
+      .set({ isActive: false } as any)
+      .where(inArray(spendSources.id, tiktokSpendSourceIds));
+  } else {
+    await tx.delete(spendRecords).where(and(eq(spendRecords.campaignId, campaignId), eq(spendRecords.sourceType, "tiktok_api")));
+  }
+
+  const tiktokRevenueSources = await tx
+    .select({ id: revenueSources.id })
+    .from(revenueSources)
+    .where(and(eq(revenueSources.campaignId, campaignId), eq(revenueSources.platformContext, "tiktok")));
+  const tiktokRevenueSourceIds = tiktokRevenueSources.map((source: any) => String(source.id)).filter(Boolean);
+  if (tiktokRevenueSourceIds.length > 0) {
+    await tx.delete(revenueRecords).where(inArray(revenueRecords.revenueSourceId, tiktokRevenueSourceIds));
+    await tx.update(revenueSources)
+      .set({ isActive: false } as any)
+      .where(inArray(revenueSources.id, tiktokRevenueSourceIds));
+  }
+};
+
 function hydrateDecryptedTokens<T extends Record<string, any>>(row: T): T {
   const enc = (row as any)?.encryptedTokens as EncryptedTokens | undefined;
   const dec = decryptTokens(enc);
@@ -187,6 +221,7 @@ export interface IStorage {
   updateTikTokConnection(campaignId: string, connection: Partial<InsertTikTokConnection>): Promise<TikTokConnection | undefined>;
   deleteTikTokConnection(campaignId: string): Promise<boolean>;
   deleteTikTokDailyMetrics(campaignId: string): Promise<boolean>;
+  deleteTikTokFinancialData(campaignId: string): Promise<boolean>;
 
   // TikTok Daily Metrics
   getTikTokDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<TikTokDailyMetric[]>;
@@ -2656,6 +2691,7 @@ export class DatabaseStorage implements IStorage {
       const deleted = (result.rowCount || 0) > 0;
       if (deleted) {
         await tx.delete(tiktokDailyMetrics).where(eq(tiktokDailyMetrics.campaignId, campaignId));
+        await deleteTikTokFinancialDataForCampaign(tx, campaignId);
       }
       return deleted;
     });
@@ -2666,6 +2702,13 @@ export class DatabaseStorage implements IStorage {
       .delete(tiktokDailyMetrics)
       .where(eq(tiktokDailyMetrics.campaignId, campaignId));
     return (result.rowCount || 0) > 0;
+  }
+
+  async deleteTikTokFinancialData(campaignId: string): Promise<boolean> {
+    await db.transaction(async (tx: any) => {
+      await deleteTikTokFinancialDataForCampaign(tx, campaignId);
+    });
+    return true;
   }
 
   async getTikTokDailyMetrics(campaignId: string, startDate: string, endDate: string): Promise<TikTokDailyMetric[]> {

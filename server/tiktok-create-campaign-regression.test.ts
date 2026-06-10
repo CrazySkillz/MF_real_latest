@@ -74,7 +74,8 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(routes).toContain("storage.getTikTokConnection(parsedId.data)");
     expect(routes).toContain("storage.getTikTokDailyMetrics(parsedId.data, startDate, endDate)");
     expect(routes).toContain("selected.has(String(row.tiktokCampaignId))");
-    expect(dailyRoute).toContain('storage.getRevenueTotalForRange(parsedId.data, startDate, endDate, "tiktok")');
+    expect(dailyRoute).toContain('const revenueStartDate = "1900-01-01";');
+    expect(dailyRoute).toContain('storage.getRevenueTotalForRange(parsedId.data, revenueStartDate, revenueEndDate, "tiktok")');
     expect(dailyRoute).toContain("financialSummary");
     expect(dailyRoute).toContain("hasAttributedRevenue");
     expect(dailyRoute).not.toContain("upsertTikTokDailyMetrics");

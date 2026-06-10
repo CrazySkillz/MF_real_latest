@@ -20454,7 +20454,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sourceContractVersion: row.sourceContractVersion,
           lastSyncedAt: row.lastSyncedAt,
         }));
-      const revenueTotals = await storage.getRevenueTotalForRange(parsedId.data, startDate, endDate, "tiktok")
+      const revenueStartDate = "1900-01-01";
+      const revenueEndDate = new Date().toISOString().slice(0, 10);
+      const revenueTotals = await storage.getRevenueTotalForRange(parsedId.data, revenueStartDate, revenueEndDate, "tiktok")
         .catch(() => ({ totalRevenue: 0, currency: undefined, sourceIds: [] as string[] }));
       const attributedRevenue = Number((revenueTotals as any)?.totalRevenue || 0);
       const hasAttributedRevenue = Number.isFinite(attributedRevenue) && attributedRevenue > 0;

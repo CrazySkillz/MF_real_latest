@@ -118,16 +118,17 @@ describe("scheduled report email regression guard", () => {
     expect(snapshotPdfRoute).not.toContain("This PDF is generated from an immutable snapshot.");
   });
 
-  it("proves Instagram manual report snapshots have source-backed PDF output before insertion", () => {
+  it("proves source-backed manual report snapshots have PDF output before insertion", () => {
     const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const manualSnapshotRoute = routesSource.slice(
       routesSource.indexOf('app.post("/api/platforms/:platformType/reports/:reportId/snapshots"'),
       routesSource.indexOf('app.get("/api/report-snapshots/:snapshotId"')
     );
 
-    expect(manualSnapshotRoute).toContain('String(payload.platformType || "").trim().toLowerCase() === "instagram"');
+    expect(manualSnapshotRoute).toContain('sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok"');
     expect(manualSnapshotRoute).toContain("buildPdfAttachmentForReport");
-    expect(manualSnapshotRoute).toContain("Instagram source-backed PDF output unavailable; snapshot not created");
+    expect(manualSnapshotRoute).toContain('const label = sourceBackedReportPlatform === "tiktok" ? "TikTok" : "Instagram";');
+    expect(manualSnapshotRoute).toContain("${label} source-backed PDF output unavailable; snapshot not created");
     expect(manualSnapshotRoute.indexOf("buildPdfAttachmentForReport")).toBeLessThan(manualSnapshotRoute.indexOf(".insert(reportSnapshots as any)"));
   });
 
@@ -190,21 +191,32 @@ describe("scheduled report email regression guard", () => {
     expect(routesSource).not.toContain("Email recipients are optional");
   });
 
-  it("discovers Instagram scheduled reports and requires source-backed Instagram PDF output", () => {
+  it("discovers source-backed scheduled reports and requires source-backed PDF output", () => {
     const source = readReportScheduler();
 
-    expect(source).toContain("const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram']");
+    expect(source).toContain("const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram', 'tiktok']");
     expect(source).toContain("storage.getPlatformReports('instagram')");
+    expect(source).toContain("storage.getPlatformReports('tiktok')");
     expect(source).toContain("Found ${instagramReports.length} Instagram platform reports");
+    expect(source).toContain("Found ${tiktokReports.length} TikTok platform reports");
     expect(source).toContain("validateInstagramScheduledReportScope(report)");
+    expect(source).toContain("validateTikTokScheduledReportScope(report)");
     expect(source).toContain("Instagram source scope is invalid; skipped scheduled report");
+    expect(source).toContain("TikTok source scope is invalid; skipped scheduled report");
     expect(source).toContain("buildInstagramScheduledPdfAttachment");
+    expect(source).toContain("buildTikTokScheduledPdfAttachment");
     expect(source).toContain("storage.getInstagramDailyMetrics(campaignId, windowStart, windowEnd)");
+    expect(source).toContain("storage.getTikTokDailyMetrics(campaignId, windowStart, windowEnd)");
     expect(source).toContain("selectedIds.has(String(row?.instagramCampaignId || \"\"))");
+    expect(source).toContain("selectedIds.has(String(row?.tiktokCampaignId || \"\"))");
     expect(source).toContain("Source: selected Instagram daily metric rows only");
-    expect(source).toContain("Instagram source-backed PDF output unavailable; skipped scheduled report");
-    expect(source).toContain("Instagram source-backed PDF output unavailable; test report skipped");
+    expect(source).toContain("Source: selected TikTok daily metric rows only");
+    expect(source).toContain("sourceBackedReportOutputUnavailableMessage(snapshotPlatformType)");
+    expect(source).toContain("sourceBackedReportOutputUnavailableMessage((report as any)?.platformType)");
+    expect(source).toContain("; skipped scheduled report");
+    expect(source).toContain("; test report skipped");
     expect(source).toContain("...(await storage.getPlatformReports('instagram'))");
+    expect(source).toContain("...(await storage.getPlatformReports('tiktok'))");
   });
 
   it("disables orphaned scheduled reports after campaign-missing proof", () => {

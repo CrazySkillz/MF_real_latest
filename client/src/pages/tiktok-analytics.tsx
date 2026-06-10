@@ -205,6 +205,19 @@ export default function TikTokAnalytics() {
   const queryClient = useQueryClient();
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const [benchmarkDialogOpen, setBenchmarkDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [editingReport, setEditingReport] = useState<any>(null);
+  const [downloadingReportId, setDownloadingReportId] = useState("");
+  const [reportForm, setReportForm] = useState({
+    name: "",
+    description: "",
+    reportType: "overview",
+    scheduleEnabled: false,
+    scheduleFrequency: "weekly",
+    scheduleTime: "09:00",
+    scheduleTimeZone: "UTC",
+    scheduleRecipients: "",
+  });
   const [kpiForm, setKpiForm] = useState({
     name: "",
     metric: "",
@@ -307,6 +320,20 @@ export default function TikTokAnalytics() {
     });
   };
 
+  const resetReportForm = (report?: any) => {
+    setEditingReport(report || null);
+    setReportForm({
+      name: report?.name || "",
+      description: report?.description || "",
+      reportType: report?.reportType || "overview",
+      scheduleEnabled: !!report?.scheduleEnabled,
+      scheduleFrequency: report?.scheduleFrequency || "weekly",
+      scheduleTime: report?.scheduleTime || "09:00",
+      scheduleTimeZone: report?.scheduleTimeZone || "UTC",
+      scheduleRecipients: Array.isArray(report?.scheduleRecipients) ? report.scheduleRecipients.join(", ") : "",
+    });
+  };
+
   const { data: connection, isLoading: connectionLoading, error: connectionError } = useQuery<any>({
     queryKey: [`/api/tiktok/${campaignId}/connection`],
     enabled: !!campaignId,
@@ -350,6 +377,16 @@ export default function TikTokAnalytics() {
     queryFn: async () => {
       const response = await fetch(`/api/platforms/tiktok/benchmarks?campaignId=${campaignId}`);
       if (!response.ok) throw new Error("Failed to load TikTok Benchmarks");
+      return response.json();
+    },
+  });
+
+  const { data: reportsData, isLoading: reportsLoading, error: reportsError } = useQuery<any[]>({
+    queryKey: [`/api/platforms/tiktok/reports`, campaignId],
+    enabled: !!campaignId && connected,
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/tiktok/reports?campaignId=${campaignId}`);
+      if (!response.ok) throw new Error("Failed to load TikTok Reports");
       return response.json();
     },
   });
@@ -435,6 +472,79 @@ export default function TikTokAnalytics() {
       resetBenchmarkForm();
     },
   });
+
+  const saveReportMutation = useMutation({
+    mutationFn: async () => {
+      const recipients = reportForm.scheduleRecipients.split(",").map((value) => value.trim()).filter(Boolean);
+      const payload = {
+        campaignId,
+        name: reportForm.name || "TikTok Report",
+        description: reportForm.description,
+        reportType: reportForm.reportType,
+        status: "active",
+        scheduleEnabled: reportForm.scheduleEnabled,
+        scheduleFrequency: reportForm.scheduleEnabled ? reportForm.scheduleFrequency : null,
+        scheduleTime: reportForm.scheduleEnabled ? reportForm.scheduleTime : null,
+        scheduleTimeZone: reportForm.scheduleEnabled ? reportForm.scheduleTimeZone : null,
+        scheduleRecipients: reportForm.scheduleEnabled ? recipients : [],
+        scheduleDayOfWeek: reportForm.scheduleEnabled && reportForm.scheduleFrequency === "weekly" ? 1 : null,
+        scheduleDayOfMonth: reportForm.scheduleEnabled && reportForm.scheduleFrequency !== "weekly" ? 1 : null,
+      };
+      const response = await fetch(editingReport ? `/api/platforms/tiktok/reports/${editingReport.id}` : "/api/platforms/tiktok/reports", {
+        method: editingReport ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || "Failed to save TikTok report");
+      }
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/reports`, campaignId] });
+      setReportDialogOpen(false);
+      resetReportForm();
+    },
+  });
+
+  const deleteReportMutation = useMutation({
+    mutationFn: async (reportId: string) => {
+      const response = await fetch(`/api/platforms/tiktok/reports/${encodeURIComponent(String(reportId))}`, { method: "DELETE" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || "Failed to delete TikTok report");
+      }
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/reports`, campaignId] });
+    },
+  });
+
+  const downloadTikTokReport = async (report: any) => {
+    const reportId = String(report?.id || "");
+    if (!reportId) return;
+    setDownloadingReportId(reportId);
+    try {
+      const snapshotResponse = await fetch(`/api/platforms/tiktok/reports/${encodeURIComponent(reportId)}/snapshots`, { method: "POST" });
+      const snapshotBody = await snapshotResponse.json().catch(() => ({}));
+      if (!snapshotResponse.ok || !snapshotBody?.snapshot?.id) {
+        throw new Error(snapshotBody?.error || "Failed to generate TikTok report snapshot");
+      }
+      const pdfResponse = await fetch(`/api/report-snapshots/${encodeURIComponent(String(snapshotBody.snapshot.id))}/pdf`);
+      if (!pdfResponse.ok) throw new Error("Failed to download TikTok report PDF");
+      const blob = await pdfResponse.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${String(report?.name || "tiktok-report").replace(/\s+/g, "_")}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingReportId("");
+    }
+  };
 
   const rows = Array.isArray(dailyMetrics?.rows) ? dailyMetrics.rows : [];
   const hasRows = rows.length > 0;
@@ -892,13 +1002,62 @@ export default function TikTokAnalytics() {
                 </TabsContent>
 
                 <TabsContent value="reports" className="space-y-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <p className="text-sm text-muted-foreground">
-                        TikTok Reports are unavailable until the campaign-scoped TikTok source-backed reports contract is implemented. Snapshot, PDF, test-send, and scheduled-send output are blocked rather than generated from generic report data.
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-lg font-semibold text-foreground">TikTok Reports</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Create campaign-scoped TikTok reports from selected source-backed rows.</p>
+                    </div>
+                    <Button size="sm" onClick={() => { resetReportForm(); setReportDialogOpen(true); }}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Report
+                    </Button>
+                  </div>
+                  {reportsError ? (
+                    <Card>
+                      <CardContent className="p-4 text-sm text-red-600">{(reportsError as Error).message}</CardContent>
+                    </Card>
+                  ) : reportsLoading ? (
+                    <div className="min-h-[140px]" aria-hidden="true" />
+                  ) : !Array.isArray(reportsData) || reportsData.length === 0 ? (
+                    <Card>
+                      <CardContent className="p-8 text-center text-muted-foreground">
+                        <BarChart3 className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                        <h3 className="text-lg font-semibold text-foreground mb-2">No Reports Yet</h3>
+                        <p className="mb-4">Create your first TikTok report from selected persisted TikTok rows.</p>
+                        <Button onClick={() => { resetReportForm(); setReportDialogOpen(true); }}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Report
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid gap-4">
+                      {reportsData.map((report: any) => (
+                        <Card key={report.id}>
+                          <CardContent className="p-5">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <h3 className="font-semibold text-foreground">{report.name || "TikTok Report"}</h3>
+                                {report.description && <p className="text-sm text-muted-foreground mt-1">{report.description}</p>}
+                                <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mt-3">
+                                  <span>{String(report.reportType || "overview")}</span>
+                                  {report.scheduleEnabled && <span>Scheduled {report.scheduleFrequency || "weekly"} at {report.scheduleTime || "09:00"} {report.scheduleTimeZone || "UTC"}</span>}
+                                  {report.lastSentAt && <span>Last sent {new Date(report.lastSentAt).toLocaleDateString()}</span>}
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Button variant="outline" size="sm" disabled={downloadingReportId === String(report.id)} onClick={() => downloadTikTokReport(report)}>
+                                  {downloadingReportId === String(report.id) ? "Downloading..." : "Download"}
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => { resetReportForm(report); setReportDialogOpen(true); }}>Edit</Button>
+                                <Button variant="outline" size="sm" disabled={deleteReportMutation.isPending} onClick={() => deleteReportMutation.mutate(String(report.id))}>Delete</Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             )}
@@ -1247,6 +1406,78 @@ export default function TikTokAnalytics() {
                   <Button variant="outline" onClick={() => setBenchmarkDialogOpen(false)}>Cancel</Button>
                   <Button onClick={() => createBenchmarkMutation.mutate()} disabled={createBenchmarkMutation.isPending || !benchmarkForm.name || !benchmarkForm.benchmarkValue || (benchmarkForm.alertsEnabled && !benchmarkForm.alertThreshold)}>
                     {createBenchmarkMutation.isPending ? "Creating..." : "Create Benchmark"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={reportDialogOpen} onOpenChange={(open) => { setReportDialogOpen(open); if (!open) resetReportForm(); }}>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle>{editingReport ? "Edit TikTok Report" : "Create TikTok Report"}</DialogTitle>
+                  <DialogDescription>Reports use selected persisted TikTok rows only.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="tiktok-report-name">Report Name *</Label>
+                    <Input id="tiktok-report-name" value={reportForm.name} onChange={(event) => setReportForm((form) => ({ ...form, name: event.target.value }))} placeholder="TikTok Performance Report" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tiktok-report-description">Description</Label>
+                    <Textarea id="tiktok-report-description" rows={3} value={reportForm.description} onChange={(event) => setReportForm((form) => ({ ...form, description: event.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tiktok-report-type">Report Type</Label>
+                    <Select value={reportForm.reportType} onValueChange={(value) => setReportForm((form) => ({ ...form, reportType: value }))}>
+                      <SelectTrigger id="tiktok-report-type"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="overview">Overview</SelectItem>
+                        <SelectItem value="kpis">KPIs</SelectItem>
+                        <SelectItem value="benchmarks">Benchmarks</SelectItem>
+                        <SelectItem value="ads">Ad Comparison</SelectItem>
+                        <SelectItem value="insights">Insights</SelectItem>
+                        <SelectItem value="custom">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-4 pt-4 border-t border-border">
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="tiktok-report-schedule" checked={reportForm.scheduleEnabled} onCheckedChange={(checked) => setReportForm((form) => ({ ...form, scheduleEnabled: checked === true }))} />
+                      <Label htmlFor="tiktok-report-schedule" className="font-semibold cursor-pointer">Schedule Automated Reports</Label>
+                    </div>
+                    {reportForm.scheduleEnabled && (
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Frequency</Label>
+                          <Select value={reportForm.scheduleFrequency} onValueChange={(value) => setReportForm((form) => ({ ...form, scheduleFrequency: value }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tiktok-report-time">Time</Label>
+                          <Input id="tiktok-report-time" value={reportForm.scheduleTime} onChange={(event) => setReportForm((form) => ({ ...form, scheduleTime: event.target.value }))} placeholder="09:00" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tiktok-report-timezone">Time Zone</Label>
+                          <Input id="tiktok-report-timezone" value={reportForm.scheduleTimeZone} onChange={(event) => setReportForm((form) => ({ ...form, scheduleTimeZone: event.target.value }))} placeholder="UTC" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tiktok-report-recipients">Recipients *</Label>
+                          <Input id="tiktok-report-recipients" value={reportForm.scheduleRecipients} onChange={(event) => setReportForm((form) => ({ ...form, scheduleRecipients: event.target.value }))} placeholder="email1@example.com, email2@example.com" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {saveReportMutation.error && <p className="text-sm text-red-600">{(saveReportMutation.error as Error).message}</p>}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setReportDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={() => saveReportMutation.mutate()} disabled={saveReportMutation.isPending || !reportForm.name || (reportForm.scheduleEnabled && !reportForm.scheduleRecipients.trim())}>
+                    {saveReportMutation.isPending ? "Saving..." : editingReport ? "Save Report" : "Create Report"}
                   </Button>
                 </DialogFooter>
               </DialogContent>

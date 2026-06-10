@@ -70,15 +70,15 @@ Bundling rule:
 | 9C | selected TikTok campaign mapping for imported revenue | Done locally and validated | Revenue attribution |
 | 9D | TikTok revenue-dependent metric gating across Overview, KPIs, Benchmarks, Insights, and reports | Done locally and validated | Financial/current-value paths |
 | 9E | Commit 9 regression and validation docs | Done locally and validated for completed Commit 9 slices | None |
-| 10A | TikTok KPI current-value source contract | Done locally and validated | KPI backend/UI |
-| 10B | TikTok Benchmark current-value source contract | Done locally and validated | Benchmark backend/UI |
-| 10C | TikTok alert/notification refresh behavior | Done locally and validated | Visibility path |
-| 10D | Commit 10 regression and validation docs | Done locally and validated | None |
-| 11A | TikTok platform report routes/cards use shared platform-report pattern | Pending | Reports UI/backend |
-| 11B | browser PDF/export uses latest TikTok source-backed values | Pending | Report exports |
-| 11C | scheduled TikTok reports fail closed and snapshot only successful sends | Pending | Scheduled reports |
-| 11D | Campaign DeepDive Custom Report includes TikTok through shared aggregate only | Pending | Campaign reports |
-| 11E | Commit 11 regression and validation docs | Pending | None |
+| 10A | TikTok KPI current-value source contract | Done locally and user-validated | KPI backend/UI |
+| 10B | TikTok Benchmark current-value source contract | Done locally and user-validated | Benchmark backend/UI |
+| 10C | TikTok alert/notification refresh behavior | Done locally and user-validated | Visibility path |
+| 10D | Commit 10 regression and validation docs | Done locally and user-validated | None |
+| 11A | TikTok platform report routes/cards use shared platform-report pattern | Done locally; validation pending | Reports UI/backend |
+| 11B | browser PDF/export uses latest TikTok source-backed values | Done locally; validation pending | Report exports |
+| 11C | scheduled TikTok reports fail closed and snapshot only successful sends | Done locally; validation pending | Scheduled reports |
+| 11D | Campaign DeepDive Custom Report includes TikTok through shared aggregate only | Done locally; validation pending | Campaign reports |
+| 11E | Commit 11 regression and validation docs | Done locally; validation pending | None |
 | 12A | manual TikTok refresh route writes selected rows only | Pending | Refresh route |
 | 12B | TikTok scheduler refresh skips missing, stale, unselected, or invalid sources | Pending | Background refresh |
 | 12C | refresh failures preserve previous valid rows and freshness state | Pending | Refresh safety |
@@ -866,6 +866,7 @@ Status:
 - [x] Commit 10 source-safety preserved: no schema changes, no storage bypass, no metric math changes, no unscoped revenue, and no generic campaign allocation were added.
 - [x] Commit 10 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
 - [x] Commit 10 local validation passed: `npm run check`.
+- [x] Commit 10 user validation passed after deployment: TikTok KPI/Benchmark current values, modal formatting, template default state, revenue-template gating, and alert/create modal parity were validated by the user.
 
 ### Commit 11: Reports And Scheduled Reports
 
@@ -880,6 +881,10 @@ Subcommits:
 - 11C: Ensure scheduled TikTok reports verify campaign/source validity before snapshot/send bookkeeping.
 - 11D: Ensure Campaign DeepDive Custom Report includes TikTok only through `performanceSummary`.
 - 11E: Add regression coverage and validation docs.
+- Bundling root cause: Commit 10 produced too many small follow-up pushes because UI parity defects were discovered after each narrow slice was committed. Commit 11 touches a single parent runtime boundary, reports and scheduled reports, so the safer workflow is to trace all report surfaces first, implement the smallest complete source-backed report slice in one working tree, validate once with the full report/scheduler suite, and push one bundled Commit 11 when the diff remains reviewable.
+- Bundling rule: target one bundled Commit 11 for 11A-11E. Do not push 11A, 11B, 11C, 11D, and 11E separately.
+- Split fallback: use at most two commits only if the diff becomes too large or the scheduler path needs isolation: one implementation commit for 11A/11B/11D plus report UI/export coverage, and one scheduler-safety/docs commit for 11C/11E.
+- Planned bundled commit message: `feat: add TikTok source-backed reports`.
 
 Validation:
 
@@ -887,6 +892,14 @@ Validation:
 - Browser PDF values match TikTok analytics and `/outcome-totals`.
 - Scheduled reports do not create sent/downloadable snapshots on failed sends.
 - Campaign DeepDive Custom Report includes TikTok values only when TikTok is connected and available.
+
+Status:
+
+- [x] Commit 11 bundled root cause traced: TikTok report output was intentionally fail-closed from Commit 9D, the TikTok Reports tab still rendered an unavailable message, and the scheduler did not discover or validate TikTok platform reports.
+- [x] Commit 11 bundled implementation completed locally: TikTok Reports now use the shared `/api/platforms/tiktok/reports` create/edit/delete contract, manual downloads generate source-backed snapshots/PDFs, scheduled report discovery includes TikTok, and test/scheduled sends validate TikTok campaign/source scope before output.
+- [x] Commit 11 source-safety preserved: TikTok report PDFs read only selected persisted `tiktok_daily_metrics` rows plus TikTok-scoped attributed revenue; missing selected rows or invalid source scope fails closed instead of using generic report fallback.
+- [x] Commit 11 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/report-email-regression.test.ts server/custom-report-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
+- [x] Commit 11 local validation passed: `npm run check`.
 
 ### Commit 12: Refresh And Scheduler
 

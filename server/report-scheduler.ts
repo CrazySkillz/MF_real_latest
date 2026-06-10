@@ -19,7 +19,7 @@ interface ReportWithCampaign extends LinkedInReport {
   platformType: string;
 }
 
-const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram'];
+const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram', 'tiktok'];
 
 // Monitoring metrics for scheduler health
 const schedulerMetrics = {
@@ -217,6 +217,27 @@ async function validateInstagramScheduledReportScope(report: any): Promise<{ ok:
   return { ok: true };
 }
 
+async function validateTikTokScheduledReportScope(report: any): Promise<{ ok: boolean; message?: string; disableSchedule?: boolean }> {
+  if (String(report?.platformType || "").trim().toLowerCase() !== "tiktok") return { ok: true };
+  const campaignId = String(report?.campaignId || "").trim();
+  if (!campaignId) return { ok: false, message: "TikTok scheduled report campaign is missing", disableSchedule: true };
+  const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaignId)).limit(1).catch(() => []);
+  if (!campaign) return { ok: false, message: "Campaign not found; skipped scheduled report", disableSchedule: true };
+  const connection = await storage.getTikTokConnection(campaignId).catch(() => null as any);
+  const selectedCampaignIds = (() => {
+    try {
+      const parsed = JSON.parse(String(connection?.selectedCampaignIds || "[]"));
+      return Array.isArray(parsed) ? parsed.map((id: any) => String(id || "").trim()).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  })();
+  if (!connection || (connection as any).spendOnly || selectedCampaignIds.length === 0) {
+    return { ok: false, message: "TikTok source scope is invalid; skipped scheduled report", disableSchedule: true };
+  }
+  return { ok: true };
+}
+
 async function buildInstagramScheduledPdfAttachment(args: {
   report: any;
   windowStart: string;
@@ -318,6 +339,113 @@ async function buildInstagramScheduledPdfAttachment(args: {
   addText(`- Profit: ${derived.profit === null ? "Unavailable" : money(derived.profit)}`, { indent: 4 });
   y += 4;
   addText("Selected Instagram Campaigns", { size: 14, bold: true });
+  byCampaign.slice(0, 10).forEach((row: any) => {
+    addText(`- ${row.name}: ${formatNumberLike(row.impressions)} impressions, ${formatNumberLike(row.clicks)} clicks, ${money(row.spend)} spend, ${formatNumberLike(row.conversions)} conversions`, { indent: 4 });
+  });
+
+  return coercePdfBufferFromDoc(doc);
+}
+
+async function buildTikTokScheduledPdfAttachment(args: {
+  report: any;
+  windowStart: string;
+  windowEnd: string;
+  campaignName: string | null;
+}): Promise<Buffer | null> {
+  const { report, windowStart, windowEnd, campaignName } = args;
+  const campaignId = String(report?.campaignId || "").trim();
+  if (!campaignId) return null;
+  const connection = await storage.getTikTokConnection(campaignId).catch(() => null as any);
+  const selectedCampaignIds = (() => {
+    try {
+      const parsed = JSON.parse(String(connection?.selectedCampaignIds || "[]"));
+      return Array.isArray(parsed) ? parsed.map((id: any) => String(id || "").trim()).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  })();
+  const selectedIds = new Set(selectedCampaignIds);
+  if (!connection || selectedIds.size === 0) return null;
+  const rows = (await storage.getTikTokDailyMetrics(campaignId, windowStart, windowEnd).catch(() => []))
+    .filter((row: any) => selectedIds.has(String(row?.tiktokCampaignId || "")));
+  if (rows.length === 0) return null;
+
+  const totals = rows.reduce((acc: any, row: any) => {
+    acc.impressions += Number(row?.impressions || 0);
+    acc.clicks += Number(row?.clicks || 0);
+    acc.spend += Number(row?.spend || 0);
+    acc.conversions += Number(row?.conversions || 0);
+    acc.videoViews += Number(row?.videoViews || 0);
+    acc.engagements += Number(row?.engagements || 0);
+    return acc;
+  }, { impressions: 0, clicks: 0, spend: 0, conversions: 0, videoViews: 0, engagements: 0 });
+  const attributedRevenue = Number(await storage.getRevenueTotalForRange(campaignId, windowStart, windowEnd, "tiktok").catch(() => 0) || 0);
+  const derived = {
+    ctr: totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0,
+    cpc: totals.clicks > 0 ? totals.spend / totals.clicks : 0,
+    cpm: totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0,
+    costPerConversion: totals.conversions > 0 ? totals.spend / totals.conversions : 0,
+    conversionRate: totals.clicks > 0 ? (totals.conversions / totals.clicks) * 100 : 0,
+    roas: totals.spend > 0 && attributedRevenue > 0 ? attributedRevenue / totals.spend : null,
+    roi: totals.spend > 0 && attributedRevenue > 0 ? ((attributedRevenue - totals.spend) / totals.spend) * 100 : null,
+  };
+  const byCampaign = Array.from(rows.reduce((map: Map<string, any>, row: any) => {
+    const key = String(row?.tiktokCampaignId || "");
+    const current = map.get(key) || { id: key, name: row?.tiktokCampaignName || key, impressions: 0, clicks: 0, spend: 0, conversions: 0 };
+    current.impressions += Number(row?.impressions || 0);
+    current.clicks += Number(row?.clicks || 0);
+    current.spend += Number(row?.spend || 0);
+    current.conversions += Number(row?.conversions || 0);
+    map.set(key, current);
+    return map;
+  }, new Map<string, any>()).values()).sort((a: any, b: any) => b.spend - a.spend);
+
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF();
+  const margin = 18;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  let y = margin;
+  const addText = (value: string, opts: { size?: number; bold?: boolean; indent?: number } = {}) => {
+    const indent = opts.indent || 0;
+    doc.setFontSize(opts.size || 10);
+    doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+    const lines = doc.splitTextToSize(String(value || ""), pageWidth - margin * 2 - indent);
+    lines.forEach((line: string) => {
+      if (y > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(line, margin + indent, y);
+      y += opts.size && opts.size >= 14 ? 8 : 6;
+    });
+  };
+  const money = (value: number) => `$${formatNumberLike(value)}`;
+  const pct = (value: number) => `${formatNumberLike(value)}%`;
+
+  addText(String(report?.name || "TikTok Report"), { size: 18, bold: true });
+  addText(`Campaign: ${campaignName || "Campaign"}`);
+  addText(`Report Type: ${String(report?.reportType || "overview")}`);
+  addText(`Window: ${windowStart} to ${windowEnd}`);
+  addText(`Source: selected TikTok daily metric rows only`);
+  y += 4;
+  addText("Overview", { size: 14, bold: true });
+  addText(`- Impressions: ${formatNumberLike(totals.impressions)}`, { indent: 4 });
+  addText(`- Clicks: ${formatNumberLike(totals.clicks)}`, { indent: 4 });
+  addText(`- Spend: ${money(totals.spend)}`, { indent: 4 });
+  addText(`- Conversions: ${formatNumberLike(totals.conversions)}`, { indent: 4 });
+  addText(`- Video Views: ${formatNumberLike(totals.videoViews)}`, { indent: 4 });
+  addText(`- Engagements: ${formatNumberLike(totals.engagements)}`, { indent: 4 });
+  addText(`- CTR: ${pct(derived.ctr)}`, { indent: 4 });
+  addText(`- CPC: ${money(derived.cpc)}`, { indent: 4 });
+  addText(`- CPM: ${money(derived.cpm)}`, { indent: 4 });
+  addText(`- Cost / Conversion: ${money(derived.costPerConversion)}`, { indent: 4 });
+  addText(`- Conversion Rate: ${pct(derived.conversionRate)}`, { indent: 4 });
+  addText(`- Total Revenue: ${attributedRevenue > 0 ? money(attributedRevenue) : "Unavailable"}`, { indent: 4 });
+  addText(`- ROAS: ${derived.roas === null ? "Unavailable" : `${formatNumberLike(derived.roas)}x`}`, { indent: 4 });
+  addText(`- ROI: ${derived.roi === null ? "Unavailable" : pct(derived.roi)}`, { indent: 4 });
+  y += 4;
+  addText("Selected TikTok Campaigns", { size: 14, bold: true });
   byCampaign.slice(0, 10).forEach((row: any) => {
     addText(`- ${row.name}: ${formatNumberLike(row.impressions)} impressions, ${formatNumberLike(row.clicks)} clicks, ${money(row.spend)} spend, ${formatNumberLike(row.conversions)} conversions`, { indent: 4 });
   });
@@ -699,7 +827,7 @@ export async function buildPdfAttachmentForReport(args: {
       return buildInstagramScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });
     }
     if (String((report as any)?.platformType || "") === "tiktok") {
-      return null;
+      return buildTikTokScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });
     }
 
     const { jsPDF } = await import("jspdf");
@@ -1256,6 +1384,14 @@ export async function checkScheduledReports(): Promise<void> {
       console.log('[Report Scheduler] No Instagram platform reports found');
     }
 
+    try {
+      const tiktokReports = await storage.getPlatformReports('tiktok');
+      allReports = allReports.concat(tiktokReports);
+      console.log(`[Report Scheduler] Found ${tiktokReports.length} TikTok platform reports`);
+    } catch (error) {
+      console.log('[Report Scheduler] No TikTok platform reports found');
+    }
+
     if (allReports.length === 0) {
       console.log('[Report Scheduler] No reports found in either storage');
       return;
@@ -1338,6 +1474,25 @@ export async function checkScheduledReports(): Promise<void> {
         const message = instagramScope.message || "Instagram scheduled report skipped";
         console.warn(`[Report Scheduler] ${message}: report=${report.id}, campaign=${(report as any).campaignId || "none"}`);
         if (instagramScope.disableSchedule) {
+          await db
+            .update(linkedinReports)
+            .set({ scheduleEnabled: false, updatedAt: new Date() } as any)
+            .where(eq(linkedinReports.id, String((report as any).id)))
+            .catch(() => { });
+        }
+        await db
+          .update(reportSendEvents)
+          .set({ status: "skipped", error: message } as any)
+          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .catch(() => { });
+        continue;
+      }
+
+      const tiktokScope = await validateTikTokScheduledReportScope(report);
+      if (!tiktokScope.ok) {
+        const message = tiktokScope.message || "TikTok scheduled report skipped";
+        console.warn(`[Report Scheduler] ${message}: report=${report.id}, campaign=${(report as any).campaignId || "none"}`);
+        if (tiktokScope.disableSchedule) {
           await db
             .update(linkedinReports)
             .set({ scheduleEnabled: false, updatedAt: new Date() } as any)
@@ -1594,6 +1749,7 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
           ...(await storage.getPlatformReports('google_analytics')),
           ...(await storage.getPlatformReports('google_ads')),
           ...(await storage.getPlatformReports('instagram')),
+          ...(await storage.getPlatformReports('tiktok')),
         ];
         console.log(`[Report Scheduler] DEBUG - Available LinkedIn reports: ${linkedInReports.length}`);
         console.log(`[Report Scheduler] DEBUG - Available platform reports: ${platformReports.length}`);
@@ -1622,6 +1778,10 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
     const instagramScope = await validateInstagramScheduledReportScope(report);
     if (!instagramScope.ok) {
       return { success: false, message: instagramScope.message || "Instagram scheduled report skipped", recipients: (report as any).scheduleRecipients || [] };
+    }
+    const tiktokScope = await validateTikTokScheduledReportScope(report);
+    if (!tiktokScope.ok) {
+      return { success: false, message: tiktokScope.message || "TikTok scheduled report skipped", recipients: (report as any).scheduleRecipients || [] };
     }
 
     const recipients = report.scheduleRecipients || [];

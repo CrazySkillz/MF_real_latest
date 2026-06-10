@@ -1047,6 +1047,7 @@ Status:
 - [x] Commit 15.1 local validation passed: `npm run build` after rerunning outside the sandbox because the first build attempt hit Windows `spawn EPERM` while starting esbuild.
 - [x] Commit 15.1 follow-up fix completed locally: TikTok Overview daily metrics now keeps selected TikTok performance rows date-window scoped but reads TikTok attributed revenue as revenue-to-date, matching the GA4 Total Revenue pattern and allowing valid imported TikTok revenue to update the card immediately after refetch.
 - [x] Commit 15.1 follow-up validation passed: targeted TikTok/aggregate/source-safety/auth regressions, `npm run check`, and `npm run build` after rerunning outside the sandbox because the first build attempt hit Windows `spawn EPERM`.
+- [x] Commit 15.1 source-provenance follow-up completed locally: TikTok Total Revenue now matches the GA4 card pattern with a TikTok-scoped `Sources (#)` link and read-only Revenue Sources dialog after revenue exists.
 - [ ] Commit 15.1 browser validation pending: deploy, open TikTok Analytics Overview, confirm `Total Revenue` has a `+`, import TikTok-scoped revenue through the wizard, and confirm Total Revenue, ROI, ROAS, KPIs, Benchmarks, Insights, Ad Comparison, Reports, scheduled report output, and Campaign DeepDive aggregate values refresh from TikTok-scoped persisted revenue only.
 
 ### Commit 15.2: Deferred Live OAuth And Provider Validation

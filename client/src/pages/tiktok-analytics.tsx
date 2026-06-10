@@ -265,6 +265,7 @@ export default function TikTokAnalytics() {
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const [benchmarkDialogOpen, setBenchmarkDialogOpen] = useState(false);
   const [revenueDialogOpen, setRevenueDialogOpen] = useState(false);
+  const [revenueSourcesDialogOpen, setRevenueSourcesDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportModalStep, setReportModalStep] = useState<"standard" | "custom">("standard");
   const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({});
@@ -496,6 +497,15 @@ export default function TikTokAnalytics() {
       const response = await fetch(`/api/platforms/tiktok/reports?campaignId=${campaignId}`);
       if (!response.ok) throw new Error("Failed to load TikTok Reports");
       return response.json();
+    },
+  });
+  const { data: revenueSourcesData } = useQuery<any>({
+    queryKey: [`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`],
+    enabled: !!campaignId && connected,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`, { credentials: "include" });
+      if (!response.ok) return { success: false, sources: [] };
+      return response.json().catch(() => ({ success: false, sources: [] }));
     },
   });
 
@@ -750,12 +760,14 @@ export default function TikTokAnalytics() {
   const kpiTracker = buildGoalTracker(platformKPIs, hasAttributedRevenue);
   const platformBenchmarks = Array.isArray(benchmarksData) ? benchmarksData : [];
   const benchmarkTracker = buildBenchmarkTracker(platformBenchmarks, hasAttributedRevenue);
+  const revenueSources = Array.isArray(revenueSourcesData?.sources) ? revenueSourcesData.sources : [];
   const reportSelectionMade = reportModalStep === "custom"
     ? reportForm.reportType === "custom" && Object.values(reportForm.configuration?.sections || {}).some(Boolean)
     : TIKTOK_REPORT_TEMPLATES.some((template) => template.key === reportForm.reportType);
   const reportFormChanged = !editingReport || getReportFormFingerprint(reportForm) !== reportInitialFingerprint;
   const refreshTikTokRevenueConsumers = () => {
     void queryClient.invalidateQueries({ queryKey: [`/api/tiktok/${campaignId}/daily-metrics`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=tiktok`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=tiktok&dateRange=30days`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
@@ -767,6 +779,7 @@ export default function TikTokAnalytics() {
     void queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/reports`, campaignId], exact: false });
     void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
     void queryClient.refetchQueries({ queryKey: [`/api/tiktok/${campaignId}/daily-metrics`], exact: false });
+    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`], exact: false });
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
   };
 
@@ -886,23 +899,38 @@ export default function TikTokAnalytics() {
                       {metricCard("CPM", totals.cpm === null ? "Unavailable" : formatCurrency(totals.cpm), BarChart3)}
                       {metricCard("Cost / Conversion", totals.costPerConversion === null ? "Unavailable" : formatCurrency(totals.costPerConversion), Target)}
                       {metricCard("Conversion Rate", formatPct(totals.conversionRate), Percent)}
-                      {metricCard(
-                        "Total Revenue",
-                        attributedRevenue === null ? "Unavailable" : formatCurrency(attributedRevenue),
-                        DollarSign,
-                        attributedRevenue === null ? "Requires TikTok-scoped attributed revenue." : undefined,
-                        "text-foreground",
-                        "text-muted-foreground",
-                        <button
-                          type="button"
-                          onClick={() => setRevenueDialogOpen(true)}
-                          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                          title="Add revenue source"
-                          aria-label="Add TikTok revenue source"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                      )}
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Total Revenue</p>
+                              <p className="text-2xl font-semibold text-foreground">
+                                {attributedRevenue === null ? "Unavailable" : formatCurrency(attributedRevenue)}
+                              </p>
+                              {attributedRevenue === null ? (
+                                <p className="text-xs text-muted-foreground mt-1">Requires TikTok-scoped attributed revenue.</p>
+                              ) : revenueSources.length > 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setRevenueSourcesDialogOpen(true)}
+                                  className="mt-1 text-xs text-muted-foreground hover:text-foreground"
+                                >
+                                  Sources ({revenueSources.length})
+                                </button>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setRevenueDialogOpen(true)}
+                              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                              title="Add revenue source"
+                              aria-label="Add TikTok revenue source"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </CardContent>
+                      </Card>
                       {metricCard("ROI", roi === null ? "Unavailable" : `${roi.toFixed(2)}%`, Percent, roi === null ? "Requires TikTok-scoped attributed revenue." : undefined)}
                       {metricCard("ROAS", roas === null ? "Unavailable" : `${roas.toFixed(2)}x`, TrendingUp, roas === null ? "Requires TikTok-scoped attributed revenue." : undefined)}
                     </div>
@@ -1403,6 +1431,32 @@ export default function TikTokAnalytics() {
               platformContext="tiktok"
               onSuccess={refreshTikTokRevenueConsumers}
             />
+
+            <Dialog open={revenueSourcesDialogOpen} onOpenChange={setRevenueSourcesDialogOpen}>
+              <DialogContent className="bg-card border-border max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="text-foreground">Revenue Sources</DialogTitle>
+                  <DialogDescription className="text-muted-foreground">
+                    Sources contributing to TikTok Total Revenue.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+                  {revenueSources.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No TikTok revenue sources connected.</p>
+                  ) : revenueSources.map((source: any) => (
+                    <div key={String(source?.id || source?.sourceId || source?.displayName)} className="rounded-lg border border-border p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{String(source?.displayName || source?.sourceType || "Revenue source")}</p>
+                          <p className="text-xs text-muted-foreground">{String(source?.sourceType || "revenue")}</p>
+                        </div>
+                        <p className="text-sm font-semibold text-foreground">{formatCurrency(Number(source?.revenue || 0))}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
 
             <Dialog open={benchmarkDialogOpen} onOpenChange={setBenchmarkDialogOpen}>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">

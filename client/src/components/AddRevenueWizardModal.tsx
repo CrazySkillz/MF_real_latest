@@ -112,6 +112,7 @@ export function AddRevenueWizardModal(props: {
 
     if (platformContext === 'tiktok') {
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date?platformContext=tiktok`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=tiktok`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=tiktok&dateRange=30days`], exact: false });
       void queryClient.invalidateQueries({ queryKey: [`/api/tiktok/${campaignId}/daily-metrics`], exact: false });
@@ -159,6 +160,7 @@ export function AddRevenueWizardModal(props: {
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_ads/reports", campaignId], exact: false });
     } else if (platformContext === 'tiktok') {
       void queryClient.refetchQueries({ queryKey: [`/api/tiktok/${campaignId}/daily-metrics`], exact: false });
+      void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`], exact: false });
       void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=tiktok&dateRange=30days`], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/tiktok/kpis", campaignId], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/tiktok/benchmarks", campaignId], exact: false });

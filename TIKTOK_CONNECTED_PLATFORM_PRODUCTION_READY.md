@@ -859,6 +859,8 @@ Status:
 - [x] Commit 10 current-value modal parity completed locally: TikTok Create KPI and Create Benchmark now populate Current Value from the same selected persisted TikTok rows, TikTok-scoped attributed revenue, ROI, and ROAS values already used by the Overview cards; unavailable metrics stay blank rather than receiving invented zeroes.
 - [x] Commit 10 no-default-template root cause traced: TikTok Create KPI and Create Benchmark initialized `metric` to `impressions`, and the default reset handlers also defaulted to `impressions`, which made the Impressions template appear selected when the modal opened.
 - [x] Commit 10 no-default-template fix completed locally: opening either TikTok create modal now starts with no selected metric; clicking a template still selects it and fills current value from selected persisted TikTok rows.
+- [x] Commit 10 modal number-format root cause traced: TikTok Create KPI and Create Benchmark displayed raw numeric strings in Current Value, Target Value, and Benchmark Value, and count metrics used a blank unit instead of `count`.
+- [x] Commit 10 modal number-format fix completed locally: TikTok count templates now use `count`, Current Value is formatted from selected TikTok source-backed values, and Target/Benchmark Value fields format with thousands separators while typing and normalize on blur.
 - [x] Commit 10 source-safety preserved: no schema changes, no storage bypass, no metric math changes, no unscoped revenue, and no generic campaign allocation were added.
 - [x] Commit 10 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
 - [x] Commit 10 local validation passed: `npm run check`.

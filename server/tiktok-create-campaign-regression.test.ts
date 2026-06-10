@@ -79,6 +79,9 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(app).toContain('const TikTokAnalytics = lazy(() => import("@/pages/tiktok-analytics"))');
     expect(app).toContain('<Route path="/campaigns/:id/tiktok-analytics" component={TikTokAnalytics} />');
     expect(page).toContain("TikTok Ads Analytics");
+    expect(page).toContain('{ key: "impressions", label: "Impressions", unit: "count" }');
+    expect(page).toContain("function formatTikTokNumberAsYouType");
+    expect(page).toContain("function formatTikTokNumberByUnit");
     expect(page).not.toContain("Revenue / ROI / ROAS");
     expect(page).toContain("Total Revenue");
     expect(page).toContain("ROI");
@@ -112,11 +115,13 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain('metric: "custom"');
     expect(page).toContain("currentValue: getTikTokCurrentMetricValue(metric.key)");
     expect(page).toContain("function getTikTokCurrentMetricValue(metricKey: string)");
+    expect(page).toContain("return formatTikTokNumberByUnit(String(value), getTikTokGoalMetric(metricKey).unit);");
     expect(page).toContain("totalRevenue: attributedRevenue");
     expect(page).toContain("roas");
     expect(page).toContain("Describe what this KPI measures and why it's important");
     expect(page).toContain("Current Value");
     expect(page).toContain("Target Value *");
+    expect(page).toContain("targetValue: formatTikTokNumberAsYouType(event.target.value, form.unit)");
     expect(page).toContain("Priority");
     expect(page).toContain("Enable alerts for this KPI");
     expect(page).toContain("Receive notifications for KPI performance alerts on the bell icon &amp; in your Notifications center");
@@ -145,6 +150,7 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("What is this benchmark and why does it matter?");
     expect(page).toContain("Auto-filled from TikTok");
     expect(page).toContain("Enter benchmark value");
+    expect(page).toContain("benchmarkValue: formatTikTokNumberAsYouType(event.target.value, form.unit)");
     expect(page).toContain("%, $, count, etc.");
     expect(page).toContain("Benchmark Value *");
     expect(page).toContain("Enable alerts for this Benchmark");

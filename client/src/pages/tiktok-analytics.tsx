@@ -16,12 +16,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const TIKTOK_GOAL_METRICS = [
-  { key: "impressions", label: "Impressions", unit: "" },
-  { key: "clicks", label: "Clicks", unit: "" },
+  { key: "impressions", label: "Impressions", unit: "count" },
+  { key: "clicks", label: "Clicks", unit: "count" },
   { key: "spend", label: "Spend", unit: "$" },
-  { key: "conversions", label: "Conversions", unit: "" },
-  { key: "videoViews", label: "Video Views", unit: "" },
-  { key: "engagements", label: "Engagements", unit: "" },
+  { key: "conversions", label: "Conversions", unit: "count" },
+  { key: "videoViews", label: "Video Views", unit: "count" },
+  { key: "engagements", label: "Engagements", unit: "count" },
   { key: "ctr", label: "CTR", unit: "%" },
   { key: "cpc", label: "CPC", unit: "$" },
   { key: "cpm", label: "CPM", unit: "$" },
@@ -51,6 +51,45 @@ function formatNumber(value: number) {
 
 function formatPct(value: number | null) {
   return value === null || value === undefined ? "Unavailable" : `${value.toFixed(2)}%`;
+}
+
+function formatTikTokNumberAsYouType(raw: string, unit: string) {
+  const input = String(raw || "");
+  const noCommas = stripNumberFormatting(input);
+  if (!noCommas) return "";
+  const negative = noCommas.startsWith("-");
+  const body = negative ? noCommas.slice(1) : noCommas;
+  if (String(unit || "").toLowerCase() === "count") {
+    const digitsOnly = body.replace(/\D+/g, "");
+    if (!digitsOnly) return negative ? "-" : "";
+    return `${negative ? "-" : ""}${digitsOnly.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+  }
+  const sanitized = body.replace(/[^0-9.]/g, "");
+  if (!sanitized) return negative ? "-" : "";
+  const dotIndex = sanitized.indexOf(".");
+  const hasDot = dotIndex >= 0;
+  let intPart = hasDot ? sanitized.slice(0, dotIndex) : sanitized;
+  const fracPart = hasDot ? sanitized.slice(dotIndex + 1).replace(/\./g, "") : "";
+  if (hasDot && !intPart) intPart = "0";
+  if (!intPart && !hasDot) return negative ? "-" : "";
+  const grouped = intPart.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",") || (hasDot ? "0" : "");
+  return `${negative ? "-" : ""}${grouped}${hasDot ? "." : ""}${fracPart}`;
+}
+
+function formatTikTokNumberByUnit(raw: string, unit: string) {
+  const cleaned = stripNumberFormatting(raw);
+  if (!cleaned) return "";
+  const value = Number(cleaned);
+  if (!Number.isFinite(value)) return raw;
+  const normalizedUnit = String(unit || "").toLowerCase();
+  if (normalizedUnit === "count") return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  if (normalizedUnit === "%" || normalizedUnit === "percent") {
+    return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+  if (normalizedUnit === "$" || normalizedUnit === "currency" || normalizedUnit === "x") {
+    return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  return value.toLocaleString();
 }
 
 const REVENUE_DEPENDENT_METRICS = new Set(["totalrevenue", "revenue", "roi", "roas", "profit"]);
@@ -506,7 +545,7 @@ export default function TikTokAnalytics() {
     };
     const value = values[metricKey];
     if (value === null || value === undefined || !Number.isFinite(value)) return "";
-    return Number.isInteger(value) ? String(value) : value.toFixed(2);
+    return formatTikTokNumberByUnit(String(value), getTikTokGoalMetric(metricKey).unit);
   }
 
   return (
@@ -926,11 +965,11 @@ export default function TikTokAnalytics() {
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="space-y-2">
                       <Label htmlFor="tiktok-kpi-current">Current Value</Label>
-                      <Input id="tiktok-kpi-current" inputMode="decimal" value={kpiForm.currentValue} onChange={(event) => setKpiForm((form) => ({ ...form, currentValue: event.target.value }))} placeholder="0" />
+                      <Input id="tiktok-kpi-current" inputMode="decimal" value={kpiForm.currentValue} onChange={(event) => setKpiForm((form) => ({ ...form, currentValue: formatTikTokNumberAsYouType(event.target.value, form.unit) }))} onBlur={(event) => setKpiForm((form) => ({ ...form, currentValue: formatTikTokNumberByUnit(event.target.value, form.unit) }))} placeholder="0" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="tiktok-kpi-target">Target Value *</Label>
-                      <Input id="tiktok-kpi-target" inputMode="decimal" value={kpiForm.targetValue} onChange={(event) => setKpiForm((form) => ({ ...form, targetValue: event.target.value }))} placeholder="0" />
+                      <Input id="tiktok-kpi-target" inputMode="decimal" value={kpiForm.targetValue} onChange={(event) => setKpiForm((form) => ({ ...form, targetValue: formatTikTokNumberAsYouType(event.target.value, form.unit) }))} onBlur={(event) => setKpiForm((form) => ({ ...form, targetValue: formatTikTokNumberByUnit(event.target.value, form.unit) }))} placeholder="0" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="tiktok-kpi-unit">Unit</Label>
@@ -1097,11 +1136,11 @@ export default function TikTokAnalytics() {
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="space-y-2">
                       <Label htmlFor="tiktok-benchmark-current">Current Value</Label>
-                      <Input id="tiktok-benchmark-current" inputMode="decimal" value={benchmarkForm.currentValue} onChange={(event) => setBenchmarkForm((form) => ({ ...form, currentValue: event.target.value }))} placeholder="Auto-filled from TikTok" />
+                      <Input id="tiktok-benchmark-current" inputMode="decimal" value={benchmarkForm.currentValue} onChange={(event) => setBenchmarkForm((form) => ({ ...form, currentValue: formatTikTokNumberAsYouType(event.target.value, form.unit) }))} onBlur={(event) => setBenchmarkForm((form) => ({ ...form, currentValue: formatTikTokNumberByUnit(event.target.value, form.unit) }))} placeholder="Auto-filled from TikTok" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="tiktok-benchmark-value">Benchmark Value *</Label>
-                      <Input id="tiktok-benchmark-value" inputMode="decimal" value={benchmarkForm.benchmarkValue} onChange={(event) => setBenchmarkForm((form) => ({ ...form, benchmarkValue: event.target.value }))} placeholder="Enter benchmark value" />
+                      <Input id="tiktok-benchmark-value" inputMode="decimal" value={benchmarkForm.benchmarkValue} onChange={(event) => setBenchmarkForm((form) => ({ ...form, benchmarkValue: formatTikTokNumberAsYouType(event.target.value, form.unit) }))} onBlur={(event) => setBenchmarkForm((form) => ({ ...form, benchmarkValue: formatTikTokNumberByUnit(event.target.value, form.unit) }))} placeholder="Enter benchmark value" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="tiktok-benchmark-unit">Unit</Label>

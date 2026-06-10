@@ -25,6 +25,13 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain('if (requestedSourceId) return String((s as any).id || "") === requestedSourceId;');
   });
 
+  it("shows Shopify as connected when an active scoped Shopify revenue source exists", () => {
+    const modal = read(REVENUE_MODAL_FILE);
+
+    expect(modal).toContain('crmStatus.shopify || crmHasSource.shopify ? (');
+    expect(modal).toContain('crmStatus.shopify || crmHasSource.shopify ? "Attribute order revenue to this campaign." : "Connect Shopify to import order revenue."');
+  });
+
   it("does not silently truncate Shopify order pagination", () => {
     const routes = read(ROUTES_FILE);
 

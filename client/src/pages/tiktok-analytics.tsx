@@ -294,6 +294,7 @@ export default function TikTokAnalytics() {
   const [benchmarkDialogOpen, setBenchmarkDialogOpen] = useState(false);
   const [revenueDialogOpen, setRevenueDialogOpen] = useState(false);
   const [revenueSourcesDialogOpen, setRevenueSourcesDialogOpen] = useState(false);
+  const [pipelineProxySourcesDialogOpen, setPipelineProxySourcesDialogOpen] = useState(false);
   const [editingRevenueSource, setEditingRevenueSource] = useState<any>(null);
   const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState("");
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
@@ -791,6 +792,28 @@ export default function TikTokAnalytics() {
   const platformBenchmarks = Array.isArray(benchmarksData) ? benchmarksData : [];
   const benchmarkTracker = buildBenchmarkTracker(platformBenchmarks, hasAttributedRevenue);
   const revenueSources = Array.isArray(revenueSourcesData?.sources) ? revenueSourcesData.sources : [];
+  const pipelineProxySourceEntries = revenueSources
+    .map((source: any) => {
+      const sourceType = String(source?.sourceType || "").toLowerCase();
+      if (source?.isActive === false || (sourceType !== "hubspot" && sourceType !== "salesforce")) return null;
+      const config = parseRevenueSourceConfig(source);
+      const totalToDate = Number(config?.pipelineTotalToDate || 0);
+      const stageLabel = String(config?.pipelineStageLabel || config?.pipelineStageName || config?.pipelineStageId || "").trim();
+      if (config?.pipelineEnabled !== true || !stageLabel || !Number.isFinite(totalToDate) || totalToDate <= 0) return null;
+      const totals = Array.isArray(config?.pipelineValueRevenueTotals) ? config.pipelineValueRevenueTotals : [];
+      const selectedValues = Array.isArray(config?.selectedValues) ? config.selectedValues.map((value: any) => String(value || "").trim()).filter(Boolean) : [];
+      return {
+        sourceId: String(source?.id || source?.sourceId || sourceType),
+        providerLabel: sourceType === "hubspot" ? "HubSpot" : "Salesforce",
+        pipelineStageLabel: stageLabel,
+        totalToDate,
+        campaignValues: totals.length > 0
+          ? totals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
+          : selectedValues,
+      };
+    })
+    .filter(Boolean) as any[];
+  const pipelineProxyTotal = pipelineProxySourceEntries.reduce((sum, entry: any) => sum + Number(entry?.totalToDate || 0), 0);
   const reportSelectionMade = reportModalStep === "custom"
     ? reportForm.reportType === "custom" && Object.values(reportForm.configuration?.sections || {}).some(Boolean)
     : TIKTOK_REPORT_TEMPLATES.some((template) => template.key === reportForm.reportType);
@@ -987,6 +1010,26 @@ export default function TikTokAnalytics() {
                           </div>
                         </CardContent>
                       </Card>
+                      {pipelineProxySourceEntries.length > 0 && (
+                        <Card>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm text-muted-foreground">Pipeline Proxy</p>
+                                <p className="text-2xl font-semibold text-foreground">{formatCurrency(pipelineProxyTotal)}</p>
+                                <button
+                                  type="button"
+                                  onClick={() => setPipelineProxySourcesDialogOpen(true)}
+                                  className="mt-1 text-xs text-muted-foreground hover:text-foreground"
+                                >
+                                  Sources ({pipelineProxySourceEntries.length})
+                                </button>
+                              </div>
+                              <Target className="w-5 h-5 text-muted-foreground" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
                       {metricCard("ROI", roi === null ? "Unavailable" : `${roi.toFixed(2)}%`, Percent, roi === null ? "Requires TikTok-scoped attributed revenue." : undefined)}
                       {metricCard("ROAS", roas === null ? "Unavailable" : `${roas.toFixed(2)}x`, TrendingUp, roas === null ? "Requires TikTok-scoped attributed revenue." : undefined)}
                     </div>
@@ -1549,6 +1592,38 @@ export default function TikTokAnalytics() {
                     </div>
                     );
                   })}
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={pipelineProxySourcesDialogOpen} onOpenChange={setPipelineProxySourcesDialogOpen}>
+              <DialogContent className="bg-card border-border max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="text-foreground">Pipeline Proxy Sources</DialogTitle>
+                  <DialogDescription className="text-muted-foreground">
+                    Sources contributing to TikTok Pipeline Proxy.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2">
+                  {pipelineProxySourceEntries.map((entry: any) => (
+                    <div key={entry.sourceId} className="rounded-md border border-border p-3 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium text-foreground">{entry.providerLabel}</p>
+                        <p className="font-medium tabular-nums text-foreground">{formatCurrency(Number(entry.totalToDate || 0))}</p>
+                      </div>
+                      <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                        {Array.isArray(entry.campaignValues) && entry.campaignValues.length > 0 ? (
+                          entry.campaignValues.map((value: any, index: number) => (
+                            <p key={`${entry.sourceId}-${index}`}>
+                              {[`Stage: ${entry.pipelineStageLabel}`, String(value || "").trim()].filter(Boolean).join(" | ")}
+                            </p>
+                          ))
+                        ) : (
+                          <p>{entry.pipelineStageLabel}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </DialogContent>
             </Dialog>

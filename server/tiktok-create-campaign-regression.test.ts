@@ -183,6 +183,14 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("Sources contributing to TikTok Total Revenue.");
     expect(page).toContain("parseRevenueSourceConfig(source)");
     expect(page).toContain("selected attribution value");
+    expect(page).toContain("const [pipelineProxySourcesDialogOpen, setPipelineProxySourcesDialogOpen] = useState(false);");
+    expect(page).toContain("pipelineProxySourceEntries");
+    expect(page).toContain('sourceType !== "hubspot" && sourceType !== "salesforce"');
+    expect(page).toContain("config?.pipelineEnabled !== true");
+    expect(page).toContain("Pipeline Proxy");
+    expect(page).toContain("Sources contributing to TikTok Pipeline Proxy.");
+    expect(page).not.toContain('/api/hubspot/${campaignId}/pipeline-proxy?platformContext=tiktok');
+    expect(page).not.toContain('/api/salesforce/${campaignId}/pipeline-proxy?platformContext=tiktok');
     expect(page).toContain("initialSource={editingRevenueSource || undefined}");
     expect(page).toContain("aria-label=\"Edit revenue source\"");
     expect(page).toContain("aria-label=\"Remove revenue source\"");

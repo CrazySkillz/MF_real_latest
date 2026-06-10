@@ -792,14 +792,14 @@ export default function TikTokAnalytics() {
   const platformBenchmarks = Array.isArray(benchmarksData) ? benchmarksData : [];
   const benchmarkTracker = buildBenchmarkTracker(platformBenchmarks, hasAttributedRevenue);
   const revenueSources = Array.isArray(revenueSourcesData?.sources) ? revenueSourcesData.sources : [];
-  const pipelineProxySourceEntries = revenueSources
+  const pipelineProxyConfiguredEntries = revenueSources
     .map((source: any) => {
       const sourceType = String(source?.sourceType || "").toLowerCase();
       if (source?.isActive === false || (sourceType !== "hubspot" && sourceType !== "salesforce")) return null;
       const config = parseRevenueSourceConfig(source);
       const totalToDate = Number(config?.pipelineTotalToDate || 0);
       const stageLabel = String(config?.pipelineStageLabel || config?.pipelineStageName || config?.pipelineStageId || "").trim();
-      if (config?.pipelineEnabled !== true || !stageLabel || !Number.isFinite(totalToDate) || totalToDate <= 0) return null;
+      if (config?.pipelineEnabled !== true || !stageLabel || !Number.isFinite(totalToDate)) return null;
       const totals = Array.isArray(config?.pipelineValueRevenueTotals) ? config.pipelineValueRevenueTotals : [];
       const selectedValues = Array.isArray(config?.selectedValues) ? config.selectedValues.map((value: any) => String(value || "").trim()).filter(Boolean) : [];
       return {
@@ -813,7 +813,8 @@ export default function TikTokAnalytics() {
       };
     })
     .filter(Boolean) as any[];
-  const pipelineProxyTotal = pipelineProxySourceEntries.reduce((sum, entry: any) => sum + Number(entry?.totalToDate || 0), 0);
+  const pipelineProxySourceEntries = pipelineProxyConfiguredEntries.filter((entry: any) => Number(entry?.totalToDate || 0) > 0);
+  const pipelineProxyTotal = pipelineProxyConfiguredEntries.reduce((sum, entry: any) => sum + Number(entry?.totalToDate || 0), 0);
   const reportSelectionMade = reportModalStep === "custom"
     ? reportForm.reportType === "custom" && Object.values(reportForm.configuration?.sections || {}).some(Boolean)
     : TIKTOK_REPORT_TEMPLATES.some((template) => template.key === reportForm.reportType);
@@ -1010,20 +1011,22 @@ export default function TikTokAnalytics() {
                           </div>
                         </CardContent>
                       </Card>
-                      {pipelineProxySourceEntries.length > 0 && (
+                      {pipelineProxyConfiguredEntries.length > 0 && (
                         <Card>
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between gap-3">
                               <div>
                                 <p className="text-sm text-muted-foreground">Pipeline Proxy</p>
                                 <p className="text-2xl font-semibold text-foreground">{formatCurrency(pipelineProxyTotal)}</p>
-                                <button
-                                  type="button"
-                                  onClick={() => setPipelineProxySourcesDialogOpen(true)}
-                                  className="mt-1 text-xs text-muted-foreground hover:text-foreground"
-                                >
-                                  Sources ({pipelineProxySourceEntries.length})
-                                </button>
+                                {pipelineProxySourceEntries.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPipelineProxySourcesDialogOpen(true)}
+                                    className="mt-1 text-xs text-muted-foreground hover:text-foreground"
+                                  >
+                                    Sources ({pipelineProxySourceEntries.length})
+                                  </button>
+                                )}
                               </div>
                               <Target className="w-5 h-5 text-muted-foreground" />
                             </div>

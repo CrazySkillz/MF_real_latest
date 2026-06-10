@@ -88,12 +88,12 @@ Bundling rule:
 | 13C | selected-campaign change cleanup and no stale-row resurrection | Done locally and user-validated | Lifecycle behavior |
 | 13D | existing damaged-data cleanup plan, if stale rows are proven | Done locally and user-validated | Data cleanup plan only |
 | 13E | Commit 13 regression and validation docs | Done locally and user-validated | None |
-| 14A | local/test-mode Create Campaign browser validation | Automated evidence documented; user validation pending | Validation only |
-| 14B | local/test-mode Connected Platforms browser validation | Automated evidence documented; user validation pending | Validation only |
-| 14C | local TikTok-only Campaign DeepDive validation | Automated evidence documented; user validation pending | Validation only |
-| 14D | local GA4 plus TikTok validation | Automated evidence documented; user validation pending | Validation only |
-| 14E | local multi-paid-source no-double-counting validation | Automated evidence documented; user validation pending | Validation only |
-| 14F | final local evidence update | Done locally; validation pending | Documentation only |
+| 14A | local/test-mode Create Campaign browser validation | Automated evidence documented; user/browser validation passed | Validation only |
+| 14B | local/test-mode Connected Platforms browser validation | Automated evidence documented; user/browser validation passed | Validation only |
+| 14C | local TikTok-only Campaign DeepDive validation | Automated evidence documented; user/browser validation passed | Validation only |
+| 14D | local GA4 plus TikTok validation | Automated evidence documented; user/browser validation passed | Validation only |
+| 14E | local multi-paid-source no-double-counting validation | Automated evidence documented; user/browser validation passed | Validation only |
+| 14F | final local evidence update | Done locally and command-validated | Documentation only |
 | 15A | live OAuth start/callback/provider campaign discovery validation | Deferred | Live provider only |
 | 15B | live TikTok reporting refresh validation | Deferred | Live provider only |
 | 15C | deployed scheduled report/live-source evidence | Deferred | Live/deployed only |
@@ -1001,7 +1001,8 @@ Status:
 - [x] Commit 14 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/performance-summary-aggregate.test.ts server/campaign-delete-cascade-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - [x] Commit 14 local validation passed: `npm run check`.
 - [x] Commit 14 local validation passed: `npm run build` after rerunning outside the sandbox because the first build attempt hit Windows `spawn EPERM` while starting esbuild.
-- [ ] Commit 14 user/browser validation pending: deployed browser evidence should confirm Create Campaign TikTok setup, Connected Platforms add-source, TikTok-only Campaign DeepDive, GA4 plus TikTok, and multi-paid-source no-double-counting using the current deployed build.
+- [x] User validation passed for pushed Commit 14 (`0bb142fa`): commit stat review, targeted TikTok/aggregate/cascade/source-safety/auth regression tests, `npm run check`, and `npm run build` after rerun outside sandbox.
+- [x] Commit 14 user/browser validation passed: deployed browser evidence confirmed Create Campaign TikTok setup, Connected Platforms add-source, TikTok-only Campaign DeepDive, GA4 plus TikTok, and multi-paid-source no-double-counting using the current deployed build.
 
 ### Commit 15: Deferred Live OAuth And Provider Validation
 

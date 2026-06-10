@@ -378,7 +378,7 @@ describe("Meta production readiness regression guard", () => {
     );
 
     expect(modal).toContain('platformContext === "meta" ? "Meta" : "Google Ads"');
-    expect(modal).toContain("const needsCampaignMapping = (platformContext === 'google_ads' || platformContext === 'meta' || platformContext === 'instagram')");
+    expect(modal).toContain("const needsCampaignMapping = (platformContext === 'google_ads' || platformContext === 'meta' || platformContext === 'instagram' || platformContext === 'tiktok')");
     expect(modal).toContain('fetch(`/api/meta/${campaignId}/campaigns`');
     expect(modal).toContain('selectedIds.has(String(c?.id || ""))');
     expect(modal).toContain('renderPlatformCampaignMapping(csvCampaignValues)');
@@ -392,7 +392,7 @@ describe("Meta production readiness regression guard", () => {
     expect(salesforce).toContain('renderAdPlatformCampaignMappings()');
     expect(shopify).toContain('const isMeta = platformContext === "meta";');
     expect(shopify).toContain('? `/api/meta/${campaignId}/campaigns`');
-    expect(shopify).toContain('(isLinkedIn || isGoogleAds || isMeta || isInstagram) && selectedCampaignMappings.length > 0');
+    expect(shopify).toContain('(isLinkedIn || isGoogleAds || isMeta || isInstagram || isTikTok) && selectedCampaignMappings.length > 0');
 
     expect(routes).toContain("const getActiveMetaCampaignIdSet = async (campaignId: string): Promise<Set<string>> => {");
     expect(routes).toContain('if (!id || (platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram" && platformContext !== "tiktok")) return null;');

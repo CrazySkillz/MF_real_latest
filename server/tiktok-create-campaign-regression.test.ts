@@ -328,6 +328,9 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
 
   it("supports TikTok campaign mapping in shared revenue imports", () => {
     const modal = readAddRevenueWizard();
+    const hubspot = readFileSync(join(process.cwd(), "client", "src", "components", "HubSpotRevenueWizard.tsx"), "utf8");
+    const salesforce = readFileSync(join(process.cwd(), "client", "src", "components", "SalesforceRevenueWizard.tsx"), "utf8");
+    const shopify = readFileSync(join(process.cwd(), "client", "src", "components", "ShopifyRevenueWizard.tsx"), "utf8");
     const routes = readRoutes();
 
     expect(modal).toContain("platformContext === 'tiktok') && (step === 'csv_map' || step === 'sheets_map')");
@@ -335,7 +338,19 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(modal).toContain('platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "tiktok"');
     expect(modal).toContain('platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram" && platformContext !== "tiktok"');
     expect(modal).toContain('const platformLabel = platformContext === "tiktok" ? "TikTok"');
+    expect(modal).toContain('conns.length > 0 && (isEditing || platformContext !== "tiktok")');
+    expect(modal).toContain('if (!isEditing && platformContext === "tiktok") setSheetsConnectionId("");');
     expect(modal).toContain("campaignMappings");
+    expect(hubspot).toContain('const isTikTok = platformContext === "tiktok";');
+    expect(hubspot).toContain('`/api/tiktok/${campaignId}/campaigns`');
+    expect(hubspot).toContain('const platformLabel = isTikTok ? "TikTok"');
+    expect(salesforce).toContain('const isTikTok = platformContext === "tiktok";');
+    expect(salesforce).toContain('`/api/tiktok/${campaignId}/campaigns`');
+    expect(salesforce).toContain('const platformLabel = isTikTok ? "TikTok"');
+    expect(shopify).toContain('const isTikTok = platformContext === "tiktok";');
+    expect(shopify).toContain('`/api/tiktok/${campaignId}/campaigns`');
+    expect(shopify).toContain('const platformLabel = isTikTok ? "TikTok"');
+    expect(shopify).toContain('isLinkedIn || isGoogleAds || isMeta || isInstagram || isTikTok');
     expect(routes).toContain('app.get("/api/tiktok/:campaignId/campaigns"');
   });
 

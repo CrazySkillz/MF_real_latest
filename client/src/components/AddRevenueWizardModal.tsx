@@ -771,7 +771,7 @@ export function AddRevenueWizardModal(props: {
         setSheetsConnections(conns);
         // Auto-select: if no connectionId set, or stored connectionId doesn't match any available connection
         const currentIdValid = sheetsConnectionId && conns.some((c: any) => String(c.id) === sheetsConnectionId);
-        if (!sheetsBackToChooser && !currentIdValid && conns.length > 0) {
+        if (!sheetsBackToChooser && !currentIdValid && conns.length > 0 && (isEditing || platformContext !== "tiktok")) {
           setSheetsConnectionId(String(conns[0]?.id || ""));
         }
       } catch {
@@ -1585,7 +1585,10 @@ export function AddRevenueWizardModal(props: {
                   </Card>
                 )}
 
-                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStep("sheets_choose")}>
+                <Card className="cursor-pointer hover:border-blue-500 transition-colors" onClick={() => {
+                  if (!isEditing && platformContext === "tiktok") setSheetsConnectionId("");
+                  setStep("sheets_choose");
+                }}>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FileSpreadsheet className="w-4 h-4" />

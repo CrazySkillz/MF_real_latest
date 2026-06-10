@@ -288,16 +288,16 @@ describe("Instagram Connected Platforms regression guard", () => {
     expect(routes).toContain('platformContext === "instagram"');
     expect(salesforce).toContain('const isInstagram = platformContext === "instagram";');
     expect(salesforce).toContain('`/api/instagram/${campaignId}/campaigns`');
-    expect(salesforce).toContain('const platformLabel = isInstagram ? "Instagram"');
+    expect(salesforce).toContain('const platformLabel = isTikTok ? "TikTok" : isInstagram ? "Instagram"');
     expect(hubspot).toContain('const isInstagram = platformContext === "instagram";');
     expect(hubspot).toContain('`/api/instagram/${campaignId}/campaigns`');
-    expect(hubspot).toContain('const platformLabel = isInstagram ? "Instagram"');
+    expect(hubspot).toContain('const platformLabel = isTikTok ? "TikTok" : isInstagram ? "Instagram"');
     expect(shopify).toContain('const isInstagram = platformContext === "instagram";');
     expect(shopify).toContain('`/api/instagram/${campaignId}/campaigns`');
-    expect(shopify).toContain('isLinkedIn || isGoogleAds || isMeta || isInstagram');
+    expect(shopify).toContain('isLinkedIn || isGoogleAds || isMeta || isInstagram || isTikTok');
     expect(modal).toContain("platformContext === 'google_ads' || platformContext === 'meta' || platformContext === 'instagram'");
     expect(modal).toContain('`/api/instagram/${campaignId}/campaigns`');
-    expect(modal).toContain('const platformLabel = platformContext === "instagram" ? "Instagram"');
+    expect(modal).toContain('const platformLabel = platformContext === "tiktok" ? "TikTok" : platformContext === "instagram" ? "Instagram"');
   });
 
   it("writes Instagram test daily metrics from test connect and explicit test refresh only", () => {

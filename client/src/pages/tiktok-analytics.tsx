@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -264,9 +265,11 @@ export default function TikTokAnalytics() {
   const [benchmarkDialogOpen, setBenchmarkDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportModalStep, setReportModalStep] = useState<"standard" | "custom">("standard");
-  const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({ overview: true });
+  const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({});
   const [editingReport, setEditingReport] = useState<any>(null);
+  const [reportToDelete, setReportToDelete] = useState<any>(null);
   const [downloadingReportId, setDownloadingReportId] = useState("");
+  const [reportInitialFingerprint, setReportInitialFingerprint] = useState("");
   const [reportForm, setReportForm] = useState({
     name: "",
     description: "",
@@ -383,6 +386,21 @@ export default function TikTokAnalytics() {
     });
   };
 
+  const getReportFormFingerprint = (form: any) => JSON.stringify({
+    name: String(form?.name || ""),
+    description: String(form?.description || ""),
+    reportType: String(form?.reportType || ""),
+    configuration: form?.reportType === "custom" ? form?.configuration : { sections: form?.configuration?.sections || {} },
+    scheduleEnabled: !!form?.scheduleEnabled,
+    scheduleFrequency: form?.scheduleEnabled ? String(form?.scheduleFrequency || "") : null,
+    scheduleDayOfWeek: form?.scheduleEnabled ? String(form?.scheduleDayOfWeek || "") : null,
+    scheduleDayOfMonth: form?.scheduleEnabled ? String(form?.scheduleDayOfMonth || "") : null,
+    quarterTiming: form?.scheduleEnabled ? String(form?.quarterTiming || "") : null,
+    scheduleTime: form?.scheduleEnabled ? String(form?.scheduleTime || "") : null,
+    scheduleTimeZone: form?.scheduleEnabled ? String(form?.scheduleTimeZone || "") : null,
+    scheduleRecipients: form?.scheduleEnabled ? String(form?.scheduleRecipients || "") : "",
+  });
+
   const resetReportForm = (report?: any) => {
     const parsedConfiguration = (() => {
       if (!report?.configuration) return cloneTikTokCustomReportConfig();
@@ -403,8 +421,8 @@ export default function TikTokAnalytics() {
     })();
     setEditingReport(report || null);
     setReportModalStep(String(report?.reportType || "overview") === "custom" ? "custom" : "standard");
-    setExpandedCustomReportSections({ overview: true });
-    setReportForm({
+    setExpandedCustomReportSections({});
+    const nextReportForm = {
       name: report?.name || "",
       description: report?.description || "",
       reportType: report?.reportType || "",
@@ -417,7 +435,9 @@ export default function TikTokAnalytics() {
       scheduleTime: report?.scheduleTime || "09:00",
       scheduleTimeZone: report?.scheduleTimeZone || "UTC",
       scheduleRecipients: Array.isArray(report?.scheduleRecipients) ? report.scheduleRecipients.join(", ") : "",
-    });
+    };
+    setReportForm(nextReportForm);
+    setReportInitialFingerprint(getReportFormFingerprint(nextReportForm));
   };
 
   const { data: connection, isLoading: connectionLoading, error: connectionError } = useQuery<any>({
@@ -731,6 +751,7 @@ export default function TikTokAnalytics() {
   const reportSelectionMade = reportModalStep === "custom"
     ? reportForm.reportType === "custom" && Object.values(reportForm.configuration?.sections || {}).some(Boolean)
     : TIKTOK_REPORT_TEMPLATES.some((template) => template.key === reportForm.reportType);
+  const reportFormChanged = !editingReport || getReportFormFingerprint(reportForm) !== reportInitialFingerprint;
 
   function getTikTokCurrentMetricValue(metricKey: string) {
     if (!hasRows) return "";
@@ -1147,7 +1168,7 @@ export default function TikTokAnalytics() {
                                 <Button variant="ghost" size="icon" aria-label="Edit report" onClick={() => { resetReportForm(report); setReportDialogOpen(true); }}>
                                   <Pencil className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" aria-label="Delete report" disabled={deleteReportMutation.isPending} onClick={() => deleteReportMutation.mutate(String(report.id))}>
+                                <Button variant="ghost" size="icon" aria-label="Delete report" disabled={deleteReportMutation.isPending} onClick={() => setReportToDelete(report)}>
                                   <Trash2 className="w-4 h-4 text-red-600" />
                                 </Button>
                               </div>
@@ -1510,6 +1531,30 @@ export default function TikTokAnalytics() {
               </DialogContent>
             </Dialog>
 
+            <AlertDialog open={!!reportToDelete} onOpenChange={(open) => { if (!open) setReportToDelete(null); }}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete report?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will delete {String(reportToDelete?.name || "this TikTok report")}. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleteReportMutation.isPending}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={deleteReportMutation.isPending}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      if (!reportToDelete?.id) return;
+                      deleteReportMutation.mutate(String(reportToDelete.id), { onSuccess: () => setReportToDelete(null) });
+                    }}
+                  >
+                    Delete Report
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
             <Dialog open={reportDialogOpen} onOpenChange={(open) => { setReportDialogOpen(open); if (!open) resetReportForm(); }}>
               <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-card border-border">
                 <DialogHeader>
@@ -1853,7 +1898,7 @@ export default function TikTokAnalytics() {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setReportDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={() => saveReportMutation.mutate()} disabled={saveReportMutation.isPending || !reportSelectionMade || (reportForm.scheduleEnabled && !reportForm.scheduleRecipients.trim())}>
+                  <Button onClick={() => saveReportMutation.mutate()} disabled={saveReportMutation.isPending || !reportSelectionMade || !reportFormChanged || (reportForm.scheduleEnabled && !reportForm.scheduleRecipients.trim())}>
                     {saveReportMutation.isPending ? "Saving..." : editingReport ? "Update Report" : reportForm.scheduleEnabled ? "Schedule Report" : "Generate & Download Report"}
                   </Button>
                 </DialogFooter>

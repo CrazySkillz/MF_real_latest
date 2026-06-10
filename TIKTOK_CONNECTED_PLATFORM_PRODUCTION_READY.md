@@ -905,6 +905,7 @@ Status:
 - [x] Commit 11 custom-report section parity root cause traced: TikTok Custom Report still rendered only placeholder explanatory text, so users could not expand Overview/KPI/Benchmark/Ad Comparison/Insights sections or choose current campaign KPI/Benchmark rows like the GA4 custom report builder.
 - [x] Commit 11 custom-report section parity completed locally: TikTok Custom Report now saves a GA4/Instagram-style `configuration` object with selected sections, subsections, KPI IDs, and Benchmark IDs through the existing platform report contract; no report route or analytics calculation shape was changed.
 - [x] Commit 11 custom-report action polish completed locally: new TikTok Custom Reports start with no selected sections/options, edit mode uses `Update Report` without auto-downloading, and report cards use the Download/Pencil/Trash action icon pattern.
+- [x] Commit 11 report edit/delete guard completed locally: TikTok report delete now requires a confirmation dialog, Custom Report opens with all sections collapsed by default, and edit-mode `Update Report` remains disabled until the saved report form/configuration changes.
 - [x] Commit 11 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/report-email-regression.test.ts server/custom-report-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
 - [x] Commit 11 local validation passed: `npm run check`.
 

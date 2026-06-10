@@ -179,6 +179,9 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("TikTok Reports");
     expect(page).toContain("Create campaign-scoped TikTok reports from selected source-backed rows.");
     expect(page).toContain('const [reportModalStep, setReportModalStep] = useState<"standard" | "custom">("standard");');
+    expect(page).toContain('const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({});');
+    expect(page).toContain("const [reportToDelete, setReportToDelete] = useState<any>(null);");
+    expect(page).toContain("const [reportInitialFingerprint, setReportInitialFingerprint] = useState(\"\");");
     expect(page).toContain("Standard Templates");
     expect(page).toContain("Pre-built professional report templates");
     expect(page).toContain("Custom Report");
@@ -195,7 +198,9 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("No TikTok Benchmarks have been created yet.");
     expect(page).toContain('configuration: reportForm.reportType === "custom" ? reportForm.configuration');
     expect(page).toContain("const reportSelectionMade = reportModalStep === \"custom\"");
+    expect(page).toContain("const reportFormChanged = !editingReport || getReportFormFingerprint(reportForm) !== reportInitialFingerprint;");
     expect(page).toContain("!reportSelectionMade");
+    expect(page).toContain("!reportFormChanged");
     expect(page).toContain("Generate & Download Report");
     expect(page).toContain("Schedule Report");
     expect(page).toContain("Update Report");
@@ -203,6 +208,8 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("<Download className=\"w-4 h-4 mr-2\" />");
     expect(page).toContain("<Pencil className=\"w-4 h-4\" />");
     expect(page).toContain("<Trash2 className=\"w-4 h-4 text-red-600\" />");
+    expect(page).toContain("Delete report?");
+    expect(page).toContain("Delete Report");
     expect(page).toContain("await downloadTikTokReport(report);");
     expect(page).toContain("Schedule Automated Reports");
     expect(page).toContain("Day of Week");

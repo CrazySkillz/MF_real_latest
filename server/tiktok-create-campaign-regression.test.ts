@@ -8,6 +8,8 @@ const readTikTokAnalyticsPage = () => readFileSync(join(process.cwd(), "client",
 const readApp = () => readFileSync(join(process.cwd(), "client", "src", "App.tsx"), "utf8");
 const readRoutes = () => readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
 const readReportScheduler = () => readFileSync(join(process.cwd(), "server", "report-scheduler.ts"), "utf8");
+const readTikTokScheduler = () => readFileSync(join(process.cwd(), "server", "tiktok-scheduler.ts"), "utf8");
+const readIndex = () => readFileSync(join(process.cwd(), "server", "index.ts"), "utf8");
 
 describe("TikTok Create Campaign source-contract regression guard", () => {
   it("exposes TikTok only through the Create Campaign test source contract", () => {
@@ -244,12 +246,24 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
   it("allows explicit test-mode TikTok refresh without hidden analytics seeding", () => {
     const routes = readRoutes();
     const page = readTikTokAnalyticsPage();
+    const tiktokScheduler = readTikTokScheduler();
+    const index = readIndex();
 
     expect(routes).toContain('app.post("/api/tiktok/:campaignId/refresh-test"');
+    expect(routes).toContain('app.post("/api/tiktok/:campaignId/refresh"');
+    expect(routes).toContain("const { refreshTikTokForCampaign } = await import(\"./tiktok-scheduler.js\");");
     expect(routes).toContain('String((connection as any).method || "") !== "test_mode"');
     expect(routes).toContain("storage.upsertTikTokDailyMetrics(rows as any)");
     expect(routes).toContain("isSimulated: true");
     expect(routes).toContain('metricAvailability: { revenue: "unavailable_until_tiktok_scoped_attributed_revenue_exists" }');
+    expect(tiktokScheduler).toContain("export async function refreshTikTokForCampaign");
+    expect(tiktokScheduler).toContain("parseSelectedTikTokCampaignIds(connection)");
+    expect(tiktokScheduler).toContain("storage.upsertTikTokDailyMetrics(rows as any)");
+    expect(tiktokScheduler).toContain('rawMetrics: { source: "tiktok_test_mode_refresh" }');
+    expect(tiktokScheduler).toContain("lastRefreshAt: new Date(), lastError: null");
+    expect(tiktokScheduler).toContain("live_provider_refresh_deferred");
+    expect(index).toContain('import { startTikTokScheduler } from "./tiktok-scheduler";');
+    expect(index).toContain("startTikTokScheduler();");
     expect(page).toContain("shouldAutoRefreshTestMetrics");
     expect(page).toContain("refreshTestMetrics.mutate()");
     expect(page).not.toContain("Refresh test metrics");

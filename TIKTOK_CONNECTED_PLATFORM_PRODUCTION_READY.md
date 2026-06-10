@@ -78,11 +78,11 @@ Bundling rule:
 | 11B | browser PDF/export uses latest TikTok source-backed values | Done locally; validation pending | Report exports |
 | 11C | scheduled TikTok reports fail closed and snapshot only successful sends | Done locally; validation pending | Scheduled reports |
 | 11D | Campaign DeepDive Custom Report includes TikTok through shared aggregate only | Done locally; validation pending | Campaign reports |
-| 11E | Commit 11 regression and validation docs | Done locally; validation pending | None |
-| 12A | manual TikTok refresh route writes selected rows only | Pending | Refresh route |
-| 12B | TikTok scheduler refresh skips missing, stale, unselected, or invalid sources | Pending | Background refresh |
-| 12C | refresh failures preserve previous valid rows and freshness state | Pending | Refresh safety |
-| 12D | Commit 12 regression and validation docs | Pending | None |
+| 11E | Commit 11 regression and validation docs | User validation passed | None |
+| 12A | manual TikTok refresh route writes selected rows only | Done locally; validation pending | Refresh route |
+| 12B | TikTok scheduler refresh skips missing, stale, unselected, or invalid sources | Done locally; validation pending | Background refresh |
+| 12C | refresh failures preserve previous valid rows and freshness state | Done locally; validation pending | Refresh safety |
+| 12D | Commit 12 regression and validation docs | Done locally; validation pending | None |
 | 13A | disconnect cleanup removes only current campaign TikTok-owned rows | Pending | Destructive path |
 | 13B | reconnect clears stale TikTok rows before new selected-scope writes | Pending | Lifecycle behavior |
 | 13C | selected-campaign change cleanup and no stale-row resurrection | Pending | Lifecycle behavior |
@@ -908,6 +908,7 @@ Status:
 - [x] Commit 11 report edit/delete guard completed locally: TikTok report delete now requires a confirmation dialog, Custom Report opens with all sections collapsed by default, and edit-mode `Update Report` remains disabled until the saved report form/configuration changes.
 - [x] Commit 11 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/report-email-regression.test.ts server/custom-report-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
 - [x] Commit 11 local validation passed: `npm run check`.
+- [x] User validation passed for Commit 11 report creation, custom report, edit/delete guard, download, and scheduled report UI behavior after deployment.
 
 ### Commit 12: Refresh And Scheduler
 
@@ -928,6 +929,15 @@ Validation:
 - Scheduler refresh preserves selected-campaign filtering.
 - Failed refresh does not overwrite real metrics with zeroes.
 - Stale TikTok data produces freshness warnings.
+
+Status:
+
+- [x] Commit 12 bundled root cause traced: TikTok had a test-mode seeding endpoint, but no shared manual/scheduled refresh boundary that checked campaign existence, advertiser/source identity, selected campaign scope, token/provider readiness, and failure metadata before writing rows.
+- [x] Commit 12 bundled implementation completed locally: `/api/tiktok/:campaignId/refresh` now calls `refreshTikTokForCampaign`, `startTikTokScheduler()` is wired into server startup, and test-mode refresh writes only selected `tiktok_daily_metrics` rows through the same storage contract consumed by TikTok analytics and Campaign DeepDive.
+- [x] Commit 12 refresh safety preserved: refresh skips missing campaigns, spend-only sources, missing advertiser IDs, empty selected campaign sets, missing live tokens, and live provider refresh until Commit 15; skipped/failed refreshes update `lastError` without deleting or overwriting previous valid rows.
+- [x] Commit 12 regression coverage added locally for manual route wiring, scheduler startup wiring, selected-row upsert behavior, live-provider deferred failure, and no `deleteTikTokDailyMetrics` call in the refresh function.
+- [x] Commit 12 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
+- [x] Commit 12 local validation passed: `npm run check`.
 
 ### Commit 13: Disconnect, Reconnect, And Damaged Data
 

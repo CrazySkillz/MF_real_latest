@@ -11,6 +11,7 @@ import { startDailyAutoRefreshScheduler } from "./auto-refresh-scheduler";
 import { startGA4DailyScheduler } from "./ga4-daily-scheduler";
 import { startGoogleAdsScheduler } from "./google-ads-scheduler";
 import { startInstagramScheduler } from "./instagram-scheduler";
+import { startTikTokScheduler } from "./tiktok-scheduler";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { clerkMiddleware } from "@clerk/express";
@@ -962,6 +963,13 @@ process.on('uncaughtException', (error: Error) => {
           startInstagramScheduler();
         } catch (error) {
           console.error('Failed to start Instagram scheduler:', error);
+        }
+
+        // Start TikTok data refresh scheduler
+        try {
+          startTikTokScheduler();
+        } catch (error) {
+          console.error('Failed to start TikTok scheduler:', error);
         }
       }, 5000); // 5 second delay
     });

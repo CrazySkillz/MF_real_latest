@@ -20362,6 +20362,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * Manually refresh TikTok daily metrics through the shared source-scoped refresh boundary
+   */
+  app.post("/api/tiktok/:campaignId/refresh", async (req, res) => {
+    try {
+      const { campaignId } = req.params;
+      const parsedId = campaignIdSchema.safeParse(String(campaignId || "").trim());
+      if (!parsedId.success) {
+        return res.status(400).json({ error: "Invalid campaign ID" });
+      }
+
+      const ok = await ensureCampaignAccess(req as any, res as any, parsedId.data);
+      if (!ok) return;
+
+      const connection = await storage.getTikTokConnection(parsedId.data);
+      if (!connection) {
+        return res.status(404).json({ error: "TikTok connection not found" });
+      }
+
+      const { refreshTikTokForCampaign } = await import("./tiktok-scheduler.js");
+      const result = await refreshTikTokForCampaign(parsedId.data, connection);
+      if (!result.refreshed) {
+        return res.status(400).json({ success: false, error: result.reason || "TikTok refresh skipped", ...result });
+      }
+
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error('[TikTok] Manual refresh error:', error);
+      await storage.updateTikTokConnection(String(req.params?.campaignId || ""), { lastError: error?.message || "refresh_failed" } as any).catch(() => undefined);
+      res.status(500).json({ error: error.message || 'Failed to refresh TikTok metrics' });
+    }
+  });
+
+  /**
    * Read TikTok analytics daily rows from persisted selected TikTok source rows only
    */
   app.get("/api/tiktok/:campaignId/daily-metrics", async (req, res) => {

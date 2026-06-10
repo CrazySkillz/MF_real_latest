@@ -691,6 +691,38 @@ describe("source safety regression guards", () => {
     expect(indexSource).toContain("startInstagramScheduler();");
   });
 
+  it("TikTok scheduler fails closed before refreshing missing, spend-only, unselected, or live-deferred sources", () => {
+    const schedulerSource = fs.readFileSync(path.join(process.cwd(), "server", "tiktok-scheduler.ts"), "utf8");
+    const refreshStart = schedulerSource.indexOf("export async function refreshTikTokForCampaign");
+    const refreshEnd = schedulerSource.indexOf("export async function refreshAllTikTokMetrics", refreshStart);
+    const refreshFn = schedulerSource.slice(refreshStart, refreshEnd);
+    const indexSource = fs.readFileSync(path.join(process.cwd(), "server", "index.ts"), "utf8");
+    const routesSource = readRoutesSource();
+    const manualRouteStart = routesSource.indexOf('app.post("/api/tiktok/:campaignId/refresh"');
+    const manualRouteEnd = routesSource.indexOf('/**\n   * Read TikTok analytics daily rows', manualRouteStart);
+    const manualRoute = routesSource.slice(manualRouteStart, manualRouteEnd);
+
+    expect(refreshStart).toBeGreaterThanOrEqual(0);
+    expect(refreshFn).toContain("if ((connection as any).spendOnly) return");
+    expect(refreshFn).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => null);");
+    expect(refreshFn).toContain('markTikTokRefreshFailure(campaignId, "missing_campaign")');
+    expect(refreshFn).toContain('markTikTokRefreshFailure(campaignId, "missing_advertiser")');
+    expect(refreshFn).toContain("selectedCampaignIds.length === 0");
+    expect(refreshFn).toContain('markTikTokRefreshFailure(campaignId, "missing_selected_campaigns")');
+    expect(refreshFn).toContain('String((connection as any).method || "") !== "test_mode"');
+    expect(refreshFn).toContain('markTikTokRefreshFailure(campaignId, "missing_access_token")');
+    expect(refreshFn).toContain('markTikTokRefreshFailure(campaignId, "live_provider_refresh_deferred")');
+    expect(refreshFn).toContain("storage.upsertTikTokDailyMetrics(rows as any)");
+    expect(refreshFn).toContain("lastRefreshAt: new Date(), lastError: null");
+    expect(refreshFn).not.toContain("storage.deleteTikTokDailyMetrics");
+    expect(refreshFn.indexOf("selectedCampaignIds.length === 0")).toBeLessThan(refreshFn.indexOf("storage.upsertTikTokDailyMetrics"));
+    expect(refreshFn.indexOf('String((connection as any).method || "") !== "test_mode"')).toBeLessThan(refreshFn.indexOf("storage.upsertTikTokDailyMetrics"));
+    expect(manualRoute).toContain("ensureCampaignAccess(req as any, res as any, parsedId.data)");
+    expect(manualRoute).toContain("refreshTikTokForCampaign(parsedId.data, connection)");
+    expect(indexSource).toContain('import { startTikTokScheduler } from "./tiktok-scheduler";');
+    expect(indexSource).toContain("startTikTokScheduler();");
+  });
+
   it("Google Ads analytics reports do not fall back to Campaign DeepDive report types", () => {
     const pageSource = fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "google-ads-analytics.tsx"), "utf8");
 

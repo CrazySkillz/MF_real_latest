@@ -94,10 +94,14 @@ Bundling rule:
 | 14D | local GA4 plus TikTok validation | Automated evidence documented; user/browser validation passed | Validation only |
 | 14E | local multi-paid-source no-double-counting validation | Automated evidence documented; user/browser validation passed | Validation only |
 | 14F | final local evidence update | Done locally and command-validated | Documentation only |
-| 15A | live OAuth start/callback/provider campaign discovery validation | Deferred | Live provider only |
-| 15B | live TikTok reporting refresh validation | Deferred | Live provider only |
-| 15C | deployed scheduled report/live-source evidence | Deferred | Live/deployed only |
-| 15D | final live OAuth production-readiness update | Deferred | Documentation only |
+| 15.1A | TikTok Overview Total Revenue `+` entry point | Done locally and command-validated | TikTok analytics UI |
+| 15.1B | TikTok-scoped revenue wizard launch using GA4 pattern | Done locally and command-validated | Revenue import UI |
+| 15.1C | post-import TikTok query invalidation/refetch | Done locally and command-validated | Overview/KPIs/Benchmarks/Insights/Reports/aggregate freshness |
+| 15.1D | Commit 15.1 regression and validation docs | Done locally and command-validated | Documentation only |
+| 15.2A | live OAuth start/callback/provider campaign discovery validation | Deferred | Live provider only |
+| 15.2B | live TikTok reporting refresh validation | Deferred | Live provider only |
+| 15.2C | deployed scheduled report/live-source evidence | Deferred | Live/deployed only |
+| 15.2D | final live OAuth production-readiness update | Deferred | Documentation only |
 
 ## Required Product Rule
 
@@ -232,7 +236,7 @@ Official TikTok references reviewed for planning:
 
 Planning conclusions:
 
-- Authentication should use TikTok API for Business OAuth, but live OAuth remains deferred until Commit 15.
+- Authentication should use TikTok API for Business OAuth, but live OAuth remains deferred until Commit 15.2.
 - TikTok OAuth can return advertiser access through advertiser-account authorization. The implementation must store the advertiser account selected by the user and must not treat every authorized advertiser as campaign scope.
 - TikTok reporting for this product should use campaign-level daily rows. The safe reporting dimensions for the initial source contract are `advertiser_id`, `campaign_id`, and `stat_time_day`.
 - TikTok reporting docs also support lower levels such as ad group and ad, but those should not be part of the first production slice unless a later commit explicitly adds them.
@@ -375,7 +379,7 @@ Live mode:
 - Must discover campaigns for the selected advertiser account.
 - Must refresh reports from TikTok using selected advertiser/campaign/date scope only.
 - Must preserve provider metric names, unavailable values, delay/estimated semantics, and currency.
-- Remains deferred until Commit 15 and cannot be called production-ready from local test-mode evidence.
+- Remains deferred until Commit 15.2 and cannot be called production-ready from local test-mode evidence.
 
 ## Production-Ready Target Contract
 
@@ -775,7 +779,7 @@ Validation:
 
 - Visible revenue-import UI: backend/shared revenue context and wizard copy support TikTok, but `DataSourcesTab` currently exposes connected ad-platform choices only from its local platform metadata. TikTok is not present there, so visible TikTok revenue-import UI is not production-ready until a later scoped UI commit adds and browser-validates that entry point.
 - Source modal edit/delete: generic source list/delete code paths exist, but TikTok source edit/delete browser behavior has not been validated end to end. This remains deferred to the lifecycle/source-modal commit; do not claim source-modal production readiness from backend allowlist coverage alone.
-- Live scheduler/provider refresh: Commit 9 intentionally does not implement live TikTok OAuth or provider reporting refresh. Scheduler refresh remains deferred to Commit 12 and live-provider validation remains deferred to Commit 15.
+- Live scheduler/provider refresh: Commit 9 intentionally does not implement live TikTok OAuth or provider reporting refresh. Scheduler refresh remains deferred to Commit 12 and live-provider validation remains deferred to Commit 15.2.
 - Damaged-data cleanup: no cleanup is performed in Commit 9. If stale or duplicate TikTok financial/source rows are later proven, cleanup must be handled under Commit 13 with an exact damaged-record boundary.
 
 Status:
@@ -934,7 +938,7 @@ Status:
 
 - [x] Commit 12 bundled root cause traced: TikTok had a test-mode seeding endpoint, but no shared manual/scheduled refresh boundary that checked campaign existence, advertiser/source identity, selected campaign scope, token/provider readiness, and failure metadata before writing rows.
 - [x] Commit 12 bundled implementation completed locally: `/api/tiktok/:campaignId/refresh` now calls `refreshTikTokForCampaign`, `startTikTokScheduler()` is wired into server startup, and test-mode refresh writes only selected `tiktok_daily_metrics` rows through the same storage contract consumed by TikTok analytics and Campaign DeepDive.
-- [x] Commit 12 refresh safety preserved: refresh skips missing campaigns, spend-only sources, missing advertiser IDs, empty selected campaign sets, missing live tokens, and live provider refresh until Commit 15; skipped/failed refreshes update `lastError` without deleting or overwriting previous valid rows.
+- [x] Commit 12 refresh safety preserved: refresh skips missing campaigns, spend-only sources, missing advertiser IDs, empty selected campaign sets, missing live tokens, and live provider refresh until Commit 15.2; skipped/failed refreshes update `lastError` without deleting or overwriting previous valid rows.
 - [x] Commit 12 regression coverage added locally for manual route wiring, scheduler startup wiring, selected-row upsert behavior, live-provider deferred failure, and no `deleteTikTokDailyMetrics` call in the refresh function.
 - [x] Commit 12 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - [x] Commit 12 local validation passed: `npm run check`.
@@ -997,14 +1001,53 @@ Status:
 
 - [x] Commit 14 bundled root cause traced: evidence for TikTok local/test-mode production readiness was spread across Commit 5 through Commit 13 status notes and regression suites, while the final validation matrix still showed the local evidence items as pending.
 - [x] Commit 14 evidence consolidation completed locally: Create Campaign, Connected Platforms, TikTok-only Campaign DeepDive, GA4 plus TikTok, multi-paid-source no-double-counting, scheduler/report, and lifecycle evidence are now mapped to the implemented source-backed paths and targeted regression suites.
-- [x] Commit 14 runtime boundary preserved: no runtime code was changed for this evidence pass; live TikTok OAuth/provider validation remains explicitly deferred to Commit 15.
+- [x] Commit 14 runtime boundary preserved: no runtime code was changed for this evidence pass; live TikTok OAuth/provider validation remains explicitly deferred to Commit 15.2.
 - [x] Commit 14 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/performance-summary-aggregate.test.ts server/campaign-delete-cascade-regression.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - [x] Commit 14 local validation passed: `npm run check`.
 - [x] Commit 14 local validation passed: `npm run build` after rerunning outside the sandbox because the first build attempt hit Windows `spawn EPERM` while starting esbuild.
 - [x] User validation passed for pushed Commit 14 (`0bb142fa`): commit stat review, targeted TikTok/aggregate/cascade/source-safety/auth regression tests, `npm run check`, and `npm run build` after rerun outside sandbox.
 - [x] Commit 14 user/browser validation passed: deployed browser evidence confirmed Create Campaign TikTok setup, Connected Platforms add-source, TikTok-only Campaign DeepDive, GA4 plus TikTok, and multi-paid-source no-double-counting using the current deployed build.
 
-### Commit 15: Deferred Live OAuth And Provider Validation
+### Commit 15.1: TikTok Revenue Import UI Parity
+
+Goal:
+
+- Add the GA4-style `+` revenue import entry point to the TikTok Overview `Total Revenue` card and reuse the existing TikTok-aware revenue wizard so TikTok-scoped imported revenue unlocks Total Revenue, ROI, ROAS, KPI current values, Benchmark current values, Insights, Ad Comparison availability, Reports, scheduled reports, and Campaign DeepDive aggregate participation through persisted selected TikTok source rows only.
+
+Root cause:
+
+- The backend and shared revenue wizard already support `platformContext="tiktok"` and TikTok-scoped revenue totals.
+- The TikTok Overview page renders `Total Revenue` as a plain metric card and does not expose `AddRevenueWizardModal`.
+- `AddRevenueWizardModal` already contains TikTok-specific title/copy and Google Sheets purpose support, but the post-import invalidation/refetch path needs a TikTok branch so every TikTok consumer refreshes from persisted TikTok revenue rows.
+- Revenue-dependent TikTok values must remain unavailable until a TikTok-scoped imported revenue source exists; this commit must not add generic campaign revenue fallback, spend-weighted allocation, or unscoped revenue.
+
+Subcommits:
+
+- 15.1A: Add a GA4-style `+` action to the TikTok Overview `Total Revenue` card only.
+- 15.1B: Launch `AddRevenueWizardModal` from TikTok Analytics with `platformContext="tiktok"` and existing campaign/currency/date context.
+- 15.1C: Add TikTok-specific post-import invalidation/refetch for `/api/tiktok/:campaignId/daily-metrics`, TikTok revenue totals, TikTok KPIs, TikTok Benchmarks, TikTok Reports, connected-platform status, and Campaign DeepDive aggregate queries.
+- 15.1D: Update tracker/regression evidence after validation.
+
+Validation:
+
+- `npm test -- server/tiktok-create-campaign-regression.test.ts server/performance-summary-aggregate.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`
+- `npm run check`
+- `npm run build`
+- Browser: open TikTok Analytics Overview, confirm `Total Revenue` has a `+`, import TikTok-scoped revenue through the wizard, and confirm Total Revenue, ROI, ROAS, KPIs, Benchmarks, Insights, Ad Comparison, Reports, scheduled report output, and Campaign DeepDive aggregate values refresh from TikTok-scoped persisted revenue only.
+
+Status:
+
+- [x] Commit 15.1 root cause traced: TikTok already had TikTok-scoped revenue backend/wizard support, but the TikTok Overview Total Revenue card did not expose the GA4-style `+` entry point and the shared wizard did not have a TikTok-specific post-import refresh branch.
+- [x] Commit 15.1A completed locally: TikTok Overview `Total Revenue` now exposes a GA4-style `+` action on the card only.
+- [x] Commit 15.1B completed locally: TikTok Analytics now launches `AddRevenueWizardModal` with `platformContext="tiktok"`, current campaign ID, currency, and `30days` date context.
+- [x] Commit 15.1C completed locally: TikTok revenue imports invalidate/refetch TikTok daily metrics, TikTok revenue totals, TikTok KPIs, TikTok Benchmarks, TikTok Reports, connected-platform status, and Campaign DeepDive aggregate queries.
+- [x] Revenue safety preserved: Total Revenue, ROI, ROAS, revenue-dependent KPI/Benchmark current values, Insights, Ad Comparison, Reports, scheduled reports, and Campaign DeepDive remain backed by TikTok-scoped persisted revenue rows only; no generic campaign revenue fallback or invented allocation was added.
+- [x] Commit 15.1 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/performance-summary-aggregate.test.ts server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
+- [x] Commit 15.1 local validation passed: `npm run check`.
+- [x] Commit 15.1 local validation passed: `npm run build` after rerunning outside the sandbox because the first build attempt hit Windows `spawn EPERM` while starting esbuild.
+- [ ] Commit 15.1 browser validation pending: deploy, open TikTok Analytics Overview, confirm `Total Revenue` has a `+`, import TikTok-scoped revenue through the wizard, and confirm Total Revenue, ROI, ROAS, KPIs, Benchmarks, Insights, Ad Comparison, Reports, scheduled report output, and Campaign DeepDive aggregate values refresh from TikTok-scoped persisted revenue only.
+
+### Commit 15.2: Deferred Live OAuth And Provider Validation
 
 Goal:
 
@@ -1012,11 +1055,11 @@ Goal:
 
 Subcommits:
 
-- 15A: Live OAuth start/callback/token refresh validation.
-- 15B: Advertiser and campaign discovery validation.
-- 15C: Live reporting refresh validation with selected TikTok campaigns.
-- 15D: Deployed scheduled-report/live-source evidence.
-- 15E: final live production-readiness update.
+- 15.2A: Live OAuth start/callback/token refresh validation.
+- 15.2B: Advertiser and campaign discovery validation.
+- 15.2C: Live reporting refresh validation with selected TikTok campaigns.
+- 15.2D: Deployed scheduled-report/live-source evidence.
+- 15.2E: final live production-readiness update.
 
 Validation:
 
@@ -1099,7 +1142,7 @@ TikTok can be marked locally/test-mode production-ready only when:
 - Regression coverage protects the critical lifecycle paths.
 - Local/browser validation evidence is recorded.
 
-Live TikTok OAuth/provider production readiness remains deferred until Commit 15 evidence is recorded.
+Live TikTok OAuth/provider production readiness remains deferred until Commit 15.2 evidence is recorded.
 
 ## Relevant Documentation
 

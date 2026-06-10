@@ -5,6 +5,7 @@ import { ArrowLeft, Activity, AlertCircle, AlertTriangle, BarChart3, CheckCircle
 import { SiTiktok } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
+import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -240,7 +241,7 @@ function buildBenchmarkTracker(rows: any[], hasAttributedRevenue: boolean) {
   };
 }
 
-function metricCard(label: string, value: string, Icon: any, helper?: string, valueClass = "text-foreground", iconClass = "text-muted-foreground") {
+function metricCard(label: string, value: string, Icon: any, helper?: string, valueClass = "text-foreground", iconClass = "text-muted-foreground", action?: any) {
   return (
     <Card key={label}>
       <CardContent className="p-4">
@@ -250,7 +251,7 @@ function metricCard(label: string, value: string, Icon: any, helper?: string, va
             <p className={`text-2xl font-semibold ${valueClass}`}>{value}</p>
             {helper && <p className="text-xs text-muted-foreground mt-1">{helper}</p>}
           </div>
-          <Icon className={`w-5 h-5 ${iconClass}`} />
+          {action || <Icon className={`w-5 h-5 ${iconClass}`} />}
         </div>
       </CardContent>
     </Card>
@@ -263,6 +264,7 @@ export default function TikTokAnalytics() {
   const queryClient = useQueryClient();
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const [benchmarkDialogOpen, setBenchmarkDialogOpen] = useState(false);
+  const [revenueDialogOpen, setRevenueDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportModalStep, setReportModalStep] = useState<"standard" | "custom">("standard");
   const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({});
@@ -752,6 +754,21 @@ export default function TikTokAnalytics() {
     ? reportForm.reportType === "custom" && Object.values(reportForm.configuration?.sections || {}).some(Boolean)
     : TIKTOK_REPORT_TEMPLATES.some((template) => template.key === reportForm.reportType);
   const reportFormChanged = !editingReport || getReportFormFingerprint(reportForm) !== reportInitialFingerprint;
+  const refreshTikTokRevenueConsumers = () => {
+    void queryClient.invalidateQueries({ queryKey: [`/api/tiktok/${campaignId}/daily-metrics`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=tiktok`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=tiktok&dateRange=30days`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/executive-summary`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/platform-comparison`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/trend-analysis`], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/kpis`, campaignId], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/benchmarks`, campaignId], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/reports`, campaignId], exact: false });
+    void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
+    void queryClient.refetchQueries({ queryKey: [`/api/tiktok/${campaignId}/daily-metrics`], exact: false });
+    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+  };
 
   function getTikTokCurrentMetricValue(metricKey: string) {
     if (!hasRows) return "";
@@ -869,7 +886,23 @@ export default function TikTokAnalytics() {
                       {metricCard("CPM", totals.cpm === null ? "Unavailable" : formatCurrency(totals.cpm), BarChart3)}
                       {metricCard("Cost / Conversion", totals.costPerConversion === null ? "Unavailable" : formatCurrency(totals.costPerConversion), Target)}
                       {metricCard("Conversion Rate", formatPct(totals.conversionRate), Percent)}
-                      {metricCard("Total Revenue", attributedRevenue === null ? "Unavailable" : formatCurrency(attributedRevenue), DollarSign, attributedRevenue === null ? "Requires TikTok-scoped attributed revenue." : undefined)}
+                      {metricCard(
+                        "Total Revenue",
+                        attributedRevenue === null ? "Unavailable" : formatCurrency(attributedRevenue),
+                        DollarSign,
+                        attributedRevenue === null ? "Requires TikTok-scoped attributed revenue." : undefined,
+                        "text-foreground",
+                        "text-muted-foreground",
+                        <button
+                          type="button"
+                          onClick={() => setRevenueDialogOpen(true)}
+                          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          title="Add revenue source"
+                          aria-label="Add TikTok revenue source"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                       {metricCard("ROI", roi === null ? "Unavailable" : `${roi.toFixed(2)}%`, Percent, roi === null ? "Requires TikTok-scoped attributed revenue." : undefined)}
                       {metricCard("ROAS", roas === null ? "Unavailable" : `${roas.toFixed(2)}x`, TrendingUp, roas === null ? "Requires TikTok-scoped attributed revenue." : undefined)}
                     </div>
@@ -1360,6 +1393,16 @@ export default function TikTokAnalytics() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            <AddRevenueWizardModal
+              campaignId={campaignId as string}
+              open={revenueDialogOpen}
+              onOpenChange={setRevenueDialogOpen}
+              currency={financialSummary?.currency || "USD"}
+              dateRange="30days"
+              platformContext="tiktok"
+              onSuccess={refreshTikTokRevenueConsumers}
+            />
 
             <Dialog open={benchmarkDialogOpen} onOpenChange={setBenchmarkDialogOpen}>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">

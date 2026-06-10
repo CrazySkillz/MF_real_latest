@@ -110,6 +110,17 @@ export function AddRevenueWizardModal(props: {
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_ads/reports", campaignId], exact: false });
     }
 
+    if (platformContext === 'tiktok') {
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date?platformContext=tiktok`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=tiktok`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=tiktok&dateRange=30days`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/tiktok/${campaignId}/daily-metrics`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/kpis`, campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/benchmarks`, campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/reports`, campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
+    }
+
     // GA4 KPI tab caches (revenue-to-date affects financial KPIs when GA4 revenue is missing).
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
@@ -146,6 +157,12 @@ export function AddRevenueWizardModal(props: {
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_ads/kpis", campaignId], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "benchmarks", "google_ads"], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_ads/reports", campaignId], exact: false });
+    } else if (platformContext === 'tiktok') {
+      void queryClient.refetchQueries({ queryKey: [`/api/tiktok/${campaignId}/daily-metrics`], exact: false });
+      void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=tiktok&dateRange=30days`], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/platforms/tiktok/kpis", campaignId], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/platforms/tiktok/benchmarks", campaignId], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/platforms/tiktok/reports", campaignId], exact: false });
     } else {
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_analytics/kpis", campaignId], exact: false });
     }

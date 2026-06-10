@@ -197,7 +197,7 @@ export default function TikTokAnalytics() {
     setKpiForm({
       name: metric.label,
       metric: metric.key,
-      currentValue: "",
+      currentValue: getTikTokCurrentMetricValue(metric.key),
       targetValue: "",
       unit: metric.unit,
       description: `Track TikTok ${metric.label.toLowerCase()} against a campaign target.`,
@@ -216,7 +216,7 @@ export default function TikTokAnalytics() {
     setBenchmarkForm({
       name: `${metric.label} Benchmark`,
       metric: metric.key,
-      currentValue: "",
+      currentValue: getTikTokCurrentMetricValue(metric.key),
       benchmarkValue: "",
       unit: metric.unit,
       description: `Compare TikTok ${metric.label.toLowerCase()} against a campaign benchmark.`,
@@ -449,6 +449,30 @@ export default function TikTokAnalytics() {
   const kpiTracker = buildGoalTracker(platformKPIs, hasAttributedRevenue);
   const platformBenchmarks = Array.isArray(benchmarksData) ? benchmarksData : [];
   const benchmarkTracker = buildBenchmarkTracker(platformBenchmarks, hasAttributedRevenue);
+
+  function getTikTokCurrentMetricValue(metricKey: string) {
+    if (!hasRows) return "";
+    const values: Record<string, number | null> = {
+      impressions: totals.impressions,
+      clicks: totals.clicks,
+      spend: totals.spend,
+      conversions: totals.conversions,
+      videoViews: totals.videoViews,
+      engagements: totals.engagements,
+      ctr: totals.ctr,
+      cpc: totals.cpc,
+      cpm: totals.cpm,
+      costPerConversion: totals.costPerConversion,
+      conversionRate: totals.conversionRate,
+      totalRevenue: attributedRevenue,
+      revenue: attributedRevenue,
+      roi,
+      roas,
+    };
+    const value = values[metricKey];
+    if (value === null || value === undefined || !Number.isFinite(value)) return "";
+    return Number.isInteger(value) ? String(value) : value.toFixed(2);
+  }
 
   return (
     <div className="min-h-screen bg-background">

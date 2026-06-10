@@ -39,6 +39,18 @@ const TIKTOK_REPORT_TEMPLATES = [
   { key: "ads", title: "Ad Comparison", desc: "Campaign-level TikTok performance analysis", Icon: Activity, chips: ["Performance", "Ranking", "Insights"] },
   { key: "insights", title: "Insights", desc: "Executive financials, trends, and recommended checks", Icon: Info, chips: ["Executive", "Trends", "Actions"] },
 ];
+const TIKTOK_CUSTOM_REPORT_DEFAULT_CONFIG = {
+  sections: { overview: true, kpis: false, benchmarks: false, ads: false, insights: false },
+  subsections: {
+    overview: { summary: true, sourceMetrics: true, revenueFinancial: true, efficiencyMetrics: true },
+    kpis: {},
+    benchmarks: {},
+    ads: { availability: true },
+    insights: { summaryCards: true, revenueGuidance: true, sourceDataGuidance: true },
+  },
+  selectedKpiIds: [] as string[],
+  selectedBenchmarkIds: [] as string[],
+};
 const TIKTOK_REPORT_TIMES = [
   ["06:00", "6:00 AM"],
   ["07:00", "7:00 AM"],
@@ -76,6 +88,10 @@ function tiktokDayOfMonthToInt(value: string) {
 
 function getTikTokGoalMetric(metricKey: string) {
   return TIKTOK_GOAL_METRICS.find((metric) => metric.key === metricKey) || TIKTOK_GOAL_METRICS[0];
+}
+
+function cloneTikTokCustomReportConfig() {
+  return JSON.parse(JSON.stringify(TIKTOK_CUSTOM_REPORT_DEFAULT_CONFIG));
 }
 
 function stripNumberFormatting(value: any) {
@@ -248,12 +264,14 @@ export default function TikTokAnalytics() {
   const [benchmarkDialogOpen, setBenchmarkDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportModalStep, setReportModalStep] = useState<"standard" | "custom">("standard");
+  const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({ overview: true });
   const [editingReport, setEditingReport] = useState<any>(null);
   const [downloadingReportId, setDownloadingReportId] = useState("");
   const [reportForm, setReportForm] = useState({
     name: "",
     description: "",
-    reportType: "overview",
+    reportType: "",
+    configuration: cloneTikTokCustomReportConfig(),
     scheduleEnabled: false,
     scheduleFrequency: "weekly",
     scheduleDayOfWeek: "monday",
@@ -366,12 +384,31 @@ export default function TikTokAnalytics() {
   };
 
   const resetReportForm = (report?: any) => {
+    const parsedConfiguration = (() => {
+      if (!report?.configuration) return cloneTikTokCustomReportConfig();
+      try {
+        const parsed = typeof report.configuration === "string" ? JSON.parse(report.configuration) : report.configuration;
+        const defaults = cloneTikTokCustomReportConfig();
+        return {
+          ...defaults,
+          ...parsed,
+          sections: { ...defaults.sections, ...(parsed?.sections || {}) },
+          subsections: { ...defaults.subsections, ...(parsed?.subsections || {}) },
+          selectedKpiIds: Array.isArray(parsed?.selectedKpiIds) ? parsed.selectedKpiIds.map(String) : [],
+          selectedBenchmarkIds: Array.isArray(parsed?.selectedBenchmarkIds) ? parsed.selectedBenchmarkIds.map(String) : [],
+        };
+      } catch {
+        return cloneTikTokCustomReportConfig();
+      }
+    })();
     setEditingReport(report || null);
     setReportModalStep(String(report?.reportType || "overview") === "custom" ? "custom" : "standard");
+    setExpandedCustomReportSections({ overview: true });
     setReportForm({
       name: report?.name || "",
       description: report?.description || "",
-      reportType: report?.reportType || "overview",
+      reportType: report?.reportType || "",
+      configuration: parsedConfiguration,
       scheduleEnabled: !!report?.scheduleEnabled,
       scheduleFrequency: report?.scheduleFrequency || "weekly",
       scheduleDayOfWeek: tiktokDayOfWeekToKey(report?.scheduleDayOfWeek),
@@ -530,6 +567,7 @@ export default function TikTokAnalytics() {
         name: reportForm.name || "TikTok Report",
         description: reportForm.description,
         reportType: reportForm.reportType,
+        configuration: reportForm.reportType === "custom" ? reportForm.configuration : { sections: reportForm.configuration?.sections || {} },
         status: "active",
         scheduleEnabled: reportForm.scheduleEnabled,
         scheduleFrequency: reportForm.scheduleEnabled ? reportForm.scheduleFrequency : null,
@@ -551,8 +589,11 @@ export default function TikTokAnalytics() {
       }
       return response.json();
     },
-    onSuccess: async () => {
+    onSuccess: async (report: any) => {
       await queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/reports`, campaignId] });
+      if (!reportForm.scheduleEnabled) {
+        await downloadTikTokReport(report);
+      }
       setReportDialogOpen(false);
       resetReportForm();
     },
@@ -687,6 +728,9 @@ export default function TikTokAnalytics() {
   const kpiTracker = buildGoalTracker(platformKPIs, hasAttributedRevenue);
   const platformBenchmarks = Array.isArray(benchmarksData) ? benchmarksData : [];
   const benchmarkTracker = buildBenchmarkTracker(platformBenchmarks, hasAttributedRevenue);
+  const reportSelectionMade = reportModalStep === "custom"
+    ? reportForm.reportType === "custom" && Object.values(reportForm.configuration?.sections || {}).some(Boolean)
+    : TIKTOK_REPORT_TEMPLATES.some((template) => template.key === reportForm.reportType);
 
   function getTikTokCurrentMetricValue(metricKey: string) {
     if (!hasRows) return "";
@@ -1475,7 +1519,7 @@ export default function TikTokAnalytics() {
                         setReportModalStep("standard");
                         setReportForm((form) => ({
                           ...form,
-                          reportType: form.reportType === "custom" ? "overview" : form.reportType,
+                          reportType: form.reportType === "custom" ? "" : form.reportType,
                           name: form.reportType === "custom" ? "" : form.name,
                         }));
                       }}
@@ -1493,7 +1537,7 @@ export default function TikTokAnalytics() {
                       className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${reportModalStep === "custom" ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-border"}`}
                       onClick={() => {
                         setReportModalStep("custom");
-                        setReportForm((form) => ({ ...form, reportType: "custom", name: form.name || "Custom Report" }));
+                        setReportForm((form) => ({ ...form, reportType: "custom", name: form.name || "Custom Report", configuration: form.configuration || cloneTikTokCustomReportConfig() }));
                       }}
                     >
                       <div className="flex items-start gap-3">
@@ -1517,7 +1561,21 @@ export default function TikTokAnalytics() {
                               <div
                                 key={template.key}
                                 className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${selected ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-border"}`}
-                                onClick={() => setReportForm((form) => ({ ...form, reportType: template.key, name: `TikTok ${template.title} Report` }))}
+                                onClick={() => setReportForm((form) => ({
+                                  ...form,
+                                  reportType: template.key,
+                                  name: `TikTok ${template.title} Report`,
+                                  configuration: {
+                                    ...form.configuration,
+                                    sections: {
+                                      overview: template.key === "overview",
+                                      kpis: template.key === "kpis",
+                                      benchmarks: template.key === "benchmarks",
+                                      ads: template.key === "ads",
+                                      insights: template.key === "insights",
+                                    },
+                                  },
+                                }))}
                               >
                                 <div className="flex items-start gap-3">
                                   <template.Icon className="w-5 h-5 text-foreground mt-0.5" />
@@ -1538,9 +1596,133 @@ export default function TikTokAnalytics() {
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-bold text-foreground mb-2">Custom Report</h3>
-                      <p className="text-sm text-muted-foreground/70">Build your own customized report using selected TikTok source-backed rows.</p>
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-lg font-bold text-foreground mb-2">Custom Report</h3>
+                        <p className="text-sm text-muted-foreground/70">Choose which TikTok sections to include in your PDF.</p>
+                      </div>
+                      <div className="rounded-lg border border-border p-4">
+                        <div className="text-sm font-medium text-foreground mb-3">Sections</div>
+                        <div className="space-y-4 text-sm">
+                          {[
+                            { key: "overview", label: "Overview", options: [["summary", "Summary"], ["sourceMetrics", "Source Metrics"], ["revenueFinancial", "Revenue & Financial"], ["efficiencyMetrics", "Efficiency Metrics"]] as Array<[string, string]> },
+                            { key: "kpis", label: "KPIs", options: [] as Array<[string, string]> },
+                            { key: "benchmarks", label: "Benchmarks", options: [] as Array<[string, string]> },
+                            { key: "ads", label: "Ad Comparison", options: [["availability", "Ad-Level Availability Guidance"]] as Array<[string, string]> },
+                            { key: "insights", label: "Insights", options: [["summaryCards", "Executive Summary Cards"], ["revenueGuidance", "Revenue Availability Guidance"], ["sourceDataGuidance", "Source Data Guidance"]] as Array<[string, string]> },
+                          ].map((section) => {
+                            const expanded = !!expandedCustomReportSections[section.key];
+                            const sectionChecked = !!reportForm.configuration?.sections?.[section.key];
+                            const subsectionConfig = reportForm.configuration?.subsections?.[section.key] || {};
+                            return (
+                              <div key={section.key} className="rounded-md border border-border p-3 space-y-3">
+                                <button
+                                  type="button"
+                                  className={`w-full text-left font-medium ${sectionChecked ? "text-foreground" : "text-muted-foreground/80"}`}
+                                  onClick={() => setExpandedCustomReportSections((sections) => ({ ...sections, [section.key]: !sections[section.key] }))}
+                                >
+                                  {section.label}
+                                </button>
+                                {expanded && (
+                                  <div className="pl-6 space-y-2">
+                                    {section.key === "kpis" ? (
+                                      platformKPIs.length > 0 ? (
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                          {platformKPIs.map((kpi: any) => {
+                                            const id = String(kpi.id);
+                                            const selectedIds = Array.isArray(reportForm.configuration?.selectedKpiIds) ? reportForm.configuration.selectedKpiIds.map(String) : [];
+                                            return (
+                                              <label key={id} className="flex items-center gap-2">
+                                                <Checkbox
+                                                  checked={selectedIds.includes(id)}
+                                                  onCheckedChange={(checked) => {
+                                                    const nextIds = new Set(selectedIds);
+                                                    if (checked === true) nextIds.add(id); else nextIds.delete(id);
+                                                    setReportForm((form) => ({
+                                                      ...form,
+                                                      configuration: {
+                                                        ...form.configuration,
+                                                        sections: { ...form.configuration.sections, kpis: nextIds.size > 0 },
+                                                        selectedKpiIds: Array.from(nextIds),
+                                                      },
+                                                    }));
+                                                  }}
+                                                />
+                                                <span>{String(kpi.name || kpi.metric || "KPI")}</span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                      ) : (
+                                        <p className="text-muted-foreground/70">No TikTok KPIs have been created yet.</p>
+                                      )
+                                    ) : section.key === "benchmarks" ? (
+                                      platformBenchmarks.length > 0 ? (
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                          {platformBenchmarks.map((benchmark: any) => {
+                                            const id = String(benchmark.id);
+                                            const selectedIds = Array.isArray(reportForm.configuration?.selectedBenchmarkIds) ? reportForm.configuration.selectedBenchmarkIds.map(String) : [];
+                                            return (
+                                              <label key={id} className="flex items-center gap-2">
+                                                <Checkbox
+                                                  checked={selectedIds.includes(id)}
+                                                  onCheckedChange={(checked) => {
+                                                    const nextIds = new Set(selectedIds);
+                                                    if (checked === true) nextIds.add(id); else nextIds.delete(id);
+                                                    setReportForm((form) => ({
+                                                      ...form,
+                                                      configuration: {
+                                                        ...form.configuration,
+                                                        sections: { ...form.configuration.sections, benchmarks: nextIds.size > 0 },
+                                                        selectedBenchmarkIds: Array.from(nextIds),
+                                                      },
+                                                    }));
+                                                  }}
+                                                />
+                                                <span>{String(benchmark.name || benchmark.metric || "Benchmark")}</span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                      ) : (
+                                        <p className="text-muted-foreground/70">No TikTok Benchmarks have been created yet.</p>
+                                      )
+                                    ) : (
+                                      <div className="grid gap-2 sm:grid-cols-2">
+                                        {section.options.map(([optionKey, optionLabel]) => (
+                                          <label key={optionKey} className="flex items-center gap-2">
+                                            <Checkbox
+                                              checked={subsectionConfig[optionKey] === true}
+                                              onCheckedChange={(checked) => {
+                                                setReportForm((form) => {
+                                                  const nextSubsections = {
+                                                    ...form.configuration.subsections,
+                                                    [section.key]: { ...(form.configuration.subsections?.[section.key] || {}), [optionKey]: checked === true },
+                                                  };
+                                                  const hasSelectedOption = Object.values(nextSubsections[section.key] || {}).some(Boolean);
+                                                  return {
+                                                    ...form,
+                                                    configuration: {
+                                                      ...form.configuration,
+                                                      sections: { ...form.configuration.sections, [section.key]: hasSelectedOption },
+                                                      subsections: nextSubsections,
+                                                    },
+                                                  };
+                                                });
+                                              }}
+                                            />
+                                            <span>{optionLabel}</span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -1666,8 +1848,8 @@ export default function TikTokAnalytics() {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setReportDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={() => saveReportMutation.mutate()} disabled={saveReportMutation.isPending || !reportForm.name || (reportForm.scheduleEnabled && !reportForm.scheduleRecipients.trim())}>
-                    {saveReportMutation.isPending ? "Saving..." : editingReport ? "Save Report" : "Create Report"}
+                  <Button onClick={() => saveReportMutation.mutate()} disabled={saveReportMutation.isPending || !reportSelectionMade || (reportForm.scheduleEnabled && !reportForm.scheduleRecipients.trim())}>
+                    {saveReportMutation.isPending ? "Saving..." : reportForm.scheduleEnabled ? "Schedule Report" : "Generate & Download Report"}
                   </Button>
                 </DialogFooter>
               </DialogContent>

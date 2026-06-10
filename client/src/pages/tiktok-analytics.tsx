@@ -164,7 +164,7 @@ export default function TikTokAnalytics() {
   const [benchmarkDialogOpen, setBenchmarkDialogOpen] = useState(false);
   const [kpiForm, setKpiForm] = useState({
     name: "",
-    metric: "impressions",
+    metric: "",
     currentValue: "",
     targetValue: "",
     unit: "",
@@ -179,7 +179,7 @@ export default function TikTokAnalytics() {
   });
   const [benchmarkForm, setBenchmarkForm] = useState({
     name: "",
-    metric: "impressions",
+    metric: "",
     currentValue: "",
     benchmarkValue: "",
     unit: "",
@@ -192,7 +192,25 @@ export default function TikTokAnalytics() {
     emailRecipients: "",
   });
 
-  const resetKpiForm = (metricKey = "impressions") => {
+  const resetKpiForm = (metricKey?: string) => {
+    if (!metricKey) {
+      setKpiForm({
+        name: "",
+        metric: "",
+        currentValue: "",
+        targetValue: "",
+        unit: "",
+        description: "",
+        priority: "medium",
+        alertsEnabled: false,
+        alertThreshold: "",
+        alertCondition: "below",
+        alertFrequency: "daily",
+        emailNotifications: false,
+        emailRecipients: "",
+      });
+      return;
+    }
     const metric = getTikTokGoalMetric(metricKey);
     setKpiForm({
       name: metric.label,
@@ -211,7 +229,24 @@ export default function TikTokAnalytics() {
     });
   };
 
-  const resetBenchmarkForm = (metricKey = "impressions") => {
+  const resetBenchmarkForm = (metricKey?: string) => {
+    if (!metricKey) {
+      setBenchmarkForm({
+        name: "",
+        metric: "",
+        currentValue: "",
+        benchmarkValue: "",
+        unit: "",
+        description: "",
+        alertsEnabled: false,
+        alertThreshold: "",
+        alertCondition: "below",
+        alertFrequency: "daily",
+        emailNotifications: false,
+        emailRecipients: "",
+      });
+      return;
+    }
     const metric = getTikTokGoalMetric(metricKey);
     setBenchmarkForm({
       name: `${metric.label} Benchmark`,
@@ -853,7 +888,7 @@ export default function TikTokAnalytics() {
                         className="p-3 text-left border-2 rounded-lg border-border hover:border-blue-300 transition-all"
                         onClick={() => setKpiForm({
                           name: "",
-                          metric: "impressions",
+                          metric: "custom",
                           currentValue: "",
                           targetValue: "",
                           unit: "",
@@ -1026,7 +1061,7 @@ export default function TikTokAnalytics() {
                         className="p-3 text-left border-2 rounded-lg border-border hover:border-blue-300 transition-all"
                         onClick={() => setBenchmarkForm({
                           name: "",
-                          metric: "impressions",
+                          metric: "custom",
                           currentValue: "",
                           benchmarkValue: "",
                           unit: "",

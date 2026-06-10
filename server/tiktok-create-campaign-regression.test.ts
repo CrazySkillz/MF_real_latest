@@ -107,6 +107,9 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("Select KPI Template");
     expect(page).toContain("Choose a predefined KPI that will automatically calculate from your platform data, or create a custom one.");
     expect(page).toContain("KPI Name *");
+    expect(page).toContain('metric: ""');
+    expect(page).toContain("const resetKpiForm = (metricKey?: string)");
+    expect(page).toContain('metric: "custom"');
     expect(page).toContain("currentValue: getTikTokCurrentMetricValue(metric.key)");
     expect(page).toContain("function getTikTokCurrentMetricValue(metricKey: string)");
     expect(page).toContain("totalRevenue: attributedRevenue");
@@ -136,6 +139,7 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("Create New Benchmark");
     expect(page).toContain("Select Benchmark Template");
     expect(page).toContain("Choose a metric to benchmark, then fill in the benchmark details below.");
+    expect(page).toContain("const resetBenchmarkForm = (metricKey?: string)");
     expect(page).toContain("Benchmark Name *");
     expect(page).toContain("e.g., Target sessions for this campaign");
     expect(page).toContain("What is this benchmark and why does it matter?");

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, Activity, AlertCircle, AlertTriangle, BarChart3, CheckCircle2, DollarSign, Eye, FileText, Info, MousePointer, Percent, Plus, Settings, Target, TrendingUp, Trophy, Video } from "lucide-react";
+import { ArrowLeft, Activity, AlertCircle, AlertTriangle, BarChart3, CheckCircle2, DollarSign, Download, Eye, FileText, Info, MousePointer, Percent, Pencil, Plus, Settings, Target, Trash2, TrendingUp, Trophy, Video } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -40,13 +40,13 @@ const TIKTOK_REPORT_TEMPLATES = [
   { key: "insights", title: "Insights", desc: "Executive financials, trends, and recommended checks", Icon: Info, chips: ["Executive", "Trends", "Actions"] },
 ];
 const TIKTOK_CUSTOM_REPORT_DEFAULT_CONFIG = {
-  sections: { overview: true, kpis: false, benchmarks: false, ads: false, insights: false },
+  sections: { overview: false, kpis: false, benchmarks: false, ads: false, insights: false },
   subsections: {
-    overview: { summary: true, sourceMetrics: true, revenueFinancial: true, efficiencyMetrics: true },
+    overview: { summary: false, sourceMetrics: false, revenueFinancial: false, efficiencyMetrics: false },
     kpis: {},
     benchmarks: {},
-    ads: { availability: true },
-    insights: { summaryCards: true, revenueGuidance: true, sourceDataGuidance: true },
+    ads: { availability: false },
+    insights: { summaryCards: false, revenueGuidance: false, sourceDataGuidance: false },
   },
   selectedKpiIds: [] as string[],
   selectedBenchmarkIds: [] as string[],
@@ -591,7 +591,7 @@ export default function TikTokAnalytics() {
     },
     onSuccess: async (report: any) => {
       await queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/reports`, campaignId] });
-      if (!reportForm.scheduleEnabled) {
+      if (!reportForm.scheduleEnabled && !editingReport) {
         await downloadTikTokReport(report);
       }
       setReportDialogOpen(false);
@@ -1141,10 +1141,15 @@ export default function TikTokAnalytics() {
                               </div>
                               <div className="flex flex-wrap items-center gap-2">
                                 <Button variant="outline" size="sm" disabled={downloadingReportId === String(report.id)} onClick={() => downloadTikTokReport(report)}>
+                                  <Download className="w-4 h-4 mr-2" />
                                   {downloadingReportId === String(report.id) ? "Downloading..." : "Download"}
                                 </Button>
-                                <Button variant="outline" size="sm" onClick={() => { resetReportForm(report); setReportDialogOpen(true); }}>Edit</Button>
-                                <Button variant="outline" size="sm" disabled={deleteReportMutation.isPending} onClick={() => deleteReportMutation.mutate(String(report.id))}>Delete</Button>
+                                <Button variant="ghost" size="icon" aria-label="Edit report" onClick={() => { resetReportForm(report); setReportDialogOpen(true); }}>
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" aria-label="Delete report" disabled={deleteReportMutation.isPending} onClick={() => deleteReportMutation.mutate(String(report.id))}>
+                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                </Button>
                               </div>
                             </div>
                           </CardContent>
@@ -1849,7 +1854,7 @@ export default function TikTokAnalytics() {
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setReportDialogOpen(false)}>Cancel</Button>
                   <Button onClick={() => saveReportMutation.mutate()} disabled={saveReportMutation.isPending || !reportSelectionMade || (reportForm.scheduleEnabled && !reportForm.scheduleRecipients.trim())}>
-                    {saveReportMutation.isPending ? "Saving..." : reportForm.scheduleEnabled ? "Schedule Report" : "Generate & Download Report"}
+                    {saveReportMutation.isPending ? "Saving..." : editingReport ? "Update Report" : reportForm.scheduleEnabled ? "Schedule Report" : "Generate & Download Report"}
                   </Button>
                 </DialogFooter>
               </DialogContent>

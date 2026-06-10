@@ -186,6 +186,7 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("Choose Template");
     expect(page).toContain("TIKTOK_REPORT_TEMPLATES.map");
     expect(page).toContain("TIKTOK_CUSTOM_REPORT_DEFAULT_CONFIG");
+    expect(page).toContain("sections: { overview: false, kpis: false, benchmarks: false, ads: false, insights: false }");
     expect(page).toContain("Choose which TikTok sections to include in your PDF.");
     expect(page).toContain("expandedCustomReportSections");
     expect(page).toContain("selectedKpiIds");
@@ -197,6 +198,11 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("!reportSelectionMade");
     expect(page).toContain("Generate & Download Report");
     expect(page).toContain("Schedule Report");
+    expect(page).toContain("Update Report");
+    expect(page).toContain("!editingReport");
+    expect(page).toContain("<Download className=\"w-4 h-4 mr-2\" />");
+    expect(page).toContain("<Pencil className=\"w-4 h-4\" />");
+    expect(page).toContain("<Trash2 className=\"w-4 h-4 text-red-600\" />");
     expect(page).toContain("await downloadTikTokReport(report);");
     expect(page).toContain("Schedule Automated Reports");
     expect(page).toContain("Day of Week");

@@ -6,6 +6,7 @@ import { SiTiktok } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -110,6 +111,32 @@ function formatNumber(value: number) {
 
 function formatPct(value: number | null) {
   return value === null || value === undefined ? "Unavailable" : `${value.toFixed(2)}%`;
+}
+
+function parseRevenueSourceConfig(source: any): any {
+  if (!source?.mappingConfig) return null;
+  if (typeof source.mappingConfig === "object") return source.mappingConfig;
+  try {
+    return JSON.parse(String(source.mappingConfig));
+  } catch {
+    return null;
+  }
+}
+
+function revenueSourceTypeLabel(type: any) {
+  const normalized = String(type || "").toLowerCase();
+  if (normalized === "csv") return "CSV Import";
+  if (normalized === "manual") return "Manual Entry";
+  if (normalized === "sheets" || normalized === "google_sheets") return "Google Sheets";
+  if (normalized === "hubspot") return "HubSpot";
+  if (normalized === "salesforce") return "Salesforce";
+  if (normalized === "shopify") return "Shopify";
+  return "Revenue Source";
+}
+
+function tiktokRevenueSourceLabel(source: any) {
+  const displayName = String(source?.displayName || "").trim();
+  return displayName || revenueSourceTypeLabel(source?.sourceType);
 }
 
 function formatTikTokNumberAsYouType(raw: string, unit: string) {
@@ -262,10 +289,13 @@ export default function TikTokAnalytics() {
   const [, params] = useRoute("/campaigns/:id/tiktok-analytics");
   const campaignId = params?.id;
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const [benchmarkDialogOpen, setBenchmarkDialogOpen] = useState(false);
   const [revenueDialogOpen, setRevenueDialogOpen] = useState(false);
   const [revenueSourcesDialogOpen, setRevenueSourcesDialogOpen] = useState(false);
+  const [editingRevenueSource, setEditingRevenueSource] = useState<any>(null);
+  const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState("");
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportModalStep, setReportModalStep] = useState<"standard" | "custom">("standard");
   const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({});
@@ -783,6 +813,29 @@ export default function TikTokAnalytics() {
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
   };
 
+  const deleteRevenueSourceMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body?.success === false) {
+        throw new Error(body?.error || "Failed to remove TikTok revenue source");
+      }
+      return body;
+    },
+    onSuccess: () => {
+      setDeletingRevenueSourceId("");
+      toast({ title: "Revenue source removed", description: "TikTok Total Revenue has been recalculated." });
+      refreshTikTokRevenueConsumers();
+    },
+    onError: (error: any) => {
+      setDeletingRevenueSourceId("");
+      toast({ title: "Delete failed", description: error?.message || "Failed to remove TikTok revenue source.", variant: "destructive" });
+    },
+  });
+
   function getTikTokCurrentMetricValue(metricKey: string) {
     if (!hasRows) return "";
     const values: Record<string, number | null> = {
@@ -921,7 +974,10 @@ export default function TikTokAnalytics() {
                             </div>
                             <button
                               type="button"
-                              onClick={() => setRevenueDialogOpen(true)}
+                              onClick={() => {
+                                setEditingRevenueSource(null);
+                                setRevenueDialogOpen(true);
+                              }}
                               className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                               title="Add revenue source"
                               aria-label="Add TikTok revenue source"
@@ -1425,10 +1481,14 @@ export default function TikTokAnalytics() {
             <AddRevenueWizardModal
               campaignId={campaignId as string}
               open={revenueDialogOpen}
-              onOpenChange={setRevenueDialogOpen}
+              onOpenChange={(open) => {
+                setRevenueDialogOpen(open);
+                if (!open) setEditingRevenueSource(null);
+              }}
               currency={financialSummary?.currency || "USD"}
               dateRange="30days"
               platformContext="tiktok"
+              initialSource={editingRevenueSource || undefined}
               onSuccess={refreshTikTokRevenueConsumers}
             />
 
@@ -1443,20 +1503,79 @@ export default function TikTokAnalytics() {
                 <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
                   {revenueSources.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No TikTok revenue sources connected.</p>
-                  ) : revenueSources.map((source: any) => (
-                    <div key={String(source?.id || source?.sourceId || source?.displayName)} className="rounded-lg border border-border p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{String(source?.displayName || source?.sourceType || "Revenue source")}</p>
-                          <p className="text-xs text-muted-foreground">{String(source?.sourceType || "revenue")}</p>
-                        </div>
-                        <p className="text-sm font-semibold text-foreground">{formatCurrency(Number(source?.revenue || 0))}</p>
+                  ) : revenueSources.map((source: any) => {
+                    const config = parseRevenueSourceConfig(source);
+                    const selectedCount = Array.isArray(config?.selectedValues) ? config.selectedValues.length : 0;
+                    return (
+                    <div key={String(source?.id || source?.sourceId || source?.displayName)} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground" title={tiktokRevenueSourceLabel(source)}>
+                          {tiktokRevenueSourceLabel(source)}
+                        </p>
+                        <p className="text-xs text-muted-foreground/70">
+                          {revenueSourceTypeLabel(source.sourceType)}{selectedCount > 0 ? ` - ${selectedCount} selected attribution value${selectedCount === 1 ? "" : "s"}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium tabular-nums text-foreground">
+                          {formatCurrency(Number(source?.lastTotalRevenue || source?.revenue || 0))}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRevenueSourcesDialogOpen(false);
+                            setEditingRevenueSource(source);
+                            setRevenueDialogOpen(true);
+                          }}
+                          className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                          title="Edit revenue source"
+                          aria-label="Edit revenue source"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRevenueSourcesDialogOpen(false);
+                            setDeletingRevenueSourceId(String(source?.id || source?.sourceId || ""));
+                          }}
+                          className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
+                          title="Remove revenue source"
+                          aria-label="Remove revenue source"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </DialogContent>
             </Dialog>
+
+            <AlertDialog open={!!deletingRevenueSourceId} onOpenChange={(open) => { if (!open) setDeletingRevenueSourceId(""); }}>
+              <AlertDialogContent className="bg-card border-border">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-foreground">Remove revenue source?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-muted-foreground/70">
+                    This removes only the selected TikTok revenue source. Total Revenue will be recalculated.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                    onClick={() => {
+                      if (deletingRevenueSourceId) {
+                        deleteRevenueSourceMutation.mutate(deletingRevenueSourceId);
+                      }
+                    }}
+                  >
+                    Remove
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             <Dialog open={benchmarkDialogOpen} onOpenChange={setBenchmarkDialogOpen}>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">

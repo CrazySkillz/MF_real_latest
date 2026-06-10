@@ -179,6 +179,16 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("Selected Campaign Rows");
     expect(page).toContain("Attributed Revenue");
     expect(page).toContain("From TikTok-scoped revenue source.");
+    expect(page).toContain("Sources contributing to TikTok Total Revenue.");
+    expect(page).toContain("parseRevenueSourceConfig(source)");
+    expect(page).toContain("selected attribution value");
+    expect(page).toContain("initialSource={editingRevenueSource || undefined}");
+    expect(page).toContain("aria-label=\"Edit revenue source\"");
+    expect(page).toContain("aria-label=\"Remove revenue source\"");
+    expect(page).toContain("Remove revenue source?");
+    expect(page).toContain("This removes only the selected TikTok revenue source. Total Revenue will be recalculated.");
+    expect(page).toContain('fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`');
+    expect(page).toContain('toast({ title: "Revenue source removed", description: "TikTok Total Revenue has been recalculated." })');
     expect(page).toContain("TikTok Reports");
     expect(page).toContain("Create campaign-scoped TikTok reports from selected source-backed rows.");
     expect(page).toContain('const [reportModalStep, setReportModalStep] = useState<"standard" | "custom">("standard");');

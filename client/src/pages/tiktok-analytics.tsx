@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, AlertCircle, AlertTriangle, BarChart3, CheckCircle2, DollarSign, Eye, MousePointer, Percent, Plus, Target, TrendingUp, Trophy, Video } from "lucide-react";
+import { ArrowLeft, Activity, AlertCircle, AlertTriangle, BarChart3, CheckCircle2, DollarSign, Eye, FileText, Info, MousePointer, Percent, Plus, Settings, Target, TrendingUp, Trophy, Video } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
@@ -32,6 +32,47 @@ const TIKTOK_GOAL_METRICS = [
   { key: "roas", label: "ROAS", unit: "x" },
 ];
 const TIKTOK_GOAL_DESC_MAX = 200;
+const TIKTOK_REPORT_TEMPLATES = [
+  { key: "overview", title: "Overview", desc: "Comprehensive overview of TikTok campaign performance metrics", Icon: BarChart3, chips: ["Overview", "Metrics", "Insights"] },
+  { key: "kpis", title: "KPIs", desc: "Key performance indicators and progress tracking", Icon: Target, chips: ["Metrics", "Targets", "Progress"] },
+  { key: "benchmarks", title: "Benchmarks", desc: "Performance benchmarks and comparisons", Icon: Trophy, chips: ["Industry", "Historical", "Goals"] },
+  { key: "ads", title: "Ad Comparison", desc: "Campaign-level TikTok performance analysis", Icon: Activity, chips: ["Performance", "Ranking", "Insights"] },
+  { key: "insights", title: "Insights", desc: "Executive financials, trends, and recommended checks", Icon: Info, chips: ["Executive", "Trends", "Actions"] },
+];
+const TIKTOK_REPORT_TIMES = [
+  ["06:00", "6:00 AM"],
+  ["07:00", "7:00 AM"],
+  ["08:00", "8:00 AM"],
+  ["09:00", "9:00 AM"],
+  ["10:00", "10:00 AM"],
+  ["11:00", "11:00 AM"],
+  ["12:00", "12:00 PM"],
+  ["13:00", "1:00 PM"],
+  ["14:00", "2:00 PM"],
+  ["15:00", "3:00 PM"],
+  ["16:00", "4:00 PM"],
+  ["17:00", "5:00 PM"],
+  ["18:00", "6:00 PM"],
+];
+const TIKTOK_WEEKDAY_TO_INT: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+
+function tiktokDayOfWeekToKey(value: any) {
+  const day = Number(value);
+  return Object.entries(TIKTOK_WEEKDAY_TO_INT).find(([, index]) => index === day)?.[0] || "monday";
+}
+
+function tiktokDayOfMonthToKey(value: any) {
+  const day = Number(value);
+  if (day === 0) return "last";
+  return Number.isFinite(day) && day > 0 ? String(day) : "first";
+}
+
+function tiktokDayOfMonthToInt(value: string) {
+  if (value === "last") return 0;
+  if (value === "first") return 1;
+  const day = Number(value);
+  return Number.isFinite(day) ? day : 1;
+}
 
 function getTikTokGoalMetric(metricKey: string) {
   return TIKTOK_GOAL_METRICS.find((metric) => metric.key === metricKey) || TIKTOK_GOAL_METRICS[0];
@@ -206,6 +247,7 @@ export default function TikTokAnalytics() {
   const [kpiDialogOpen, setKpiDialogOpen] = useState(false);
   const [benchmarkDialogOpen, setBenchmarkDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportModalStep, setReportModalStep] = useState<"standard" | "custom">("standard");
   const [editingReport, setEditingReport] = useState<any>(null);
   const [downloadingReportId, setDownloadingReportId] = useState("");
   const [reportForm, setReportForm] = useState({
@@ -214,6 +256,9 @@ export default function TikTokAnalytics() {
     reportType: "overview",
     scheduleEnabled: false,
     scheduleFrequency: "weekly",
+    scheduleDayOfWeek: "monday",
+    scheduleDayOfMonth: "first",
+    quarterTiming: "end",
     scheduleTime: "09:00",
     scheduleTimeZone: "UTC",
     scheduleRecipients: "",
@@ -322,12 +367,16 @@ export default function TikTokAnalytics() {
 
   const resetReportForm = (report?: any) => {
     setEditingReport(report || null);
+    setReportModalStep(String(report?.reportType || "overview") === "custom" ? "custom" : "standard");
     setReportForm({
       name: report?.name || "",
       description: report?.description || "",
       reportType: report?.reportType || "overview",
       scheduleEnabled: !!report?.scheduleEnabled,
       scheduleFrequency: report?.scheduleFrequency || "weekly",
+      scheduleDayOfWeek: tiktokDayOfWeekToKey(report?.scheduleDayOfWeek),
+      scheduleDayOfMonth: tiktokDayOfMonthToKey(report?.scheduleDayOfMonth),
+      quarterTiming: report?.quarterTiming || "end",
       scheduleTime: report?.scheduleTime || "09:00",
       scheduleTimeZone: report?.scheduleTimeZone || "UTC",
       scheduleRecipients: Array.isArray(report?.scheduleRecipients) ? report.scheduleRecipients.join(", ") : "",
@@ -487,8 +536,9 @@ export default function TikTokAnalytics() {
         scheduleTime: reportForm.scheduleEnabled ? reportForm.scheduleTime : null,
         scheduleTimeZone: reportForm.scheduleEnabled ? reportForm.scheduleTimeZone : null,
         scheduleRecipients: reportForm.scheduleEnabled ? recipients : [],
-        scheduleDayOfWeek: reportForm.scheduleEnabled && reportForm.scheduleFrequency === "weekly" ? 1 : null,
-        scheduleDayOfMonth: reportForm.scheduleEnabled && reportForm.scheduleFrequency !== "weekly" ? 1 : null,
+        scheduleDayOfWeek: reportForm.scheduleEnabled && reportForm.scheduleFrequency === "weekly" ? TIKTOK_WEEKDAY_TO_INT[reportForm.scheduleDayOfWeek] : null,
+        scheduleDayOfMonth: reportForm.scheduleEnabled && (reportForm.scheduleFrequency === "monthly" || reportForm.scheduleFrequency === "quarterly") ? tiktokDayOfMonthToInt(reportForm.scheduleDayOfMonth) : null,
+        quarterTiming: reportForm.scheduleEnabled && reportForm.scheduleFrequency === "quarterly" ? reportForm.quarterTiming : null,
       };
       const response = await fetch(editingReport ? `/api/platforms/tiktok/reports/${editingReport.id}` : "/api/platforms/tiktok/reports", {
         method: editingReport ? "PATCH" : "POST",
@@ -1412,62 +1462,202 @@ export default function TikTokAnalytics() {
             </Dialog>
 
             <Dialog open={reportDialogOpen} onOpenChange={(open) => { setReportDialogOpen(open); if (!open) resetReportForm(); }}>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+              <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-card border-border">
                 <DialogHeader>
-                  <DialogTitle>{editingReport ? "Edit TikTok Report" : "Create TikTok Report"}</DialogTitle>
-                  <DialogDescription>Reports use selected persisted TikTok rows only.</DialogDescription>
+                  <DialogTitle className="text-xl font-bold">Report Type</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="tiktok-report-name">Report Name *</Label>
-                    <Input id="tiktok-report-name" value={reportForm.name} onChange={(event) => setReportForm((form) => ({ ...form, name: event.target.value }))} placeholder="TikTok Performance Report" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tiktok-report-description">Description</Label>
-                    <Textarea id="tiktok-report-description" rows={3} value={reportForm.description} onChange={(event) => setReportForm((form) => ({ ...form, description: event.target.value }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tiktok-report-type">Report Type</Label>
-                    <Select value={reportForm.reportType} onValueChange={(value) => setReportForm((form) => ({ ...form, reportType: value }))}>
-                      <SelectTrigger id="tiktok-report-type"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="overview">Overview</SelectItem>
-                        <SelectItem value="kpis">KPIs</SelectItem>
-                        <SelectItem value="benchmarks">Benchmarks</SelectItem>
-                        <SelectItem value="ads">Ad Comparison</SelectItem>
-                        <SelectItem value="insights">Insights</SelectItem>
-                        <SelectItem value="custom">Custom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-4 pt-4 border-t border-border">
-                    <div className="flex items-center gap-2">
-                      <Checkbox id="tiktok-report-schedule" checked={reportForm.scheduleEnabled} onCheckedChange={(checked) => setReportForm((form) => ({ ...form, scheduleEnabled: checked === true }))} />
-                      <Label htmlFor="tiktok-report-schedule" className="font-semibold cursor-pointer">Schedule Automated Reports</Label>
+
+                <div className="py-4">
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div
+                      className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${reportModalStep === "standard" ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-border"}`}
+                      onClick={() => {
+                        setReportModalStep("standard");
+                        setReportForm((form) => ({
+                          ...form,
+                          reportType: form.reportType === "custom" ? "overview" : form.reportType,
+                          name: form.reportType === "custom" ? "" : form.name,
+                        }));
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <FileText className="w-6 h-6 text-blue-600 mt-1" />
+                        <div>
+                          <h3 className="text-lg font-bold text-foreground">Standard Templates</h3>
+                          <p className="text-sm text-muted-foreground/70 mt-1">Pre-built professional report templates</p>
+                        </div>
+                      </div>
                     </div>
+
+                    <div
+                      className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${reportModalStep === "custom" ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-border"}`}
+                      onClick={() => {
+                        setReportModalStep("custom");
+                        setReportForm((form) => ({ ...form, reportType: "custom", name: form.name || "Custom Report" }));
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Settings className="w-6 h-6 text-blue-600 mt-1" />
+                        <div>
+                          <h3 className="text-lg font-bold text-foreground">Custom Report</h3>
+                          <p className="text-sm text-muted-foreground/70 mt-1">Build your own customized report</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {reportModalStep === "standard" ? (
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-lg font-bold text-foreground mb-4">Choose Template</h3>
+                        <div className="space-y-4">
+                          {TIKTOK_REPORT_TEMPLATES.map((template) => {
+                            const selected = reportForm.reportType === template.key;
+                            return (
+                              <div
+                                key={template.key}
+                                className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${selected ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-border"}`}
+                                onClick={() => setReportForm((form) => ({ ...form, reportType: template.key, name: `TikTok ${template.title} Report` }))}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <template.Icon className="w-5 h-5 text-foreground mt-0.5" />
+                                  <div className="flex-1">
+                                    <h4 className="font-semibold text-foreground">{template.title}</h4>
+                                    <p className="text-sm text-muted-foreground/70 mt-1">{template.desc}</p>
+                                    <div className="flex gap-2 mt-3 flex-wrap">
+                                      {template.chips.map((chip) => (
+                                        <span key={chip} className="text-xs px-2 py-1 bg-muted rounded">{chip}</span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-bold text-foreground mb-2">Custom Report</h3>
+                      <p className="text-sm text-muted-foreground/70">Build your own customized report using selected TikTok source-backed rows.</p>
+                    </div>
+                  )}
+
+                  <div className="pt-4 border-t mt-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Checkbox id="tiktok-report-schedule" checked={reportForm.scheduleEnabled} onCheckedChange={(checked) => setReportForm((form) => ({ ...form, scheduleEnabled: checked === true }))} />
+                      <Label htmlFor="tiktok-report-schedule" className="text-base font-semibold cursor-pointer">Schedule Automated Reports</Label>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="tiktok-report-name">Report Name</Label>
+                        <Input id="tiktok-report-name" value={reportForm.name} onChange={(event) => setReportForm((form) => ({ ...form, name: event.target.value }))} placeholder="Enter report name" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tiktok-report-description">Description (Optional)</Label>
+                        <Textarea id="tiktok-report-description" rows={3} value={reportForm.description} onChange={(event) => setReportForm((form) => ({ ...form, description: event.target.value }))} placeholder="Add a description for this report" />
+                      </div>
+                    </div>
+
                     {reportForm.scheduleEnabled && (
-                      <div className="grid gap-4 md:grid-cols-2">
+                      <div className="bg-muted/50 rounded-lg p-4 space-y-4 mt-4">
                         <div className="space-y-2">
-                          <Label>Frequency</Label>
+                          <Label htmlFor="tiktok-schedule-frequency">Frequency</Label>
                           <Select value={reportForm.scheduleFrequency} onValueChange={(value) => setReportForm((form) => ({ ...form, scheduleFrequency: value }))}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectTrigger id="tiktok-schedule-frequency"><SelectValue /></SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="daily">Daily</SelectItem>
                               <SelectItem value="weekly">Weekly</SelectItem>
                               <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="quarterly">Quarterly</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {reportForm.scheduleFrequency === "weekly" && (
+                          <div className="space-y-2">
+                            <Label htmlFor="tiktok-schedule-day">Day of Week</Label>
+                            <Select value={reportForm.scheduleDayOfWeek} onValueChange={(value) => setReportForm((form) => ({ ...form, scheduleDayOfWeek: value }))}>
+                              <SelectTrigger id="tiktok-schedule-day"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="monday">Monday</SelectItem>
+                                <SelectItem value="tuesday">Tuesday</SelectItem>
+                                <SelectItem value="wednesday">Wednesday</SelectItem>
+                                <SelectItem value="thursday">Thursday</SelectItem>
+                                <SelectItem value="friday">Friday</SelectItem>
+                                <SelectItem value="saturday">Saturday</SelectItem>
+                                <SelectItem value="sunday">Sunday</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        {reportForm.scheduleFrequency === "quarterly" && (
+                          <div className="space-y-2">
+                            <Label htmlFor="tiktok-quarter-timing">Quarter Timing</Label>
+                            <Select value={reportForm.quarterTiming} onValueChange={(value) => setReportForm((form) => ({ ...form, quarterTiming: value }))}>
+                              <SelectTrigger id="tiktok-quarter-timing"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="end">End of Quarter (Mar, Jun, Sep, Dec)</SelectItem>
+                                <SelectItem value="start">Start of Quarter (Jan, Apr, Jul, Oct)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground/70">Choose whether to run reports at the start or end of each quarter</p>
+                          </div>
+                        )}
+
+                        {(reportForm.scheduleFrequency === "monthly" || reportForm.scheduleFrequency === "quarterly") && (
+                          <div className="space-y-2">
+                            <Label htmlFor="tiktok-schedule-day-month">Day of Month</Label>
+                            <Select value={reportForm.scheduleDayOfMonth} onValueChange={(value) => setReportForm((form) => ({ ...form, scheduleDayOfMonth: value }))}>
+                              <SelectTrigger id="tiktok-schedule-day-month"><SelectValue /></SelectTrigger>
+                              <SelectContent className="max-h-[300px]">
+                                {reportForm.scheduleFrequency === "quarterly" ? (
+                                  <>
+                                    <SelectItem value="first">First day of month</SelectItem>
+                                    <SelectItem value="last">Last day of month</SelectItem>
+                                    <SelectItem value="15">Mid-month (15th)</SelectItem>
+                                  </>
+                                ) : (
+                                  <>
+                                    <SelectItem value="first">1st (First day of month)</SelectItem>
+                                    <SelectItem value="last">Last day of month</SelectItem>
+                                    <SelectItem value="15">15th (Mid-month)</SelectItem>
+                                    {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+                                      <SelectItem key={day} value={String(day)}>{day}</SelectItem>
+                                    ))}
+                                  </>
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground/70">For months with fewer days, the report will run on the last available day.</p>
+                          </div>
+                        )}
+
                         <div className="space-y-2">
                           <Label htmlFor="tiktok-report-time">Time</Label>
-                          <Input id="tiktok-report-time" value={reportForm.scheduleTime} onChange={(event) => setReportForm((form) => ({ ...form, scheduleTime: event.target.value }))} placeholder="09:00" />
+                          <Select value={reportForm.scheduleTime} onValueChange={(value) => setReportForm((form) => ({ ...form, scheduleTime: value }))}>
+                            <SelectTrigger id="tiktok-report-time"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {TIKTOK_REPORT_TIMES.map(([value, label]) => (
+                                <SelectItem key={value} value={value}>{label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-sm text-muted-foreground/70">All times are saved in the selected time zone.</p>
                         </div>
+
                         <div className="space-y-2">
                           <Label htmlFor="tiktok-report-timezone">Time Zone</Label>
                           <Input id="tiktok-report-timezone" value={reportForm.scheduleTimeZone} onChange={(event) => setReportForm((form) => ({ ...form, scheduleTimeZone: event.target.value }))} placeholder="UTC" />
                         </div>
+
                         <div className="space-y-2">
-                          <Label htmlFor="tiktok-report-recipients">Recipients *</Label>
-                          <Input id="tiktok-report-recipients" value={reportForm.scheduleRecipients} onChange={(event) => setReportForm((form) => ({ ...form, scheduleRecipients: event.target.value }))} placeholder="email1@example.com, email2@example.com" />
+                          <Label htmlFor="tiktok-report-recipients">Email Recipients</Label>
+                          <Input id="tiktok-report-recipients" value={reportForm.scheduleRecipients} onChange={(event) => setReportForm((form) => ({ ...form, scheduleRecipients: event.target.value }))} placeholder="Enter email addresses (comma-separated)" />
+                          <p className="text-sm text-muted-foreground/70">Reports will be automatically generated and sent to these email addresses</p>
                         </div>
                       </div>
                     )}

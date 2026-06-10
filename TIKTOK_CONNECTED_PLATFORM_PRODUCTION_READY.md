@@ -898,6 +898,8 @@ Status:
 - [x] Commit 11 bundled root cause traced: TikTok report output was intentionally fail-closed from Commit 9D, the TikTok Reports tab still rendered an unavailable message, and the scheduler did not discover or validate TikTok platform reports.
 - [x] Commit 11 bundled implementation completed locally: TikTok Reports now use the shared `/api/platforms/tiktok/reports` create/edit/delete contract, manual downloads generate source-backed snapshots/PDFs, scheduled report discovery includes TikTok, and test/scheduled sends validate TikTok campaign/source scope before output.
 - [x] Commit 11 source-safety preserved: TikTok report PDFs read only selected persisted `tiktok_daily_metrics` rows plus TikTok-scoped attributed revenue; missing selected rows or invalid source scope fails closed instead of using generic report fallback.
+- [x] Commit 11 report-modal parity root cause traced: TikTok report creation used a simplified field form instead of the GA4 report modal's Report Type selector, Standard Templates/Custom Report cards, template cards, and schedule field layout.
+- [x] Commit 11 report-modal parity completed locally: TikTok report creation now follows the GA4 modal structure while preserving the existing `/api/platforms/tiktok/reports` payload and source-backed PDF/scheduler contract.
 - [x] Commit 11 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/report-email-regression.test.ts server/custom-report-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
 - [x] Commit 11 local validation passed: `npm run check`.
 

@@ -700,6 +700,7 @@ Status:
 - [x] Commit 7C completed locally: Overview cards aggregate only returned persisted TikTok rows.
 - [x] Commit 7D completed locally: Campaign Breakdown groups only selected TikTok campaign rows.
 - [x] Commit 7E completed locally: Ad Comparison and Insights render source-backed/unavailable states without ad-level or revenue inventions.
+- [x] Commit 7E selected-campaign comparison follow-up completed locally: root cause was that the TikTok Ad Comparison tab still rendered the old ad-level-unavailable placeholder even though selected TikTok campaign rows are already persisted and grouped for the analytics page. The tab now follows the GA4 campaign-row comparison pattern inside the Ad Comparison slot, ranking only selected persisted TikTok campaign rows with spend, impressions, clicks, CTR, CPC, conversions, CVR, cost per conversion, executive callouts, and unavailable states when selected rows are missing.
 - [x] Commit 7F completed locally: disconnected, error, no-row, and revenue-unavailable states render explicit reasons.
 - [x] Commit 7G completed locally: regression guard updated for selected-row TikTok analytics.
 - [x] Commit 7 preserved adjacent boundaries: no Campaign DeepDive aggregate, scheduler, revenue import, KPI, Benchmark, Reports, or TikTok provider OAuth code was added.
@@ -1060,6 +1061,7 @@ Status:
 - [x] Commit 15.1 TikTok CRM/ecommerce campaign-mapping follow-up completed locally: business review found that TikTok HubSpot, Salesforce, and Shopify attributed revenue should support explicit source-value-to-selected-TikTok-campaign mapping for the same reason CSV and Google Sheets do. The three wizards now fetch selected TikTok campaigns, render `TikTok campaign mapping`, and save existing `campaignMappings` without changing the backend contract.
 - [x] Commit 15.1 TikTok revenue delete sync follow-up completed locally: root cause was frontend stale state after deleting a revenue source. TikTok now removes the deleted source from the revenue-source query cache immediately, invalidates/refetches `all-data-sources`, and remounts the Add TikTok attributed revenue modal so Pipeline Proxy and source connected badges reflect the active persisted sources after deletion.
 - [x] Commit 15.1 TikTok modal delete sync follow-up completed locally: root cause was that the Add TikTok attributed revenue modal's CRM/ecommerce disconnect action deleted the source but did not clear local `crmHasSource` state or notify the parent TikTok page. The modal now clears its connected-source badge state and calls the parent success refresh so Pipeline Proxy and source status resync after deleting from inside the modal.
+- [x] Commit 15.1 TikTok modal/source cache follow-up completed locally: root cause was that the TikTok revenue-source and all-data-sources reads could reuse stale cached responses after a delete. The modal CRM status checks, modal source reads, TikTok revenue-source reads, and the two backend source-list endpoints now use no-store behavior so Pipeline Proxy and source badges read fresh active source state after deletion.
 - [ ] Commit 15.1 browser validation pending: deploy, open TikTok Analytics Overview, confirm `Total Revenue` has a `+`, import TikTok-scoped revenue through the wizard, and confirm Total Revenue, ROI, ROAS, KPIs, Benchmarks, Insights, Ad Comparison, Reports, scheduled report output, and Campaign DeepDive aggregate values refresh from TikTok-scoped persisted revenue only.
 
 ### Commit 15.2: Deferred Live OAuth And Provider Validation
@@ -1109,7 +1111,7 @@ Status:
 
 - [x] Automated evidence: TikTok Overview values come from selected persisted `tiktok_daily_metrics` rows only.
 - [x] Automated evidence: unselected TikTok campaigns are filtered out of analytics and aggregate reads.
-- [x] Automated evidence: Ad Comparison stays unavailable until ad-level identifiers exist instead of using hardcoded campaigns.
+- [x] Automated evidence: Ad Comparison compares selected persisted TikTok campaign rows inside the Ad Comparison slot and does not use hardcoded campaigns, placeholder metrics, ad-level inventions, or unselected source rows.
 - [x] Automated evidence: Insights and revenue-dependent metrics render unavailable until TikTok-scoped attributed revenue exists.
 - [x] Automated evidence: no-row state is unavailable, not zero-filled.
 

@@ -113,6 +113,14 @@ function formatPct(value: number | null) {
   return value === null || value === undefined ? "Unavailable" : `${value.toFixed(2)}%`;
 }
 
+function formatOptionalCurrency(value: number | null | undefined) {
+  return value === null || value === undefined || !Number.isFinite(value) ? "Unavailable" : formatCurrency(value);
+}
+
+function formatOptionalPct(value: number | null | undefined) {
+  return value === null || value === undefined || !Number.isFinite(value) ? "Unavailable" : `${value.toFixed(2)}%`;
+}
+
 function parseRevenueSourceConfig(source: any): any {
   if (!source?.mappingConfig) return null;
   if (typeof source.mappingConfig === "object") return source.mappingConfig;
@@ -778,9 +786,37 @@ export default function TikTokAnalytics() {
       ...row,
       ctr: row.impressions > 0 ? (row.clicks / row.impressions) * 100 : null,
       cpc: row.clicks > 0 ? row.spend / row.clicks : null,
+      cpm: row.impressions > 0 ? (row.spend / row.impressions) * 1000 : null,
       costPerConversion: row.conversions > 0 ? row.spend / row.conversions : null,
+      conversionRate: row.clicks > 0 ? (row.conversions / row.clicks) * 100 : null,
     })).sort((a: any, b: any) => b.spend - a.spend);
   }, [rows]);
+
+  const adComparison = useMemo(() => {
+    const rankedRows = campaignRows
+      .map((row: any) => ({
+        ...row,
+        spendShare: totals.spend > 0 ? (Number(row.spend || 0) / totals.spend) * 100 : null,
+      }))
+      .sort((a: any, b: any) =>
+        Number(b.conversions || 0) - Number(a.conversions || 0) ||
+        Number(b.clicks || 0) - Number(a.clicks || 0) ||
+        Number(b.spend || 0) - Number(a.spend || 0)
+      );
+    const topConverter = rankedRows[0] || null;
+    const spendLeader = [...rankedRows].sort((a: any, b: any) => Number(b.spend || 0) - Number(a.spend || 0))[0] || null;
+    const efficientRows = rankedRows.filter((row: any) => Number(row.conversions || 0) > 0 && Number(row.spend || 0) > 0 && row.costPerConversion !== null);
+    const mostEfficient = [...efficientRows].sort((a: any, b: any) => Number(a.costPerConversion || 0) - Number(b.costPerConversion || 0))[0] || null;
+    const weakRows = rankedRows.filter((row: any) => Number(row.spend || 0) > 0);
+    const needsAttention = [...weakRows].sort((a: any, b: any) => {
+      const aNoConversions = Number(a.conversions || 0) === 0 ? 1 : 0;
+      const bNoConversions = Number(b.conversions || 0) === 0 ? 1 : 0;
+      if (aNoConversions !== bNoConversions) return bNoConversions - aNoConversions;
+      if (aNoConversions && bNoConversions) return Number(b.spend || 0) - Number(a.spend || 0);
+      return Number(b.costPerConversion || 0) - Number(a.costPerConversion || 0);
+    })[0] || null;
+    return { rankedRows, topConverter, spendLeader, mostEfficient, needsAttention };
+  }, [campaignRows, totals.spend]);
 
   const financialSummary = dailyMetrics?.financialSummary || {};
   const hasAttributedRevenue = financialSummary?.hasAttributedRevenue === true && Number(financialSummary?.attributedRevenue || 0) > 0;
@@ -1054,13 +1090,144 @@ export default function TikTokAnalytics() {
                 </TabsContent>
 
                 <TabsContent value="ads" className="space-y-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <p className="text-sm text-muted-foreground">
-                        TikTok ad-level comparison is unavailable until persisted TikTok rows include ad-level source identifiers.
-                      </p>
-                    </CardContent>
-                  </Card>
+                  {!hasRows ? (
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-muted-foreground">{unavailableReason}</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {metricCard(
+                          "Top Converter",
+                          adComparison.topConverter && Number(adComparison.topConverter.conversions || 0) > 0 ? adComparison.topConverter.name : "Unavailable",
+                          Target,
+                          adComparison.topConverter && Number(adComparison.topConverter.conversions || 0) > 0
+                            ? `${formatNumber(adComparison.topConverter.conversions)} conversions from selected TikTok rows.`
+                            : "No selected TikTok campaign has conversions yet.",
+                          "text-foreground break-words text-xl leading-tight"
+                        )}
+                        {metricCard(
+                          "Most Efficient",
+                          adComparison.mostEfficient ? adComparison.mostEfficient.name : "Unavailable",
+                          DollarSign,
+                          adComparison.mostEfficient
+                            ? `${formatCurrency(adComparison.mostEfficient.costPerConversion)} cost / conversion.`
+                            : "Requires spend and conversions from selected TikTok rows.",
+                          "text-foreground break-words text-xl leading-tight"
+                        )}
+                        {metricCard(
+                          "Spend Leader",
+                          adComparison.spendLeader ? adComparison.spendLeader.name : "Unavailable",
+                          BarChart3,
+                          adComparison.spendLeader
+                            ? `${formatCurrency(adComparison.spendLeader.spend)} (${formatOptionalPct(adComparison.spendLeader.spendShare)} of TikTok spend).`
+                            : "No selected TikTok spend available.",
+                          "text-foreground break-words text-xl leading-tight"
+                        )}
+                        {metricCard(
+                          "Needs Attention",
+                          adComparison.needsAttention ? adComparison.needsAttention.name : "Unavailable",
+                          AlertTriangle,
+                          adComparison.needsAttention
+                            ? Number(adComparison.needsAttention.conversions || 0) === 0
+                              ? `${formatCurrency(adComparison.needsAttention.spend)} spend with no conversions.`
+                              : `${formatCurrency(adComparison.needsAttention.costPerConversion)} cost / conversion.`
+                            : "No selected TikTok campaign has spend to review.",
+                          "text-foreground break-words text-xl leading-tight",
+                          "text-amber-500"
+                        )}
+                      </div>
+
+                      <Card>
+                        <CardContent className="p-5 space-y-4">
+                          <div>
+                            <h2 className="text-lg font-semibold text-foreground">Selected Campaign Comparison</h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Ranked from persisted TikTok metric rows for the campaigns selected on this source.
+                            </p>
+                          </div>
+                          {adComparison.rankedRows.length <= 1 && (
+                            <div className="rounded-md border border-border p-3 text-sm text-muted-foreground">
+                              Only one selected TikTok campaign has persisted rows, so side-by-side comparison is limited.
+                            </div>
+                          )}
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b text-left text-muted-foreground">
+                                  <th className="py-2 pr-4 font-medium">Campaign</th>
+                                  <th className="py-2 px-3 font-medium text-right">Spend</th>
+                                  <th className="py-2 px-3 font-medium text-right">Spend Share</th>
+                                  <th className="py-2 px-3 font-medium text-right">Impressions</th>
+                                  <th className="py-2 px-3 font-medium text-right">Clicks</th>
+                                  <th className="py-2 px-3 font-medium text-right">CTR</th>
+                                  <th className="py-2 px-3 font-medium text-right">CPC</th>
+                                  <th className="py-2 px-3 font-medium text-right">Conversions</th>
+                                  <th className="py-2 px-3 font-medium text-right">CVR</th>
+                                  <th className="py-2 pl-3 font-medium text-right">Cost / Conv.</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {adComparison.rankedRows.map((row: any, index: number) => (
+                                  <tr key={row.id} className="border-b last:border-b-0">
+                                    <td className="py-3 pr-4">
+                                      <div className="font-medium text-foreground">{index + 1}. {row.name}</div>
+                                      <div className="text-xs text-muted-foreground">{row.id}</div>
+                                    </td>
+                                    <td className="py-3 px-3 text-right tabular-nums">{formatCurrency(row.spend)}</td>
+                                    <td className="py-3 px-3 text-right tabular-nums">{formatOptionalPct(row.spendShare)}</td>
+                                    <td className="py-3 px-3 text-right tabular-nums">{formatNumber(row.impressions)}</td>
+                                    <td className="py-3 px-3 text-right tabular-nums">{formatNumber(row.clicks)}</td>
+                                    <td className="py-3 px-3 text-right tabular-nums">{formatOptionalPct(row.ctr)}</td>
+                                    <td className="py-3 px-3 text-right tabular-nums">{formatOptionalCurrency(row.cpc)}</td>
+                                    <td className="py-3 px-3 text-right tabular-nums">{formatNumber(row.conversions)}</td>
+                                    <td className="py-3 px-3 text-right tabular-nums">{formatOptionalPct(row.conversionRate)}</td>
+                                    <td className="py-3 pl-3 text-right tabular-nums">{formatOptionalCurrency(row.costPerConversion)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-5 space-y-2">
+                          <h2 className="text-lg font-semibold text-foreground">Executive Readout</h2>
+                          <div className="grid gap-3 md:grid-cols-3 text-sm">
+                            <div className="border-l border-border pl-3">
+                              <p className="font-medium text-foreground">Scale signal</p>
+                              <p className="text-muted-foreground mt-1">
+                                {adComparison.topConverter && Number(adComparison.topConverter.conversions || 0) > 0
+                                  ? `${adComparison.topConverter.name} is producing the most conversions.`
+                                  : "No selected TikTok campaign has produced conversions in this range."}
+                              </p>
+                            </div>
+                            <div className="border-l border-border pl-3">
+                              <p className="font-medium text-foreground">Efficiency signal</p>
+                              <p className="text-muted-foreground mt-1">
+                                {adComparison.mostEfficient
+                                  ? `${adComparison.mostEfficient.name} has the lowest cost per conversion.`
+                                  : "Efficiency is unavailable until at least one selected campaign has spend and conversions."}
+                              </p>
+                            </div>
+                            <div className="border-l border-border pl-3">
+                              <p className="font-medium text-foreground">Budget risk</p>
+                              <p className="text-muted-foreground mt-1">
+                                {adComparison.needsAttention
+                                  ? Number(adComparison.needsAttention.conversions || 0) === 0
+                                    ? `${adComparison.needsAttention.name} is spending without conversions.`
+                                    : `${adComparison.needsAttention.name} has the weakest cost per conversion.`
+                                  : "No selected TikTok spend risk is visible from persisted rows."}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="kpis" className="space-y-6">
@@ -1967,7 +2134,7 @@ export default function TikTokAnalytics() {
                             { key: "overview", label: "Overview", options: [["summary", "Summary"], ["sourceMetrics", "Source Metrics"], ["revenueFinancial", "Revenue & Financial"], ["efficiencyMetrics", "Efficiency Metrics"]] as Array<[string, string]> },
                             { key: "kpis", label: "KPIs", options: [] as Array<[string, string]> },
                             { key: "benchmarks", label: "Benchmarks", options: [] as Array<[string, string]> },
-                            { key: "ads", label: "Ad Comparison", options: [["availability", "Ad-Level Availability Guidance"]] as Array<[string, string]> },
+                            { key: "ads", label: "Ad Comparison", options: [["availability", "Selected Campaign Comparison"]] as Array<[string, string]> },
                             { key: "insights", label: "Insights", options: [["summaryCards", "Executive Summary Cards"], ["revenueGuidance", "Revenue Availability Guidance"], ["sourceDataGuidance", "Source Data Guidance"]] as Array<[string, string]> },
                           ].map((section) => {
                             const expanded = !!expandedCustomReportSections[section.key];

@@ -177,6 +177,17 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("getBenchmarkProgress(benchmark, hasAttributedRevenue)");
     expect(page).toContain('"text-amber-600", "text-amber-500"');
     expect(page).toContain("No Benchmarks Yet");
+    expect(page).toContain("const adComparison = useMemo(() =>");
+    expect(page).toContain("rankedRows");
+    expect(page).toContain("spendShare");
+    expect(page).toContain("Top Converter");
+    expect(page).toContain("Most Efficient");
+    expect(page).toContain("Spend Leader");
+    expect(page).toContain("Selected Campaign Comparison");
+    expect(page).toContain("Executive Readout");
+    expect(page).toContain("Budget risk");
+    expect(page).toContain("Ranked from persisted TikTok metric rows for the campaigns selected on this source.");
+    expect(page).not.toContain("TikTok ad-level comparison is unavailable until persisted TikTok rows include ad-level source identifiers.");
     expect(page).toContain("Selected Campaign Rows");
     expect(page).toContain("Attributed Revenue");
     expect(page).toContain("From TikTok-scoped revenue source.");

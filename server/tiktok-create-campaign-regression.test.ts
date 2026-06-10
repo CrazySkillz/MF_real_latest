@@ -186,7 +186,10 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("const [pipelineProxySourcesDialogOpen, setPipelineProxySourcesDialogOpen] = useState(false);");
     expect(page).toContain("pipelineProxyConfiguredEntries");
     expect(page).toContain("pipelineProxySourceEntries");
-    expect(page).toContain('sourceType !== "hubspot" && sourceType !== "salesforce"');
+    expect(page).toContain("source?.sourceType || config?.provider");
+    expect(page).toContain('sourceType.includes("hubspot")');
+    expect(page).toContain('sourceType.includes("salesforce")');
+    expect(page).toContain("totals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0)");
     expect(page).toContain("config?.pipelineEnabled !== true");
     expect(page).toContain("pipelineProxyConfiguredEntries.length > 0");
     expect(page).toContain("pipelineProxySourceEntries.length > 0");

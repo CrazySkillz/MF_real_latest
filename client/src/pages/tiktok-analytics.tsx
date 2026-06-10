@@ -794,17 +794,21 @@ export default function TikTokAnalytics() {
   const revenueSources = Array.isArray(revenueSourcesData?.sources) ? revenueSourcesData.sources : [];
   const pipelineProxyConfiguredEntries = revenueSources
     .map((source: any) => {
-      const sourceType = String(source?.sourceType || "").toLowerCase();
-      if (source?.isActive === false || (sourceType !== "hubspot" && sourceType !== "salesforce")) return null;
       const config = parseRevenueSourceConfig(source);
-      const totalToDate = Number(config?.pipelineTotalToDate || 0);
+      const sourceType = String(source?.sourceType || config?.provider || "").toLowerCase();
+      const isHubSpot = sourceType.includes("hubspot");
+      const isSalesforce = sourceType.includes("salesforce");
+      if (source?.isActive === false || (!isHubSpot && !isSalesforce)) return null;
+      const totals = Array.isArray(config?.pipelineValueRevenueTotals) ? config.pipelineValueRevenueTotals : [];
+      const totalsSum = totals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0);
+      const cachedTotal = Number(config?.pipelineTotalToDate);
+      const totalToDate = Number.isFinite(cachedTotal) && cachedTotal > 0 ? cachedTotal : totalsSum;
       const stageLabel = String(config?.pipelineStageLabel || config?.pipelineStageName || config?.pipelineStageId || "").trim();
       if (config?.pipelineEnabled !== true || !stageLabel || !Number.isFinite(totalToDate)) return null;
-      const totals = Array.isArray(config?.pipelineValueRevenueTotals) ? config.pipelineValueRevenueTotals : [];
       const selectedValues = Array.isArray(config?.selectedValues) ? config.selectedValues.map((value: any) => String(value || "").trim()).filter(Boolean) : [];
       return {
         sourceId: String(source?.id || source?.sourceId || sourceType),
-        providerLabel: sourceType === "hubspot" ? "HubSpot" : "Salesforce",
+        providerLabel: isHubSpot ? "HubSpot" : "Salesforce",
         pipelineStageLabel: stageLabel,
         totalToDate,
         campaignValues: totals.length > 0

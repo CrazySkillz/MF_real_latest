@@ -191,7 +191,8 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain('sourceType.includes("salesforce")');
     expect(page).toContain("totals.reduce((sum: number, item: any) => sum + Number(item?.revenue || 0), 0)");
     expect(page).toContain("config?.pipelineEnabled !== true");
-    expect(page).toContain("pipelineProxyConfiguredEntries.length > 0");
+    expect(page).toContain('pipelineProxyConfiguredEntries.length > 0 ? formatCurrency(pipelineProxyTotal) : "Not configured"');
+    expect(page).toContain("Requires HubSpot or Salesforce Pipeline Proxy.");
     expect(page).toContain("pipelineProxySourceEntries.length > 0");
     expect(page).toContain("Pipeline Proxy");
     expect(page).toContain("Sources contributing to TikTok Pipeline Proxy.");

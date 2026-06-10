@@ -1015,28 +1015,30 @@ export default function TikTokAnalytics() {
                           </div>
                         </CardContent>
                       </Card>
-                      {pipelineProxyConfiguredEntries.length > 0 && (
-                        <Card>
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <p className="text-sm text-muted-foreground">Pipeline Proxy</p>
-                                <p className="text-2xl font-semibold text-foreground">{formatCurrency(pipelineProxyTotal)}</p>
-                                {pipelineProxySourceEntries.length > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setPipelineProxySourcesDialogOpen(true)}
-                                    className="mt-1 text-xs text-muted-foreground hover:text-foreground"
-                                  >
-                                    Sources ({pipelineProxySourceEntries.length})
-                                  </button>
-                                )}
-                              </div>
-                              <Target className="w-5 h-5 text-muted-foreground" />
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Pipeline Proxy</p>
+                              <p className="text-2xl font-semibold text-foreground">
+                                {pipelineProxyConfiguredEntries.length > 0 ? formatCurrency(pipelineProxyTotal) : "Not configured"}
+                              </p>
+                              {pipelineProxySourceEntries.length > 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setPipelineProxySourcesDialogOpen(true)}
+                                  className="mt-1 text-xs text-muted-foreground hover:text-foreground"
+                                >
+                                  Sources ({pipelineProxySourceEntries.length})
+                                </button>
+                              ) : (
+                                <p className="text-xs text-muted-foreground mt-1">Requires HubSpot or Salesforce Pipeline Proxy.</p>
+                              )}
                             </div>
-                          </CardContent>
-                        </Card>
-                      )}
+                            <Target className="w-5 h-5 text-muted-foreground" />
+                          </div>
+                        </CardContent>
+                      </Card>
                       {metricCard("ROI", roi === null ? "Unavailable" : `${roi.toFixed(2)}%`, Percent, roi === null ? "Requires TikTok-scoped attributed revenue." : undefined)}
                       {metricCard("ROAS", roas === null ? "Unavailable" : `${roas.toFixed(2)}x`, TrendingUp, roas === null ? "Requires TikTok-scoped attributed revenue." : undefined)}
                     </div>

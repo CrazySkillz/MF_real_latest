@@ -32,6 +32,13 @@ describe("Shopify revenue regression guard", () => {
     expect(modal).toContain('crmStatus.shopify || crmHasSource.shopify ? "Attribute order revenue to this campaign." : "Connect Shopify to import order revenue."');
   });
 
+  it("includes TikTok scoped revenue sources in the source picker inventory", () => {
+    const routes = read(ROUTES_FILE);
+
+    expect(routes).toContain("storage.getRevenueSources(campaignId, 'tiktok')");
+    expect(routes).toContain("...tiktokRev.map((s: any) => ({ ...s, platformContext: 'tiktok' }))");
+  });
+
   it("does not silently truncate Shopify order pagination", () => {
     const routes = read(ROUTES_FILE);
 

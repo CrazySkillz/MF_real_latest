@@ -2180,17 +2180,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ok) return;
 
       // Fetch revenue sources across all platform contexts
-      const [ga4Rev, linkedinRev, metaRev, googleAdsRev] = await Promise.all([
+      const [ga4Rev, linkedinRev, metaRev, googleAdsRev, instagramRev, tiktokRev] = await Promise.all([
         storage.getRevenueSources(campaignId, 'ga4').catch(() => [] as any[]),
         storage.getRevenueSources(campaignId, 'linkedin').catch(() => [] as any[]),
         storage.getRevenueSources(campaignId, 'meta').catch(() => [] as any[]),
         storage.getRevenueSources(campaignId, 'google_ads').catch(() => [] as any[]),
+        storage.getRevenueSources(campaignId, 'instagram').catch(() => [] as any[]),
+        storage.getRevenueSources(campaignId, 'tiktok').catch(() => [] as any[]),
       ]);
       const revenueSources = [
         ...ga4Rev.map((s: any) => ({ ...s, platformContext: (s as any).platformContext || 'ga4' })),
         ...linkedinRev.map((s: any) => ({ ...s, platformContext: 'linkedin' })),
         ...metaRev.map((s: any) => ({ ...s, platformContext: 'meta' })),
         ...googleAdsRev.map((s: any) => ({ ...s, platformContext: 'google_ads' })),
+        ...instagramRev.map((s: any) => ({ ...s, platformContext: 'instagram' })),
+        ...tiktokRev.map((s: any) => ({ ...s, platformContext: 'tiktok' })),
       ];
 
       // Fetch spend sources

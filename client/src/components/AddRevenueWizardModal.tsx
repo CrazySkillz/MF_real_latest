@@ -456,7 +456,9 @@ export function AddRevenueWizardModal(props: {
       await apiRequest('DELETE', `/api/${platform}/${campaignId}/connection`);
       setCrmOAuth(prev => ({ ...prev, [platform]: false }));
       setCrmStatus(prev => ({ ...prev, [platform]: false }));
+      setCrmHasSource(prev => ({ ...prev, [platform]: false }));
       invalidateAfterRevenueChange();
+      onSuccess?.();
       toast({ title: `${label} disconnected`, description: "Revenue source and connection removed." });
     } catch (err: any) {
       toast({ title: "Disconnect failed", description: err?.message || "Please try again.", variant: "destructive" });

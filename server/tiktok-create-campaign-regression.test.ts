@@ -5,6 +5,7 @@ import { join } from "path";
 const readCampaignsPage = () => readFileSync(join(process.cwd(), "client", "src", "pages", "campaigns.tsx"), "utf8");
 const readCampaignDetailPage = () => readFileSync(join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"), "utf8");
 const readTikTokAnalyticsPage = () => readFileSync(join(process.cwd(), "client", "src", "pages", "tiktok-analytics.tsx"), "utf8");
+const readAddRevenueWizard = () => readFileSync(join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"), "utf8");
 const readApp = () => readFileSync(join(process.cwd(), "client", "src", "App.tsx"), "utf8");
 const readRoutes = () => readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
 const readReportScheduler = () => readFileSync(join(process.cwd(), "server", "report-scheduler.ts"), "utf8");
@@ -308,6 +309,19 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(routes).toContain("mainPlatformSources: { googleAds, instagram, tiktok }");
     expect(routes).toContain("linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend");
     expect(routes).toContain("hasTikTokData");
+  });
+
+  it("supports TikTok campaign mapping in shared revenue imports", () => {
+    const modal = readAddRevenueWizard();
+    const routes = readRoutes();
+
+    expect(modal).toContain("platformContext === 'tiktok') && (step === 'csv_map' || step === 'sheets_map')");
+    expect(modal).toContain('fetch(`/api/tiktok/${campaignId}/campaigns`, { credentials: "include" })');
+    expect(modal).toContain('platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "tiktok"');
+    expect(modal).toContain('platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram" && platformContext !== "tiktok"');
+    expect(modal).toContain('const platformLabel = platformContext === "tiktok" ? "TikTok"');
+    expect(modal).toContain("campaignMappings");
+    expect(routes).toContain('app.get("/api/tiktok/:campaignId/campaigns"');
   });
 
   it("refreshes TikTok KPI and Benchmark current values from selected rows only", () => {

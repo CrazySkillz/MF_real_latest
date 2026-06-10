@@ -861,6 +861,8 @@ Status:
 - [x] Commit 10 no-default-template fix completed locally: opening either TikTok create modal now starts with no selected metric; clicking a template still selects it and fills current value from selected persisted TikTok rows.
 - [x] Commit 10 modal number-format root cause traced: TikTok Create KPI and Create Benchmark displayed raw numeric strings in Current Value, Target Value, and Benchmark Value, and count metrics used a blank unit instead of `count`.
 - [x] Commit 10 modal number-format fix completed locally: TikTok count templates now use `count`, Current Value is formatted from selected TikTok source-backed values, and Target/Benchmark Value fields format with thousands separators while typing and normalize on blur.
+- [x] Commit 10 revenue-template gating root cause traced: TikTok Create KPI and Create Benchmark template grids showed selectable Total Revenue, ROI, and ROAS templates even when TikTok-scoped attributed revenue was unavailable.
+- [x] Commit 10 revenue-template gating fix completed locally: revenue-dependent TikTok KPI and Benchmark templates are disabled until TikTok-scoped attributed revenue exists, with an unavailable reason shown instead of allowing a misleading selection.
 - [x] Commit 10 source-safety preserved: no schema changes, no storage bypass, no metric math changes, no unscoped revenue, and no generic campaign allocation were added.
 - [x] Commit 10 local validation passed: `npm test -- server/tiktok-create-campaign-regression.test.ts server/endpoint-auth-audit.test.ts server/source-safety-regression.test.ts`.
 - [x] Commit 10 local validation passed: `npm run check`.

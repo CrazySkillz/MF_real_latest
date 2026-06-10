@@ -98,6 +98,10 @@ function normalizeMetricKey(value: any) {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+function isRevenueDependentMetric(metricKey: string) {
+  return REVENUE_DEPENDENT_METRICS.has(normalizeMetricKey(metricKey));
+}
+
 function formatGoalValue(row: any, hasAttributedRevenue: boolean) {
   const metricKey = normalizeMetricKey(row?.metric);
   if (REVENUE_DEPENDENT_METRICS.has(metricKey) && !hasAttributedRevenue) {
@@ -912,16 +916,22 @@ export default function TikTokAnalytics() {
                       Choose a predefined KPI that will automatically calculate from your platform data, or create a custom one.
                     </p>
                     <div className="grid grid-cols-2 gap-3">
-                      {TIKTOK_GOAL_METRICS.map((metric) => (
-                        <button
-                          key={metric.key}
-                          type="button"
-                          className={`p-3 text-left border-2 rounded-lg transition-all ${kpiForm.metric === metric.key ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-300"}`}
-                          onClick={() => resetKpiForm(metric.key)}
-                        >
-                          <div className="font-medium text-sm text-foreground">{metric.label}</div>
-                        </button>
-                      ))}
+                      {TIKTOK_GOAL_METRICS.map((metric) => {
+                        const disabled = isRevenueDependentMetric(metric.key) && !hasAttributedRevenue;
+                        return (
+                          <button
+                            key={metric.key}
+                            type="button"
+                            disabled={disabled}
+                            title={disabled ? "Requires TikTok-scoped attributed revenue." : undefined}
+                            className={`p-3 text-left border-2 rounded-lg transition-all ${kpiForm.metric === metric.key ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-300"} ${disabled ? "opacity-50 cursor-not-allowed hover:border-border" : ""}`}
+                            onClick={() => resetKpiForm(metric.key)}
+                          >
+                            <div className="font-medium text-sm text-foreground">{metric.label}</div>
+                            {disabled && <div className="mt-1 text-xs text-muted-foreground">Requires TikTok-scoped attributed revenue.</div>}
+                          </button>
+                        );
+                      })}
                       <button
                         type="button"
                         className="p-3 text-left border-2 rounded-lg border-border hover:border-blue-300 transition-all"
@@ -1085,16 +1095,22 @@ export default function TikTokAnalytics() {
                       Choose a metric to benchmark, then fill in the benchmark details below.
                     </p>
                     <div className="grid grid-cols-2 gap-3">
-                      {TIKTOK_GOAL_METRICS.map((metric) => (
-                        <button
-                          key={metric.key}
-                          type="button"
-                          className={`p-3 text-left border-2 rounded-lg transition-all ${benchmarkForm.metric === metric.key ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-300"}`}
-                          onClick={() => resetBenchmarkForm(metric.key)}
-                        >
-                          <div className="font-medium text-sm text-foreground">{metric.label}</div>
-                        </button>
-                      ))}
+                      {TIKTOK_GOAL_METRICS.map((metric) => {
+                        const disabled = isRevenueDependentMetric(metric.key) && !hasAttributedRevenue;
+                        return (
+                          <button
+                            key={metric.key}
+                            type="button"
+                            disabled={disabled}
+                            title={disabled ? "Requires TikTok-scoped attributed revenue." : undefined}
+                            className={`p-3 text-left border-2 rounded-lg transition-all ${benchmarkForm.metric === metric.key ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-300"} ${disabled ? "opacity-50 cursor-not-allowed hover:border-border" : ""}`}
+                            onClick={() => resetBenchmarkForm(metric.key)}
+                          >
+                            <div className="font-medium text-sm text-foreground">{metric.label}</div>
+                            {disabled && <div className="mt-1 text-xs text-muted-foreground">Requires TikTok-scoped attributed revenue.</div>}
+                          </button>
+                        );
+                      })}
                       <button
                         type="button"
                         className="p-3 text-left border-2 rounded-lg border-border hover:border-blue-300 transition-all"

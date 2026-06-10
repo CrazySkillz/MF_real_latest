@@ -103,12 +103,16 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain('fetch(`/api/platforms/tiktok/kpis?campaignId=${campaignId}`)');
     expect(page).toContain('fetch(`/api/platforms/tiktok/benchmarks?campaignId=${campaignId}`)');
     expect(page).toContain('REVENUE_DEPENDENT_METRICS.has(metricKey) && !hasAttributedRevenue');
+    expect(page).toContain("function isRevenueDependentMetric(metricKey: string)");
     expect(page).toContain("Key Performance Indicators");
     expect(page).toContain("Track daily TikTok KPIs and progress toward targets.");
     expect(page).toContain("Create KPI");
     expect(page).toContain("Create New KPI");
     expect(page).toContain("Select KPI Template");
     expect(page).toContain("Choose a predefined KPI that will automatically calculate from your platform data, or create a custom one.");
+    expect(page).toContain("const disabled = isRevenueDependentMetric(metric.key) && !hasAttributedRevenue;");
+    expect(page).toContain("disabled={disabled}");
+    expect(page).toContain('title={disabled ? "Requires TikTok-scoped attributed revenue." : undefined}');
     expect(page).toContain("KPI Name *");
     expect(page).toContain('metric: ""');
     expect(page).toContain("const resetKpiForm = (metricKey?: string)");

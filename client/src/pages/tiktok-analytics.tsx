@@ -304,6 +304,7 @@ export default function TikTokAnalytics() {
   const [reportToDelete, setReportToDelete] = useState<any>(null);
   const [downloadingReportId, setDownloadingReportId] = useState("");
   const [reportInitialFingerprint, setReportInitialFingerprint] = useState("");
+  const [revenueDialogVersion, setRevenueDialogVersion] = useState(0);
   const [reportForm, setReportForm] = useState({
     name: "",
     description: "",
@@ -836,9 +837,11 @@ export default function TikTokAnalytics() {
     void queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/benchmarks`, campaignId], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/platforms/tiktok/reports`, campaignId], exact: false });
     void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
+    void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`], exact: false });
     void queryClient.refetchQueries({ queryKey: [`/api/tiktok/${campaignId}/daily-metrics`], exact: false });
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`], exact: false });
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
+    void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/all-data-sources`], exact: false });
   };
 
   const deleteRevenueSourceMutation = useMutation({
@@ -853,8 +856,13 @@ export default function TikTokAnalytics() {
       }
       return body;
     },
-    onSuccess: () => {
+    onSuccess: (_body, sourceId) => {
+      queryClient.setQueryData([`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`], (old: any) => {
+        if (!old || !Array.isArray(old.sources)) return old;
+        return { ...old, sources: old.sources.filter((source: any) => String(source?.id || source?.sourceId || "") !== String(sourceId)) };
+      });
       setDeletingRevenueSourceId("");
+      setRevenueDialogVersion((version) => version + 1);
       toast({ title: "Revenue source removed", description: "TikTok Total Revenue has been recalculated." });
       refreshTikTokRevenueConsumers();
     },
@@ -1531,6 +1539,7 @@ export default function TikTokAnalytics() {
             </Dialog>
 
             <AddRevenueWizardModal
+              key={`tiktok-revenue-${revenueDialogVersion}`}
               campaignId={campaignId as string}
               open={revenueDialogOpen}
               onOpenChange={(open) => {

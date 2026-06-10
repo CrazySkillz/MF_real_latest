@@ -204,6 +204,10 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("Remove revenue source?");
     expect(page).toContain("This removes only the selected TikTok revenue source. Total Revenue will be recalculated.");
     expect(page).toContain('fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`');
+    expect(page).toContain("setRevenueDialogVersion((version) => version + 1)");
+    expect(page).toContain("queryClient.setQueryData([`/api/campaigns/${campaignId}/revenue-sources?platformContext=tiktok`]");
+    expect(page).toContain("`/api/campaigns/${campaignId}/all-data-sources`");
+    expect(page).toContain('key={`tiktok-revenue-${revenueDialogVersion}`}');
     expect(page).toContain('toast({ title: "Revenue source removed", description: "TikTok Total Revenue has been recalculated." })');
     expect(page).toContain("TikTok Reports");
     expect(page).toContain("Create campaign-scoped TikTok reports from selected source-backed rows.");

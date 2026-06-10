@@ -448,15 +448,27 @@ export function AddRevenueWizardModal(props: {
       const dsResp = await fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include" });
       const dsJson = await dsResp.json().catch(() => ({}));
       const revSources = Array.isArray(dsJson?.revenueSources) ? dsJson.revenueSources : [];
-      const entry = revSources.find((s: any) => matchesRevenuePlatformContext(s, platform));
-      if (entry?.id) {
-        await apiRequest('DELETE', `/api/campaigns/${campaignId}/revenue-sources/${entry.id}`);
+      const entries = revSources.filter((s: any) => matchesRevenuePlatformContext(s, platform));
+      const removedIds = entries.map((entry: any) => String(entry?.id || "")).filter(Boolean);
+      for (const sourceId of removedIds) {
+        await apiRequest('DELETE', `/api/campaigns/${campaignId}/revenue-sources/${sourceId}`);
       }
       // Delete the OAuth connection
       await apiRequest('DELETE', `/api/${platform}/${campaignId}/connection`);
       setCrmOAuth(prev => ({ ...prev, [platform]: false }));
       setCrmStatus(prev => ({ ...prev, [platform]: false }));
       setCrmHasSource(prev => ({ ...prev, [platform]: false }));
+      if (removedIds.length > 0) {
+        const removed = new Set(removedIds);
+        queryClient.setQueryData([`/api/campaigns/${campaignId}/revenue-sources?platformContext=${platformContext}`], (old: any) => {
+          if (!old || !Array.isArray(old.sources)) return old;
+          return { ...old, sources: old.sources.filter((source: any) => !removed.has(String(source?.id || source?.sourceId || ""))) };
+        });
+        queryClient.setQueryData([`/api/campaigns/${campaignId}/all-data-sources`], (old: any) => {
+          if (!old || !Array.isArray(old.revenueSources)) return old;
+          return { ...old, revenueSources: old.revenueSources.filter((source: any) => !removed.has(String(source?.id || source?.sourceId || ""))) };
+        });
+      }
       invalidateAfterRevenueChange();
       onSuccess?.();
       toast({ title: `${label} disconnected`, description: "Revenue source and connection removed." });

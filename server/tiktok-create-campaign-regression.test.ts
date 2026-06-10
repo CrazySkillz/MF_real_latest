@@ -345,6 +345,10 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(modal).toContain('conns.length > 0 && (isEditing || platformContext !== "tiktok")');
     expect(modal).toContain('if (!isEditing && platformContext === "tiktok") setSheetsConnectionId("");');
     expect(modal).toContain("campaignMappings");
+    expect(modal).toContain("const entries = revSources.filter((s: any) => matchesRevenuePlatformContext(s, platform));");
+    expect(modal).toContain("for (const sourceId of removedIds)");
+    expect(modal).toContain("queryClient.setQueryData([`/api/campaigns/${campaignId}/revenue-sources?platformContext=${platformContext}`]");
+    expect(modal).toContain("queryClient.setQueryData([`/api/campaigns/${campaignId}/all-data-sources`]");
     expect(modal).toContain("setCrmHasSource(prev => ({ ...prev, [platform]: false }))");
     expect(modal).toContain("onSuccess?.();");
     expect(hubspot).toContain('const isTikTok = platformContext === "tiktok";');

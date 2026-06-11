@@ -180,9 +180,18 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain("const adComparison = useMemo(() =>");
     expect(page).toContain("rankedRows");
     expect(page).toContain("spendShare");
+    expect(page).toContain("chartBarWidth");
+    expect(page).toContain("maxSpend");
+    expect(page).toContain("maxConversions");
+    expect(page).toContain("maxCostPerConversion");
     expect(page).toContain("Top Converter");
     expect(page).toContain("Most Efficient");
     expect(page).toContain("Spend Leader");
+    expect(page).toContain("Comparative Performance Charts");
+    expect(page).toContain("Spend vs conversions");
+    expect(page).toContain("Efficiency graph");
+    expect(page).toContain("Traffic quality graph");
+    expect(page).toContain("Lower cost per conversion is better.");
     expect(page).toContain("Selected Campaign Comparison");
     expect(page).toContain("Executive Readout");
     expect(page).toContain("Budget risk");

@@ -121,6 +121,12 @@ function formatOptionalPct(value: number | null | undefined) {
   return value === null || value === undefined || !Number.isFinite(value) ? "Unavailable" : `${value.toFixed(2)}%`;
 }
 
+function chartBarWidth(value: number | null | undefined, maxValue: number) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0 || !Number.isFinite(maxValue) || maxValue <= 0) return "0%";
+  return `${Math.min((numeric / maxValue) * 100, 100).toFixed(2)}%`;
+}
+
 function parseRevenueSourceConfig(source: any): any {
   if (!source?.mappingConfig) return null;
   if (typeof source.mappingConfig === "object") return source.mappingConfig;
@@ -815,7 +821,18 @@ export default function TikTokAnalytics() {
       if (aNoConversions && bNoConversions) return Number(b.spend || 0) - Number(a.spend || 0);
       return Number(b.costPerConversion || 0) - Number(a.costPerConversion || 0);
     })[0] || null;
-    return { rankedRows, topConverter, spendLeader, mostEfficient, needsAttention };
+    return {
+      rankedRows,
+      topConverter,
+      spendLeader,
+      mostEfficient,
+      needsAttention,
+      maxSpend: Math.max(0, ...rankedRows.map((row: any) => Number(row.spend || 0))),
+      maxConversions: Math.max(0, ...rankedRows.map((row: any) => Number(row.conversions || 0))),
+      maxCostPerConversion: Math.max(0, ...rankedRows.map((row: any) => Number(row.costPerConversion || 0)).filter((value: number) => Number.isFinite(value))),
+      maxCtr: Math.max(0, ...rankedRows.map((row: any) => Number(row.ctr || 0)).filter((value: number) => Number.isFinite(value))),
+      maxConversionRate: Math.max(0, ...rankedRows.map((row: any) => Number(row.conversionRate || 0)).filter((value: number) => Number.isFinite(value))),
+    };
   }, [campaignRows, totals.spend]);
 
   const financialSummary = dailyMetrics?.financialSummary || {};
@@ -1139,6 +1156,88 @@ export default function TikTokAnalytics() {
                           "text-amber-500"
                         )}
                       </div>
+
+                      <Card>
+                        <CardContent className="p-5 space-y-5">
+                          <div>
+                            <h2 className="text-lg font-semibold text-foreground">Comparative Performance Charts</h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Visual comparison from persisted TikTok metric rows for the campaigns selected on this source.
+                            </p>
+                          </div>
+                          <div className="grid gap-6 lg:grid-cols-2">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <h3 className="text-sm font-semibold text-foreground">Spend vs conversions</h3>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-orange-500" />Spend</span>
+                                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-500" />Conversions</span>
+                                </div>
+                              </div>
+                              {adComparison.rankedRows.map((row: any) => (
+                                <div key={`${row.id}-scale-chart`} className="space-y-1.5">
+                                  <div className="flex items-center justify-between gap-3 text-xs">
+                                    <span className="font-medium text-foreground truncate">{row.name}</span>
+                                    <span className="text-muted-foreground tabular-nums">{formatCurrency(row.spend)} / {formatNumber(row.conversions)}</span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                      <div className="h-full rounded-full bg-orange-500" style={{ width: chartBarWidth(row.spend, adComparison.maxSpend) }} />
+                                    </div>
+                                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                      <div className="h-full rounded-full bg-blue-500" style={{ width: chartBarWidth(row.conversions, adComparison.maxConversions) }} />
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="space-y-3">
+                              <h3 className="text-sm font-semibold text-foreground">Efficiency graph</h3>
+                              {adComparison.rankedRows.map((row: any) => (
+                                <div key={`${row.id}-efficiency-chart`} className="space-y-1.5">
+                                  <div className="flex items-center justify-between gap-3 text-xs">
+                                    <span className="font-medium text-foreground truncate">{row.name}</span>
+                                    <span className="text-muted-foreground tabular-nums">{formatOptionalCurrency(row.costPerConversion)}</span>
+                                  </div>
+                                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                    <div className="h-full rounded-full bg-amber-500" style={{ width: chartBarWidth(row.costPerConversion, adComparison.maxCostPerConversion) }} />
+                                  </div>
+                                </div>
+                              ))}
+                              <p className="text-xs text-muted-foreground">Lower cost per conversion is better. Unavailable rows have no persisted spend/conversion denominator.</p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <h3 className="text-sm font-semibold text-foreground">Traffic quality graph</h3>
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />CTR</span>
+                                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violet-500" />CVR</span>
+                              </div>
+                            </div>
+                            <div className="grid gap-3 lg:grid-cols-2">
+                              {adComparison.rankedRows.map((row: any) => (
+                                <div key={`${row.id}-quality-chart`} className="space-y-1.5">
+                                  <div className="flex items-center justify-between gap-3 text-xs">
+                                    <span className="font-medium text-foreground truncate">{row.name}</span>
+                                    <span className="text-muted-foreground tabular-nums">{formatOptionalPct(row.ctr)} CTR / {formatOptionalPct(row.conversionRate)} CVR</span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                      <div className="h-full rounded-full bg-emerald-500" style={{ width: chartBarWidth(row.ctr, adComparison.maxCtr) }} />
+                                    </div>
+                                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                      <div className="h-full rounded-full bg-violet-500" style={{ width: chartBarWidth(row.conversionRate, adComparison.maxConversionRate) }} />
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
 
                       <Card>
                         <CardContent className="p-5 space-y-4">

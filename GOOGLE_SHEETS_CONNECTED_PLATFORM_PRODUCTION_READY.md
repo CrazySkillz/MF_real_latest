@@ -67,7 +67,7 @@ Specific root causes to address:
 - Source role ambiguity: `google_sheets_connections` can represent a main campaign source, a revenue child source, a spend child source, or a legacy shared connection. Those roles can be confused unless purpose/platform context is enforced at every read and render boundary.
 - Template drift: Google Sheets KPI, Benchmark, and Report modals do not yet prove full GA4 template parity, including template panels, field order, no default selections, source-backed current values, alert behavior, edit mode, delete confirmation, custom reports, and scheduled report semantics.
 - Dynamic metric ambiguity: Google Sheets can contain arbitrary columns. A numeric column should not automatically become a trusted executive metric unless it is selected/mapped and tied to the active campaign/source scope.
-- Aggregate uncertainty: Google Sheets has a platform analytics page, but it has not yet been proven as a main source in the shared Campaign DeepDive connected-source aggregate contract.
+- Aggregate participation: Google Sheets now feeds the shared Campaign DeepDive connected-source aggregate contract locally, with browser/API validation passed for the child financial source exclusion path.
 - Revenue and pipeline risk: Google Sheets may contain revenue or pipeline-like values, but Total Revenue, ROI, ROAS, and Pipeline Proxy must follow the Meta pattern and remain separate from arbitrary sheet metrics.
 - Refresh/lifecycle risk: token refresh, raw data refresh, child revenue/spend refresh, delete, reconnect, and primary-tab changes must all preserve the same source identity and not resurrect stale rows or cached data.
 
@@ -384,7 +384,12 @@ Status:
 - [x] Local validation passed: `npm test -- server/google-sheets-aggregate-source.test.ts server/source-safety-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/executive-summary-regression.test.ts server/instagram-connected-platforms-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/campaign-performance-overview-regression.test.ts server/performance-summary-insights-regression.test.ts server/platform-comparison-regression.test.ts server/campaign-financial-analysis-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] Browser validation pending after deploy for Google Sheets-only aggregate source display, GA4 plus Google Sheets source separation, and child-only revenue/spend source exclusion.
+- [x] Browser/API validation passed after deploy for the user-confirmed child-only revenue/spend exclusion path:
+  - Direct `/api/campaigns/:id/outcome-totals` validation on a Meta campaign with Google Sheets revenue imported as a child source did not expose `id: "google_sheets"` as a main `performanceSummary.sources` row.
+  - This confirms the child revenue sheet is not displayed as a main Google Sheets Campaign DeepDive analytics source.
+- Additional optional live evidence, not a Commit 5 blocker:
+  - A separate main Google Sheets campaign should appear once in `performanceSummary.sources` when one is available for live validation.
+  - A campaign with both GA4 and Google Sheets should keep those source rows separate when one is available for live validation.
 
 ### Commit 6: KPI Section GA4 Template Parity
 
@@ -413,7 +418,19 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally for the Google Sheets KPI section boundary:
+  - Root cause: the Google Sheets KPI section predated the GA4 KPI template and used a plain metric dropdown plus editable `currentValue`, allowing KPI values to drift from selected Google Sheets source rows.
+  - Root cause: KPI card rendering fell back to saved KPI `currentValue` when a sheet metric was missing, which could show stale or zero-like conclusions instead of an unavailable state.
+  - Added a Google Sheets KPI metric adapter derived only from the already scoped Google Sheets analytics summary for the selected main sheet view.
+  - KPI creation/update now requires a selected mapped Google Sheets metric with a source-backed current value.
+  - KPI current value is read-only in the modal and populated from the selected metric adapter.
+  - Revenue, spend, ROI, ROAS, profit, pipeline, and cost-style sheet columns remain blocked from Google Sheets KPIs until the dedicated Google Sheets financial-source commits are implemented.
+  - Existing KPI rows whose metric is missing or blocked render as unavailable and are excluded from KPI summary scoring instead of falling back to saved values.
+  - KPI section now follows the GA4-style header, Create KPI action, summary tracker, edit/delete controls, immediate alert-frequency default, and alert settings layout.
+- [x] Regression guard added in `server/source-safety-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] Browser validation pending after deploy for create/edit/delete KPI flow, read-only source-backed current value, unavailable state for missing/blocked metrics, and alert settings persistence.
 
 ### Commit 7: Benchmark Section GA4 Template Parity
 
@@ -627,7 +644,8 @@ Analytics:
 - [x] Overview/Summary values match selected sheet rows for the Commit 4 main-source analytics scope.
 - [x] Empty or unmapped main Google Sheets analytics states do not populate from child revenue/spend sheets.
 - [x] Direct navigation to Google Sheets analytics for a child-only revenue/spend campaign does not show child sheet rows as main Google Sheets analytics.
-- [ ] KPIs, Benchmarks, Insights, and Reports use current source-backed values.
+- [x] KPIs use current source-backed values for the Commit 6 Google Sheets KPI scope.
+- [ ] Benchmarks, Insights, and Reports use current source-backed values.
 - [ ] Reports and scheduled reports use latest values.
 
 DeepDive:
@@ -635,8 +653,8 @@ DeepDive:
 - [x] Local regression: Google Sheets appears once in shared aggregate when connected as main source.
 - [x] Local regression: Google Sheets child financial sources do not appear as main sources.
 - [x] Local regression: GA4 plus Google Sheets keeps main Google Sheets metrics separate and does not unlock revenue, spend, ROI, or ROAS from the main Google Sheets source.
-- [ ] Browser validation: Google Sheets appears once in Campaign DeepDive after deploy when connected as a main source.
-- [ ] Browser validation: child-only Google Sheets revenue/spend sources do not appear as main Campaign DeepDive Google Sheets sources after deploy.
+- [x] Browser/API validation: child-only Google Sheets revenue/spend sources do not appear as main Campaign DeepDive Google Sheets sources after deploy.
+- Additional optional live evidence, not a Commit 5 blocker: main Google Sheets source display and GA4 plus Google Sheets source separation.
 
 Lifecycle:
 
@@ -727,3 +745,14 @@ Google Sheets can be marked locally production-ready only when:
 - Commit 5 validation passed locally: `npm test -- server/google-sheets-aggregate-source.test.ts server/source-safety-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/executive-summary-regression.test.ts server/instagram-connected-platforms-regression.test.ts`.
 - Commit 5 neighboring DeepDive validation passed locally: `npm test -- server/campaign-performance-overview-regression.test.ts server/performance-summary-insights-regression.test.ts server/platform-comparison-regression.test.ts server/campaign-financial-analysis-regression.test.ts`.
 - Commit 5 validation passed locally: `npm run check`.
+- Commit 5 browser/API validation passed after deploy for the direct child-source safety path:
+  - A Meta campaign with Google Sheets revenue imported as a child source did not expose `id: "google_sheets"` as a main `performanceSummary.sources` row from `/api/campaigns/:id/outcome-totals`.
+  - This confirms the child revenue sheet remains a child financial source and is not shown as main Google Sheets Campaign DeepDive analytics.
+- Commit 6 Google Sheets KPI GA4-template parity completed locally:
+  - Google Sheets KPI current values now come from a source-backed metric adapter built from selected main Google Sheets analytics summary data.
+  - The KPI modal uses mapped metric tiles, no default metric selection, and a read-only current value populated by the selected source-backed metric.
+  - Google Sheets KPI cards no longer fall back to saved KPI `currentValue` when the selected sheet metric is missing or blocked.
+  - Revenue, spend, ROI, ROAS, profit, pipeline, and cost-style columns remain unavailable for Google Sheets KPIs until the dedicated financial-source commits.
+  - KPI create/edit/delete UI behavior remains on the existing platform KPI routes.
+- Commit 6 validation passed locally: `npm test -- server/source-safety-regression.test.ts`.
+- Commit 6 validation passed locally: `npm run check`.

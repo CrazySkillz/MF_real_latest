@@ -131,6 +131,19 @@ interface GoogleSheetsData {
   };
 }
 
+type GoogleSheetsKpiMetricOption = {
+  key: string;
+  label: string;
+  type: 'currency' | 'integer' | 'decimal';
+  unit: string;
+  currentValue: number | null;
+  available: boolean;
+  reason: string;
+};
+
+const GOOGLE_SHEETS_KPI_DATE_COLUMN_PATTERN = /^(date|week|day|time|timestamp|period|month|year)/i;
+const GOOGLE_SHEETS_KPI_FINANCIAL_PATTERN = /(revenue|spend|cost|budget|roi|roas|profit|pipeline|cpa|cpc|cpm)|[$]/i;
+
 export default function GoogleSheetsData() {
   const [, params] = useRoute("/campaigns/:id/google-sheets-data");
   const [location, setLocation] = useLocation();
@@ -481,7 +494,7 @@ export default function GoogleSheetsData() {
   const [kpiForm, setKpiForm] = useState({
     name: "", unit: "", description: "", metric: "", targetValue: "", currentValue: "",
     priority: "high", status: "active", timeframe: "monthly",
-    alertsEnabled: false, emailNotifications: false, alertFrequency: "daily",
+    alertsEnabled: false, emailNotifications: false, alertFrequency: "immediate",
     alertThreshold: "", alertCondition: "below", emailRecipients: "",
   });
 
@@ -555,7 +568,7 @@ export default function GoogleSheetsData() {
       toast({ title: "KPI Created", description: "Your KPI has been created successfully." });
       setIsKpiModalOpen(false);
       setEditingKpi(null);
-      setKpiForm({ name: "", unit: "", description: "", metric: "", targetValue: "", currentValue: "", priority: "high", status: "active", timeframe: "monthly", alertsEnabled: false, emailNotifications: false, alertFrequency: "daily", alertThreshold: "", alertCondition: "below", emailRecipients: "" });
+      setKpiForm({ name: "", unit: "", description: "", metric: "", targetValue: "", currentValue: "", priority: "high", status: "active", timeframe: "monthly", alertsEnabled: false, emailNotifications: false, alertFrequency: "immediate", alertThreshold: "", alertCondition: "below", emailRecipients: "" });
     },
     onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to create KPI", variant: "destructive" }); },
   });
@@ -673,23 +686,124 @@ export default function GoogleSheetsData() {
     onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to delete report", variant: "destructive" }); },
   });
 
+  const parseSheetMetricNumber = useCallback((value: any): number | null => {
+    if (value === null || typeof value === "undefined" || value === "") return null;
+    const cleaned = typeof value === "string" ? value.replace(/[$,%\s,]/g, "") : value;
+    const parsed = typeof cleaned === "string" ? parseFloat(cleaned) : Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, []);
+
+  const googleSheetsKpiMetricOptions = useMemo<GoogleSheetsKpiMetricOption[]>(() => {
+    const columns = Array.isArray(sheetsData?.summary?.detectedColumns) ? sheetsData.summary.detectedColumns : [];
+    const metrics = sheetsData?.summary?.metrics || {};
+    return columns
+      .filter((col: any) => !GOOGLE_SHEETS_KPI_DATE_COLUMN_PATTERN.test(String(col?.name || "").trim()))
+      .map((col: any) => {
+        const key = String(col?.name || "").trim();
+        const sourceValue = parseSheetMetricNumber((metrics as any)[key] ?? col?.total);
+        const financialBlocked = GOOGLE_SHEETS_KPI_FINANCIAL_PATTERN.test(key);
+        const available = !!key && sourceValue !== null && !financialBlocked;
+        const unit = String(key).includes("%") || /rate|ctr|cvr/i.test(key)
+          ? "%"
+          : col?.type === "integer"
+            ? "count"
+            : "";
+        return {
+          key,
+          label: key,
+          type: col?.type || "decimal",
+          unit,
+          currentValue: available ? sourceValue : null,
+          available,
+          reason: financialBlocked
+            ? "Revenue, spend, ROI, and ROAS require confirmed Google Sheets financial source support"
+            : sourceValue === null
+              ? "Current value requires a mapped metric column with refreshed sheet rows"
+              : "",
+        };
+      });
+  }, [parseSheetMetricNumber, sheetsData]);
+
+  const resolveGoogleSheetsKpiMetric = useCallback((kpi: any) => {
+    const metricKey = String(kpi?.metric || kpi?.metricKey || "").trim();
+    const option = googleSheetsKpiMetricOptions.find((item) => item.key === metricKey);
+    if (option?.available && option.currentValue !== null) {
+      return { available: true, option, currentValue: option.currentValue, reason: "" };
+    }
+    return {
+      available: false,
+      option,
+      currentValue: null,
+      reason: option?.reason || "This KPI metric is not available from the selected Google Sheets source",
+    };
+  }, [googleSheetsKpiMetricOptions]);
+
+  const googleSheetsKpiTracker = useMemo(() => {
+    const list = Array.isArray(kpisData) ? kpisData : [];
+    let above = 0;
+    let near = 0;
+    let below = 0;
+    let blocked = 0;
+    let progressTotal = 0;
+    let progressCount = 0;
+    for (const kpi of list) {
+      const resolved = resolveGoogleSheetsKpiMetric(kpi);
+      const target = parseSheetMetricNumber(kpi?.targetValue);
+      if (!resolved.available || resolved.currentValue === null || !target || target <= 0) {
+        blocked += 1;
+        continue;
+      }
+      const progress = (resolved.currentValue / target) * 100;
+      progressTotal += Math.min(Math.max(progress, 0), 100);
+      progressCount += 1;
+      const delta = ((resolved.currentValue - target) / target) * 100;
+      if (delta > 5) above += 1;
+      else if (delta < -5) below += 1;
+      else near += 1;
+    }
+    return {
+      total: list.length,
+      above,
+      near,
+      below,
+      blocked,
+      avgPct: progressCount > 0 ? progressTotal / progressCount : 0,
+    };
+  }, [kpisData, parseSheetMetricNumber, resolveGoogleSheetsKpiMetric]);
+
   // ═══ Handler Functions ═══
   const handleCreateKpi = () => {
-    if (!kpiForm.name || !kpiForm.targetValue) {
-      toast({ title: "Required Fields", description: "Please fill in the KPI name and target value.", variant: "destructive" });
+    if (!kpiForm.name || !kpiForm.metric || !kpiForm.targetValue) {
+      toast({ title: "Required Fields", description: "Please fill in the KPI name, metric, and target value.", variant: "destructive" });
+      return;
+    }
+    const metricOption = googleSheetsKpiMetricOptions.find((item) => item.key === kpiForm.metric);
+    if (!metricOption?.available || metricOption.currentValue === null) {
+      toast({ title: "Metric Unavailable", description: metricOption?.reason || "Select a mapped Google Sheets metric with a current value.", variant: "destructive" });
       return;
     }
     if (kpiForm.alertsEnabled && !kpiForm.alertThreshold) {
       toast({ title: "Alert Threshold Required", description: "Please set an alert threshold value.", variant: "destructive" });
       return;
     }
+    const targetValue = parseSheetMetricNumber(kpiForm.targetValue);
+    if (targetValue === null) {
+      toast({ title: "Invalid Target", description: "Please enter a valid numeric target value.", variant: "destructive" });
+      return;
+    }
     const payload: any = {
       ...kpiForm, campaignId, platformType: "google_sheets",
-      targetValue: parseFloat(String(kpiForm.targetValue).replace(/,/g, '')),
-      currentValue: kpiForm.currentValue ? parseFloat(String(kpiForm.currentValue).replace(/,/g, '')) : 0,
+      targetValue,
+      currentValue: metricOption.currentValue,
       alertThreshold: kpiForm.alertThreshold ? parseFloat(String(kpiForm.alertThreshold).replace(/,/g, '')) : null,
       emailRecipients: kpiForm.emailRecipients ? kpiForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : [],
       metricKey: kpiForm.metric,
+      sourceType: "platform",
+      calculationConfig: {
+        source: "google_sheets_main",
+        valueSource: "source_backed_summary",
+        metric: kpiForm.metric,
+      },
     };
     if (editingKpi) {
       updateKpiMutation.mutate({ id: editingKpi.id, data: payload });
@@ -1461,27 +1575,61 @@ export default function GoogleSheetsData() {
                         <Button variant="outline" onClick={() => void refetchKpis()}>Retry</Button>
                       </CardContent>
                     </Card>
-                  ) : kpisData && (kpisData as any[]).length > 0 ? (
+                  ) : (
                     <>
                       <div className="flex items-center justify-between">
                         <div>
-                          <h2 className="text-2xl font-bold text-foreground">Key Performance Indicators</h2>
+                          <h2 className="text-lg font-semibold text-foreground">Key Performance Indicators</h2>
                           <p className="text-sm text-muted-foreground/70 mt-1">
-                            Track your KPI targets against your Google Sheets data
+                            Track Google Sheets KPIs from mapped source-backed metrics.
                           </p>
                         </div>
-                        <Button onClick={() => setIsKpiModalOpen(true)} variant="outline" size="sm">
+                        <Button onClick={() => setIsKpiModalOpen(true)} size="sm">
                           <Plus className="w-4 h-4 mr-2" />
-                          Add KPI
+                          Create KPI
                         </Button>
                       </div>
 
-                      <div className="grid gap-6 lg:grid-cols-2">
+                      <Card>
+                        <CardContent className="p-5 space-y-5">
+                          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+                            <div className="rounded-lg border border-border bg-muted/40 p-4">
+                              <p className="text-sm text-muted-foreground/70">Total KPIs</p>
+                              <p className="text-2xl font-bold text-foreground">{googleSheetsKpiTracker.total}</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-muted/40 p-4">
+                              <p className="text-sm text-muted-foreground/70">Above Target</p>
+                              <p className="text-2xl font-bold text-green-600">{googleSheetsKpiTracker.above}</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-muted/40 p-4">
+                              <p className="text-sm text-muted-foreground/70">On Track</p>
+                              <p className="text-2xl font-bold text-blue-600">{googleSheetsKpiTracker.near}</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-muted/40 p-4">
+                              <p className="text-sm text-muted-foreground/70">Below Target</p>
+                              <p className="text-2xl font-bold text-red-600">{googleSheetsKpiTracker.below}</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-muted/40 p-4">
+                              <p className="text-sm text-muted-foreground/70">Avg. Progress</p>
+                              <p className="text-2xl font-bold text-foreground">{googleSheetsKpiTracker.avgPct.toFixed(1)}%</p>
+                            </div>
+                          </div>
+
+                          {googleSheetsKpiTracker.blocked > 0 && (
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                              {googleSheetsKpiTracker.blocked} KPI{googleSheetsKpiTracker.blocked === 1 ? "" : "s"} cannot be evaluated from the selected Google Sheets source. Blocked KPIs are excluded from scoring.
+                            </div>
+                          )}
+
+                          {(kpisData as any[])?.length > 0 ? (
+                            <div className="grid gap-6 lg:grid-cols-2">
                         {(kpisData as any[]).map((kpi: any) => {
-                          const currentVal = sheetsData?.summary?.metrics?.[kpi.metric || kpi.metricKey] ?? parseFloat(kpi.currentValue || '0');
-                          const targetVal = parseFloat(kpi.targetValue || '0');
-                          const pct = targetVal > 0 ? Math.min((currentVal / targetVal) * 100, 100) : 0;
-                          const col = sheetsData?.summary?.detectedColumns?.find((c: any) => c.name === (kpi.metric || kpi.metricKey));
+                          const resolved = resolveGoogleSheetsKpiMetric(kpi);
+                          const currentVal = resolved.currentValue;
+                          const targetVal = parseSheetMetricNumber(kpi.targetValue);
+                          const pct = resolved.available && currentVal !== null && targetVal && targetVal > 0 ? Math.min((currentVal / targetVal) * 100, 100) : null;
+                          const col = resolved.option;
+                          const displayUnit = String(kpi.unit || col?.unit || "");
                           return (
                             <Card key={kpi.id}>
                               <CardHeader className="pb-3">
@@ -1489,9 +1637,9 @@ export default function GoogleSheetsData() {
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
                                       <CardTitle className="text-lg">{kpi.name}</CardTitle>
-                                      {kpi.metric && (
+                                      {(kpi.metric || kpi.metricKey) && (
                                         <Badge variant="outline" className="bg-muted text-foreground/80/60 font-mono text-xs">
-                                          {kpi.metric}
+                                          {kpi.metric || kpi.metricKey}
                                         </Badge>
                                       )}
                                       {kpi.alertsEnabled && <AlertTriangle className="w-4 h-4 text-yellow-500" />}
@@ -1507,12 +1655,12 @@ export default function GoogleSheetsData() {
                                       onClick={() => {
                                         setEditingKpi(kpi);
                                         setKpiForm({
-                                          name: kpi.name || "", unit: kpi.unit || "", description: kpi.description || "",
+                                          name: kpi.name || "", unit: kpi.unit || col?.unit || "", description: kpi.description || "",
                                           metric: kpi.metric || kpi.metricKey || "", targetValue: String(kpi.targetValue || ""),
-                                          currentValue: String(currentVal), priority: kpi.priority || "high",
+                                          currentValue: currentVal !== null ? String(currentVal) : "", priority: kpi.priority || "high",
                                           status: kpi.status || "active", timeframe: kpi.timeframe || "monthly",
                                           alertsEnabled: !!kpi.alertsEnabled, emailNotifications: !!kpi.emailNotifications,
-                                          alertFrequency: kpi.alertFrequency || "daily",
+                                          alertFrequency: kpi.alertFrequency || "immediate",
                                           alertThreshold: kpi.alertThreshold ? String(kpi.alertThreshold) : "",
                                           alertCondition: kpi.alertCondition || "below",
                                           emailRecipients: Array.isArray(kpi.emailRecipients) ? kpi.emailRecipients.join(', ') : (kpi.emailRecipients || ""),
@@ -1544,43 +1692,52 @@ export default function GoogleSheetsData() {
                               </CardHeader>
                               <CardContent>
                                 <div className="space-y-3">
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground/70">Current: <span className="font-semibold text-foreground">{formatMetricValue(currentVal, col?.type)}</span></span>
-                                    <span className="text-muted-foreground/70">Target: <span className="font-semibold text-foreground">{formatMetricValue(targetVal, col?.type)}{kpi.unit ? ` ${kpi.unit}` : ''}</span></span>
+                                  <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="rounded-lg bg-muted p-3">
+                                      <div className="text-muted-foreground/70">Current</div>
+                                      <div className="font-semibold text-foreground">{currentVal !== null ? `${formatMetricValue(currentVal, col?.type)}${displayUnit && displayUnit !== "count" ? ` ${displayUnit}` : ""}` : "Unavailable"}</div>
+                                    </div>
+                                    <div className="rounded-lg bg-muted p-3">
+                                      <div className="text-muted-foreground/70">Target</div>
+                                      <div className="font-semibold text-foreground">{targetVal !== null ? `${formatMetricValue(targetVal, col?.type)}${displayUnit && displayUnit !== "count" ? ` ${displayUnit}` : ""}` : "Unavailable"}</div>
+                                    </div>
                                   </div>
-                                  <div className="w-full bg-muted rounded-full h-3">
-                                    <div
-                                      className={`h-3 rounded-full transition-all ${pct >= 100 ? 'bg-green-500' : pct >= 75 ? 'bg-blue-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                                      style={{ width: `${pct}%` }}
-                                    />
-                                  </div>
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-xs text-muted-foreground">{pct.toFixed(1)}% of target</span>
-                                    <Badge variant="outline" className={pct >= 100 ? 'bg-green-50 text-green-700 border-green-200' : pct >= 75 ? 'bg-blue-50 text-blue-700 border-blue-200' : pct >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-red-50 text-red-700 border-red-200'}>
-                                      {pct >= 100 ? 'On Target' : pct >= 75 ? 'Near Target' : pct >= 50 ? 'Below Target' : 'At Risk'}
-                                    </Badge>
-                                  </div>
+                                  {pct !== null ? (
+                                    <>
+                                      <div className="w-full bg-muted rounded-full h-3">
+                                        <div
+                                          className={`h-3 rounded-full transition-all ${pct >= 100 ? 'bg-green-500' : pct >= 75 ? 'bg-blue-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                          style={{ width: `${pct}%` }}
+                                        />
+                                      </div>
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-xs text-muted-foreground">{pct.toFixed(1)}% of target</span>
+                                        <Badge variant="outline" className={pct >= 100 ? 'bg-green-50 text-green-700 border-green-200' : pct >= 75 ? 'bg-blue-50 text-blue-700 border-blue-200' : pct >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-red-50 text-red-700 border-red-200'}>
+                                          {pct >= 100 ? 'Above Target' : pct >= 75 ? 'On Track' : pct >= 50 ? 'Below Target' : 'At Risk'}
+                                        </Badge>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground/70">{resolved.reason}</p>
+                                  )}
                                 </div>
                               </CardContent>
                             </Card>
                           );
                         })}
-                      </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-10">
+                              <Target className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
+                              <h3 className="text-lg font-medium text-foreground mb-2">No KPIs Yet</h3>
+                              <p className="text-muted-foreground/70">
+                                Create your first KPI from a mapped Google Sheets metric.
+                              </p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
                     </>
-                  ) : (
-                    <Card>
-                      <CardContent className="text-center py-12">
-                        <Target className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
-                        <h3 className="text-lg font-medium text-foreground mb-2">No KPIs Yet</h3>
-                        <p className="text-muted-foreground/70 mb-4">
-                          Set targets and track KPIs based on your Google Sheets metrics.
-                        </p>
-                        <Button onClick={() => setIsKpiModalOpen(true)} className="bg-purple-600 hover:bg-purple-700">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Create Your First KPI
-                        </Button>
-                      </CardContent>
-                    </Card>
                   )}
                 </TabsContent>
 
@@ -2623,9 +2780,7 @@ export default function GoogleSheetsData() {
             setEditing={setEditingKpi}
             form={kpiForm}
             setForm={setKpiForm}
-            detectedColumns={sheetsData?.summary?.detectedColumns || []}
-            metrics={sheetsData?.summary?.metrics || {}}
-            toast={toast}
+            metricOptions={googleSheetsKpiMetricOptions}
             handleCreate={handleCreateKpi}
           />
 

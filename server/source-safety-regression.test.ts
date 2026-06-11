@@ -34,6 +34,10 @@ function readGoogleSheetsDataPageSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "google-sheets-data.tsx"), "utf8");
 }
 
+function readGoogleSheetsKpiModalSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "google-sheets-analytics", "GoogleSheetsKpiModal.tsx"), "utf8");
+}
+
 function readUploadAdditionalDataModalSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "components", "UploadAdditionalDataModal.tsx"), "utf8");
 }
@@ -393,6 +397,25 @@ describe("source safety regression guards", () => {
     expect(aggregateSource).toContain('metric: "spend", reason: "Google Sheets spend requires the dedicated spend source path"');
     expect(aggregateSource).not.toContain('includedMetrics.push("revenue")');
     expect(aggregateSource).not.toContain('includedMetrics.push("spend")');
+  });
+
+  it("Google Sheets KPIs use source-backed mapped metrics without financial-column unlocks", () => {
+    const page = readGoogleSheetsDataPageSource();
+    const modal = readGoogleSheetsKpiModalSource();
+
+    expect(page).toContain("const googleSheetsKpiMetricOptions = useMemo<GoogleSheetsKpiMetricOption[]>");
+    expect(page).toContain("GOOGLE_SHEETS_KPI_FINANCIAL_PATTERN");
+    expect(page).toContain("Revenue, spend, ROI, and ROAS require confirmed Google Sheets financial source support");
+    expect(page).toContain("const resolved = resolveGoogleSheetsKpiMetric(kpi);");
+    expect(page).toContain('source: "google_sheets_main"');
+    expect(page).toContain('valueSource: "source_backed_summary"');
+    expect(page).toContain('alertFrequency: "immediate"');
+    expect(page).not.toContain("sheetsData?.summary?.metrics?.[kpi.metric || kpi.metricKey] ?? parseFloat(kpi.currentValue || '0')");
+    expect(modal).toContain('data-google-sheets-kpi-source-adapter="source-backed"');
+    expect(modal).toContain('data-source-backed-current-value="google_sheets"');
+    expect(modal).toContain("readOnly");
+    expect(modal).not.toContain("metrics?.[value]");
+    expect(modal).not.toContain("detectedColumns");
   });
 
   it("Google Sheets-only Add Dataset connections append instead of replacing existing tabs", () => {

@@ -9,8 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 /**
  * KPI creation/editing modal for Google Sheets analytics.
- * Unlike the LinkedIn version, metrics are dynamic (from detectedColumns)
- * and there is no campaign scoping or revenue gating.
+ * Metrics are dynamic, but current values must come from the source-backed
+ * Google Sheets KPI adapter instead of user-entered numbers.
  */
 export function GoogleSheetsKpiModal(props: any) {
   const {
@@ -20,9 +20,7 @@ export function GoogleSheetsKpiModal(props: any) {
     setEditing,
     form,
     setForm,
-    detectedColumns,
-    metrics,
-    toast,
+    metricOptions = [],
     handleCreate,
   } = props;
 
@@ -31,13 +29,6 @@ export function GoogleSheetsKpiModal(props: any) {
   const formatNumberAsYouType = (val: string): string => {
     const cleaned = val.replace(/[^0-9.,\-]/g, '');
     return cleaned;
-  };
-
-  const getUnitForColumn = (col: any): string => {
-    if (!col) return '';
-    if (col.type === 'currency') return '$';
-    if (col.type === 'decimal') return '';
-    return '';
   };
 
   return (
@@ -59,7 +50,7 @@ export function GoogleSheetsKpiModal(props: any) {
             timeframe: "monthly",
             alertsEnabled: false,
             emailNotifications: false,
-            alertFrequency: "daily",
+            alertFrequency: "immediate",
             alertThreshold: "",
             alertCondition: "below",
             emailRecipients: "",
@@ -67,16 +58,64 @@ export function GoogleSheetsKpiModal(props: any) {
         }
       }}
     >
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit KPI" : "Create New KPI"}</DialogTitle>
           <DialogDescription>
-            {editing
-              ? "Update the KPI details below. The current value is auto-populated from your Google Sheets data."
-              : "Define a new KPI for your Google Sheets data. Select a metric and set your target value."}
+            Set up a key performance indicator for Google Sheets.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="space-y-4 p-4 bg-muted rounded-lg" data-google-sheets-kpi-source-adapter="source-backed">
+            <div>
+              <h4 className="font-medium text-foreground">Select KPI Template</h4>
+              <p className="text-sm text-muted-foreground/70 mt-1">
+                Choose a mapped Google Sheets metric with a current source-backed value.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(metricOptions || []).map((metric: any) => {
+                const selected = form.metric === metric.key;
+                const disabled = metric.available !== true;
+                return (
+                  <button
+                    key={metric.key}
+                    type="button"
+                    disabled={disabled}
+                    className={`text-left p-3 border-2 rounded-lg transition-all ${
+                      disabled
+                        ? "opacity-50 cursor-not-allowed border-border"
+                        : selected
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                          : "border-border hover:border-blue-300"
+                    }`}
+                    onClick={() => {
+                      if (disabled) return;
+                      setForm({
+                        ...form,
+                        name: editing ? form.name || metric.label : metric.label,
+                        metric: metric.key,
+                        currentValue: String(metric.currentValue ?? ""),
+                        unit: metric.unit || "",
+                        description: form.description,
+                      });
+                    }}
+                  >
+                    <div className="font-medium text-sm text-foreground">{metric.label}</div>
+                    <div className="text-xs text-muted-foreground/70 mt-1">
+                      {disabled ? metric.reason : `Current value: ${metric.currentValue}`}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {(metricOptions || []).length === 0 && (
+              <p className="text-sm text-muted-foreground/70">
+                No mapped KPI metrics are available from the selected Google Sheets source.
+              </p>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="gs-kpi-name">KPI Name *</Label>
@@ -86,36 +125,6 @@ export function GoogleSheetsKpiModal(props: any) {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="gs-kpi-metric">Metric Source</Label>
-              <Select
-                value={form.metric || ""}
-                onValueChange={(value) => {
-                  const col = (detectedColumns || []).find((c: any) => c.name === value);
-                  const currentValue = metrics?.[value] != null ? String(metrics[value]) : "";
-                  const unit = getUnitForColumn(col);
-                  setForm({
-                    ...form,
-                    metric: value,
-                    currentValue: currentValue,
-                    unit: unit || form.unit,
-                  });
-                }}
-              >
-                <SelectTrigger id="gs-kpi-metric">
-                  <SelectValue placeholder="Select metric to track" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {(detectedColumns || [])
-                    .filter((col: any) => !/^(date|week|day|time|timestamp|period|month|year)/i.test(col.name))
-                    .map((col: any) => (
-                    <SelectItem key={col.name} value={col.name}>
-                      {col.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
 
@@ -141,10 +150,12 @@ export function GoogleSheetsKpiModal(props: any) {
                 id="gs-kpi-current"
                 type="text"
                 placeholder="0"
-                inputMode="decimal"
                 value={form.currentValue || ""}
-                onChange={(e) => setForm({ ...form, currentValue: formatNumberAsYouType(e.target.value) })}
+                readOnly
+                className="bg-muted cursor-not-allowed"
+                data-source-backed-current-value="google_sheets"
               />
+              <p className="text-xs text-muted-foreground/70">Read from the selected mapped Google Sheets metric.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="gs-kpi-target">Target Value *</Label>
@@ -179,20 +190,6 @@ export function GoogleSheetsKpiModal(props: any) {
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="high">High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="gs-kpi-timeframe">Timeframe</Label>
-              <Select value={form.timeframe || "monthly"} onValueChange={(value) => setForm({ ...form, timeframe: value })}>
-                <SelectTrigger id="gs-kpi-timeframe">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -250,7 +247,7 @@ export function GoogleSheetsKpiModal(props: any) {
                   <div className="space-y-2">
                     <Label htmlFor="gs-kpi-alert-frequency">Alert Frequency</Label>
                     <Select
-                      value={form.alertFrequency || "daily"}
+                      value={form.alertFrequency || "immediate"}
                       onValueChange={(value) => setForm({ ...form, alertFrequency: value })}
                     >
                       <SelectTrigger id="gs-kpi-alert-frequency">

@@ -26,6 +26,10 @@ function readGoogleSheetsDataPageSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "google-sheets-data.tsx"), "utf8");
 }
 
+function readUploadAdditionalDataModalSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "client", "src", "components", "UploadAdditionalDataModal.tsx"), "utf8");
+}
+
 describe("source safety regression guards", () => {
   it("Shopify OAuth requires an explicitly whitelisted Shopify redirect URI", () => {
     const source = readRoutesSource();
@@ -321,6 +325,15 @@ describe("source safety regression guards", () => {
     expect(header).toContain("setShowAddDatasetModal(true)");
     expect(header).toContain("Add Dataset");
     expect(source).toContain("googleSheetsOnly={true}");
+  });
+
+  it("Google Sheets-only Add Dataset connections append instead of replacing existing tabs", () => {
+    const source = readUploadAdditionalDataModalSource();
+
+    expect(source).toContain("const googleSheetsSelectionMode: 'replace' | 'append' =");
+    expect(source).toContain("googleSheetsOnly || (showGoogleSheetsUseCaseStep && googleSheetsUseCase === 'view') ? 'append' : 'replace'");
+    expect(source.match(/selectionMode=\{googleSheetsSelectionMode\}/g)?.length).toBe(2);
+    expect(source).not.toContain("selectionMode={showGoogleSheetsUseCaseStep && googleSheetsUseCase === 'view' ? 'append' : 'replace'}");
   });
 
   it("Google Sheets analytics resets inherited scroll position on route mount", () => {

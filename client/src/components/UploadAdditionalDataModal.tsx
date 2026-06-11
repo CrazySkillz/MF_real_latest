@@ -69,6 +69,8 @@ export function UploadAdditionalDataModal({
   const [newConnectionInfo, setNewConnectionInfo] = useState<{ connectionId: string; spreadsheetId: string; connectionIds?: string[]; sheetNames?: string[] } | null>(null);
   const [googleSheetsUseCase, setGoogleSheetsUseCase] = useState<GoogleSheetsUseCase>(defaultGoogleSheetsUseCase);
   const [mappingLaunchedFromConnect, setMappingLaunchedFromConnect] = useState(false);
+  const googleSheetsSelectionMode: 'replace' | 'append' =
+    googleSheetsOnly || (showGoogleSheetsUseCaseStep && googleSheetsUseCase === 'view') ? 'append' : 'replace';
   const { toast } = useToast();
   
   // Store the ACTUAL current URL when modal opens - this is where we came from
@@ -868,7 +870,7 @@ export function UploadAdditionalDataModal({
                 {/* Google Sheets Connection Interface */}
                 <SimpleGoogleSheetsAuth
                   campaignId={campaignId}
-                  selectionMode={showGoogleSheetsUseCaseStep && googleSheetsUseCase === 'view' ? 'append' : 'replace'}
+                  selectionMode={googleSheetsSelectionMode}
                   onSuccess={handleGoogleSheetsSuccess}
                   onError={handleGoogleSheetsError}
                 />
@@ -879,7 +881,7 @@ export function UploadAdditionalDataModal({
                 {/* Google Sheets Connection Interface */}
                 <SimpleGoogleSheetsAuth
                   campaignId={campaignId}
-                  selectionMode={showGoogleSheetsUseCaseStep && googleSheetsUseCase === 'view' ? 'append' : 'replace'}
+                  selectionMode={googleSheetsSelectionMode}
                   onSuccess={handleGoogleSheetsSuccess}
                   onError={handleGoogleSheetsError}
                 />

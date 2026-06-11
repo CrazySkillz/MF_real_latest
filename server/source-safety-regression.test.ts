@@ -10,6 +10,10 @@ function readStorageSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "server", "storage.ts"), "utf8");
 }
 
+function readRevenueWizardSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"), "utf8");
+}
+
 describe("source safety regression guards", () => {
   it("Shopify OAuth requires an explicitly whitelisted Shopify redirect URI", () => {
     const source = readRoutesSource();
@@ -239,6 +243,19 @@ describe("source safety regression guards", () => {
     expect(route).toContain("storage.getGoogleSheetsConnections(String(campaignId), purpose ? String(purpose) : undefined)");
     expect(route).toContain("if ((!connection || !connection.accessToken) && purpose)");
     expect(route).toContain("storage.getGoogleSheetsConnections(String(campaignId))");
+  });
+
+  it("Google Sheets revenue connector advances to mapping after tab selection", () => {
+    const source = readRevenueWizardSource();
+    const handlerStart = source.indexOf("const handleSheetsConnectionSuccess = async");
+    const handlerEnd = source.indexOf("// If opened in edit mode for Sheets", handlerStart);
+    const handler = source.slice(handlerStart, handlerEnd);
+
+    expect(handler).toContain("const ok = await handleSheetsPreview(preferredId);");
+    expect(handler).toContain('setStep("sheets_map");');
+    expect(handler.indexOf("const ok = await handleSheetsPreview(preferredId);")).toBeLessThan(handler.indexOf('setStep("sheets_map");'));
+    expect(source.match(/onSuccess=\{handleSheetsConnectionSuccess\}/g)?.length).toBe(2);
+    expect(source).not.toContain("Click Next to preview the sheet.");
   });
 
   it("legacy platform transfer routes require access to both campaigns", () => {

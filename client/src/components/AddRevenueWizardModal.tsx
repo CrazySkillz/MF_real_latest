@@ -1356,6 +1356,48 @@ export function AddRevenueWizardModal(props: {
     }
   };
 
+  const handleSheetsConnectionSuccess = async (info?: {
+    connectionId?: string;
+    connectionIds?: string[];
+    spreadsheetId?: string;
+    sheetNames?: string[];
+  }) => {
+    setShowSheetsConnect(false);
+    setSheetsBackToChooser(false);
+    const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
+    if (preferredId) {
+      setSheetsConnectionId(preferredId);
+      setSheetsPreview(null);
+      setSheetsRevenueCol("");
+      setSheetsConversionValueCol("");
+      setSheetsCampaignCol("");
+      setSheetsDateCol("");
+      setSheetsCampaignQuery("");
+      setSheetsCampaignValues([]);
+      setSheetsConnections((prev) => {
+        const exists = prev.some((c: any) => String(c?.id) === preferredId);
+        if (exists) return prev;
+        return [{
+          id: preferredId,
+          spreadsheetId: info?.spreadsheetId || "",
+          spreadsheetName: info?.spreadsheetId || "Google Sheet",
+          sheetName: Array.isArray(info?.sheetNames) ? info.sheetNames[0] : undefined,
+          isActive: true,
+        }, ...prev];
+      });
+      const ok = await handleSheetsPreview(preferredId);
+      void refreshSheetsConnections();
+      if (ok) {
+        setStep("sheets_map");
+        toast({ title: "Google Sheets connected", description: "Review the mapped columns and import revenue." });
+      }
+      return;
+    }
+
+    await refreshSheetsConnections();
+    toast({ title: "Google Sheets connected", description: "Select a tab to continue." });
+  };
+
   // If opened in edit mode for Sheets, auto-load preview so the user can update mappings immediately.
   // If the connection no longer exists, fall back to the connection chooser step.
   useEffect(() => {
@@ -2028,37 +2070,7 @@ export function AddRevenueWizardModal(props: {
                           campaignId={campaignId}
                           selectionMode="append"
                           purpose={sheetsPurpose}
-                          onSuccess={async (info) => {
-                            setShowSheetsConnect(false);
-                            setSheetsBackToChooser(false);
-                            const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
-                            if (preferredId) {
-                              setSheetsConnectionId(preferredId);
-                              setSheetsPreview(null);
-                              setSheetsRevenueCol("");
-                              setSheetsConversionValueCol("");
-                              setSheetsCampaignCol("");
-                              setSheetsDateCol("");
-                              setSheetsCampaignQuery("");
-                              setSheetsCampaignValues([]);
-                              setSheetsConnections((prev) => {
-                                const exists = prev.some((c: any) => String(c?.id) === preferredId);
-                                if (exists) return prev;
-                                return [{
-                                  id: preferredId,
-                                  spreadsheetId: info?.spreadsheetId || "",
-                                  spreadsheetName: info?.spreadsheetId || "Google Sheet",
-                                  sheetName: Array.isArray(info?.sheetNames) ? info.sheetNames[0] : undefined,
-                                  isActive: true,
-                                }, ...prev];
-                              });
-                              await refreshSheetsConnections();
-                              toast({ title: "Google Sheets connected", description: "Click Next to preview the sheet." });
-                            } else {
-                              await refreshSheetsConnections();
-                              toast({ title: "Google Sheets connected", description: "Select a tab to continue." });
-                            }
-                          }}
+                          onSuccess={handleSheetsConnectionSuccess}
                           onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
                         />
                       </div>
@@ -2072,37 +2084,7 @@ export function AddRevenueWizardModal(props: {
                           campaignId={campaignId}
                           selectionMode="append"
                           purpose={sheetsPurpose}
-                          onSuccess={async (info) => {
-                            setShowSheetsConnect(false);
-                            setSheetsBackToChooser(false);
-                            const preferredId = String(info?.connectionId || info?.connectionIds?.[0] || "");
-                            if (preferredId) {
-                              setSheetsConnectionId(preferredId);
-                              setSheetsPreview(null);
-                              setSheetsRevenueCol("");
-                              setSheetsConversionValueCol("");
-                              setSheetsCampaignCol("");
-                              setSheetsDateCol("");
-                              setSheetsCampaignQuery("");
-                              setSheetsCampaignValues([]);
-                              setSheetsConnections((prev) => {
-                                const exists = prev.some((c: any) => String(c?.id) === preferredId);
-                                if (exists) return prev;
-                                return [{
-                                  id: preferredId,
-                                  spreadsheetId: info?.spreadsheetId || "",
-                                  spreadsheetName: info?.spreadsheetId || "Google Sheet",
-                                  sheetName: Array.isArray(info?.sheetNames) ? info.sheetNames[0] : undefined,
-                                  isActive: true,
-                                }, ...prev];
-                              });
-                              await refreshSheetsConnections();
-                              toast({ title: "Google Sheets connected", description: "Click Next to preview the sheet." });
-                            } else {
-                              await refreshSheetsConnections();
-                              toast({ title: "Google Sheets connected", description: "Select a tab to continue." });
-                            }
-                          }}
+                          onSuccess={handleSheetsConnectionSuccess}
                           onError={(err) => toast({ title: "Google Sheets connect failed", description: err, variant: "destructive" })}
                         />
                       </div>

@@ -940,8 +940,9 @@ export default function GoogleSheetsData() {
             </div>
 
             {/* Sheet Selector and Active Sheet Indicator */}
-            {googleSheetsConnections.length > 0 && (
-              <div className="mb-6 space-y-3">
+            <div className="mb-6 space-y-3 min-h-[76px]">
+              {googleSheetsConnections.length > 0 && (
+                <>
                 <div className="flex items-center gap-3">
                   <label className="text-sm font-medium text-foreground/80/60 whitespace-nowrap">
                     View Data From:
@@ -1016,7 +1017,7 @@ export default function GoogleSheetsData() {
                 </div>
 
                 {/* Active Sheet Indicator */}
-                {sheetsData && (
+                {sheetsData ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground/70">
                     <Badge variant="outline" className="text-xs">
                       {isCombinedView ? (
@@ -1070,9 +1071,12 @@ export default function GoogleSheetsData() {
                       </span>
                     )}
                   </div>
+                ) : (
+                  <div className="h-5" aria-hidden="true" />
                 )}
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
 
           {sheetsError ? (
@@ -1114,11 +1118,6 @@ export default function GoogleSheetsData() {
           ) : isDataLoading ? (
             // Show loading state with tabs structure while data is being fetched
             <>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-32 bg-muted rounded animate-pulse"></div>
-                ))}
-              </div>
               <Tabs defaultValue="data" className="space-y-6">
                 <TabsList>
                   <TabsTrigger value="data">Overview</TabsTrigger>

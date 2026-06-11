@@ -331,6 +331,18 @@ describe("source safety regression guards", () => {
     expect(source).toContain("}, [campaignId]);");
   });
 
+  it("Google Sheets analytics keeps the top layout stable while loading", () => {
+    const source = readGoogleSheetsDataPageSource();
+    const loadingStart = source.indexOf(") : isDataLoading ? (");
+    const loadingEnd = source.indexOf(") : sheetsData ? (", loadingStart);
+    const loadingBlock = source.slice(loadingStart, loadingEnd);
+
+    expect(source).toContain('className="mb-6 space-y-3 min-h-[76px]"');
+    expect(source).toContain('<div className="h-5" aria-hidden="true" />');
+    expect(loadingBlock).toContain('<Tabs defaultValue="data" className="space-y-6">');
+    expect(loadingBlock).not.toContain("grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8");
+  });
+
   it("legacy platform transfer routes require access to both campaigns", () => {
     const routesSource = readRoutesSource();
     const ga4Start = routesSource.indexOf('app.post("/api/ga4/transfer-connection"');

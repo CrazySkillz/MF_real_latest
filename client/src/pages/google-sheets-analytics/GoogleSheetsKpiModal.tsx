@@ -58,7 +58,10 @@ export function GoogleSheetsKpiModal(props: any) {
         }
       }}
     >
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{editing ? "Edit KPI" : "Create New KPI"}</DialogTitle>
           <DialogDescription>

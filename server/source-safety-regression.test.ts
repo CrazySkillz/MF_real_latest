@@ -413,7 +413,11 @@ describe("source safety regression guards", () => {
     expect(page).not.toContain("sheetsData?.summary?.metrics?.[kpi.metric || kpi.metricKey] ?? parseFloat(kpi.currentValue || '0')");
     expect(modal).toContain('data-google-sheets-kpi-source-adapter="source-backed"');
     expect(modal).toContain('data-source-backed-current-value="google_sheets"');
+    expect(modal).toContain("onOpenAutoFocus={(event) => event.preventDefault()}");
     expect(modal).toContain("readOnly");
+    expect(modal).not.toContain('Label htmlFor="gs-kpi-timeframe">Timeframe</Label>');
+    expect(modal).not.toContain('Label htmlFor="gs-kpi-metric">Metric Source</Label>');
+    expect(modal).not.toContain('SelectValue placeholder="Select metric to track"');
     expect(modal).not.toContain("metrics?.[value]");
     expect(modal).not.toContain("detectedColumns");
   });

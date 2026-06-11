@@ -1,6 +1,7 @@
 import { storage } from './storage';
 import { buildPerformanceSummaryAggregate } from './utils/performance-summary-aggregate';
 import { buildTrendAnalysisAggregate } from './utils/trend-analysis-aggregate';
+import { buildGoogleSheetsPlatformSourceForAggregate } from './utils/google-sheets-aggregate-source';
 import { db } from './db';
 import { sql } from 'drizzle-orm';
 
@@ -41,6 +42,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
   const startDateObj = new Date();
   startDateObj.setDate(startDateObj.getDate() - 90);
   const startDate = startDateObj.toISOString().slice(0, 10);
+  const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
 
   // Fetch LinkedIn metrics
   let linkedinMetrics: any = {};
@@ -348,6 +350,9 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
     }
   }
 
+  const googleSheetsConnections = await storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]);
+  const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections);
+
   const performanceSummary = buildPerformanceSummaryAggregate({
     campaignId,
     dateRange: "90days",
@@ -433,6 +438,7 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
         },
         freshness: { selectedCampaignIds: tiktokSelectedCampaignIds },
       },
+      ...(googleSheets ? [googleSheets] : []),
     ],
     revenue: {
       onsiteRevenue: ga4Data.revenue,

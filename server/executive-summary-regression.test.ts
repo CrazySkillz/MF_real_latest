@@ -74,7 +74,7 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).not.toContain("performing strongly with 1.93x ROAS");
     expect(route).not.toContain("Recommend increasing LinkedIn");
     expect(routes).toContain("function buildCampaignPerformanceSummaryAggregate(input: any)");
-    expect(routes).toContain("function buildMainPlatformSourcesForAggregate(sources: { googleAds?: any } = {})");
+    expect(routes).toContain("function buildMainPlatformSourcesForAggregate(sources: { googleAds?: any; instagram?: any; tiktok?: any; googleSheets?: any } = {})");
     expect(route).toContain("const performanceSummary = buildCampaignPerformanceSummaryAggregate({");
     expect(route).toContain("const metaConnection = await storage.getMetaConnection(id).catch(() => null);");
     expect(route).toContain("if (metaConnection && !(metaConnection as any).spendOnly) {");
@@ -98,8 +98,8 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("parseFloat((ga4Metrics.revenue + importedRevenueToDateTotal).toFixed(2))");
     expect(route).toContain("spendSource: performanceSummarySpend > 0 ? \"persisted_spend_sources\" : \"platform_spend_fallback\"");
     expect(route).toContain("meta: { connected: hasMetaConnection");
-    expect(route).toContain("const platformSpend = linkedinSpend + metaMetrics.spend + customMetrics.spend + googleAdsSpend;");
-    expect(route).toContain("mainPlatformSources: { googleAds }");
+    expect(route).toContain("const platformSpend = linkedinSpend + metaMetrics.spend + customMetrics.spend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend;");
+    expect(route).toContain("mainPlatformSources: { googleAds, instagram, tiktok, googleSheets }");
     expect(route).toContain("checkFreshness(googleAdsLastUpdate, 'Google Ads');");
     expect(route).toContain('const hasGoogleAdsData = mainAggregateSources.some((source: any) => source.id === "google_ads");');
     expect(route).toContain("hasGoogleAdsData,");
@@ -205,7 +205,7 @@ describe("campaign Executive Summary regression guard", () => {
     const routeEnd = routes.indexOf("// ============================================================================", routeStart);
     const route = routes.slice(routeStart, routeEnd);
 
-    expect(route).toContain("mainPlatformSources: { googleAds }");
+    expect(route).toContain("mainPlatformSources: { googleAds, instagram, tiktok, googleSheets }");
     expect(route).toContain("platforms: platformsForDisplay");
     expect(route).toContain("platformsWithData: platforms");
     expect(route).toContain("paidMediaSources: platforms.length");

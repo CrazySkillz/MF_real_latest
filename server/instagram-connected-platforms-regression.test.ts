@@ -177,8 +177,8 @@ describe("Instagram Connected Platforms regression guard", () => {
     const helper = routes.slice(helperStart, helperEnd);
 
     expect(helperStart).toBeGreaterThanOrEqual(0);
-    expect(helper).toContain("sources: { googleAds?: any; instagram?: any } = {}");
-    expect(helper).toContain("[sources.googleAds, sources.instagram, (sources as any).tiktok]");
+    expect(helper).toContain("sources: { googleAds?: any; instagram?: any; tiktok?: any; googleSheets?: any } = {}");
+    expect(helper).toContain("[sources.googleAds, sources.instagram, sources.tiktok, sources.googleSheets]");
     expect(helper).toContain("source?.connected === true");
   });
 
@@ -250,7 +250,7 @@ describe("Instagram Connected Platforms regression guard", () => {
 
     for (const route of [outcomeRoute, executiveRoute]) {
       expect(route).toContain("buildInstagramPlatformSourceForAggregate");
-      expect(route).toContain("mainPlatformSources: { googleAds, instagram, tiktok }");
+      expect(route).toContain("mainPlatformSources: { googleAds, instagram, tiktok, googleSheets }");
       expect(route).toContain("const instagramSpendForAggregate = instagramSpend;");
       expect(route).not.toContain("upsertInstagramDailyMetrics");
       expect(route).not.toContain("refreshInstagram");

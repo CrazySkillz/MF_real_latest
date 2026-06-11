@@ -1345,6 +1345,8 @@ export class DatabaseStorage implements IStorage {
         isPrimary: googleSheetsConnections.isPrimary,
         isActive: googleSheetsConnections.isActive,
         columnMappings: googleSheetsConnections.columnMappings,
+        cachedData: (googleSheetsConnections as any).cachedData,
+        lastDataRefreshAt: (googleSheetsConnections as any).lastDataRefreshAt,
         connectedAt: googleSheetsConnections.connectedAt,
         createdAt: googleSheetsConnections.createdAt,
       }).from(googleSheetsConnections)
@@ -1406,6 +1408,8 @@ export class DatabaseStorage implements IStorage {
           isPrimary: row.is_primary,
           isActive: row.is_active,
           columnMappings: row.column_mappings,
+          cachedData: null,
+          lastDataRefreshAt: null,
           connectedAt: row.connected_at,
           createdAt: row.created_at
         })) as GoogleSheetsConnection[];

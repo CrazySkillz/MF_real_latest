@@ -342,7 +342,11 @@ Status:
 - [x] Regression guards added in `server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] Browser validation pending after deploy for selected-tab values, combined view, child-source exclusion, and empty/unmapped sheet handling.
+- [x] Browser validation passed after deploy for selected-tab values, combined view, child-source exclusion, and empty/unmapped sheet handling.
+  - Main Google Sheets tabs render as the Google Sheets analytics source.
+  - Combined view stays scoped to main Google Sheets tabs.
+  - A Meta campaign with Google Sheets revenue imported as a child source does not expose that child sheet as main Google Sheets analytics, including direct navigation to `/campaigns/:id/google-sheets-data`.
+  - Empty or unmapped Google Sheets analytics states do not display child revenue/spend values as main Google Sheets metrics.
 
 ### Commit 5: Campaign DeepDive Aggregate Participation
 
@@ -367,7 +371,20 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally for the shared Campaign DeepDive aggregate boundary:
+  - Root cause: the shared aggregate helper already accepted generic main-platform sources, but the Google Sheets main source was never built or passed into `/api/campaigns/:id/outcome-totals`, Executive Summary, or scheduler/manual snapshot inputs.
+  - Root cause: `storage.getGoogleSheetsConnections()` did not return persisted `cachedData` or `lastDataRefreshAt`, so aggregate callers could not compute source-backed Google Sheets metrics from already-refreshed selected sheet rows.
+  - Added a Google Sheets aggregate source resolver that uses only active main Google Sheets connections for campaigns whose platform list includes Google Sheets.
+  - The resolver reads persisted cached rows plus column mappings only; aggregate paths do not call live Google APIs.
+  - Child revenue/spend purposes remain excluded from main Google Sheets aggregate source rows.
+  - Revenue, spend, ROI, and ROAS remain excluded from this main Google Sheets aggregate source until the dedicated financial-source commits are implemented.
+  - `/outcome-totals`, Executive Summary, and scheduler/manual snapshot performance summaries now pass Google Sheets through the shared generic source contract.
+- [x] Regression guards added in `server/google-sheets-aggregate-source.test.ts` and `server/source-safety-regression.test.ts`.
+- [x] Neighboring Campaign DeepDive aggregate regression guard updated in `server/campaign-financial-analysis-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/google-sheets-aggregate-source.test.ts server/source-safety-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/executive-summary-regression.test.ts server/instagram-connected-platforms-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/campaign-performance-overview-regression.test.ts server/performance-summary-insights-regression.test.ts server/platform-comparison-regression.test.ts server/campaign-financial-analysis-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] Browser validation pending after deploy for Google Sheets-only aggregate source display, GA4 plus Google Sheets source separation, and child-only revenue/spend source exclusion.
 
 ### Commit 6: KPI Section GA4 Template Parity
 
@@ -607,16 +624,19 @@ Connected Platforms:
 
 Analytics:
 
-- [ ] Overview/Summary values match selected sheet rows.
-- [ ] Missing mapped metrics show unavailable reasons.
+- [x] Overview/Summary values match selected sheet rows for the Commit 4 main-source analytics scope.
+- [x] Empty or unmapped main Google Sheets analytics states do not populate from child revenue/spend sheets.
+- [x] Direct navigation to Google Sheets analytics for a child-only revenue/spend campaign does not show child sheet rows as main Google Sheets analytics.
 - [ ] KPIs, Benchmarks, Insights, and Reports use current source-backed values.
 - [ ] Reports and scheduled reports use latest values.
 
 DeepDive:
 
-- [ ] Google Sheets appears once in shared aggregate when connected as main source.
-- [ ] Google Sheets child financial sources do not appear as main sources.
-- [ ] GA4 plus Google Sheets does not double-count revenue, spend, or conversions.
+- [x] Local regression: Google Sheets appears once in shared aggregate when connected as main source.
+- [x] Local regression: Google Sheets child financial sources do not appear as main sources.
+- [x] Local regression: GA4 plus Google Sheets keeps main Google Sheets metrics separate and does not unlock revenue, spend, ROI, or ROAS from the main Google Sheets source.
+- [ ] Browser validation: Google Sheets appears once in Campaign DeepDive after deploy when connected as a main source.
+- [ ] Browser validation: child-only Google Sheets revenue/spend sources do not appear as main Campaign DeepDive Google Sheets sources after deploy.
 
 Lifecycle:
 
@@ -692,3 +712,18 @@ Google Sheets can be marked locally production-ready only when:
   - Google Sheets analytics API reads only campaign-level main Google Sheets rows, excluding child revenue/spend rows.
 - Commit 4 validation passed locally: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - Commit 4 validation passed locally: `npm run check`.
+- Commit 4 browser validation passed after deploy:
+  - Selected main Google Sheets tab values match the Google Sheets analytics Overview/Summary surface.
+  - Combined view remains scoped to selected main Google Sheets tabs.
+  - Child-only Google Sheets revenue/spend sheets do not populate main Google Sheets analytics.
+  - Direct navigation to `/campaigns/:id/google-sheets-data` for a Meta campaign with Google Sheets revenue imported as a child source does not expose that child sheet as a main Google Sheets dataset.
+  - Empty or unmapped Google Sheets analytics states remain unavailable/empty instead of showing unscoped child-source values.
+- Commit 5 Campaign DeepDive aggregate participation completed locally:
+  - Google Sheets was missing from the main-platform source composition for `/outcome-totals`, Executive Summary, and scheduler/manual snapshot performance summaries.
+  - Google Sheets connection reads now include cached sheet rows and last-refresh metadata for aggregate-only use.
+  - Main Google Sheets aggregate metrics are built only from active campaign-level `general` or legacy Google Sheets connections on campaigns configured with Google Sheets as a main platform.
+  - Child revenue/spend Google Sheets sources remain excluded from main Google Sheets aggregate rows.
+  - Revenue, spend, ROI, and ROAS remain unavailable from this main-source aggregate path pending the dedicated financial-source commits.
+- Commit 5 validation passed locally: `npm test -- server/google-sheets-aggregate-source.test.ts server/source-safety-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/executive-summary-regression.test.ts server/instagram-connected-platforms-regression.test.ts`.
+- Commit 5 neighboring DeepDive validation passed locally: `npm test -- server/campaign-performance-overview-regression.test.ts server/performance-summary-insights-regression.test.ts server/platform-comparison-regression.test.ts server/campaign-financial-analysis-regression.test.ts`.
+- Commit 5 validation passed locally: `npm run check`.

@@ -10,6 +10,14 @@ function readStorageSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "server", "storage.ts"), "utf8");
 }
 
+function readSchedulerSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "server", "scheduler.ts"), "utf8");
+}
+
+function readGoogleSheetsAggregateSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "server", "utils", "google-sheets-aggregate-source.ts"), "utf8");
+}
+
 function readRevenueWizardSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"), "utf8");
 }
@@ -358,6 +366,33 @@ describe("source safety regression guards", () => {
     expect(route).toContain("const getMainGoogleSheetsConnections = async () =>");
     expect(route).toContain("const allConnections = await getMainGoogleSheetsConnections();");
     expect(route).not.toContain("const allConnections = await storage.getGoogleSheetsConnections(campaignId);");
+  });
+
+  it("Google Sheets main platform feeds Campaign DeepDive aggregate without child revenue/spend rows", () => {
+    const routesSource = readRoutesSource();
+    const storageSource = readStorageSource();
+    const schedulerSource = readSchedulerSource();
+    const aggregateSource = readGoogleSheetsAggregateSource();
+    const outcomeStart = routesSource.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
+    const outcomeEnd = routesSource.indexOf('// New route: Get all GA4 connections for a campaign', outcomeStart);
+    const outcomeRoute = routesSource.slice(outcomeStart, outcomeEnd);
+
+    expect(routesSource).toContain('import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";');
+    expect(outcomeRoute).toContain("storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[])");
+    expect(outcomeRoute).toContain("const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[]);");
+    expect(outcomeRoute).toContain("mainPlatformSources: { googleAds, instagram, tiktok, googleSheets }");
+    expect(routesSource).toContain("const executiveGoogleSheetsConnections = await storage.getGoogleSheetsConnections(id).catch(() => [] as any[]);");
+    expect(routesSource).toContain("const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, executiveGoogleSheetsConnections);");
+    expect(schedulerSource).toContain('import { buildGoogleSheetsPlatformSourceForAggregate }');
+    expect(schedulerSource).toContain("const googleSheetsConnections = await storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]);");
+    expect(schedulerSource).toContain("...(googleSheets ? [googleSheets] : [])");
+    expect(storageSource).toContain("cachedData: (googleSheetsConnections as any).cachedData");
+    expect(storageSource).toContain("lastDataRefreshAt: (googleSheetsConnections as any).lastDataRefreshAt");
+    expect(aggregateSource).toContain('&& (!purpose || purpose === "general")');
+    expect(aggregateSource).toContain('metric: "revenue", reason: "Google Sheets confirmed revenue requires the dedicated revenue source path"');
+    expect(aggregateSource).toContain('metric: "spend", reason: "Google Sheets spend requires the dedicated spend source path"');
+    expect(aggregateSource).not.toContain('includedMetrics.push("revenue")');
+    expect(aggregateSource).not.toContain('includedMetrics.push("spend")');
   });
 
   it("Google Sheets-only Add Dataset connections append instead of replacing existing tabs", () => {

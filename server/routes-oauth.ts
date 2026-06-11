@@ -30,6 +30,7 @@ import { refreshGoogleSheetsDataForCampaign } from "./auto-refresh-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
+import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
 
 // Helper functions for column type detection
 function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency' | 'percentage' | 'boolean' | 'unknown' {
@@ -394,8 +395,8 @@ const parseMetaSelectedCampaignIds = (connection: any): string[] => {
   }
 };
 
-function buildMainPlatformSourcesForAggregate(sources: { googleAds?: any; instagram?: any } = {}) {
-  return [sources.googleAds, sources.instagram, (sources as any).tiktok].filter((source) => source?.connected === true);
+function buildMainPlatformSourcesForAggregate(sources: { googleAds?: any; instagram?: any; tiktok?: any; googleSheets?: any } = {}) {
+  return [sources.googleAds, sources.instagram, sources.tiktok, sources.googleSheets].filter((source) => source?.connected === true);
 }
 
 function buildCampaignPerformanceSummaryAggregate(input: any) {
@@ -11257,12 +11258,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      const [campaign, ga4Connections, linkedInConn, metaConn, customIntegration] = await Promise.all([
+      const [campaign, ga4Connections, linkedInConn, metaConn, customIntegration, googleSheetsConnections] = await Promise.all([
         storage.getCampaign(campaignId),
         storage.getGA4Connections(campaignId),
         storage.getLinkedInConnection(campaignId),
         storage.getMetaConnection(campaignId),
         storage.getCustomIntegration(campaignId),
+        storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]),
       ]);
       const activeGA4 = (ga4Connections || []).some((c: any) => c?.propertyId && c.propertyId !== "");
 
@@ -11542,6 +11544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { googleAds, googleAdsSpend } = await buildGoogleAdsPlatformSourceForAggregate(campaignId, startDate, endDate);
       const { instagram, instagramSpend } = await buildInstagramPlatformSourceForAggregate(campaignId, startDate, endDate);
       const { tiktok, tiktokSpend } = await buildTikTokPlatformSourceForAggregate(campaignId, startDate, endDate);
+      const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[]);
 
       // Custom integration inputs (webhook-fed)
       let custom: any = { connected: false };
@@ -11692,7 +11695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           meta,
           customIntegration: custom,
         },
-        mainPlatformSources: { googleAds, instagram, tiktok },
+        mainPlatformSources: { googleAds, instagram, tiktok, googleSheets },
         revenue: {
           onsiteRevenue,
           offsiteRevenue: parseFloat(offsiteRevenueTotal.toFixed(2)),
@@ -27592,6 +27595,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { googleAds, googleAdsSpend, googleAdsLastUpdate } = await buildGoogleAdsPlatformSourceForAggregate(id, startDate, endDate);
       const { instagram, instagramSpend, instagramLastUpdate } = await buildInstagramPlatformSourceForAggregate(id, startDate, endDate);
       const { tiktok, tiktokSpend, tiktokLastUpdate } = await buildTikTokPlatformSourceForAggregate(id, startDate, endDate);
+      const executiveGoogleSheetsConnections = await storage.getGoogleSheetsConnections(id).catch(() => [] as any[]);
+      const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, executiveGoogleSheetsConnections);
 
       // Fetch canonical spend/revenue sources (ground truth)
       let canonicalSpend = 0;
@@ -27664,7 +27669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           meta: { connected: hasMetaConnection, ...metaMetrics, attributedRevenue: metaMetrics.revenue },
           customIntegration: { connected: hasCustomIntegration, ...customMetrics, users: parseNum(customIntegrationRawData?.users), sessions: parseNum(customIntegrationRawData?.sessions), pageviews: parseNum(customIntegrationRawData?.pageviews), revenue: customMetrics.revenue },
         },
-        mainPlatformSources: { googleAds, instagram, tiktok },
+        mainPlatformSources: { googleAds, instagram, tiktok, googleSheets },
         revenue: {
           onsiteRevenue: ga4Metrics.revenue,
           offsiteRevenue: aggregateRevenue > ga4Metrics.revenue ? aggregateRevenue - ga4Metrics.revenue : 0,

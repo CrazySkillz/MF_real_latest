@@ -1385,12 +1385,7 @@ export function AddRevenueWizardModal(props: {
           isActive: true,
         }, ...prev];
       });
-      const ok = await handleSheetsPreview(preferredId);
-      void refreshSheetsConnections();
-      if (ok) {
-        setStep("sheets_map");
-        toast({ title: "Google Sheets connected", description: "Review the mapped columns and import revenue." });
-      }
+      toast({ title: "Google Sheets connected", description: "Click Next to preview the sheet." });
       return;
     }
 

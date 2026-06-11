@@ -245,17 +245,19 @@ describe("source safety regression guards", () => {
     expect(route).toContain("storage.getGoogleSheetsConnections(String(campaignId))");
   });
 
-  it("Google Sheets revenue connector advances to mapping after tab selection", () => {
+  it("Google Sheets revenue connector waits for Next after tab selection", () => {
     const source = readRevenueWizardSource();
     const handlerStart = source.indexOf("const handleSheetsConnectionSuccess = async");
     const handlerEnd = source.indexOf("// If opened in edit mode for Sheets", handlerStart);
     const handler = source.slice(handlerStart, handlerEnd);
 
-    expect(handler).toContain("const ok = await handleSheetsPreview(preferredId);");
-    expect(handler).toContain('setStep("sheets_map");');
-    expect(handler.indexOf("const ok = await handleSheetsPreview(preferredId);")).toBeLessThan(handler.indexOf('setStep("sheets_map");'));
+    expect(handler).toContain("setShowSheetsConnect(false);");
+    expect(handler).toContain("setSheetsConnectionId(preferredId);");
+    expect(handler).toContain("setSheetsConnections((prev) => {");
+    expect(handler).toContain("Click Next to preview the sheet.");
+    expect(handler).not.toContain("handleSheetsPreview(preferredId)");
+    expect(handler).not.toContain('setStep("sheets_map");');
     expect(source.match(/onSuccess=\{handleSheetsConnectionSuccess\}/g)?.length).toBe(2);
-    expect(source).not.toContain("Click Next to preview the sheet.");
   });
 
   it("legacy platform transfer routes require access to both campaigns", () => {

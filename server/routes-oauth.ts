@@ -10641,6 +10641,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get primary Google Sheets connection for backward compatibility
       const googleSheetsConnection = googleSheetsConnections.find(c => c.isPrimary) || googleSheetsConnections[0];
+      const mainGoogleSheetsConnected =
+        !!campaignWantsGoogleSheets &&
+        googleSheetsConnections.some((c: any) => c?.spreadsheetId && c.spreadsheetId !== 'pending');
 
       console.log(`[Connected Platforms] GA4 connections found: ${ga4Connections.length}`);
       if (ga4Connections.length > 0) {
@@ -10712,17 +10715,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: "google-sheets",
           name: "Google Sheets",
-          connected: googleSheetsConnections.length > 0,
+          connected: mainGoogleSheetsConnected,
           // Campaign-level Google Sheets card should only appear as "Connected" if the campaign was created/configured
           // with Google Sheets as a connector (Create Campaign flow). Google Sheets used only for LinkedIn revenue mapping
           // should be shown under LinkedIn -> Connected Data Sources, not as a campaign-level connector.
-          connectedCampaignLevel:
-            !!campaignWantsGoogleSheets &&
-            googleSheetsConnections.some((c: any) => c?.spreadsheetId && c.spreadsheetId !== 'pending'),
-          analyticsPath: googleSheetsConnections.length > 0
+          connectedCampaignLevel: mainGoogleSheetsConnected,
+          analyticsPath: mainGoogleSheetsConnected
             ? `/campaigns/${campaignId}/google-sheets-data`
             : null,
-          lastConnectedAt: googleSheetsConnection?.connectedAt,
+          lastConnectedAt: mainGoogleSheetsConnected ? googleSheetsConnection?.connectedAt : null,
         },
         {
           id: "linkedin",

@@ -203,6 +203,20 @@ describe("source safety regression guards", () => {
     expect(method.indexOf("if (!targetConnection) return false")).toBeLessThan(method.indexOf(".set({ isPrimary: false })"));
   });
 
+  it("Connected Platforms does not expose child-only Google Sheets sources as a main platform", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.get("/api/campaigns/:id/connected-platforms"');
+    const routeEnd = routesSource.indexOf('app.get("/api/campaigns/:id/all-data-sources"', routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(route).toContain("const mainGoogleSheetsConnected");
+    expect(route).toContain("!!campaignWantsGoogleSheets");
+    expect(route).toContain("connected: mainGoogleSheetsConnected");
+    expect(route).toContain("connectedCampaignLevel: mainGoogleSheetsConnected");
+    expect(route).toContain("analyticsPath: mainGoogleSheetsConnected");
+    expect(route).toContain("lastConnectedAt: mainGoogleSheetsConnected ? googleSheetsConnection?.connectedAt : null");
+  });
+
   it("legacy platform transfer routes require access to both campaigns", () => {
     const routesSource = readRoutesSource();
     const ga4Start = routesSource.indexOf('app.post("/api/ga4/transfer-connection"');

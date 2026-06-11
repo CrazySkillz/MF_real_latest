@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SiGooglesheets } from "react-icons/si";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useLayoutEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ColumnMappingInterface } from "@/components/ColumnMappingInterface";
@@ -140,6 +140,10 @@ export default function GoogleSheetsData() {
   const [showAddDatasetModal, setShowAddDatasetModal] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [campaignId]);
 
   // Get selected spreadsheetId from URL query params - update when location changes
   const [urlParams, setUrlParams] = useState(() => new URLSearchParams(window.location.search));

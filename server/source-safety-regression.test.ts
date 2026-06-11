@@ -323,6 +323,14 @@ describe("source safety regression guards", () => {
     expect(source).toContain("googleSheetsOnly={true}");
   });
 
+  it("Google Sheets analytics resets inherited scroll position on route mount", () => {
+    const source = readGoogleSheetsDataPageSource();
+
+    expect(source).toContain("useLayoutEffect");
+    expect(source).toContain('window.scrollTo({ top: 0, left: 0, behavior: "auto" });');
+    expect(source).toContain("}, [campaignId]);");
+  });
+
   it("legacy platform transfer routes require access to both campaigns", () => {
     const routesSource = readRoutesSource();
     const ga4Start = routesSource.indexOf('app.post("/api/ga4/transfer-connection"');

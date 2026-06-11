@@ -260,6 +260,17 @@ describe("source safety regression guards", () => {
     expect(source.match(/onSuccess=\{handleSheetsConnectionSuccess\}/g)?.length).toBe(2);
   });
 
+  it("Google Sheets revenue chooser labels selected tabs without spreadsheet IDs", () => {
+    const source = readRevenueWizardSource();
+    const helperStart = source.indexOf("const getSheetTabLabel = (connection: any) => {");
+    const helperEnd = source.indexOf("  const [sheetsRevenueCol", helperStart);
+    const helper = source.slice(helperStart, helperEnd);
+
+    expect(helper).toContain("if (sheetName) return sheetName;");
+    expect(source).toContain("{getSheetTabLabel(c)}");
+    expect(source).not.toContain('{String(c.spreadsheetName || c.spreadsheetId || "Google Sheet")}');
+  });
+
   it("legacy platform transfer routes require access to both campaigns", () => {
     const routesSource = readRoutesSource();
     const ga4Start = routesSource.indexOf('app.post("/api/ga4/transfer-connection"');

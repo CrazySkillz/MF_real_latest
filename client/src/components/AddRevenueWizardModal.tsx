@@ -271,6 +271,11 @@ export function AddRevenueWizardModal(props: {
   const sheetsConnectionsCampaignRef = useRef<string>("");
   const [sheetsPreview, setSheetsPreview] = useState<Preview | null>(null);
   const [sheetsBackToChooser, setSheetsBackToChooser] = useState(false);
+  const getSheetTabLabel = (connection: any) => {
+    const sheetName = String(connection?.sheetName || "").trim();
+    if (sheetName) return sheetName;
+    return String(connection?.spreadsheetName || connection?.spreadsheetId || "Google Sheet");
+  };
   const [sheetsRevenueCol, setSheetsRevenueCol] = useState<string>("");
   const [sheetsConversionValueCol, setSheetsConversionValueCol] = useState<string>("");
   const [sheetsCampaignCol, setSheetsCampaignCol] = useState<string>("");
@@ -2126,8 +2131,7 @@ export function AddRevenueWizardModal(props: {
                           <SelectContent className="z-[10000]">
                             {sheetsConnections.map((c: any) => (
                               <SelectItem key={String(c.id)} value={String(c.id)}>
-                                {String(c.spreadsheetName || c.spreadsheetId || "Google Sheet")}
-                                {c.sheetName ? ` — ${c.sheetName}` : ""}
+                                {getSheetTabLabel(c)}
                               </SelectItem>
                             ))}
                           </SelectContent>

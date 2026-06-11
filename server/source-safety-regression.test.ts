@@ -229,6 +229,18 @@ describe("source safety regression guards", () => {
     expect(route).toContain("storage.getGoogleSheetsConnections(campaignId)");
   });
 
+  it("Google Sheets tab picker can reuse campaign tokens across revenue purposes", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.get("/api/google-sheets/:spreadsheetId/sheets"');
+    const routeEnd = routesSource.indexOf("// Select specific spreadsheet and sheet/tab", routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(route).toContain("resolveSheetsTokenConnection");
+    expect(route).toContain("storage.getGoogleSheetsConnections(String(campaignId), purpose ? String(purpose) : undefined)");
+    expect(route).toContain("if ((!connection || !connection.accessToken) && purpose)");
+    expect(route).toContain("storage.getGoogleSheetsConnections(String(campaignId))");
+  });
+
   it("legacy platform transfer routes require access to both campaigns", () => {
     const routesSource = readRoutesSource();
     const ga4Start = routesSource.indexOf('app.post("/api/ga4/transfer-connection"');

@@ -268,11 +268,13 @@ Subcommits:
 - 3C: Require selected spreadsheet/tab and explicit source purpose before final connection state.
 - 3D: Preserve stable UI states and avoid layout-jumping connection text.
 - 3E: Add setup/invalidation regression coverage.
+- 3F: Expose the add-another-tab path from Google Sheets analytics after `View Detailed Analytics`.
 
 Validation:
 
 - Create Campaign -> Google Sheets -> select spreadsheet/tab -> finalize campaign.
 - Existing campaign -> Connected Platforms -> add Google Sheets -> select spreadsheet/tab.
+- Existing campaign -> Google Sheets -> `View Detailed Analytics` -> `Add Dataset` -> select another tab without replacing existing tabs.
 - Failed/cancelled setup does not leave a connected main source.
 - Connected Platforms, analytics, and aggregate queries refetch after successful setup.
 
@@ -283,10 +285,13 @@ Status:
   - Connected Platforms Google Sheets setup now explicitly uses `selectionMode="append"` with the main-platform `general` Google Sheets purpose.
   - Connected Platforms setup persists `google-sheets` into the campaign platform list after a successful selected-tab connection.
   - Connected Platforms setup invalidates campaign, connected-platform, and Google Sheets connection status queries after the platform list is updated.
+  - Google Sheets analytics now exposes the existing `Add Dataset` flow from the page header so users can add another tab after `View Detailed Analytics`.
 - [x] Regression guards added in `server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] Browser validation pending after deploy for Create Campaign and Connected Platforms setup paths.
+- [x] Commit 3F local validation passed: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
+- [x] Commit 3F local validation passed: `npm run check`.
+- [ ] Browser validation pending after deploy for Create Campaign, Connected Platforms setup, and Google Sheets analytics `Add Dataset` paths.
 
 ### Commit 4: Source-Backed Google Sheets Analytics Contract
 
@@ -645,5 +650,8 @@ Google Sheets can be marked locally production-ready only when:
   - Connected Platforms Google Sheets setup uses explicit `append` mode and main-platform `general` purpose.
   - Connected Platforms setup updates the campaign platform list with `google-sheets`.
   - Setup query invalidation covers campaign, connected-platform, and Google Sheets connection status queries.
+  - Commit 3F exposes `Add Dataset` from the Google Sheets analytics header after `View Detailed Analytics`, reusing the existing append-mode dataset flow.
 - Commit 3 validation passed locally: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - Commit 3 validation passed locally: `npm run check`.
+- Commit 3F validation passed locally: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
+- Commit 3F validation passed locally: `npm run check`.

@@ -22,6 +22,10 @@ function readCampaignDetailSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"), "utf8");
 }
 
+function readGoogleSheetsDataPageSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "google-sheets-data.tsx"), "utf8");
+}
+
 describe("source safety regression guards", () => {
   it("Shopify OAuth requires an explicitly whitelisted Shopify redirect URI", () => {
     const source = readRoutesSource();
@@ -305,6 +309,18 @@ describe("source safety regression guards", () => {
     expect(block).toContain('apiRequest("PATCH", `/api/campaigns/${campaign.id}`');
     expect(block).toContain('platform: [...currentPlatforms, "google-sheets"].join(", ")');
     expect(block).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });');
+  });
+
+  it("Google Sheets analytics exposes the Add Dataset path", () => {
+    const source = readGoogleSheetsDataPageSource();
+    const headerStart = source.indexOf('<Badge variant="secondary" className="text-xs">');
+    const headerEnd = source.indexOf('{sheetsData?.spreadsheetId && !isCombinedView', headerStart);
+    const header = source.slice(headerStart, headerEnd);
+
+    expect(header).toContain("canAddMoreSheets");
+    expect(header).toContain("setShowAddDatasetModal(true)");
+    expect(header).toContain("Add Dataset");
+    expect(source).toContain("googleSheetsOnly={true}");
   });
 
   it("legacy platform transfer routes require access to both campaigns", () => {

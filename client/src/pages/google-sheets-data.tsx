@@ -902,6 +902,15 @@ export default function GoogleSheetsData() {
                   <Calendar className="w-3 h-3 mr-1" />
                   Auto-refreshing hourly
                 </Badge>
+                {canAddMoreSheets && (
+                  <Button
+                    onClick={() => setShowAddDatasetModal(true)}
+                    size="sm"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Dataset
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   onClick={() => refetch()}

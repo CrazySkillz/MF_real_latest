@@ -8663,11 +8663,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
 
-      const conns = await storage.getGoogleSheetsConnections(campaignId, purpose);
-      const newestFirst = (Array.isArray(conns) ? conns : [])
-        .filter((c: any) => c && c.accessToken)
-        .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime());
-      let connection: any = newestFirst.find((c: any) => String(c?.spreadsheetId || "") === "pending") || newestFirst[0] || conns[0];
+      let conns = await storage.getGoogleSheetsConnections(campaignId, purpose);
+      const resolveSheetsTokenConnection = (rows: any[]) => {
+        const newestFirst = (Array.isArray(rows) ? rows : [])
+          .filter((c: any) => c && c.accessToken)
+          .sort((a: any, b: any) => new Date(b?.connectedAt || b?.createdAt || 0).getTime() - new Date(a?.connectedAt || a?.createdAt || 0).getTime());
+        return newestFirst.find((c: any) => String(c?.spreadsheetId || "") === "pending") || newestFirst[0] || rows?.[0];
+      };
+      let connection: any = resolveSheetsTokenConnection(conns);
+      if ((!connection || !connection.accessToken) && purpose) {
+        conns = await storage.getGoogleSheetsConnections(campaignId);
+        connection = resolveSheetsTokenConnection(conns);
+      }
 
       if (!connection || !connection.accessToken) {
         console.error(`[Google Sheets] No connection found for campaign ${campaignId}`);

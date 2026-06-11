@@ -217,6 +217,18 @@ describe("source safety regression guards", () => {
     expect(route).toContain("lastConnectedAt: mainGoogleSheetsConnected ? googleSheetsConnection?.connectedAt : null");
   });
 
+  it("Google Sheets spreadsheet picker can reuse campaign tokens across revenue purposes", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.get("/api/google-sheets/:campaignId/spreadsheets"');
+    const routeEnd = routesSource.indexOf("// Delete/reset Google Sheets connection", routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(route).toContain("resolveSheetsTokenConnection");
+    expect(route).toContain("storage.getGoogleSheetsConnections(campaignId, purpose)");
+    expect(route).toContain("if ((!connection || !connection.accessToken) && purpose)");
+    expect(route).toContain("storage.getGoogleSheetsConnections(campaignId)");
+  });
+
   it("legacy platform transfer routes require access to both campaigns", () => {
     const routesSource = readRoutesSource();
     const ga4Start = routesSource.indexOf('app.post("/api/ga4/transfer-connection"');

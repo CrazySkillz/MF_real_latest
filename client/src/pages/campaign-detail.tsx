@@ -5831,16 +5831,43 @@ export default function CampaignDetail() {
 
                           <SimpleGoogleSheetsAuth 
                             campaignId={campaign.id} 
+                            selectionMode="append"
+                            purpose="general"
                             onSuccess={() => {
-                              setExpandedPlatform(null);
-                              refetchGoogleSheetsConnections();
-                              queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                              queryClient.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
+                              void (async () => {
+                                try {
+                                  const currentPlatforms = String(campaign.platform || "")
+                                    .split(",")
+                                    .map((p) => p.trim())
+                                    .filter(Boolean);
+                                  const hasGoogleSheets = currentPlatforms.some((p) => {
+                                    const normalized = p.toLowerCase();
+                                    return normalized === "google-sheets" || normalized === "google sheets";
+                                  });
+                                  if (!hasGoogleSheets) {
+                                    await apiRequest("PATCH", `/api/campaigns/${campaign.id}`, {
+                                      platform: [...currentPlatforms, "google-sheets"].join(", "),
+                                    });
+                                  }
+                                  setExpandedPlatform(null);
+                                  refetchGoogleSheetsConnections();
+                                  queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId] });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
 
-                              toastHook({
-                                title: "Google Sheet Connected",
-                                description: "The Google Sheet has been connected successfully.",
-                              });
+                                  toastHook({
+                                    title: "Google Sheet Connected",
+                                    description: "The Google Sheet has been connected successfully.",
+                                  });
+                                } catch (error: any) {
+                                  toastHook({
+                                    title: "Connection Failed",
+                                    description: error?.message || "Failed to finish Google Sheets setup",
+                                    variant: "destructive"
+                                  });
+                                }
+                              })();
                             }}
                             onError={(error) => {
                               console.error("Google Sheets connection error:", error);

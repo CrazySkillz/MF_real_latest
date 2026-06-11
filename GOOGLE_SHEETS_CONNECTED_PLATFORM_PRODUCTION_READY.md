@@ -239,6 +239,20 @@ Status:
 - [x] Regression guard added in `server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
+- [x] User/browser validation passed for Commit 2.
+- [x] Follow-up browser-reported revenue import hardening completed:
+  - Spreadsheet discovery now reuses a valid campaign Google Sheets token when no purpose-specific revenue token row exists.
+  - Tab discovery now uses the same token-reuse boundary, so selecting a spreadsheet can load tabs for platform revenue import.
+  - The revenue wizard keeps the original flow: selected tab returns to the Google Sheets chooser, then the user clicks `Next` to preview/map columns.
+  - The revenue chooser displays the selected tab name, such as `ROI_ROAS_Calculations`, instead of raw spreadsheet IDs or `spreadsheetId - tab` labels.
+- [x] Follow-up commits pushed:
+  - `a5220546 fix: reuse Google Sheets tokens for revenue picker`
+  - `15540ae7 fix: reuse Google Sheets tokens for tab picker`
+  - `c8243ee9 fix: advance Google Sheets revenue wizard after tab selection`
+  - `ab5a91ac fix: keep Google Sheets revenue flow on Next step`
+  - `2281ad36 fix: show Google Sheets tab name in revenue chooser`
+- [x] Follow-up local validation passed after the fixes: `npm test -- server/source-safety-regression.test.ts`.
+- [x] Follow-up local validation passed after the fixes: `npm run check`.
 - [ ] Remaining Google Sheets source-identity hardening beyond the Connected Platforms status boundary is tracked in later revenue/spend, refresh, and lifecycle commits.
 
 ### Commit 3: Create Campaign And Connected Platforms Setup
@@ -264,7 +278,15 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally for the setup-flow boundary:
+  - Create Campaign Google Sheets setup now explicitly uses `selectionMode="replace"` with the main-platform `general` Google Sheets purpose.
+  - Connected Platforms Google Sheets setup now explicitly uses `selectionMode="append"` with the main-platform `general` Google Sheets purpose.
+  - Connected Platforms setup persists `google-sheets` into the campaign platform list after a successful selected-tab connection.
+  - Connected Platforms setup invalidates campaign, connected-platform, and Google Sheets connection status queries after the platform list is updated.
+- [x] Regression guards added in `server/source-safety-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] Browser validation pending after deploy for Create Campaign and Connected Platforms setup paths.
 
 ### Commit 4: Source-Backed Google Sheets Analytics Contract
 
@@ -610,3 +632,18 @@ Google Sheets can be marked locally production-ready only when:
 - Commit 2 Connected Platforms source-identity slice completed locally: main Google Sheets platform status now uses the campaign-level Google Sheets eligibility flag instead of any active Google Sheets connection.
 - Commit 2 validation passed locally: `npm test -- server/source-safety-regression.test.ts`.
 - Commit 2 validation passed locally: `npm run check`.
+- Commit 2 user/browser validation passed.
+- Google Sheets revenue import follow-up fixes completed after browser validation:
+  - Revenue spreadsheet picker reuses existing campaign Google Sheets tokens for discovery when purpose-specific token rows are absent.
+  - Revenue tab picker reuses existing campaign Google Sheets tokens for tab discovery under the same boundary.
+  - Revenue tab connection returns to the chooser with the selected tab and preserves the user-clicked `Next` step.
+  - Revenue chooser labels selected tabs by `sheetName` and no longer shows raw spreadsheet IDs when a tab name exists.
+- Follow-up validation passed locally: `npm test -- server/source-safety-regression.test.ts`.
+- Follow-up validation passed locally: `npm run check`.
+- Commit 3 setup-flow bundle completed locally:
+  - Create Campaign Google Sheets setup uses explicit `replace` mode and main-platform `general` purpose.
+  - Connected Platforms Google Sheets setup uses explicit `append` mode and main-platform `general` purpose.
+  - Connected Platforms setup updates the campaign platform list with `google-sheets`.
+  - Setup query invalidation covers campaign, connected-platform, and Google Sheets connection status queries.
+- Commit 3 validation passed locally: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
+- Commit 3 validation passed locally: `npm run check`.

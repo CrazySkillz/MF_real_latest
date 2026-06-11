@@ -14,6 +14,14 @@ function readRevenueWizardSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"), "utf8");
 }
 
+function readCampaignsPageSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "campaigns.tsx"), "utf8");
+}
+
+function readCampaignDetailSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"), "utf8");
+}
+
 describe("source safety regression guards", () => {
   it("Shopify OAuth requires an explicitly whitelisted Shopify redirect URI", () => {
     const source = readRoutesSource();
@@ -269,6 +277,34 @@ describe("source safety regression guards", () => {
     expect(helper).toContain("if (sheetName) return sheetName;");
     expect(source).toContain("{getSheetTabLabel(c)}");
     expect(source).not.toContain('{String(c.spreadsheetName || c.spreadsheetId || "Google Sheet")}');
+  });
+
+  it("Create Campaign Google Sheets setup uses the main-platform purpose", () => {
+    const source = readCampaignsPageSource();
+    const blockStart = source.indexOf("selectedWizardPlatform === 'google-sheets'");
+    const blockEnd = source.indexOf("selectedWizardPlatform === 'linkedin'", blockStart);
+    const block = source.slice(blockStart, blockEnd);
+
+    expect(block).toContain("<SimpleGoogleSheetsAuth");
+    expect(block).toContain('selectionMode="replace"');
+    expect(block).toContain('purpose="general"');
+    expect(block).toContain("setConnectedPlatformsInDialog");
+    expect(block).toContain("setWizardStep(5)");
+  });
+
+  it("Connected Platforms Google Sheets setup persists campaign platform intent", () => {
+    const source = readCampaignDetailSource();
+    const blockStart = source.indexOf('platform.platform === "Google Sheets" ? (');
+    const blockEnd = source.indexOf(') : platform.platform === "LinkedIn Ads"', blockStart);
+    const block = source.slice(blockStart, blockEnd);
+
+    expect(block).toContain("<SimpleGoogleSheetsAuth");
+    expect(block).toContain('selectionMode="append"');
+    expect(block).toContain('purpose="general"');
+    expect(block).toContain('normalized === "google-sheets" || normalized === "google sheets"');
+    expect(block).toContain('apiRequest("PATCH", `/api/campaigns/${campaign.id}`');
+    expect(block).toContain('platform: [...currentPlatforms, "google-sheets"].join(", ")');
+    expect(block).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });');
   });
 
   it("legacy platform transfer routes require access to both campaigns", () => {

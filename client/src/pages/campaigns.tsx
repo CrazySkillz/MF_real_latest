@@ -1255,6 +1255,8 @@ export default function Campaigns() {
                         {selectedWizardPlatform === 'google-sheets' && (
                           <SimpleGoogleSheetsAuth
                             campaignId={draftCampaignId || ""}
+                            selectionMode="replace"
+                            purpose="general"
                             onSuccess={() => {
                               setConnectedPlatformsInDialog(prev => prev.includes('google-sheets') ? prev : [...prev, 'google-sheets']);
                               setWizardPlatformConnected(true);

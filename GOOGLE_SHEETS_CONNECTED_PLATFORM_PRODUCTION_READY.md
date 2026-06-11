@@ -271,6 +271,7 @@ Subcommits:
 - 3F: Expose the add-another-tab path from Google Sheets analytics after `View Detailed Analytics`.
 - 3G: Reset inherited scroll position when Google Sheets analytics opens from `View Detailed Analytics`.
 - 3H: Stabilize the Google Sheets analytics top layout while connections and sheet data load.
+- 3I: Keep the Google Sheets analytics header action row width stable while `Open in Sheets` becomes available.
 
 Validation:
 
@@ -279,6 +280,7 @@ Validation:
 - Existing campaign -> Google Sheets -> `View Detailed Analytics` -> `Add Dataset` -> select another tab without replacing existing tabs.
 - Existing campaign -> Google Sheets -> `View Detailed Analytics` opens at the top of Google Sheets analytics instead of inheriting the campaign page scroll position.
 - Existing campaign -> Google Sheets -> `View Detailed Analytics` keeps the header, sheet selector area, and tab bar stable while data loads.
+- Existing campaign -> Google Sheets -> `View Detailed Analytics` and browser refresh keep the title/action row stable when `Open in Sheets` becomes available.
 - Failed/cancelled setup does not leave a connected main source.
 - Connected Platforms, analytics, and aggregate queries refetch after successful setup.
 
@@ -292,6 +294,7 @@ Status:
   - Google Sheets analytics now exposes the existing `Add Dataset` flow from the page header so users can add another tab after `View Detailed Analytics`.
   - Google Sheets analytics resets inherited route scroll before paint so the page opens at the header, not mid-spreadsheet.
   - Google Sheets analytics reserves the sheet selector/active-source area and no longer renders a pre-tab skeleton grid that disappears after load.
+  - Google Sheets analytics reserves the `Open in Sheets` action slot and prevents header text/actions from wrapping during initial load or browser refresh.
 - [x] Regression guards added in `server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - [x] Local validation passed: `npm run check`.
@@ -299,6 +302,8 @@ Status:
 - [x] Commit 3F local validation passed: `npm run check`.
 - [x] Commit 3H local validation passed: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - [x] Commit 3H local validation passed: `npm run check`.
+- [x] Commit 3I local validation passed: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
+- [x] Commit 3I local validation passed: `npm run check`.
 - [ ] Browser validation pending after deploy for Create Campaign, Connected Platforms setup, and Google Sheets analytics `Add Dataset` paths.
 
 ### Commit 4: Source-Backed Google Sheets Analytics Contract

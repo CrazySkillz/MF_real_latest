@@ -884,25 +884,25 @@ export default function GoogleSheetsData() {
         <main className="flex-1 p-8">
           {/* Header */}
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
+            <div className="flex items-center justify-between gap-6 mb-6">
+              <div className="flex items-center space-x-4 min-w-0">
                 <Link href={`/campaigns/${campaignId}`}>
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" className="whitespace-nowrap">
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Campaign
                   </Button>
                 </Link>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center space-x-3 mb-2">
-                    <SiGooglesheets className="w-8 h-8 text-green-600" />
-                    <h1 className="text-3xl font-bold text-foreground">Google Sheets Data</h1>
+                    <SiGooglesheets className="w-8 h-8 text-green-600 shrink-0" />
+                    <h1 className="text-3xl font-bold text-foreground whitespace-nowrap">Google Sheets Data</h1>
                   </div>
                   <p className="text-muted-foreground/70">Marketing data for {campaign.name}</p>
                 </div>
               </div>
               
-              <div className="flex items-center space-x-3">
-                <Badge variant="secondary" className="text-xs">
+              <div className="flex items-center space-x-3 shrink-0 flex-nowrap">
+                <Badge variant="secondary" className="text-xs whitespace-nowrap shrink-0">
                   <Calendar className="w-3 h-3 mr-1" />
                   Auto-refreshing hourly
                 </Badge>
@@ -910,6 +910,7 @@ export default function GoogleSheetsData() {
                   <Button
                     onClick={() => setShowAddDatasetModal(true)}
                     size="sm"
+                    className="whitespace-nowrap shrink-0"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Dataset
@@ -920,22 +921,26 @@ export default function GoogleSheetsData() {
                   onClick={() => refetch()}
                   disabled={sheetsLoading}
                   size="sm"
+                  className="whitespace-nowrap shrink-0"
                 >
                   <RefreshCw className={`w-4 h-4 mr-2 ${sheetsLoading ? 'animate-spin' : ''}`} />
                   Refresh
                 </Button>
-                {sheetsData?.spreadsheetId && !isCombinedView && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (sheetsData?.spreadsheetId && !isCombinedView) {
                       window.open(`https://docs.google.com/spreadsheets/d/${sheetsData.spreadsheetId}/edit`, '_blank');
-                    }}
-                    size="sm"
-                  >
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Open in Sheets
-                  </Button>
-                )}
+                    }
+                  }}
+                  disabled={!sheetsData?.spreadsheetId || isCombinedView}
+                  aria-hidden={!sheetsData?.spreadsheetId || isCombinedView}
+                  size="sm"
+                  className={`whitespace-nowrap shrink-0 ${sheetsData?.spreadsheetId && !isCombinedView ? "" : "invisible"}`}
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Open in Sheets
+                </Button>
               </div>
             </div>
 

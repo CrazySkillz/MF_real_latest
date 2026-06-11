@@ -313,8 +313,8 @@ describe("source safety regression guards", () => {
 
   it("Google Sheets analytics exposes the Add Dataset path", () => {
     const source = readGoogleSheetsDataPageSource();
-    const headerStart = source.indexOf('<Badge variant="secondary" className="text-xs">');
-    const headerEnd = source.indexOf('{sheetsData?.spreadsheetId && !isCombinedView', headerStart);
+    const headerStart = source.indexOf('<div className="flex items-center justify-between gap-6 mb-6">');
+    const headerEnd = source.indexOf('{/* Sheet Selector and Active Sheet Indicator */}', headerStart);
     const header = source.slice(headerStart, headerEnd);
 
     expect(header).toContain("canAddMoreSheets");
@@ -341,6 +341,18 @@ describe("source safety regression guards", () => {
     expect(source).toContain('<div className="h-5" aria-hidden="true" />');
     expect(loadingBlock).toContain('<Tabs defaultValue="data" className="space-y-6">');
     expect(loadingBlock).not.toContain("grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8");
+  });
+
+  it("Google Sheets analytics header keeps final action width reserved", () => {
+    const source = readGoogleSheetsDataPageSource();
+    const headerStart = source.indexOf('<div className="flex items-center justify-between gap-6 mb-6">');
+    const headerEnd = source.indexOf('{/* Sheet Selector and Active Sheet Indicator */}', headerStart);
+    const header = source.slice(headerStart, headerEnd);
+
+    expect(header).toContain('<h1 className="text-3xl font-bold text-foreground whitespace-nowrap">Google Sheets Data</h1>');
+    expect(header).toContain('<Badge variant="secondary" className="text-xs whitespace-nowrap shrink-0">');
+    expect(header).toContain('className={`whitespace-nowrap shrink-0 ${sheetsData?.spreadsheetId && !isCombinedView ? "" : "invisible"}`}');
+    expect(header).not.toContain('{sheetsData?.spreadsheetId && !isCombinedView && (');
   });
 
   it("legacy platform transfer routes require access to both campaigns", () => {

@@ -212,6 +212,18 @@ describe("source safety regression guards", () => {
     }
   });
 
+  it("Google Sheets main analytics connection list excludes child-purpose sheets", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.get("/api/campaigns/:id/google-sheets-connections"');
+    const routeEnd = routesSource.indexOf('app.get("/api/campaigns/:id/connected-data-sources"', routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(route).toContain('const scope = (req.query as any)?.scope ? String((req.query as any).scope) : undefined;');
+    expect(route).toContain('const campaignWantsGoogleSheets = campaignPlatformRaw.includes(\'google-sheets\') || campaignPlatformRaw.includes(\'google sheets\');');
+    expect(route).toContain('if (scope !== "main") return true;');
+    expect(route).toContain('return !!campaignWantsGoogleSheets && (!connPurpose || connPurpose === "general");');
+  });
+
   it("Google Sheets primary selection proves the target connection before clearing existing primary flags", () => {
     const storageSource = readStorageSource();
     const methodStart = storageSource.indexOf("async setPrimaryGoogleSheetsConnection(campaignId: string, connectionId: string)");
@@ -325,6 +337,27 @@ describe("source safety regression guards", () => {
     expect(header).toContain("setShowAddDatasetModal(true)");
     expect(header).toContain("Add Dataset");
     expect(source).toContain("googleSheetsOnly={true}");
+  });
+
+  it("Google Sheets analytics page requests main-scope connections", () => {
+    const source = readGoogleSheetsDataPageSource();
+
+    expect(source).toContain('queryKey: ["/api/campaigns", campaignId, "google-sheets-connections", "main"]');
+    expect(source).toContain('fetch(`/api/campaigns/${campaignId}/google-sheets-connections?scope=main`)');
+  });
+
+  it("Google Sheets analytics data route reads only main Google Sheets source rows", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.get("/api/campaigns/:id/google-sheets-data"');
+    const routeEnd = routesSource.indexOf('app.post("/api/campaigns/:id/google-sheets-refresh"', routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(route).toContain("const isMainGoogleSheetsConnection = (conn: any) => {");
+    expect(route).toContain("return !!campaignWantsGoogleSheets &&");
+    expect(route).toContain('(!connPurpose || connPurpose === "general")');
+    expect(route).toContain("const getMainGoogleSheetsConnections = async () =>");
+    expect(route).toContain("const allConnections = await getMainGoogleSheetsConnections();");
+    expect(route).not.toContain("const allConnections = await storage.getGoogleSheetsConnections(campaignId);");
   });
 
   it("Google Sheets-only Add Dataset connections append instead of replacing existing tabs", () => {

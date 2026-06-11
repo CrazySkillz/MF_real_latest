@@ -309,7 +309,7 @@ Status:
 - [x] Commit 3I local validation passed: `npm run check`.
 - [x] Commit 3J local validation passed: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - [x] Commit 3J local validation passed: `npm run check`.
-- [ ] Browser validation pending after deploy for Create Campaign, Connected Platforms setup, and Google Sheets analytics `Add Dataset` paths.
+- [x] Browser validation passed after deploy for Create Campaign, Connected Platforms setup, Google Sheets analytics `View Detailed Analytics`, stable page transition/refresh, and `Add Dataset` append paths.
 
 ### Commit 4: Source-Backed Google Sheets Analytics Contract
 
@@ -334,7 +334,15 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally for the main-source analytics scoping boundary:
+  - Google Sheets analytics now requests `scope=main` for the connection list used by the sheet selector.
+  - The `scope=main` connection list returns only active, non-pending, campaign-level Google Sheets rows whose purpose is blank/legacy or `general`, and only when the campaign is explicitly configured with Google Sheets as a main platform.
+  - The `/api/campaigns/:id/google-sheets-data` route resolves combined and single-sheet reads from the same main-source connection set.
+  - Child revenue/spend Google Sheets rows are excluded from main Google Sheets analytics reads.
+- [x] Regression guards added in `server/source-safety-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] Browser validation pending after deploy for selected-tab values, combined view, child-source exclusion, and empty/unmapped sheet handling.
 
 ### Commit 5: Campaign DeepDive Aggregate Participation
 
@@ -673,3 +681,14 @@ Google Sheets can be marked locally production-ready only when:
 - Commit 3 validation passed locally: `npm run check`.
 - Commit 3F validation passed locally: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - Commit 3F validation passed locally: `npm run check`.
+- Commit 3 browser validation passed after deploy:
+  - Create Campaign Google Sheets setup works.
+  - Connected Platforms Google Sheets setup works.
+  - `View Detailed Analytics` opens the Google Sheets analytics page without unstable top-content jumps.
+  - Browser refresh keeps the Google Sheets analytics header stable.
+  - `Add Dataset` appends the new selected tab and preserves existing tabs.
+- Commit 4 main-source analytics scoping completed locally:
+  - Google Sheets analytics connection picker requests the main-source scope.
+  - Google Sheets analytics API reads only campaign-level main Google Sheets rows, excluding child revenue/spend rows.
+- Commit 4 validation passed locally: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
+- Commit 4 validation passed locally: `npm run check`.

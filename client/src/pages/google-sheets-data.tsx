@@ -163,10 +163,10 @@ export default function GoogleSheetsData() {
 
   // Fetch Google Sheets connections
   const { data: googleSheetsConnectionsData, refetch: refetchConnections } = useQuery({
-    queryKey: ["/api/campaigns", campaignId, "google-sheets-connections"],
+    queryKey: ["/api/campaigns", campaignId, "google-sheets-connections", "main"],
     enabled: !!campaignId,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections`);
+      const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-connections?scope=main`);
       if (!response.ok) {
         throw new Error(`Failed to fetch Google Sheets connections: ${response.status}`);
       }
@@ -193,7 +193,7 @@ export default function GoogleSheetsData() {
     },
     onMutate: async (connectionId: string) => {
       // Optimistic update to avoid UI "jumping" on delete (no full refetch/skeleton churn)
-      const connectionsKey = ["/api/campaigns", campaignId, "google-sheets-connections"];
+      const connectionsKey = ["/api/campaigns", campaignId, "google-sheets-connections", "main"];
       await queryClient.cancelQueries({ queryKey: connectionsKey });
 
       const prev = queryClient.getQueryData<any>(connectionsKey);
@@ -232,7 +232,7 @@ export default function GoogleSheetsData() {
     },
     onError: (error: Error, _connectionId: string, context: any) => {
       // Roll back optimistic update
-      const connectionsKey = ["/api/campaigns", campaignId, "google-sheets-connections"];
+      const connectionsKey = ["/api/campaigns", campaignId, "google-sheets-connections", "main"];
       if (context?.prev) queryClient.setQueryData(connectionsKey, context.prev);
 
       toast({

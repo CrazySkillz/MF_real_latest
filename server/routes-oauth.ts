@@ -12839,8 +12839,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const campaignId = req.params.id;
       const purpose = (req.query as any)?.purpose ? String((req.query as any).purpose) : undefined;
+      const scope = (req.query as any)?.scope ? String((req.query as any).scope) : undefined;
+      const campaign = scope === "main" ? await storage.getCampaign(campaignId) : null;
+      const campaignPlatformRaw = String((campaign as any)?.platform || '')
+        .split(',')
+        .map((s: string) => s.trim().toLowerCase())
+        .filter(Boolean);
+      const campaignWantsGoogleSheets = campaignPlatformRaw.includes('google-sheets') || campaignPlatformRaw.includes('google sheets');
       const connections = (await storage.getGoogleSheetsConnections(campaignId, purpose))
-        .filter((conn: any) => conn && conn.spreadsheetId && conn.spreadsheetId !== 'pending');
+        .filter((conn: any) => conn && conn.spreadsheetId && conn.spreadsheetId !== 'pending')
+        .filter((conn: any) => {
+          if (scope !== "main") return true;
+          const connPurpose = String((conn as any)?.purpose || "").trim().toLowerCase();
+          return !!campaignWantsGoogleSheets && (!connPurpose || connPurpose === "general");
+        });
 
       // If sheetName isn't persisted in the DB (older schema / failed migrations), the UI falls back to "Tab 1/2/3...".
       // For better UX and troubleshooting, attempt to enrich missing sheetName values from Google Sheets metadata.
@@ -16877,9 +16889,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const skipCache = forceRefresh === 'true';
     const CACHE_MAX_AGE_MS = 25 * 60 * 60 * 1000; // 25 hours
     try {
+      const campaign = await storage.getCampaign(campaignId);
+      const campaignPlatformRaw = String((campaign as any)?.platform || '')
+        .split(',')
+        .map((s: string) => s.trim().toLowerCase())
+        .filter(Boolean);
+      const campaignWantsGoogleSheets = campaignPlatformRaw.includes('google-sheets') || campaignPlatformRaw.includes('google sheets');
+      const isMainGoogleSheetsConnection = (conn: any) => {
+        const connPurpose = String((conn as any)?.purpose || "").trim().toLowerCase();
+        return !!campaignWantsGoogleSheets &&
+          conn?.isActive !== false &&
+          !!conn?.spreadsheetId &&
+          conn.spreadsheetId !== 'pending' &&
+          (!connPurpose || connPurpose === "general");
+      };
+      const getMainGoogleSheetsConnections = async () =>
+        (await storage.getGoogleSheetsConnections(campaignId)).filter(isMainGoogleSheetsConnection);
+
       // Handle combined view - aggregate data from all mapped connections
       if (view === 'combined') {
-        const allConnections = await storage.getGoogleSheetsConnections(campaignId);
+        const allConnections = await getMainGoogleSheetsConnections();
         const mappedConnections = allConnections.filter((conn: any) => {
           if (!conn.columnMappings) return false;
           try {
@@ -16920,7 +16949,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalFilteredRows: 0
         };
 
-        const campaign = await storage.getCampaign(campaignId);
         const campaignName = campaign?.name || '';
         const campaignPlatform = campaign?.platform || null;
 
@@ -17253,7 +17281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const [spreadsheetIdOnly, ...rest] = spreadsheetIdStr.split(':');
           const identifier = rest.join(':'); // Rejoin in case sheet name itself contains colons
           // Get all connections for this campaign and find the one matching both spreadsheetId and identifier
-          const allConnections = await storage.getGoogleSheetsConnections(campaignId);
+          const allConnections = await getMainGoogleSheetsConnections();
           connection = allConnections.find((conn: any) =>
             conn.spreadsheetId === spreadsheetIdOnly &&
             (conn.sheetName === identifier || conn.id === identifier)
@@ -17270,11 +17298,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } else {
           // Legacy format - just spreadsheetId (will get first matching connection)
-          connection = await storage.getGoogleSheetsConnection(campaignId, spreadsheetIdStr);
+          const allConnections = await getMainGoogleSheetsConnections();
+          connection = allConnections.find((conn: any) => conn.spreadsheetId === spreadsheetIdStr);
         }
       } else {
-        connection = await storage.getPrimaryGoogleSheetsConnection(campaignId) ||
-          await storage.getGoogleSheetsConnection(campaignId);
+        const allConnections = await getMainGoogleSheetsConnections();
+        connection = allConnections.find((conn: any) => conn.isPrimary) || allConnections[0];
       }
 
       if (!connection) {
@@ -17621,7 +17650,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } // end of live API fetch (else branch of cache check)
 
       // Get campaign name for filtering summary data
-      const campaign = await storage.getCampaign(campaignId);
       const campaignName = campaign?.name || '';
       const campaignPlatform = campaign?.platform || null;
 

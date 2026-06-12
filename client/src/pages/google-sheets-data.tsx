@@ -506,7 +506,7 @@ export default function GoogleSheetsData() {
   const [editingBenchmark, setEditingBenchmark] = useState<any>(null);
   const [benchmarkForm, setBenchmarkForm] = useState({
     name: "", unit: "", description: "", metric: "", benchmarkValue: "", currentValue: "",
-    alertsEnabled: false, emailNotifications: false, alertFrequency: "daily",
+    alertsEnabled: false, emailNotifications: false, alertFrequency: "immediate",
     alertThreshold: "", alertCondition: "below", emailRecipients: "",
   });
 
@@ -613,7 +613,7 @@ export default function GoogleSheetsData() {
       toast({ title: "Benchmark Created", description: "Your benchmark has been created successfully." });
       setIsBenchmarkModalOpen(false);
       setEditingBenchmark(null);
-      setBenchmarkForm({ name: "", unit: "", description: "", metric: "", benchmarkValue: "", currentValue: "", alertsEnabled: false, emailNotifications: false, alertFrequency: "daily", alertThreshold: "", alertCondition: "below", emailRecipients: "" });
+      setBenchmarkForm({ name: "", unit: "", description: "", metric: "", benchmarkValue: "", currentValue: "", alertsEnabled: false, emailNotifications: false, alertFrequency: "immediate", alertThreshold: "", alertCondition: "below", emailRecipients: "" });
     },
     onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to create benchmark", variant: "destructive" }); },
   });
@@ -788,6 +788,74 @@ export default function GoogleSheetsData() {
     };
   }, [computeGoogleSheetsKpiProgress, kpisData, parseSheetMetricNumber, resolveGoogleSheetsKpiMetric]);
 
+  const resolveGoogleSheetsBenchmarkMetric = useCallback((benchmark: any) => {
+    const metricKey = String(benchmark?.metric || benchmark?.metricKey || "").trim();
+    const option = googleSheetsKpiMetricOptions.find((item) => item.key === metricKey);
+    if (option?.available && option.currentValue !== null) {
+      return { available: true, option, currentValue: option.currentValue, reason: "" };
+    }
+    return {
+      available: false,
+      option,
+      currentValue: null,
+      reason: option?.reason || "This Benchmark metric is not available from the selected Google Sheets source",
+    };
+  }, [googleSheetsKpiMetricOptions]);
+
+  const computeGoogleSheetsBenchmarkProgress = useCallback((benchmark: any, current: number, benchmarkValue: number) => {
+    const safeCurrent = Number.isFinite(current) ? current : 0;
+    const safeBenchmark = Number.isFinite(benchmarkValue) ? benchmarkValue : 0;
+    const lowerIsBetter = isLowerIsBetterKpi({ metric: benchmark?.metric || benchmark?.metricKey, name: benchmark?.name });
+    const attainmentPct = computeAttainmentPct({ current: safeCurrent, target: safeBenchmark, lowerIsBetter });
+    const fillPct = attainmentPct !== null ? computeAttainmentFillPct(attainmentPct) : 0;
+    const ratio = (attainmentPct ?? 0) / 100;
+    const status = ratio >= 0.9 ? "on_track" : ratio >= 0.7 ? "needs_attention" : "behind";
+    const color = status === "on_track" ? "bg-green-500" : status === "needs_attention" ? "bg-yellow-500" : "bg-red-500";
+    const deltaPct = computeEffectiveDeltaPct({ current: safeCurrent, target: safeBenchmark, lowerIsBetter });
+    return {
+      ratio,
+      pct: fillPct,
+      labelPct: (attainmentPct ?? 0).toFixed(1),
+      status,
+      color,
+      deltaPct: deltaPct ?? 0,
+      attainmentPct: attainmentPct ?? 0,
+      fillPct,
+    };
+  }, []);
+
+  const googleSheetsBenchmarkTracker = useMemo(() => {
+    const list = Array.isArray(benchmarksData) ? benchmarksData : [];
+    let onTrack = 0;
+    let needsAttention = 0;
+    let behind = 0;
+    let blocked = 0;
+    let progressTotal = 0;
+    let progressCount = 0;
+    for (const benchmark of list) {
+      const resolved = resolveGoogleSheetsBenchmarkMetric(benchmark);
+      const benchmarkValue = parseSheetMetricNumber(benchmark?.benchmarkValue);
+      if (!resolved.available || resolved.currentValue === null || !benchmarkValue || benchmarkValue <= 0) {
+        blocked += 1;
+        continue;
+      }
+      const progress = computeGoogleSheetsBenchmarkProgress(benchmark, resolved.currentValue, benchmarkValue);
+      progressTotal += progress.fillPct;
+      progressCount += 1;
+      if (progress.status === "on_track") onTrack += 1;
+      else if (progress.status === "needs_attention") needsAttention += 1;
+      else behind += 1;
+    }
+    return {
+      total: list.length,
+      onTrack,
+      needsAttention,
+      behind,
+      blocked,
+      avgPct: progressCount > 0 ? progressTotal / progressCount : 0,
+    };
+  }, [benchmarksData, computeGoogleSheetsBenchmarkProgress, parseSheetMetricNumber, resolveGoogleSheetsBenchmarkMetric]);
+
   // ═══ Handler Functions ═══
   const handleCreateKpi = () => {
     if (!kpiForm.name || !kpiForm.metric || !kpiForm.targetValue) {
@@ -830,21 +898,39 @@ export default function GoogleSheetsData() {
   };
 
   const handleCreateBenchmark = () => {
-    if (!benchmarkForm.name || !benchmarkForm.benchmarkValue) {
-      toast({ title: "Required Fields", description: "Please fill in the benchmark name and value.", variant: "destructive" });
+    if (!benchmarkForm.name || !benchmarkForm.metric || !benchmarkForm.benchmarkValue) {
+      toast({ title: "Required Fields", description: "Please fill in the benchmark name, metric, and value.", variant: "destructive" });
+      return;
+    }
+    const metricOption = googleSheetsKpiMetricOptions.find((item) => item.key === benchmarkForm.metric);
+    if (!metricOption?.available || metricOption.currentValue === null) {
+      toast({ title: "Metric Unavailable", description: metricOption?.reason || "Select a mapped Google Sheets metric with a current value.", variant: "destructive" });
       return;
     }
     if (benchmarkForm.alertsEnabled && !benchmarkForm.alertThreshold) {
       toast({ title: "Alert Threshold Required", description: "Please set an alert threshold value.", variant: "destructive" });
       return;
     }
+    const benchmarkValue = parseSheetMetricNumber(benchmarkForm.benchmarkValue);
+    if (benchmarkValue === null) {
+      toast({ title: "Invalid Benchmark", description: "Please enter a valid numeric benchmark value.", variant: "destructive" });
+      return;
+    }
     const payload: any = {
       ...benchmarkForm, campaignId, platformType: "google_sheets",
-      benchmarkValue: parseFloat(String(benchmarkForm.benchmarkValue).replace(/,/g, '')),
-      currentValue: benchmarkForm.currentValue ? parseFloat(String(benchmarkForm.currentValue).replace(/,/g, '')) : 0,
+      category: "performance",
+      benchmarkType: "goal",
+      source: "Google Sheets",
+      benchmarkValue,
+      currentValue: metricOption.currentValue,
       alertThreshold: benchmarkForm.alertThreshold ? parseFloat(String(benchmarkForm.alertThreshold).replace(/,/g, '')) : null,
-      emailRecipients: benchmarkForm.emailRecipients ? benchmarkForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : [],
+      emailRecipients: benchmarkForm.emailRecipients ? benchmarkForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean).join(', ') : null,
       metricKey: benchmarkForm.metric,
+      calculationConfig: {
+        source: "google_sheets_main",
+        valueSource: "source_backed_summary",
+        metric: benchmarkForm.metric,
+      },
     };
     if (editingBenchmark) {
       updateBenchmarkMutation.mutate({ id: editingBenchmark.id, data: payload });
@@ -1850,131 +1936,176 @@ export default function GoogleSheetsData() {
                         <Button variant="outline" onClick={() => void refetchBenchmarks()}>Retry</Button>
                       </CardContent>
                     </Card>
-                  ) : benchmarksData && (benchmarksData as any[]).length > 0 ? (
+                  ) : (
                     <>
                       <div className="flex items-center justify-between">
                         <div>
-                          <h2 className="text-2xl font-bold text-foreground">Benchmarks</h2>
+                          <h2 className="text-2xl font-bold text-foreground">Performance Benchmarks</h2>
                           <p className="text-sm text-muted-foreground/70 mt-1">
-                            Compare your actual metrics against custom benchmark values
+                            Compare Google Sheets metrics against source-backed benchmark values.
                           </p>
                         </div>
-                        <Button onClick={() => setIsBenchmarkModalOpen(true)} variant="outline" size="sm">
+                        <Button onClick={() => setIsBenchmarkModalOpen(true)} size="sm">
                           <Plus className="w-4 h-4 mr-2" />
-                          Add Benchmark
+                          Create Benchmark
                         </Button>
                       </div>
 
-                      <div className="grid gap-6 lg:grid-cols-2">
-                        {(benchmarksData as any[]).map((bm: any) => {
-                          const currentVal = sheetsData?.summary?.metrics?.[bm.metric || bm.metricKey] ?? parseFloat(bm.currentValue || '0');
-                          const benchmarkVal = parseFloat(bm.benchmarkValue || '0');
-                          const variance = benchmarkVal > 0 ? ((currentVal - benchmarkVal) / benchmarkVal) * 100 : 0;
-                          const isAbove = currentVal >= benchmarkVal;
-                          const col = sheetsData?.summary?.detectedColumns?.find((c: any) => c.name === (bm.metric || bm.metricKey));
-                          return (
-                            <Card key={bm.id}>
-                              <CardHeader className="pb-3">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <CardTitle className="text-lg">{bm.name}</CardTitle>
-                                      {bm.metric && (
-                                        <Badge variant="outline" className="bg-muted text-foreground/80/60 font-mono text-xs">
-                                          {bm.metric}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    {bm.description && (
-                                      <CardDescription className="text-sm">{bm.description}</CardDescription>
-                                    )}
-                                  </div>
-                                  <div className="flex gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setEditingBenchmark(bm);
-                                        setBenchmarkForm({
-                                          name: bm.name || "", unit: bm.unit || "", description: bm.description || "",
-                                          metric: bm.metric || bm.metricKey || "",
-                                          benchmarkValue: String(bm.benchmarkValue || ""),
-                                          currentValue: String(currentVal),
-                                          alertsEnabled: !!bm.alertsEnabled, emailNotifications: !!bm.emailNotifications,
-                                          alertFrequency: bm.alertFrequency || "daily",
-                                          alertThreshold: bm.alertThreshold ? String(bm.alertThreshold) : "",
-                                          alertCondition: bm.alertCondition || "below",
-                                          emailRecipients: Array.isArray(bm.emailRecipients) ? bm.emailRecipients.join(', ') : (bm.emailRecipients || ""),
-                                        });
-                                        setIsBenchmarkModalOpen(true);
-                                      }}
-                                    >
-                                      <Edit2 className="w-4 h-4" />
-                                    </Button>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700">
-                                          <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Delete Benchmark</AlertDialogTitle>
-                                          <AlertDialogDescription>Are you sure you want to delete "{bm.name}"? This action cannot be undone.</AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => deleteBenchmarkMutation.mutate(bm.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </div>
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="space-y-3">
-                                  <div className="grid grid-cols-3 gap-4 text-center">
-                                    <div>
-                                      <p className="text-xs text-muted-foreground/70 mb-1">Actual</p>
-                                      <p className="text-lg font-semibold text-foreground">{formatMetricValue(currentVal, col?.type)}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-xs text-muted-foreground/70 mb-1">Benchmark</p>
-                                      <p className="text-lg font-semibold text-foreground">{formatMetricValue(benchmarkVal, col?.type)}{bm.unit ? ` ${bm.unit}` : ''}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-xs text-muted-foreground/70 mb-1">Variance</p>
-                                      <p className={`text-lg font-semibold ${isAbove ? 'text-green-600' : 'text-red-600'}`}>
-                                        {isAbove ? '+' : ''}{variance.toFixed(1)}%
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="flex justify-center">
-                                    <Badge variant="outline" className={isAbove ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}>
-                                      {isAbove ? 'Above Benchmark' : 'Below Benchmark'}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                        <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Total Benchmarks</p><p className="text-2xl font-bold text-foreground">{googleSheetsBenchmarkTracker.total}</p></div><Target className="w-8 h-8 text-purple-500" /></div></CardContent></Card>
+                        <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">On Track</p><p className="text-2xl font-bold text-green-600">{googleSheetsBenchmarkTracker.onTrack}</p><p className="text-xs text-muted-foreground">90% or more of benchmark</p></div><CheckCircle2 className="w-8 h-8 text-green-500" /></div></CardContent></Card>
+                        <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Needs Attention</p><p className="text-2xl font-bold text-amber-600">{googleSheetsBenchmarkTracker.needsAttention}</p><p className="text-xs text-muted-foreground">70% to under 90% of benchmark</p></div><AlertCircle className="w-8 h-8 text-amber-500" /></div></CardContent></Card>
+                        <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Behind</p><p className="text-2xl font-bold text-red-600">{googleSheetsBenchmarkTracker.behind}</p><p className="text-xs text-muted-foreground">below 70% of benchmark</p></div><AlertTriangle className="w-8 h-8 text-red-500" /></div></CardContent></Card>
+                        <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Avg. Progress</p><p className="text-2xl font-bold text-foreground">{googleSheetsBenchmarkTracker.avgPct.toFixed(1)}%</p></div><TrendingUp className="w-8 h-8 text-violet-600" /></div></CardContent></Card>
                       </div>
+
+                      {googleSheetsBenchmarkTracker.blocked > 0 && (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                          {googleSheetsBenchmarkTracker.blocked} Benchmark{googleSheetsBenchmarkTracker.blocked === 1 ? "" : "s"} cannot be evaluated from the selected Google Sheets source. Blocked Benchmarks are excluded from scoring.
+                        </div>
+                      )}
+
+                      {(benchmarksData as any[])?.length > 0 ? (
+                        <div className="grid gap-6 lg:grid-cols-2">
+                          {(benchmarksData as any[]).map((bm: any) => {
+                            const resolved = resolveGoogleSheetsBenchmarkMetric(bm);
+                            const currentVal = resolved.currentValue;
+                            const benchmarkVal = parseSheetMetricNumber(bm.benchmarkValue);
+                            const displayUnit = String(bm.unit || resolved.option?.unit || "");
+                            const progress = resolved.available && currentVal !== null && benchmarkVal !== null && benchmarkVal > 0
+                              ? computeGoogleSheetsBenchmarkProgress(bm, currentVal, benchmarkVal)
+                              : null;
+                            const metricLabel = String(bm.metric || bm.metricKey || bm.name || "");
+                            const { Icon, color } = getGoogleSheetsKpiIcon(metricLabel);
+                            const statusLabel = progress?.status === "on_track" ? "On Track" : progress?.status === "needs_attention" ? "Needs Attention" : "Behind";
+                            const statusColor = progress?.status === "on_track" ? "text-green-600" : progress?.status === "needs_attention" ? "text-yellow-600" : "text-red-600";
+                            const delta = Number.isFinite(progress?.deltaPct) ? progress?.deltaPct || 0 : 0;
+                            const deltaLabel = `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`;
+                            return (
+                              <Card key={bm.id}>
+                                <CardContent className="p-6">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex items-start gap-4 min-w-0">
+                                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                        <Icon className={`w-5 h-5 ${color}`} />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <CardTitle className="text-lg truncate">{bm.name}</CardTitle>
+                                          {(bm.metric || bm.metricKey) && (
+                                            <Badge variant="outline" className="bg-muted text-foreground/80 font-mono text-xs shrink-0">
+                                              {bm.metric || bm.metricKey}
+                                            </Badge>
+                                          )}
+                                          {bm.alertsEnabled && <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0" />}
+                                        </div>
+                                        {bm.description && <CardDescription className="text-sm">{bm.description}</CardDescription>}
+                                        {bm.industry && <p className="text-xs text-muted-foreground/70 mt-1">Industry: {bm.industry}</p>}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => {
+                                          setEditingBenchmark(bm);
+                                          setBenchmarkForm({
+                                            name: bm.name || "", unit: bm.unit || resolved.option?.unit || "", description: bm.description || "",
+                                            metric: bm.metric || bm.metricKey || "",
+                                            benchmarkValue: String(bm.benchmarkValue || ""),
+                                            currentValue: currentVal !== null ? String(currentVal) : "",
+                                            alertsEnabled: !!bm.alertsEnabled, emailNotifications: !!bm.emailNotifications,
+                                            alertFrequency: bm.alertFrequency || "immediate",
+                                            alertThreshold: bm.alertThreshold ? String(bm.alertThreshold) : "",
+                                            alertCondition: bm.alertCondition || "below",
+                                            emailRecipients: Array.isArray(bm.emailRecipients) ? bm.emailRecipients.join(', ') : (bm.emailRecipients || ""),
+                                          });
+                                          setIsBenchmarkModalOpen(true);
+                                        }}
+                                        title="Edit Benchmark"
+                                        aria-label="Edit Benchmark"
+                                      >
+                                        <Edit2 className="w-4 h-4" />
+                                      </Button>
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>Delete Benchmark</AlertDialogTitle>
+                                            <AlertDialogDescription>Are you sure you want to delete "{bm.name}"? This action cannot be undone.</AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => deleteBenchmarkMutation.mutate(bm.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-4 mt-4">
+                                    <div className="bg-muted rounded-lg p-3">
+                                      <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current</div>
+                                      <div className="text-xl font-bold text-foreground">
+                                        {currentVal !== null ? formatGoogleSheetsKpiCardValue(currentVal, displayUnit, resolved.option?.type) : "Unavailable"}
+                                      </div>
+                                    </div>
+                                    <div className="bg-muted rounded-lg p-3">
+                                      <div className="text-sm font-medium text-muted-foreground/70 mb-1">Benchmark</div>
+                                      <div className="text-xl font-bold text-foreground">
+                                        {benchmarkVal !== null ? formatGoogleSheetsKpiCardValue(benchmarkVal, displayUnit, resolved.option?.type) : "Unavailable"}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {progress ? (
+                                    <div className="mt-4 space-y-3">
+                                      <div className="space-y-2">
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground/70">
+                                          <span>Progress</span>
+                                          <span>{progress.labelPct}%</span>
+                                        </div>
+                                        <div className="w-full bg-muted rounded-full h-2">
+                                          <div className={`h-2 rounded-full ${progress.color}`} style={{ width: `${progress.pct}%` }} />
+                                        </div>
+                                      </div>
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-muted-foreground/70">Performance</span>
+                                        <div className="flex items-center space-x-2">
+                                          <span className={`font-medium ${statusColor}`}>{deltaLabel}</span>
+                                          {delta >= 0 ? <TrendingUp className="w-4 h-4 text-green-600" /> : <TrendingDown className="w-4 h-4 text-red-600" />}
+                                          <span className={`text-xs font-medium ${statusColor}`}>{statusLabel}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground/70 mt-4">{resolved.reason}</p>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <Card>
+                          <CardContent className="text-center py-12">
+                            <BarChart3 className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
+                            <h3 className="text-lg font-medium text-foreground mb-2">No Benchmarks Yet</h3>
+                            <p className="text-muted-foreground/70 mb-4">
+                              Create your first Benchmark from a mapped Google Sheets metric.
+                            </p>
+                            <Button onClick={() => setIsBenchmarkModalOpen(true)}>
+                              <Plus className="w-4 h-4 mr-2" />
+                              Create Your First Benchmark
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      )}
                     </>
-                  ) : (
-                    <Card>
-                      <CardContent className="text-center py-12">
-                        <BarChart3 className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
-                        <h3 className="text-lg font-medium text-foreground mb-2">No Benchmarks Yet</h3>
-                        <p className="text-muted-foreground/70 mb-4">
-                          Compare your Google Sheets metrics against custom benchmark values.
-                        </p>
-                        <Button onClick={() => setIsBenchmarkModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Create Your First Benchmark
-                        </Button>
-                      </CardContent>
-                    </Card>
                   )}
                 </TabsContent>
 
@@ -2885,9 +3016,7 @@ export default function GoogleSheetsData() {
             setEditing={setEditingBenchmark}
             form={benchmarkForm}
             setForm={setBenchmarkForm}
-            detectedColumns={sheetsData?.summary?.detectedColumns || []}
-            metrics={sheetsData?.summary?.metrics || {}}
-            toast={toast}
+            metricOptions={googleSheetsKpiMetricOptions}
             handleCreate={handleCreateBenchmark}
           />
 

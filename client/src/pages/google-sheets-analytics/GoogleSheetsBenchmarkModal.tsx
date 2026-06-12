@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -9,8 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 /**
  * Benchmark creation/editing modal for Google Sheets analytics.
- * Unlike the LinkedIn version, metrics are dynamic (from detectedColumns)
- * and only supports custom benchmarks (no industry standard lookup).
+ * Metrics are dynamic, but current values must come from the source-backed
+ * Google Sheets Benchmark adapter instead of user-entered numbers.
  */
 export function GoogleSheetsBenchmarkModal(props: any) {
   const {
@@ -20,24 +20,22 @@ export function GoogleSheetsBenchmarkModal(props: any) {
     setEditing,
     form,
     setForm,
-    detectedColumns,
-    metrics,
-    toast,
+    metricOptions = [],
     handleCreate,
   } = props;
 
-  const DESC_MAX = 500;
+  const DESC_MAX = 200;
 
   const formatNumberAsYouType = (val: string): string => {
-    const cleaned = val.replace(/[^0-9.,\-]/g, '');
-    return cleaned;
-  };
-
-  const getUnitForColumn = (col: any): string => {
-    if (!col) return '';
-    if (col.type === 'currency') return '$';
-    if (col.type === 'decimal') return '';
-    return '';
+    const cleaned = val.replace(/,/g, '').replace(/[^0-9.\-]/g, '');
+    if (!cleaned || cleaned === "-") return cleaned;
+    const negative = cleaned.startsWith("-");
+    const unsigned = cleaned.replace(/-/g, '');
+    const [integerPart, ...decimalParts] = unsigned.split('.');
+    const normalizedInteger = (integerPart || "0").replace(/^0+(?=\d)/, '');
+    const groupedInteger = normalizedInteger.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const decimal = decimalParts.length > 0 ? `.${decimalParts.join('')}` : '';
+    return `${negative ? '-' : ''}${groupedInteger}${decimal}`;
   };
 
   return (
@@ -56,7 +54,7 @@ export function GoogleSheetsBenchmarkModal(props: any) {
             currentValue: "",
             alertsEnabled: false,
             emailNotifications: false,
-            alertFrequency: "daily",
+            alertFrequency: "immediate",
             alertThreshold: "",
             alertCondition: "below",
             emailRecipients: "",
@@ -64,57 +62,77 @@ export function GoogleSheetsBenchmarkModal(props: any) {
         }
       }}
     >
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{editing ? "Edit Benchmark" : "Create New Benchmark"}</DialogTitle>
           <DialogDescription>
-            {editing
-              ? "Update the benchmark details below. The current value is auto-populated from your Google Sheets data."
-              : "Define a custom benchmark for your Google Sheets data. Compare your actual metrics against target values."}
+            Set up a performance benchmark for Google Sheets.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="space-y-4 p-4 bg-muted rounded-lg" data-google-sheets-benchmark-source-adapter="source-backed">
+            <div>
+              <h4 className="font-medium text-foreground">Select Benchmark Template</h4>
+              <p className="text-sm text-muted-foreground/70 mt-1">
+                Choose a mapped Google Sheets metric with a current source-backed value.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(metricOptions || []).map((metric: any) => {
+                const selected = form.metric === metric.key;
+                const disabled = metric.available !== true;
+                return (
+                  <button
+                    key={metric.key}
+                    type="button"
+                    disabled={disabled}
+                    className={`text-left p-3 border-2 rounded-lg transition-all ${
+                      disabled
+                        ? "opacity-50 cursor-not-allowed border-border"
+                        : selected
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                          : "border-border hover:border-blue-300"
+                    }`}
+                    onClick={() => {
+                      if (disabled) return;
+                      setForm({
+                        ...form,
+                        name: editing ? form.name || metric.label : metric.label,
+                        metric: metric.key,
+                        currentValue: String(metric.currentValue ?? ""),
+                        unit: metric.unit || "",
+                        description: form.description,
+                      });
+                    }}
+                  >
+                    <div className="font-medium text-sm text-foreground">{metric.label}</div>
+                    {disabled && (
+                      <div className="text-xs text-muted-foreground/70 mt-1">
+                        {metric.reason}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {(metricOptions || []).length === 0 && (
+              <p className="text-sm text-muted-foreground/70">
+                No mapped Benchmark metrics are available from the selected Google Sheets source.
+              </p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="gs-bm-name">Benchmark Name *</Label>
             <Input
               id="gs-bm-name"
-              placeholder="e.g., CTR Benchmark"
+              placeholder="e.g., Target sessions for this campaign"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="gs-bm-metric">Metric Source</Label>
-              <Select
-                value={form.metric || undefined}
-                onValueChange={(value) => {
-                  const col = (detectedColumns || []).find((c: any) => c.name === value);
-                  const currentValue = metrics?.[value] != null ? String(metrics[value]) : "";
-                  const unit = getUnitForColumn(col);
-                  setForm({
-                    ...form,
-                    metric: value,
-                    currentValue: currentValue,
-                    unit: unit || form.unit,
-                  });
-                }}
-              >
-                <SelectTrigger id="gs-bm-metric">
-                  <SelectValue placeholder="Select metric to benchmark" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {(detectedColumns || [])
-                    .filter((col: any) => !/^(date|week|day|time|timestamp|period|month|year)/i.test(col.name))
-                    .map((col: any) => (
-                    <SelectItem key={col.name} value={col.name}>
-                      {col.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           <div className="space-y-2">
@@ -139,10 +157,12 @@ export function GoogleSheetsBenchmarkModal(props: any) {
                 id="gs-bm-current"
                 type="text"
                 placeholder="0"
-                inputMode="decimal"
-                value={form.currentValue}
-                onChange={(e) => setForm({ ...form, currentValue: formatNumberAsYouType(e.target.value) })}
+                value={formatNumberAsYouType(form.currentValue || "")}
+                readOnly
+                className="bg-muted cursor-not-allowed"
+                data-source-backed-current-value="google_sheets_benchmark"
               />
+              <p className="text-xs text-muted-foreground/70">Read from the selected mapped Google Sheets metric.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="gs-bm-value">Benchmark Value *</Label>
@@ -153,6 +173,7 @@ export function GoogleSheetsBenchmarkModal(props: any) {
                 inputMode="decimal"
                 value={form.benchmarkValue}
                 onChange={(e) => setForm({ ...form, benchmarkValue: formatNumberAsYouType(e.target.value) })}
+                onBlur={(e) => setForm({ ...form, benchmarkValue: formatNumberAsYouType(e.target.value) })}
               />
             </div>
             <div className="space-y-2">
@@ -168,15 +189,20 @@ export function GoogleSheetsBenchmarkModal(props: any) {
 
           {/* Alert Settings */}
           <div className="space-y-4 pt-4 border-t">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="gs-bm-alerts-enabled"
-                checked={form.alertsEnabled}
-                onCheckedChange={(checked) => setForm({ ...form, alertsEnabled: checked as boolean })}
-              />
-              <Label htmlFor="gs-bm-alerts-enabled" className="text-base cursor-pointer font-semibold">
-                Enable alerts for this Benchmark
-              </Label>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="gs-bm-alerts-enabled"
+                  checked={form.alertsEnabled}
+                  onCheckedChange={(checked) => setForm({ ...form, alertsEnabled: checked as boolean })}
+                />
+                <Label htmlFor="gs-bm-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                  Enable alerts for this Benchmark
+                </Label>
+              </div>
+              <p className="text-sm text-muted-foreground/70 pl-6">
+                Receive notifications when this benchmark crosses a threshold you define.
+              </p>
             </div>
 
             {form.alertsEnabled && (
@@ -213,7 +239,7 @@ export function GoogleSheetsBenchmarkModal(props: any) {
                   <div className="space-y-2">
                     <Label htmlFor="gs-bm-alert-frequency">Alert Frequency</Label>
                     <Select
-                      value={form.alertFrequency || "daily"}
+                      value={form.alertFrequency || "immediate"}
                       onValueChange={(value) => setForm({ ...form, alertFrequency: value })}
                     >
                       <SelectTrigger id="gs-bm-alert-frequency">
@@ -257,18 +283,18 @@ export function GoogleSheetsBenchmarkModal(props: any) {
             )}
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={handleCreate}
-              disabled={!form.name || !form.benchmarkValue}
-              className="bg-blue-600 hover:bg-blue-700"
+              disabled={!form.name || !form.metric || !form.benchmarkValue}
+              className="bg-purple-600 hover:bg-purple-700"
             >
               {editing ? "Update Benchmark" : "Create Benchmark"}
             </Button>
-          </div>
+          </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>

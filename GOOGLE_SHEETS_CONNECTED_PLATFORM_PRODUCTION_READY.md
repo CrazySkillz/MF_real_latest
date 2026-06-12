@@ -453,6 +453,8 @@ Status:
   - Current Value and Target Value formatting displays thousands separators.
   - Explicit numeric financial-looking sheet columns such as Revenue, Spend, ROI, and ROAS are selectable as Google Sheets KPI metrics without feeding Campaign DeepDive confirmed financial totals.
   - Financial-looking KPI units infer correctly from the selected sheet column name, so Revenue uses `$` instead of `count`.
+  - KPI performance tracker uses the GA4 `+/-5%` threshold labels and banding for Above Target, On Track, and Below Target.
+  - KPI cards follow the GA4 card pattern with icon/header, metric badge, Current/Target panels, progress bar, and above/below target delta text.
   - The Google Sheets analytics page no longer exposes a page-level horizontal scrollbar from the sidebar/content flex layout.
   - Alert settings and create/edit/delete behavior remain on the existing Google Sheets platform KPI routes.
 
@@ -469,7 +471,7 @@ Subcommits:
 - 7C: Use no default template/metric selection in create mode.
 - 7D: Populate Current Value from selected Google Sheets source-backed metric only.
 - 7E: Format Benchmark Value while typing and on blur.
-- 7F: Keep revenue-dependent Benchmark metrics unavailable until confirmed Google Sheets-scoped revenue exists.
+- 7F: Keep financial-looking Benchmark sheet columns source-backed without treating them as confirmed campaign financial rollups.
 - 7G: Add alert, edit, delete, and query-refresh parity.
 - 7H: Trace every applicable Benchmark checklist item in `CONNECTED_PLATFORM_SECTION_TEMPLATES.md` and document implemented items or intentional Google Sheets-specific deviations.
 - 7I: Add regression coverage that enforces every applicable Benchmark template behavior, including modal field order, no default selection, source-backed current value, number formatting, unavailable reasons, alert behavior, edit/delete controls, and query refresh.
@@ -481,13 +483,29 @@ Validation:
 - Current Value updates from selected sheet metric.
 - Current Value and Benchmark Value format according to the template.
 - Missing metrics do not become zero.
-- Revenue/ROI/ROAS are disabled unless source-backed revenue and spend are available.
+- Explicit numeric financial-looking sheet columns such as Revenue, Spend, ROI, and ROAS are selectable as Google Sheets Benchmark metrics when the selected main sheet provides source-backed values; this does not mark them as confirmed campaign financial rollups.
 - Regression test fails if any locally assertable Benchmark template behavior is missing.
 - Any Benchmark template item not validated in code/browser must remain documented as pending or as an intentional deviation.
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally for the Google Sheets Benchmark section boundary:
+  - Root cause: the Google Sheets Benchmark section still used the pre-template dropdown/modal and simple `Actual / Benchmark / Variance` cards, while the GA4 Benchmark template requires metric tiles, source-backed current values, summary tracker cards, progress bars, status text, and edit/delete card controls.
+  - Root cause: Benchmark create/update accepted a manually editable or saved `currentValue`, so stale values could persist when the selected Google Sheets metric was unavailable.
+  - Added a Google Sheets Benchmark metric adapter using the same selected main Google Sheets summary values as the KPI adapter.
+  - Benchmark creation/update now requires a selected mapped Google Sheets metric with a source-backed current value.
+  - Benchmark Current Value is read-only in the modal and populated from the selected metric adapter.
+  - Benchmark Value formats while typing and on blur.
+  - Google Sheets Benchmark tracker now follows the GA4 summary cards and thresholds: `On Track` is `90% or more of benchmark`, `Needs Attention` is `70% to under 90% of benchmark`, and `Behind` is `below 70% of benchmark`.
+  - Benchmark cards now follow the GA4 icon/header, metric badge, Current/Benchmark panel, progress bar, performance delta, alert indicator, edit action, and delete confirmation pattern.
+  - Existing Benchmark rows whose metric is missing render as unavailable and are excluded from Benchmark summary scoring instead of falling back to saved current values.
+  - Explicit numeric sheet columns such as Revenue, Spend, ROI, and ROAS are selectable as source-backed Google Sheets Benchmark metrics without feeding Campaign DeepDive confirmed financial totals.
+  - Alert settings keep the existing Google Sheets platform Benchmark routes and use the GA4 immediate default for new Benchmark alerts.
+  - Intentional Google Sheets-specific deviation: free-form `Create Custom Benchmark` is not exposed in this Commit 7 scope because Google Sheets Benchmark current values must be source-backed from selected sheet columns; adding a manual-current Benchmark path would violate the source-backed rule.
+- [x] Regression guard added in `server/source-safety-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] Browser validation remains pending after deploy for the implemented Commit 7 Google Sheets Benchmark scope.
 
 ### Commit 8: Reports Section GA4 Template Parity
 
@@ -680,8 +698,9 @@ Analytics:
 - [x] Empty or unmapped main Google Sheets analytics states do not populate from child revenue/spend sheets.
 - [x] Direct navigation to Google Sheets analytics for a child-only revenue/spend campaign does not show child sheet rows as main Google Sheets analytics.
 - [x] KPIs use current source-backed values for the Commit 6 Google Sheets KPI scope.
-- [x] Commit 6 KPI browser validation passed after deploy for metric tiles, no Timeframe field, no default field focus, no tile-level current-value text, read-only source-backed Current Value, formatted Current/Target values, financial-looking KPI unit inference, and no page-level horizontal scrollbar.
-- [ ] Benchmarks, Insights, and Reports use current source-backed values.
+- [x] Commit 6 KPI browser validation passed after deploy for metric tiles, no Timeframe field, no default field focus, no tile-level current-value text, read-only source-backed Current Value, formatted Current/Target values, financial-looking KPI unit inference, GA4 `+/-5%` performance tracker thresholds, GA4-pattern KPI cards, and no page-level horizontal scrollbar.
+- [x] Benchmarks use current source-backed values for the Commit 7 Google Sheets Benchmark scope.
+- [ ] Insights and Reports use current source-backed values.
 - [ ] Reports and scheduled reports use latest values.
 
 DeepDive:
@@ -811,3 +830,18 @@ Google Sheets can be marked locally production-ready only when:
   - KPI cards now use the GA4 icon/header, metric badge, Current/Target panels, progress label/bar, and above/below target delta text.
 - Commit 6 GA4 KPI pattern follow-up validation passed locally: `npm test -- server/source-safety-regression.test.ts`.
 - Commit 6 GA4 KPI pattern follow-up validation passed locally: `npm run check`.
+- Commit 6 GA4 KPI pattern follow-up browser validation passed after deploy:
+  - KPI performance tracker displays the GA4 `+/-5%` threshold labels for Above Target, On Track, and Below Target.
+  - KPI cards display in the GA4 card pattern with icon/header, metric badge, Current/Target panels, progress bar, and above/below target delta text.
+- Commit 7 Google Sheets Benchmark GA4-template parity completed locally:
+  - Root cause: Google Sheets Benchmark tracker/card/modal rendering still used local pre-template dropdown, manual/saved current values, and `Actual / Benchmark / Variance` cards instead of the GA4 `CONNECTED_PLATFORM_SECTION_TEMPLATES.md` Benchmark pattern.
+  - Benchmark current values now come from a source-backed metric adapter built from selected main Google Sheets analytics summary data.
+  - The Benchmark modal uses mapped metric tiles, no default metric selection, a read-only Current Value populated by the selected source-backed metric, formatted Benchmark Value input, and the GA4 immediate alert-frequency default.
+  - Benchmark performance tracker now uses the GA4 `90% / 70%` Benchmark thresholds and labels.
+  - Benchmark cards now use the GA4 icon/header, metric badge, Current/Benchmark panels, progress label/bar, performance delta, edit action, and delete confirmation pattern.
+  - Existing Benchmark rows whose mapped metric is missing render as unavailable and are excluded from scoring instead of falling back to saved current values.
+  - Explicit numeric sheet columns such as Revenue, Spend, ROI, and ROAS are selectable for Google Sheets Benchmarks, but remain unavailable from the main aggregate financial path until the dedicated financial-source commits.
+  - Intentional source-specific deviation: free-form manual `Create Custom Benchmark` is not exposed in this Google Sheets scope because current values must stay source-backed from selected sheet columns.
+- Commit 7 validation passed locally: `npm test -- server/source-safety-regression.test.ts`.
+- Commit 7 validation passed locally: `npm run check`.
+- Commit 7 browser validation remains pending after deploy.

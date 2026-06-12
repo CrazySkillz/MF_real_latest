@@ -38,6 +38,10 @@ function readGoogleSheetsKpiModalSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "google-sheets-analytics", "GoogleSheetsKpiModal.tsx"), "utf8");
 }
 
+function readGoogleSheetsBenchmarkModalSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "google-sheets-analytics", "GoogleSheetsBenchmarkModal.tsx"), "utf8");
+}
+
 function readUploadAdditionalDataModalSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "components", "UploadAdditionalDataModal.tsx"), "utf8");
 }
@@ -441,6 +445,46 @@ describe("source safety regression guards", () => {
     expect(modal).not.toContain('Label htmlFor="gs-kpi-timeframe">Timeframe</Label>');
     expect(modal).not.toContain('Label htmlFor="gs-kpi-metric">Metric Source</Label>');
     expect(modal).not.toContain('SelectValue placeholder="Select metric to track"');
+    expect(modal).not.toContain("metrics?.[value]");
+    expect(modal).not.toContain("detectedColumns");
+  });
+
+  it("Google Sheets Benchmarks follow the GA4 source-backed Benchmark template", () => {
+    const page = readGoogleSheetsDataPageSource();
+    const modal = readGoogleSheetsBenchmarkModalSource();
+
+    expect(page).toContain("const resolveGoogleSheetsBenchmarkMetric = useCallback");
+    expect(page).toContain("const googleSheetsBenchmarkTracker = useMemo");
+    expect(page).toContain("computeGoogleSheetsBenchmarkProgress");
+    expect(page).toContain("90% or more of benchmark");
+    expect(page).toContain("70% to under 90% of benchmark");
+    expect(page).toContain("below 70% of benchmark");
+    expect(page).toContain("Performance Benchmarks");
+    expect(page).toContain("Create Benchmark");
+    expect(page).toContain("formatGoogleSheetsKpiCardValue(currentVal, displayUnit, resolved.option?.type)");
+    expect(page).toContain("formatGoogleSheetsKpiCardValue(benchmarkVal, displayUnit, resolved.option?.type)");
+    expect(page).toContain("getGoogleSheetsKpiIcon(metricLabel)");
+    expect(page).toContain("currentValue: metricOption.currentValue");
+    expect(page).toContain('benchmarkType: "goal"');
+    expect(page).toContain('source: "google_sheets_main"');
+    expect(page).toContain('valueSource: "source_backed_summary"');
+    expect(page).toContain("emailRecipients: benchmarkForm.emailRecipients ? benchmarkForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean).join(', ') : null");
+    expect(page).toContain('alertFrequency: "immediate"');
+    expect(page).not.toContain("sheetsData?.summary?.metrics?.[bm.metric || bm.metricKey] ?? parseFloat(bm.currentValue || '0')");
+    expect(page).not.toContain("Above Benchmark");
+    expect(page).not.toContain("Below Benchmark");
+    expect(page).not.toContain("Variance");
+    expect(modal).toContain('data-google-sheets-benchmark-source-adapter="source-backed"');
+    expect(modal).toContain("Select Benchmark Template");
+    expect(modal).toContain('data-source-backed-current-value="google_sheets_benchmark"');
+    expect(modal).toContain("value={formatNumberAsYouType(form.currentValue || \"\")}");
+    expect(modal).toContain("benchmarkValue: formatNumberAsYouType(e.target.value)");
+    expect(modal).toContain("onOpenAutoFocus={(event) => event.preventDefault()}");
+    expect(modal).toContain("readOnly");
+    expect(modal).toContain("disabled={!form.name || !form.metric || !form.benchmarkValue}");
+    expect(modal).toContain('alertFrequency: "immediate"');
+    expect(modal).not.toContain('Label htmlFor="gs-bm-metric">Metric Source</Label>');
+    expect(modal).not.toContain('SelectValue placeholder="Select metric to benchmark"');
     expect(modal).not.toContain("metrics?.[value]");
     expect(modal).not.toContain("detectedColumns");
   });

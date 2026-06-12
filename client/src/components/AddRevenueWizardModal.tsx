@@ -124,7 +124,7 @@ export function AddRevenueWizardModal(props: {
 
     if (platformContext === 'google_sheets') {
       void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets`], exact: false });
-      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
       void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_sheets/kpis", campaignId], exact: false });
@@ -176,7 +176,7 @@ export function AddRevenueWizardModal(props: {
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/tiktok/benchmarks", campaignId], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/tiktok/reports", campaignId], exact: false });
     } else if (platformContext === 'google_sheets') {
-      void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`], exact: false });
+      void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
     } else {

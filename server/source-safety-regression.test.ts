@@ -426,7 +426,8 @@ describe("source safety regression guards", () => {
 
     expect(page).toContain('platformContext="google_sheets"');
     expect(page).toContain('fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=google_sheets`)');
-    expect(page).toContain('fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`)');
+    expect(page).toContain('fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`)');
+    expect(routesSource).toContain('normalizedDateRange === "all"');
     expect(loadedOverviewStart).toBeGreaterThan(-1);
     expect(loadedOverviewEnd).toBeGreaterThan(loadedOverviewStart);
     expect(loadedOverview).toContain("Total Revenue");

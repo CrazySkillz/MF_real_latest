@@ -722,13 +722,13 @@ export default function GoogleSheetsData() {
   });
 
   const { data: googleSheetsRevenueTotalsData } = useQuery<{ success: boolean; totalRevenue: number; currency?: string }>({
-    queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`],
+    queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`],
     enabled: !!campaignId,
     staleTime: 0,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const response = await fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`);
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`);
       if (!response.ok) return { success: false, totalRevenue: 0 };
       const json = await response.json().catch(() => ({}));
       return { success: !!json?.success, totalRevenue: Number(json?.totalRevenue || 0), currency: json?.currency };
@@ -751,13 +751,13 @@ export default function GoogleSheetsData() {
 
   const refreshGoogleSheetsRevenueQueries = async () => {
     await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"] });
-    await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`], exact: false });
+    await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_sheets/kpis", campaignId], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_sheets/benchmarks", campaignId], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_sheets/reports", campaignId], exact: false });
     await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"], exact: true });
-    await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`], exact: true });
+    await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`], exact: true });
   };
 
   const deleteGoogleSheetsRevenueSourceMutation = useMutation({

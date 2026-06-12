@@ -1102,11 +1102,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const getDateRangeBounds = (dateRange: string) => {
+    const normalizedDateRange = String(dateRange).toLowerCase();
+    if (normalizedDateRange === "all" || normalizedDateRange === "lifetime") {
+      return { startDate: "1900-01-01", endDate: "2999-12-31" };
+    }
     const now = new Date();
     const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const days =
-      String(dateRange).toLowerCase() === "7days" ? 7 :
-        String(dateRange).toLowerCase() === "90days" ? 90 : 30;
+      normalizedDateRange === "7days" ? 7 :
+        normalizedDateRange === "90days" ? 90 : 30;
     const start = new Date(end.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
     const fmt = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
     return { startDate: fmt(start), endDate: fmt(end) };

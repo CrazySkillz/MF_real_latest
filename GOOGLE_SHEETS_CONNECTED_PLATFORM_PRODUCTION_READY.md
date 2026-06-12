@@ -502,6 +502,8 @@ Status:
   - Explicit numeric sheet columns such as Revenue, Spend, ROI, and ROAS are selectable as source-backed Google Sheets Benchmark metrics without feeding Campaign DeepDive confirmed financial totals.
   - Alert settings keep the existing Google Sheets platform Benchmark routes and use the GA4 immediate default for new Benchmark alerts.
   - Intentional Google Sheets-specific deviation: free-form `Create Custom Benchmark` is not exposed in this Commit 7 scope because Google Sheets Benchmark current values must be source-backed from selected sheet columns; adding a manual-current Benchmark path would violate the source-backed rule.
+  - Follow-up root cause: Google Sheets Benchmark create/update normalized `benchmarkValue` and source-backed `currentValue` to numbers, but the shared Benchmark insert schema expects decimal fields as strings, causing the backend to reject creates with `Invalid benchmark data`.
+  - Follow-up fix: Google Sheets Benchmark payloads now send `benchmarkValue`, `currentValue`, and alert threshold as schema-compatible decimal strings.
 - [x] Regression guard added in `server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
@@ -844,4 +846,9 @@ Google Sheets can be marked locally production-ready only when:
   - Intentional source-specific deviation: free-form manual `Create Custom Benchmark` is not exposed in this Google Sheets scope because current values must stay source-backed from selected sheet columns.
 - Commit 7 validation passed locally: `npm test -- server/source-safety-regression.test.ts`.
 - Commit 7 validation passed locally: `npm run check`.
+- Commit 7 Benchmark create-payload follow-up completed locally:
+  - Root cause: the frontend sent Benchmark decimal fields as numbers while the shared Benchmark schema requires strings.
+  - Fix: Google Sheets Benchmark create/update payloads now send Benchmark Value, Current Value, and alert threshold as decimal strings.
+- Commit 7 Benchmark create-payload follow-up validation passed locally: `npm test -- server/source-safety-regression.test.ts`.
+- Commit 7 Benchmark create-payload follow-up validation passed locally: `npm run check`.
 - Commit 7 browser validation remains pending after deploy.

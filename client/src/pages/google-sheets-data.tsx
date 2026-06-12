@@ -916,14 +916,15 @@ export default function GoogleSheetsData() {
       toast({ title: "Invalid Benchmark", description: "Please enter a valid numeric benchmark value.", variant: "destructive" });
       return;
     }
+    const alertThreshold = benchmarkForm.alertThreshold ? parseSheetMetricNumber(benchmarkForm.alertThreshold) : null;
     const payload: any = {
       ...benchmarkForm, campaignId, platformType: "google_sheets",
       category: "performance",
       benchmarkType: "goal",
       source: "Google Sheets",
-      benchmarkValue,
-      currentValue: metricOption.currentValue,
-      alertThreshold: benchmarkForm.alertThreshold ? parseFloat(String(benchmarkForm.alertThreshold).replace(/,/g, '')) : null,
+      benchmarkValue: String(benchmarkValue),
+      currentValue: String(metricOption.currentValue),
+      alertThreshold: alertThreshold !== null ? String(alertThreshold) : null,
       emailRecipients: benchmarkForm.emailRecipients ? benchmarkForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean).join(', ') : null,
       metricKey: benchmarkForm.metric,
       calculationConfig: {

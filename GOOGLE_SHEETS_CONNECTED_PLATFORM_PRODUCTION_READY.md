@@ -504,10 +504,18 @@ Status:
   - Intentional Google Sheets-specific deviation: free-form `Create Custom Benchmark` is not exposed in this Commit 7 scope because Google Sheets Benchmark current values must be source-backed from selected sheet columns; adding a manual-current Benchmark path would violate the source-backed rule.
   - Follow-up root cause: Google Sheets Benchmark create/update normalized `benchmarkValue` and source-backed `currentValue` to numbers, but the shared Benchmark insert schema expects decimal fields as strings, causing the backend to reject creates with `Invalid benchmark data`.
   - Follow-up fix: Google Sheets Benchmark payloads now send `benchmarkValue`, `currentValue`, and alert threshold as schema-compatible decimal strings.
+  - Follow-up root cause: edit mode copied stored Benchmark decimal strings directly into the form, so count metrics such as Customers displayed `140.00` instead of the logical whole-count value `140`.
+  - Follow-up fix: Google Sheets Benchmark edit-prefill now formats count/integer Benchmark and alert-threshold values without meaningless `.00` suffixes.
 - [x] Regression guard added in `server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] Browser validation remains pending after deploy for the implemented Commit 7 Google Sheets Benchmark scope.
+- [x] Browser validation passed after deploy for the implemented Commit 7 Google Sheets Benchmark scope:
+  - Create Benchmark opens the Google Sheets Benchmark modal with mapped metric tiles instead of the old metric dropdown.
+  - Current Value is read-only and populated from the selected source-backed Google Sheets metric.
+  - Benchmark Value accepts formatted numeric input and saves without the `Invalid benchmark data` error.
+  - Edit mode displays count/integer Benchmark values logically, for example Customers `140` instead of `140.00`.
+  - Benchmark tracker uses GA4 `90% / 70%` thresholds and labels.
+  - Benchmark cards follow the GA4 icon/header, metric badge, Current/Benchmark panels, progress bar, performance delta, edit action, and delete confirmation pattern.
 
 ### Commit 8: Reports Section GA4 Template Parity
 
@@ -540,7 +548,33 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally for the Google Sheets Reports section boundary:
+  - Root cause: the Google Sheets Reports tab and modal predated the strict GA4 Reports template, so create mode could reuse stale form/config state, custom reports used a flat metric/KPI/Benchmark picker instead of collapsed sections, and the tab did not expose the required Download/Pencil/Trash card action pattern.
+  - Root cause: scheduled Google Sheets report payloads sent UI values such as `monday` and `9:00 AM`, while the shared platform report route validates `scheduleDayOfWeek` as `0-6`, `scheduleTime` as `HH:MM`, and requires `scheduleTimeZone`.
+  - Root cause: scheduled/server report output could fall through generic report behavior instead of proving Google Sheets source-backed output from current sheet rows.
+  - Reports tab header now reads `Google Sheets Reports`; Create Report resets edit state, report type, custom configuration, expanded sections, validation errors, and edit snapshot state.
+  - Report cards now expose Download, Pencil edit, and Trash delete-confirmation actions.
+  - Report modal keeps `Report Type`, `Standard Templates`, `Custom Report`, and `Choose Template` anchors; create mode starts with no selected report template.
+  - Standard templates include Overview, KPIs, Benchmarks, Insights, and an explicit disabled Ad Comparison unavailable state because Google Sheets rows are not ad-level entities.
+  - Custom Report now uses collapsed-by-default sections for Overview, KPIs, Benchmarks, Ad Comparison, and Insights; KPI and Benchmark sections list current Google Sheets platform rows.
+  - Footer labels are `Generate & Download Report`, `Schedule Report`, and `Update Report`; create submit is disabled until a template or custom section is selected, and edit Update is disabled until a value changes.
+  - Scheduled report create/update now sends schedule fields in the shared route contract shape and includes the browser IANA time zone.
+  - Browser/download PDF generation uses the current loaded Google Sheets metric adapter plus current KPI/Benchmark rows instead of saved KPI/Benchmark current values.
+  - Scheduled/test/direct snapshot PDF generation now uses a Google Sheets-specific source-backed builder from cached sheet rows and current platform KPI/Benchmark rows; Google Sheets reports are included in scheduler selection and fail closed when source-backed output cannot be built.
+  - Intentional Google Sheets-specific deviation: Ad Comparison remains visible but disabled/unavailable until a source contract supplies ad-level rows; this is documented in the UI and covered by regression.
+- [x] Regression guard added in `server/source-safety-regression.test.ts`.
+- [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [ ] Browser validation pending after deploy:
+  - Open Google Sheets Reports and confirm the header says `Google Sheets Reports`.
+  - Click Create Report and confirm no standard template is selected by default.
+  - Confirm Standard Templates show Overview, KPIs, Benchmarks, disabled Ad Comparison, and Insights.
+  - Switch to Custom Report and confirm sections are collapsed by default and no section/row is selected.
+  - Expand KPIs and Benchmarks and confirm the current Google Sheets rows appear.
+  - Confirm Generate & Download is disabled until a template or custom selection is made, and creates a PDF from the current sheet values.
+  - Create a scheduled report and confirm it saves without schedule validation errors.
+  - Edit an existing report and confirm Update Report is disabled until a value changes.
+  - Confirm report cards show Download, Pencil edit, and Trash delete confirmation.
 
 ### Commit 9: Total Revenue And Pipeline Proxy Meta Pattern
 
@@ -702,6 +736,7 @@ Analytics:
 - [x] KPIs use current source-backed values for the Commit 6 Google Sheets KPI scope.
 - [x] Commit 6 KPI browser validation passed after deploy for metric tiles, no Timeframe field, no default field focus, no tile-level current-value text, read-only source-backed Current Value, formatted Current/Target values, financial-looking KPI unit inference, GA4 `+/-5%` performance tracker thresholds, GA4-pattern KPI cards, and no page-level horizontal scrollbar.
 - [x] Benchmarks use current source-backed values for the Commit 7 Google Sheets Benchmark scope.
+- [x] Commit 7 Benchmark browser validation passed after deploy for metric tiles, read-only source-backed Current Value, successful Create Benchmark save, count edit-prefill formatting, GA4 `90% / 70%` tracker thresholds, and GA4-pattern Benchmark cards.
 - [ ] Insights and Reports use current source-backed values.
 - [ ] Reports and scheduled reports use latest values.
 
@@ -851,4 +886,13 @@ Google Sheets can be marked locally production-ready only when:
   - Fix: Google Sheets Benchmark create/update payloads now send Benchmark Value, Current Value, and alert threshold as decimal strings.
 - Commit 7 Benchmark create-payload follow-up validation passed locally: `npm test -- server/source-safety-regression.test.ts`.
 - Commit 7 Benchmark create-payload follow-up validation passed locally: `npm run check`.
-- Commit 7 browser validation remains pending after deploy.
+- Commit 7 Benchmark edit-prefill formatting follow-up completed locally:
+  - Root cause: edit mode copied stored decimal strings directly into the form, so count metrics such as Customers displayed `140.00` instead of `140`.
+  - Fix: Google Sheets Benchmark edit-prefill now formats count/integer Benchmark and alert-threshold values without meaningless `.00` suffixes.
+- Commit 7 Benchmark edit-prefill formatting follow-up validation passed locally: `npm test -- server/source-safety-regression.test.ts`.
+- Commit 7 Benchmark edit-prefill formatting follow-up validation passed locally: `npm run check`.
+- Commit 7 browser validation passed after deploy:
+  - Benchmark modal uses mapped Google Sheets metric tiles and source-backed Current Value.
+  - Create Benchmark saves successfully without `Invalid benchmark data`.
+  - Edit Benchmark displays count/integer values logically, for example Customers `140` instead of `140.00`.
+  - Benchmark tracker and cards match the GA4 Benchmark template pattern.

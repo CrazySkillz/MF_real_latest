@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, Download, FileText, Info, Settings, Target, Trophy } from "lucide-react";
+import { Activity, BarChart3, ChevronDown, ChevronRight, Download, FileText, Info, Settings, Target, Trophy } from "lucide-react";
 
 const getOrdinalSuffix = (day: number) => {
   if (day > 3 && day < 21) return "th";
@@ -20,7 +20,7 @@ const getOrdinalSuffix = (day: number) => {
 
 /**
  * Report creation/editing modal for Google Sheets analytics.
- * Simplified vs LinkedIn: no Ad Comparison template, metrics are dynamic from detectedColumns.
+ * Follows the connected-platform Reports template while keeping source-specific unavailable states explicit.
  */
 export function GoogleSheetsReportModal(props: any) {
   const {
@@ -36,6 +36,8 @@ export function GoogleSheetsReportModal(props: any) {
     setFormErrors,
     customConfig,
     setCustomConfig,
+    expandedSections,
+    setExpandedSections,
     detectedColumns,
     kpisData,
     benchmarksData,
@@ -43,6 +45,7 @@ export function GoogleSheetsReportModal(props: any) {
     handleCreate,
     handleUpdate,
     handleCustom,
+    hasChanges,
     createMutation,
     updateMutation,
   } = props;
@@ -59,15 +62,81 @@ export function GoogleSheetsReportModal(props: any) {
     } catch { return userTimeZone; }
   };
 
+  const normalizeConfig = (cfg: any = {}) => ({
+    sections: { overview: false, kpis: false, benchmarks: false, ads: false, insights: false, ...(cfg.sections || {}) },
+    subsections: {
+      overview: { metrics: false, ...(cfg.subsections?.overview || {}) },
+      kpis: { items: false, ...(cfg.subsections?.kpis || {}) },
+      benchmarks: { items: false, ...(cfg.subsections?.benchmarks || {}) },
+      ads: { unavailable: false, ...(cfg.subsections?.ads || {}) },
+      insights: { summary: false, ...(cfg.subsections?.insights || {}) },
+    },
+    selectedMetrics: Array.isArray(cfg.selectedMetrics) ? cfg.selectedMetrics : [],
+    kpis: Array.isArray(cfg.kpis) ? cfg.kpis : [],
+    benchmarks: Array.isArray(cfg.benchmarks) ? cfg.benchmarks : [],
+    selectedKpiIds: Array.isArray(cfg.selectedKpiIds) ? cfg.selectedKpiIds : [],
+    selectedBenchmarkIds: Array.isArray(cfg.selectedBenchmarkIds) ? cfg.selectedBenchmarkIds : [],
+  });
+
+  const normalizedConfig = normalizeConfig(customConfig);
+  const selectedKpiIds = new Set([...(normalizedConfig.kpis || []), ...(normalizedConfig.selectedKpiIds || [])].map(String));
+  const selectedBenchmarkIds = new Set([...(normalizedConfig.benchmarks || []), ...(normalizedConfig.selectedBenchmarkIds || [])].map(String));
+  const hasCustomSelection =
+    (normalizedConfig.selectedMetrics || []).length > 0 ||
+    selectedKpiIds.size > 0 ||
+    selectedBenchmarkIds.size > 0 ||
+    !!normalizedConfig.sections?.insights;
+
+  const setSectionExpanded = (section: string) => {
+    setExpandedSections((prev: any) => ({ ...(prev || {}), [section]: !(prev || {})[section] }));
+  };
+
+  const updateConfig = (next: any) => {
+    setCustomConfig(normalizeConfig(next));
+  };
+
+  const setSectionChecked = (section: string, checked: boolean) => {
+    const next = normalizeConfig(customConfig);
+    next.sections[section] = checked;
+    if (section === "overview") next.subsections.overview.metrics = checked;
+    if (section === "kpis") next.subsections.kpis.items = checked;
+    if (section === "benchmarks") next.subsections.benchmarks.items = checked;
+    if (section === "insights") next.subsections.insights.summary = checked;
+    updateConfig(next);
+  };
+
+  const standardTemplates = [
+    { key: "overview", title: "Overview", desc: "Comprehensive overview of Google Sheets performance data", Icon: BarChart3, chips: ["Summary", "Metrics", "Insights"] },
+    { key: "kpis", title: "KPIs", desc: "Key performance indicators and progress tracking", Icon: Target, chips: ["Targets", "Progress"] },
+    { key: "benchmarks", title: "Benchmarks", desc: "Performance benchmarks and comparisons", Icon: Trophy, chips: ["Custom", "Goals"] },
+    { key: "ads", title: "Ad Comparison", desc: "Unavailable for Google Sheets because this source has sheet rows, not ad-level entities.", Icon: Activity, chips: ["Unavailable"], disabled: true },
+    { key: "insights", title: "Insights", desc: "Data quality, trends, anomalies, and recommendations", Icon: Info, chips: ["Trends", "Anomalies", "Actions"] },
+  ];
+
+  const submitDisabled =
+    !form.name ||
+    (modalStep === "standard" && (!form.reportType || form.reportType === "ads")) ||
+    (modalStep === "custom" && !hasCustomSelection) ||
+    (form.scheduleEnabled && !String(form.emailRecipients || "").trim()) ||
+    (!!editingId && !hasChanges) ||
+    createMutation?.isPending ||
+    updateMutation?.isPending;
+
   return (
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        if (!open) setEditingId(null);
+        if (!open) {
+          setEditingId(null);
+          setFormErrors({});
+        }
       }}
     >
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-5xl max-h-[90vh] overflow-y-auto"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Report Type</DialogTitle>
         </DialogHeader>
@@ -81,7 +150,12 @@ export function GoogleSheetsReportModal(props: any) {
                   ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
                   : "border-border"
               }`}
-              onClick={() => setModalStep("standard")}
+              onClick={() => {
+                setModalStep("standard");
+                if (form.reportType === "custom") {
+                  setForm({ ...form, reportType: "", name: "" });
+                }
+              }}
             >
               <div className="flex items-start gap-3">
                 <FileText className="w-6 h-6 text-blue-600 mt-1" />
@@ -127,103 +201,36 @@ export function GoogleSheetsReportModal(props: any) {
               <div>
                 <h3 className="text-lg font-bold text-foreground mb-4">Choose Template</h3>
                 <div className="space-y-4">
-                  {/* Overview Template */}
-                  <div
-                    className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
-                      form.reportType === "overview"
-                        ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                        : "border-border"
-                    }`}
-                    onClick={() => handleTypeSelect("overview")}
-                  >
-                    <div className="flex items-start gap-3">
-                      <BarChart3 className="w-5 h-5 text-foreground mt-0.5" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-foreground">Overview</h4>
-                        <p className="text-sm text-muted-foreground/70 mt-1">
-                          Comprehensive overview of Google Sheets performance data
-                        </p>
-                        <div className="flex gap-2 mt-3">
-                          <span className="text-xs px-2 py-1 bg-muted rounded">Summary</span>
-                          <span className="text-xs px-2 py-1 bg-muted rounded">Metrics</span>
-                          <span className="text-xs px-2 py-1 bg-muted rounded">Insights</span>
+                  {standardTemplates.map((template) => {
+                    const selected = form.reportType === template.key;
+                    return (
+                      <div
+                        key={template.key}
+                        className={`border rounded-lg p-4 transition-all ${
+                          template.disabled
+                            ? "border-border bg-muted/30 opacity-70"
+                            : `cursor-pointer hover:border-blue-500 ${selected ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30" : "border-border"}`
+                        }`}
+                        onClick={() => {
+                          if (!template.disabled) handleTypeSelect(template.key);
+                        }}
+                        aria-disabled={template.disabled ? "true" : "false"}
+                      >
+                        <div className="flex items-start gap-3">
+                          <template.Icon className="w-5 h-5 text-foreground mt-0.5" />
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-foreground">{template.title}</h4>
+                            <p className="text-sm text-muted-foreground/70 mt-1">{template.desc}</p>
+                            <div className="flex gap-2 mt-3 flex-wrap">
+                              {template.chips.map((chip) => (
+                                <span key={chip} className="text-xs px-2 py-1 bg-muted rounded">{chip}</span>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* KPIs Template */}
-                  <div
-                    className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
-                      form.reportType === "kpis"
-                        ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                        : "border-border"
-                    }`}
-                    onClick={() => handleTypeSelect("kpis")}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Target className="w-5 h-5 text-foreground mt-0.5" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-foreground">KPIs</h4>
-                        <p className="text-sm text-muted-foreground/70 mt-1">
-                          Key performance indicators and progress tracking
-                        </p>
-                        <div className="flex gap-2 mt-3">
-                          <span className="text-xs px-2 py-1 bg-muted rounded">Targets</span>
-                          <span className="text-xs px-2 py-1 bg-muted rounded">Progress</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Benchmarks Template */}
-                  <div
-                    className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
-                      form.reportType === "benchmarks"
-                        ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                        : "border-border"
-                    }`}
-                    onClick={() => handleTypeSelect("benchmarks")}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Trophy className="w-5 h-5 text-foreground mt-0.5" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-foreground">Benchmarks</h4>
-                        <p className="text-sm text-muted-foreground/70 mt-1">
-                          Performance benchmarks and comparisons
-                        </p>
-                        <div className="flex gap-2 mt-3">
-                          <span className="text-xs px-2 py-1 bg-muted rounded">Custom</span>
-                          <span className="text-xs px-2 py-1 bg-muted rounded">Goals</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Insights Template */}
-                  <div
-                    className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${
-                      form.reportType === "insights"
-                        ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/30"
-                        : "border-border"
-                    }`}
-                    onClick={() => handleTypeSelect("insights")}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Info className="w-5 h-5 text-foreground mt-0.5" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-foreground">Insights</h4>
-                        <p className="text-sm text-muted-foreground/70 mt-1">
-                          Data quality, trends, anomalies, and recommendations
-                        </p>
-                        <div className="flex gap-2 mt-3">
-                          <span className="text-xs px-2 py-1 bg-muted rounded">Trends</span>
-                          <span className="text-xs px-2 py-1 bg-muted rounded">Anomalies</span>
-                          <span className="text-xs px-2 py-1 bg-muted rounded">Actions</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })}
 
                   {/* Schedule Section */}
                   <div className="pt-4 border-t mt-4">
@@ -382,85 +389,158 @@ export function GoogleSheetsReportModal(props: any) {
           {modalStep === "custom" && (
             <div className="space-y-6">
               <div className="space-y-4 pt-4 border-t">
-                <h3 className="text-lg font-semibold text-foreground">Select Metrics</h3>
-                <p className="text-sm text-muted-foreground/70">
-                  Choose which metrics from your Google Sheets data to include in the report.
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  {(detectedColumns || []).map((col: any) => (
-                    <div key={col.name} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`gs-metric-${col.name}`}
-                        checked={(customConfig.selectedMetrics || []).includes(col.name)}
-                        onCheckedChange={(checked) => {
-                          const current = customConfig.selectedMetrics || [];
-                          const next = checked
-                            ? [...current, col.name]
-                            : current.filter((m: string) => m !== col.name);
-                          setCustomConfig({ ...customConfig, selectedMetrics: next });
-                        }}
-                      />
-                      <Label htmlFor={`gs-metric-${col.name}`} className="text-sm cursor-pointer">
-                        {col.name}
-                      </Label>
-                    </div>
-                  ))}
+                <div>
+                  <h3 className="text-lg font-bold text-foreground mb-2">Custom Report</h3>
+                  <p className="text-sm text-muted-foreground/70">
+                    Choose Google Sheets sections and rows to include in your PDF.
+                  </p>
+                </div>
+
+                <div className="border rounded-lg p-4 border-border">
+                  <div className="text-sm font-medium text-foreground/80 mb-3">Sections</div>
+                  <div className="space-y-4 text-sm">
+                    {[
+                      { key: "overview", label: "Overview" },
+                      { key: "kpis", label: "KPIs" },
+                      { key: "benchmarks", label: "Benchmarks" },
+                      { key: "ads", label: "Ad Comparison" },
+                      { key: "insights", label: "Insights" },
+                    ].map((section) => {
+                      const checked = !!normalizedConfig.sections?.[section.key];
+                      const expanded = !!(expandedSections || {})[section.key];
+                      return (
+                        <div key={section.key} className="rounded-md border border-border p-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              className="shrink-0 text-muted-foreground hover:text-foreground"
+                              onClick={() => setSectionExpanded(section.key)}
+                              aria-label={`${expanded ? "Collapse" : "Expand"} ${section.label}`}
+                            >
+                              {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                            </button>
+                            <Checkbox
+                              id={`gs-report-section-${section.key}`}
+                              checked={checked}
+                              disabled={section.key === "ads"}
+                              onCheckedChange={(value) => setSectionChecked(section.key, value as boolean)}
+                            />
+                            <Label
+                              htmlFor={`gs-report-section-${section.key}`}
+                              className={`font-medium ${section.key === "ads" ? "text-muted-foreground" : "cursor-pointer text-foreground"}`}
+                            >
+                              {section.label}
+                            </Label>
+                          </div>
+
+                          {expanded && (
+                            <div className="pl-8 space-y-3">
+                              {section.key === "overview" && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  {(detectedColumns || []).map((col: any) => (
+                                    <div key={col.name} className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={`gs-metric-${col.name}`}
+                                        checked={(normalizedConfig.selectedMetrics || []).includes(col.name)}
+                                        onCheckedChange={(checkedValue) => {
+                                          const next = normalizeConfig(customConfig);
+                                          const current = next.selectedMetrics || [];
+                                          next.selectedMetrics = checkedValue
+                                            ? Array.from(new Set([...current, col.name]))
+                                            : current.filter((metric: string) => metric !== col.name);
+                                          next.sections.overview = next.selectedMetrics.length > 0;
+                                          next.subsections.overview.metrics = next.selectedMetrics.length > 0;
+                                          updateConfig(next);
+                                        }}
+                                      />
+                                      <Label htmlFor={`gs-metric-${col.name}`} className="text-sm cursor-pointer">
+                                        {col.name}
+                                      </Label>
+                                    </div>
+                                  ))}
+                                  {(detectedColumns || []).length === 0 && (
+                                    <p className="text-sm text-muted-foreground/70">No mapped Google Sheets metrics are available.</p>
+                                  )}
+                                </div>
+                              )}
+
+                              {section.key === "kpis" && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  {(Array.isArray(kpisData) ? kpisData : []).map((kpi: any) => (
+                                    <div key={kpi.id} className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={`gs-report-kpi-${kpi.id}`}
+                                        checked={selectedKpiIds.has(String(kpi.id))}
+                                        onCheckedChange={(checkedValue) => {
+                                          const next = normalizeConfig(customConfig);
+                                          const ids = new Set([...(next.kpis || []), ...(next.selectedKpiIds || [])].map(String));
+                                          if (checkedValue) ids.add(String(kpi.id)); else ids.delete(String(kpi.id));
+                                          next.kpis = Array.from(ids);
+                                          next.selectedKpiIds = Array.from(ids);
+                                          next.sections.kpis = ids.size > 0;
+                                          next.subsections.kpis.items = ids.size > 0;
+                                          updateConfig(next);
+                                        }}
+                                      />
+                                      <Label htmlFor={`gs-report-kpi-${kpi.id}`} className="text-sm cursor-pointer">
+                                        {kpi.name}
+                                      </Label>
+                                    </div>
+                                  ))}
+                                  {(Array.isArray(kpisData) ? kpisData : []).length === 0 && (
+                                    <p className="text-sm text-muted-foreground/70">No Google Sheets KPI rows are available.</p>
+                                  )}
+                                </div>
+                              )}
+
+                              {section.key === "benchmarks" && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  {(Array.isArray(benchmarksData) ? benchmarksData : []).map((bm: any) => (
+                                    <div key={bm.id} className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={`gs-report-bm-${bm.id}`}
+                                        checked={selectedBenchmarkIds.has(String(bm.id))}
+                                        onCheckedChange={(checkedValue) => {
+                                          const next = normalizeConfig(customConfig);
+                                          const ids = new Set([...(next.benchmarks || []), ...(next.selectedBenchmarkIds || [])].map(String));
+                                          if (checkedValue) ids.add(String(bm.id)); else ids.delete(String(bm.id));
+                                          next.benchmarks = Array.from(ids);
+                                          next.selectedBenchmarkIds = Array.from(ids);
+                                          next.sections.benchmarks = ids.size > 0;
+                                          next.subsections.benchmarks.items = ids.size > 0;
+                                          updateConfig(next);
+                                        }}
+                                      />
+                                      <Label htmlFor={`gs-report-bm-${bm.id}`} className="text-sm cursor-pointer">
+                                        {bm.name}
+                                      </Label>
+                                    </div>
+                                  ))}
+                                  {(Array.isArray(benchmarksData) ? benchmarksData : []).length === 0 && (
+                                    <p className="text-sm text-muted-foreground/70">No Google Sheets Benchmark rows are available.</p>
+                                  )}
+                                </div>
+                              )}
+
+                              {section.key === "ads" && (
+                                <p className="text-sm text-muted-foreground/70">
+                                  Google Sheets does not expose ad-level rows for this source. Use a paid-media source for Ad Comparison reports.
+                                </p>
+                              )}
+
+                              {section.key === "insights" && (
+                                <p className="text-sm text-muted-foreground/70">
+                                  Insights will use current Google Sheets source-backed metrics and unavailable reasons.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-
-              {/* KPIs */}
-              {kpisData && Array.isArray(kpisData) && kpisData.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-foreground/80/60">Include KPIs</h4>
-                  <div className="space-y-2">
-                    {kpisData.map((kpi: any) => (
-                      <div key={kpi.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`gs-report-kpi-${kpi.id}`}
-                          checked={(customConfig.kpis || []).includes(kpi.id)}
-                          onCheckedChange={(checked) => {
-                            const current = customConfig.kpis || [];
-                            const next = checked
-                              ? [...current, kpi.id]
-                              : current.filter((id: string) => id !== kpi.id);
-                            setCustomConfig({ ...customConfig, kpis: next });
-                          }}
-                        />
-                        <Label htmlFor={`gs-report-kpi-${kpi.id}`} className="text-sm cursor-pointer">
-                          {kpi.name}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Benchmarks */}
-              {benchmarksData && Array.isArray(benchmarksData) && benchmarksData.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-foreground/80/60">Include Benchmarks</h4>
-                  <div className="space-y-2">
-                    {benchmarksData.map((bm: any) => (
-                      <div key={bm.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`gs-report-bm-${bm.id}`}
-                          checked={(customConfig.benchmarks || []).includes(bm.id)}
-                          onCheckedChange={(checked) => {
-                            const current = customConfig.benchmarks || [];
-                            const next = checked
-                              ? [...current, bm.id]
-                              : current.filter((id: string) => id !== bm.id);
-                            setCustomConfig({ ...customConfig, benchmarks: next });
-                          }}
-                        />
-                        <Label htmlFor={`gs-report-bm-${bm.id}`} className="text-sm cursor-pointer">
-                          {bm.name}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Schedule Section for Custom */}
               <div className="space-y-4 pt-4 border-t">
@@ -596,24 +676,26 @@ export function GoogleSheetsReportModal(props: any) {
                   description: "",
                   reportType: "",
                   scheduleEnabled: false,
-                  scheduleFrequency: "weekly",
+                  scheduleFrequency: "daily",
                   scheduleDayOfWeek: "monday",
                   scheduleDayOfMonth: "first",
                   quarterTiming: "end",
                   scheduleTime: "9:00 AM",
                   emailRecipients: "",
-                  status: "draft",
+                  status: "active",
                 });
+                setCustomConfig(normalizeConfig({}));
+                setExpandedSections({});
               }}
             >
               Cancel
             </Button>
 
             <div className="flex items-center gap-2">
-              {modalStep === "standard" && form.reportType && form.reportType !== "custom" && (
+              {modalStep === "standard" && (
                 <Button
                   onClick={editingId ? handleUpdate : handleCreate}
-                  disabled={!form.name || createMutation?.isPending || updateMutation?.isPending}
+                  disabled={submitDisabled}
                   className="gap-2"
                 >
                   {createMutation?.isPending || updateMutation?.isPending ? (
@@ -634,7 +716,7 @@ export function GoogleSheetsReportModal(props: any) {
               {modalStep === "custom" && (
                 <Button
                   onClick={editingId ? handleUpdate : handleCustom}
-                  disabled={!form.name || createMutation?.isPending || updateMutation?.isPending}
+                  disabled={submitDisabled}
                   className="gap-2"
                 >
                   {createMutation?.isPending || updateMutation?.isPending ? (

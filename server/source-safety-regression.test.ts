@@ -42,6 +42,10 @@ function readGoogleSheetsBenchmarkModalSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "google-sheets-analytics", "GoogleSheetsBenchmarkModal.tsx"), "utf8");
 }
 
+function readGoogleSheetsReportModalSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "google-sheets-analytics", "GoogleSheetsReportModal.tsx"), "utf8");
+}
+
 function readUploadAdditionalDataModalSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "components", "UploadAdditionalDataModal.tsx"), "utf8");
 }
@@ -493,6 +497,64 @@ describe("source safety regression guards", () => {
     expect(modal).not.toContain('SelectValue placeholder="Select metric to benchmark"');
     expect(modal).not.toContain("metrics?.[value]");
     expect(modal).not.toContain("detectedColumns");
+  });
+
+  it("Google Sheets Reports follow the GA4 Reports template with source-backed output guards", () => {
+    const page = readGoogleSheetsDataPageSource();
+    const modal = readGoogleSheetsReportModalSource();
+    const reportScheduler = fs.readFileSync(path.join(process.cwd(), "server", "report-scheduler.ts"), "utf8");
+    const routesSource = readRoutesSource();
+
+    expect(page).toContain("Google Sheets Reports");
+    expect(page).toContain("resetGoogleSheetsReportCreateState");
+    expect(page).toContain("setReportForm(createEmptyGoogleSheetsReportForm())");
+    expect(page).toContain("setCustomReportConfig(createEmptyGoogleSheetsCustomReportConfig())");
+    expect(page).toContain("serializeGoogleSheetsReportState(nextForm, nextConfig, nextModalStep)");
+    expect(page).toContain("const reportHasChanges = !editingReportId");
+    expect(page).toContain("downloadGoogleSheetsReport({");
+    expect(page).toContain("payload.scheduleDayOfWeek = reportForm.scheduleFrequency === \"weekly\" ? dayOfWeekKeyToInt(reportForm.scheduleDayOfWeek) : undefined");
+    expect(page).toContain("payload.scheduleDayOfMonth = reportForm.scheduleFrequency === \"monthly\" || reportForm.scheduleFrequency === \"quarterly\" ? dayOfMonthToInt(reportForm.scheduleDayOfMonth) : undefined");
+    expect(page).toContain("payload.scheduleTime = to24HourHHMM(reportForm.scheduleTime)");
+    expect(page).toContain("payload.scheduleTimeZone = userTimeZone");
+    expect(page).toContain("<Download className=\"w-4 h-4 mr-2\" />");
+    expect(page).toContain("<Pencil className=\"w-4 h-4\" />");
+    expect(page).not.toContain("scheduleFrequency: \"weekly\", scheduleDayOfWeek: \"monday\", scheduleDayOfMonth: \"first\"");
+
+    expect(modal).toContain("onOpenAutoFocus={(event) => event.preventDefault()}");
+    expect(modal).toContain("Report Type");
+    expect(modal).toContain("Standard Templates");
+    expect(modal).toContain("Custom Report");
+    expect(modal).toContain("Choose Template");
+    expect(modal).toContain("Ad Comparison");
+    expect(modal).toContain("Unavailable for Google Sheets because this source has sheet rows, not ad-level entities.");
+    expect(modal).toContain("disabled={section.key === \"ads\"}");
+    expect(modal).toContain("Overview");
+    expect(modal).toContain("KPIs");
+    expect(modal).toContain("Benchmarks");
+    expect(modal).toContain("Insights");
+    expect(modal).toContain("expandedSections");
+    expect(modal).toContain("setSectionExpanded(section.key)");
+    expect(modal).toContain("selectedKpiIds.has(String(kpi.id))");
+    expect(modal).toContain("selectedBenchmarkIds.has(String(bm.id))");
+    expect(modal).toContain("const submitDisabled =");
+    expect(modal).toContain("(modalStep === \"standard\" && (!form.reportType || form.reportType === \"ads\"))");
+    expect(modal).toContain("(modalStep === \"custom\" && !hasCustomSelection)");
+    expect(modal).toContain("(!!editingId && !hasChanges)");
+    expect(modal).toContain("Generate & Download Report");
+    expect(modal).toContain("Schedule Report");
+    expect(modal).toContain("Update Report");
+
+    expect(reportScheduler).toContain("'google_sheets'");
+    expect(reportScheduler).toContain("return normalized === \"instagram\" || normalized === \"tiktok\" || normalized === \"google_sheets\";");
+    expect(reportScheduler).toContain("buildGoogleSheetsCachedMetricSummary");
+    expect(reportScheduler).toContain("storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[])");
+    expect(reportScheduler).toContain("storage.getPlatformKPIs(\"google_sheets\", campaignId)");
+    expect(reportScheduler).toContain("storage.getPlatformBenchmarks(\"google_sheets\", campaignId)");
+    expect(reportScheduler).toContain("return buildGoogleSheetsScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });");
+    expect(reportScheduler).not.toContain("if (String((report as any)?.platformType || \"\") === \"google_sheets\") {\n    const { jsPDF }");
+
+    expect(routesSource).toContain('sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets"');
+    expect(routesSource).toContain('sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : "Instagram"');
   });
 
   it("Google Sheets-only Add Dataset connections append instead of replacing existing tabs", () => {

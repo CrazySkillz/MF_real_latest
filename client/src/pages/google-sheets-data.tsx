@@ -23,7 +23,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { GoogleSheetsKpiModal } from "@/pages/google-sheets-analytics/GoogleSheetsKpiModal";
 import { GoogleSheetsBenchmarkModal } from "@/pages/google-sheets-analytics/GoogleSheetsBenchmarkModal";
 import { GoogleSheetsReportModal } from "@/pages/google-sheets-analytics/GoogleSheetsReportModal";
-import { Edit2, Clock, Mail, Download } from "lucide-react";
+import { Edit2, Clock, Mail, Download, Pencil } from "lucide-react";
 import { formatPct } from "@shared/metric-math";
 import { computeAttainmentFillPct, computeAttainmentPct, computeEffectiveDeltaPct, classifyKpiBand, isLowerIsBetterKpi } from "@shared/kpi-math";
 
@@ -143,6 +143,49 @@ type GoogleSheetsKpiMetricOption = {
   reason: string;
 };
 
+const createEmptyGoogleSheetsReportForm = () => ({
+  name: "",
+  description: "",
+  reportType: "",
+  scheduleEnabled: false,
+  scheduleFrequency: "daily",
+  scheduleDayOfWeek: "monday",
+  scheduleDayOfMonth: "first",
+  quarterTiming: "end",
+  scheduleTime: "9:00 AM",
+  emailRecipients: "",
+  status: "active",
+});
+
+const createEmptyGoogleSheetsCustomReportConfig = () => ({
+  sections: { overview: false, kpis: false, benchmarks: false, ads: false, insights: false },
+  subsections: {
+    overview: { metrics: false },
+    kpis: { items: false },
+    benchmarks: { items: false },
+    ads: { unavailable: false },
+    insights: { summary: false },
+  },
+  selectedMetrics: [],
+  kpis: [],
+  benchmarks: [],
+  selectedKpiIds: [],
+  selectedBenchmarkIds: [],
+});
+
+const parseGoogleSheetsReportConfiguration = (configuration: any) => {
+  if (!configuration) return createEmptyGoogleSheetsCustomReportConfig();
+  try {
+    const parsed = typeof configuration === "string" ? JSON.parse(configuration) : configuration;
+    return { ...createEmptyGoogleSheetsCustomReportConfig(), ...(parsed || {}) };
+  } catch {
+    return createEmptyGoogleSheetsCustomReportConfig();
+  }
+};
+
+const serializeGoogleSheetsReportState = (form: any, customConfig: any, modalStep: string) =>
+  JSON.stringify({ form, customConfig, modalStep });
+
 const GOOGLE_SHEETS_KPI_DATE_COLUMN_PATTERN = /^(date|week|day|time|timestamp|period|month|year)/i;
 const GOOGLE_SHEETS_KPI_CURRENCY_COLUMN_PATTERN = /(\$|revenue|spend|cost|budget|profit|cpa|cpc|cpm)/i;
 const GOOGLE_SHEETS_KPI_NEAR_TARGET_BAND_PCT = 5;
@@ -156,6 +199,49 @@ export default function GoogleSheetsData() {
   const [showAddDatasetModal, setShowAddDatasetModal] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const dayOfWeekKeyToInt = (value: any): number | undefined => {
+    const key = String(value || "").trim().toLowerCase();
+    const map: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+    return typeof map[key] === "number" ? map[key] : undefined;
+  };
+
+  const dayOfWeekIntToKey = (value: any): string => {
+    const map: Record<number, string> = { 0: "sunday", 1: "monday", 2: "tuesday", 3: "wednesday", 4: "thursday", 5: "friday", 6: "saturday" };
+    return map[Number(value)] || "monday";
+  };
+
+  const dayOfMonthToInt = (value: any): number | undefined => {
+    const raw = String(value || "").trim().toLowerCase();
+    if (raw === "last") return 0;
+    if (raw === "first") return 1;
+    const parsed = parseInt(raw, 10);
+    return Number.isFinite(parsed) ? Math.max(0, Math.min(31, parsed)) : undefined;
+  };
+
+  const to24HourHHMM = (value: any): string => {
+    const raw = String(value || "").trim();
+    const match = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) {
+      const simple = raw.match(/^(\d{1,2}):(\d{2})$/);
+      return simple ? `${String(parseInt(simple[1], 10)).padStart(2, "0")}:${simple[2]}` : "09:00";
+    }
+    let hour = parseInt(match[1], 10);
+    if (match[3].toUpperCase() === "AM" && hour === 12) hour = 0;
+    if (match[3].toUpperCase() === "PM" && hour !== 12) hour += 12;
+    return `${String(hour).padStart(2, "0")}:${match[2]}`;
+  };
+
+  const from24HourTo12Hour = (value: any): string => {
+    const match = String(value || "").trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return "9:00 AM";
+    let hour = parseInt(match[1], 10);
+    const suffix = hour >= 12 ? "PM" : "AM";
+    if (hour === 0) hour = 12;
+    if (hour > 12) hour -= 12;
+    return `${hour}:${match[2]} ${suffix}`;
+  };
 
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -514,15 +600,48 @@ export default function GoogleSheetsData() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportModalStep, setReportModalStep] = useState<"standard" | "custom">("standard");
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
-  const [reportForm, setReportForm] = useState({
-    name: "", description: "", reportType: "", scheduleEnabled: false,
-    scheduleFrequency: "weekly", scheduleDayOfWeek: "monday", scheduleDayOfMonth: "first",
-    quarterTiming: "end", scheduleTime: "9:00 AM", emailRecipients: "", status: "draft",
-  });
+  const [reportForm, setReportForm] = useState(createEmptyGoogleSheetsReportForm);
   const [reportFormErrors, setReportFormErrors] = useState<any>({});
-  const [customReportConfig, setCustomReportConfig] = useState<any>({
-    selectedMetrics: [], kpis: [], benchmarks: [],
-  });
+  const [customReportConfig, setCustomReportConfig] = useState<any>(createEmptyGoogleSheetsCustomReportConfig);
+  const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({});
+  const [reportEditSnapshot, setReportEditSnapshot] = useState("");
+
+  const resetGoogleSheetsReportCreateState = () => {
+    setEditingReportId(null);
+    setReportModalStep("standard");
+    setReportForm(createEmptyGoogleSheetsReportForm());
+    setReportFormErrors({});
+    setCustomReportConfig(createEmptyGoogleSheetsCustomReportConfig());
+    setExpandedCustomReportSections({});
+    setReportEditSnapshot("");
+  };
+
+  const buildGoogleSheetsReportPayload = (overrides: any = {}) => {
+    const scheduled = !!reportForm.scheduleEnabled;
+    const recipients = reportForm.emailRecipients ? reportForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : [];
+    const payload: any = {
+      campaignId,
+      platformType: "google_sheets",
+      name: String(reportForm.name || "").trim(),
+      description: String(reportForm.description || "").trim() || null,
+      reportType: String(overrides.reportType || reportForm.reportType || "").trim().toLowerCase(),
+      configuration: overrides.configuration,
+      status: reportForm.status || "active",
+      scheduleEnabled: scheduled,
+    };
+
+    if (scheduled) {
+      payload.scheduleFrequency = reportForm.scheduleFrequency || "daily";
+      payload.scheduleDayOfWeek = reportForm.scheduleFrequency === "weekly" ? dayOfWeekKeyToInt(reportForm.scheduleDayOfWeek) : undefined;
+      payload.scheduleDayOfMonth = reportForm.scheduleFrequency === "monthly" || reportForm.scheduleFrequency === "quarterly" ? dayOfMonthToInt(reportForm.scheduleDayOfMonth) : undefined;
+      payload.scheduleTime = to24HourHHMM(reportForm.scheduleTime);
+      payload.scheduleTimeZone = userTimeZone;
+      payload.quarterTiming = reportForm.scheduleFrequency === "quarterly" ? reportForm.quarterTiming : undefined;
+      payload.scheduleRecipients = recipients;
+    }
+
+    return payload;
+  };
 
   // ═══ Insights State ═══
   const [gsInsightsTrendMetric, setGsInsightsTrendMetric] = useState<string>('');
@@ -659,6 +778,7 @@ export default function GoogleSheetsData() {
       }
       setIsReportModalOpen(false);
       setEditingReportId(null);
+      setReportEditSnapshot("");
     },
     onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to create report", variant: "destructive" }); },
   });
@@ -673,6 +793,7 @@ export default function GoogleSheetsData() {
       toast({ title: "Report Updated", description: "Your report has been updated successfully." });
       setIsReportModalOpen(false);
       setEditingReportId(null);
+      setReportEditSnapshot("");
     },
     onError: (error: any) => { toast({ title: "Error", description: error.message || "Failed to update report", variant: "destructive" }); },
   });
@@ -856,6 +977,112 @@ export default function GoogleSheetsData() {
     };
   }, [benchmarksData, computeGoogleSheetsBenchmarkProgress, parseSheetMetricNumber, resolveGoogleSheetsBenchmarkMetric]);
 
+  const downloadGoogleSheetsReport = async (opts: { reportType: string; configuration?: any; reportName?: string }) => {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF();
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    const right = pageW - margin;
+    let y = 18;
+    const safeText = (value: any) => String(value ?? "").replace(/[^\x20-\x7E]/g, " ").trim();
+    const text = (value: any, x: number, yy: number, size = 10, style: "normal" | "bold" = "normal") => {
+      doc.setFont("helvetica", style);
+      doc.setFontSize(size);
+      doc.text(safeText(value), x, yy);
+    };
+    const ensureSpace = (height: number) => {
+      if (y + height > 280) {
+        doc.addPage();
+        y = 18;
+      }
+    };
+    const addRow = (label: string, value: any) => {
+      ensureSpace(8);
+      text(label, margin, y, 9, "bold");
+      text(value, margin + 75, y, 9);
+      y += 7;
+    };
+    const formatValue = (value: any, unit?: string, type?: string) => {
+      const numeric = parseSheetMetricNumber(value);
+      if (numeric === null) return "Unavailable";
+      if (unit === "$" || type === "currency") return `$${numeric.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      if (unit === "%") return `${numeric.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
+      if (unit === "ratio") return `${numeric.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x`;
+      return numeric.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    };
+    const metricOptionsByKey = new Map(googleSheetsKpiMetricOptions.map((metric) => [metric.key, metric]));
+    const selectedConfig = parseGoogleSheetsReportConfiguration(opts.configuration || customReportConfig);
+    const reportType = String(opts.reportType || "overview").toLowerCase();
+
+    text(opts.reportName || reportForm.name || "Google Sheets Report", margin, y, 16, "bold");
+    y += 8;
+    text(`Source: ${sheetsData?.spreadsheetName || "Google Sheets"}`, margin, y, 9);
+    y += 6;
+    text(`Rows: ${(sheetsData?.filteredRows ?? sheetsData?.totalRows ?? 0).toLocaleString()} | Generated: ${new Date().toLocaleString()}`, margin, y, 9);
+    y += 10;
+
+    const addMetrics = (metrics: GoogleSheetsKpiMetricOption[]) => {
+      metrics.slice(0, 30).forEach((metric) => addRow(metric.label, formatValue(metric.currentValue, metric.unit, metric.type)));
+      if (metrics.length > 30) addRow("Additional metrics", `${metrics.length - 30} omitted from PDF view`);
+    };
+
+    if (reportType === "overview") {
+      text("Overview", margin, y, 12, "bold");
+      y += 8;
+      addMetrics(googleSheetsKpiMetricOptions.filter((metric) => metric.available));
+    } else if (reportType === "kpis") {
+      text("KPIs", margin, y, 12, "bold");
+      y += 8;
+      (Array.isArray(kpisData) ? kpisData : []).forEach((kpi: any) => {
+        const resolved = resolveGoogleSheetsKpiMetric(kpi);
+        addRow(String(kpi.name || kpi.metric || "KPI"), `${formatValue(resolved.currentValue, resolved.option?.unit, resolved.option?.type)} / ${formatValue(kpi.targetValue, resolved.option?.unit, resolved.option?.type)}`);
+      });
+    } else if (reportType === "benchmarks") {
+      text("Benchmarks", margin, y, 12, "bold");
+      y += 8;
+      (Array.isArray(benchmarksData) ? benchmarksData : []).forEach((benchmark: any) => {
+        const resolved = resolveGoogleSheetsBenchmarkMetric(benchmark);
+        addRow(String(benchmark.name || benchmark.metric || "Benchmark"), `${formatValue(resolved.currentValue, resolved.option?.unit, resolved.option?.type)} / ${formatValue(benchmark.benchmarkValue, resolved.option?.unit, resolved.option?.type)}`);
+      });
+    } else if (reportType === "custom") {
+      text("Custom Report", margin, y, 12, "bold");
+      y += 8;
+      const selectedMetrics = (selectedConfig.selectedMetrics || []).map((metric: string) => metricOptionsByKey.get(metric)).filter(Boolean) as GoogleSheetsKpiMetricOption[];
+      if (selectedMetrics.length > 0) {
+        text("Overview", margin, y, 10, "bold");
+        y += 7;
+        addMetrics(selectedMetrics);
+      }
+      const selectedKpis = new Set([...(selectedConfig.kpis || []), ...(selectedConfig.selectedKpiIds || [])].map(String));
+      (Array.isArray(kpisData) ? kpisData : []).filter((kpi: any) => selectedKpis.has(String(kpi.id))).forEach((kpi: any) => {
+        const resolved = resolveGoogleSheetsKpiMetric(kpi);
+        addRow(`KPI: ${String(kpi.name || kpi.metric || "")}`, formatValue(resolved.currentValue, resolved.option?.unit, resolved.option?.type));
+      });
+      const selectedBenchmarks = new Set([...(selectedConfig.benchmarks || []), ...(selectedConfig.selectedBenchmarkIds || [])].map(String));
+      (Array.isArray(benchmarksData) ? benchmarksData : []).filter((benchmark: any) => selectedBenchmarks.has(String(benchmark.id))).forEach((benchmark: any) => {
+        const resolved = resolveGoogleSheetsBenchmarkMetric(benchmark);
+        addRow(`Benchmark: ${String(benchmark.name || benchmark.metric || "")}`, formatValue(resolved.currentValue, resolved.option?.unit, resolved.option?.type));
+      });
+    } else if (reportType === "ads") {
+      text("Ad Comparison", margin, y, 12, "bold");
+      y += 8;
+      text("Google Sheets does not expose ad-level rows for this source. Use a paid-media source for Ad Comparison reports.", margin, y, 9);
+      y += 8;
+    } else {
+      text("Insights", margin, y, 12, "bold");
+      y += 8;
+      addRow("Detected metrics", googleSheetsKpiMetricOptions.length);
+      addRow("Top metric", googleSheetsKpiMetricOptions[0]?.label || "Unavailable");
+      addRow("Current rows", sheetsData?.filteredRows ?? sheetsData?.totalRows ?? 0);
+    }
+
+    doc.setFontSize(8);
+    doc.text("Generated by MimoSaaS", margin, 287);
+    doc.text(new Date().toISOString().slice(0, 10), right - 30, 287);
+    const safeName = safeText(opts.reportName || reportForm.name || "Google_Sheets_Report").replace(/\s+/g, "_") || "Google_Sheets_Report";
+    doc.save(`${safeName}.pdf`);
+  };
+
   // ═══ Handler Functions ═══
   const handleCreateKpi = () => {
     if (!kpiForm.name || !kpiForm.metric || !kpiForm.targetValue) {
@@ -945,41 +1172,65 @@ export default function GoogleSheetsData() {
       overview: "Google Sheets Overview Report", kpis: "KPIs Report",
       benchmarks: "Benchmarks Report", insights: "Insights Report", custom: "Custom Report",
     };
-    setReportForm({ ...reportForm, reportType: type, name: names[type] || "Report" });
+    setReportForm((prev) => ({ ...prev, reportType: type, name: names[type] || "Report" }));
   };
 
-  const handleCreateReport = () => {
+  const handleCreateReport = async () => {
+    if (!reportForm.reportType) {
+      toast({ title: "Report Type Required", description: "Choose a report template before generating a report.", variant: "destructive" });
+      return;
+    }
     if (reportForm.scheduleEnabled && !reportForm.emailRecipients?.trim()) {
       setReportFormErrors({ emailRecipients: "Email recipients are required for scheduled reports" });
       return;
     }
-    const recipients = reportForm.emailRecipients ? reportForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : [];
-    createReportMutation.mutate({
-      ...reportForm, campaignId, platformType: "google_sheets",
-      scheduleRecipients: recipients,
-    });
+    const payload = buildGoogleSheetsReportPayload();
+    if (!payload.scheduleEnabled) {
+      try {
+        await downloadGoogleSheetsReport({ reportType: payload.reportType, reportName: payload.name });
+        setIsReportModalOpen(false);
+      } catch (error: any) {
+        toast({ title: "Failed to generate report", description: error?.message || "An unexpected error occurred", variant: "destructive" });
+      }
+      return;
+    }
+    createReportMutation.mutate(payload);
   };
 
   const handleUpdateReport = () => {
     if (!editingReportId) return;
-    const recipients = reportForm.emailRecipients ? reportForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : [];
-    updateReportMutation.mutate({
-      reportId: editingReportId,
-      data: { ...reportForm, scheduleRecipients: recipients },
-    });
-  };
-
-  const handleCustomReport = () => {
     if (reportForm.scheduleEnabled && !reportForm.emailRecipients?.trim()) {
       setReportFormErrors({ emailRecipients: "Email recipients are required for scheduled reports" });
       return;
     }
-    const recipients = reportForm.emailRecipients ? reportForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : [];
-    createReportMutation.mutate({
-      ...reportForm, campaignId, platformType: "google_sheets",
-      reportType: "custom", configuration: customReportConfig,
-      scheduleRecipients: recipients,
+    updateReportMutation.mutate({
+      reportId: editingReportId,
+      data: buildGoogleSheetsReportPayload({
+        reportType: reportForm.reportType,
+        configuration: reportForm.reportType === "custom" ? customReportConfig : null,
+      }),
     });
+  };
+
+  const handleCustomReport = async () => {
+    if (reportForm.scheduleEnabled && !reportForm.emailRecipients?.trim()) {
+      setReportFormErrors({ emailRecipients: "Email recipients are required for scheduled reports" });
+      return;
+    }
+    const payload = buildGoogleSheetsReportPayload({
+      reportType: "custom",
+      configuration: customReportConfig,
+    });
+    if (!payload.scheduleEnabled) {
+      try {
+        await downloadGoogleSheetsReport({ reportType: "custom", configuration: customReportConfig, reportName: payload.name });
+        setIsReportModalOpen(false);
+      } catch (error: any) {
+        toast({ title: "Failed to generate report", description: error?.message || "An unexpected error occurred", variant: "destructive" });
+      }
+      return;
+    }
+    createReportMutation.mutate(payload);
   };
 
   const formatMetricValue = (value: number, type?: string): string => {
@@ -1121,6 +1372,9 @@ export default function GoogleSheetsData() {
     if (n.includes('rate') || n.includes('%') || n.includes('ctr') || n.includes('roas')) return TrendingUp;
     return BarChart3;
   }
+
+  const reportHasChanges = !editingReportId ||
+    serializeGoogleSheetsReportState(reportForm, customReportConfig, reportModalStep) !== reportEditSnapshot;
 
   return (
     <div className="min-h-screen bg-background">
@@ -2689,12 +2943,12 @@ export default function GoogleSheetsData() {
                     <>
                       <div className="flex items-center justify-between">
                         <div>
-                          <h2 className="text-2xl font-bold text-foreground">Reports</h2>
+                          <h2 className="text-2xl font-bold text-foreground">Google Sheets Reports</h2>
                           <p className="text-sm text-muted-foreground/70 mt-1">
                             Schedule and generate reports from your Google Sheets data
                           </p>
                         </div>
-                        <Button onClick={() => { setReportModalStep("standard"); setIsReportModalOpen(true); }} variant="outline" size="sm">
+                        <Button onClick={() => { resetGoogleSheetsReportCreateState(); setIsReportModalOpen(true); }} variant="outline" size="sm">
                           <Plus className="w-4 h-4 mr-2" />
                           Create Report
                         </Button>
@@ -2733,30 +2987,52 @@ export default function GoogleSheetsData() {
                                 </div>
                                 <div className="flex gap-1">
                                   <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      void downloadGoogleSheetsReport({
+                                        reportType: String(report.reportType || "overview"),
+                                        configuration: parseGoogleSheetsReportConfiguration(report.configuration),
+                                        reportName: String(report.name || "Google Sheets Report"),
+                                      }).catch((error: any) => toast({
+                                        title: "Failed to generate report",
+                                        description: error?.message || "An unexpected error occurred",
+                                        variant: "destructive",
+                                      }));
+                                    }}
+                                  >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Download
+                                  </Button>
+                                  <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => {
-                                      setEditingReportId(report.id);
-                                      setReportForm({
+                                      const nextForm = {
                                         name: report.name || "", description: report.description || "",
                                         reportType: report.reportType || "overview",
                                         scheduleEnabled: !!report.scheduleEnabled,
-                                        scheduleFrequency: report.scheduleFrequency || "weekly",
-                                        scheduleDayOfWeek: report.scheduleDayOfWeek || "monday",
-                                        scheduleDayOfMonth: report.scheduleDayOfMonth || "first",
+                                        scheduleFrequency: report.scheduleFrequency || "daily",
+                                        scheduleDayOfWeek: dayOfWeekIntToKey(report.scheduleDayOfWeek),
+                                        scheduleDayOfMonth: report.scheduleDayOfMonth === 0 ? "last" : String(report.scheduleDayOfMonth || "first"),
                                         quarterTiming: report.quarterTiming || "end",
-                                        scheduleTime: report.scheduleTime || "9:00 AM",
+                                        scheduleTime: from24HourTo12Hour(report.scheduleTime),
                                         emailRecipients: Array.isArray(report.scheduleRecipients) ? report.scheduleRecipients.join(', ') : "",
-                                        status: report.status || "draft",
-                                      });
-                                      setReportModalStep(report.reportType === "custom" ? "custom" : "standard");
-                                      if (report.configuration) {
-                                        setCustomReportConfig(report.configuration);
-                                      }
+                                        status: report.status || "active",
+                                      };
+                                      const nextModalStep = report.reportType === "custom" ? "custom" : "standard";
+                                      const nextConfig = parseGoogleSheetsReportConfiguration(report.configuration);
+                                      setEditingReportId(report.id);
+                                      setReportForm(nextForm);
+                                      setReportModalStep(nextModalStep);
+                                      setCustomReportConfig(nextConfig);
+                                      setExpandedCustomReportSections({});
+                                      setReportFormErrors({});
+                                      setReportEditSnapshot(serializeGoogleSheetsReportState(nextForm, nextConfig, nextModalStep));
                                       setIsReportModalOpen(true);
                                     }}
                                   >
-                                    <Edit2 className="w-4 h-4" />
+                                    <Pencil className="w-4 h-4" />
                                   </Button>
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
@@ -2790,7 +3066,7 @@ export default function GoogleSheetsData() {
                         <p className="text-muted-foreground/70 mb-4">
                           Schedule and generate reports from your Google Sheets data.
                         </p>
-                        <Button onClick={() => { setReportModalStep("standard"); setIsReportModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700">
+                        <Button onClick={() => { resetGoogleSheetsReportCreateState(); setIsReportModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700">
                           <Plus className="w-4 h-4 mr-2" />
                           Create Your First Report
                         </Button>
@@ -3048,6 +3324,8 @@ export default function GoogleSheetsData() {
             setFormErrors={setReportFormErrors}
             customConfig={customReportConfig}
             setCustomConfig={setCustomReportConfig}
+            expandedSections={expandedCustomReportSections}
+            setExpandedSections={setExpandedCustomReportSections}
             detectedColumns={sheetsData?.summary?.detectedColumns || []}
             kpisData={kpisData}
             benchmarksData={benchmarksData}
@@ -3055,6 +3333,7 @@ export default function GoogleSheetsData() {
             handleCreate={handleCreateReport}
             handleUpdate={handleUpdateReport}
             handleCustom={handleCustomReport}
+            hasChanges={reportHasChanges}
             createMutation={createReportMutation}
             updateMutation={updateReportMutation}
           />

@@ -26,9 +26,21 @@ export function GoogleSheetsKpiModal(props: any) {
 
   const KPI_DESC_MAX = 500;
 
-  const formatNumberAsYouType = (val: string): string => {
+  const cleanNumberAsYouType = (val: string): string => {
     const cleaned = val.replace(/[^0-9.,\-]/g, '');
     return cleaned;
+  };
+
+  const formatNumberAsYouType = (val: string): string => {
+    const cleaned = val.replace(/,/g, '').replace(/[^0-9.\-]/g, '');
+    if (!cleaned || cleaned === "-") return cleaned;
+    const negative = cleaned.startsWith("-");
+    const unsigned = cleaned.replace(/-/g, '');
+    const [integerPart, ...decimalParts] = unsigned.split('.');
+    const normalizedInteger = (integerPart || "0").replace(/^0+(?=\d)/, '');
+    const groupedInteger = normalizedInteger.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const decimal = decimalParts.length > 0 ? `.${decimalParts.join('')}` : '';
+    return `${negative ? '-' : ''}${groupedInteger}${decimal}`;
   };
 
   return (
@@ -105,9 +117,11 @@ export function GoogleSheetsKpiModal(props: any) {
                     }}
                   >
                     <div className="font-medium text-sm text-foreground">{metric.label}</div>
-                    <div className="text-xs text-muted-foreground/70 mt-1">
-                      {disabled ? metric.reason : `Current value: ${metric.currentValue}`}
-                    </div>
+                    {disabled && (
+                      <div className="text-xs text-muted-foreground/70 mt-1">
+                        {metric.reason}
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -153,7 +167,7 @@ export function GoogleSheetsKpiModal(props: any) {
                 id="gs-kpi-current"
                 type="text"
                 placeholder="0"
-                value={form.currentValue || ""}
+                value={formatNumberAsYouType(form.currentValue || "")}
                 readOnly
                 className="bg-muted cursor-not-allowed"
                 data-source-backed-current-value="google_sheets"
@@ -227,7 +241,7 @@ export function GoogleSheetsKpiModal(props: any) {
                       placeholder="e.g., 80"
                       inputMode="decimal"
                       value={form.alertThreshold}
-                      onChange={(e) => setForm({ ...form, alertThreshold: formatNumberAsYouType(e.target.value) })}
+                      onChange={(e) => setForm({ ...form, alertThreshold: cleanNumberAsYouType(e.target.value) })}
                     />
                     <p className="text-xs text-muted-foreground/70">Value at which to trigger the alert</p>
                   </div>

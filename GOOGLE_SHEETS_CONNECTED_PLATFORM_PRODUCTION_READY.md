@@ -36,6 +36,18 @@ Required source rules:
 - Missing metrics must render unavailable with reasons.
 - Live OAuth/provider validation must be tracked as a separate deferred commit if real Google OAuth validation is not available during local implementation.
 
+Strict template enforcement rule:
+
+- For every remaining Google Sheets KPI, Benchmark, Report, Total Revenue, Pipeline Proxy, refresh, scheduler, lifecycle, and final-readiness commit, `CONNECTED_PLATFORM_SECTION_TEMPLATES.md` is the implementation contract, not a loose reference.
+- Before a section commit is marked complete, the relevant template checklist items must be traced item by item.
+- Each applicable item must be one of:
+  - implemented and regression-covered,
+  - implemented and locally/browser validated where code regression coverage is not practical,
+  - explicitly documented as an intentional Google Sheets-specific deviation with the reason and replacement behavior.
+- Do not mark a section complete when the implementation only matches labels, rough layout, or backend support. Completion requires the required template behavior, source-specific metric adapter, formatting, unavailable reasons, alert behavior, edit/delete behavior, query refresh behavior, and report/schedule behavior where applicable.
+- Regression tests must enforce every required template behavior that can be asserted from local source or API behavior. A test that only proves the old implementation is absent is not sufficient.
+- Any item that cannot be validated locally must remain listed as pending browser/provider validation and must not be described as production-ready.
+
 ## Current Status
 
 Google Sheets already exists in the codebase, but it has not yet been reviewed and hardened as a production-ready connected platform under the reusable section-template contract.
@@ -447,15 +459,19 @@ Subcommits:
 - 7E: Format Benchmark Value while typing and on blur.
 - 7F: Keep revenue-dependent Benchmark metrics unavailable until confirmed Google Sheets-scoped revenue exists.
 - 7G: Add alert, edit, delete, and query-refresh parity.
-- 7H: Add regression coverage for the full template contract.
+- 7H: Trace every applicable Benchmark checklist item in `CONNECTED_PLATFORM_SECTION_TEMPLATES.md` and document implemented items or intentional Google Sheets-specific deviations.
+- 7I: Add regression coverage that enforces every applicable Benchmark template behavior, including modal field order, no default selection, source-backed current value, number formatting, unavailable reasons, alert behavior, edit/delete controls, and query refresh.
 
 Validation:
 
 - Create Benchmark button matches GA4 placement and behavior.
 - Modal fields match GA4 order.
 - Current Value updates from selected sheet metric.
+- Current Value and Benchmark Value format according to the template.
 - Missing metrics do not become zero.
 - Revenue/ROI/ROAS are disabled unless source-backed revenue and spend are available.
+- Regression test fails if any locally assertable Benchmark template behavior is missing.
+- Any Benchmark template item not validated in code/browser must remain documented as pending or as an intentional deviation.
 
 Status:
 
@@ -478,6 +494,8 @@ Subcommits:
 - 8G: Disable Update Report until something changes in edit mode.
 - 8H: Ensure browser PDFs and scheduled PDFs use latest source-backed values.
 - 8I: Add scheduled-send fail-closed and no-fake-snapshot regression coverage.
+- 8J: Trace every applicable Reports checklist item in `CONNECTED_PLATFORM_SECTION_TEMPLATES.md` and document implemented items or intentional Google Sheets-specific deviations.
+- 8K: Add regression coverage that enforces every applicable Reports template behavior, including report type modal structure, no default selected template/section, custom section collapse state, KPI/Benchmark source-backed row inclusion, create/update/download/schedule labels, disabled Update behavior, delete confirmation, PDF value source, scheduled-send fail-closed behavior, and no misleading snapshots.
 
 Validation:
 
@@ -485,6 +503,8 @@ Validation:
 - Report cards use Download/Pencil/Trash icons and delete confirmation.
 - Report output uses selected Google Sheets current values, KPI rows, and Benchmark rows.
 - Scheduled reports do not send or snapshot when campaign/source scope is invalid.
+- Regression test fails if any locally assertable Reports template behavior is missing.
+- Any Reports template item not validated in code/browser must remain documented as pending or as an intentional deviation.
 
 Status:
 
@@ -579,15 +599,18 @@ Subcommits:
 - 12A: Run targeted Google Sheets source safety tests.
 - 12B: Run shared revenue/spend source tests.
 - 12C: Run Campaign DeepDive aggregate tests after Google Sheets aggregate wiring.
-- 12D: Run KPI/Benchmark/Report section template regression tests.
+- 12D: Run KPI/Benchmark/Report section template regression tests that enforce every locally assertable applicable item from `CONNECTED_PLATFORM_SECTION_TEMPLATES.md`.
 - 12E: Run `npm run check`.
 - 12F: Record browser validation evidence for Create Campaign and Connected Platforms paths.
+- 12G: Reconcile the final Google Sheets implementation against `CONNECTED_PLATFORM_SECTION_TEMPLATES.md` item by item and leave no applicable item unmarked. Each item must be implemented, regression-covered, browser/provider-validated, or documented as an intentional Google Sheets-specific deviation.
 
 Validation:
 
 - All targeted tests pass.
 - Browser validation confirms main Google Sheets connected platform behavior.
 - Child-source no-double-counting validation passes.
+- Final readiness documentation includes the item-by-item template compliance trace for KPIs, Benchmarks, Reports, Total Revenue, and Pipeline Proxy.
+- Google Sheets is not marked locally production-ready if any applicable template behavior remains unimplemented, unvalidated, or undocumented.
 
 Status:
 
@@ -671,6 +694,8 @@ Google Sheets can be marked locally production-ready only when:
 - Analytics values come only from selected active Google Sheets source rows.
 - KPIs, Benchmarks, and Reports follow the GA4 template contract.
 - Total Revenue and Pipeline Proxy follow the Meta template contract where supported.
+- Every applicable item in `CONNECTED_PLATFORM_SECTION_TEMPLATES.md` has been traced and marked implemented, regression-covered, browser/provider-validated, or documented as an intentional Google Sheets-specific deviation.
+- Regression coverage enforces every locally assertable required template behavior instead of only checking for high-level labels or absence of old UI.
 - Campaign DeepDive consumes Google Sheets only through the shared aggregate contract.
 - Missing metrics render unavailable with reasons.
 - Refresh/scheduler/lifecycle paths are source-scoped and stale-data safe.
@@ -697,6 +722,7 @@ Google Sheets can be marked locally production-ready only when:
 
 ## Latest Validation
 
+- Tracker guard update: remaining Google Sheets section commits must treat `CONNECTED_PLATFORM_SECTION_TEMPLATES.md` as a strict checklist, trace every applicable item, and add regression coverage for every locally assertable required behavior before any section can be marked complete.
 - Commit 1 tracker created locally after reading required project guidance and tracing current Google Sheets code paths.
 - Commit 2 Connected Platforms source-identity slice completed locally: main Google Sheets platform status now uses the campaign-level Google Sheets eligibility flag instead of any active Google Sheets connection.
 - Commit 2 validation passed locally: `npm test -- server/source-safety-regression.test.ts`.

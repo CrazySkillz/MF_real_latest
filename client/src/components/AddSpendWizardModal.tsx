@@ -27,6 +27,7 @@ type Step =
   | "manual";
 
 type AdPlatform = "linkedin" | "meta" | "google_ads";
+type SpendPlatformContext = "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok" | "google_sheets";
 
 const ENABLE_AD_PLATFORM_TEST_MODE = String(import.meta.env.VITE_ENABLE_AD_PLATFORM_TEST_MODE || "").toLowerCase() === "true";
 
@@ -54,6 +55,9 @@ export function AddSpendWizardModal(props: {
   onOpenChange: (open: boolean) => void;
   currency?: string;
   dateRange?: string; // spend is always distributed across this period (date-agnostic import)
+  platformContext?: SpendPlatformContext;
+  initialStep?: Step;
+  lockInitialStep?: boolean;
   initialSource?: { id?: string; sourceType?: string; mappingConfig?: string | null; displayName?: string | null };
   onProcessed?: () => void;
 }) {
@@ -66,7 +70,7 @@ export function AddSpendWizardModal(props: {
   if (props.open && !prevOpenRef.current) {
     // Modal just opened — set step synchronously during render (no flash)
     const targetStep: Step = (() => {
-      if (!props.initialSource?.id) return "select";
+      if (!props.initialSource?.id) return props.initialStep || "select";
       const st = String((props.initialSource as any)?.sourceType || "").toLowerCase();
       if (st === "google_sheets") return "sheets_map";
       if (st === "csv") return "csv_map";
@@ -893,12 +897,13 @@ export function AddSpendWizardModal(props: {
         sheetHeaders: Array.isArray(csvPreview?.headers) ? csvPreview.headers : undefined,
         sheetSampleRows: Array.isArray(csvPreview?.sampleRows) ? csvPreview.sampleRows : undefined,
         sheetRowCount: typeof csvPreview?.rowCount === "number" ? csvPreview.rowCount : undefined,
+        platformContext: props.platformContext,
         ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
       };
       const resp = await fetch(`/api/campaigns/${props.campaignId}/spend/sheets/process`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ connectionId: selectedSheetConnectionId, mapping }),
+        body: JSON.stringify({ connectionId: selectedSheetConnectionId, mapping, platformContext: props.platformContext }),
       });
       const json = await resp.json().catch(() => null);
       if (!resp.ok || !json?.success) throw new Error(json?.error || "Failed to process spend");
@@ -1346,6 +1351,7 @@ export function AddSpendWizardModal(props: {
   const handleBack = () => {
     if (step === "select") return;
     if (step === "csv_map") return setStep("csv");
+    if (props.lockInitialStep && step === props.initialStep) return;
     if (step === "sheets_choose" && showSheetsConnect && sheetsConnections.length > 0) {
       setShowSheetsConnect(false);
       return;
@@ -1382,7 +1388,7 @@ export function AddSpendWizardModal(props: {
                 <DialogTitle className="truncate leading-normal">{title}</DialogTitle>
                 <DialogDescription className="mt-1">{description}</DialogDescription>
               </div>
-              {step !== "select" && (!isEditing || step === "csv_map" || step === "sheets_map") && (
+              {step !== "select" && (!props.lockInitialStep || step !== props.initialStep) && (!isEditing || step === "csv_map" || step === "sheets_map") && (
                 <Button variant="ghost" onClick={handleBack}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back
@@ -2450,7 +2456,7 @@ export function AddSpendWizardModal(props: {
                     )}
 
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setStep("select")} disabled={isProcessing}>Cancel</Button>
+                      <Button variant="outline" onClick={() => props.lockInitialStep ? props.onOpenChange(false) : setStep("select")} disabled={isProcessing}>Cancel</Button>
       <Button
         onClick={step === "csv_map" ? processCsv : processSheets}
         disabled={

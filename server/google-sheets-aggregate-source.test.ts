@@ -90,8 +90,15 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("Pipeline Proxy");
     expect(page).toContain("ROAS");
     expect(page).toContain("ROI");
+    expect(page).toContain("AddSpendWizardModal");
+    expect(page).toContain('platformContext="google_sheets"');
+    expect(page).toContain('initialStep="sheets_choose"');
+    expect(page).toContain("lockInitialStep");
+    expect(page).toContain("Add Spend");
     expect(page).toContain("/spend-totals?platformContext=google_sheets&dateRange=all");
     expect(page).toContain("/pipeline-proxy?platformContext=google_sheets");
+    expect(page).toContain('String(googleSheetsRevenueCurrency || "").toUpperCase() === "USD"');
+    expect(page).toContain("return `$${safeValue.toLocaleString");
     expect(page).toContain("Open CRM value only. Not counted in Total Revenue, ROI, or ROAS.");
     expect(page).toContain("Requires confirmed revenue and spend");
   });
@@ -108,5 +115,25 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(spendTotalsRoute).toContain('String(source?.platformContext || "").trim().toLowerCase() === "google_sheets"');
     expect(spendTotalsRoute).toContain("eligibleSourceIds.has");
     expect(spendTotalsRoute).toContain("totalSpend: Number(totalSpend.toFixed(2))");
+  });
+
+  it("persists Google Sheets spend imports with google_sheets platformContext for ROAS and ROI unlocks", () => {
+    const modal = readSource("client", "src", "components", "AddSpendWizardModal.tsx");
+    expect(modal).toContain("platformContext?: SpendPlatformContext");
+    expect(modal).toContain("initialStep?: Step");
+    expect(modal).toContain("lockInitialStep?: boolean");
+    expect(modal).toContain("platformContext: props.platformContext");
+
+    const routes = readSource("server", "routes-oauth.ts");
+    const sheetsSpendRoute = sliceBetween(
+      routes,
+      'app.post("/api/campaigns/:id/spend/sheets/process"',
+      "// ---------------------------------------------------------------------------"
+    );
+
+    expect(sheetsSpendRoute).toContain("requestedPlatformContext");
+    expect(sheetsSpendRoute).toContain('requestedPlatformContext !== "google_sheets"');
+    expect(sheetsSpendRoute).toContain("platformContext: platformContext || null");
+    expect(sheetsSpendRoute).toContain('String((s as any).platformContext || "").trim().toLowerCase() !== platformContext');
   });
 });

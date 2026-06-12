@@ -19,6 +19,7 @@ import { ColumnMappingInterface } from "@/components/ColumnMappingInterface";
 import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
 import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
 import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
+import { AddSpendWizardModal } from "@/components/AddSpendWizardModal";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { GoogleSheetsKpiModal } from "@/pages/google-sheets-analytics/GoogleSheetsKpiModal";
@@ -630,6 +631,7 @@ export default function GoogleSheetsData() {
   const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({});
   const [reportEditSnapshot, setReportEditSnapshot] = useState("");
   const [isRevenueWizardOpen, setIsRevenueWizardOpen] = useState(false);
+  const [isSpendWizardOpen, setIsSpendWizardOpen] = useState(false);
   const [revenueWizardInitialSource, setRevenueWizardInitialSource] = useState<any>(null);
   const [showRevenueSourcesDialog, setShowRevenueSourcesDialog] = useState(false);
   const [showPipelineProxySourcesDialog, setShowPipelineProxySourcesDialog] = useState(false);
@@ -795,13 +797,18 @@ export default function GoogleSheetsData() {
   const googleSheetsRoas = hasGoogleSheetsDerivedFinancials ? googleSheetsTotalRevenue / googleSheetsTotalSpend : null;
   const googleSheetsRoi = hasGoogleSheetsDerivedFinancials ? ((googleSheetsTotalRevenue - googleSheetsTotalSpend) / googleSheetsTotalSpend) * 100 : null;
   const googleSheetsRevenueCurrency = googleSheetsRevenueTotalsData?.currency || googleSheetsSpendTotalsData?.currency || (campaign as any)?.currency || "USD";
-  const fmtCurrency = (value: number) =>
-    new Intl.NumberFormat(undefined, {
+  const fmtCurrency = (value: number) => {
+    const safeValue = Number.isFinite(value) ? value : 0;
+    if (String(googleSheetsRevenueCurrency || "").toUpperCase() === "USD") {
+      return `$${safeValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    return new Intl.NumberFormat(undefined, {
       style: "currency",
       currency: googleSheetsRevenueCurrency,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(Number.isFinite(value) ? value : 0);
+    }).format(safeValue);
+  };
 
   const googleSheetsPipelineProxySourceEntries = useMemo(() => {
     const sourceForProvider = (provider: "hubspot" | "salesforce", endpointData: any) => {
@@ -926,6 +933,18 @@ export default function GoogleSheetsData() {
           <p className="text-xs text-muted-foreground mt-1">
             {googleSheetsRoas !== null ? "Confirmed revenue / confirmed spend" : "Requires confirmed revenue and spend"}
           </p>
+          {hasGoogleSheetsConfirmedRevenue && !hasGoogleSheetsConfirmedSpend && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2 h-8"
+              onClick={() => setIsSpendWizardOpen(true)}
+            >
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              Add Spend
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -3597,6 +3616,22 @@ export default function GoogleSheetsData() {
               platformContext="google_sheets"
               initialSource={revenueWizardInitialSource || undefined}
               onSuccess={() => {
+                void refreshGoogleSheetsRevenueQueries();
+              }}
+            />
+          )}
+
+          {campaignId && (
+            <AddSpendWizardModal
+              campaignId={campaignId}
+              open={isSpendWizardOpen}
+              onOpenChange={setIsSpendWizardOpen}
+              currency={(campaign as any)?.currency || googleSheetsRevenueCurrency || "USD"}
+              dateRange="90days"
+              platformContext="google_sheets"
+              initialStep="sheets_choose"
+              lockInitialStep
+              onProcessed={() => {
                 void refreshGoogleSheetsRevenueQueries();
               }}
             />

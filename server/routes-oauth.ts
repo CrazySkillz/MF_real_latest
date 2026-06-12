@@ -4653,6 +4653,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!mapping?.spendColumn) {
         return res.status(400).json({ success: false, error: "spendColumn is required" });
       }
+      const requestedPlatformContext = String((req.body as any)?.platformContext || mapping?.platformContext || "").trim().toLowerCase();
+      if (requestedPlatformContext && requestedPlatformContext !== "google_sheets") {
+        return res.status(400).json({ success: false, error: "Unsupported spend platformContext" });
+      }
+      const platformContext = requestedPlatformContext || null;
 
       const connections = await storage.getGoogleSheetsConnections(campaignId, "spend");
       const conn = (connections as any[]).find((c) => String(c.id) === connectionId);
@@ -4798,6 +4803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const mappingForStorage = {
         ...mapping,
         mode: "spend_to_date",
+        platformContext: platformContext || undefined,
         connectionId,
         spreadsheetId: conn.spreadsheetId,
         sheetName: conn.sheetName || null,
@@ -4812,6 +4818,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? (Array.isArray(existingSpendSources) ? existingSpendSources : []).find((s: any) => {
             if (!s || (s as any).isActive === false) return false;
             if (String((s as any).sourceType || "") !== "google_sheets") return false;
+            if (platformContext && String((s as any).platformContext || "").trim().toLowerCase() !== platformContext) return false;
             return String((s as any).id || "") === existingSourceId;
           })
         : null;
@@ -4827,6 +4834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           displayName: mapping.displayName || "Google Sheets",
           currency,
           mappingConfig: nextSpendMappingConfig,
+          platformContext: platformContext || null,
           isActive: true,
         } as any);
       } else {
@@ -4836,6 +4844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           displayName: mapping.displayName || "Google Sheets",
           currency,
           mappingConfig: nextSpendMappingConfig,
+          ...(platformContext ? { platformContext } : {}),
           isActive: true,
         } as any);
       }

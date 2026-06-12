@@ -21,8 +21,8 @@ describe("Google Ads revenue Shopify flow", () => {
       'app.post("/api/campaigns/:id/chat"'
     );
 
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
-    expect(routes).toContain('const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(routes).toContain('const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
     expect(route).toContain("platformContext: zShopifyRevenuePlatformContext.optional()");
     expect(route).not.toContain("platformContext: zPlatformContext.optional()");
   });
@@ -95,7 +95,7 @@ describe("Google Ads revenue Shopify flow", () => {
     const modal = readSource("client", "src", "components", "AddRevenueWizardModal.tsx");
     const scheduler = readSource("server", "auto-refresh-scheduler.ts");
 
-    expect(wizard).toContain('platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok";');
+    expect(wizard).toContain('platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok" | "google_sheets";');
     expect(wizard).toContain("platformContext = \"ga4\"");
     expect(wizard).toContain("...(initialMappingConfig?.sourceId ? { sourceId: initialMappingConfig.sourceId } : {})");
     expect(wizard).toContain("selectedValues,");

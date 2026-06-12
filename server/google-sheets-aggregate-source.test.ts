@@ -46,10 +46,10 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(source.includedMetrics).toEqual(["clicks", "conversions"]);
     expect(source.metrics.clicks).toBe(15);
     expect(source.metrics.conversions).toBe(5);
-    expect(source.metrics.revenue).toBeUndefined();
+    expect(source.metrics.revenue).toBeNull();
     expect(source.excludedMetrics).toContainEqual({
       metric: "revenue",
-      reason: "Google Sheets confirmed revenue requires the dedicated revenue source path",
+      reason: "Google Sheets confirmed revenue requires an active google_sheets-scoped revenue source",
     });
   });
 

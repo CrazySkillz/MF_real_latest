@@ -18,7 +18,7 @@ describe("Google Ads report regression guard", () => {
 
     expect(scheduler).toContain("storage.getPlatformReports('google_ads')");
     expect(scheduler).toContain("Found ${googleAdsReports.length} Google Ads platform reports");
-    expect(scheduler).toContain("const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram']");
+    expect(scheduler).toContain("const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram', 'tiktok', 'google_sheets']");
   });
 
   it("persists Google Ads report revenue semantics and source provenance", () => {

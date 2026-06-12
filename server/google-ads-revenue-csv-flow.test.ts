@@ -21,8 +21,8 @@ describe("Google Ads revenue CSV flow", () => {
       'app.post("/api/campaigns/:id/revenue/sheets/preview"'
     );
 
-    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
-    expect(routes).toContain('const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
+    expect(routes).toContain('const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(routes).toContain('const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
     expect(csvRoute).toContain('parseCsvRevenuePlatformContext((req.body as any)?.platformContext, "ga4", res)');
     expect(csvRoute).not.toContain('parsePlatformContext((req.body as any)?.platformContext, "ga4", res)');
   });

@@ -277,7 +277,7 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(page).toContain('/api/platforms/tiktok/reports/${encodeURIComponent(reportId)}/snapshots');
     expect(page).toContain('/api/report-snapshots/${encodeURIComponent(String(snapshotBody.snapshot.id))}/pdf');
     expect(routes).toContain('sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok"');
-    expect(routes).toContain('const label = sourceBackedReportPlatform === "tiktok" ? "TikTok" : "Instagram";');
+    expect(routes).toContain('const label = sourceBackedReportPlatform === "tiktok" ? "TikTok" : sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : "Instagram";');
     expect(routes).toContain("${label} source-backed PDF output unavailable; snapshot not created");
     expect(reportScheduler).toContain('normalized === "instagram" || normalized === "tiktok"');
     expect(reportScheduler).toContain("async function validateTikTokScheduledReportScope");
@@ -288,7 +288,7 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(reportScheduler).toContain("const tiktokReports = await storage.getPlatformReports('tiktok')");
     expect(reportScheduler).toContain('return buildTikTokScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });');
     expect(reportScheduler).toContain("sourceBackedReportOutputUnavailableMessage");
-    expect(reportScheduler).toContain('const label = normalized === "tiktok" ? "TikTok" : "Instagram";');
+    expect(reportScheduler).toContain('const label = normalized === "tiktok" ? "TikTok" : normalized === "google_sheets" ? "Google Sheets" : "Instagram";');
     expect(page).toContain("Requires TikTok-scoped attributed revenue.");
     expect(page).toContain("const financialSummary = dailyMetrics?.financialSummary || {};");
     expect(page).toContain("const attributedRevenue = hasAttributedRevenue ? Number(financialSummary.attributedRevenue || 0) : null;");
@@ -346,7 +346,7 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(routes).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "tiktok")');
     expect(routes).toContain('...(hasImportedAttributedRevenue ? ["attributedRevenue"] : [])');
     expect(routes).toContain('attributedRevenueSource: hasImportedAttributedRevenue ? "tiktok_imported_attributed_revenue" : "unavailable"');
-    expect(routes).toContain("mainPlatformSources: { googleAds, instagram, tiktok }");
+    expect(routes).toContain("mainPlatformSources: { googleAds, instagram, tiktok, googleSheets }");
     expect(routes).toContain("linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend");
     expect(routes).toContain("hasTikTokData");
   });

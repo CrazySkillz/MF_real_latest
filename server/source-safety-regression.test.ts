@@ -380,7 +380,7 @@ describe("source safety regression guards", () => {
     expect(route).not.toContain("const allConnections = await storage.getGoogleSheetsConnections(campaignId);");
   });
 
-  it("Google Sheets main platform feeds Campaign DeepDive aggregate without child revenue/spend rows", () => {
+  it("Google Sheets main platform feeds Campaign DeepDive aggregate without raw sheet revenue/spend rows", () => {
     const routesSource = readRoutesSource();
     const storageSource = readStorageSource();
     const schedulerSource = readSchedulerSource();
@@ -391,20 +391,46 @@ describe("source safety regression guards", () => {
 
     expect(routesSource).toContain('import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";');
     expect(outcomeRoute).toContain("storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[])");
-    expect(outcomeRoute).toContain("const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[]);");
+    expect(outcomeRoute).toContain("const googleSheetsFinancials = await getGoogleSheetsConfirmedFinancialsForAggregate(campaignId, startDate, endDate);");
+    expect(outcomeRoute).toContain("const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections as any[], googleSheetsFinancials);");
     expect(outcomeRoute).toContain("mainPlatformSources: { googleAds, instagram, tiktok, googleSheets }");
     expect(routesSource).toContain("const executiveGoogleSheetsConnections = await storage.getGoogleSheetsConnections(id).catch(() => [] as any[]);");
-    expect(routesSource).toContain("const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, executiveGoogleSheetsConnections);");
+    expect(routesSource).toContain("const executiveGoogleSheetsFinancials = await getGoogleSheetsConfirmedFinancialsForAggregate(id, startDate, endDate);");
+    expect(routesSource).toContain("const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, executiveGoogleSheetsConnections, executiveGoogleSheetsFinancials);");
     expect(schedulerSource).toContain('import { buildGoogleSheetsPlatformSourceForAggregate }');
     expect(schedulerSource).toContain("const googleSheetsConnections = await storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]);");
     expect(schedulerSource).toContain("...(googleSheets ? [googleSheets] : [])");
     expect(storageSource).toContain("cachedData: (googleSheetsConnections as any).cachedData");
     expect(storageSource).toContain("lastDataRefreshAt: (googleSheetsConnections as any).lastDataRefreshAt");
     expect(aggregateSource).toContain('&& (!purpose || purpose === "general")');
-    expect(aggregateSource).toContain('metric: "revenue", reason: "Google Sheets confirmed revenue requires the dedicated revenue source path"');
-    expect(aggregateSource).toContain('metric: "spend", reason: "Google Sheets spend requires the dedicated spend source path"');
-    expect(aggregateSource).not.toContain('includedMetrics.push("revenue")');
-    expect(aggregateSource).not.toContain('includedMetrics.push("spend")');
+    expect(routesSource).toContain('storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, "google_sheets")');
+    expect(routesSource).toContain('String(source?.platformContext || "").trim().toLowerCase() === "google_sheets"');
+    expect(aggregateSource).toContain("const hasConfirmedRevenue = confirmedRevenue > 0 && revenueSourceIds.length > 0;");
+    expect(aggregateSource).toContain("const hasConfirmedSpend = confirmedSpend > 0 && spendSourceIds.length > 0;");
+    expect(aggregateSource).toContain("metrics.revenue = hasConfirmedRevenue");
+    expect(aggregateSource).toContain("metrics.spend = hasConfirmedSpend");
+    expect(aggregateSource).toContain('metric: "revenue", reason: "Google Sheets confirmed revenue requires an active google_sheets-scoped revenue source"');
+    expect(aggregateSource).toContain('metric: "spend", reason: "Google Sheets spend requires an active google_sheets-scoped spend source"');
+    expect(aggregateSource).toContain('includedMetrics.push("revenue")');
+    expect(aggregateSource).toContain('includedMetrics.push("spend")');
+  });
+
+  it("Google Sheets analytics exposes the strict Total Revenue source flow", () => {
+    const page = readGoogleSheetsDataPageSource();
+    const modal = readRevenueWizardSource();
+    const routesSource = readRoutesSource();
+
+    expect(page).toContain('platformContext="google_sheets"');
+    expect(page).toContain('fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=google_sheets`)');
+    expect(page).toContain('fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`)');
+    expect(page).toContain("Google Sheets Revenue Sources");
+    expect(page).toContain("Sources contributing to Google Sheets Total Revenue.");
+    expect(page).toContain("This removes only the selected Google Sheets revenue source. Total Revenue will be recalculated.");
+    expect(modal).toContain("platformContext === 'google_sheets' ? 'google_sheets_revenue'");
+    expect(modal).toContain("Choose the confirmed revenue source for Google Sheets analytics.");
+    expect(routesSource).toContain('if (ctx === "google_sheets") return "google_sheets_revenue";');
+    expect(routesSource).toContain('storage.getRevenueSources(campaignId, \'google_sheets\')');
+    expect(routesSource).toContain('"google_sheets_revenue"');
   });
 
   it("Google Sheets KPIs use source-backed mapped metrics without blocking explicit sheet financial columns", () => {
@@ -986,16 +1012,16 @@ describe("source safety regression guards", () => {
     const storageSource = readStorageSource();
     const schemaSource = fs.readFileSync(path.join(process.cwd(), "shared", "schema.ts"), "utf-8");
 
-    expect(storageSource).toContain("export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok';");
+    expect(storageSource).toContain("export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets';");
     expect(schemaSource).toContain("export const insertRevenueSourceSchema");
     expect(schemaSource).toContain("platformContext: true,");
-    expect(routesSource).toContain('const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
-    expect(routesSource).toContain('const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
-    expect(routesSource).toContain('const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
-    expect(routesSource).toContain('const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
-    expect(routesSource).toContain('const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok"]);');
-    expect(routesSource).toContain("sourcePlatformContext === 'tiktok' ? 'tiktok_revenue' : 'revenue'");
-    expect(routesSource).toContain("platformContext === 'tiktok' ? 'tiktok_revenue' : 'revenue'");
+    expect(routesSource).toContain('const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(routesSource).toContain('const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(routesSource).toContain('const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(routesSource).toContain('const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(routesSource).toContain('const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(routesSource).toContain("const revenuePurposeForPlatformContext = (platformContext: any): string => {");
+    expect(routesSource).toContain('if (ctx === "tiktok") return "tiktok_revenue";');
     expect(routesSource).toContain("const getActiveTikTokCampaignIdSet = async (campaignId: string): Promise<Set<string>> => {");
     expect(routesSource).toContain('platformContext !== "tiktok"');
     expect(routesSource).toContain("mapping?.tiktokCampaignId");

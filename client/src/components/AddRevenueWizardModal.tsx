@@ -19,7 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 type Step = "select" | "manual" | "csv" | "csv_map" | "sheets_choose" | "sheets_map" | "hubspot" | "salesforce" | "shopify";
 const SELECT_NONE = "__none__";
-type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok';
+type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets';
 type PlatformCampaignMapping = { crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string };
 
 type Preview = {
@@ -122,6 +122,16 @@ export function AddRevenueWizardModal(props: {
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
     }
 
+    if (platformContext === 'google_sheets') {
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_sheets/kpis", campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_sheets/benchmarks", campaignId], exact: false });
+      void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_sheets/reports", campaignId], exact: false });
+    }
+
     // GA4 KPI tab caches (revenue-to-date affects financial KPIs when GA4 revenue is missing).
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-to-date`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
@@ -165,6 +175,10 @@ export function AddRevenueWizardModal(props: {
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/tiktok/kpis", campaignId], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/tiktok/benchmarks", campaignId], exact: false });
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/tiktok/reports", campaignId], exact: false });
+    } else if (platformContext === 'google_sheets') {
+      void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"], exact: false });
+      void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
     } else {
       void queryClient.refetchQueries({ queryKey: ["/api/platforms/google_analytics/kpis", campaignId], exact: false });
     }
@@ -175,7 +189,7 @@ export function AddRevenueWizardModal(props: {
 
   const [step, setStep] = useState<Step>("select");
   const isEditing = !!initialSource;
-  const sheetsPurpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'meta' ? 'meta_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : platformContext === 'instagram' ? 'instagram_revenue' : platformContext === 'tiktok' ? 'tiktok_revenue' : 'revenue';
+  const sheetsPurpose = platformContext === 'linkedin' ? 'linkedin_revenue' : platformContext === 'meta' ? 'meta_revenue' : platformContext === 'google_ads' ? 'google_ads_revenue' : platformContext === 'instagram' ? 'instagram_revenue' : platformContext === 'tiktok' ? 'tiktok_revenue' : platformContext === 'google_sheets' ? 'google_sheets_revenue' : 'revenue';
   const [salesforceInitialMappingConfig, setSalesforceInitialMappingConfig] = useState<null | {
     campaignField?: string;
     selectedValues?: string[];
@@ -1480,7 +1494,7 @@ export function AddRevenueWizardModal(props: {
     }
   };
 
-  const title = step === "select" ? (platformContext === 'linkedin' ? "Add LinkedIn revenue attribution" : platformContext === 'google_ads' ? "Add Google Ads attributed revenue" : platformContext === 'instagram' ? "Add Instagram revenue attribution" : platformContext === 'tiktok' ? "Add TikTok attributed revenue" : "Add revenue source") :
+  const title = step === "select" ? (platformContext === 'linkedin' ? "Add LinkedIn revenue attribution" : platformContext === 'google_ads' ? "Add Google Ads attributed revenue" : platformContext === 'instagram' ? "Add Instagram revenue attribution" : platformContext === 'tiktok' ? "Add TikTok attributed revenue" : platformContext === 'google_sheets' ? "Add Google Sheets revenue" : "Add revenue source") :
     step === "manual" ? (isEditing ? "Edit manual revenue" : "Manual revenue") :
       step === "csv" ? (isEditing ? "Edit CSV revenue" : "Upload CSV") :
         step === "csv_map" ? (isEditing ? "Edit CSV revenue" : "Map CSV columns") :
@@ -1492,7 +1506,7 @@ export function AddRevenueWizardModal(props: {
                     "Add revenue source";
 
   const description = step === "select"
-    ? (platformContext === 'linkedin' ? "Choose the source that attributes revenue back to LinkedIn ad activity." : platformContext === 'google_ads' ? "Choose the source that attributes revenue back to Google Ads activity." : platformContext === 'instagram' ? "Choose the source that attributes revenue back to Instagram ad activity." : platformContext === 'tiktok' ? "Choose the source that attributes revenue back to TikTok ad activity." : "Choose where your revenue data comes from.")
+    ? (platformContext === 'linkedin' ? "Choose the source that attributes revenue back to LinkedIn ad activity." : platformContext === 'google_ads' ? "Choose the source that attributes revenue back to Google Ads activity." : platformContext === 'instagram' ? "Choose the source that attributes revenue back to Instagram ad activity." : platformContext === 'tiktok' ? "Choose the source that attributes revenue back to TikTok ad activity." : platformContext === 'google_sheets' ? "Choose the confirmed revenue source for Google Sheets analytics." : "Choose where your revenue data comes from.")
     : `Currency: ${currency} • Revenue is treated as “to date” (campaign lifetime)`;
 
   const isEmbeddedWizardStep = step === "hubspot" || step === "salesforce" || step === "shopify";

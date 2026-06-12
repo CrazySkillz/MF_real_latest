@@ -125,9 +125,9 @@ describe("scheduled report email regression guard", () => {
       routesSource.indexOf('app.get("/api/report-snapshots/:snapshotId"')
     );
 
-    expect(manualSnapshotRoute).toContain('sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok"');
+    expect(manualSnapshotRoute).toContain('sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets"');
     expect(manualSnapshotRoute).toContain("buildPdfAttachmentForReport");
-    expect(manualSnapshotRoute).toContain('const label = sourceBackedReportPlatform === "tiktok" ? "TikTok" : "Instagram";');
+    expect(manualSnapshotRoute).toContain('const label = sourceBackedReportPlatform === "tiktok" ? "TikTok" : sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : "Instagram";');
     expect(manualSnapshotRoute).toContain("${label} source-backed PDF output unavailable; snapshot not created");
     expect(manualSnapshotRoute.indexOf("buildPdfAttachmentForReport")).toBeLessThan(manualSnapshotRoute.indexOf(".insert(reportSnapshots as any)"));
   });
@@ -194,11 +194,13 @@ describe("scheduled report email regression guard", () => {
   it("discovers source-backed scheduled reports and requires source-backed PDF output", () => {
     const source = readReportScheduler();
 
-    expect(source).toContain("const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram', 'tiktok']");
+    expect(source).toContain("const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram', 'tiktok', 'google_sheets']");
     expect(source).toContain("storage.getPlatformReports('instagram')");
     expect(source).toContain("storage.getPlatformReports('tiktok')");
+    expect(source).toContain("storage.getPlatformReports('google_sheets')");
     expect(source).toContain("Found ${instagramReports.length} Instagram platform reports");
     expect(source).toContain("Found ${tiktokReports.length} TikTok platform reports");
+    expect(source).toContain("Found ${googleSheetsReports.length} Google Sheets platform reports");
     expect(source).toContain("validateInstagramScheduledReportScope(report)");
     expect(source).toContain("validateTikTokScheduledReportScope(report)");
     expect(source).toContain("Instagram source scope is invalid; skipped scheduled report");

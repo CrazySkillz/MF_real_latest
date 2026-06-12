@@ -29,13 +29,13 @@ describe("Benchmark route isolation regression guard", () => {
       routesFile.indexOf('app.delete("/api/platforms/:platformType/benchmarks/:benchmarkId"')
     );
 
-    expect(routesFile).toContain('import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign } from "./utils/kpi-refresh";');
+    expect(routesFile).toContain('import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";');
     expect(routesFile).toContain("const refreshInstagramBenchmarksIfNeeded = async");
     expect(platformRoutes).toContain("await refreshInstagramBenchmarksIfNeeded(platformType, campaignId)");
     expect(platformRoutes).toContain("await refreshInstagramBenchmarksIfNeeded(platformType, validatedData.campaignId)");
     expect(platformRoutes).toContain("await refreshInstagramBenchmarksIfNeeded((existing as any)?.platformType, (existing as any)?.campaignId)");
-    expect(platformRoutes).toContain("const responseBenchmark = String(platformType || \"\").trim().toLowerCase() === \"instagram\"");
-    expect(platformRoutes).toContain("const responseBenchmark = String((existing as any)?.platformType || \"\").trim().toLowerCase() === \"instagram\"");
+    expect(platformRoutes).toContain("const responseBenchmark = (String(platformType || \"\").trim().toLowerCase() === \"instagram\" || String(platformType || \"\").trim().toLowerCase() === \"tiktok\")");
+    expect(platformRoutes).toContain("const responseBenchmark = (String((existing as any)?.platformType || \"\").trim().toLowerCase() === \"instagram\" || String((existing as any)?.platformType || \"\").trim().toLowerCase() === \"tiktok\")");
     expect(platformRoutes).toContain("storage.getBenchmark(benchmark.id)");
     expect(platformRoutes).toContain("storage.getBenchmark(benchmarkId)");
   });

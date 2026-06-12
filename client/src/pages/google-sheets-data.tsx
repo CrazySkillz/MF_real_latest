@@ -18,6 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ColumnMappingInterface } from "@/components/ColumnMappingInterface";
 import { GuidedColumnMapping } from "@/components/GuidedColumnMapping";
 import { UploadAdditionalDataModal } from "@/components/UploadAdditionalDataModal";
+import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { GoogleSheetsKpiModal } from "@/pages/google-sheets-analytics/GoogleSheetsKpiModal";
@@ -189,6 +190,29 @@ const serializeGoogleSheetsReportState = (form: any, customConfig: any, modalSte
 const GOOGLE_SHEETS_KPI_DATE_COLUMN_PATTERN = /^(date|week|day|time|timestamp|period|month|year)/i;
 const GOOGLE_SHEETS_KPI_CURRENCY_COLUMN_PATTERN = /(\$|revenue|spend|cost|budget|profit|cpa|cpc|cpm)/i;
 const GOOGLE_SHEETS_KPI_NEAR_TARGET_BAND_PCT = 5;
+
+const parseRevenueSourceConfig = (source: any) => {
+  try {
+    return source?.mappingConfig ? JSON.parse(String(source.mappingConfig)) : {};
+  } catch {
+    return {};
+  }
+};
+
+const revenueSourceTypeLabel = (sourceType: any) => {
+  const value = String(sourceType || "").trim().toLowerCase();
+  if (value === "google_sheets") return "Google Sheets";
+  if (value === "hubspot") return "HubSpot";
+  if (value === "salesforce") return "Salesforce";
+  if (value === "shopify") return "Shopify";
+  if (value === "csv") return "CSV";
+  return value ? value.replace(/_/g, " ") : "Revenue Source";
+};
+
+const googleSheetsRevenueSourceLabel = (source: any) => {
+  const cfg = parseRevenueSourceConfig(source);
+  return String(source?.displayName || cfg?.sheetName || cfg?.spreadsheetName || revenueSourceTypeLabel(source?.sourceType));
+};
 
 export default function GoogleSheetsData() {
   const [, params] = useRoute("/campaigns/:id/google-sheets-data");
@@ -605,6 +629,10 @@ export default function GoogleSheetsData() {
   const [customReportConfig, setCustomReportConfig] = useState<any>(createEmptyGoogleSheetsCustomReportConfig);
   const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({});
   const [reportEditSnapshot, setReportEditSnapshot] = useState("");
+  const [isRevenueWizardOpen, setIsRevenueWizardOpen] = useState(false);
+  const [revenueWizardInitialSource, setRevenueWizardInitialSource] = useState<any>(null);
+  const [showRevenueSourcesDialog, setShowRevenueSourcesDialog] = useState(false);
+  const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState<string | null>(null);
 
   const resetGoogleSheetsReportCreateState = () => {
     setEditingReportId(null);
@@ -677,6 +705,86 @@ export default function GoogleSheetsData() {
       return response.json();
     },
     enabled: !!campaignId,
+  });
+
+  const { data: googleSheetsRevenueSourcesData } = useQuery<{ success: boolean; sources: any[] }>({
+    queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=google_sheets`);
+      if (!response.ok) return { success: false, sources: [] };
+      const json = await response.json().catch(() => ({}));
+      return { success: !!json?.success, sources: Array.isArray(json?.sources) ? json.sources : [] };
+    },
+  });
+
+  const { data: googleSheetsRevenueTotalsData } = useQuery<{ success: boolean; totalRevenue: number; currency?: string }>({
+    queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`);
+      if (!response.ok) return { success: false, totalRevenue: 0 };
+      const json = await response.json().catch(() => ({}));
+      return { success: !!json?.success, totalRevenue: Number(json?.totalRevenue || 0), currency: json?.currency };
+    },
+  });
+
+  const activeGoogleSheetsRevenueSources = Array.isArray(googleSheetsRevenueSourcesData?.sources)
+    ? googleSheetsRevenueSourcesData.sources.filter((source: any) => source?.isActive !== false)
+    : [];
+  const googleSheetsTotalRevenue = Number(googleSheetsRevenueTotalsData?.totalRevenue || 0);
+  const hasGoogleSheetsConfirmedRevenue = googleSheetsTotalRevenue > 0 && activeGoogleSheetsRevenueSources.length > 0;
+  const googleSheetsRevenueCurrency = googleSheetsRevenueTotalsData?.currency || (campaign as any)?.currency || "USD";
+  const fmtCurrency = (value: number) =>
+    new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: googleSheetsRevenueCurrency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number.isFinite(value) ? value : 0);
+
+  const refreshGoogleSheetsRevenueQueries = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"] });
+    await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_sheets/kpis", campaignId], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_sheets/benchmarks", campaignId], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_sheets/reports", campaignId], exact: false });
+    await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"], exact: true });
+    await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`], exact: true });
+  };
+
+  const deleteGoogleSheetsRevenueSourceMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json?.success === false) {
+        throw new Error(json?.error || "Failed to remove revenue source");
+      }
+      return json;
+    },
+    onSuccess: async () => {
+      setDeletingRevenueSourceId(null);
+      toast({ title: "Revenue source removed", description: "Google Sheets Total Revenue has been recalculated." });
+      await refreshGoogleSheetsRevenueQueries();
+    },
+    onError: (error: any) => {
+      setDeletingRevenueSourceId(null);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to remove revenue source",
+        variant: "destructive",
+      });
+    },
   });
 
   // ═══ KPI Mutations ═══
@@ -1636,7 +1744,42 @@ export default function GoogleSheetsData() {
                   <TabsTrigger value="connections">Connection Details</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="data" className="mt-6">
+                <TabsContent value="data" className="mt-6 space-y-6">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-1">
+                        <p className="text-sm text-muted-foreground/70">Total Revenue</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRevenueWizardInitialSource(null);
+                            setIsRevenueWizardOpen(true);
+                          }}
+                          className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
+                          title="Add Google Sheets revenue source"
+                          aria-label="Add Google Sheets revenue source"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-2xl font-bold text-foreground">
+                        {hasGoogleSheetsConfirmedRevenue ? fmtCurrency(googleSheetsTotalRevenue) : "Not connected"}
+                      </p>
+                      {!hasGoogleSheetsConfirmedRevenue && (
+                        <p className="text-xs text-muted-foreground mt-1">Connect confirmed revenue</p>
+                      )}
+                      {activeGoogleSheetsRevenueSources.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowRevenueSourcesDialog(true)}
+                          className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+                        >
+                          Sources ({activeGoogleSheetsRevenueSources.length})
+                        </button>
+                      )}
+                    </CardContent>
+                  </Card>
+
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -3285,6 +3428,106 @@ export default function GoogleSheetsData() {
               googleSheetsOnly={true}
             />
           )}
+
+          {campaignId && (
+            <AddRevenueWizardModal
+              open={isRevenueWizardOpen}
+              onOpenChange={(open) => {
+                setIsRevenueWizardOpen(open);
+                if (!open) setRevenueWizardInitialSource(null);
+              }}
+              campaignId={campaignId}
+              currency={(campaign as any)?.currency || googleSheetsRevenueCurrency || "USD"}
+              dateRange="90days"
+              platformContext="google_sheets"
+              initialSource={revenueWizardInitialSource || undefined}
+              onSuccess={() => {
+                void refreshGoogleSheetsRevenueQueries();
+              }}
+            />
+          )}
+
+          <Dialog open={showRevenueSourcesDialog} onOpenChange={setShowRevenueSourcesDialog}>
+            <DialogContent className="bg-card border-border max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="text-foreground">Google Sheets Revenue Sources</DialogTitle>
+                <DialogDescription className="text-muted-foreground/70">
+                  Sources contributing to Google Sheets Total Revenue.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+                {activeGoogleSheetsRevenueSources.length > 0 ? activeGoogleSheetsRevenueSources.map((source: any) => {
+                  const cfg = parseRevenueSourceConfig(source);
+                  const selectedCount = Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.length : 0;
+                  return (
+                    <div key={source.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground" title={googleSheetsRevenueSourceLabel(source)}>
+                          {googleSheetsRevenueSourceLabel(source)}
+                        </p>
+                        <p className="text-xs text-muted-foreground/70">
+                          {revenueSourceTypeLabel(source.sourceType)}{selectedCount > 0 ? ` - ${selectedCount} selected attribution value${selectedCount === 1 ? "" : "s"}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium tabular-nums text-foreground">
+                          {fmtCurrency(Number(source.lastTotalRevenue || 0))}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowRevenueSourcesDialog(false);
+                            setRevenueWizardInitialSource(source);
+                            setIsRevenueWizardOpen(true);
+                          }}
+                          className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                          title="Edit revenue source"
+                          aria-label="Edit revenue source"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingRevenueSourceId(String(source.id))}
+                          className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
+                          title="Remove revenue source"
+                          aria-label="Remove revenue source"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <p className="text-sm text-muted-foreground/70">No Google Sheets revenue sources connected.</p>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <AlertDialog open={!!deletingRevenueSourceId} onOpenChange={(open) => { if (!open) setDeletingRevenueSourceId(null); }}>
+            <AlertDialogContent className="bg-card border-border">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-foreground">Remove revenue source?</AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground/70">
+                  This removes only the selected Google Sheets revenue source. Total Revenue will be recalculated.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => {
+                    if (deletingRevenueSourceId) {
+                      deleteGoogleSheetsRevenueSourceMutation.mutate(deletingRevenueSourceId);
+                    }
+                  }}
+                >
+                  Remove
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* ═══ KPI Modal ═══ */}
           <GoogleSheetsKpiModal

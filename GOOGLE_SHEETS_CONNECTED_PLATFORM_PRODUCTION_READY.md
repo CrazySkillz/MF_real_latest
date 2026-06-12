@@ -404,7 +404,7 @@ Subcommits:
 - 6C: Use no default template/metric selection in create mode.
 - 6D: Populate Current Value from selected Google Sheets source-backed metric only.
 - 6E: Format units and values correctly for dynamic sheet metrics.
-- 6F: Keep revenue-dependent KPI metrics unavailable until confirmed Google Sheets-scoped revenue exists.
+- 6F: Keep KPI financial-looking sheet columns source-backed without treating them as confirmed campaign financial rollups.
 - 6G: Add alert, edit, delete, and query-refresh parity.
 - 6H: Add regression coverage for the full template contract.
 
@@ -414,7 +414,7 @@ Validation:
 - Modal fields match GA4 order.
 - Current Value updates from selected sheet metric.
 - Missing metrics do not become zero.
-- Revenue/ROI/ROAS are disabled unless source-backed revenue and spend are available.
+- Revenue/Spend/ROI/ROAS columns are selectable when they are explicit numeric columns in the selected main Google Sheets source; this does not mark them as confirmed campaign financial rollups.
 
 Status:
 
@@ -424,8 +424,8 @@ Status:
   - Added a Google Sheets KPI metric adapter derived only from the already scoped Google Sheets analytics summary for the selected main sheet view.
   - KPI creation/update now requires a selected mapped Google Sheets metric with a source-backed current value.
   - KPI current value is read-only in the modal and populated from the selected metric adapter.
-  - Revenue, spend, ROI, ROAS, profit, pipeline, and cost-style sheet columns remain blocked from Google Sheets KPIs until the dedicated Google Sheets financial-source commits are implemented.
-  - Existing KPI rows whose metric is missing or blocked render as unavailable and are excluded from KPI summary scoring instead of falling back to saved values.
+  - Explicit numeric sheet columns such as Revenue, Spend, ROI, and ROAS are selectable as source-backed Google Sheets KPI metrics without feeding Campaign DeepDive confirmed financial totals.
+  - Existing KPI rows whose metric is missing render as unavailable and are excluded from KPI summary scoring instead of falling back to saved values.
   - KPI section now follows the GA4-style header, Create KPI action, summary tracker, edit/delete controls, immediate alert-frequency default, and alert settings layout.
 - [x] Regression guard added in `server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts`.
@@ -751,8 +751,8 @@ Google Sheets can be marked locally production-ready only when:
 - Commit 6 Google Sheets KPI GA4-template parity completed locally:
   - Google Sheets KPI current values now come from a source-backed metric adapter built from selected main Google Sheets analytics summary data.
   - The KPI modal uses mapped metric tiles, no default metric selection, and a read-only current value populated by the selected source-backed metric.
-  - Google Sheets KPI cards no longer fall back to saved KPI `currentValue` when the selected sheet metric is missing or blocked.
-  - Revenue, spend, ROI, ROAS, profit, pipeline, and cost-style columns remain unavailable for Google Sheets KPIs until the dedicated financial-source commits.
+  - Google Sheets KPI cards no longer fall back to saved KPI `currentValue` when the selected sheet metric is missing.
+  - Explicit numeric sheet columns such as Revenue, Spend, ROI, and ROAS are selectable for Google Sheets KPIs, but remain unavailable from the main aggregate financial path until the dedicated financial-source commits.
   - KPI create/edit/delete UI behavior remains on the existing platform KPI routes.
 - Commit 6 validation passed locally: `npm test -- server/source-safety-regression.test.ts`.
 - Commit 6 validation passed locally: `npm run check`.

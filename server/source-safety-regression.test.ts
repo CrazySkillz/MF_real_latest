@@ -399,13 +399,15 @@ describe("source safety regression guards", () => {
     expect(aggregateSource).not.toContain('includedMetrics.push("spend")');
   });
 
-  it("Google Sheets KPIs use source-backed mapped metrics without financial-column unlocks", () => {
+  it("Google Sheets KPIs use source-backed mapped metrics without blocking explicit sheet financial columns", () => {
     const page = readGoogleSheetsDataPageSource();
     const modal = readGoogleSheetsKpiModalSource();
 
     expect(page).toContain("const googleSheetsKpiMetricOptions = useMemo<GoogleSheetsKpiMetricOption[]>");
-    expect(page).toContain("GOOGLE_SHEETS_KPI_FINANCIAL_PATTERN");
-    expect(page).toContain("Revenue, spend, ROI, and ROAS require confirmed Google Sheets financial source support");
+    expect(page).toContain("const available = !!key && sourceValue !== null;");
+    expect(page).toContain("currentValue: sourceValue");
+    expect(page).not.toContain("GOOGLE_SHEETS_KPI_FINANCIAL_PATTERN");
+    expect(page).not.toContain("Revenue, spend, ROI, and ROAS require confirmed Google Sheets financial source support");
     expect(page).toContain("const resolved = resolveGoogleSheetsKpiMetric(kpi);");
     expect(page).toContain('source: "google_sheets_main"');
     expect(page).toContain('valueSource: "source_backed_summary"');

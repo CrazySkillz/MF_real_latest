@@ -142,7 +142,6 @@ type GoogleSheetsKpiMetricOption = {
 };
 
 const GOOGLE_SHEETS_KPI_DATE_COLUMN_PATTERN = /^(date|week|day|time|timestamp|period|month|year)/i;
-const GOOGLE_SHEETS_KPI_FINANCIAL_PATTERN = /(revenue|spend|cost|budget|roi|roas|profit|pipeline|cpa|cpc|cpm)|[$]/i;
 
 export default function GoogleSheetsData() {
   const [, params] = useRoute("/campaigns/:id/google-sheets-data");
@@ -701,8 +700,7 @@ export default function GoogleSheetsData() {
       .map((col: any) => {
         const key = String(col?.name || "").trim();
         const sourceValue = parseSheetMetricNumber((metrics as any)[key] ?? col?.total);
-        const financialBlocked = GOOGLE_SHEETS_KPI_FINANCIAL_PATTERN.test(key);
-        const available = !!key && sourceValue !== null && !financialBlocked;
+        const available = !!key && sourceValue !== null;
         const unit = String(key).includes("%") || /rate|ctr|cvr/i.test(key)
           ? "%"
           : col?.type === "integer"
@@ -713,13 +711,11 @@ export default function GoogleSheetsData() {
           label: key,
           type: col?.type || "decimal",
           unit,
-          currentValue: available ? sourceValue : null,
+          currentValue: sourceValue,
           available,
-          reason: financialBlocked
-            ? "Revenue, spend, ROI, and ROAS require confirmed Google Sheets financial source support"
-            : sourceValue === null
-              ? "Current value requires a mapped metric column with refreshed sheet rows"
-              : "",
+          reason: sourceValue === null
+            ? "Current value requires a mapped metric column with refreshed sheet rows"
+            : "",
         };
       });
   }, [parseSheetMetricNumber, sheetsData]);

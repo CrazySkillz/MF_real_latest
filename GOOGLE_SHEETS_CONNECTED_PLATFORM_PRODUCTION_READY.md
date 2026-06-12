@@ -565,16 +565,16 @@ Status:
 - [x] Regression guard added in `server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] Browser validation pending after deploy:
-  - Open Google Sheets Reports and confirm the header says `Google Sheets Reports`.
-  - Click Create Report and confirm no standard template is selected by default.
-  - Confirm Standard Templates show Overview, KPIs, Benchmarks, disabled Ad Comparison, and Insights.
-  - Switch to Custom Report and confirm sections are collapsed by default and no section/row is selected.
-  - Expand KPIs and Benchmarks and confirm the current Google Sheets rows appear.
-  - Confirm Generate & Download is disabled until a template or custom selection is made, and creates a PDF from the current sheet values.
-  - Create a scheduled report and confirm it saves without schedule validation errors.
-  - Edit an existing report and confirm Update Report is disabled until a value changes.
-  - Confirm report cards show Download, Pencil edit, and Trash delete confirmation.
+- [x] Browser validation passed after deploy for the implemented Commit 8 Google Sheets Reports scope:
+  - Google Sheets Reports header renders as `Google Sheets Reports`.
+  - Create Report opens with no standard template selected by default.
+  - Standard Templates show Overview, KPIs, Benchmarks, disabled Ad Comparison, and Insights.
+  - Custom Report sections are collapsed by default and no section/row is selected by default.
+  - KPI and Benchmark custom sections show the current Google Sheets platform rows.
+  - Generate & Download is disabled until a template or custom selection is made and creates a PDF from current sheet values.
+  - Scheduled report creation saves without schedule validation errors.
+  - Edit mode keeps Update Report disabled until a value changes.
+  - Report cards show Download, Pencil edit, and Trash delete-confirmation actions.
 
 ### Commit 9: Total Revenue And Pipeline Proxy Meta Pattern
 

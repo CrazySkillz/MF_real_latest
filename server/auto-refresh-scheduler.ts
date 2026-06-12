@@ -21,8 +21,8 @@ import { getInternalAutoRefreshToken } from "./internal-request-auth";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 
 type AnyRecord = Record<string, any>;
-const refreshableRevenueContexts = ["ga4", "linkedin", "meta", "google_ads"] as const;
-const crmRevenueContexts = ["ga4", "meta", "google_ads"] as const;
+const refreshableRevenueContexts = ["ga4", "linkedin", "meta", "google_ads", "google_sheets"] as const;
+const crmRevenueContexts = ["ga4", "meta", "google_ads", "google_sheets"] as const;
 
 function getServerBaseUrl(): string {
   // Internal auto-refresh auth is intentionally loopback-only.
@@ -364,15 +364,28 @@ async function reprocessLinkedInSpend(campaignId: string, source: any, mappingCo
 }
 
 /**
- * Refresh Google Sheets raw data for all active connections in a campaign.
+ * Refresh Google Sheets raw data for active main/general connections in a campaign.
  * Fetches latest data from Google Sheets API and caches it in the database
  * so page loads can serve cached data instead of making live API calls.
  */
 export async function refreshGoogleSheetsDataForCampaign(campaignId: string): Promise<boolean> {
+  const campaign = await storage.getCampaign(campaignId);
+  const campaignPlatformRaw = String((campaign as any)?.platform || "")
+    .split(",")
+    .map((platform: string) => platform.trim().toLowerCase())
+    .filter(Boolean);
+  const campaignWantsGoogleSheets = campaignPlatformRaw.includes("google-sheets") || campaignPlatformRaw.includes("google sheets");
+  if (!campaignWantsGoogleSheets) return false;
+
   const connections = await storage.getGoogleSheetsConnections(campaignId);
-  const activeConnections = (Array.isArray(connections) ? connections : []).filter(
-    (c: any) => c.isActive !== false && c.accessToken && c.spreadsheetId && c.spreadsheetId !== 'pending'
-  );
+  const activeConnections = (Array.isArray(connections) ? connections : []).filter((c: any) => {
+    const purpose = String(c?.purpose || "").trim().toLowerCase();
+    return c.isActive !== false
+      && c.accessToken
+      && c.spreadsheetId
+      && c.spreadsheetId !== 'pending'
+      && (!purpose || purpose === "general");
+  });
 
   if (activeConnections.length === 0) return false;
 

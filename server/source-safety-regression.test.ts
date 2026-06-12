@@ -14,6 +14,10 @@ function readSchedulerSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "server", "scheduler.ts"), "utf8");
 }
 
+function readAutoRefreshSchedulerSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "server", "auto-refresh-scheduler.ts"), "utf8");
+}
+
 function readGoogleSheetsAggregateSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "server", "utils", "google-sheets-aggregate-source.ts"), "utf8");
 }
@@ -378,6 +382,36 @@ describe("source safety regression guards", () => {
     expect(route).toContain("const getMainGoogleSheetsConnections = async () =>");
     expect(route).toContain("const allConnections = await getMainGoogleSheetsConnections();");
     expect(route).not.toContain("const allConnections = await storage.getGoogleSheetsConnections(campaignId);");
+  });
+
+  it("Google Sheets raw cache refresh updates only main Google Sheets source rows", () => {
+    const source = readAutoRefreshSchedulerSource();
+    const functionStart = source.indexOf("export async function refreshGoogleSheetsDataForCampaign");
+    const functionEnd = source.indexOf("export async function runDailyAutoRefreshOnce", functionStart);
+    const refreshFunction = source.slice(functionStart, functionEnd);
+
+    expect(functionStart).toBeGreaterThan(-1);
+    expect(refreshFunction).toContain("const campaign = await storage.getCampaign(campaignId);");
+    expect(refreshFunction).toContain('campaignPlatformRaw.includes("google-sheets") || campaignPlatformRaw.includes("google sheets")');
+    expect(refreshFunction).toContain("if (!campaignWantsGoogleSheets) return false;");
+    expect(refreshFunction).toContain('const purpose = String(c?.purpose || "").trim().toLowerCase();');
+    expect(refreshFunction).toContain('&& (!purpose || purpose === "general")');
+    expect(refreshFunction).toContain("c.isActive !== false");
+    expect(refreshFunction).toContain("c.spreadsheetId !== 'pending'");
+    const filterIndex = refreshFunction.indexOf("const activeConnections");
+    const cacheWriteIndex = refreshFunction.indexOf("await storage.updateGoogleSheetsConnection(conn.id");
+    expect(filterIndex).toBeGreaterThan(-1);
+    expect(cacheWriteIndex).toBeGreaterThan(filterIndex);
+  });
+
+  it("Google Sheets scheduler reprocess includes Google-Sheets-scoped confirmed financial sources", () => {
+    const source = readAutoRefreshSchedulerSource();
+
+    expect(source).toContain('const refreshableRevenueContexts = ["ga4", "linkedin", "meta", "google_ads", "google_sheets"] as const;');
+    expect(source).toContain('const crmRevenueContexts = ["ga4", "meta", "google_ads", "google_sheets"] as const;');
+    expect(source).toContain("for (const ctx of refreshableRevenueContexts)");
+    expect(source).toContain("for (const ctx of crmRevenueContexts)");
+    expect(source).toContain("if (await reprocessGoogleSheetsRevenue(campaignId, sheetRevenue, revCfg))");
   });
 
   it("Google Sheets main platform feeds Campaign DeepDive aggregate without raw sheet revenue/spend rows", () => {

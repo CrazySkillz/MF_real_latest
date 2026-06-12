@@ -478,7 +478,7 @@ describe("Meta production readiness regression guard", () => {
     expect(routes).toContain("const revenuePurposeForPlatformContext = (platformContext: any): string => {");
     expect(routes).toContain('if (ctx === "meta") return "meta_revenue";');
     expect(routes).toContain('platformContextRaw === "meta" ? "meta"');
-    expect(scheduler).toContain('const crmRevenueContexts = ["ga4", "meta", "google_ads"] as const;');
+    expect(scheduler).toContain('const crmRevenueContexts = ["ga4", "meta", "google_ads", "google_sheets"] as const;');
     expect(legacyCsvRoute).toContain("res.status(501).json");
     expect(legacyCsvRoute).toContain("Legacy Meta CSV revenue import is unavailable");
     expect(legacyCsvRoute).not.toContain("processMetaRevenueCSV");

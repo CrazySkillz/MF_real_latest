@@ -8,8 +8,8 @@ describe("Google Ads revenue scheduler flow", () => {
   it("includes Google Ads revenue sources in refreshable provider context loops", () => {
     const scheduler = readSource("server", "auto-refresh-scheduler.ts");
 
-    expect(scheduler).toContain('const refreshableRevenueContexts = ["ga4", "linkedin", "meta", "google_ads"] as const;');
-    expect(scheduler).toContain('const crmRevenueContexts = ["ga4", "meta", "google_ads"] as const;');
+    expect(scheduler).toContain('const refreshableRevenueContexts = ["ga4", "linkedin", "meta", "google_ads", "google_sheets"] as const;');
+    expect(scheduler).toContain('const crmRevenueContexts = ["ga4", "meta", "google_ads", "google_sheets"] as const;');
     expect(scheduler).toContain("for (const ctx of crmRevenueContexts)");
     expect(scheduler).toContain("for (const ctx of refreshableRevenueContexts)");
     expect(scheduler).toContain("storage.getRevenueSources(campaignId, ctx)");

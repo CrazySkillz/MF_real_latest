@@ -591,11 +591,17 @@ Subcommits:
 - 9E: Ensure ROI/ROAS require confirmed revenue plus spend from the same approved source scope.
 - 9F: Add source dialog edit/delete and post-delete recompute/refetch coverage.
 - 9G: Add no-double-counting tests for Google Sheets main revenue versus child platform revenue.
+- 9H: Add Google-Sheets-scoped Total Spend card and spend-source action so ROAS/ROI can unlock only from confirmed Google Sheets spend.
+- 9I: Add financial-card source/provenance visibility and seamless initial-load behavior.
 
 Validation:
 
 - Revenue column alone does not unlock ROI/ROAS unless explicitly mapped as confirmed Google Sheets revenue.
 - Pipeline Proxy does not feed Total Revenue, ROI, ROAS, KPIs, Benchmarks, Reports, or Campaign DeepDive confirmed financial totals.
+- Total Spend uses only Google-Sheets-scoped confirmed spend sources; raw sheet Spend columns alone do not unlock ROAS/ROI.
+- The Google Sheets spend `+` action opens the shared spend wizard source chooser with `platformContext="google_sheets"`, not a preselected sheets-only step.
+- Financial cards do not briefly render false `Not connected`, `Unavailable`, or `Not configured` states before initial scoped queries resolve.
+- The Overview tab shows selected campaign/source values backing Google Sheets financial cards without mixing in the MimoSaaS campaign name.
 - Deleting a revenue source clears the card and downstream current values.
 
 Status:
@@ -614,13 +620,28 @@ Status:
   - Follow-up root cause: the Google Sheets Overview rendered only the Total Revenue card from the Commit 9 financial template; Pipeline Proxy, ROAS, and ROI were not rendered even though the template requires them as separate financial cards.
   - Follow-up fix: Google Sheets Overview now renders Total Revenue, Pipeline Proxy, ROAS, and ROI as separate cards before Spreadsheet Data. Pipeline Proxy uses only CRM pipeline proxy configuration with `platformContext=google_sheets`; arbitrary sheet pipeline-like columns remain ordinary sheet metrics and do not feed Total Revenue, ROI, ROAS, KPIs, Benchmarks, Reports, or Campaign DeepDive confirmed financial totals.
   - Follow-up fix: Google Sheets ROAS/ROI use confirmed Google Sheets Total Revenue plus Google-Sheets-scoped confirmed spend via `spend-totals?platformContext=google_sheets&dateRange=all`; raw sheet `Revenue`, `Spend`, `ROI`, or `ROAS` columns do not unlock the cards.
+- [x] Completed for the Google Sheets confirmed Total Spend and derived-financial boundary:
+  - Root cause: ROAS/ROI were correctly unavailable without spend, but the Overview did not clearly expose a matching Google-Sheets-scoped spend source action or card.
+  - Added a separate `Total Spend` card using only active spend sources with `platformContext="google_sheets"` and campaign-lifetime `spend-totals?platformContext=google_sheets&dateRange=all`.
+  - Added a Google Sheets Spend Sources dialog with source totals plus edit/delete actions and delete confirmation.
+  - The Total Spend `+` action opens `AddSpendWizardModal` with `platformContext="google_sheets"` through the shared source chooser pattern, matching the GA4/Meta-style wizard entry behavior instead of locking users directly into a sheets-only step.
+  - CSV, Google Sheets, manual, LinkedIn, Meta, and Google Ads spend imports preserve the requested Google Sheets platform context when launched from the Google Sheets Overview spend card.
+  - ROAS and ROI stay unavailable until both confirmed Google Sheets Total Revenue and confirmed Google Sheets Total Spend exist in the same approved Google Sheets source scope.
+- [x] Completed for Commit 9 financial-card loading and provenance UX:
+  - Root cause: initial unresolved React Query data was coerced to zero/empty arrays, causing financial cards to briefly render false `Not connected`, `Unavailable`, or `Not configured` labels before real scoped values loaded.
+  - Fix: Total Revenue, Total Spend, Pipeline Proxy, ROAS, and ROI now distinguish initial unresolved query state from true disconnected/unavailable state and render stable muted placeholders only during the initial unresolved state.
+  - Root cause: the Overview showed totals and source counts but not the selected campaign/source values the totals related to.
+  - Fix: added a `Selected Campaigns` provenance card below the financial cards. It reads only explicit selected values from Google Sheets revenue, spend, and pipeline source mappings (`campaignValues`, `campaignValue`, `selectedValues`, and persisted per-value totals).
+  - Follow-up root cause: the first provenance-card implementation also included `sheetsData.matchingInfo.campaignName`, which is the MimoSaaS campaign name, not an explicitly selected Google Sheets source value.
+  - Follow-up fix: the provenance card no longer reads `matchingInfo.matchedCampaigns` or `matchingInfo.campaignName`, so values such as the current MimoSaaS campaign name do not appear as selected Google Sheets campaign values.
 - [x] Regression guards added/updated in `server/source-safety-regression.test.ts`.
+- [x] Regression guards added/updated in `server/google-sheets-aggregate-source.test.ts` for financial cards, spend source context, initial-load placeholders, and selected-campaign provenance.
 - [x] Local validation passed: `npm test -- --run server/source-safety-regression.test.ts server/google-sheets-aggregate-source.test.ts`.
 - [x] Local validation passed: `npm run check`.
 - [x] Local validation passed: `git diff --check`.
 - [x] Full regression suite passed after the lifetime-range follow-up: `npm test` with 74 files and 647 tests.
 - [x] Local validation passed after Pipeline Proxy, ROAS, and ROI card follow-up: `npm test -- server/google-sheets-aggregate-source.test.ts`, `npm test -- server/source-safety-regression.test.ts`, `npm run check`, `git diff --check`, and full `npm test` with 74 files and 649 tests.
-- [ ] Browser validation remains pending after deploy for the new Google Sheets Pipeline Proxy, ROAS, and ROI cards.
+- [x] Local validation passed after Total Spend, spend wizard, seamless loading, and selected-campaign provenance follow-ups: `npm test -- server/google-sheets-aggregate-source.test.ts`, `npm test -- server/source-safety-regression.test.ts`, `npm run check`, `git diff --check`, and full `npm test` with 74 files and 650 tests.
 - [x] Browser validation passed after deploy for the implemented Commit 9 Google Sheets Total Revenue scope:
   - Total Revenue card remains visible after the Google Sheets analytics page finishes loading.
   - Card shows `Not connected` before a confirmed Google Sheets revenue source is mapped.
@@ -628,6 +649,13 @@ Status:
   - After explicit Google Sheets confirmed revenue mapping, the card updates to the formatted revenue total and shows `Sources (1)`.
   - Google Sheets Total Revenue uses campaign-lifetime confirmed revenue, so older dated source rows are included after mapping.
   - `Sources (1)` opens the Google Sheets Revenue Sources dialog.
+- [x] Browser validation passed after deploy for the expanded Commit 9 financial-card scope:
+  - Pipeline Proxy remains separate from confirmed Total Revenue and can show `Not configured` without blocking confirmed revenue.
+  - ROAS/ROI unlock only when confirmed Google Sheets revenue and confirmed Google Sheets spend are both present.
+  - Total Spend appears as its own card with a `+` action and `Sources (#)` dialog.
+  - The Total Spend `+` action opens the shared spend source chooser and saves Google-Sheets-scoped spend sources.
+  - Financial cards no longer flash false `Not connected`, `Unavailable`, or `Not configured` content on page refresh.
+  - The `Selected Campaigns` provenance card shows explicit selected Google Sheets source values, such as `yesop_prospecting`, and does not show the MimoSaaS campaign name such as `GS1`.
 
 ### Commit 10: Refresh, Scheduler, Token, And Cache Safety
 
@@ -654,7 +682,23 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally for the Commit 10 refresh/scheduler/cache boundary:
+  - Root cause: `refreshGoogleSheetsDataForCampaign` refreshed every active Google Sheets connection for a campaign, while the Google Sheets analytics UI and aggregate adapter intentionally read only active main/general Google Sheets connections. This meant manual refresh and the daily scheduler raw-cache step could refresh child financial sheet connections through the main raw-data path.
+  - Fix: raw Google Sheets cache refresh now fails closed unless the campaign explicitly includes Google Sheets as a main platform, then refreshes only active main/general connections with valid spreadsheet IDs. Confirmed revenue/spend child sources remain on their explicit financial-source reprocess paths.
+  - Root cause: the daily revenue reprocess context lists did not include `google_sheets`, so Google-Sheets-scoped confirmed revenue, CRM revenue, and Pipeline Proxy source mappings saved by Commit 9 could be skipped by scheduled refresh even though the Overview cards read that same scope.
+  - Fix: the existing scheduler revenue reprocess loops now include the `google_sheets` platform context for refreshable revenue and CRM revenue sources, preserving the same source identity and `sourceId` fail-closed checks already used by the provider reprocess routes.
+  - Token refresh scheduler traced: it updates stored Google Sheets connection tokens only after provider token refresh succeeds and does not mutate cached rows or financial records.
+  - Provider/API failure behavior traced: raw cache refresh updates `cachedData` only after a successful Sheets API response and leaves previous cached data untouched on failed fetch or failed token refresh.
+  - Child revenue/spend reprocess traced: Google Sheets spend and revenue reprocess paths pass stable source IDs, verify source campaign ownership before mutation, and do not reuse the main raw-cache connection filter.
+- [x] Regression guards added/updated in `server/source-safety-regression.test.ts`.
+- [x] Local validation passed: `npm test -- --run server/source-safety-regression.test.ts`.
+- [x] Local validation passed: `npm test -- --run server/google-sheets-aggregate-source.test.ts`.
+- [x] Local validation passed: `npm test -- --run server/meta-production-regression.test.ts`.
+- [x] Local validation passed: `npm test -- --run server/google-ads-revenue-scheduler-flow.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [x] Local validation passed: `git diff --check`.
+- [x] Full regression suite passed: `npm test` with 74 files and 652 tests.
+- [ ] Browser/deployed validation remains pending after deploy for manual refresh and scheduled refresh using the same main/general Google Sheets scope and Google-Sheets-scoped confirmed financial sources.
 
 ### Commit 11: Disconnect, Delete, Reconnect, And Damaged Data Safety
 
@@ -766,7 +810,7 @@ Analytics:
 - [x] Commit 7 Benchmark browser validation passed after deploy for metric tiles, read-only source-backed Current Value, successful Create Benchmark save, count edit-prefill formatting, GA4 `90% / 70%` tracker thresholds, and GA4-pattern Benchmark cards.
 - [x] Google Sheets Total Revenue follows the Meta-pattern confirmed revenue source boundary for the Commit 9 scope.
 - [x] Commit 9 browser validation passed after deploy for persistent Total Revenue card rendering, explicit confirmed revenue mapping, `Sources (1)` source dialog access, and campaign-lifetime revenue totals via `dateRange=all`.
-- [ ] Commit 9 browser validation remains pending for the new Pipeline Proxy, ROAS, and ROI cards.
+- [x] Commit 9 browser validation passed after deploy for Pipeline Proxy separation, ROAS/ROI requiring confirmed revenue plus confirmed spend, the separate Total Spend card and source dialog, Google-Sheets-scoped spend wizard behavior, seamless financial-card loading, and selected-campaign provenance that excludes the MimoSaaS campaign name.
 - [ ] Insights and Reports use current source-backed values.
 - [ ] Reports and scheduled reports use latest values.
 
@@ -930,7 +974,9 @@ Google Sheets can be marked locally production-ready only when:
   - Root cause: Google Sheets needed a confirmed revenue source path separate from arbitrary sheet `Revenue` columns.
   - Total Revenue now uses `AddRevenueWizardModal` with `platformContext="google_sheets"` and keeps revenue sources scoped to Google Sheets.
   - Source dialog lists Google Sheets revenue sources and delete recomputes/refetches dependent Google Sheets consumers.
-  - Follow-up: Google Sheets Overview now renders Pipeline Proxy, ROAS, and ROI cards beside Total Revenue.
+  - Follow-up: Google Sheets Overview now renders Total Spend, Pipeline Proxy, ROAS, and ROI cards beside Total Revenue.
+  - Total Spend is sourced only from active spend sources with `platformContext="google_sheets"` and uses campaign-lifetime spend totals.
+  - The Total Spend `+` action opens the shared spend source chooser with `platformContext="google_sheets"` and keeps saved spend sources scoped to Google Sheets.
   - Pipeline Proxy is sourced only from CRM proxy configuration scoped with `platformContext=google_sheets`; pipeline-like sheet columns do not feed confirmed revenue or derived financial consumers.
   - ROAS and ROI require confirmed Google Sheets revenue plus Google-Sheets-scoped confirmed spend, both using campaign-lifetime financial totals.
 - Commit 9 Total Revenue loading follow-up completed locally:
@@ -942,15 +988,32 @@ Google Sheets can be marked locally production-ready only when:
 - Commit 9 Pipeline Proxy/ROAS/ROI card follow-up completed locally:
   - Root cause: the Google Sheets Overview used the Total Revenue card only and did not render the rest of the financial-card template.
   - Fix: the Overview now renders separate Pipeline Proxy, ROAS, and ROI cards using scoped confirmed sources only.
+- Commit 9 Spend card and spend wizard follow-up completed locally:
+  - Root cause: ROAS/ROI needed confirmed Google-Sheets-scoped spend, but the Overview did not expose a matching spend card and source action.
+  - Fix: the Overview now renders a separate Total Spend card with source dialog/edit/delete support, and its `+` action opens the shared spend source chooser while preserving `platformContext="google_sheets"`.
+- Commit 9 seamless financial-card loading follow-up completed locally:
+  - Root cause: unresolved financial queries were treated as empty totals/sources during page refresh, briefly showing false `Not connected`, `Unavailable`, or `Not configured` states.
+  - Fix: Google Sheets financial cards now show stable placeholders only during unresolved initial query state and keep true disconnected/unavailable content for resolved empty states.
+- Commit 9 selected-campaign provenance follow-up completed locally:
+  - Root cause: the Overview totals did not show which selected Google Sheets source values backed the financial metrics.
+  - Fix: a `Selected Campaigns` card now lists explicit selected source values from Google Sheets revenue, spend, and pipeline mappings.
+  - Follow-up root cause: the first implementation also included the MimoSaaS campaign name from `matchingInfo.campaignName`, which could show values such as `GS1`.
+  - Follow-up fix: the provenance card now excludes `matchingInfo.matchedCampaigns` and `matchingInfo.campaignName`.
 - Commit 9 validation passed locally: `npm test -- --run server/source-safety-regression.test.ts server/google-sheets-aggregate-source.test.ts`.
 - Commit 9 validation passed locally: `npm run check`.
 - Commit 9 validation passed locally: `git diff --check`.
 - Commit 9 full regression validation passed locally after the lifetime-range follow-up: `npm test` with 74 files and 647 tests.
 - Commit 9 Pipeline Proxy/ROAS/ROI follow-up validation passed locally: `npm test -- server/google-sheets-aggregate-source.test.ts`, `npm test -- server/source-safety-regression.test.ts`, `npm run check`, `git diff --check`, and full `npm test` with 74 files and 649 tests.
-- Commit 9 Pipeline Proxy/ROAS/ROI browser validation remains pending after deploy.
+- Commit 9 Spend card, spend wizard, seamless loading, and selected-campaign provenance follow-up validation passed locally: `npm test -- server/google-sheets-aggregate-source.test.ts`, `npm test -- server/source-safety-regression.test.ts`, `npm run check`, `git diff --check`, and full `npm test` with 74 files and 650 tests.
 - Commit 9 browser validation passed after deploy:
   - Total Revenue card remains visible after page load.
   - Card stays `Not connected` until explicit confirmed Google Sheets revenue mapping exists.
   - After mapping, the card updates to the formatted confirmed revenue total and shows `Sources (1)`.
   - `Sources (1)` opens the Google Sheets Revenue Sources dialog.
   - Older dated confirmed revenue rows are included in the card total.
+  - Pipeline Proxy is separate from confirmed revenue.
+  - ROAS/ROI unlock only from confirmed Google Sheets Total Revenue plus confirmed Google Sheets Total Spend.
+  - Total Spend appears as a separate card and uses Google-Sheets-scoped spend sources.
+  - The Total Spend `+` action opens the shared spend source chooser and saves scoped spend sources.
+  - Financial cards no longer flash false disconnected/unavailable text during initial page refresh.
+  - Selected Campaigns shows explicit selected Google Sheets source values and does not show the MimoSaaS campaign name.

@@ -927,8 +927,8 @@ export default function GoogleSheetsData() {
                 setIsSpendWizardOpen(true);
               }}
               className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
-              title="Add Google Sheets spend source"
-              aria-label="Add Google Sheets spend source"
+              title="Add spend source"
+              aria-label="Add spend source"
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -3703,8 +3703,6 @@ export default function GoogleSheetsData() {
               currency={(campaign as any)?.currency || googleSheetsRevenueCurrency || "USD"}
               dateRange="90days"
               platformContext="google_sheets"
-              initialStep="sheets_choose"
-              lockInitialStep
               initialSource={spendWizardInitialSource || undefined}
               onProcessed={() => {
                 void refreshGoogleSheetsRevenueQueries();

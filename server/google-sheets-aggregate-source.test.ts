@@ -93,9 +93,9 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("ROI");
     expect(page).toContain("AddSpendWizardModal");
     expect(page).toContain('platformContext="google_sheets"');
-    expect(page).toContain('initialStep="sheets_choose"');
-    expect(page).toContain("lockInitialStep");
-    expect(page).toContain("Add Google Sheets spend source");
+    expect(page).not.toContain('initialStep="sheets_choose"');
+    expect(page).not.toContain("lockInitialStep");
+    expect(page).toContain("Add spend source");
     expect(page).toContain("Google Sheets Spend Sources");
     expect(page).toContain("Sources contributing to Google Sheets Total Spend.");
     expect(page).toContain("setSpendWizardInitialSource");

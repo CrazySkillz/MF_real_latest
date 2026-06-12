@@ -600,7 +600,34 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed for the Google Sheets confirmed Total Revenue boundary:
+  - Root cause: Google Sheets could show a raw `Revenue` column as a normal source-backed sheet metric, but the platform Total Revenue card needed to follow the Meta pattern and use only explicit Google Sheets confirmed revenue sources.
+  - Added a Google Sheets `Total Revenue` card with `+` source action on the Google Sheets Overview tab.
+  - The `+` action opens `AddRevenueWizardModal` with `platformContext="google_sheets"`, so saved revenue sources use the `google_sheets` platform context and `google_sheets_revenue` sheet purpose.
+  - The card shows `Not connected` until an active Google Sheets confirmed revenue source exists; arbitrary sheet `Revenue` columns alone do not populate the card or unlock confirmed financial totals.
+  - The card shows `Sources (#)` when active Google Sheets revenue sources exist, and the Google Sheets Revenue Sources dialog lists source totals with edit/delete actions and delete confirmation.
+  - Delete removes only the selected Google Sheets revenue source and refetches Total Revenue, Google Sheets data, KPIs, Benchmarks, and Reports.
+  - Follow-up root cause: the Total Revenue card was rendered only in the loading branch, so it flashed on initial load and disappeared when populated sheet data rendered.
+  - Follow-up fix: the same Total Revenue card now renders in the populated Overview branch before Spreadsheet Data.
+  - Follow-up root cause: the card queried `dateRange=90days`, but imported Google Sheets confirmed revenue is treated as campaign-lifetime revenue; older dated source rows could produce `Sources (1)` while the card still showed `Not connected`.
+  - Follow-up fix: the Google Sheets Total Revenue card and revenue-wizard refetch path use `dateRange=all`, and the existing revenue totals route now supports `all`/`lifetime` without changing default 7/30/90-day behavior.
+  - Follow-up root cause: the Google Sheets Overview rendered only the Total Revenue card from the Commit 9 financial template; Pipeline Proxy, ROAS, and ROI were not rendered even though the template requires them as separate financial cards.
+  - Follow-up fix: Google Sheets Overview now renders Total Revenue, Pipeline Proxy, ROAS, and ROI as separate cards before Spreadsheet Data. Pipeline Proxy uses only CRM pipeline proxy configuration with `platformContext=google_sheets`; arbitrary sheet pipeline-like columns remain ordinary sheet metrics and do not feed Total Revenue, ROI, ROAS, KPIs, Benchmarks, Reports, or Campaign DeepDive confirmed financial totals.
+  - Follow-up fix: Google Sheets ROAS/ROI use confirmed Google Sheets Total Revenue plus Google-Sheets-scoped confirmed spend via `spend-totals?platformContext=google_sheets&dateRange=all`; raw sheet `Revenue`, `Spend`, `ROI`, or `ROAS` columns do not unlock the cards.
+- [x] Regression guards added/updated in `server/source-safety-regression.test.ts`.
+- [x] Local validation passed: `npm test -- --run server/source-safety-regression.test.ts server/google-sheets-aggregate-source.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [x] Local validation passed: `git diff --check`.
+- [x] Full regression suite passed after the lifetime-range follow-up: `npm test` with 74 files and 647 tests.
+- [x] Local validation passed after Pipeline Proxy, ROAS, and ROI card follow-up: `npm test -- server/google-sheets-aggregate-source.test.ts`, `npm test -- server/source-safety-regression.test.ts`, `npm run check`, `git diff --check`, and full `npm test` with 74 files and 649 tests.
+- [ ] Browser validation remains pending after deploy for the new Google Sheets Pipeline Proxy, ROAS, and ROI cards.
+- [x] Browser validation passed after deploy for the implemented Commit 9 Google Sheets Total Revenue scope:
+  - Total Revenue card remains visible after the Google Sheets analytics page finishes loading.
+  - Card shows `Not connected` before a confirmed Google Sheets revenue source is mapped.
+  - A raw spreadsheet `Revenue` column alone does not populate confirmed Total Revenue.
+  - After explicit Google Sheets confirmed revenue mapping, the card updates to the formatted revenue total and shows `Sources (1)`.
+  - Google Sheets Total Revenue uses campaign-lifetime confirmed revenue, so older dated source rows are included after mapping.
+  - `Sources (1)` opens the Google Sheets Revenue Sources dialog.
 
 ### Commit 10: Refresh, Scheduler, Token, And Cache Safety
 
@@ -737,6 +764,9 @@ Analytics:
 - [x] Commit 6 KPI browser validation passed after deploy for metric tiles, no Timeframe field, no default field focus, no tile-level current-value text, read-only source-backed Current Value, formatted Current/Target values, financial-looking KPI unit inference, GA4 `+/-5%` performance tracker thresholds, GA4-pattern KPI cards, and no page-level horizontal scrollbar.
 - [x] Benchmarks use current source-backed values for the Commit 7 Google Sheets Benchmark scope.
 - [x] Commit 7 Benchmark browser validation passed after deploy for metric tiles, read-only source-backed Current Value, successful Create Benchmark save, count edit-prefill formatting, GA4 `90% / 70%` tracker thresholds, and GA4-pattern Benchmark cards.
+- [x] Google Sheets Total Revenue follows the Meta-pattern confirmed revenue source boundary for the Commit 9 scope.
+- [x] Commit 9 browser validation passed after deploy for persistent Total Revenue card rendering, explicit confirmed revenue mapping, `Sources (1)` source dialog access, and campaign-lifetime revenue totals via `dateRange=all`.
+- [ ] Commit 9 browser validation remains pending for the new Pipeline Proxy, ROAS, and ROI cards.
 - [ ] Insights and Reports use current source-backed values.
 - [ ] Reports and scheduled reports use latest values.
 
@@ -896,3 +926,31 @@ Google Sheets can be marked locally production-ready only when:
   - Create Benchmark saves successfully without `Invalid benchmark data`.
   - Edit Benchmark displays count/integer values logically, for example Customers `140` instead of `140.00`.
   - Benchmark tracker and cards match the GA4 Benchmark template pattern.
+- Commit 9 Google Sheets Total Revenue Meta-pattern boundary completed locally:
+  - Root cause: Google Sheets needed a confirmed revenue source path separate from arbitrary sheet `Revenue` columns.
+  - Total Revenue now uses `AddRevenueWizardModal` with `platformContext="google_sheets"` and keeps revenue sources scoped to Google Sheets.
+  - Source dialog lists Google Sheets revenue sources and delete recomputes/refetches dependent Google Sheets consumers.
+  - Follow-up: Google Sheets Overview now renders Pipeline Proxy, ROAS, and ROI cards beside Total Revenue.
+  - Pipeline Proxy is sourced only from CRM proxy configuration scoped with `platformContext=google_sheets`; pipeline-like sheet columns do not feed confirmed revenue or derived financial consumers.
+  - ROAS and ROI require confirmed Google Sheets revenue plus Google-Sheets-scoped confirmed spend, both using campaign-lifetime financial totals.
+- Commit 9 Total Revenue loading follow-up completed locally:
+  - Root cause: the Total Revenue card rendered only while Google Sheets data was loading.
+  - Fix: the populated Overview branch also renders the Total Revenue card before Spreadsheet Data.
+- Commit 9 Total Revenue lifetime-range follow-up completed locally:
+  - Root cause: `dateRange=90days` excluded older dated confirmed revenue rows while still showing `Sources (1)`.
+  - Fix: Google Sheets Total Revenue now uses `dateRange=all`; the backend totals helper supports `all`/`lifetime` without changing default rolling-range behavior.
+- Commit 9 Pipeline Proxy/ROAS/ROI card follow-up completed locally:
+  - Root cause: the Google Sheets Overview used the Total Revenue card only and did not render the rest of the financial-card template.
+  - Fix: the Overview now renders separate Pipeline Proxy, ROAS, and ROI cards using scoped confirmed sources only.
+- Commit 9 validation passed locally: `npm test -- --run server/source-safety-regression.test.ts server/google-sheets-aggregate-source.test.ts`.
+- Commit 9 validation passed locally: `npm run check`.
+- Commit 9 validation passed locally: `git diff --check`.
+- Commit 9 full regression validation passed locally after the lifetime-range follow-up: `npm test` with 74 files and 647 tests.
+- Commit 9 Pipeline Proxy/ROAS/ROI follow-up validation passed locally: `npm test -- server/google-sheets-aggregate-source.test.ts`, `npm test -- server/source-safety-regression.test.ts`, `npm run check`, `git diff --check`, and full `npm test` with 74 files and 649 tests.
+- Commit 9 Pipeline Proxy/ROAS/ROI browser validation remains pending after deploy.
+- Commit 9 browser validation passed after deploy:
+  - Total Revenue card remains visible after page load.
+  - Card stays `Not connected` until explicit confirmed Google Sheets revenue mapping exists.
+  - After mapping, the card updates to the formatted confirmed revenue total and shows `Sources (1)`.
+  - `Sources (1)` opens the Google Sheets Revenue Sources dialog.
+  - Older dated confirmed revenue rows are included in the card total.

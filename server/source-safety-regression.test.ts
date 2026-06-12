@@ -430,8 +430,10 @@ describe("source safety regression guards", () => {
     expect(routesSource).toContain('normalizedDateRange === "all"');
     expect(loadedOverviewStart).toBeGreaterThan(-1);
     expect(loadedOverviewEnd).toBeGreaterThan(loadedOverviewStart);
-    expect(loadedOverview).toContain("Total Revenue");
-    expect(loadedOverview.indexOf("Total Revenue")).toBeLessThan(loadedOverview.indexOf("Spreadsheet Data"));
+    expect(loadedOverview).toContain("{renderGoogleSheetsFinancialCards()}");
+    expect(page).toContain("const renderGoogleSheetsFinancialCards = () => (");
+    expect(page).toContain("Total Revenue");
+    expect(loadedOverview.indexOf("renderGoogleSheetsFinancialCards")).toBeLessThan(loadedOverview.indexOf("Spreadsheet Data"));
     expect(page).toContain("Google Sheets Revenue Sources");
     expect(page).toContain("Sources contributing to Google Sheets Total Revenue.");
     expect(page).toContain("This removes only the selected Google Sheets revenue source. Total Revenue will be recalculated.");

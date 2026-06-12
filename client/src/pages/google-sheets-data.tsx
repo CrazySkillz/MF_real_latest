@@ -1,6 +1,6 @@
 ﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus, Trash2, X, DollarSign, Eye, MousePointerClick, BarChart3, Hash } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus, Trash2, X, DollarSign, Eye, MousePointerClick, BarChart3, Hash, Percent } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Link } from "wouter";
 import Navigation from "@/components/layout/navigation";
@@ -632,6 +632,7 @@ export default function GoogleSheetsData() {
   const [isRevenueWizardOpen, setIsRevenueWizardOpen] = useState(false);
   const [revenueWizardInitialSource, setRevenueWizardInitialSource] = useState<any>(null);
   const [showRevenueSourcesDialog, setShowRevenueSourcesDialog] = useState(false);
+  const [showPipelineProxySourcesDialog, setShowPipelineProxySourcesDialog] = useState(false);
   const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState<string | null>(null);
 
   const resetGoogleSheetsReportCreateState = () => {
@@ -735,12 +736,65 @@ export default function GoogleSheetsData() {
     },
   });
 
+  const { data: googleSheetsSpendTotalsData } = useQuery<{ success: boolean; totalSpend: number; currency?: string; sourceIds?: string[] }>({
+    queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=google_sheets&dateRange=all`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/spend-totals?platformContext=google_sheets&dateRange=all`);
+      if (!response.ok) return { success: false, totalSpend: 0, sourceIds: [] };
+      const json = await response.json().catch(() => ({}));
+      return {
+        success: !!json?.success,
+        totalSpend: Number(json?.totalSpend || 0),
+        currency: json?.currency,
+        sourceIds: Array.isArray(json?.sourceIds) ? json.sourceIds.map(String).filter(Boolean) : [],
+      };
+    },
+  });
+
+  const { data: hubspotPipelineProxyData } = useQuery<any>({
+    queryKey: ["/api/hubspot", campaignId, "pipeline-proxy", "google_sheets"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    retry: false,
+    queryFn: async () => {
+      const response = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=google_sheets`);
+      if (!response.ok) return null;
+      return response.json().catch(() => null);
+    },
+  });
+
+  const { data: salesforcePipelineProxyData } = useQuery<any>({
+    queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "google_sheets"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    retry: false,
+    queryFn: async () => {
+      const response = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=google_sheets`);
+      if (!response.ok) return null;
+      return response.json().catch(() => null);
+    },
+  });
+
   const activeGoogleSheetsRevenueSources = Array.isArray(googleSheetsRevenueSourcesData?.sources)
     ? googleSheetsRevenueSourcesData.sources.filter((source: any) => source?.isActive !== false)
     : [];
   const googleSheetsTotalRevenue = Number(googleSheetsRevenueTotalsData?.totalRevenue || 0);
   const hasGoogleSheetsConfirmedRevenue = googleSheetsTotalRevenue > 0 && activeGoogleSheetsRevenueSources.length > 0;
-  const googleSheetsRevenueCurrency = googleSheetsRevenueTotalsData?.currency || (campaign as any)?.currency || "USD";
+  const googleSheetsTotalSpend = Number(googleSheetsSpendTotalsData?.totalSpend || 0);
+  const googleSheetsSpendSourceIds = Array.isArray(googleSheetsSpendTotalsData?.sourceIds) ? googleSheetsSpendTotalsData.sourceIds : [];
+  const hasGoogleSheetsConfirmedSpend = googleSheetsTotalSpend > 0 && googleSheetsSpendSourceIds.length > 0;
+  const hasGoogleSheetsDerivedFinancials = hasGoogleSheetsConfirmedRevenue && hasGoogleSheetsConfirmedSpend;
+  const googleSheetsRoas = hasGoogleSheetsDerivedFinancials ? googleSheetsTotalRevenue / googleSheetsTotalSpend : null;
+  const googleSheetsRoi = hasGoogleSheetsDerivedFinancials ? ((googleSheetsTotalRevenue - googleSheetsTotalSpend) / googleSheetsTotalSpend) * 100 : null;
+  const googleSheetsRevenueCurrency = googleSheetsRevenueTotalsData?.currency || googleSheetsSpendTotalsData?.currency || (campaign as any)?.currency || "USD";
   const fmtCurrency = (value: number) =>
     new Intl.NumberFormat(undefined, {
       style: "currency",
@@ -749,16 +803,148 @@ export default function GoogleSheetsData() {
       maximumFractionDigits: 2,
     }).format(Number.isFinite(value) ? value : 0);
 
+  const googleSheetsPipelineProxySourceEntries = useMemo(() => {
+    const sourceForProvider = (provider: "hubspot" | "salesforce", endpointData: any) => {
+      const source = activeGoogleSheetsRevenueSources
+        .filter((item: any) => String(item?.sourceType || "").trim().toLowerCase() === provider)
+        .map((item: any) => ({ source: item, cfg: parseRevenueSourceConfig(item) }))
+        .filter(({ cfg }: any) => cfg?.pipelineEnabled === true && !!(cfg?.pipelineStageId || cfg?.pipelineStageName || cfg?.pipelineStageLabel))
+        .sort((a: any, b: any) => new Date(b.source?.connectedAt || b.source?.createdAt || 0).getTime() - new Date(a.source?.connectedAt || a.source?.createdAt || 0).getTime())[0];
+      if (!source && !endpointData?.success) return null;
+      const cfg = source?.cfg || {};
+      const providerLabel = provider === "salesforce" ? "Salesforce" : "HubSpot";
+      const pipelineValueRevenueTotals = Array.isArray(endpointData?.pipelineValueRevenueTotals)
+        ? endpointData.pipelineValueRevenueTotals
+        : Array.isArray(cfg?.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [];
+      const campaignValues = pipelineValueRevenueTotals.length > 0
+        ? pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean)
+        : Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map((value: any) => String(value || "").trim()).filter(Boolean) : [];
+      return {
+        sourceId: String(source?.source?.id || provider),
+        providerLabel,
+        pipelineStageLabel: endpointData?.pipelineStageLabel || cfg?.pipelineStageLabel || cfg?.pipelineStageName || cfg?.pipelineStageId || "Selected stage",
+        totalToDate: Number(endpointData?.success ? endpointData?.totalToDate || 0 : cfg?.pipelineTotalToDate || 0),
+        campaignValues,
+      };
+    };
+    return [
+      sourceForProvider("hubspot", hubspotPipelineProxyData),
+      sourceForProvider("salesforce", salesforcePipelineProxyData),
+    ].filter(Boolean) as any[];
+  }, [activeGoogleSheetsRevenueSources, hubspotPipelineProxyData, salesforcePipelineProxyData]);
+  const googleSheetsPipelineProxyTotal = googleSheetsPipelineProxySourceEntries.reduce((sum: number, entry: any) => sum + Number(entry?.totalToDate || 0), 0);
+
   const refreshGoogleSheetsRevenueQueries = async () => {
     await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"] });
     await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`], exact: false });
+    await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=google_sheets&dateRange=all`], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy", "google_sheets"], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "google_sheets"], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_sheets/kpis", campaignId], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_sheets/benchmarks", campaignId], exact: false });
     await queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_sheets/reports", campaignId], exact: false });
     await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"], exact: true });
     await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`], exact: true });
+    await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=google_sheets&dateRange=all`], exact: true });
+    await queryClient.refetchQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy", "google_sheets"], exact: false });
+    await queryClient.refetchQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "google_sheets"], exact: false });
   };
+
+  const renderGoogleSheetsFinancialCards = () => (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between mb-1">
+            <p className="text-sm text-muted-foreground/70">Total Revenue</p>
+            <button
+              type="button"
+              onClick={() => {
+                setRevenueWizardInitialSource(null);
+                setIsRevenueWizardOpen(true);
+              }}
+              className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
+              title="Add Google Sheets revenue source"
+              aria-label="Add Google Sheets revenue source"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            {hasGoogleSheetsConfirmedRevenue ? fmtCurrency(googleSheetsTotalRevenue) : "Not connected"}
+          </p>
+          {!hasGoogleSheetsConfirmedRevenue && (
+            <p className="text-xs text-muted-foreground mt-1">Connect confirmed revenue</p>
+          )}
+          {activeGoogleSheetsRevenueSources.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowRevenueSourcesDialog(true)}
+              className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+            >
+              Sources ({activeGoogleSheetsRevenueSources.length})
+            </button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between mb-1">
+            <p className="text-sm text-muted-foreground/70">Pipeline Proxy</p>
+            <Target className="w-4 h-4 text-muted-foreground/70" />
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            {googleSheetsPipelineProxySourceEntries.length > 0 ? fmtCurrency(googleSheetsPipelineProxyTotal) : "Not configured"}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {googleSheetsPipelineProxySourceEntries.length > 0
+              ? "Open CRM value only. Not counted in Total Revenue, ROI, or ROAS."
+              : "Select Total Revenue + Pipeline (Proxy) in the revenue wizard"}
+          </p>
+          {googleSheetsPipelineProxySourceEntries.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowPipelineProxySourcesDialog(true)}
+              className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+            >
+              Sources ({googleSheetsPipelineProxySourceEntries.length})
+            </button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between mb-1">
+            <p className="text-sm text-muted-foreground/70">ROAS</p>
+            <TrendingUp className="w-4 h-4 text-muted-foreground/70" />
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            {googleSheetsRoas !== null ? `${googleSheetsRoas.toFixed(2)}x` : "Unavailable"}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {googleSheetsRoas !== null ? "Confirmed revenue / confirmed spend" : "Requires confirmed revenue and spend"}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between mb-1">
+            <p className="text-sm text-muted-foreground/70">ROI</p>
+            <Percent className="w-4 h-4 text-muted-foreground/70" />
+          </div>
+          <p className={`text-2xl font-bold ${googleSheetsRoi !== null && googleSheetsRoi < 0 ? "text-red-600" : "text-foreground"}`}>
+            {googleSheetsRoi !== null ? formatPct(googleSheetsRoi) : "Unavailable"}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {googleSheetsRoi !== null ? "Confirmed revenue ROI" : "Requires confirmed revenue and spend"}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   const deleteGoogleSheetsRevenueSourceMutation = useMutation({
     mutationFn: async (sourceId: string) => {
@@ -1745,40 +1931,7 @@ export default function GoogleSheetsData() {
                 </TabsList>
 
                 <TabsContent value="data" className="mt-6 space-y-6">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-1">
-                        <p className="text-sm text-muted-foreground/70">Total Revenue</p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRevenueWizardInitialSource(null);
-                            setIsRevenueWizardOpen(true);
-                          }}
-                          className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
-                          title="Add Google Sheets revenue source"
-                          aria-label="Add Google Sheets revenue source"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">
-                        {hasGoogleSheetsConfirmedRevenue ? fmtCurrency(googleSheetsTotalRevenue) : "Not connected"}
-                      </p>
-                      {!hasGoogleSheetsConfirmedRevenue && (
-                        <p className="text-xs text-muted-foreground mt-1">Connect confirmed revenue</p>
-                      )}
-                      {activeGoogleSheetsRevenueSources.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setShowRevenueSourcesDialog(true)}
-                          className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
-                        >
-                          Sources ({activeGoogleSheetsRevenueSources.length})
-                        </button>
-                      )}
-                    </CardContent>
-                  </Card>
+                  {renderGoogleSheetsFinancialCards()}
 
                   <Card>
                     <CardHeader>
@@ -1840,40 +1993,7 @@ export default function GoogleSheetsData() {
                 </TabsList>
 
                 <TabsContent value="data" className="mt-6 space-y-6">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-1">
-                        <p className="text-sm text-muted-foreground/70">Total Revenue</p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRevenueWizardInitialSource(null);
-                            setIsRevenueWizardOpen(true);
-                          }}
-                          className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
-                          title="Add Google Sheets revenue source"
-                          aria-label="Add Google Sheets revenue source"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">
-                        {hasGoogleSheetsConfirmedRevenue ? fmtCurrency(googleSheetsTotalRevenue) : "Not connected"}
-                      </p>
-                      {!hasGoogleSheetsConfirmedRevenue && (
-                        <p className="text-xs text-muted-foreground mt-1">Connect confirmed revenue</p>
-                      )}
-                      {activeGoogleSheetsRevenueSources.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setShowRevenueSourcesDialog(true)}
-                          className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
-                        >
-                          Sources ({activeGoogleSheetsRevenueSources.length})
-                        </button>
-                      )}
-                    </CardContent>
-                  </Card>
+                  {renderGoogleSheetsFinancialCards()}
 
                   <Card>
                     <CardHeader>
@@ -3536,6 +3656,38 @@ export default function GoogleSheetsData() {
                 }) : (
                   <p className="text-sm text-muted-foreground/70">No Google Sheets revenue sources connected.</p>
                 )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={showPipelineProxySourcesDialog} onOpenChange={setShowPipelineProxySourcesDialog}>
+            <DialogContent className="bg-card border-border max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="text-foreground">Pipeline Proxy Sources</DialogTitle>
+                <DialogDescription className="text-muted-foreground/70">
+                  Sources contributing to Google Sheets Pipeline Proxy.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                {googleSheetsPipelineProxySourceEntries.map((entry: any) => (
+                  <div key={entry.sourceId} className="rounded-md border border-border p-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-medium text-foreground">{entry.providerLabel}</p>
+                      <p className="font-medium tabular-nums text-foreground">{fmtCurrency(Number(entry.totalToDate || 0))}</p>
+                    </div>
+                    <div className="mt-1 space-y-0.5 text-xs text-muted-foreground/70">
+                      {Array.isArray(entry.campaignValues) && entry.campaignValues.length > 0 ? (
+                        entry.campaignValues.map((value: any, index: number) => (
+                          <p key={`${entry.sourceId}-${index}`}>
+                            {[`Stage: ${entry.pipelineStageLabel}`, String(value || "").trim()].filter(Boolean).join(" | ")}
+                          </p>
+                        ))
+                      ) : (
+                        <p>{entry.pipelineStageLabel}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </DialogContent>
           </Dialog>

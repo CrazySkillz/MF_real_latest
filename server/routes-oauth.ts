@@ -1285,6 +1285,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = req.params.id;
       const dateRange = String(req.query.dateRange || "30days");
       const { startDate, endDate } = getDateRangeBounds(dateRange);
+      const platformContext = String((req.query as any)?.platformContext || "").trim().toLowerCase();
+      if (platformContext === "google_sheets") {
+        const [sources, breakdown] = await Promise.all([
+          storage.getSpendSources(campaignId),
+          storage.getSpendBreakdownBySource(campaignId, startDate, endDate),
+        ]);
+        const eligibleSourceIds = new Set(
+          (Array.isArray(sources) ? sources : [])
+            .filter((source: any) => source && source.isActive !== false && String(source?.platformContext || "").trim().toLowerCase() === "google_sheets")
+            .map((source: any) => String(source.id || ""))
+            .filter(Boolean)
+        );
+        const scopedBreakdown = (Array.isArray(breakdown) ? breakdown : []).filter((row: any) =>
+          eligibleSourceIds.has(String(row?.sourceId || ""))
+        );
+        const totalSpend = scopedBreakdown.reduce((sum: number, row: any) => sum + Number(row?.spend || 0), 0);
+        const currency = scopedBreakdown.find((row: any) => row?.currency)?.currency;
+        return res.json({
+          success: true,
+          dateRange,
+          platformContext,
+          startDate,
+          endDate,
+          totalSpend: Number(totalSpend.toFixed(2)),
+          currency,
+          sourceIds: scopedBreakdown.map((row: any) => String(row.sourceId || "")).filter(Boolean),
+        });
+      }
       const totals = await storage.getSpendTotalForRange(campaignId, startDate, endDate);
       res.json({ success: true, dateRange, startDate, endDate, ...totals });
     } catch (e: any) {

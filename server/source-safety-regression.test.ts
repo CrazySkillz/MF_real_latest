@@ -405,6 +405,8 @@ describe("source safety regression guards", () => {
 
     expect(page).toContain("const googleSheetsKpiMetricOptions = useMemo<GoogleSheetsKpiMetricOption[]>");
     expect(page).toContain("const available = !!key && sourceValue !== null;");
+    expect(page).toContain("GOOGLE_SHEETS_KPI_CURRENCY_COLUMN_PATTERN.test(key)");
+    expect(page).toContain('? "$"');
     expect(page).toContain("currentValue: sourceValue");
     expect(page).not.toContain("GOOGLE_SHEETS_KPI_FINANCIAL_PATTERN");
     expect(page).not.toContain("Revenue, spend, ROI, and ROAS require confirmed Google Sheets financial source support");
@@ -467,6 +469,13 @@ describe("source safety regression guards", () => {
     expect(header).toContain('<Badge variant="secondary" className="text-xs whitespace-nowrap shrink-0">');
     expect(header).toContain('className={`whitespace-nowrap shrink-0 ${sheetsData?.spreadsheetId && !isCombinedView ? "" : "invisible"}`}');
     expect(header).not.toContain('{sheetsData?.spreadsheetId && !isCombinedView && (');
+  });
+
+  it("Google Sheets analytics main content can shrink inside the sidebar layout", () => {
+    const source = readGoogleSheetsDataPageSource();
+
+    expect(source.match(/<main className="flex-1 min-w-0 p-8">/g)?.length).toBe(3);
+    expect(source).not.toContain('<main className="flex-1 p-8">');
   });
 
   it("legacy platform transfer routes require access to both campaigns", () => {

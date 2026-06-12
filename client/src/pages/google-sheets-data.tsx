@@ -142,6 +142,7 @@ type GoogleSheetsKpiMetricOption = {
 };
 
 const GOOGLE_SHEETS_KPI_DATE_COLUMN_PATTERN = /^(date|week|day|time|timestamp|period|month|year)/i;
+const GOOGLE_SHEETS_KPI_CURRENCY_COLUMN_PATTERN = /(\$|revenue|spend|cost|budget|profit|cpa|cpc|cpm)/i;
 
 export default function GoogleSheetsData() {
   const [, params] = useRoute("/campaigns/:id/google-sheets-data");
@@ -703,7 +704,9 @@ export default function GoogleSheetsData() {
         const available = !!key && sourceValue !== null;
         const unit = String(key).includes("%") || /rate|ctr|cvr/i.test(key)
           ? "%"
-          : col?.type === "integer"
+          : col?.type === "currency" || GOOGLE_SHEETS_KPI_CURRENCY_COLUMN_PATTERN.test(key)
+            ? "$"
+            : col?.type === "integer"
             ? "count"
             : "";
         return {
@@ -886,7 +889,7 @@ export default function GoogleSheetsData() {
         <Navigation />
         <div className="flex">
           <Sidebar />
-          <main className="flex-1 p-8">
+          <main className="flex-1 min-w-0 p-8">
             <div className="space-y-6">
               <div className="h-8 bg-muted rounded animate-pulse"></div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -907,7 +910,7 @@ export default function GoogleSheetsData() {
         <Navigation />
         <div className="flex">
           <Sidebar />
-          <main className="flex-1 p-8">
+          <main className="flex-1 min-w-0 p-8">
             <div className="text-center py-12">
               <h2 className="text-2xl font-bold text-foreground mb-4">Campaign not found</h2>
               <Link href="/campaigns">
@@ -991,7 +994,7 @@ export default function GoogleSheetsData() {
       <div className="flex">
         <Sidebar />
         
-        <main className="flex-1 p-8">
+        <main className="flex-1 min-w-0 p-8">
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between gap-6 mb-6">

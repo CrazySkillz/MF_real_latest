@@ -24,6 +24,8 @@ import { GoogleSheetsKpiModal } from "@/pages/google-sheets-analytics/GoogleShee
 import { GoogleSheetsBenchmarkModal } from "@/pages/google-sheets-analytics/GoogleSheetsBenchmarkModal";
 import { GoogleSheetsReportModal } from "@/pages/google-sheets-analytics/GoogleSheetsReportModal";
 import { Edit2, Clock, Mail, Download } from "lucide-react";
+import { formatPct } from "@shared/metric-math";
+import { computeAttainmentFillPct, computeAttainmentPct, computeEffectiveDeltaPct, classifyKpiBand, isLowerIsBetterKpi } from "@shared/kpi-math";
 
 interface Campaign {
   id: string;
@@ -143,6 +145,7 @@ type GoogleSheetsKpiMetricOption = {
 
 const GOOGLE_SHEETS_KPI_DATE_COLUMN_PATTERN = /^(date|week|day|time|timestamp|period|month|year)/i;
 const GOOGLE_SHEETS_KPI_CURRENCY_COLUMN_PATTERN = /(\$|revenue|spend|cost|budget|profit|cpa|cpc|cpm)/i;
+const GOOGLE_SHEETS_KPI_NEAR_TARGET_BAND_PCT = 5;
 
 export default function GoogleSheetsData() {
   const [, params] = useRoute("/campaigns/:id/google-sheets-data");
@@ -702,7 +705,9 @@ export default function GoogleSheetsData() {
         const key = String(col?.name || "").trim();
         const sourceValue = parseSheetMetricNumber((metrics as any)[key] ?? col?.total);
         const available = !!key && sourceValue !== null;
-        const unit = String(key).includes("%") || /rate|ctr|cvr/i.test(key)
+        const unit = /roas|return on/i.test(key)
+          ? "ratio"
+          : String(key).includes("%") || /rate|ctr|cvr/i.test(key)
           ? "%"
           : col?.type === "currency" || GOOGLE_SHEETS_KPI_CURRENCY_COLUMN_PATTERN.test(key)
             ? "$"
@@ -737,6 +742,20 @@ export default function GoogleSheetsData() {
     };
   }, [googleSheetsKpiMetricOptions]);
 
+  const computeGoogleSheetsKpiProgress = useCallback((kpi: any, current: number, target: number) => {
+    const safeCurrent = Number.isFinite(current) ? current : 0;
+    const safeTarget = Number.isFinite(target) ? target : 0;
+    const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi?.metric || kpi?.metricKey, name: kpi?.name });
+    const effectiveDeltaPct = computeEffectiveDeltaPct({ current: safeCurrent, target: safeTarget, lowerIsBetter });
+    const band = effectiveDeltaPct !== null
+      ? classifyKpiBand({ effectiveDeltaPct, nearTargetBandPct: GOOGLE_SHEETS_KPI_NEAR_TARGET_BAND_PCT })
+      : "below";
+    const attainmentPct = computeAttainmentPct({ current: safeCurrent, target: safeTarget, lowerIsBetter });
+    const fillPct = attainmentPct !== null ? computeAttainmentFillPct(attainmentPct) : 0;
+    const progressColor = band === "above" ? "bg-green-500" : band === "near" ? "bg-blue-500" : "bg-red-500";
+    return { band, effectiveDeltaPct, attainmentPct: attainmentPct ?? 0, fillPct, progressColor };
+  }, []);
+
   const googleSheetsKpiTracker = useMemo(() => {
     const list = Array.isArray(kpisData) ? kpisData : [];
     let above = 0;
@@ -752,12 +771,11 @@ export default function GoogleSheetsData() {
         blocked += 1;
         continue;
       }
-      const progress = (resolved.currentValue / target) * 100;
-      progressTotal += Math.min(Math.max(progress, 0), 100);
+      const progress = computeGoogleSheetsKpiProgress(kpi, resolved.currentValue, target);
+      progressTotal += progress.fillPct;
       progressCount += 1;
-      const delta = ((resolved.currentValue - target) / target) * 100;
-      if (delta > 5) above += 1;
-      else if (delta < -5) below += 1;
+      if (progress.band === "above") above += 1;
+      else if (progress.band === "below") below += 1;
       else near += 1;
     }
     return {
@@ -768,7 +786,7 @@ export default function GoogleSheetsData() {
       blocked,
       avgPct: progressCount > 0 ? progressTotal / progressCount : 0,
     };
-  }, [kpisData, parseSheetMetricNumber, resolveGoogleSheetsKpiMetric]);
+  }, [computeGoogleSheetsKpiProgress, kpisData, parseSheetMetricNumber, resolveGoogleSheetsKpiMetric]);
 
   // ═══ Handler Functions ═══
   const handleCreateKpi = () => {
@@ -881,6 +899,24 @@ export default function GoogleSheetsData() {
     if (type === 'currency') return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     if (type === 'decimal') return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     return value.toLocaleString();
+  };
+
+  const formatGoogleSheetsKpiCardValue = (value: number, unit: string, type?: string): string => {
+    if (unit === "$") return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (unit === "%") return formatPct(value);
+    if (unit === "ratio") return `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x`;
+    if (unit === "count") return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    return formatMetricValue(value, type);
+  };
+
+  const getGoogleSheetsKpiIcon = (metricName: string) => {
+    const n = String(metricName || "").toLowerCase();
+    if (n.includes("revenue") || n.includes("spend") || n.includes("cost") || n.includes("budget")) return { Icon: DollarSign, color: "text-emerald-600" };
+    if (n.includes("roas") || n.includes("roi") || n.includes("rate") || n.includes("%")) return { Icon: TrendingUp, color: "text-violet-600" };
+    if (n.includes("conversion") || n.includes("lead") || n.includes("customer")) return { Icon: Target, color: "text-indigo-600" };
+    if (n.includes("click")) return { Icon: MousePointerClick, color: "text-orange-600" };
+    if (n.includes("session") || n.includes("time")) return { Icon: Clock, color: "text-muted-foreground" };
+    return { Icon: BarChart3, color: "text-muted-foreground" };
   };
 
   if (campaignLoading) {
@@ -1591,27 +1627,65 @@ export default function GoogleSheetsData() {
 
                       <Card>
                         <CardContent className="p-5 space-y-5">
-                          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
-                            <div className="rounded-lg border border-border bg-muted/40 p-4">
-                              <p className="text-sm text-muted-foreground/70">Total KPIs</p>
-                              <p className="text-2xl font-bold text-foreground">{googleSheetsKpiTracker.total}</p>
-                            </div>
-                            <div className="rounded-lg border border-border bg-muted/40 p-4">
-                              <p className="text-sm text-muted-foreground/70">Above Target</p>
-                              <p className="text-2xl font-bold text-green-600">{googleSheetsKpiTracker.above}</p>
-                            </div>
-                            <div className="rounded-lg border border-border bg-muted/40 p-4">
-                              <p className="text-sm text-muted-foreground/70">On Track</p>
-                              <p className="text-2xl font-bold text-blue-600">{googleSheetsKpiTracker.near}</p>
-                            </div>
-                            <div className="rounded-lg border border-border bg-muted/40 p-4">
-                              <p className="text-sm text-muted-foreground/70">Below Target</p>
-                              <p className="text-2xl font-bold text-red-600">{googleSheetsKpiTracker.below}</p>
-                            </div>
-                            <div className="rounded-lg border border-border bg-muted/40 p-4">
-                              <p className="text-sm text-muted-foreground/70">Avg. Progress</p>
-                              <p className="text-2xl font-bold text-foreground">{googleSheetsKpiTracker.avgPct.toFixed(1)}%</p>
-                            </div>
+                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                            <Card>
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm text-muted-foreground/70">Total KPIs</p>
+                                    <p className="text-2xl font-bold text-foreground">{googleSheetsKpiTracker.total}</p>
+                                  </div>
+                                  <Target className="w-8 h-8 text-purple-500" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm text-muted-foreground/70">Above Target</p>
+                                    <p className="text-2xl font-bold text-green-600">{googleSheetsKpiTracker.above}</p>
+                                    <p className="text-xs text-muted-foreground">more than +5% above target</p>
+                                  </div>
+                                  <TrendingUp className="w-8 h-8 text-green-500" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm text-muted-foreground/70">On Track</p>
+                                    <p className="text-2xl font-bold text-blue-600">{googleSheetsKpiTracker.near}</p>
+                                    <p className="text-xs text-muted-foreground">within +/-5% of target</p>
+                                  </div>
+                                  <CheckCircle2 className="w-8 h-8 text-blue-500" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm text-muted-foreground/70">Below Target</p>
+                                    <p className="text-2xl font-bold text-red-600">{googleSheetsKpiTracker.below}</p>
+                                    <p className="text-xs text-muted-foreground">more than -5% below target</p>
+                                  </div>
+                                  <AlertCircle className="w-8 h-8 text-red-500" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm text-muted-foreground/70">Avg. Progress</p>
+                                    <p className="text-2xl font-bold text-foreground">{googleSheetsKpiTracker.avgPct.toFixed(1)}%</p>
+                                  </div>
+                                  <TrendingUp className="w-8 h-8 text-violet-600" />
+                                </div>
+                              </CardContent>
+                            </Card>
                           </div>
 
                           {googleSheetsKpiTracker.blocked > 0 && (
@@ -1626,31 +1700,40 @@ export default function GoogleSheetsData() {
                           const resolved = resolveGoogleSheetsKpiMetric(kpi);
                           const currentVal = resolved.currentValue;
                           const targetVal = parseSheetMetricNumber(kpi.targetValue);
-                          const pct = resolved.available && currentVal !== null && targetVal && targetVal > 0 ? Math.min((currentVal / targetVal) * 100, 100) : null;
                           const col = resolved.option;
                           const displayUnit = String(kpi.unit || col?.unit || "");
+                          const progress = resolved.available && currentVal !== null && targetVal !== null && targetVal > 0
+                            ? computeGoogleSheetsKpiProgress(kpi, currentVal, targetVal)
+                            : null;
+                          const metricLabel = String(kpi.metric || kpi.metricKey || kpi.name || "");
+                          const { Icon, color } = getGoogleSheetsKpiIcon(metricLabel);
                           return (
                             <Card key={kpi.id}>
-                              <CardHeader className="pb-3">
+                              <CardContent className="p-6">
                                 <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <CardTitle className="text-lg">{kpi.name}</CardTitle>
-                                      {(kpi.metric || kpi.metricKey) && (
-                                        <Badge variant="outline" className="bg-muted text-foreground/80/60 font-mono text-xs">
-                                          {kpi.metric || kpi.metricKey}
-                                        </Badge>
-                                      )}
-                                      {kpi.alertsEnabled && <AlertTriangle className="w-4 h-4 text-yellow-500" />}
+                                  <div className="flex items-start gap-4 min-w-0">
+                                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                      <Icon className={`w-5 h-5 ${color}`} />
                                     </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <CardTitle className="text-lg truncate">{kpi.name}</CardTitle>
+                                        {(kpi.metric || kpi.metricKey) && (
+                                          <Badge variant="outline" className="bg-muted text-foreground/80 font-mono text-xs shrink-0">
+                                            {kpi.metric || kpi.metricKey}
+                                          </Badge>
+                                        )}
+                                        {kpi.alertsEnabled && <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0" />}
+                                      </div>
                                     {kpi.description && (
-                                      <CardDescription className="text-sm">{kpi.description}</CardDescription>
+                                        <CardDescription className="text-sm">{kpi.description}</CardDescription>
                                     )}
+                                    </div>
                                   </div>
-                                  <div className="flex gap-1">
+                                  <div className="flex items-center gap-2">
                                     <Button
                                       variant="ghost"
-                                      size="sm"
+                                      size="icon"
                                       onClick={() => {
                                         setEditingKpi(kpi);
                                         setKpiForm({
@@ -1666,12 +1749,14 @@ export default function GoogleSheetsData() {
                                         });
                                         setIsKpiModalOpen(true);
                                       }}
+                                      title="Edit KPI"
+                                      aria-label="Edit KPI"
                                     >
                                       <Edit2 className="w-4 h-4" />
                                     </Button>
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700">
+                                        <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700 hover:bg-red-50">
                                           <Trash2 className="w-4 h-4" />
                                         </Button>
                                       </AlertDialogTrigger>
@@ -1688,38 +1773,47 @@ export default function GoogleSheetsData() {
                                     </AlertDialog>
                                   </div>
                                 </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="space-y-3">
-                                  <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div className="rounded-lg bg-muted p-3">
-                                      <div className="text-muted-foreground/70">Current</div>
-                                      <div className="font-semibold text-foreground">{currentVal !== null ? `${formatMetricValue(currentVal, col?.type)}${displayUnit && displayUnit !== "count" ? ` ${displayUnit}` : ""}` : "Unavailable"}</div>
-                                    </div>
-                                    <div className="rounded-lg bg-muted p-3">
-                                      <div className="text-muted-foreground/70">Target</div>
-                                      <div className="font-semibold text-foreground">{targetVal !== null ? `${formatMetricValue(targetVal, col?.type)}${displayUnit && displayUnit !== "count" ? ` ${displayUnit}` : ""}` : "Unavailable"}</div>
+
+                                <div className="grid grid-cols-2 gap-4 mt-4">
+                                  <div className="bg-muted rounded-lg p-3">
+                                    <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current</div>
+                                    <div className="text-xl font-bold text-foreground">
+                                      {currentVal !== null ? formatGoogleSheetsKpiCardValue(currentVal, displayUnit, col?.type) : "Unavailable"}
                                     </div>
                                   </div>
-                                  {pct !== null ? (
-                                    <>
-                                      <div className="w-full bg-muted rounded-full h-3">
-                                        <div
-                                          className={`h-3 rounded-full transition-all ${pct >= 100 ? 'bg-green-500' : pct >= 75 ? 'bg-blue-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                                          style={{ width: `${pct}%` }}
-                                        />
-                                      </div>
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-xs text-muted-foreground">{pct.toFixed(1)}% of target</span>
-                                        <Badge variant="outline" className={pct >= 100 ? 'bg-green-50 text-green-700 border-green-200' : pct >= 75 ? 'bg-blue-50 text-blue-700 border-blue-200' : pct >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-red-50 text-red-700 border-red-200'}>
-                                          {pct >= 100 ? 'Above Target' : pct >= 75 ? 'On Track' : pct >= 50 ? 'Below Target' : 'At Risk'}
-                                        </Badge>
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <p className="text-sm text-muted-foreground/70">{resolved.reason}</p>
-                                  )}
+                                  <div className="bg-muted rounded-lg p-3">
+                                    <div className="text-sm font-medium text-muted-foreground/70 mb-1">Target</div>
+                                    <div className="text-xl font-bold text-foreground">
+                                      {targetVal !== null ? formatGoogleSheetsKpiCardValue(targetVal, displayUnit, col?.type) : "Unavailable"}
+                                    </div>
+                                  </div>
                                 </div>
+
+                                {progress ? (
+                                  <div className="mt-4 space-y-2">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground/70">
+                                      <span>Progress</span>
+                                      <span>{formatPct(progress.attainmentPct)}</span>
+                                    </div>
+                                    <div className="w-full bg-muted rounded-full h-2">
+                                      <div className={`h-2 rounded-full ${progress.progressColor}`} style={{ width: `${progress.fillPct}%` }} />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-muted-foreground/70 mt-4">{resolved.reason}</p>
+                                )}
+
+                                {progress && progress.effectiveDeltaPct !== null && (
+                                  <div className="mt-2 text-xs text-muted-foreground/70">
+                                    {(() => {
+                                      if (Math.abs(progress.effectiveDeltaPct) < 0.0001) return "At target";
+                                      const absStr = formatPct(Math.abs(progress.effectiveDeltaPct)).replace("%", "");
+                                      return progress.effectiveDeltaPct > 0
+                                        ? `${absStr}% above target`
+                                        : `${absStr}% below target`;
+                                    })()}
+                                  </div>
+                                )}
                               </CardContent>
                             </Card>
                           );

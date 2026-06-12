@@ -404,13 +404,27 @@ describe("source safety regression guards", () => {
     const modal = readGoogleSheetsKpiModalSource();
 
     expect(page).toContain("const googleSheetsKpiMetricOptions = useMemo<GoogleSheetsKpiMetricOption[]>");
+    expect(page).toContain("GOOGLE_SHEETS_KPI_NEAR_TARGET_BAND_PCT = 5");
+    expect(page).toContain("computeEffectiveDeltaPct");
+    expect(page).toContain("classifyKpiBand");
+    expect(page).toContain("computeAttainmentFillPct");
     expect(page).toContain("const available = !!key && sourceValue !== null;");
     expect(page).toContain("GOOGLE_SHEETS_KPI_CURRENCY_COLUMN_PATTERN.test(key)");
+    expect(page).toContain('/roas|return on/i.test(key)');
+    expect(page).toContain('? "ratio"');
     expect(page).toContain('? "$"');
     expect(page).toContain("currentValue: sourceValue");
     expect(page).not.toContain("GOOGLE_SHEETS_KPI_FINANCIAL_PATTERN");
     expect(page).not.toContain("Revenue, spend, ROI, and ROAS require confirmed Google Sheets financial source support");
     expect(page).toContain("const resolved = resolveGoogleSheetsKpiMetric(kpi);");
+    expect(page).toContain("more than +5% above target");
+    expect(page).toContain("within +/-5% of target");
+    expect(page).toContain("more than -5% below target");
+    expect(page).toContain("formatGoogleSheetsKpiCardValue(currentVal, displayUnit, col?.type)");
+    expect(page).toContain("formatGoogleSheetsKpiCardValue(targetVal, displayUnit, col?.type)");
+    expect(page).toContain("getGoogleSheetsKpiIcon(metricLabel)");
+    expect(page).not.toContain("pct >= 75");
+    expect(page).not.toContain("pct >= 50");
     expect(page).toContain('source: "google_sheets_main"');
     expect(page).toContain('valueSource: "source_backed_summary"');
     expect(page).toContain("emailRecipients: kpiForm.emailRecipients ? kpiForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean).join(', ') : null");

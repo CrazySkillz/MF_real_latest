@@ -439,6 +439,8 @@ Status:
   - Explicit numeric sheet columns such as Revenue, Spend, ROI, and ROAS are selectable as source-backed Google Sheets KPI metrics without feeding Campaign DeepDive confirmed financial totals.
   - Existing KPI rows whose metric is missing render as unavailable and are excluded from KPI summary scoring instead of falling back to saved values.
   - KPI section now follows the GA4-style header, Create KPI action, summary tracker, edit/delete controls, immediate alert-frequency default, and alert settings layout.
+  - Follow-up root cause: the Google Sheets KPI performance tracker and KPI cards still used local pre-template status buckets/card markup after the source-backed KPI adapter was added.
+  - Follow-up fix: Google Sheets KPI tracker now uses the same GA4 `+/-5%` target banding and shared KPI math helpers, and KPI cards now follow the GA4 icon/header, current/target panel, progress bar, and target-delta pattern.
 - [x] Regression guard added in `server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
@@ -803,3 +805,9 @@ Google Sheets can be marked locally production-ready only when:
   - Revenue, Spend, ROI, and ROAS sheet columns are selectable as Google Sheets KPI metrics when numeric.
   - Revenue infers `$` instead of `count` for KPI unit display.
   - Google Sheets analytics content fits the page without a page-level horizontal scrollbar.
+- Commit 6 GA4 KPI pattern follow-up completed locally:
+  - Root cause: Google Sheets KPI tracker/card rendering still used local pre-template status buckets and card markup instead of the GA4 `CONNECTED_PLATFORM_SECTION_TEMPLATES.md` KPI pattern.
+  - KPI performance tracker now uses the same GA4 `+/-5%` target banding and shared KPI math helpers.
+  - KPI cards now use the GA4 icon/header, metric badge, Current/Target panels, progress label/bar, and above/below target delta text.
+- Commit 6 GA4 KPI pattern follow-up validation passed locally: `npm test -- server/source-safety-regression.test.ts`.
+- Commit 6 GA4 KPI pattern follow-up validation passed locally: `npm run check`.

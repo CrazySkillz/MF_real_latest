@@ -66,7 +66,7 @@ Current implementation foundations observed:
 Current risk:
 
 - The existing Google Sheets implementation predates the reusable connected-platform section contract.
-- KPI, Benchmark, and Report modals are Google Sheets-specific and not yet proven to match the full GA4 template.
+- Benchmark and Report modals are Google Sheets-specific and not yet proven to match the full GA4 template; the Commit 6 KPI scope has passed browser validation for the implemented Google Sheets dynamic-metric KPI behavior.
 - Google Sheets analytics uses dynamic sheet columns, which is valid, but production readiness requires explicit source-backed current-value resolution and unavailable reasons instead of generic numeric-column assumptions.
 - Google Sheets can be a main platform or a child financial source, so source identity must be tightened before aggregate participation, revenue, ROI, ROAS, KPI, Benchmark, Insights, or Reports are trusted.
 
@@ -77,7 +77,7 @@ The root issue is not that Google Sheets is absent. It is already partially impl
 Specific root causes to address:
 
 - Source role ambiguity: `google_sheets_connections` can represent a main campaign source, a revenue child source, a spend child source, or a legacy shared connection. Those roles can be confused unless purpose/platform context is enforced at every read and render boundary.
-- Template drift: Google Sheets KPI, Benchmark, and Report modals do not yet prove full GA4 template parity, including template panels, field order, no default selections, source-backed current values, alert behavior, edit mode, delete confirmation, custom reports, and scheduled report semantics.
+- Template drift: Google Sheets Benchmark and Report modals do not yet prove full GA4 template parity, including template panels, field order, no default selections, source-backed current values, alert behavior, edit mode, delete confirmation, custom reports, and scheduled report semantics. Commit 6 KPI behavior is validated for the implemented Google Sheets dynamic-metric scope, while any broader final-readiness checklist reconciliation remains governed by the strict template enforcement rule.
 - Dynamic metric ambiguity: Google Sheets can contain arbitrary columns. A numeric column should not automatically become a trusted executive metric unless it is selected/mapped and tied to the active campaign/source scope.
 - Aggregate participation: Google Sheets now feeds the shared Campaign DeepDive connected-source aggregate contract locally, with browser/API validation passed for the child financial source exclusion path.
 - Revenue and pipeline risk: Google Sheets may contain revenue or pipeline-like values, but Total Revenue, ROI, ROAS, and Pipeline Proxy must follow the Meta pattern and remain separate from arbitrary sheet metrics.
@@ -442,7 +442,17 @@ Status:
 - [x] Regression guard added in `server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [ ] Browser validation pending after deploy for create/edit/delete KPI flow, read-only source-backed current value, unavailable state for missing/blocked metrics, and alert settings persistence.
+- [x] Browser validation passed after deploy for the implemented Commit 6 Google Sheets KPI scope:
+  - Create KPI opens the Google Sheets KPI modal with mapped metric tiles instead of the old metric dropdown.
+  - No `Timeframe` field appears in the KPI modal.
+  - The KPI Name field is not auto-focused/highlighted by default when the modal opens.
+  - Metric tiles do not show inline `Current value` text.
+  - Selecting a metric tile still populates the read-only Current Value field from the selected source-backed Google Sheets metric.
+  - Current Value and Target Value formatting displays thousands separators.
+  - Explicit numeric financial-looking sheet columns such as Revenue, Spend, ROI, and ROAS are selectable as Google Sheets KPI metrics without feeding Campaign DeepDive confirmed financial totals.
+  - Financial-looking KPI units infer correctly from the selected sheet column name, so Revenue uses `$` instead of `count`.
+  - The Google Sheets analytics page no longer exposes a page-level horizontal scrollbar from the sidebar/content flex layout.
+  - Alert settings and create/edit/delete behavior remain on the existing Google Sheets platform KPI routes.
 
 ### Commit 7: Benchmark Section GA4 Template Parity
 
@@ -668,6 +678,7 @@ Analytics:
 - [x] Empty or unmapped main Google Sheets analytics states do not populate from child revenue/spend sheets.
 - [x] Direct navigation to Google Sheets analytics for a child-only revenue/spend campaign does not show child sheet rows as main Google Sheets analytics.
 - [x] KPIs use current source-backed values for the Commit 6 Google Sheets KPI scope.
+- [x] Commit 6 KPI browser validation passed after deploy for metric tiles, no Timeframe field, no default field focus, no tile-level current-value text, read-only source-backed Current Value, formatted Current/Target values, financial-looking KPI unit inference, and no page-level horizontal scrollbar.
 - [ ] Benchmarks, Insights, and Reports use current source-backed values.
 - [ ] Reports and scheduled reports use latest values.
 
@@ -782,3 +793,13 @@ Google Sheets can be marked locally production-ready only when:
   - KPI create/edit/delete UI behavior remains on the existing platform KPI routes.
 - Commit 6 validation passed locally: `npm test -- server/source-safety-regression.test.ts`.
 - Commit 6 validation passed locally: `npm run check`.
+- Commit 6 browser validation passed after deploy:
+  - KPI modal shows mapped Google Sheets metric tiles, not the old `Metric Source` dropdown.
+  - `Timeframe` is removed from the KPI modal.
+  - Opening the KPI modal does not auto-highlight the KPI Name field.
+  - Metric tiles do not show inline `Current value` text.
+  - Selecting a metric tile populates the read-only Current Value field from the selected source-backed Google Sheets metric.
+  - Current Value and Target Value use thousands separators.
+  - Revenue, Spend, ROI, and ROAS sheet columns are selectable as Google Sheets KPI metrics when numeric.
+  - Revenue infers `$` instead of `count` for KPI unit display.
+  - Google Sheets analytics content fits the page without a page-level horizontal scrollbar.

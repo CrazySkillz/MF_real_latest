@@ -795,7 +795,7 @@ export default function GoogleSheetsData() {
       targetValue,
       currentValue: metricOption.currentValue,
       alertThreshold: kpiForm.alertThreshold ? parseFloat(String(kpiForm.alertThreshold).replace(/,/g, '')) : null,
-      emailRecipients: kpiForm.emailRecipients ? kpiForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : [],
+      emailRecipients: kpiForm.emailRecipients ? kpiForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean).join(', ') : null,
       metricKey: kpiForm.metric,
       sourceType: "platform",
       calculationConfig: {

@@ -413,6 +413,7 @@ describe("source safety regression guards", () => {
     expect(page).toContain("const resolved = resolveGoogleSheetsKpiMetric(kpi);");
     expect(page).toContain('source: "google_sheets_main"');
     expect(page).toContain('valueSource: "source_backed_summary"');
+    expect(page).toContain("emailRecipients: kpiForm.emailRecipients ? kpiForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean).join(', ') : null");
     expect(page).toContain('alertFrequency: "immediate"');
     expect(page).not.toContain("sheetsData?.summary?.metrics?.[kpi.metric || kpi.metricKey] ?? parseFloat(kpi.currentValue || '0')");
     expect(modal).toContain('data-google-sheets-kpi-source-adapter="source-backed"');

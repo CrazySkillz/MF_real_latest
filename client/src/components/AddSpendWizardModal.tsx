@@ -168,7 +168,7 @@ export function AddSpendWizardModal(props: {
   const [csvEditNotice, setCsvEditNotice] = useState<string>("");
 
   useEffect(() => {
-    if (!props.open) {
+    if (props.open && props.initialSource) return;
       prefillKeyRef.current = null;
       autoDateDecisionRef.current = null;
       // Don't reset step here — we set it correctly on open below
@@ -211,8 +211,7 @@ export function AddSpendWizardModal(props: {
       setIsAdPlatformConnecting(false);
       setAdPlatformCampaigns([]);
       setSelectedAdPlatformCampaignIds([]);
-    }
-  }, [props.open]);
+  }, [props.open, props.initialSource]);
 
   // Prefill when editing an existing spend source (e.g., after ROAS/ROI are computed).
   useEffect(() => {

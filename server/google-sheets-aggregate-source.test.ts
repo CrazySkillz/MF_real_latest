@@ -181,4 +181,20 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(linkedInSpendRoute).toContain("platformContext: platformContext || null");
     expect(linkedInSpendRoute).toContain('String((s as any).platformContext || "").trim().toLowerCase() !== platformContext');
   });
+
+  it("opens Google Sheets add-source modals without prefilled create data", () => {
+    const page = readSource("client", "src", "pages", "google-sheets-data.tsx");
+    const revenueModal = readSource("client", "src", "components", "AddRevenueWizardModal.tsx");
+    const spendModal = readSource("client", "src", "components", "AddSpendWizardModal.tsx");
+
+    expect(page).toContain("setRevenueWizardInitialSource(null);");
+    expect(page).toContain("setSpendWizardInitialSource(null);");
+    expect(revenueModal).toContain("if (open && initialSource) return;");
+    expect(revenueModal).toContain('const shouldAutoSelectExistingSheet = isEditing || (platformContext !== "google_sheets" && platformContext !== "tiktok");');
+    expect(revenueModal).toContain("&& shouldAutoSelectExistingSheet");
+    expect(revenueModal).toContain("if (!initialSource) return;");
+    expect(spendModal).toContain("if (props.open && props.initialSource) return;");
+    expect(spendModal).toContain('setSelectedSheetConnectionId("");');
+    expect(spendModal).toContain("if (!props.initialSource) return;");
+  });
 });

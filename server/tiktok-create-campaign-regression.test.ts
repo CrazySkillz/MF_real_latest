@@ -363,7 +363,8 @@ describe("TikTok Create Campaign source-contract regression guard", () => {
     expect(modal).toContain('platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "tiktok"');
     expect(modal).toContain('platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram" && platformContext !== "tiktok"');
     expect(modal).toContain('const platformLabel = platformContext === "tiktok" ? "TikTok"');
-    expect(modal).toContain('conns.length > 0 && (isEditing || platformContext !== "tiktok")');
+    expect(modal).toContain('const shouldAutoSelectExistingSheet = isEditing || (platformContext !== "google_sheets" && platformContext !== "tiktok");');
+    expect(modal).toContain('conns.length > 0 && shouldAutoSelectExistingSheet');
     expect(modal).toContain('if (!isEditing && platformContext === "tiktok") setSheetsConnectionId("");');
     expect(modal).toContain("campaignMappings");
     expect(modal).toContain("const entries = revSources.filter((s: any) => matchesRevenuePlatformContext(s, platform));");

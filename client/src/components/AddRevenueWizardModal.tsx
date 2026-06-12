@@ -556,9 +556,10 @@ export function AddRevenueWizardModal(props: {
   };
 
   useEffect(() => {
-    if (!open) resetAll();
+    if (open && initialSource) return;
+    resetAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, initialSource]);
 
   useEffect(() => {
     if (!open) return;
@@ -804,7 +805,8 @@ export function AddRevenueWizardModal(props: {
         setSheetsConnections(conns);
         // Auto-select: if no connectionId set, or stored connectionId doesn't match any available connection
         const currentIdValid = sheetsConnectionId && conns.some((c: any) => String(c.id) === sheetsConnectionId);
-        if (!sheetsBackToChooser && !currentIdValid && conns.length > 0 && (isEditing || platformContext !== "tiktok")) {
+        const shouldAutoSelectExistingSheet = isEditing || (platformContext !== "google_sheets" && platformContext !== "tiktok");
+        if (!sheetsBackToChooser && !currentIdValid && conns.length > 0 && shouldAutoSelectExistingSheet) {
           setSheetsConnectionId(String(conns[0]?.id || ""));
         }
       } catch {
@@ -815,7 +817,7 @@ export function AddRevenueWizardModal(props: {
     return () => {
       mounted = false;
     };
-  }, [open, campaignId, sheetsPurpose, isEditing, sheetsBackToChooser]);
+  }, [open, campaignId, sheetsPurpose, isEditing, sheetsBackToChooser, platformContext]);
 
   const refreshSheetsConnections = async () => {
     try {

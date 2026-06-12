@@ -102,6 +102,12 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("deleteGoogleSheetsSpendSourceMutation");
     expect(page).toContain("/spend-totals?platformContext=google_sheets&dateRange=all");
     expect(page).toContain("/pipeline-proxy?platformContext=google_sheets");
+    expect(page).toContain("googleSheetsFinancialCardsInitialLoading");
+    expect(page).toContain("googleSheetsPipelineProxyInitialLoading");
+    expect(page).toContain("renderGoogleSheetsCardValuePlaceholder()");
+    expect(page).toContain("!googleSheetsFinancialCardsInitialLoading && activeGoogleSheetsRevenueSources.length > 0");
+    expect(page).toContain("!googleSheetsFinancialCardsInitialLoading && activeGoogleSheetsSpendSources.length > 0");
+    expect(page).toContain("!googleSheetsPipelineProxyInitialLoading && googleSheetsPipelineProxySourceEntries.length > 0");
     expect(page).toContain('String(googleSheetsRevenueCurrency || "").toUpperCase() === "USD"');
     expect(page).toContain("return `$${safeValue.toLocaleString");
     expect(page).toContain("Open CRM value only. Not counted in Total Revenue, ROI, or ROAS.");

@@ -729,7 +729,7 @@ export default function GoogleSheetsData() {
     enabled: !!campaignId,
   });
 
-  const { data: googleSheetsRevenueSourcesData } = useQuery<{ success: boolean; sources: any[] }>({
+  const { data: googleSheetsRevenueSourcesData, isLoading: googleSheetsRevenueSourcesLoading } = useQuery<{ success: boolean; sources: any[] }>({
     queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"],
     enabled: !!campaignId,
     staleTime: 0,
@@ -743,7 +743,7 @@ export default function GoogleSheetsData() {
     },
   });
 
-  const { data: googleSheetsRevenueTotalsData } = useQuery<{ success: boolean; totalRevenue: number; currency?: string }>({
+  const { data: googleSheetsRevenueTotalsData, isLoading: googleSheetsRevenueTotalsLoading } = useQuery<{ success: boolean; totalRevenue: number; currency?: string }>({
     queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`],
     enabled: !!campaignId,
     staleTime: 0,
@@ -757,7 +757,7 @@ export default function GoogleSheetsData() {
     },
   });
 
-  const { data: googleSheetsSpendTotalsData } = useQuery<{ success: boolean; totalSpend: number; currency?: string; sourceIds?: string[]; sources?: any[] }>({
+  const { data: googleSheetsSpendTotalsData, isLoading: googleSheetsSpendTotalsLoading } = useQuery<{ success: boolean; totalSpend: number; currency?: string; sourceIds?: string[]; sources?: any[] }>({
     queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=google_sheets&dateRange=all`],
     enabled: !!campaignId,
     staleTime: 0,
@@ -777,7 +777,7 @@ export default function GoogleSheetsData() {
     },
   });
 
-  const { data: hubspotPipelineProxyData } = useQuery<any>({
+  const { data: hubspotPipelineProxyData, isLoading: hubspotPipelineProxyLoading } = useQuery<any>({
     queryKey: ["/api/hubspot", campaignId, "pipeline-proxy", "google_sheets"],
     enabled: !!campaignId,
     staleTime: 0,
@@ -791,7 +791,7 @@ export default function GoogleSheetsData() {
     },
   });
 
-  const { data: salesforcePipelineProxyData } = useQuery<any>({
+  const { data: salesforcePipelineProxyData, isLoading: salesforcePipelineProxyLoading } = useQuery<any>({
     queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "google_sheets"],
     enabled: !!campaignId,
     staleTime: 0,
@@ -818,6 +818,20 @@ export default function GoogleSheetsData() {
   const googleSheetsRoas = hasGoogleSheetsDerivedFinancials ? googleSheetsTotalRevenue / googleSheetsTotalSpend : null;
   const googleSheetsRoi = hasGoogleSheetsDerivedFinancials ? ((googleSheetsTotalRevenue - googleSheetsTotalSpend) / googleSheetsTotalSpend) * 100 : null;
   const googleSheetsRevenueCurrency = googleSheetsRevenueTotalsData?.currency || googleSheetsSpendTotalsData?.currency || (campaign as any)?.currency || "USD";
+  const googleSheetsFinancialCardsInitialLoading =
+    (!googleSheetsRevenueSourcesData && googleSheetsRevenueSourcesLoading) ||
+    (!googleSheetsRevenueTotalsData && googleSheetsRevenueTotalsLoading) ||
+    (!googleSheetsSpendTotalsData && googleSheetsSpendTotalsLoading);
+  const googleSheetsPipelineProxyInitialLoading =
+    googleSheetsFinancialCardsInitialLoading ||
+    (!hubspotPipelineProxyData && hubspotPipelineProxyLoading) ||
+    (!salesforcePipelineProxyData && salesforcePipelineProxyLoading);
+  const renderGoogleSheetsCardValuePlaceholder = () => (
+    <span className="inline-block h-8 w-36 rounded bg-muted animate-pulse align-middle" aria-hidden="true" />
+  );
+  const renderGoogleSheetsCardHelperPlaceholder = () => (
+    <span className="mt-1 inline-block h-3 w-32 rounded bg-muted animate-pulse" aria-hidden="true" />
+  );
   const fmtCurrency = (value: number) => {
     const safeValue = Number.isFinite(value) ? value : 0;
     if (String(googleSheetsRevenueCurrency || "").toUpperCase() === "USD") {
@@ -899,12 +913,12 @@ export default function GoogleSheetsData() {
             </button>
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {hasGoogleSheetsConfirmedRevenue ? fmtCurrency(googleSheetsTotalRevenue) : "Not connected"}
+            {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardValuePlaceholder() : hasGoogleSheetsConfirmedRevenue ? fmtCurrency(googleSheetsTotalRevenue) : "Not connected"}
           </p>
-          {!hasGoogleSheetsConfirmedRevenue && (
+          {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardHelperPlaceholder() : !hasGoogleSheetsConfirmedRevenue && (
             <p className="text-xs text-muted-foreground mt-1">Connect confirmed revenue</p>
           )}
-          {activeGoogleSheetsRevenueSources.length > 0 && (
+          {!googleSheetsFinancialCardsInitialLoading && activeGoogleSheetsRevenueSources.length > 0 && (
             <button
               type="button"
               onClick={() => setShowRevenueSourcesDialog(true)}
@@ -934,12 +948,12 @@ export default function GoogleSheetsData() {
             </button>
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {hasGoogleSheetsConfirmedSpend ? fmtCurrency(googleSheetsTotalSpend) : "Not connected"}
+            {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardValuePlaceholder() : hasGoogleSheetsConfirmedSpend ? fmtCurrency(googleSheetsTotalSpend) : "Not connected"}
           </p>
-          {!hasGoogleSheetsConfirmedSpend && (
+          {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardHelperPlaceholder() : !hasGoogleSheetsConfirmedSpend && (
             <p className="text-xs text-muted-foreground mt-1">Connect confirmed spend</p>
           )}
-          {activeGoogleSheetsSpendSources.length > 0 && (
+          {!googleSheetsFinancialCardsInitialLoading && activeGoogleSheetsSpendSources.length > 0 && (
             <button
               type="button"
               onClick={() => setShowSpendSourcesDialog(true)}
@@ -958,14 +972,16 @@ export default function GoogleSheetsData() {
             <Target className="w-4 h-4 text-muted-foreground/70" />
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {googleSheetsPipelineProxySourceEntries.length > 0 ? fmtCurrency(googleSheetsPipelineProxyTotal) : "Not configured"}
+            {googleSheetsPipelineProxyInitialLoading ? renderGoogleSheetsCardValuePlaceholder() : googleSheetsPipelineProxySourceEntries.length > 0 ? fmtCurrency(googleSheetsPipelineProxyTotal) : "Not configured"}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {googleSheetsPipelineProxySourceEntries.length > 0
-              ? "Open CRM value only. Not counted in Total Revenue, ROI, or ROAS."
-              : "Select Total Revenue + Pipeline (Proxy) in the revenue wizard"}
-          </p>
-          {googleSheetsPipelineProxySourceEntries.length > 0 && (
+          {googleSheetsPipelineProxyInitialLoading ? renderGoogleSheetsCardHelperPlaceholder() : (
+            <p className="text-xs text-muted-foreground mt-1">
+              {googleSheetsPipelineProxySourceEntries.length > 0
+                ? "Open CRM value only. Not counted in Total Revenue, ROI, or ROAS."
+                : "Select Total Revenue + Pipeline (Proxy) in the revenue wizard"}
+            </p>
+          )}
+          {!googleSheetsPipelineProxyInitialLoading && googleSheetsPipelineProxySourceEntries.length > 0 && (
             <button
               type="button"
               onClick={() => setShowPipelineProxySourcesDialog(true)}
@@ -984,11 +1000,13 @@ export default function GoogleSheetsData() {
             <TrendingUp className="w-4 h-4 text-muted-foreground/70" />
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {googleSheetsRoas !== null ? `${googleSheetsRoas.toFixed(2)}x` : "Unavailable"}
+            {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardValuePlaceholder() : googleSheetsRoas !== null ? `${googleSheetsRoas.toFixed(2)}x` : "Unavailable"}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {googleSheetsRoas !== null ? "Confirmed revenue / confirmed spend" : "Requires confirmed revenue and spend"}
-          </p>
+          {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardHelperPlaceholder() : (
+            <p className="text-xs text-muted-foreground mt-1">
+              {googleSheetsRoas !== null ? "Confirmed revenue / confirmed spend" : "Requires confirmed revenue and spend"}
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -999,11 +1017,13 @@ export default function GoogleSheetsData() {
             <Percent className="w-4 h-4 text-muted-foreground/70" />
           </div>
           <p className={`text-2xl font-bold ${googleSheetsRoi !== null && googleSheetsRoi < 0 ? "text-red-600" : "text-foreground"}`}>
-            {googleSheetsRoi !== null ? formatPct(googleSheetsRoi) : "Unavailable"}
+            {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardValuePlaceholder() : googleSheetsRoi !== null ? formatPct(googleSheetsRoi) : "Unavailable"}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {googleSheetsRoi !== null ? "Confirmed revenue ROI" : "Requires confirmed revenue and spend"}
-          </p>
+          {googleSheetsFinancialCardsInitialLoading ? renderGoogleSheetsCardHelperPlaceholder() : (
+            <p className="text-xs text-muted-foreground mt-1">
+              {googleSheetsRoi !== null ? "Confirmed revenue ROI" : "Requires confirmed revenue and spend"}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

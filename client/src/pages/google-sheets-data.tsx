@@ -215,6 +215,22 @@ const googleSheetsRevenueSourceLabel = (source: any) => {
   return String(source?.displayName || cfg?.sheetName || cfg?.spreadsheetName || revenueSourceTypeLabel(source?.sourceType));
 };
 
+const spendSourceTypeLabel = (sourceType: any) => {
+  const value = String(sourceType || "").trim().toLowerCase();
+  if (value === "google_sheets") return "Google Sheets";
+  if (value === "csv") return "CSV";
+  if (value === "manual") return "Manual";
+  if (value === "linkedin_api") return "LinkedIn Ads";
+  if (value === "meta_api") return "Meta Ads";
+  if (value === "google_ads_api") return "Google Ads";
+  return value ? value.replace(/_/g, " ") : "Spend Source";
+};
+
+const googleSheetsSpendSourceLabel = (source: any) => {
+  const cfg = parseRevenueSourceConfig(source);
+  return String(source?.displayName || cfg?.sheetName || cfg?.spreadsheetName || spendSourceTypeLabel(source?.sourceType));
+};
+
 export default function GoogleSheetsData() {
   const [, params] = useRoute("/campaigns/:id/google-sheets-data");
   const [location, setLocation] = useLocation();
@@ -633,9 +649,12 @@ export default function GoogleSheetsData() {
   const [isRevenueWizardOpen, setIsRevenueWizardOpen] = useState(false);
   const [isSpendWizardOpen, setIsSpendWizardOpen] = useState(false);
   const [revenueWizardInitialSource, setRevenueWizardInitialSource] = useState<any>(null);
+  const [spendWizardInitialSource, setSpendWizardInitialSource] = useState<any>(null);
   const [showRevenueSourcesDialog, setShowRevenueSourcesDialog] = useState(false);
+  const [showSpendSourcesDialog, setShowSpendSourcesDialog] = useState(false);
   const [showPipelineProxySourcesDialog, setShowPipelineProxySourcesDialog] = useState(false);
   const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState<string | null>(null);
+  const [deletingSpendSourceId, setDeletingSpendSourceId] = useState<string | null>(null);
 
   const resetGoogleSheetsReportCreateState = () => {
     setEditingReportId(null);
@@ -738,7 +757,7 @@ export default function GoogleSheetsData() {
     },
   });
 
-  const { data: googleSheetsSpendTotalsData } = useQuery<{ success: boolean; totalSpend: number; currency?: string; sourceIds?: string[] }>({
+  const { data: googleSheetsSpendTotalsData } = useQuery<{ success: boolean; totalSpend: number; currency?: string; sourceIds?: string[]; sources?: any[] }>({
     queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=google_sheets&dateRange=all`],
     enabled: !!campaignId,
     staleTime: 0,
@@ -746,13 +765,14 @@ export default function GoogleSheetsData() {
     refetchOnWindowFocus: true,
     queryFn: async () => {
       const response = await fetch(`/api/campaigns/${campaignId}/spend-totals?platformContext=google_sheets&dateRange=all`);
-      if (!response.ok) return { success: false, totalSpend: 0, sourceIds: [] };
+      if (!response.ok) return { success: false, totalSpend: 0, sourceIds: [], sources: [] };
       const json = await response.json().catch(() => ({}));
       return {
         success: !!json?.success,
         totalSpend: Number(json?.totalSpend || 0),
         currency: json?.currency,
         sourceIds: Array.isArray(json?.sourceIds) ? json.sourceIds.map(String).filter(Boolean) : [],
+        sources: Array.isArray(json?.sources) ? json.sources : [],
       };
     },
   });
@@ -792,6 +812,7 @@ export default function GoogleSheetsData() {
   const hasGoogleSheetsConfirmedRevenue = googleSheetsTotalRevenue > 0 && activeGoogleSheetsRevenueSources.length > 0;
   const googleSheetsTotalSpend = Number(googleSheetsSpendTotalsData?.totalSpend || 0);
   const googleSheetsSpendSourceIds = Array.isArray(googleSheetsSpendTotalsData?.sourceIds) ? googleSheetsSpendTotalsData.sourceIds : [];
+  const activeGoogleSheetsSpendSources = Array.isArray(googleSheetsSpendTotalsData?.sources) ? googleSheetsSpendTotalsData.sources : [];
   const hasGoogleSheetsConfirmedSpend = googleSheetsTotalSpend > 0 && googleSheetsSpendSourceIds.length > 0;
   const hasGoogleSheetsDerivedFinancials = hasGoogleSheetsConfirmedRevenue && hasGoogleSheetsConfirmedSpend;
   const googleSheetsRoas = hasGoogleSheetsDerivedFinancials ? googleSheetsTotalRevenue / googleSheetsTotalSpend : null;
@@ -859,7 +880,7 @@ export default function GoogleSheetsData() {
   };
 
   const renderGoogleSheetsFinancialCards = () => (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
       <Card>
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-1">
@@ -890,6 +911,41 @@ export default function GoogleSheetsData() {
               className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
             >
               Sources ({activeGoogleSheetsRevenueSources.length})
+            </button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between mb-1">
+            <p className="text-sm text-muted-foreground/70">Total Spend</p>
+            <button
+              type="button"
+              onClick={() => {
+                setSpendWizardInitialSource(null);
+                setIsSpendWizardOpen(true);
+              }}
+              className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
+              title="Add Google Sheets spend source"
+              aria-label="Add Google Sheets spend source"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            {hasGoogleSheetsConfirmedSpend ? fmtCurrency(googleSheetsTotalSpend) : "Not connected"}
+          </p>
+          {!hasGoogleSheetsConfirmedSpend && (
+            <p className="text-xs text-muted-foreground mt-1">Connect confirmed spend</p>
+          )}
+          {activeGoogleSheetsSpendSources.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowSpendSourcesDialog(true)}
+              className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+            >
+              Sources ({activeGoogleSheetsSpendSources.length})
             </button>
           )}
         </CardContent>
@@ -933,18 +989,6 @@ export default function GoogleSheetsData() {
           <p className="text-xs text-muted-foreground mt-1">
             {googleSheetsRoas !== null ? "Confirmed revenue / confirmed spend" : "Requires confirmed revenue and spend"}
           </p>
-          {hasGoogleSheetsConfirmedRevenue && !hasGoogleSheetsConfirmedSpend && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-2 h-8"
-              onClick={() => setIsSpendWizardOpen(true)}
-            >
-              <Plus className="w-3.5 h-3.5 mr-1.5" />
-              Add Spend
-            </Button>
-          )}
         </CardContent>
       </Card>
 
@@ -987,6 +1031,33 @@ export default function GoogleSheetsData() {
       toast({
         title: "Error",
         description: error?.message || "Failed to remove revenue source",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteGoogleSheetsSpendSourceMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const response = await fetch(`/api/campaigns/${campaignId}/spend-sources/${encodeURIComponent(sourceId)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json?.success === false) {
+        throw new Error(json?.error || "Failed to remove spend source");
+      }
+      return json;
+    },
+    onSuccess: async () => {
+      setDeletingSpendSourceId(null);
+      toast({ title: "Spend source removed", description: "Google Sheets Total Spend has been recalculated." });
+      await refreshGoogleSheetsRevenueQueries();
+    },
+    onError: (error: any) => {
+      setDeletingSpendSourceId(null);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to remove spend source",
         variant: "destructive",
       });
     },
@@ -3625,17 +3696,81 @@ export default function GoogleSheetsData() {
             <AddSpendWizardModal
               campaignId={campaignId}
               open={isSpendWizardOpen}
-              onOpenChange={setIsSpendWizardOpen}
+              onOpenChange={(open) => {
+                setIsSpendWizardOpen(open);
+                if (!open) setSpendWizardInitialSource(null);
+              }}
               currency={(campaign as any)?.currency || googleSheetsRevenueCurrency || "USD"}
               dateRange="90days"
               platformContext="google_sheets"
               initialStep="sheets_choose"
               lockInitialStep
+              initialSource={spendWizardInitialSource || undefined}
               onProcessed={() => {
                 void refreshGoogleSheetsRevenueQueries();
               }}
             />
           )}
+
+          <Dialog open={showSpendSourcesDialog} onOpenChange={setShowSpendSourcesDialog}>
+            <DialogContent className="bg-card border-border max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="text-foreground">Google Sheets Spend Sources</DialogTitle>
+                <DialogDescription className="text-muted-foreground/70">
+                  Sources contributing to Google Sheets Total Spend.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+                {activeGoogleSheetsSpendSources.length > 0 ? activeGoogleSheetsSpendSources.map((source: any) => (
+                  <div key={source.sourceId} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground" title={googleSheetsSpendSourceLabel(source)}>
+                        {googleSheetsSpendSourceLabel(source)}
+                      </p>
+                      <p className="text-xs text-muted-foreground/70">{spendSourceTypeLabel(source.sourceType)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium tabular-nums text-foreground">
+                        {fmtCurrency(Number(source.spend || 0))}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowSpendSourcesDialog(false);
+                          setSpendWizardInitialSource({
+                            id: source.sourceId,
+                            sourceType: source.sourceType,
+                            displayName: source.displayName,
+                            mappingConfig: source.mappingConfig,
+                          });
+                          setIsSpendWizardOpen(true);
+                        }}
+                        className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                        title="Edit spend source"
+                        aria-label="Edit spend source"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowSpendSourcesDialog(false);
+                          setDeletingSpendSourceId(String(source.sourceId));
+                        }}
+                        className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
+                        title="Remove spend source"
+                        aria-label="Remove spend source"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )) : (
+                  <p className="text-sm text-muted-foreground/70">No Google Sheets spend sources connected.</p>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <Dialog open={showRevenueSourcesDialog} onOpenChange={setShowRevenueSourcesDialog}>
             <DialogContent className="bg-card border-border max-w-lg">
@@ -3742,6 +3877,30 @@ export default function GoogleSheetsData() {
                   onClick={() => {
                     if (deletingRevenueSourceId) {
                       deleteGoogleSheetsRevenueSourceMutation.mutate(deletingRevenueSourceId);
+                    }
+                  }}
+                >
+                  Remove
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog open={!!deletingSpendSourceId} onOpenChange={(open) => { if (!open) setDeletingSpendSourceId(null); }}>
+            <AlertDialogContent className="bg-card border-border">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-foreground">Remove spend source?</AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground/70">
+                  This removes only the selected Google Sheets spend source. Total Spend, ROAS, and ROI will be recalculated.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => {
+                    if (deletingSpendSourceId) {
+                      deleteGoogleSheetsSpendSourceMutation.mutate(deletingSpendSourceId);
                     }
                   }}
                 >

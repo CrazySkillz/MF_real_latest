@@ -1291,17 +1291,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           storage.getSpendSources(campaignId),
           storage.getSpendBreakdownBySource(campaignId, startDate, endDate),
         ]);
-        const eligibleSourceIds = new Set(
-          (Array.isArray(sources) ? sources : [])
-            .filter((source: any) => source && source.isActive !== false && String(source?.platformContext || "").trim().toLowerCase() === "google_sheets")
-            .map((source: any) => String(source.id || ""))
-            .filter(Boolean)
-        );
+        const eligibleSources = (Array.isArray(sources) ? sources : [])
+          .filter((source: any) => source && source.isActive !== false && String(source?.platformContext || "").trim().toLowerCase() === "google_sheets");
+        const eligibleSourceMap = new Map(eligibleSources.map((source: any) => [String(source.id || ""), source]));
+        const eligibleSourceIds = new Set(Array.from(eligibleSourceMap.keys()).filter(Boolean));
         const scopedBreakdown = (Array.isArray(breakdown) ? breakdown : []).filter((row: any) =>
           eligibleSourceIds.has(String(row?.sourceId || ""))
         );
         const totalSpend = scopedBreakdown.reduce((sum: number, row: any) => sum + Number(row?.spend || 0), 0);
         const currency = scopedBreakdown.find((row: any) => row?.currency)?.currency;
+        const sourcesWithDetails = scopedBreakdown.map((row: any) => {
+          const sourceId = String(row?.sourceId || "");
+          const source = eligibleSourceMap.get(sourceId) || {};
+          return {
+            sourceId,
+            displayName: (source as any)?.displayName || row?.displayName || "Google Sheets",
+            sourceType: (source as any)?.sourceType || row?.sourceType || "google_sheets",
+            spend: Number(Number(row?.spend || 0).toFixed(2)),
+            currency: row?.currency || (source as any)?.currency || currency,
+            mappingConfig: (source as any)?.mappingConfig || null,
+          };
+        });
         return res.json({
           success: true,
           dateRange,
@@ -1310,7 +1320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           endDate,
           totalSpend: Number(totalSpend.toFixed(2)),
           currency,
-          sourceIds: scopedBreakdown.map((row: any) => String(row.sourceId || "")).filter(Boolean),
+          sourceIds: sourcesWithDetails.map((source: any) => String(source.sourceId || "")).filter(Boolean),
+          sources: sourcesWithDetails,
         });
       }
       const totals = await storage.getSpendTotalForRange(campaignId, startDate, endDate);

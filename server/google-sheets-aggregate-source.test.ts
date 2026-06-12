@@ -87,6 +87,7 @@ describe("Google Sheets aggregate source adapter", () => {
 
     expect(page).toContain("renderGoogleSheetsFinancialCards");
     expect(page).toContain("Total Revenue");
+    expect(page).toContain("Total Spend");
     expect(page).toContain("Pipeline Proxy");
     expect(page).toContain("ROAS");
     expect(page).toContain("ROI");
@@ -94,7 +95,11 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain('platformContext="google_sheets"');
     expect(page).toContain('initialStep="sheets_choose"');
     expect(page).toContain("lockInitialStep");
-    expect(page).toContain("Add Spend");
+    expect(page).toContain("Add Google Sheets spend source");
+    expect(page).toContain("Google Sheets Spend Sources");
+    expect(page).toContain("Sources contributing to Google Sheets Total Spend.");
+    expect(page).toContain("setSpendWizardInitialSource");
+    expect(page).toContain("deleteGoogleSheetsSpendSourceMutation");
     expect(page).toContain("/spend-totals?platformContext=google_sheets&dateRange=all");
     expect(page).toContain("/pipeline-proxy?platformContext=google_sheets");
     expect(page).toContain('String(googleSheetsRevenueCurrency || "").toUpperCase() === "USD"');
@@ -115,6 +120,9 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(spendTotalsRoute).toContain('String(source?.platformContext || "").trim().toLowerCase() === "google_sheets"');
     expect(spendTotalsRoute).toContain("eligibleSourceIds.has");
     expect(spendTotalsRoute).toContain("totalSpend: Number(totalSpend.toFixed(2))");
+    expect(spendTotalsRoute).toContain("sourcesWithDetails");
+    expect(spendTotalsRoute).toContain("mappingConfig");
+    expect(spendTotalsRoute).toContain("sources: sourcesWithDetails");
   });
 
   it("persists Google Sheets spend imports with google_sheets platformContext for ROAS and ROI unlocks", () => {

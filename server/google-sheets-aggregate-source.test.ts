@@ -91,6 +91,14 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("Pipeline Proxy");
     expect(page).toContain("ROAS");
     expect(page).toContain("ROI");
+    expect(page).toContain("renderGoogleSheetsCampaignScopeCard");
+    expect(page).toContain("Selected Campaigns");
+    expect(page).toContain("googleSheetsCampaignScopeValues");
+    expect(page).toContain("addValues(cfg?.campaignValues)");
+    expect(page).toContain("addValues(cfg?.selectedValues)");
+    expect(page).toContain("cfg?.campaignValueRevenueTotals");
+    expect(page).toContain("sheetsData?.matchingInfo?.matchedCampaigns");
+    expect(page).toContain("Google Sheets metrics are scoped to these selected campaign values.");
     expect(page).toContain("AddSpendWizardModal");
     expect(page).toContain('platformContext="google_sheets"');
     expect(page).not.toContain('initialStep="sheets_choose"');

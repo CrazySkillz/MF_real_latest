@@ -875,6 +875,37 @@ export default function GoogleSheetsData() {
     ].filter(Boolean) as any[];
   }, [activeGoogleSheetsRevenueSources, hubspotPipelineProxyData, salesforcePipelineProxyData]);
   const googleSheetsPipelineProxyTotal = googleSheetsPipelineProxySourceEntries.reduce((sum: number, entry: any) => sum + Number(entry?.totalToDate || 0), 0);
+  const googleSheetsCampaignScopeValues = (() => {
+    const seen = new Set<string>();
+    const values: string[] = [];
+    const addValue = (value: any) => {
+      const label = String(value ?? "").trim();
+      const key = label.toLowerCase();
+      if (!label || seen.has(key)) return;
+      seen.add(key);
+      values.push(label);
+    };
+    const addValues = (items: any) => {
+      if (!Array.isArray(items)) return;
+      items.forEach(addValue);
+    };
+    const addSourceScope = (source: any) => {
+      const cfg = parseRevenueSourceConfig(source);
+      addValues(cfg?.campaignValues);
+      addValue(cfg?.campaignValue);
+      addValues(cfg?.selectedValues);
+      addValues(Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals.map((item: any) => item?.campaignValue) : []);
+      addValues(Array.isArray(cfg?.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals.map((item: any) => item?.campaignValue) : []);
+    };
+    activeGoogleSheetsRevenueSources.forEach(addSourceScope);
+    activeGoogleSheetsSpendSources.forEach(addSourceScope);
+    googleSheetsPipelineProxySourceEntries.forEach((entry: any) => addValues(entry?.campaignValues));
+    addValues(sheetsData?.matchingInfo?.matchedCampaigns);
+    addValue(sheetsData?.matchingInfo?.campaignName);
+    return values;
+  })();
+  const googleSheetsCampaignScopeInitialLoading =
+    isDataLoading || googleSheetsFinancialCardsInitialLoading || googleSheetsPipelineProxyInitialLoading;
 
   const refreshGoogleSheetsRevenueQueries = async () => {
     await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"] });
@@ -1027,6 +1058,53 @@ export default function GoogleSheetsData() {
         </CardContent>
       </Card>
     </div>
+  );
+
+  const renderGoogleSheetsCampaignScopeCard = () => (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm text-muted-foreground/70">Selected Campaigns</p>
+            <p className="text-xl font-bold text-foreground">
+              {googleSheetsCampaignScopeInitialLoading
+                ? renderGoogleSheetsCardValuePlaceholder()
+                : googleSheetsCampaignScopeValues.length > 0
+                  ? `${googleSheetsCampaignScopeValues.length} campaign value${googleSheetsCampaignScopeValues.length === 1 ? "" : "s"}`
+                  : "All rows"}
+            </p>
+          </div>
+          <Target className="h-4 w-4 shrink-0 text-muted-foreground/70" />
+        </div>
+        {googleSheetsCampaignScopeInitialLoading ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[...Array(3)].map((_, index) => (
+              <span key={index} className="h-6 w-28 rounded-full bg-muted animate-pulse" aria-hidden="true" />
+            ))}
+          </div>
+        ) : googleSheetsCampaignScopeValues.length > 0 ? (
+          <>
+            <p className="mt-1 text-xs text-muted-foreground">Google Sheets metrics are scoped to these selected campaign values.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {googleSheetsCampaignScopeValues.slice(0, 8).map((value) => (
+                <Badge key={value} variant="outline" className="max-w-full text-xs" title={value}>
+                  <span className="max-w-[260px] truncate">{value}</span>
+                </Badge>
+              ))}
+              {googleSheetsCampaignScopeValues.length > 8 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{googleSheetsCampaignScopeValues.length - 8} more
+                </Badge>
+              )}
+            </div>
+          </>
+        ) : (
+          <p className="mt-1 text-sm text-muted-foreground">
+            No campaign filter is configured. Google Sheets metrics use all rows from the selected source.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 
   const deleteGoogleSheetsRevenueSourceMutation = useMutation({
@@ -2042,6 +2120,7 @@ export default function GoogleSheetsData() {
 
                 <TabsContent value="data" className="mt-6 space-y-6">
                   {renderGoogleSheetsFinancialCards()}
+                  {renderGoogleSheetsCampaignScopeCard()}
 
                   <Card>
                     <CardHeader>
@@ -2104,6 +2183,7 @@ export default function GoogleSheetsData() {
 
                 <TabsContent value="data" className="mt-6 space-y-6">
                   {renderGoogleSheetsFinancialCards()}
+                  {renderGoogleSheetsCampaignScopeCard()}
 
                   <Card>
                     <CardHeader>

@@ -1839,7 +1839,42 @@ export default function GoogleSheetsData() {
                   <TabsTrigger value="connections">Connection Details</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="data" className="mt-6">
+                <TabsContent value="data" className="mt-6 space-y-6">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-1">
+                        <p className="text-sm text-muted-foreground/70">Total Revenue</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRevenueWizardInitialSource(null);
+                            setIsRevenueWizardOpen(true);
+                          }}
+                          className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
+                          title="Add Google Sheets revenue source"
+                          aria-label="Add Google Sheets revenue source"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-2xl font-bold text-foreground">
+                        {hasGoogleSheetsConfirmedRevenue ? fmtCurrency(googleSheetsTotalRevenue) : "Not connected"}
+                      </p>
+                      {!hasGoogleSheetsConfirmedRevenue && (
+                        <p className="text-xs text-muted-foreground mt-1">Connect confirmed revenue</p>
+                      )}
+                      {activeGoogleSheetsRevenueSources.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowRevenueSourcesDialog(true)}
+                          className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+                        >
+                          Sources ({activeGoogleSheetsRevenueSources.length})
+                        </button>
+                      )}
+                    </CardContent>
+                  </Card>
+
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">

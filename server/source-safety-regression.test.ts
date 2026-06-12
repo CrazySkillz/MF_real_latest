@@ -419,10 +419,18 @@ describe("source safety regression guards", () => {
     const page = readGoogleSheetsDataPageSource();
     const modal = readRevenueWizardSource();
     const routesSource = readRoutesSource();
+    const loadedStart = page.indexOf(") : sheetsData ? (");
+    const loadedOverviewStart = page.indexOf('<TabsContent value="data" className="mt-6 space-y-6">', loadedStart);
+    const loadedOverviewEnd = page.indexOf('<TabsContent value="summary"', loadedOverviewStart);
+    const loadedOverview = page.slice(loadedOverviewStart, loadedOverviewEnd);
 
     expect(page).toContain('platformContext="google_sheets"');
     expect(page).toContain('fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=google_sheets`)');
     expect(page).toContain('fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=90days`)');
+    expect(loadedOverviewStart).toBeGreaterThan(-1);
+    expect(loadedOverviewEnd).toBeGreaterThan(loadedOverviewStart);
+    expect(loadedOverview).toContain("Total Revenue");
+    expect(loadedOverview.indexOf("Total Revenue")).toBeLessThan(loadedOverview.indexOf("Spreadsheet Data"));
     expect(page).toContain("Google Sheets Revenue Sources");
     expect(page).toContain("Sources contributing to Google Sheets Total Revenue.");
     expect(page).toContain("This removes only the selected Google Sheets revenue source. Total Revenue will be recalculated.");

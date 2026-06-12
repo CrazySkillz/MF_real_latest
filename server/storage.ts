@@ -1694,6 +1694,12 @@ export class DatabaseStorage implements IStorage {
       if ((connection as any).columnMappings !== undefined) {
         setData.columnMappings = (connection as any).columnMappings;
       }
+      if ((connection as any).cachedData !== undefined) {
+        setData.cachedData = (connection as any).cachedData;
+      }
+      if ((connection as any).lastDataRefreshAt !== undefined) {
+        setData.lastDataRefreshAt = (connection as any).lastDataRefreshAt;
+      }
 
       const [updated] = await db
         .update(googleSheetsConnections)
@@ -1715,6 +1721,8 @@ export class DatabaseStorage implements IStorage {
           isPrimary: googleSheetsConnections.isPrimary,
           isActive: googleSheetsConnections.isActive,
           columnMappings: googleSheetsConnections.columnMappings,
+          cachedData: (googleSheetsConnections as any).cachedData,
+          lastDataRefreshAt: (googleSheetsConnections as any).lastDataRefreshAt,
           connectedAt: googleSheetsConnections.connectedAt,
           createdAt: googleSheetsConnections.createdAt,
         });
@@ -1759,6 +1767,14 @@ export class DatabaseStorage implements IStorage {
         if ((connection as any).columnMappings !== undefined) {
           updates.push(`column_mappings = $${paramIndex++}`);
           values.push((connection as any).columnMappings);
+        }
+        if ((connection as any).cachedData !== undefined && !String(error.message || "").includes('cached_data')) {
+          updates.push(`cached_data = $${paramIndex++}::jsonb`);
+          values.push((connection as any).cachedData === null ? null : JSON.stringify((connection as any).cachedData));
+        }
+        if ((connection as any).lastDataRefreshAt !== undefined && !String(error.message || "").includes('last_data_refresh_at')) {
+          updates.push(`last_data_refresh_at = $${paramIndex++}`);
+          values.push((connection as any).lastDataRefreshAt);
         }
         if (connection.isPrimary !== undefined) {
           updates.push(`is_primary = $${paramIndex++}`);
@@ -1858,7 +1874,7 @@ export class DatabaseStorage implements IStorage {
       // Soft delete by setting isActive to false
       await db
         .update(googleSheetsConnections)
-        .set({ isActive: false })
+        .set({ isActive: false, columnMappings: null, cachedData: null, lastDataRefreshAt: null } as any)
         .where(eq(googleSheetsConnections.id, connectionId));
 
       // If this was the primary connection, make the first remaining connection primary

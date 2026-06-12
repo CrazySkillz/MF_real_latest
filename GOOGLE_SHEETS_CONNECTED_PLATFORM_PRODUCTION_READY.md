@@ -698,7 +698,7 @@ Status:
 - [x] Local validation passed: `npm run check`.
 - [x] Local validation passed: `git diff --check`.
 - [x] Full regression suite passed: `npm test` with 74 files and 652 tests.
-- [ ] Browser/deployed validation remains pending after deploy for manual refresh and scheduled refresh using the same main/general Google Sheets scope and Google-Sheets-scoped confirmed financial sources.
+- [x] Browser/deployed validation passed after deploy for manual refresh and scheduled refresh using the same main/general Google Sheets scope and Google-Sheets-scoped confirmed financial sources.
 
 ### Commit 11: Disconnect, Delete, Reconnect, And Damaged Data Safety
 
@@ -723,7 +723,22 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Completed locally for the Commit 11 lifecycle safety boundary:
+  - Root cause: `updateGoogleSheetsConnection` ignored `cachedData` and `lastDataRefreshAt`, even though refresh and cleanup callers already passed those fields. That meant cache writes and cache clears could silently fail, leaving stale sheet rows available after reconnect/delete paths.
+  - Fix: `updateGoogleSheetsConnection` now persists and clears `cachedData` and `lastDataRefreshAt`, and Google Sheets connection soft delete clears `columnMappings`, `cachedData`, and `lastDataRefreshAt`.
+  - Root cause: spreadsheet selection/reconnect paths updated spreadsheet or tab identity without clearing old mappings and cached rows, so a reused connection could carry old sheet data into a new selected spreadsheet/tab until a later successful refresh.
+  - Fix: single-spreadsheet selection, pending-row consumption, replace-mode deactivation, and last revenue-source cleanup now clear stale mappings/cache when the connection identity is changed or disabled.
+  - Root cause: the specific Google Sheets connection delete route and Google Sheets spend-source cleanup path could pass a raw connection ID to storage delete without first proving that connection ID still belonged to the requested campaign.
+  - Fix: specific connection delete now resolves the target from `storage.getGoogleSheetsConnections(campaignId)` before deletion, and spend-source cleanup deletes its backing Google Sheets connection only after proving campaign ownership.
+  - Primary selection traced: `setPrimaryGoogleSheetsConnection` already proves the target connection belongs to the campaign before clearing existing primary flags, so no code change was required there.
+  - Damaged-data cleanup: no existing duplicate or persisted stale-row boundary was proven locally. No destructive cleanup was run; the forward path now clears stale cache/mapping state during lifecycle changes.
+- [x] Regression guards added/updated in `server/source-safety-regression.test.ts`.
+- [x] Local validation passed: `npm test -- --run server/source-safety-regression.test.ts`.
+- [x] Local validation passed: `npm test -- --run server/google-sheets-aggregate-source.test.ts`.
+- [x] Local validation passed: `npm run check`.
+- [x] Local validation passed: `git diff --check`.
+- [x] Full regression suite passed: `npm test` with 74 files and 655 tests.
+- [ ] Browser/deployed validation remains pending after deploy for delete, reconnect, and primary/source change lifecycle behavior.
 
 ### Commit 12: Final Local Regression And Evidence
 
@@ -812,6 +827,7 @@ Analytics:
 - [x] Commit 9 browser validation passed after deploy for persistent Total Revenue card rendering, explicit confirmed revenue mapping, `Sources (1)` source dialog access, and campaign-lifetime revenue totals via `dateRange=all`.
 - [x] Commit 9 browser validation passed after deploy for Pipeline Proxy separation, ROAS/ROI requiring confirmed revenue plus confirmed spend, the separate Total Spend card and source dialog, Google-Sheets-scoped spend wizard behavior, seamless financial-card loading, and selected-campaign provenance that excludes the MimoSaaS campaign name.
 - [ ] Insights and Reports use current source-backed values.
+- [x] Commit 10 browser validation passed after deploy for refresh/scheduler/cache scope: manual refresh and scheduled refresh preserve main/general Google Sheets source scope and Google-Sheets-scoped confirmed financial sources.
 - [ ] Reports and scheduled reports use latest values.
 
 DeepDive:
@@ -824,9 +840,9 @@ DeepDive:
 
 Lifecycle:
 
-- [ ] Delete removes only current campaign Google Sheets source.
-- [ ] Reconnect does not resurrect stale cached rows.
-- [ ] Token refresh and data refresh preserve source scope.
+- [x] Commit 11 local regression: delete removes only current campaign Google Sheets source/connection.
+- [x] Commit 11 local regression: reconnect and replacement paths clear stale cached rows/mappings.
+- [x] Token refresh and data refresh preserve source scope for the Commit 10 refresh/scheduler/cache boundary.
 
 ## Production-Ready Exit Criteria
 
@@ -1017,3 +1033,26 @@ Google Sheets can be marked locally production-ready only when:
   - The Total Spend `+` action opens the shared spend source chooser and saves scoped spend sources.
   - Financial cards no longer flash false disconnected/unavailable text during initial page refresh.
   - Selected Campaigns shows explicit selected Google Sheets source values and does not show the MimoSaaS campaign name.
+- Commit 10 refresh/scheduler/cache safety completed locally:
+  - Root cause: raw Google Sheets cache refresh used every active campaign Google Sheets connection, while the UI and aggregate adapter read only main/general connections.
+  - Fix: raw cache refresh now fails closed unless Google Sheets is a main campaign platform and then refreshes only active main/general connections.
+  - Root cause: scheduler revenue context lists omitted `google_sheets`, so Google-Sheets-scoped confirmed revenue/CRM/Pipeline Proxy mappings could be skipped by scheduled refresh.
+  - Fix: scheduler revenue reprocess loops now include `google_sheets` while preserving existing stable source IDs and fail-closed source ownership checks.
+- Commit 10 validation passed locally: `npm test -- --run server/source-safety-regression.test.ts`, `npm test -- --run server/google-sheets-aggregate-source.test.ts`, `npm test -- --run server/meta-production-regression.test.ts`, `npm test -- --run server/google-ads-revenue-scheduler-flow.test.ts`, `npm run check`, `git diff --check`, and full `npm test` with 74 files and 652 tests.
+- Commit 10 browser/deployed validation passed after deploy:
+  - Manual refresh keeps main Spreadsheet Data scoped to the main/general Google Sheets source.
+  - Manual refresh does not surface child revenue/spend sheet values as main Google Sheets analytics.
+  - Total Revenue, Total Spend, ROAS, ROI, and Selected Campaigns remain source-scoped after refresh.
+  - Scheduled refresh preserves the same main/general Google Sheets and Google-Sheets-scoped confirmed financial source boundaries.
+- Commit 11 lifecycle safety completed locally:
+  - Root cause: Google Sheets connection updates ignored `cachedData` and `lastDataRefreshAt`, so refresh/cache cleanup callers could not reliably write or clear cached rows.
+  - Fix: Google Sheets connection updates now persist/cache-clear those fields, and soft delete clears mappings/cache.
+  - Root cause: selection/reconnect paths could reuse a connection while retaining old mappings/cache.
+  - Fix: spreadsheet selection, pending connection activation, replace-mode deactivation, and final revenue-source cleanup clear stale mappings/cache when connection identity changes or is disabled.
+  - Root cause: specific connection delete and spend-source backing connection cleanup needed explicit campaign ownership proof before deleting by connection ID.
+  - Fix: both paths now prove ownership against the current campaign's Google Sheets connections before deletion.
+- Commit 11 validation passed locally: `npm test -- --run server/source-safety-regression.test.ts`, `npm test -- --run server/google-sheets-aggregate-source.test.ts`, `npm run check`, `git diff --check`, and full `npm test` with 74 files and 655 tests.
+- Commit 11 browser/deployed validation remains pending after deploy:
+  - Delete a Google Sheets connection/source and confirm unrelated campaign/platform sources remain.
+  - Reconnect/select a current spreadsheet/tab and confirm old cached rows/mappings do not reappear.
+  - Change primary/source selection and confirm visible metrics use only the selected active connection.

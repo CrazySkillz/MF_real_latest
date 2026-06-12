@@ -259,6 +259,58 @@ describe("source safety regression guards", () => {
     expect(method.indexOf("if (!targetConnection) return false")).toBeLessThan(method.indexOf(".set({ isPrimary: false })"));
   });
 
+  it("Google Sheets connection delete proves campaign ownership before deleting a requested connection", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.delete("/api/google-sheets/:campaignId/connection"');
+    const routeEnd = routesSource.indexOf("// Select spreadsheet for campaign", routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(route).toContain("const before = await storage.getGoogleSheetsConnections(campaignId);");
+    expect(route).toContain("targetConnection = (before || []).find");
+    expect(route).toContain("Google Sheets connection not found");
+    expect(route).toContain("await storage.deleteGoogleSheetsConnection(String(targetConnection.id));");
+    expect(route).not.toContain("await storage.deleteGoogleSheetsConnection(connectionId as string);");
+    expect(route.indexOf("targetConnection = (before || []).find")).toBeLessThan(route.indexOf("await storage.deleteGoogleSheetsConnection(String(targetConnection.id));"));
+  });
+
+  it("Google Sheets lifecycle clears stale cached rows and mappings on reconnect, replacement, and delete", () => {
+    const routesSource = readRoutesSource();
+    const storageSource = readStorageSource();
+    const selectStart = routesSource.indexOf('app.post("/api/google-sheets/select-spreadsheet"');
+    const selectEnd = routesSource.indexOf("// Select multiple spreadsheet sheets/tabs in one call", selectStart);
+    const selectRoute = routesSource.slice(selectStart, selectEnd);
+    const multiStart = routesSource.indexOf('app.post("/api/google-sheets/select-spreadsheet-multiple"');
+    const multiEnd = routesSource.indexOf("// Check Google Sheets connection status", multiStart);
+    const multiRoute = routesSource.slice(multiStart, multiEnd);
+    const revenueDeleteStart = routesSource.indexOf('app.delete("/api/campaigns/:id/revenue-sources/:sourceId"');
+    const revenueDeleteEnd = routesSource.indexOf("// Individual spend source delete", revenueDeleteStart);
+    const revenueDeleteRoute = routesSource.slice(revenueDeleteStart, revenueDeleteEnd);
+
+    expect(storageSource).toContain("setData.cachedData = (connection as any).cachedData;");
+    expect(storageSource).toContain("setData.lastDataRefreshAt = (connection as any).lastDataRefreshAt;");
+    expect(storageSource).toContain(".set({ isActive: false, columnMappings: null, cachedData: null, lastDataRefreshAt: null } as any)");
+    expect(selectRoute).toContain("columnMappings: null");
+    expect(selectRoute).toContain("cachedData: null");
+    expect(selectRoute).toContain("lastDataRefreshAt: null");
+    expect(multiRoute).toContain("columnMappings: null as any");
+    expect(multiRoute).toContain("cachedData: null as any");
+    expect(multiRoute).toContain("lastDataRefreshAt: null as any");
+    expect(revenueDeleteRoute).toContain("cachedData: null as any");
+    expect(revenueDeleteRoute).toContain("lastDataRefreshAt: null as any");
+  });
+
+  it("Google Sheets spend source delete proves backing sheet connection ownership before cleanup", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.delete("/api/campaigns/:id/spend-sources/:sourceId"');
+    const routeEnd = routesSource.indexOf('app.get("/api/campaigns/:id/revenue-totals"', routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(route).toContain("const campaignSheetsConnections = await storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]);");
+    expect(route).toContain("const ownsConnection = (Array.isArray(campaignSheetsConnections) ? campaignSheetsConnections : [])");
+    expect(route).toContain("if (ownsConnection) await storage.deleteGoogleSheetsConnection(deletingSheetsConnectionId);");
+    expect(route.indexOf("const ownsConnection")).toBeLessThan(route.indexOf("if (ownsConnection) await storage.deleteGoogleSheetsConnection(deletingSheetsConnectionId);"));
+  });
+
   it("Connected Platforms does not expose child-only Google Sheets sources as a main platform", () => {
     const routesSource = readRoutesSource();
     const routeStart = routesSource.indexOf('app.get("/api/campaigns/:id/connected-platforms"');

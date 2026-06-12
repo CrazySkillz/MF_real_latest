@@ -2477,7 +2477,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           for (const c of platformConns) {
             try {
-              await storage.updateGoogleSheetsConnection(String((c as any).id), { isActive: false as any, columnMappings: null as any } as any);
+              await storage.updateGoogleSheetsConnection(String((c as any).id), {
+                isActive: false as any,
+                columnMappings: null as any,
+                cachedData: null as any,
+                lastDataRefreshAt: null as any,
+              } as any);
             } catch { /* ignore */ }
           }
         } catch { /* ignore */ }
@@ -2560,7 +2565,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return false;
           }
         });
-        if (!stillUsed) await storage.deleteGoogleSheetsConnection(deletingSheetsConnectionId);
+        if (!stillUsed) {
+          const campaignSheetsConnections = await storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]);
+          const ownsConnection = (Array.isArray(campaignSheetsConnections) ? campaignSheetsConnections : [])
+            .some((conn: any) => String(conn?.id || "") === deletingSheetsConnectionId);
+          if (ownsConnection) await storage.deleteGoogleSheetsConnection(deletingSheetsConnectionId);
+        }
       }
 
       res.json({ success: true });
@@ -8943,19 +8953,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If deleting a specific connection, determine whether it was used for revenue tracking before removal.
       let deletedWasRevenueTracking = false;
+      let targetConnection: any = null;
       if (connectionId) {
         try {
           const before = await storage.getGoogleSheetsConnections(campaignId);
-          const target = (before || []).find((c: any) => String(c?.id) === String(connectionId));
-          deletedWasRevenueTracking = !!target && (target as any).isActive !== false && isRevenueTrackingConnection(target);
+          targetConnection = (before || []).find((c: any) => String(c?.id) === String(connectionId));
+          if (!targetConnection) {
+            return res.status(404).json({ error: 'Google Sheets connection not found' });
+          }
+          deletedWasRevenueTracking = (targetConnection as any).isActive !== false && isRevenueTrackingConnection(targetConnection);
         } catch {
           deletedWasRevenueTracking = false;
+        }
+        if (!targetConnection) {
+          return res.status(404).json({ error: 'Google Sheets connection not found' });
         }
       }
 
       if (connectionId) {
         // Delete specific connection
-        await storage.deleteGoogleSheetsConnection(connectionId as string);
+        await storage.deleteGoogleSheetsConnection(String(targetConnection.id));
       } else {
         // Delete all connections for this campaign (backward compatibility)
         const connections = await storage.getGoogleSheetsConnections(campaignId);
@@ -9428,7 +9445,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update connection with selected spreadsheet
       await storage.updateGoogleSheetsConnection(connection.id, {
         spreadsheetId,
-      });
+        columnMappings: null as any,
+        cachedData: null as any,
+        lastDataRefreshAt: null as any,
+      } as any);
 
       devLog(`[Google Sheets] Spreadsheet selected successfully`);
       res.json({ success: true, message: 'Spreadsheet connected successfully' });
@@ -12616,7 +12636,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Note: sheetName will be ignored if column doesn't exist (handled in storage layer)
       const updateData: any = {
         spreadsheetId,
-        spreadsheetName
+        spreadsheetName,
+        columnMappings: null,
+        cachedData: null,
+        lastDataRefreshAt: null,
       };
       // Only include sheetName if provided (will be ignored if column doesn't exist)
       if (sheetName) {
@@ -12852,7 +12875,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (i === 0 && isFirstConnection && !pendingConsumed && dbConnection.id && dbConnection.spreadsheetId === 'pending') {
           // IMPORTANT: ensure this "pending" row becomes an active, real connection.
           // If `sheetName` fails to persist (older schema), downstream logic must not deactivate it.
-          await storage.updateGoogleSheetsConnection(dbConnection.id, { spreadsheetId, spreadsheetName, sheetName, purpose: sheetsPurpose || null, isActive: true as any } as any);
+          await storage.updateGoogleSheetsConnection(dbConnection.id, {
+            spreadsheetId,
+            spreadsheetName,
+            sheetName,
+            purpose: sheetsPurpose || null,
+            isActive: true as any,
+            columnMappings: null as any,
+            cachedData: null as any,
+            lastDataRefreshAt: null as any,
+          } as any);
           connectionIds.push(dbConnection.id);
           pendingConsumed = true;
           existingBySheet.set(sheetKey, { ...dbConnection, id: dbConnection.id, spreadsheetId, spreadsheetName, sheetName });
@@ -12916,6 +12948,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await storage.updateGoogleSheetsConnection(String(c.id), {
                 isActive: false as any,
                 columnMappings: null as any,
+                cachedData: null as any,
+                lastDataRefreshAt: null as any,
               } as any);
             } catch {
               // ignore

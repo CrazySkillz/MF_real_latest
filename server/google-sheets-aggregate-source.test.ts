@@ -97,7 +97,8 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("addValues(cfg?.campaignValues)");
     expect(page).toContain("addValues(cfg?.selectedValues)");
     expect(page).toContain("cfg?.campaignValueRevenueTotals");
-    expect(page).toContain("sheetsData?.matchingInfo?.matchedCampaigns");
+    expect(page).not.toContain("sheetsData?.matchingInfo?.matchedCampaigns");
+    expect(page).not.toContain("sheetsData?.matchingInfo?.campaignName");
     expect(page).toContain("Google Sheets metrics are scoped to these selected campaign values.");
     expect(page).toContain("AddSpendWizardModal");
     expect(page).toContain('platformContext="google_sheets"');

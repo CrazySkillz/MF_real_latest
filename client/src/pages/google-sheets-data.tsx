@@ -900,8 +900,6 @@ export default function GoogleSheetsData() {
     activeGoogleSheetsRevenueSources.forEach(addSourceScope);
     activeGoogleSheetsSpendSources.forEach(addSourceScope);
     googleSheetsPipelineProxySourceEntries.forEach((entry: any) => addValues(entry?.campaignValues));
-    addValues(sheetsData?.matchingInfo?.matchedCampaigns);
-    addValue(sheetsData?.matchingInfo?.campaignName);
     return values;
   })();
   const googleSheetsCampaignScopeInitialLoading =

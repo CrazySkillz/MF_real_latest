@@ -4136,6 +4136,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : [];
       const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
       const existingSourceId = String((req.body as any)?.sourceId || "").trim();
+      const requestedPlatformContext = String((req.body as any)?.platformContext || "").trim().toLowerCase();
+      if (requestedPlatformContext && requestedPlatformContext !== "google_sheets") {
+        return res.status(400).json({ success: false, error: "Unsupported spend platformContext" });
+      }
+      const platformContext = requestedPlatformContext || null;
 
       const connection = await storage.getLinkedInConnection(campaignId);
       if (!connection?.accessToken || !connection?.adAccountId) {
@@ -4194,6 +4199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         adAccountName: connection.adAccountName,
         selectedCampaignIds: selectedCampaignIds.length > 0 ? selectedCampaignIds : null,
         breakdown,
+        platformContext: platformContext || undefined,
         dateRange: `${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]}`,
         fetchedAt: new Date().toISOString(),
       });
@@ -4204,11 +4210,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!existingSource || String((existingSource as any).sourceType || "").trim() !== "linkedin_api") {
           return res.status(404).json({ success: false, error: "LinkedIn spend source not found" });
         }
+        if (platformContext && String((existingSource as any).platformContext || "").trim().toLowerCase() !== platformContext) {
+          return res.status(404).json({ success: false, error: "LinkedIn spend source not found" });
+        }
         await storage.deleteSpendRecordsBySource(existingSourceId);
         source = await storage.updateSpendSource(existingSourceId, {
           displayName: "LinkedIn Ads",
           currency: cur,
           mappingConfig,
+          ...(platformContext ? { platformContext } : {}),
           isActive: true,
         } as any);
       } else {
@@ -4217,6 +4227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existingSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
         for (const s of (Array.isArray(existingSources) ? existingSources : [])) {
           if ((s as any).isActive !== false && String((s as any).sourceType || "") === "linkedin_api") {
+            if (platformContext && String((s as any).platformContext || "").trim().toLowerCase() !== platformContext) continue;
             await storage.deleteSpendRecordsBySource(String((s as any).id));
             await storage.updateSpendSource(String((s as any).id), { isActive: false } as any);
           }
@@ -4228,6 +4239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           displayName: "LinkedIn Ads",
           currency: cur,
           mappingConfig,
+          platformContext: platformContext || null,
           isActive: true,
         } as any);
       }
@@ -4321,6 +4333,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!mapping?.spendColumn) {
         return res.status(400).json({ success: false, error: "spendColumn is required" });
       }
+      const requestedPlatformContext = String(mapping?.platformContext || "").trim().toLowerCase();
+      if (requestedPlatformContext && requestedPlatformContext !== "google_sheets") {
+        return res.status(400).json({ success: false, error: "Unsupported spend platformContext" });
+      }
+      const platformContext = requestedPlatformContext || null;
 
       const file = (req as any).file as any;
       let parsedRows: Array<Record<string, any>> = [];
@@ -4349,6 +4366,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
         if (String((existingSource as any)?.sourceType || "").trim().toLowerCase() !== "csv") {
+          return res.status(404).json({ success: false, error: "Spend source not found" });
+        }
+        if (platformContext && String((existingSource as any)?.platformContext || "").trim().toLowerCase() !== platformContext) {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
         let existingMapping: any = null;
@@ -4456,6 +4476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const mappingForStorage = {
         ...mapping,
         mode: "spend_to_date",
+        platformContext: platformContext || undefined,
         storedSpendColumn: spendCol,
         storedCampaignColumn: campaignCol,
         storedDateColumn: dateCol,
@@ -4473,10 +4494,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (String((existingSource as any)?.sourceType || "").trim().toLowerCase() !== "csv") {
           return res.status(404).json({ success: false, error: "Spend source not found" });
         }
+        if (platformContext && String((existingSource as any)?.platformContext || "").trim().toLowerCase() !== platformContext) {
+          return res.status(404).json({ success: false, error: "Spend source not found" });
+        }
         source = await storage.updateSpendSource(existingSourceId, {
           displayName: mapping.displayName || "CSV",
           currency,
           mappingConfig: JSON.stringify(mappingForStorage),
+          ...(platformContext ? { platformContext } : {}),
           isActive: true,
         } as any);
         if (!source) return res.status(404).json({ success: false, error: "Spend source not found" });
@@ -4488,6 +4513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           displayName: mapping.displayName || "CSV",
           currency,
           mappingConfig: JSON.stringify(mappingForStorage),
+          platformContext: platformContext || null,
           isActive: true,
         } as any);
       }

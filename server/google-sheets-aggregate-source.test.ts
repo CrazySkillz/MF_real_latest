@@ -130,7 +130,9 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(modal).toContain("platformContext?: SpendPlatformContext");
     expect(modal).toContain("initialStep?: Step");
     expect(modal).toContain("lockInitialStep?: boolean");
-    expect(modal).toContain("platformContext: props.platformContext");
+    expect((modal.match(/platformContext: props\.platformContext/g) || []).length).toBeGreaterThanOrEqual(5);
+    expect(modal).toContain("fd.append(\"mapping\", JSON.stringify(mapping))");
+    expect(modal).toContain("body: JSON.stringify({");
 
     const routes = readSource("server", "routes-oauth.ts");
     const sheetsSpendRoute = sliceBetween(
@@ -143,5 +145,25 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(sheetsSpendRoute).toContain('requestedPlatformContext !== "google_sheets"');
     expect(sheetsSpendRoute).toContain("platformContext: platformContext || null");
     expect(sheetsSpendRoute).toContain('String((s as any).platformContext || "").trim().toLowerCase() !== platformContext');
+
+    const csvSpendRoute = sliceBetween(
+      routes,
+      'app.post("/api/campaigns/:id/spend/csv/process"',
+      'app.post("/api/campaigns/:id/spend/sheets/preview"'
+    );
+    expect(csvSpendRoute).toContain("requestedPlatformContext");
+    expect(csvSpendRoute).toContain('requestedPlatformContext !== "google_sheets"');
+    expect(csvSpendRoute).toContain("platformContext: platformContext || null");
+    expect(csvSpendRoute).toContain('String((existingSource as any)?.platformContext || "").trim().toLowerCase() !== platformContext');
+
+    const linkedInSpendRoute = sliceBetween(
+      routes,
+      'app.post("/api/campaigns/:id/spend/linkedin/process"',
+      "// ============================================================================"
+    );
+    expect(linkedInSpendRoute).toContain("requestedPlatformContext");
+    expect(linkedInSpendRoute).toContain('requestedPlatformContext !== "google_sheets"');
+    expect(linkedInSpendRoute).toContain("platformContext: platformContext || null");
+    expect(linkedInSpendRoute).toContain('String((s as any).platformContext || "").trim().toLowerCase() !== platformContext');
   });
 });

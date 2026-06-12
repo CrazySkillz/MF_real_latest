@@ -842,6 +842,7 @@ export function AddSpendWizardModal(props: {
         csvHeaders: Array.isArray(csvPreview?.headers) ? csvPreview?.headers : undefined,
         csvSampleRows: Array.isArray(csvPreview?.sampleRows) ? csvPreview?.sampleRows : undefined,
         csvRowCount: typeof csvPreview?.rowCount === "number" ? csvPreview?.rowCount : undefined,
+        platformContext: props.platformContext,
         ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
       };
       const fd = new FormData();
@@ -969,6 +970,7 @@ export function AddSpendWizardModal(props: {
             currency: props.currency || "USD",
             sourceType: "linkedin_api",
             displayName: "LinkedIn Ads",
+            platformContext: props.platformContext,
             ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
             mappingConfig: {
               platform: "linkedin",
@@ -1005,6 +1007,7 @@ export function AddSpendWizardModal(props: {
         body: JSON.stringify({
           campaignIds: selectedLinkedInCampaignIds,
           currency: props.currency || "USD",
+          platformContext: props.platformContext,
           ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
         }),
       });
@@ -1148,6 +1151,7 @@ export function AddSpendWizardModal(props: {
           currency: props.currency || "USD",
           sourceType: "ad_platforms",
           displayName: platformLabel,
+          platformContext: props.platformContext,
           ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
           mappingConfig: {
             platform: selectedPlatform,
@@ -1332,6 +1336,7 @@ export function AddSpendWizardModal(props: {
           amount,
           currency: props.currency || "USD",
           dateRange: props.dateRange || "30days",
+          platformContext: props.platformContext,
           ...(isEditing && props.initialSource?.id ? { sourceId: String(props.initialSource.id) } : {}),
         }),
       });

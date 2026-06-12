@@ -463,6 +463,10 @@ describe("source safety regression guards", () => {
     expect(page).toContain("Create Benchmark");
     expect(page).toContain("formatGoogleSheetsKpiCardValue(currentVal, displayUnit, resolved.option?.type)");
     expect(page).toContain("formatGoogleSheetsKpiCardValue(benchmarkVal, displayUnit, resolved.option?.type)");
+    expect(page).toContain("const formatGoogleSheetsBenchmarkInputValue =");
+    expect(page).toContain("Number.isInteger(parsed)");
+    expect(page).toContain("benchmarkValue: formatGoogleSheetsBenchmarkInputValue(bm.benchmarkValue, editUnit, resolved.option?.type)");
+    expect(page).toContain("alertThreshold: bm.alertThreshold ? formatGoogleSheetsBenchmarkInputValue(bm.alertThreshold, editUnit, resolved.option?.type) : \"\"");
     expect(page).toContain("getGoogleSheetsKpiIcon(metricLabel)");
     expect(page).toContain("benchmarkValue: String(benchmarkValue)");
     expect(page).toContain("currentValue: String(metricOption.currentValue)");

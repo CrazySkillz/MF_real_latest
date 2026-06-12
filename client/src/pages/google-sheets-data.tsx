@@ -996,6 +996,18 @@ export default function GoogleSheetsData() {
     return formatMetricValue(value, type);
   };
 
+  const formatGoogleSheetsBenchmarkInputValue = (value: any, unit: string, type?: string): string => {
+    const raw = String(value ?? "").trim();
+    if (!raw) return "";
+    if (unit === "count" || type === "integer") {
+      const parsed = parseSheetMetricNumber(raw);
+      if (parsed !== null && Number.isInteger(parsed)) {
+        return parsed.toLocaleString(undefined, { maximumFractionDigits: 0 });
+      }
+    }
+    return raw;
+  };
+
   const getGoogleSheetsKpiIcon = (metricName: string) => {
     const n = String(metricName || "").toLowerCase();
     if (n.includes("revenue") || n.includes("spend") || n.includes("cost") || n.includes("budget")) return { Icon: DollarSign, color: "text-emerald-600" };
@@ -2010,14 +2022,15 @@ export default function GoogleSheetsData() {
                                         size="icon"
                                         onClick={() => {
                                           setEditingBenchmark(bm);
+                                          const editUnit = String(bm.unit || resolved.option?.unit || "");
                                           setBenchmarkForm({
-                                            name: bm.name || "", unit: bm.unit || resolved.option?.unit || "", description: bm.description || "",
+                                            name: bm.name || "", unit: editUnit, description: bm.description || "",
                                             metric: bm.metric || bm.metricKey || "",
-                                            benchmarkValue: String(bm.benchmarkValue || ""),
+                                            benchmarkValue: formatGoogleSheetsBenchmarkInputValue(bm.benchmarkValue, editUnit, resolved.option?.type),
                                             currentValue: currentVal !== null ? String(currentVal) : "",
                                             alertsEnabled: !!bm.alertsEnabled, emailNotifications: !!bm.emailNotifications,
                                             alertFrequency: bm.alertFrequency || "immediate",
-                                            alertThreshold: bm.alertThreshold ? String(bm.alertThreshold) : "",
+                                            alertThreshold: bm.alertThreshold ? formatGoogleSheetsBenchmarkInputValue(bm.alertThreshold, editUnit, resolved.option?.type) : "",
                                             alertCondition: bm.alertCondition || "below",
                                             emailRecipients: Array.isArray(bm.emailRecipients) ? bm.emailRecipients.join(', ') : (bm.emailRecipients || ""),
                                           });

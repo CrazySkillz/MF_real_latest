@@ -965,6 +965,7 @@ Analytics:
 - [x] Commit 12 local regression: legacy KPI/Benchmark rows without saved source scope render unavailable until edited/resaved.
 - [x] Commit 12F-12K browser validation passed after deploy for saved KPI, Benchmark, and Report source labels, dropdown-change stability, saved source-scope evaluation, invalid/missing source unavailable states, Overview metric report values, active source filtering, and Benchmark card metric-label cleanup.
 - [x] Local regression: Google Sheets Insights tab renders only spreadsheet-generated `sheetsData.insights` sections and no longer mixes saved KPI/Benchmark gap analysis into the spreadsheet Insights surface.
+- [x] Local regression: Google Sheets Performance and What to do next insight generation is metric-direction aware, treats CPA/CPC/CPM/CPL-style metrics as lower-is-better, and avoids top/bottom performer claims for neutral spend/cost fields.
 
 DeepDive:
 
@@ -1218,3 +1219,6 @@ Google Sheets can be marked locally production-ready only when:
 - Google Sheets Insights tab source-boundary follow-up completed locally:
   - Root cause: the Insights tab was mostly generated from filtered spreadsheet rows, but its `Goal Impact` block mixed in saved KPI/Benchmark rows and even evaluated Benchmarks with `targetValue` instead of `benchmarkValue`.
   - Fix: the non-spreadsheet `Goal Impact` block was removed from Insights so the tab stays driven by server-generated `sheetsData.insights` from selected spreadsheet rows and detected numeric columns.
+- Google Sheets Insights interpretation follow-up completed locally:
+  - Root cause: the spreadsheet Insights generator treated higher values as better for every metric, so cost-efficiency metrics such as CPA, CPC, CPM, and CPL could be ranked and recommended incorrectly.
+  - Fix: Performance ranking and What to do next recommendations now use metric-direction rules: lower-is-better cost-efficiency metrics rank low values as better, adverse trends are direction-aware, and neutral spend/cost/budget fields do not produce top/bottom performer claims.

@@ -16722,8 +16722,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return v.toLocaleString('en-US', { maximumFractionDigits: 2 });
       };
 
+      const metricName = col.name.toLowerCase();
+      const lowerIsBetter = /\b(cpa|cpc|cpm|cpl|cost per|cost\/conversion|cost per conversion|cost_per)\b/i.test(metricName);
+      const neutralCostMetric = !lowerIsBetter && /\b(spend|cost|budget|investment)\b/i.test(metricName);
+      const rankBestFirst = (a: { avg?: number; value?: number }, b: { avg?: number; value?: number }) => {
+        const aValue = a.avg ?? a.value ?? 0;
+        const bValue = b.avg ?? b.value ?? 0;
+        return lowerIsBetter ? aValue - bValue : bValue - aValue;
+      };
+      const rankWeakestFirst = (a: { avg?: number; value?: number }, b: { avg?: number; value?: number }) => {
+        const aValue = a.avg ?? a.value ?? 0;
+        const bValue = b.avg ?? b.value ?? 0;
+        return lowerIsBetter ? bValue - aValue : aValue - bValue;
+      };
+      const performanceVerb = lowerIsBetter ? "best" : "highest";
+      const weaknessVerb = lowerIsBetter ? "weakest" : "lowest";
+
       // --- Top/Bottom Performers ---
-      if (labelsRepeat && labelColIndex >= 0) {
+      if (!neutralCostMetric && labelsRepeat && labelColIndex >= 0) {
         // Group by label, compute averages
         const groups = new Map<string, { sum: number, count: number }>();
         rowData.forEach(item => {
@@ -16739,13 +16755,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
 
         // Top 3 groups
-        const topGroups = [...groupAvgs].sort((a, b) => b.avg - a.avg).slice(0, 3);
+        const topGroups = [...groupAvgs].sort(rankBestFirst).slice(0, 3);
         topGroups.forEach(g => {
           insights.topPerformers.push({
             metric: col.name,
             value: g.avg,
             label: g.label,
             type: col.type,
+            lowerIsBetter,
             severity: 'low',
             confidence: g.count >= 50 ? 'high' : g.count >= 10 ? 'medium' : 'low',
             percentOfTotal: col.total > 0 ? (g.total / col.total) * 100 : 0,
@@ -16754,18 +16771,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
               `${g.count} data points`,
               col.total > 0 ? `${((g.total / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
             ].filter(Boolean),
-            message: `${g.label} has the highest average ${col.name} (${fmtVal(g.avg)}) across ${g.count} data points`
+            message: `${g.label} has the ${performanceVerb} average ${col.name} (${fmtVal(g.avg)}) across ${g.count} data points`
           });
         });
 
         // Bottom 3 groups
-        const bottomGroups = [...groupAvgs].filter(g => g.avg > 0).sort((a, b) => a.avg - b.avg).slice(0, 3);
+        const bottomGroups = [...groupAvgs].filter(g => g.avg > 0).sort(rankWeakestFirst).slice(0, 3);
         bottomGroups.forEach(g => {
           insights.bottomPerformers.push({
             metric: col.name,
             value: g.avg,
             label: g.label,
             type: col.type,
+            lowerIsBetter,
             severity: 'low',
             confidence: g.count >= 50 ? 'high' : g.count >= 10 ? 'medium' : 'low',
             percentOfTotal: col.total > 0 ? (g.total / col.total) * 100 : 0,
@@ -16774,12 +16792,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               `${g.count} data points`,
               col.total > 0 ? `${((g.total / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
             ].filter(Boolean),
-            message: `${g.label} has the lowest average ${col.name} (${fmtVal(g.avg)}) across ${g.count} data points`
+            message: `${g.label} has the ${weaknessVerb} average ${col.name} (${fmtVal(g.avg)}) across ${g.count} data points`
           });
         });
-      } else {
+      } else if (!neutralCostMetric) {
         // Unique labels: rank individual rows
-        const topRows = [...rowData].sort((a, b) => b.value - a.value).slice(0, 3);
+        const topRows = [...rowData].sort(rankBestFirst).slice(0, 3);
         topRows.forEach(item => {
           const label = item.label || `Row ${item.rowIndex}`;
           insights.topPerformers.push({
@@ -16787,6 +16805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             value: item.value,
             label: label,
             type: col.type,
+            lowerIsBetter,
             severity: 'low',
             confidence: values.length >= 50 ? 'high' : values.length >= 10 ? 'medium' : 'low',
             percentOfTotal: col.total > 0 ? (item.value / col.total) * 100 : 0,
@@ -16794,11 +16813,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               `Value: ${fmtVal(item.value)}`,
               col.total > 0 ? `${((item.value / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
             ].filter(Boolean),
-            message: `${label} has the highest ${col.name} (${fmtVal(item.value)})`
+            message: `${label} has the ${performanceVerb} ${col.name} (${fmtVal(item.value)})`
           });
         });
 
-        const bottomRows = [...rowData].filter(r => r.value > 0).sort((a, b) => a.value - b.value).slice(0, 3);
+        const bottomRows = [...rowData].filter(r => r.value > 0).sort(rankWeakestFirst).slice(0, 3);
         bottomRows.forEach(item => {
           const label = item.label || `Row ${item.rowIndex}`;
           insights.bottomPerformers.push({
@@ -16806,6 +16825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             value: item.value,
             label: label,
             type: col.type,
+            lowerIsBetter,
             severity: 'low',
             confidence: values.length >= 50 ? 'high' : values.length >= 10 ? 'medium' : 'low',
             percentOfTotal: col.total > 0 ? (item.value / col.total) * 100 : 0,
@@ -16813,7 +16833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               `Value: ${fmtVal(item.value)}`,
               col.total > 0 ? `${((item.value / col.total) * 100).toFixed(1)}% of total ${col.name}` : ''
             ].filter(Boolean),
-            message: `${label} has the lowest ${col.name} (${fmtVal(item.value)})`
+            message: `${label} has the ${weaknessVerb} ${col.name} (${fmtVal(item.value)})`
           });
         });
       }
@@ -16863,12 +16883,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (Math.abs(percentChange) > 10) {
           const dir = percentChange > 0 ? 'increasing' : 'decreasing';
           const changePct = Math.abs(percentChange);
+          const adverseTrend = neutralCostMetric ? false : lowerIsBetter ? percentChange > 0 : percentChange < 0;
           insights.trends.push({
             metric: col.name,
             direction: dir,
             percentChange: changePct,
             type: col.type,
-            severity: changePct > 30 ? 'high' : changePct > 20 ? 'medium' : 'low',
+            lowerIsBetter,
+            neutralCostMetric,
+            adverseTrend,
+            severity: neutralCostMetric ? 'medium' : adverseTrend && changePct > 30 ? 'high' : changePct > 20 ? 'medium' : 'low',
             confidence: values.length >= 50 ? 'high' : values.length >= 10 ? 'medium' : 'low',
             evidence: [
               `First half avg: ${fmtVal(firstAvg)}`,
@@ -16897,8 +16921,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     // Cap performers to avoid overwhelming execs
-    insights.topPerformers = insights.topPerformers.sort((a: any, b: any) => b.value - a.value).slice(0, 6);
-    insights.bottomPerformers = insights.bottomPerformers.sort((a: any, b: any) => a.value - b.value).slice(0, 6);
+    insights.topPerformers = insights.topPerformers.sort((a: any, b: any) => {
+      if (a.lowerIsBetter !== b.lowerIsBetter) return 0;
+      return a.lowerIsBetter ? a.value - b.value : b.value - a.value;
+    }).slice(0, 6);
+    insights.bottomPerformers = insights.bottomPerformers.sort((a: any, b: any) => {
+      if (a.lowerIsBetter !== b.lowerIsBetter) return 0;
+      return a.lowerIsBetter ? b.value - a.value : a.value - b.value;
+    }).slice(0, 6);
     insights.anomalies = insights.anomalies.sort((a: any, b: any) => b.deviation - a.deviation).slice(0, 8);
 
     // --- Correlations ---
@@ -16971,7 +17001,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // --- Actionable recommendations (with labels, not row numbers) ---
     insights.topPerformers.slice(0, 5).forEach((perf: any) => {
-      if (perf.percentOfTotal > 15) {
+      if (perf.lowerIsBetter) {
+        insights.recommendations.push({
+          type: 'opportunity',
+          priority: 'medium',
+          severity: 'low',
+          metric: perf.metric,
+          evidence: perf.evidence,
+          message: `${perf.label} is the most efficient segment for ${perf.metric}. Review what is keeping this cost-efficiency metric low before shifting budget.`,
+          action: 'Investigate efficient segment before scaling'
+        });
+      } else if (perf.percentOfTotal > 15) {
         insights.recommendations.push({
           type: 'opportunity',
           priority: 'high',
@@ -16985,25 +17025,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     insights.trends.forEach((trend: any) => {
-      if (trend.direction === 'decreasing' && trend.percentChange > 20) {
+      if (trend.neutralCostMetric && trend.percentChange > 20) {
+        insights.recommendations.push({
+          type: 'warning',
+          priority: 'medium',
+          severity: 'medium',
+          metric: trend.metric,
+          evidence: trend.evidence,
+          message: `${trend.metric} changed by ${trend.percentChange.toFixed(1)}% over the period. Because this is a spend/cost-style metric, verify whether the change was planned before taking action.`,
+          action: 'Verify planned budget or cost change'
+        });
+      } else if (trend.adverseTrend && trend.percentChange > 20) {
         insights.recommendations.push({
           type: 'alert',
           priority: 'high',
           severity: 'high',
           metric: trend.metric,
           evidence: trend.evidence,
-          message: `${trend.metric} has decreased by ${trend.percentChange.toFixed(1)}% over the period. This decline requires immediate attention to prevent further erosion.`,
+          message: trend.lowerIsBetter
+            ? `${trend.metric} has increased by ${trend.percentChange.toFixed(1)}% over the period. This cost-efficiency decline requires attention.`
+            : `${trend.metric} has decreased by ${trend.percentChange.toFixed(1)}% over the period. This decline requires immediate attention to prevent further erosion.`,
           action: 'Investigate root cause and take corrective action'
         });
-      } else if (trend.direction === 'increasing' && trend.percentChange > 20) {
+      } else if (!trend.adverseTrend && trend.percentChange > 20) {
         insights.recommendations.push({
           type: 'opportunity',
           priority: 'medium',
           severity: 'low',
           metric: trend.metric,
           evidence: trend.evidence,
-          message: `${trend.metric} is growing by ${trend.percentChange.toFixed(1)}%. Consider increasing investment to accelerate this momentum.`,
-          action: 'Scale successful strategy'
+          message: trend.lowerIsBetter
+            ? `${trend.metric} decreased by ${trend.percentChange.toFixed(1)}%. Review what improved efficiency before reallocating budget.`
+            : `${trend.metric} is growing by ${trend.percentChange.toFixed(1)}%. Consider increasing investment only after confirming source quality and attribution.`,
+          action: trend.lowerIsBetter ? 'Review efficiency driver' : 'Validate quality before scaling'
         });
       }
     });

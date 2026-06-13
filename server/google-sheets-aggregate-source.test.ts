@@ -135,6 +135,20 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(insightsTab).not.toContain("visibleGoogleSheetsBenchmarksData");
   });
 
+  it("uses metric direction for Google Sheets Performance and recommendation insights", () => {
+    const routes = readSource("server", "routes-oauth.ts");
+    const generator = sliceBetween(routes, "function generateInsights(", "// Google Trends API endpoint");
+
+    expect(generator).toContain("const lowerIsBetter =");
+    expect(generator).toContain("const neutralCostMetric =");
+    expect(generator).toContain("return lowerIsBetter ? aValue - bValue : bValue - aValue;");
+    expect(generator).toContain("return lowerIsBetter ? bValue - aValue : aValue - bValue;");
+    expect(generator).toContain("!neutralCostMetric");
+    expect(generator).toContain("most efficient segment");
+    expect(generator).toContain("verify whether the change was planned");
+    expect(generator).toContain("trend.adverseTrend");
+  });
+
   it("filters Google Sheets spend totals by google_sheets platformContext for derived financial cards", () => {
     const routes = readSource("server", "routes-oauth.ts");
     const spendTotalsRoute = sliceBetween(

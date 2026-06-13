@@ -25,6 +25,8 @@ export function GoogleSheetsBenchmarkModal(props: any) {
   } = props;
 
   const DESC_MAX = 200;
+  const overviewMetrics = (metricOptions || []).filter((metric: any) => metric.sourceKind === "confirmed_financial");
+  const sheetMetrics = (metricOptions || []).filter((metric: any) => metric.sourceKind !== "confirmed_financial");
 
   const formatNumberAsYouType = (val: string): string => {
     const cleaned = val.replace(/,/g, '').replace(/[^0-9.\-]/g, '');
@@ -80,44 +82,55 @@ export function GoogleSheetsBenchmarkModal(props: any) {
                 Choose a mapped Google Sheets metric with a current source-backed value.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {(metricOptions || []).map((metric: any) => {
-                const selected = form.metric === metric.key;
-                const disabled = metric.available !== true;
-                return (
-                  <button
-                    key={metric.key}
-                    type="button"
-                    disabled={disabled}
-                    className={`text-left p-3 border-2 rounded-lg transition-all ${
-                      disabled
-                        ? "opacity-50 cursor-not-allowed border-border"
-                        : selected
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                          : "border-border hover:border-blue-300"
-                    }`}
-                    onClick={() => {
-                      if (disabled) return;
-                      setForm({
-                        ...form,
-                        name: editing ? form.name || metric.label : metric.label,
-                        metric: metric.key,
-                        currentValue: String(metric.currentValue ?? ""),
-                        unit: metric.unit || "",
-                        description: form.description,
-                      });
-                    }}
-                  >
-                    <div className="font-medium text-sm text-foreground">{metric.label}</div>
-                    {disabled && (
-                      <div className="text-xs text-muted-foreground/70 mt-1">
-                        {metric.reason}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            {[
+              { title: "Overview metrics", metrics: overviewMetrics },
+              { title: "Sheet column metrics", metrics: sheetMetrics },
+            ].map((group) => group.metrics.length > 0 && (
+              <div key={group.title} className="space-y-2">
+                <p className="text-xs font-semibold uppercase text-muted-foreground/70">{group.title}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {group.metrics.map((metric: any) => {
+                    const selected = form.metric === metric.key;
+                    const disabled = metric.available !== true;
+                    return (
+                      <button
+                        key={metric.key}
+                        type="button"
+                        disabled={disabled}
+                        className={`text-left p-3 border-2 rounded-lg transition-all ${
+                          disabled
+                            ? "opacity-50 cursor-not-allowed border-border"
+                            : selected
+                              ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                              : "border-border hover:border-blue-300"
+                        }`}
+                        onClick={() => {
+                          if (disabled) return;
+                          setForm({
+                            ...form,
+                            name: editing ? form.name || metric.label : metric.label,
+                            metric: metric.key,
+                            currentValue: String(metric.currentValue ?? ""),
+                            unit: metric.unit || "",
+                            description: form.description,
+                          });
+                        }}
+                      >
+                        <div className="font-medium text-sm text-foreground">{metric.label}</div>
+                        <div className="text-xs text-muted-foreground/70 mt-1">
+                          {metric.sourceKind === "confirmed_financial" ? "Overview metric" : `Sheet column${metric.sourceLabel ? `: ${metric.sourceLabel}` : ""}`}
+                        </div>
+                        {disabled && (
+                          <div className="text-xs text-muted-foreground/70 mt-1">
+                            {metric.reason}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
             {(metricOptions || []).length === 0 && (
               <p className="text-sm text-muted-foreground/70">
                 No mapped Benchmark metrics are available from the selected Google Sheets source.

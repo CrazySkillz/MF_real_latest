@@ -158,6 +158,7 @@ type GoogleSheetsKpiMetricOption = {
   available: boolean;
   reason: string;
   sourceLabel?: string;
+  sourceKind?: "confirmed_financial" | "sheet_column";
 };
 
 const createEmptyGoogleSheetsReportForm = () => ({
@@ -783,7 +784,7 @@ export default function GoogleSheetsData() {
     enabled: !!campaignId,
   });
 
-  const getSavedGoogleSheetsSourceScope = useCallback((row: any): GoogleSheetsAnalysisSourceScope | null => {
+  const getSavedGoogleSheetsConfig = useCallback((row: any) => {
     const readConfig = (value: any) => {
       if (!value) return null;
       if (typeof value === "string") {
@@ -795,10 +796,14 @@ export default function GoogleSheetsData() {
       }
       return typeof value === "object" ? value : null;
     };
-    const config = readConfig(row?.calculationConfig) || readConfig(row?.configuration);
+    return readConfig(row?.calculationConfig) || readConfig(row?.configuration);
+  }, []);
+
+  const getSavedGoogleSheetsSourceScope = useCallback((row: any): GoogleSheetsAnalysisSourceScope | null => {
+    const config = getSavedGoogleSheetsConfig(row);
     const scope = config?.sourceScope;
     return scope && scope.platform === "google_sheets" && scope.activeSpreadsheetId ? scope : null;
-  }, []);
+  }, [getSavedGoogleSheetsConfig]);
 
   const savedGoogleSheetsSourceValues = useMemo(() => {
     const values = new Set<string>();
@@ -939,6 +944,53 @@ export default function GoogleSheetsData() {
       maximumFractionDigits: 2,
     }).format(safeValue);
   };
+
+  const googleSheetsConfirmedFinancialMetricOptions = useMemo<GoogleSheetsKpiMetricOption[]>(() => [
+    {
+      key: "overview.total_revenue",
+      label: "Total Revenue",
+      type: "currency",
+      unit: "$",
+      currentValue: hasGoogleSheetsConfirmedRevenue ? googleSheetsTotalRevenue : null,
+      available: hasGoogleSheetsConfirmedRevenue,
+      reason: hasGoogleSheetsConfirmedRevenue ? "" : "Requires confirmed Google Sheets revenue",
+      sourceLabel: "Overview financial metrics",
+      sourceKind: "confirmed_financial",
+    },
+    {
+      key: "overview.total_spend",
+      label: "Total Spend",
+      type: "currency",
+      unit: "$",
+      currentValue: hasGoogleSheetsConfirmedSpend ? googleSheetsTotalSpend : null,
+      available: hasGoogleSheetsConfirmedSpend,
+      reason: hasGoogleSheetsConfirmedSpend ? "" : "Requires confirmed Google Sheets spend",
+      sourceLabel: "Overview financial metrics",
+      sourceKind: "confirmed_financial",
+    },
+    {
+      key: "overview.roas",
+      label: "ROAS",
+      type: "decimal",
+      unit: "ratio",
+      currentValue: googleSheetsRoas,
+      available: googleSheetsRoas !== null,
+      reason: googleSheetsRoas !== null ? "" : "Requires confirmed Google Sheets revenue and spend",
+      sourceLabel: "Overview financial metrics",
+      sourceKind: "confirmed_financial",
+    },
+    {
+      key: "overview.roi",
+      label: "ROI",
+      type: "decimal",
+      unit: "%",
+      currentValue: googleSheetsRoi,
+      available: googleSheetsRoi !== null,
+      reason: googleSheetsRoi !== null ? "" : "Requires confirmed Google Sheets revenue and spend",
+      sourceLabel: "Overview financial metrics",
+      sourceKind: "confirmed_financial",
+    },
+  ], [googleSheetsRoas, googleSheetsRoi, googleSheetsTotalRevenue, googleSheetsTotalSpend, hasGoogleSheetsConfirmedRevenue, hasGoogleSheetsConfirmedSpend]);
 
   const googleSheetsPipelineProxySourceEntries = useMemo(() => {
     const sourceForProvider = (provider: "hubspot" | "salesforce", endpointData: any) => {
@@ -1426,13 +1478,15 @@ export default function GoogleSheetsData() {
             ? "Current value requires a mapped metric column with refreshed sheet rows"
             : "",
           sourceLabel,
+          sourceKind: "sheet_column",
         };
       });
   }, [parseSheetMetricNumber]);
 
   const googleSheetsKpiMetricOptions = useMemo<GoogleSheetsKpiMetricOption[]>(() => {
-    return buildGoogleSheetsMetricOptions(sheetsData, activeGoogleSheetsSourceScope?.displayName || sheetsData?.spreadsheetName || "Google Sheets");
-  }, [activeGoogleSheetsSourceScope?.displayName, buildGoogleSheetsMetricOptions, sheetsData]);
+    const sheetOptions = buildGoogleSheetsMetricOptions(sheetsData, activeGoogleSheetsSourceScope?.displayName || sheetsData?.spreadsheetName || "Google Sheets");
+    return [...googleSheetsConfirmedFinancialMetricOptions, ...sheetOptions];
+  }, [activeGoogleSheetsSourceScope?.displayName, buildGoogleSheetsMetricOptions, googleSheetsConfirmedFinancialMetricOptions, sheetsData]);
 
   const savedGoogleSheetsMetricOptionsByScope = useMemo(() => {
     const map = new Map<string, GoogleSheetsKpiMetricOption[]>();
@@ -1453,6 +1507,10 @@ export default function GoogleSheetsData() {
   }, []);
 
   const getGoogleSheetsMetricOptionsForSavedScope = useCallback((row: any) => {
+    const config = getSavedGoogleSheetsConfig(row);
+    if (config?.valueSource === "confirmed_financial_overview") {
+      return { scope: null, options: googleSheetsConfirmedFinancialMetricOptions, reason: "" };
+    }
     const scope = getSavedGoogleSheetsSourceScope(row);
     if (!scope?.activeSpreadsheetId) {
       return { scope, options: [] as GoogleSheetsKpiMetricOption[], reason: "Saved Google Sheets source scope is missing" };
@@ -1474,7 +1532,7 @@ export default function GoogleSheetsData() {
       return { scope, options: [] as GoogleSheetsKpiMetricOption[], reason: "Saved Google Sheets source could not be loaded" };
     }
     return { scope, options, reason: "" };
-  }, [activeSpreadsheetId, googleSheetsConnections, googleSheetsConnectionMatchesScopeValue, googleSheetsKpiMetricOptions, getSavedGoogleSheetsSourceScope, savedGoogleSheetsMetricOptionsByScope, savedGoogleSheetsSourceQueries, savedGoogleSheetsSourceValues]);
+  }, [activeSpreadsheetId, googleSheetsConnections, googleSheetsConfirmedFinancialMetricOptions, googleSheetsConnectionMatchesScopeValue, googleSheetsKpiMetricOptions, getSavedGoogleSheetsConfig, getSavedGoogleSheetsSourceScope, savedGoogleSheetsMetricOptionsByScope, savedGoogleSheetsSourceQueries, savedGoogleSheetsSourceValues]);
 
   const resolveGoogleSheetsKpiMetric = useCallback((kpi: any) => {
     const metricKey = String(kpi?.metric || kpi?.metricKey || "").trim();
@@ -1744,12 +1802,18 @@ export default function GoogleSheetsData() {
       emailRecipients: kpiForm.emailRecipients ? kpiForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean).join(', ') : null,
       metricKey: kpiForm.metric,
       sourceType: "platform",
-      calculationConfig: {
-        source: "google_sheets_main",
-        valueSource: "source_backed_summary",
-        metric: kpiForm.metric,
-        sourceScope: activeGoogleSheetsSourceScope,
-      },
+      calculationConfig: metricOption.sourceKind === "confirmed_financial"
+        ? {
+          source: "google_sheets_overview_financials",
+          valueSource: "confirmed_financial_overview",
+          metric: kpiForm.metric,
+        }
+        : {
+          source: "google_sheets_main",
+          valueSource: "source_backed_summary",
+          metric: kpiForm.metric,
+          sourceScope: activeGoogleSheetsSourceScope,
+        },
     };
     if (editingKpi) {
       updateKpiMutation.mutate({ id: editingKpi.id, data: payload });
@@ -1788,12 +1852,18 @@ export default function GoogleSheetsData() {
       alertThreshold: alertThreshold !== null ? String(alertThreshold) : null,
       emailRecipients: benchmarkForm.emailRecipients ? benchmarkForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean).join(', ') : null,
       metricKey: benchmarkForm.metric,
-      calculationConfig: {
-        source: "google_sheets_main",
-        valueSource: "source_backed_summary",
-        metric: benchmarkForm.metric,
-        sourceScope: activeGoogleSheetsSourceScope,
-      },
+      calculationConfig: metricOption.sourceKind === "confirmed_financial"
+        ? {
+          source: "google_sheets_overview_financials",
+          valueSource: "confirmed_financial_overview",
+          metric: benchmarkForm.metric,
+        }
+        : {
+          source: "google_sheets_main",
+          valueSource: "source_backed_summary",
+          metric: benchmarkForm.metric,
+          sourceScope: activeGoogleSheetsSourceScope,
+        },
     };
     if (editingBenchmark) {
       updateBenchmarkMutation.mutate({ id: editingBenchmark.id, data: payload });

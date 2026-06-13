@@ -535,6 +535,16 @@ describe("source safety regression guards", () => {
     const modal = readGoogleSheetsKpiModalSource();
 
     expect(page).toContain("const googleSheetsKpiMetricOptions = useMemo<GoogleSheetsKpiMetricOption[]>");
+    expect(page).toContain("const googleSheetsConfirmedFinancialMetricOptions = useMemo<GoogleSheetsKpiMetricOption[]>");
+    expect(page).toContain('key: "overview.total_revenue"');
+    expect(page).toContain('key: "overview.total_spend"');
+    expect(page).toContain('key: "overview.roas"');
+    expect(page).toContain('key: "overview.roi"');
+    expect(page).toContain('sourceKind: "confirmed_financial"');
+    expect(page).toContain('sourceKind: "sheet_column"');
+    expect(page).toContain('valueSource: "confirmed_financial_overview"');
+    expect(page).toContain('source: "google_sheets_overview_financials"');
+    expect(page).toContain("return [...googleSheetsConfirmedFinancialMetricOptions, ...sheetOptions];");
     expect(page).toContain("GOOGLE_SHEETS_KPI_NEAR_TARGET_BAND_PCT = 5");
     expect(page).toContain("computeEffectiveDeltaPct");
     expect(page).toContain("classifyKpiBand");
@@ -562,6 +572,7 @@ describe("source safety regression guards", () => {
     expect(page).toContain('alertFrequency: "immediate"');
     expect(page).not.toContain("sheetsData?.summary?.metrics?.[kpi.metric || kpi.metricKey] ?? parseFloat(kpi.currentValue || '0')");
     expect(modal).toContain('data-google-sheets-kpi-source-adapter="source-backed"');
+    expect(modal).toContain('metric.sourceKind === "confirmed_financial" ? "Overview metric"');
     expect(modal).toContain('data-source-backed-current-value="google_sheets"');
     expect(modal).toContain("value={formatNumberAsYouType(form.currentValue || \"\")}");
     expect(modal).toContain("targetValue: formatNumberAsYouType(e.target.value)");
@@ -608,6 +619,7 @@ describe("source safety regression guards", () => {
     expect(page).not.toContain("Below Benchmark");
     expect(page).not.toContain("Variance");
     expect(modal).toContain('data-google-sheets-benchmark-source-adapter="source-backed"');
+    expect(modal).toContain('metric.sourceKind === "confirmed_financial" ? "Overview metric"');
     expect(modal).toContain("Select Benchmark Template");
     expect(modal).toContain('data-source-backed-current-value="google_sheets_benchmark"');
     expect(modal).toContain("value={formatNumberAsYouType(form.currentValue || \"\")}");
@@ -676,6 +688,10 @@ describe("source safety regression guards", () => {
     expect(reportScheduler).toContain("return normalized === \"instagram\" || normalized === \"tiktok\" || normalized === \"google_sheets\";");
     expect(reportScheduler).toContain("buildGoogleSheetsCachedMetricSummary");
     expect(reportScheduler).toContain("function getGoogleSheetsReportSourceScope");
+    expect(reportScheduler).toContain("function isGoogleSheetsConfirmedFinancialMetric");
+    expect(reportScheduler).toContain("async function buildGoogleSheetsConfirmedFinancialMetricSummary");
+    expect(reportScheduler).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "google_sheets")');
+    expect(reportScheduler).toContain('String(source?.platformContext || "").trim().toLowerCase() === "google_sheets"');
     expect(reportScheduler).toContain("function googleSheetsConnectionMatchesSavedScope");
     expect(reportScheduler).toContain("if (!reportSourceScope) return null;");
     expect(reportScheduler).toContain("buildGoogleSheetsCachedMetricSummary(connections, reportSourceScope)");

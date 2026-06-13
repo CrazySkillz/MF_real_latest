@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus, Trash2, X, DollarSign, Eye, MousePointerClick, BarChart3, Hash, Percent } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -157,6 +157,7 @@ type GoogleSheetsKpiMetricOption = {
   currentValue: number | null;
   available: boolean;
   reason: string;
+  sourceLabel?: string;
 };
 
 const createEmptyGoogleSheetsReportForm = () => ({
@@ -782,6 +783,47 @@ export default function GoogleSheetsData() {
     enabled: !!campaignId,
   });
 
+  const getSavedGoogleSheetsSourceScope = useCallback((row: any): GoogleSheetsAnalysisSourceScope | null => {
+    const readConfig = (value: any) => {
+      if (!value) return null;
+      if (typeof value === "string") {
+        try {
+          return JSON.parse(value);
+        } catch {
+          return null;
+        }
+      }
+      return typeof value === "object" ? value : null;
+    };
+    const config = readConfig(row?.calculationConfig) || readConfig(row?.configuration);
+    const scope = config?.sourceScope;
+    return scope && scope.platform === "google_sheets" && scope.activeSpreadsheetId ? scope : null;
+  }, []);
+
+  const savedGoogleSheetsSourceValues = useMemo(() => {
+    const values = new Set<string>();
+    [...(Array.isArray(kpisData) ? kpisData : []), ...(Array.isArray(benchmarksData) ? benchmarksData : []), ...(Array.isArray(reportsData) ? reportsData : [])]
+      .map(getSavedGoogleSheetsSourceScope)
+      .forEach((scope) => {
+        if (scope?.activeSpreadsheetId && scope.activeSpreadsheetId !== activeSpreadsheetId) values.add(scope.activeSpreadsheetId);
+      });
+    return Array.from(values);
+  }, [activeSpreadsheetId, benchmarksData, getSavedGoogleSheetsSourceScope, kpisData, reportsData]);
+
+  const savedGoogleSheetsSourceQueries = useQueries({
+    queries: savedGoogleSheetsSourceValues.map((sourceValue) => ({
+      queryKey: ["/api/campaigns", campaignId, "google-sheets-data", sourceValue, "saved-source-scope"],
+      enabled: !!campaignId && !!sourceValue,
+      queryFn: async () => {
+        const response = await fetch(`/api/campaigns/${campaignId}/google-sheets-data?spreadsheetId=${encodeURIComponent(sourceValue)}`);
+        if (!response.ok) throw new Error("Failed to fetch saved Google Sheets source");
+        return response.json();
+      },
+      staleTime: 0,
+      gcTime: 30000,
+    })),
+  });
+
   const { data: googleSheetsRevenueSourcesData, isLoading: googleSheetsRevenueSourcesLoading } = useQuery<{ success: boolean; sources: any[] }>({
     queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"],
     enabled: !!campaignId,
@@ -1355,9 +1397,9 @@ export default function GoogleSheetsData() {
     return Number.isFinite(parsed) ? parsed : null;
   }, []);
 
-  const googleSheetsKpiMetricOptions = useMemo<GoogleSheetsKpiMetricOption[]>(() => {
-    const columns = Array.isArray(sheetsData?.summary?.detectedColumns) ? sheetsData.summary.detectedColumns : [];
-    const metrics = sheetsData?.summary?.metrics || {};
+  const buildGoogleSheetsMetricOptions = useCallback((data: any, sourceLabel?: string): GoogleSheetsKpiMetricOption[] => {
+    const columns = Array.isArray(data?.summary?.detectedColumns) ? data.summary.detectedColumns : [];
+    const metrics = data?.summary?.metrics || {};
     return columns
       .filter((col: any) => !GOOGLE_SHEETS_KPI_DATE_COLUMN_PATTERN.test(String(col?.name || "").trim()))
       .map((col: any) => {
@@ -1383,23 +1425,72 @@ export default function GoogleSheetsData() {
           reason: sourceValue === null
             ? "Current value requires a mapped metric column with refreshed sheet rows"
             : "",
+          sourceLabel,
         };
       });
-  }, [parseSheetMetricNumber, sheetsData]);
+  }, [parseSheetMetricNumber]);
+
+  const googleSheetsKpiMetricOptions = useMemo<GoogleSheetsKpiMetricOption[]>(() => {
+    return buildGoogleSheetsMetricOptions(sheetsData, activeGoogleSheetsSourceScope?.displayName || sheetsData?.spreadsheetName || "Google Sheets");
+  }, [activeGoogleSheetsSourceScope?.displayName, buildGoogleSheetsMetricOptions, sheetsData]);
+
+  const savedGoogleSheetsMetricOptionsByScope = useMemo(() => {
+    const map = new Map<string, GoogleSheetsKpiMetricOption[]>();
+    savedGoogleSheetsSourceValues.forEach((sourceValue, index) => {
+      const scope = [...(Array.isArray(kpisData) ? kpisData : []), ...(Array.isArray(benchmarksData) ? benchmarksData : []), ...(Array.isArray(reportsData) ? reportsData : [])]
+        .map(getSavedGoogleSheetsSourceScope)
+        .find((item) => item?.activeSpreadsheetId === sourceValue);
+      const query = savedGoogleSheetsSourceQueries[index];
+      map.set(sourceValue, buildGoogleSheetsMetricOptions(query?.data, scope?.displayName || "Saved Google Sheets source"));
+    });
+    return map;
+  }, [benchmarksData, buildGoogleSheetsMetricOptions, getSavedGoogleSheetsSourceScope, kpisData, reportsData, savedGoogleSheetsSourceQueries, savedGoogleSheetsSourceValues]);
+
+  const googleSheetsConnectionMatchesScopeValue = useCallback((conn: any, scopeValue: string) => {
+    const { spreadsheetId, identifier } = parseGoogleSheetsConnectionValue(scopeValue);
+    return conn?.spreadsheetId === spreadsheetId &&
+      (identifier === null || conn?.sheetName === identifier || conn?.id === identifier);
+  }, []);
+
+  const getGoogleSheetsMetricOptionsForSavedScope = useCallback((row: any) => {
+    const scope = getSavedGoogleSheetsSourceScope(row);
+    if (!scope?.activeSpreadsheetId) {
+      return { scope, options: [] as GoogleSheetsKpiMetricOption[], reason: "Saved Google Sheets source scope is missing" };
+    }
+    const connectionExists = googleSheetsConnections.some((conn: any) => googleSheetsConnectionMatchesScopeValue(conn, scope.activeSpreadsheetId));
+    if (!connectionExists) {
+      return { scope, options: [] as GoogleSheetsKpiMetricOption[], reason: "Saved Google Sheets source is no longer connected" };
+    }
+    if (scope.activeSpreadsheetId === activeSpreadsheetId) {
+      return { scope, options: googleSheetsKpiMetricOptions, reason: "" };
+    }
+    const queryIndex = savedGoogleSheetsSourceValues.indexOf(scope.activeSpreadsheetId);
+    const query = queryIndex >= 0 ? savedGoogleSheetsSourceQueries[queryIndex] : null;
+    const options = savedGoogleSheetsMetricOptionsByScope.get(scope.activeSpreadsheetId) || [];
+    if ((query?.isLoading || query?.isFetching) && options.length === 0) {
+      return { scope, options, reason: "Saved Google Sheets source data is still loading" };
+    }
+    if (query?.isError) {
+      return { scope, options: [] as GoogleSheetsKpiMetricOption[], reason: "Saved Google Sheets source could not be loaded" };
+    }
+    return { scope, options, reason: "" };
+  }, [activeSpreadsheetId, googleSheetsConnections, googleSheetsConnectionMatchesScopeValue, googleSheetsKpiMetricOptions, getSavedGoogleSheetsSourceScope, savedGoogleSheetsMetricOptionsByScope, savedGoogleSheetsSourceQueries, savedGoogleSheetsSourceValues]);
 
   const resolveGoogleSheetsKpiMetric = useCallback((kpi: any) => {
     const metricKey = String(kpi?.metric || kpi?.metricKey || "").trim();
-    const option = googleSheetsKpiMetricOptions.find((item) => item.key === metricKey);
+    const scoped = getGoogleSheetsMetricOptionsForSavedScope(kpi);
+    const option = scoped.options.find((item) => item.key === metricKey);
     if (option?.available && option.currentValue !== null) {
-      return { available: true, option, currentValue: option.currentValue, reason: "" };
+      return { available: true, option, currentValue: option.currentValue, reason: "", sourceLabel: scoped.scope?.displayName || option.sourceLabel || "" };
     }
     return {
       available: false,
       option,
       currentValue: null,
-      reason: option?.reason || "This KPI metric is not available from the selected Google Sheets source",
+      reason: scoped.reason || option?.reason || "This KPI metric is not available from the saved Google Sheets source",
+      sourceLabel: scoped.scope?.displayName || option?.sourceLabel || "",
     };
-  }, [googleSheetsKpiMetricOptions]);
+  }, [getGoogleSheetsMetricOptionsForSavedScope]);
 
   const computeGoogleSheetsKpiProgress = useCallback((kpi: any, current: number, target: number) => {
     const safeCurrent = Number.isFinite(current) ? current : 0;
@@ -1449,17 +1540,19 @@ export default function GoogleSheetsData() {
 
   const resolveGoogleSheetsBenchmarkMetric = useCallback((benchmark: any) => {
     const metricKey = String(benchmark?.metric || benchmark?.metricKey || "").trim();
-    const option = googleSheetsKpiMetricOptions.find((item) => item.key === metricKey);
+    const scoped = getGoogleSheetsMetricOptionsForSavedScope(benchmark);
+    const option = scoped.options.find((item) => item.key === metricKey);
     if (option?.available && option.currentValue !== null) {
-      return { available: true, option, currentValue: option.currentValue, reason: "" };
+      return { available: true, option, currentValue: option.currentValue, reason: "", sourceLabel: scoped.scope?.displayName || option.sourceLabel || "" };
     }
     return {
       available: false,
       option,
       currentValue: null,
-      reason: option?.reason || "This Benchmark metric is not available from the selected Google Sheets source",
+      reason: scoped.reason || option?.reason || "This Benchmark metric is not available from the saved Google Sheets source",
+      sourceLabel: scoped.scope?.displayName || option?.sourceLabel || "",
     };
-  }, [googleSheetsKpiMetricOptions]);
+  }, [getGoogleSheetsMetricOptionsForSavedScope]);
 
   const computeGoogleSheetsBenchmarkProgress = useCallback((benchmark: any, current: number, benchmarkValue: number) => {
     const safeCurrent = Number.isFinite(current) ? current : 0;
@@ -1548,13 +1641,15 @@ export default function GoogleSheetsData() {
       if (unit === "ratio") return `${numeric.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x`;
       return numeric.toLocaleString(undefined, { maximumFractionDigits: 2 });
     };
-    const metricOptionsByKey = new Map(googleSheetsKpiMetricOptions.map((metric) => [metric.key, metric]));
     const selectedConfig = parseGoogleSheetsReportConfiguration(opts.configuration || customReportConfig);
+    const reportScopedMetrics = getGoogleSheetsMetricOptionsForSavedScope({ configuration: selectedConfig });
+    const reportMetricOptions = reportScopedMetrics.options;
+    const metricOptionsByKey = new Map(reportMetricOptions.map((metric) => [metric.key, metric]));
     const reportType = String(opts.reportType || "overview").toLowerCase();
 
     text(opts.reportName || reportForm.name || "Google Sheets Report", margin, y, 16, "bold");
     y += 8;
-    text(`Source: ${activeGoogleSheetsSourceScope?.displayName || sheetsData?.spreadsheetName || "Google Sheets"}`, margin, y, 9);
+    text(`Source: ${reportScopedMetrics.scope?.displayName || reportScopedMetrics.reason || activeGoogleSheetsSourceScope?.displayName || sheetsData?.spreadsheetName || "Google Sheets"}`, margin, y, 9);
     y += 6;
     text(`Rows: ${(sheetsData?.filteredRows ?? sheetsData?.totalRows ?? 0).toLocaleString()} | Generated: ${new Date().toLocaleString()}`, margin, y, 9);
     y += 10;
@@ -1567,7 +1662,7 @@ export default function GoogleSheetsData() {
     if (reportType === "overview") {
       text("Overview", margin, y, 12, "bold");
       y += 8;
-      addMetrics(googleSheetsKpiMetricOptions.filter((metric) => metric.available));
+      addMetrics(reportMetricOptions.filter((metric) => metric.available));
     } else if (reportType === "kpis") {
       text("KPIs", margin, y, 12, "bold");
       y += 8;
@@ -1609,8 +1704,8 @@ export default function GoogleSheetsData() {
     } else {
       text("Insights", margin, y, 12, "bold");
       y += 8;
-      addRow("Detected metrics", googleSheetsKpiMetricOptions.length);
-      addRow("Top metric", googleSheetsKpiMetricOptions[0]?.label || "Unavailable");
+      addRow("Detected metrics", reportMetricOptions.length);
+      addRow("Top metric", reportMetricOptions[0]?.label || "Unavailable");
       addRow("Current rows", sheetsData?.filteredRows ?? sheetsData?.totalRows ?? 0);
     }
 
@@ -2622,6 +2717,9 @@ export default function GoogleSheetsData() {
                                     {kpi.description && (
                                         <CardDescription className="text-sm">{kpi.description}</CardDescription>
                                     )}
+                                      <p className="text-xs text-muted-foreground/70 mt-1">
+                                        Source: {resolved.sourceLabel || "Saved Google Sheets source unavailable"}
+                                      </p>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -2808,6 +2906,9 @@ export default function GoogleSheetsData() {
                                           {bm.alertsEnabled && <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0" />}
                                         </div>
                                         {bm.description && <CardDescription className="text-sm">{bm.description}</CardDescription>}
+                                        <p className="text-xs text-muted-foreground/70 mt-1">
+                                          Source: {resolved.sourceLabel || "Saved Google Sheets source unavailable"}
+                                        </p>
                                         {bm.industry && <p className="text-xs text-muted-foreground/70 mt-1">Industry: {bm.industry}</p>}
                                       </div>
                                     </div>
@@ -3442,7 +3543,11 @@ export default function GoogleSheetsData() {
                       </div>
 
                       <div className="grid gap-4">
-                        {(reportsData as any[]).map((report: any) => (
+                        {(reportsData as any[]).map((report: any) => {
+                          const reportConfig = parseGoogleSheetsReportConfiguration(report.configuration);
+                          const reportScope = getSavedGoogleSheetsSourceScope({ configuration: reportConfig });
+                          const reportSourceLabel = reportScope?.displayName || "Saved Google Sheets source unavailable";
+                          return (
                           <Card key={report.id}>
                             <CardContent className="py-4">
                               <div className="flex items-center justify-between">
@@ -3460,6 +3565,7 @@ export default function GoogleSheetsData() {
                                   {report.description && (
                                     <p className="text-sm text-muted-foreground/70">{report.description}</p>
                                   )}
+                                  <p className="text-xs text-muted-foreground/70 mt-1">Source: {reportSourceLabel}</p>
                                   <div className="flex gap-4 mt-2 text-xs text-muted-foreground/70">
                                     {report.scheduleEnabled && report.scheduleRecipients && (
                                       <span className="flex items-center gap-1">
@@ -3542,7 +3648,8 @@ export default function GoogleSheetsData() {
                               </div>
                             </CardContent>
                           </Card>
-                        ))}
+                        );
+                        })}
                       </div>
                     </>
                   ) : (

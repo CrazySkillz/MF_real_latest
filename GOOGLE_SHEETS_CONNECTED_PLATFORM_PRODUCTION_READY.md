@@ -807,12 +807,12 @@ Implementation approach:
 - 12C: Persist the source-scope object in KPI `calculationConfig` on create/update.
 - 12D: Persist the source-scope object in Benchmark `calculationConfig` on create/update.
 - 12E: Persist the source-scope object in Report `configuration` for saved and scheduled reports.
-- 12F: Update KPI current-value resolution so saved source scope wins over the current dropdown; legacy rows without source scope may fall back to the current analysis sheet and should display a legacy/current-sheet notice.
+- 12F: Update KPI current-value resolution so saved source scope wins over the current dropdown; rows without a saved source scope must render unavailable instead of falling back to the current analysis sheet.
 - 12G: Update Benchmark current-value resolution using the same saved-source rule.
 - 12H: Update report download/scheduled generation so saved reports use their saved source scope and unsaved immediate reports use the current analysis sheet.
 - 12I: Add source labels to KPI, Benchmark, and Report cards.
 - 12J: Add fail-closed unavailable reasons for missing source, disconnected source, deleted source, inactive source, and metric-not-found-in-saved-source.
-- 12K: Add regression coverage for saved-source persistence, dropdown-change stability, legacy fallback, report configuration scope, and unavailable reasons.
+- 12K: Add regression coverage for saved-source persistence, dropdown-change stability, report configuration scope, scheduler scope filtering, and unavailable reasons.
 
 Validation:
 
@@ -822,7 +822,7 @@ Validation:
 - Create an unsaved immediate report from the current dropdown and confirm it uses the currently selected sheet.
 - Confirm KPI/Benchmark/Report cards show their saved source label.
 - Disconnect/delete the saved source and confirm affected rows become unavailable with clear reasons.
-- Confirm legacy KPI/Benchmark rows without saved source scope retain backward-compatible current-analysis-sheet fallback and are visibly marked as using the current analysis sheet until edited/resaved.
+- Confirm legacy KPI/Benchmark rows without saved source scope render unavailable with an explicit missing-scope reason until edited/resaved.
 - Confirm Overview, Summary, and Insights still update when the dropdown changes.
 
 Status:
@@ -844,7 +844,26 @@ Status:
   - Fix 12D: Benchmark create/update payloads now persist `sourceScope` in `calculationConfig`.
   - Fix 12E: Report create/update payloads now persist `sourceScope` in `configuration`, including scheduled reports.
   - Safety: Commit 12B-12E is write-path only; saved KPI, Benchmark, and Report evaluation/display still remain in Commit 12F-12K.
-- [ ] Commit 12F-12K remain pending.
+- [x] Commit 12B-12E browser validation passed after deploy:
+  - Stable sheet/tab selector behavior validated after deploy.
+  - KPI, Benchmark, and Report create/save flows from the selected Google Sheets tab validated after deploy.
+  - Scope note: this validates source-scope persistence write paths only; saved-object source-scope evaluation, labels, and unavailable reasons remain pending in Commit 12F-12K.
+- [x] Commit 12F-12K completed locally:
+  - Root cause: saved KPI, Benchmark, and Report rows persisted source scope after Commit 12B-12E, but render/download/scheduled generation still resolved Google Sheets metrics from the current page dropdown or all cached main Google Sheets connections.
+  - Fix 12F: KPI current-value resolution now reads from the saved `calculationConfig.sourceScope`; missing, disconnected, unloaded, or metric-missing saved sources render unavailable with explicit reasons.
+  - Fix 12G: Benchmark current-value resolution now uses the same saved-source rule and no longer falls back to the current dropdown sheet.
+  - Fix 12H: report download uses saved `configuration.sourceScope`, and scheduled Google Sheets PDF generation filters cached metrics to the saved report scope; missing report scope fails closed.
+  - Fix 12I: KPI, Benchmark, and Report cards show the saved Google Sheets source label or a saved-source-unavailable label.
+  - Fix 12J: invalid/missing source and metric-not-found paths are unavailable instead of zero-filled or stale-snapshot-backed.
+  - Fix 12K: regression coverage added for saved-source UI/PDF/scheduler boundaries and unavailable reasons.
+- [x] Commit 12F-12K validation passed locally: `npm test -- --run server/google-sheets-aggregate-source.test.ts server/source-safety-regression.test.ts`.
+- [x] Commit 12F-12K validation passed locally: `npm run check`.
+- [x] Commit 12F-12K validation passed locally: `git diff --check`.
+- [x] Commit 12F-12K full regression passed locally: `npm test` with 74 files and 659 tests.
+- [ ] Commit 12F-12K browser/provider validation remains pending after deploy:
+  - create KPI/Benchmark/Report on Sheet A, switch to Sheet B, confirm saved rows and report output still use Sheet A
+  - confirm saved source labels on KPI, Benchmark, and Report cards
+  - delete/disconnect the saved source and confirm affected saved objects show unavailable reasons
 
 ### Commit 13: Final Local Regression And Evidence
 
@@ -935,14 +954,16 @@ Analytics:
 - [x] Commit 9 browser validation passed after deploy for Pipeline Proxy separation, ROAS/ROI requiring confirmed revenue plus confirmed spend, the separate Total Spend card and source dialog, Google-Sheets-scoped spend wizard behavior, seamless financial-card loading, and selected-campaign provenance that uses explicit source values rather than auto-inferred MimoSaaS campaign names.
 - [ ] Insights and Reports use current source-backed values.
 - [x] Commit 10 browser validation passed after deploy for refresh/scheduler/cache scope: manual refresh and scheduled refresh preserve main/general Google Sheets source scope and Google-Sheets-scoped confirmed financial sources.
-- [ ] Reports and scheduled reports use latest values.
+- [x] Commit 12F-12K local regression: saved report download and scheduled report generation resolve Google Sheets metrics from saved source scope instead of the current dropdown or all cached sheets.
 - [x] Commit 12B-12E local regression: KPI create/update payloads, Benchmark create/update payloads, and saved/scheduled Report payloads persist their Google Sheets sheet/tab source scope.
-- [ ] Commit 12F-12I: Saved KPI rows display their Google Sheets sheet/tab source scope and evaluate from that saved scope.
-- [ ] Commit 12G-12I: Saved Benchmark rows display their Google Sheets sheet/tab source scope and evaluate from that saved scope.
-- [ ] Commit 12H-12I: Saved and scheduled Reports display their Google Sheets sheet/tab source scope and generate from that saved scope.
-- [ ] Commit 12: Changing `Analyze Sheet/Tab` updates Overview, Summary, and Insights but does not change existing saved KPI, Benchmark, or Report source scope.
-- [ ] Commit 12: Saved objects whose source is missing, inactive, disconnected, deleted, or missing the selected metric render unavailable with explicit reasons and do not fall back to the current dropdown sheet.
-- [ ] Commit 12: Legacy KPI/Benchmark rows without saved source scope retain a documented current-analysis-sheet fallback until edited/resaved.
+- [x] Commit 12B-12E browser validation passed after deploy for stable sheet/tab selector behavior and successful KPI, Benchmark, and Report create/save flows from the selected Google Sheets tab.
+- [x] Commit 12F-12I local regression: saved KPI rows display their Google Sheets sheet/tab source scope and evaluate from that saved scope.
+- [x] Commit 12G-12I local regression: saved Benchmark rows display their Google Sheets sheet/tab source scope and evaluate from that saved scope.
+- [x] Commit 12H-12I local regression: saved and scheduled Reports display their Google Sheets sheet/tab source scope and generate from that saved scope.
+- [x] Commit 12 local regression: changing `Analyze Sheet/Tab` does not change existing saved KPI, Benchmark, or Report source scope.
+- [x] Commit 12 local regression: saved objects whose source is missing, disconnected, deleted, unloaded, or missing the selected metric render unavailable with explicit reasons and do not fall back to the current dropdown sheet.
+- [x] Commit 12 local regression: legacy KPI/Benchmark rows without saved source scope render unavailable until edited/resaved.
+- [ ] Commit 12 browser/deployed validation remains pending for saved KPI, Benchmark, and Report source labels, dropdown-change stability, and delete/disconnect unavailable reasons.
 
 DeepDive:
 

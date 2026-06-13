@@ -281,7 +281,14 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("displayName: getGoogleSheetsConnectionDisplayName(activeConn)");
     expect((page.match(/sourceScope: activeGoogleSheetsSourceScope/g) || []).length).toBeGreaterThanOrEqual(3);
     expect(page).toContain("configuration: withGoogleSheetsSourceScope(overrides.configuration)");
+    expect(page).toContain("const getSavedGoogleSheetsSourceScope = useCallback");
+    expect(page).toContain("Saved Google Sheets source scope is missing");
+    expect(page).toContain("This KPI metric is not available from the saved Google Sheets source");
+    expect(page).toContain("This Benchmark metric is not available from the saved Google Sheets source");
+    expect(page).toContain("const reportMetricOptions = reportScopedMetrics.options");
+    expect(page).toContain("Source: {resolved.sourceLabel || \"Saved Google Sheets source unavailable\"}");
+    expect(page).toContain("Source: {reportSourceLabel}");
     expect(page).toContain("Active: {activeGoogleSheetsSourceScope?.displayName || 'Unknown'}");
-    expect(page).toContain('Source: ${activeGoogleSheetsSourceScope?.displayName || sheetsData?.spreadsheetName || "Google Sheets"}');
+    expect(page).toContain('Source: ${reportScopedMetrics.scope?.displayName || reportScopedMetrics.reason || activeGoogleSheetsSourceScope?.displayName || sheetsData?.spreadsheetName || "Google Sheets"}');
   });
 });

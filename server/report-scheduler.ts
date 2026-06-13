@@ -801,13 +801,30 @@ const parseGoogleSheetsReportNumber = (value: any): number | null => {
 
 const normalizeGoogleSheetsReportKey = (value: any): string => String(value || "").trim().toLowerCase();
 
-function buildGoogleSheetsCachedMetricSummary(connections: any[]) {
+function getGoogleSheetsReportSourceScope(value: any): any | null {
+  const cfg = parseReportConfiguration(value);
+  const scope = cfg?.sourceScope;
+  return scope && String(scope?.platform || "") === "google_sheets" && scope?.activeSpreadsheetId ? scope : null;
+}
+
+function googleSheetsConnectionMatchesSavedScope(conn: any, scope: any | null): boolean {
+  if (!scope?.activeSpreadsheetId) return false;
+  const spreadsheetId = String(conn?.spreadsheetId || "");
+  const connectionId = String(conn?.id || "");
+  const sheetName = String(conn?.sheetName || "");
+  return scope.activeSpreadsheetId === `${spreadsheetId}:${connectionId}` ||
+    (!!sheetName && scope.activeSpreadsheetId === `${spreadsheetId}:${sheetName}`) ||
+    (!!scope.connectionId && String(scope.connectionId) === connectionId);
+}
+
+function buildGoogleSheetsCachedMetricSummary(connections: any[], sourceScope: any | null = null) {
   const metrics = new Map<string, { label: string; total: number; type: string }>();
   let rowCount = 0;
   let latestRefresh = "";
   const sourceNames: string[] = [];
 
   for (const conn of Array.isArray(connections) ? connections : []) {
+    if (sourceScope && !googleSheetsConnectionMatchesSavedScope(conn, sourceScope)) continue;
     const purpose = String(conn?.purpose || "").trim().toLowerCase();
     if (conn?.isActive === false || !conn?.spreadsheetId || conn.spreadsheetId === "pending" || (purpose && purpose !== "general")) continue;
     const cache = conn?.cachedData || {};
@@ -877,7 +894,10 @@ async function buildGoogleSheetsScheduledPdfAttachment(args: {
   const campaignId = String(report?.campaignId || "").trim();
   if (!campaignId) return null;
   const connections = await storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]);
-  const source = buildGoogleSheetsCachedMetricSummary(connections);
+  const cfg = parseReportConfiguration(report?.configuration);
+  const reportSourceScope = getGoogleSheetsReportSourceScope(report?.configuration);
+  if (!reportSourceScope) return null;
+  const source = buildGoogleSheetsCachedMetricSummary(connections, reportSourceScope);
   if (source.metrics.size === 0) return null;
 
   const { jsPDF } = await import("jspdf");
@@ -886,7 +906,6 @@ async function buildGoogleSheetsScheduledPdfAttachment(args: {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   let y = margin;
-  const cfg = parseReportConfiguration(report?.configuration);
   const reportType = String(report?.reportType || "overview").toLowerCase();
   const selectedMetrics = new Set((Array.isArray(cfg.selectedMetrics) ? cfg.selectedMetrics : []).map((metric: any) => normalizeGoogleSheetsReportKey(metric)));
   const selectedKpiIds = new Set([...(Array.isArray(cfg.kpis) ? cfg.kpis : []), ...(Array.isArray(cfg.selectedKpiIds) ? cfg.selectedKpiIds : [])].map((id: any) => String(id)));
@@ -925,7 +944,9 @@ async function buildGoogleSheetsScheduledPdfAttachment(args: {
       return;
     }
     filtered.forEach((row: any) => {
-      const metric = source.metrics.get(normalizeGoogleSheetsReportKey(row?.metric || row?.metricKey));
+      const rowScope = getGoogleSheetsReportSourceScope(row?.calculationConfig);
+      const rowSource = rowScope ? buildGoogleSheetsCachedMetricSummary(connections, rowScope) : { metrics: new Map<string, { label: string; total: number; type: string }>() };
+      const metric = rowSource.metrics.get(normalizeGoogleSheetsReportKey(row?.metric || row?.metricKey));
       const current = metric ? formatGoogleSheetsReportValue(metric.total, metric.label, metric.type) : "Unavailable";
       const target = formatGoogleSheetsReportValue(row?.targetValue, metric?.label || row?.metric || row?.name, metric?.type);
       addText(`- ${row?.name || row?.metric || "KPI"}: Current ${current}; Target ${target}`, { indent: 4 });
@@ -939,7 +960,9 @@ async function buildGoogleSheetsScheduledPdfAttachment(args: {
       return;
     }
     filtered.forEach((row: any) => {
-      const metric = source.metrics.get(normalizeGoogleSheetsReportKey(row?.metric || row?.metricKey));
+      const rowScope = getGoogleSheetsReportSourceScope(row?.calculationConfig);
+      const rowSource = rowScope ? buildGoogleSheetsCachedMetricSummary(connections, rowScope) : { metrics: new Map<string, { label: string; total: number; type: string }>() };
+      const metric = rowSource.metrics.get(normalizeGoogleSheetsReportKey(row?.metric || row?.metricKey));
       const current = metric ? formatGoogleSheetsReportValue(metric.total, metric.label, metric.type) : "Unavailable";
       const target = formatGoogleSheetsReportValue(row?.benchmarkValue, metric?.label || row?.metric || row?.name, metric?.type);
       addText(`- ${row?.name || row?.metric || "Benchmark"}: Current ${current}; Benchmark ${target}`, { indent: 4 });

@@ -635,6 +635,11 @@ describe("source safety regression guards", () => {
     expect(page).toContain("serializeGoogleSheetsReportState(nextForm, nextConfig, nextModalStep)");
     expect(page).toContain("const reportHasChanges = !editingReportId");
     expect(page).toContain("downloadGoogleSheetsReport({");
+    expect(page).toContain("const savedGoogleSheetsSourceQueries = useQueries");
+    expect(page).toContain("getGoogleSheetsMetricOptionsForSavedScope");
+    expect(page).toContain("Saved Google Sheets source is no longer connected");
+    expect(page).toContain("Saved Google Sheets source unavailable");
+    expect(page).toContain("const reportScopedMetrics = getGoogleSheetsMetricOptionsForSavedScope({ configuration: selectedConfig });");
     expect(page).toContain("payload.scheduleDayOfWeek = reportForm.scheduleFrequency === \"weekly\" ? dayOfWeekKeyToInt(reportForm.scheduleDayOfWeek) : undefined");
     expect(page).toContain("payload.scheduleDayOfMonth = reportForm.scheduleFrequency === \"monthly\" || reportForm.scheduleFrequency === \"quarterly\" ? dayOfMonthToInt(reportForm.scheduleDayOfMonth) : undefined");
     expect(page).toContain("payload.scheduleTime = to24HourHHMM(reportForm.scheduleTime)");
@@ -670,6 +675,11 @@ describe("source safety regression guards", () => {
     expect(reportScheduler).toContain("'google_sheets'");
     expect(reportScheduler).toContain("return normalized === \"instagram\" || normalized === \"tiktok\" || normalized === \"google_sheets\";");
     expect(reportScheduler).toContain("buildGoogleSheetsCachedMetricSummary");
+    expect(reportScheduler).toContain("function getGoogleSheetsReportSourceScope");
+    expect(reportScheduler).toContain("function googleSheetsConnectionMatchesSavedScope");
+    expect(reportScheduler).toContain("if (!reportSourceScope) return null;");
+    expect(reportScheduler).toContain("buildGoogleSheetsCachedMetricSummary(connections, reportSourceScope)");
+    expect(reportScheduler).toContain("const rowScope = getGoogleSheetsReportSourceScope(row?.calculationConfig)");
     expect(reportScheduler).toContain("storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[])");
     expect(reportScheduler).toContain("storage.getPlatformKPIs(\"google_sheets\", campaignId)");
     expect(reportScheduler).toContain("storage.getPlatformBenchmarks(\"google_sheets\", campaignId)");
@@ -717,7 +727,7 @@ describe("source safety regression guards", () => {
 
     expect(header).toContain('<h1 className="text-3xl font-bold text-foreground whitespace-nowrap">Google Sheets Data</h1>');
     expect(header).toContain('<Badge variant="secondary" className="text-xs whitespace-nowrap shrink-0">');
-    expect(header).toContain('className={`whitespace-nowrap shrink-0 ${sheetsData?.spreadsheetId && !isCombinedView ? "" : "invisible"}`}');
+    expect(header).toContain('className={`whitespace-nowrap shrink-0 ${sheetsData?.spreadsheetId ? "" : "invisible"}`}');
     expect(header).not.toContain('{sheetsData?.spreadsheetId && !isCombinedView && (');
   });
 

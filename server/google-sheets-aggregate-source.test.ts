@@ -230,8 +230,14 @@ describe("Google Sheets aggregate source adapter", () => {
     const routes = readSource("server", "routes-oauth.ts");
 
     expect(routes).toContain("const isGoogleSheetsSummaryIdentifierColumn");
+    expect(routes).toContain("const isGoogleSheetsSummaryBreakdownIdentifierColumn");
+    expect(routes).toContain("const isGoogleSheetsSummaryCampaignBreakdownColumn");
+    expect(routes).toContain("h !== 'campaign id' && isGoogleSheetsSummaryIdentifierColumn(header)");
     expect(routes).toContain("getGoogleSheetsSummaryDisplayValue");
     expect(routes).toContain("isGoogleSheetsSummaryIdentifierColumn(headerStr)");
+    expect(routes).toContain("isGoogleSheetsSummaryBreakdownIdentifierColumn(headerStr)");
+    expect(routes).toContain("const isCampaignBreakdownColumn = isGoogleSheetsSummaryCampaignBreakdownColumn(headerStr);");
+    expect(routes).toContain("(!isCampaignBreakdownColumn && uniqueCount === rowsForSummary.length)");
     expect(routes).toContain("summaryValue: revenueTotal / spendTotal");
     expect(routes).toContain("derived_profit_per_spend_pct");
     expect(routes).toContain("derived_spend_per_customer");

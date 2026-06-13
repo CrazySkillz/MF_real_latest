@@ -17052,6 +17052,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return h === 'id' || /\b(id|identifier|urn|uuid)\b/.test(h);
   };
 
+  const isGoogleSheetsSummaryBreakdownIdentifierColumn = (header: any) => {
+    const h = normalizeGoogleSheetsSummaryHeader(header);
+    return h !== 'campaign id' && isGoogleSheetsSummaryIdentifierColumn(header);
+  };
+
+  const isGoogleSheetsSummaryCampaignBreakdownColumn = (header: any) =>
+    normalizeGoogleSheetsSummaryHeader(header) === 'campaign id';
+
   const googleSheetsMetricTotal = (
     metrics: Record<string, number>,
     includes: RegExp[],
@@ -17735,7 +17743,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         headers.forEach((header: string, colIndex: number) => {
           const headerStr = String(header || '').trim();
-          if (!headerStr || isGoogleSheetsSummaryIdentifierColumn(headerStr) || numericColNames.has(headerStr) || datePatterns.test(headerStr)) return;
+          const isCampaignBreakdownColumn = isGoogleSheetsSummaryCampaignBreakdownColumn(headerStr);
+          if (!headerStr || isGoogleSheetsSummaryBreakdownIdentifierColumn(headerStr) || numericColNames.has(headerStr) || datePatterns.test(headerStr)) return;
 
           const freq: Record<string, number> = {};
           for (const row of rowsForSummary) {
@@ -17747,7 +17756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           const uniqueCount = Object.keys(freq).length;
-          if (uniqueCount === 0 || uniqueCount > 20 || uniqueCount === rowsForSummary.length) return;
+          if (uniqueCount === 0 || uniqueCount > 20 || (!isCampaignBreakdownColumn && uniqueCount === rowsForSummary.length)) return;
 
           const topValues = Object.entries(freq)
             .sort((a, b) => b[1] - a[1])

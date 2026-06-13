@@ -2053,6 +2053,14 @@ export default function GoogleSheetsData() {
                       <SelectValue placeholder="Select a sheet..." />
                     </SelectTrigger>
                     <SelectContent>
+                      {googleSheetsConnections.length > 1 && (
+                        <SelectItem value="combined">
+                          <div className="flex items-center gap-2 w-full">
+                            <FileSpreadsheet className="w-4 h-4 flex-shrink-0" />
+                            <span className="flex-1 truncate">All Sheets (Combined)</span>
+                          </div>
+                        </SelectItem>
+                      )}
                       {googleSheetsConnections.map((conn: any, index: number) => {
                         // Check if multiple tabs from same spreadsheet exist
                         const connectionsFromSameSpreadsheet = googleSheetsConnections.filter(

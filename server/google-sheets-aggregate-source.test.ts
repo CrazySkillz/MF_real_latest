@@ -250,6 +250,9 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("const activeGoogleSheetsSourceScope = useMemo<GoogleSheetsAnalysisSourceScope | null>");
     expect(page).toContain('scopeType: "combined"');
     expect(page).toContain('scopeType: "single"');
+    expect(page).toContain('googleSheetsConnections.length > 1 &&');
+    expect(page).toContain('<SelectItem value="combined">');
+    expect(page).toContain('All Sheets (Combined)');
     expect(page).toContain("connectionIds: googleSheetsConnections.map");
     expect(page).toContain("connectionId: activeConn.id || null");
     expect(page).toContain("displayName: getGoogleSheetsConnectionDisplayName(activeConn)");

@@ -235,7 +235,7 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(routes).toContain("summaryValue: revenueTotal / spendTotal");
     expect(routes).toContain("derived_profit_per_spend_pct");
     expect(routes).toContain("derived_spend_per_customer");
-    expect(routes).toContain("detectedColumns: summaryDetectedColumns");
+    expect(routes).toContain("detectedColumns: campaignData.detectedColumns");
     expect(page).toContain("getSummaryMetricDisplayValue(col)");
     expect(page).toContain("!isSummaryIdentifierColumn(col?.name || \"\")");
     expect(page).toContain("{displayColumns.length} metrics");
@@ -243,17 +243,22 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("n.includes('cac') || n.includes('cpl')");
   });
 
-  it("defines an active Google Sheets analysis source scope for saved-object persistence follow-up", () => {
+  it("defines a single active Google Sheets analysis source scope for saved-object persistence follow-up", () => {
     const page = readSource("client", "src", "pages", "google-sheets-data.tsx");
+    const routes = readSource("server", "routes-oauth.ts");
 
     expect(page).toContain("type GoogleSheetsAnalysisSourceScope");
     expect(page).toContain("const activeGoogleSheetsSourceScope = useMemo<GoogleSheetsAnalysisSourceScope | null>");
-    expect(page).toContain('scopeType: "combined"');
     expect(page).toContain('scopeType: "single"');
-    expect(page).toContain('googleSheetsConnections.length > 1 &&');
-    expect(page).toContain('<SelectItem value="combined">');
-    expect(page).toContain('All Sheets (Combined)');
-    expect(page).toContain("connectionIds: googleSheetsConnections.map");
+    expect(page).not.toContain('scopeType: "combined"');
+    expect(page).not.toContain('<SelectItem value="combined">');
+    expect(page).not.toContain('All Sheets (Combined)');
+    expect(page).not.toContain('view=combined');
+    expect(page).not.toContain('sheetBreakdown');
+    expect(page).not.toContain('connectionIds: googleSheetsConnections.map');
+    expect(routes).not.toContain("view === 'combined'");
+    expect(routes).not.toContain("spreadsheetId: 'combined'");
+    expect(routes).not.toContain('sheetBreakdown:');
     expect(page).toContain("connectionId: activeConn.id || null");
     expect(page).toContain("displayName: getGoogleSheetsConnectionDisplayName(activeConn)");
     expect(page).toContain("Active: {activeGoogleSheetsSourceScope?.displayName || 'Unknown'}");

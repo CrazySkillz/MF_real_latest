@@ -353,14 +353,17 @@ Status:
 - [x] Completed locally for the main-source analytics scoping boundary:
   - Google Sheets analytics now requests `scope=main` for the connection list used by the sheet selector.
   - The `scope=main` connection list returns only active, non-pending, campaign-level Google Sheets rows whose purpose is blank/legacy or `general`, and only when the campaign is explicitly configured with Google Sheets as a main platform.
-  - The `/api/campaigns/:id/google-sheets-data` route resolves combined and single-sheet reads from the same main-source connection set.
+  - The `/api/campaigns/:id/google-sheets-data` route resolves only the selected single sheet/tab from the main-source connection set.
   - Child revenue/spend Google Sheets rows are excluded from main Google Sheets analytics reads.
+- [x] Follow-up safety removal completed locally:
+  - Root cause: combined view attempted to aggregate arbitrary Google Sheets tabs even though tabs can represent different business objects, schemas, or calculation layers.
+  - Fix: combined view was removed from the frontend selector, frontend query path, Summary/Insights render paths, and backend Google Sheets data route.
+  - Intentional product decision: Google Sheets analysis scope is one selected sheet/tab at a time until a future explicitly mapped rollup model exists.
 - [x] Regression guards added in `server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - [x] Local validation passed: `npm run check`.
-- [x] Browser validation passed after deploy for selected-tab values, combined view, child-source exclusion, and empty/unmapped sheet handling.
+- [x] Browser validation passed after deploy for selected-tab values, child-source exclusion, and empty/unmapped sheet handling.
   - Main Google Sheets tabs render as the Google Sheets analytics source.
-  - Combined view stays scoped to main Google Sheets tabs.
   - A Meta campaign with Google Sheets revenue imported as a child source does not expose that child sheet as main Google Sheets analytics, including direct navigation to `/campaigns/:id/google-sheets-data`.
   - Empty or unmapped Google Sheets analytics states do not display child revenue/spend values as main Google Sheets metrics.
 
@@ -789,7 +792,7 @@ Implementation approach:
 
 - 12A: Define a Google Sheets source-scope object using existing fields and stable identifiers:
   - `platform: "google_sheets"`
-  - `scopeType: "single" | "combined"`
+  - `scopeType: "single"`
   - `activeSpreadsheetId`
   - `connectionId`
   - `spreadsheetId`
@@ -823,7 +826,8 @@ Status:
 - [x] Commit 12A completed locally:
   - Root cause: the Google Sheets analytics page had an `activeSpreadsheetId` string and repeated local parsing, but no structured source-scope object that later KPI, Benchmark, or Report persistence work could safely reuse.
   - Fix: the frontend now defines `GoogleSheetsAnalysisSourceScope` and resolves `activeGoogleSheetsSourceScope` from the current page dropdown selection.
-  - Scope fields include platform, `single` versus `combined`, active dropdown value, connection ID, spreadsheet ID, spreadsheet name, sheet name, display name, and combined connection IDs.
+  - Scope fields include platform, `single` source type, active dropdown value, connection ID, spreadsheet ID, spreadsheet name, sheet name, and display name.
+  - Follow-up safety fix: combined view was removed after review because arbitrary Google Sheets tabs cannot be safely aggregated without an explicit rollup contract.
   - Safety: Commit 12A does not persist source scope to KPI `calculationConfig`, Benchmark `calculationConfig`, or Report `configuration`; those behavior changes remain pending in Commit 12C-12H.
   - Display-only use: the active source badge and immediate PDF source label now read from the resolved source-scope display name.
 - [x] Commit 12A validation passed locally: `npm test -- --run server/google-sheets-aggregate-source.test.ts`.

@@ -140,10 +140,9 @@ interface GoogleSheetsData {
 
 type GoogleSheetsAnalysisSourceScope = {
   platform: "google_sheets";
-  scopeType: "single" | "combined";
+  scopeType: "single";
   activeSpreadsheetId: string;
   connectionId: string | null;
-  connectionIds?: string[];
   spreadsheetId: string | null;
   spreadsheetName: string | null;
   sheetName: string | null;
@@ -306,7 +305,6 @@ export default function GoogleSheetsData() {
   // Get selected spreadsheetId from URL query params - update when location changes
   const [urlParams, setUrlParams] = useState(() => new URLSearchParams(window.location.search));
   const selectedSpreadsheetId = urlParams.get('spreadsheetId');
-  const isCombinedView = urlParams.get('view') === 'combined';
 
   // Update URL params when location changes
   useEffect(() => {
@@ -360,7 +358,7 @@ export default function GoogleSheetsData() {
       // Determine if we are deleting the currently selected connection
       const currentValue = activeSpreadsheetId;
       let wasActive = false;
-      if (currentValue && currentValue !== 'combined') {
+      if (currentValue) {
         const [spreadsheetId, identifier] = currentValue.includes(':') ? currentValue.split(':') : [currentValue, null];
         const activeConn = prevConnections.find((c: any) =>
           c.spreadsheetId === spreadsheetId && (identifier === null || c.sheetName === identifier || c.id === identifier)
@@ -381,8 +379,6 @@ export default function GoogleSheetsData() {
         if (next) {
           const nextValue = next.sheetName ? `${next.spreadsheetId}:${next.sheetName}` : `${next.spreadsheetId}:${next.id}`;
           handleSheetChange(nextValue);
-        } else {
-          handleSheetChange('combined');
         }
       }
 
@@ -445,7 +441,6 @@ export default function GoogleSheetsData() {
 
   // Determine which spreadsheet to fetch data from
   const activeSpreadsheetId = useMemo(() => {
-    if (isCombinedView) return 'combined';
     if (selectedSpreadsheetId) {
       // Parse composite value (spreadsheetId:sheetName or spreadsheetId:connectionId)
       const [spreadsheetId, identifier] = selectedSpreadsheetId.includes(':') 
@@ -468,7 +463,7 @@ export default function GoogleSheetsData() {
         : `${defaultConn.spreadsheetId}:${defaultConn.id}`;
     }
     return null;
-  }, [selectedSpreadsheetId, isCombinedView, primaryConnection, googleSheetsConnections]);
+  }, [selectedSpreadsheetId, primaryConnection, googleSheetsConnections]);
 
   const getGoogleSheetsConnectionDisplayName = useCallback((conn: any): string => {
     if (!conn) return 'Unknown';
@@ -488,19 +483,6 @@ export default function GoogleSheetsData() {
 
   const activeGoogleSheetsSourceScope = useMemo<GoogleSheetsAnalysisSourceScope | null>(() => {
     if (!activeSpreadsheetId) return null;
-    if (activeSpreadsheetId === 'combined') {
-      return {
-        platform: "google_sheets",
-        scopeType: "combined",
-        activeSpreadsheetId,
-        connectionId: null,
-        connectionIds: googleSheetsConnections.map((conn: any) => String(conn.id)).filter(Boolean),
-        spreadsheetId: null,
-        spreadsheetName: "Combined",
-        sheetName: null,
-        displayName: "All Sheets (Combined)",
-      };
-    }
 
     const [spreadsheetId, ...identifierParts] = activeSpreadsheetId.split(':');
     const identifier = identifierParts.join(':') || null;
@@ -527,28 +509,23 @@ export default function GoogleSheetsData() {
     if (!value) return; // Don't handle empty values
     
     const newParams = new URLSearchParams(window.location.search);
-    if (value === 'combined') {
-      newParams.set('view', 'combined');
-      newParams.delete('spreadsheetId');
+    // Parse composite value (spreadsheetId:sheetName or spreadsheetId:connectionId)
+    const [spreadsheetId, identifier] = value.includes(':')
+      ? value.split(':')
+      : [value, null];
+
+    // Verify the value exists in connections before setting it
+    // identifier can be sheetName or connectionId (for tabs without sheetName)
+    const exists = googleSheetsConnections.some((conn: any) =>
+      conn.spreadsheetId === spreadsheetId &&
+      (identifier === null || conn.sheetName === identifier || conn.id === identifier)
+    );
+    if (exists) {
+      newParams.set('spreadsheetId', value);
+      newParams.delete('view');
     } else {
-      // Parse composite value (spreadsheetId:sheetName or spreadsheetId:connectionId)
-      const [spreadsheetId, identifier] = value.includes(':') 
-        ? value.split(':') 
-        : [value, null];
-      
-      // Verify the value exists in connections before setting it
-      // identifier can be sheetName or connectionId (for tabs without sheetName)
-      const exists = googleSheetsConnections.some((conn: any) => 
-        conn.spreadsheetId === spreadsheetId && 
-        (identifier === null || conn.sheetName === identifier || conn.id === identifier)
-      );
-      if (exists) {
-        newParams.set('spreadsheetId', value);
-        newParams.delete('view');
-      } else {
-        console.warn('[Sheet Selector] Invalid connection:', value);
-        return;
-      }
+      console.warn('[Sheet Selector] Invalid connection:', value);
+      return;
     }
     const newUrl = `${window.location.pathname}${newParams.toString() ? `?${newParams.toString()}` : ''}`;
     
@@ -560,7 +537,7 @@ export default function GoogleSheetsData() {
     setLocation(newUrl);
   }, [googleSheetsConnections, setLocation]);
 
-  const { data: sheetsData, isLoading: sheetsLoading, isFetching: sheetsFetching, status: sheetsStatus, error: sheetsError, refetch } = useQuery<GoogleSheetsData & { calculatedConversionValues?: any[]; matchingInfo?: any; sheetBreakdown?: any[] }>({
+  const { data: sheetsData, isLoading: sheetsLoading, isFetching: sheetsFetching, status: sheetsStatus, error: sheetsError, refetch } = useQuery<GoogleSheetsData & { calculatedConversionValues?: any[]; matchingInfo?: any }>({
     queryKey: ["/api/campaigns", campaignId, "google-sheets-data", activeSpreadsheetId],
     enabled: !!campaignId && activeSpreadsheetId !== null,
     refetchInterval: 3600000, // Auto-refresh every hour
@@ -572,9 +549,7 @@ export default function GoogleSheetsData() {
       queryFn: async () => {
         let response: Response;
         try {
-          const url = isCombinedView 
-            ? `/api/campaigns/${campaignId}/google-sheets-data?view=combined`
-            : `/api/campaigns/${campaignId}/google-sheets-data${activeSpreadsheetId && activeSpreadsheetId !== 'combined' ? `?spreadsheetId=${encodeURIComponent(activeSpreadsheetId)}` : ''}`;
+          const url = `/api/campaigns/${campaignId}/google-sheets-data${activeSpreadsheetId ? `?spreadsheetId=${encodeURIComponent(activeSpreadsheetId)}` : ''}`;
         response = await fetch(url, {
           signal: AbortSignal.timeout(60000) // 60 second timeout for the entire request
         });
@@ -2001,14 +1976,14 @@ export default function GoogleSheetsData() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    if (sheetsData?.spreadsheetId && !isCombinedView) {
+                    if (sheetsData?.spreadsheetId) {
                       window.open(`https://docs.google.com/spreadsheets/d/${sheetsData.spreadsheetId}/edit`, '_blank');
                     }
                   }}
-                  disabled={!sheetsData?.spreadsheetId || isCombinedView}
-                  aria-hidden={!sheetsData?.spreadsheetId || isCombinedView}
+                  disabled={!sheetsData?.spreadsheetId}
+                  aria-hidden={!sheetsData?.spreadsheetId}
                   size="sm"
-                  className={`whitespace-nowrap shrink-0 ${sheetsData?.spreadsheetId && !isCombinedView ? "" : "invisible"}`}
+                  className={`whitespace-nowrap shrink-0 ${sheetsData?.spreadsheetId ? "" : "invisible"}`}
                 >
                   <FileSpreadsheet className="w-4 h-4 mr-2" />
                   Open in Sheets
@@ -2026,8 +2001,7 @@ export default function GoogleSheetsData() {
                   </label>
                   <Select
                     value={(() => {
-                      if (isCombinedView) return 'combined';
-                      if (activeSpreadsheetId && activeSpreadsheetId !== 'combined') {
+                      if (activeSpreadsheetId) {
                         // Parse activeSpreadsheetId to verify it exists
                         const [spreadsheetId, identifier] = activeSpreadsheetId.includes(':') 
                           ? activeSpreadsheetId.split(':') 
@@ -2053,14 +2027,6 @@ export default function GoogleSheetsData() {
                       <SelectValue placeholder="Select a sheet..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {googleSheetsConnections.length > 1 && (
-                        <SelectItem value="combined">
-                          <div className="flex items-center gap-2 w-full">
-                            <FileSpreadsheet className="w-4 h-4 flex-shrink-0" />
-                            <span className="flex-1 truncate">All Sheets (Combined)</span>
-                          </div>
-                        </SelectItem>
-                      )}
                       {googleSheetsConnections.map((conn: any, index: number) => {
                         // Check if multiple tabs from same spreadsheet exist
                         const connectionsFromSameSpreadsheet = googleSheetsConnections.filter(
@@ -2105,17 +2071,8 @@ export default function GoogleSheetsData() {
                 {sheetsData ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground/70">
                     <Badge variant="outline" className="text-xs">
-                      {isCombinedView ? (
-                        <>
-                          <FileSpreadsheet className="w-3 h-3 mr-1" />
-                          Viewing: All Sheets (Combined)
-                        </>
-                      ) : (
-                        <>
-                          <FileSpreadsheet className="w-3 h-3 mr-1" />
-                          Active: {activeGoogleSheetsSourceScope?.displayName || 'Unknown'}
-                        </>
-                      )}
+                      <FileSpreadsheet className="w-3 h-3 mr-1" />
+                      Active: {activeGoogleSheetsSourceScope?.displayName || 'Unknown'}
                     </Badge>
                     {sheetsData.filteredRows !== undefined && sheetsData.totalRows !== undefined && (
                       <span className="text-xs">
@@ -2325,18 +2282,7 @@ export default function GoogleSheetsData() {
                 <TabsContent value="summary" className="mt-6">
                   <div className="space-y-6">
                     {(() => {
-                      // Build sections: one per sheet (combined) or one for the single sheet
-                      const sections = isCombinedView && sheetsData?.sheetBreakdown && sheetsData.sheetBreakdown.length > 0
-                        ? sheetsData.sheetBreakdown.map((sheet: any) => ({
-                            key: `${sheet.spreadsheetId}-${sheet.sheetName}`,
-                            name: sheet.spreadsheetName && sheet.sheetName && sheet.spreadsheetName !== sheet.sheetName
-                              ? `${sheet.spreadsheetName} — ${sheet.sheetName}`
-                              : sheet.sheetName || sheet.spreadsheetName || 'Unnamed Sheet',
-                            rowCount: sheet.rowCount,
-                            detectedColumns: sheet.detectedColumns || [],
-                            categoricalColumns: sheet.categoricalColumns || [],
-                          }))
-                        : sheetsData?.summary?.detectedColumns && sheetsData.summary.detectedColumns.length > 0
+                      const sections = sheetsData?.summary?.detectedColumns && sheetsData.summary.detectedColumns.length > 0
                           ? [{
                               key: 'single',
                               name: (sheetsData as any).sheetName && sheetsData.spreadsheetName && (sheetsData as any).sheetName !== sheetsData.spreadsheetName
@@ -2934,61 +2880,7 @@ export default function GoogleSheetsData() {
 
                 {/* ═══ INSIGHTS TAB ═══ */}
                 <TabsContent value="insights" className="mt-6">
-                  {isCombinedView ? (
-                    <div className="space-y-6">
-                      <div>
-                        <h2 className="text-2xl font-bold text-foreground">Insights</h2>
-                        <p className="text-sm text-muted-foreground/70 mt-1">
-                          Overview across all connected sheets. Select an individual sheet for detailed analysis.
-                        </p>
-                      </div>
-
-                      {sheetsData?.sheetBreakdown && sheetsData.sheetBreakdown.length > 0 ? (
-                        <Card>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <CheckCircle2 className="w-5 h-5 text-green-600" />
-                              Data Quality Across Sheets
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="space-y-3">
-                              {sheetsData.sheetBreakdown.map((sheet: any, idx: number) => {
-                                const sheetLabel = sheet.spreadsheetName && sheet.sheetName && sheet.spreadsheetName !== sheet.sheetName
-                                  ? `${sheet.spreadsheetName} — ${sheet.sheetName}`
-                                  : sheet.sheetName || sheet.spreadsheetName || 'Sheet';
-                                const colCount = sheet.detectedColumns?.length || 0;
-                                return (
-                                  <div key={idx} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-medium text-foreground truncate">{sheetLabel}</p>
-                                      <p className="text-xs text-muted-foreground mt-0.5">{sheet.rowCount?.toLocaleString() || 0} rows, {colCount} metrics detected</p>
-                                    </div>
-                                    <Badge variant="outline" className="text-xs shrink-0">
-                                      {sheet.rowCount > 0 ? 'Active' : 'Empty'}
-                                    </Badge>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-4">
-                              Select a specific sheet from the dropdown above to see detailed insights, trend charts, and recommendations.
-                            </p>
-                          </CardContent>
-                        </Card>
-                      ) : (
-                        <Card>
-                          <CardContent className="text-center py-12">
-                            <Lightbulb className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
-                            <h3 className="text-lg font-medium text-foreground mb-2">No Sheets Connected</h3>
-                            <p className="text-muted-foreground/70">
-                              Connect Google Sheets to generate insights.
-                            </p>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
-                  ) : sheetsData?.insights ? (
+                  {sheetsData?.insights ? (
                     <div className="space-y-6">
                       {/* Header */}
                       <div>

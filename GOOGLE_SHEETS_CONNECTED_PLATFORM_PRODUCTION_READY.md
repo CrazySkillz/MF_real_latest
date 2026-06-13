@@ -738,7 +738,17 @@ Status:
 - [x] Local validation passed: `npm run check`.
 - [x] Local validation passed: `git diff --check`.
 - [x] Full regression suite passed: `npm test` with 74 files and 655 tests.
-- [ ] Browser/deployed validation remains pending after deploy for delete, reconnect, and primary/source change lifecycle behavior.
+- [x] Commit 11 create/reconnect follow-up completed locally:
+  - Root cause: the Google Sheets Total Revenue and Total Spend `+` flows cleared `initialSource`, but the shared revenue/spend modals could still retain create-mode sheet/column/source state from prior opens until close/reset completed.
+  - Fix: shared revenue and spend source modals now reset create-mode state on open while preserving edit-mode prefill for existing sources.
+  - Root cause: after existing Google Sheets auto-selection was disabled for create mode, a new Google Sheets revenue source could still render the saved-connection dropdown branch when old campaign Google Sheets connections existed.
+  - Fix: new Google Sheets revenue create mode now renders the Google Sheets spreadsheet picker (`Select Your Spreadsheet` when OAuth is available, or `Connect Google Sheets` when OAuth is missing/expired) until the user explicitly selects a new sheet/tab.
+- [x] Regression guards added/updated in `server/google-sheets-aggregate-source.test.ts` and `server/tiktok-create-campaign-regression.test.ts` for empty create-mode source state and the Google Sheets create picker.
+- [x] Commit 11 follow-up validation passed locally: `npm test -- --run server/google-sheets-aggregate-source.test.ts server/tiktok-create-campaign-regression.test.ts`.
+- [x] Commit 11 follow-up validation passed locally: `npm run check`.
+- [x] Commit 11 follow-up validation passed locally: `git diff --check`.
+- [x] Commit 11 follow-up full regression suite passed: `npm test` with 74 files and 656 tests.
+- [x] Browser/deployed validation passed after deploy for delete, reconnect, primary/source change lifecycle behavior, and empty create-mode Google Sheets revenue/spend add-source flows.
 
 ### Commit 12: Final Local Regression And Evidence
 
@@ -842,6 +852,8 @@ Lifecycle:
 
 - [x] Commit 11 local regression: delete removes only current campaign Google Sheets source/connection.
 - [x] Commit 11 local regression: reconnect and replacement paths clear stale cached rows/mappings.
+- [x] Commit 11 browser validation passed after deploy for delete, reconnect, and primary/source change lifecycle behavior.
+- [x] Commit 11 browser validation passed after deploy for empty Google Sheets Total Revenue/Total Spend create-mode source flows; new Google Sheets revenue source creation opens the spreadsheet picker instead of a saved tab dropdown.
 - [x] Token refresh and data refresh preserve source scope for the Commit 10 refresh/scheduler/cache boundary.
 
 ## Production-Ready Exit Criteria
@@ -1052,7 +1064,12 @@ Google Sheets can be marked locally production-ready only when:
   - Root cause: specific connection delete and spend-source backing connection cleanup needed explicit campaign ownership proof before deleting by connection ID.
   - Fix: both paths now prove ownership against the current campaign's Google Sheets connections before deletion.
 - Commit 11 validation passed locally: `npm test -- --run server/source-safety-regression.test.ts`, `npm test -- --run server/google-sheets-aggregate-source.test.ts`, `npm run check`, `git diff --check`, and full `npm test` with 74 files and 655 tests.
-- Commit 11 browser/deployed validation remains pending after deploy:
-  - Delete a Google Sheets connection/source and confirm unrelated campaign/platform sources remain.
-  - Reconnect/select a current spreadsheet/tab and confirm old cached rows/mappings do not reappear.
-  - Change primary/source selection and confirm visible metrics use only the selected active connection.
+- Commit 11 create/reconnect follow-up fixes completed locally:
+  - Shared revenue and spend source modals now reset create-mode state on open while preserving edit-mode prefill.
+  - New Google Sheets revenue create mode now opens the spreadsheet picker (`Select Your Spreadsheet` or `Connect Google Sheets`) instead of the saved tab dropdown when no new connection is selected.
+- Commit 11 follow-up validation passed locally: `npm test -- --run server/google-sheets-aggregate-source.test.ts server/tiktok-create-campaign-regression.test.ts`, `npm run check`, `git diff --check`, and full `npm test` with 74 files and 656 tests.
+- Commit 11 browser/deployed validation passed after deploy:
+  - Deleting a Google Sheets connection/source leaves unrelated campaign/platform sources intact.
+  - Reconnect/select current spreadsheet/tab does not show old cached rows or old mappings.
+  - Primary/source selection changes visible metrics only to the selected active connection.
+  - Total Revenue and Total Spend `+` add-source flows open with empty create state, and Google Sheets revenue source creation opens the spreadsheet picker instead of a saved tab dropdown.

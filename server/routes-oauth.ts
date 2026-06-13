@@ -13076,7 +13076,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isPrimary: conn.isPrimary,
             isActive: conn.isActive,
             columnMappings: conn.columnMappings,
-            connectedAt: conn.connectedAt
+            connectedAt: conn.connectedAt,
+            lastDataRefreshAt: (conn as any).lastDataRefreshAt
           });
         })
       });

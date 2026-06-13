@@ -1979,6 +1979,27 @@ export default function GoogleSheetsData() {
     return raw;
   };
 
+  const parseGoogleSheetsMappings = (value: any): any[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const formatConnectionRefreshTime = (value: string | null | undefined): string => {
+    if (!value) return "Not refreshed yet";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Not refreshed yet";
+    return date.toLocaleString();
+  };
+
   const getGoogleSheetsKpiIcon = (metricName: string) => {
     const n = String(metricName || "").toLowerCase();
     if (n.includes("revenue") || n.includes("spend") || n.includes("cost") || n.includes("budget")) return { Icon: DollarSign, color: "text-emerald-600" };
@@ -2356,7 +2377,7 @@ export default function GoogleSheetsData() {
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="reports">Reports</TabsTrigger>
-                  <TabsTrigger value="connections">Connection Details</TabsTrigger>
+                  <TabsTrigger value="connections">Connected Datasets</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="data" className="mt-6 space-y-6">
@@ -2419,7 +2440,7 @@ export default function GoogleSheetsData() {
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="reports">Reports</TabsTrigger>
-                  <TabsTrigger value="connections">Connection Details</TabsTrigger>
+                  <TabsTrigger value="connections">Connected Datasets</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="data" className="mt-6 space-y-6">
@@ -2519,7 +2540,7 @@ export default function GoogleSheetsData() {
                               <div className="text-center">
                                 <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
                                 <p className="text-muted-foreground/70">No numeric columns detected</p>
-                                <p className="text-sm text-muted-foreground mt-1">Map columns in Connection Details to see metrics here</p>
+                                <p className="text-sm text-muted-foreground mt-1">Map columns in Connected Datasets to see metrics here</p>
                               </div>
                             </CardContent>
                           </Card>
@@ -3673,7 +3694,7 @@ export default function GoogleSheetsData() {
                               Connected Datasets ({googleSheetsConnections.length}/{MAX_GOOGLE_SHEETS_CONNECTIONS})
                             </CardTitle>
                             <CardDescription>
-                              Manage your Google Sheets connections
+                              Manage connected Google Sheets tabs and column mappings.
                             </CardDescription>
                           </div>
                           {canAddMoreSheets && (
@@ -3703,6 +3724,10 @@ export default function GoogleSheetsData() {
                         ) : (
                           <div className="space-y-3">
                             {googleSheetsConnections.map((conn: any) => {
+                              const mappings = parseGoogleSheetsMappings(conn.columnMappings);
+                              const mappingLabels = mappings
+                                .map((mapping: any) => mapping?.targetFieldLabel || mapping?.targetFieldName || mapping?.targetFieldId || mapping?.sourceColumnName || mapping?.sourceColumn || mapping?.platformField)
+                                .filter(Boolean);
                               return (
                                 <Card
                                   key={conn.id}
@@ -3726,6 +3751,26 @@ export default function GoogleSheetsData() {
                                               <p className="text-xs text-muted-foreground/60">
                                                 Tab: <span className="font-medium">{conn.sheetName}</span>
                                               </p>
+                                            )}
+                                            <p className="text-xs text-muted-foreground/60">
+                                              Last refreshed: <span className="font-medium">{formatConnectionRefreshTime(conn.lastDataRefreshAt)}</span>
+                                            </p>
+                                            <p className="text-xs text-muted-foreground/60">
+                                              Mapping status: <span className="font-medium">{mappings.length > 0 ? `${mappings.length} mapped column${mappings.length === 1 ? "" : "s"}` : "Not mapped"}</span>
+                                            </p>
+                                            {mappingLabels.length > 0 && (
+                                              <div className="flex flex-wrap gap-1 pt-1">
+                                                {mappingLabels.slice(0, 4).map((label: string, index: number) => (
+                                                  <Badge key={`${label}-${index}`} variant="outline" className="text-[10px]">
+                                                    {label}
+                                                  </Badge>
+                                                ))}
+                                                {mappingLabels.length > 4 && (
+                                                  <Badge variant="secondary" className="text-[10px]">
+                                                    +{mappingLabels.length - 4}
+                                                  </Badge>
+                                                )}
+                                              </div>
                                             )}
                                           </div>
                                         </div>

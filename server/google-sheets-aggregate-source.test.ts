@@ -280,6 +280,12 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("{displayColumns.length} metrics");
     expect(page).toContain("return executiveColumns.length > 0 ? executiveColumns : candidates;");
     expect(page).toContain("Data Breakdown");
+    expect(page).toContain("Connected Datasets");
+    expect(page).not.toContain("Connection Details");
+    expect(page).toContain("Manage connected Google Sheets tabs and column mappings.");
+    expect(page).toContain("Last refreshed:");
+    expect(page).toContain("Mapping status:");
+    expect(routes).toContain("lastDataRefreshAt: (conn as any).lastDataRefreshAt");
     expect(page).toContain("const categoricalColumns = section.categoricalColumns || [];");
     expect(page).toContain("No categorical breakdown column detected for this selected spreadsheet.");
     expect(page).toContain("n.includes('roi')");

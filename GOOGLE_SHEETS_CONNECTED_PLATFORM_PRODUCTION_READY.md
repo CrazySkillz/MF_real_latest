@@ -359,6 +359,10 @@ Status:
   - Root cause: combined view attempted to aggregate arbitrary Google Sheets tabs even though tabs can represent different business objects, schemas, or calculation layers.
   - Fix: combined view was removed from the frontend selector, frontend query path, Summary/Insights render paths, and backend Google Sheets data route.
   - Intentional product decision: Google Sheets analysis scope is one selected sheet/tab at a time until a future explicitly mapped rollup model exists.
+- [x] Browser validation passed after deploy for combined-view removal:
+  - `All Sheets (Combined)` is no longer present in the `View Data From` dropdown.
+  - Individual sheet/tab selections still load table and Summary data.
+  - The active source label shows the selected sheet/tab and does not show `Unknown`.
 - [x] Regression guards added in `server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts server/endpoint-auth-audit.test.ts`.
 - [x] Local validation passed: `npm run check`.
@@ -828,11 +832,19 @@ Status:
   - Fix: the frontend now defines `GoogleSheetsAnalysisSourceScope` and resolves `activeGoogleSheetsSourceScope` from the current page dropdown selection.
   - Scope fields include platform, `single` source type, active dropdown value, connection ID, spreadsheet ID, spreadsheet name, sheet name, and display name.
   - Follow-up safety fix: combined view was removed after review because arbitrary Google Sheets tabs cannot be safely aggregated without an explicit rollup contract.
-  - Safety: Commit 12A does not persist source scope to KPI `calculationConfig`, Benchmark `calculationConfig`, or Report `configuration`; those behavior changes remain pending in Commit 12C-12H.
+  - Safety: Commit 12A only introduced the resolved source-scope object and display-only use; saved-object persistence was handled separately in Commit 12B-12E.
   - Display-only use: the active source badge and immediate PDF source label now read from the resolved source-scope display name.
 - [x] Commit 12A validation passed locally: `npm test -- --run server/google-sheets-aggregate-source.test.ts`.
 - [x] Commit 12A validation passed locally: `npm run check`.
-- [ ] Commit 12B-12K remain pending.
+- [x] Commit 12A combined-view removal browser validation passed after deploy: only individual sheet/tab options appear, selected sheets still load table/Summary data, and the active label matches the selected source.
+- [x] Commit 12B-12E completed locally:
+  - Root cause: the Google Sheets dropdown still emitted `spreadsheetId:sheetName` for named tabs, and KPI, Benchmark, and Report save payloads did not persist the selected sheet/tab source scope.
+  - Fix 12B: selector values now prefer stable `spreadsheetId:connectionId` identities while keeping backward-compatible parsing for legacy `spreadsheetId:sheetName` and `spreadsheetId:connectionId` URL values.
+  - Fix 12C: KPI create/update payloads now persist `sourceScope` in `calculationConfig`.
+  - Fix 12D: Benchmark create/update payloads now persist `sourceScope` in `calculationConfig`.
+  - Fix 12E: Report create/update payloads now persist `sourceScope` in `configuration`, including scheduled reports.
+  - Safety: Commit 12B-12E is write-path only; saved KPI, Benchmark, and Report evaluation/display still remain in Commit 12F-12K.
+- [ ] Commit 12F-12K remain pending.
 
 ### Commit 13: Final Local Regression And Evidence
 
@@ -924,9 +936,10 @@ Analytics:
 - [ ] Insights and Reports use current source-backed values.
 - [x] Commit 10 browser validation passed after deploy for refresh/scheduler/cache scope: manual refresh and scheduled refresh preserve main/general Google Sheets source scope and Google-Sheets-scoped confirmed financial sources.
 - [ ] Reports and scheduled reports use latest values.
-- [ ] Commit 12: Saved KPI rows persist and display their Google Sheets sheet/tab source scope.
-- [ ] Commit 12: Saved Benchmark rows persist and display their Google Sheets sheet/tab source scope.
-- [ ] Commit 12: Saved and scheduled Reports persist their Google Sheets sheet/tab source scope.
+- [x] Commit 12B-12E local regression: KPI create/update payloads, Benchmark create/update payloads, and saved/scheduled Report payloads persist their Google Sheets sheet/tab source scope.
+- [ ] Commit 12F-12I: Saved KPI rows display their Google Sheets sheet/tab source scope and evaluate from that saved scope.
+- [ ] Commit 12G-12I: Saved Benchmark rows display their Google Sheets sheet/tab source scope and evaluate from that saved scope.
+- [ ] Commit 12H-12I: Saved and scheduled Reports display their Google Sheets sheet/tab source scope and generate from that saved scope.
 - [ ] Commit 12: Changing `Analyze Sheet/Tab` updates Overview, Summary, and Insights but does not change existing saved KPI, Benchmark, or Report source scope.
 - [ ] Commit 12: Saved objects whose source is missing, inactive, disconnected, deleted, or missing the selected metric render unavailable with explicit reasons and do not fall back to the current dropdown sheet.
 - [ ] Commit 12: Legacy KPI/Benchmark rows without saved source scope retain a documented current-analysis-sheet fallback until edited/resaved.
@@ -1023,7 +1036,7 @@ Google Sheets can be marked locally production-ready only when:
 - Commit 4 validation passed locally: `npm run check`.
 - Commit 4 browser validation passed after deploy:
   - Selected main Google Sheets tab values match the Google Sheets analytics Overview/Summary surface.
-  - Combined view remains scoped to selected main Google Sheets tabs.
+  - Follow-up validation superseded the prior combined-view check: combined view has been removed, and Google Sheets analytics now supports one selected sheet/tab analysis scope at a time.
   - Child-only Google Sheets revenue/spend sheets do not populate main Google Sheets analytics.
   - Direct navigation to `/campaigns/:id/google-sheets-data` for a Meta campaign with Google Sheets revenue imported as a child source does not expose that child sheet as a main Google Sheets dataset.
   - Empty or unmapped Google Sheets analytics states remain unavailable/empty instead of showing unscoped child-source values.

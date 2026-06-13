@@ -243,11 +243,14 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("n.includes('cac') || n.includes('cpl')");
   });
 
-  it("defines a single active Google Sheets analysis source scope for saved-object persistence follow-up", () => {
+  it("persists a stable single Google Sheets analysis source scope for saved objects", () => {
     const page = readSource("client", "src", "pages", "google-sheets-data.tsx");
     const routes = readSource("server", "routes-oauth.ts");
 
     expect(page).toContain("type GoogleSheetsAnalysisSourceScope");
+    expect(page).toContain("const getGoogleSheetsConnectionValue");
+    expect(page).toContain("return `${spreadsheetId}:${connectionId}`;");
+    expect(page).toContain("const parseGoogleSheetsConnectionValue");
     expect(page).toContain("const activeGoogleSheetsSourceScope = useMemo<GoogleSheetsAnalysisSourceScope | null>");
     expect(page).toContain('scopeType: "single"');
     expect(page).not.toContain('scopeType: "combined"');
@@ -260,7 +263,12 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(routes).not.toContain("spreadsheetId: 'combined'");
     expect(routes).not.toContain('sheetBreakdown:');
     expect(page).toContain("connectionId: activeConn.id || null");
+    expect(page).toContain("(identifier === null || conn.sheetName === identifier || conn.id === identifier)");
+    expect(page).toContain("handleSheetChange(getGoogleSheetsConnectionValue(next))");
+    expect(page).toContain("value={getGoogleSheetsConnectionValue(conn)}");
     expect(page).toContain("displayName: getGoogleSheetsConnectionDisplayName(activeConn)");
+    expect((page.match(/sourceScope: activeGoogleSheetsSourceScope/g) || []).length).toBeGreaterThanOrEqual(3);
+    expect(page).toContain("configuration: withGoogleSheetsSourceScope(overrides.configuration)");
     expect(page).toContain("Active: {activeGoogleSheetsSourceScope?.displayName || 'Unknown'}");
     expect(page).toContain('Source: ${activeGoogleSheetsSourceScope?.displayName || sheetsData?.spreadsheetName || "Google Sheets"}');
   });

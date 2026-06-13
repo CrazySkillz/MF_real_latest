@@ -202,6 +202,21 @@ const parseGoogleSheetsReportConfiguration = (configuration: any) => {
 const serializeGoogleSheetsReportState = (form: any, customConfig: any, modalStep: string) =>
   JSON.stringify({ form, customConfig, modalStep });
 
+const getGoogleSheetsConnectionValue = (conn: any): string => {
+  const spreadsheetId = String(conn?.spreadsheetId || "").trim();
+  const connectionId = String(conn?.id || "").trim();
+  if (!spreadsheetId) return "";
+  if (connectionId) return `${spreadsheetId}:${connectionId}`;
+  return conn?.sheetName ? `${spreadsheetId}:${conn.sheetName}` : spreadsheetId;
+};
+
+const parseGoogleSheetsConnectionValue = (value: any): { spreadsheetId: string; identifier: string | null } => {
+  const raw = String(value || "").trim();
+  if (!raw) return { spreadsheetId: "", identifier: null };
+  const [spreadsheetId, ...identifierParts] = raw.split(':');
+  return { spreadsheetId, identifier: identifierParts.join(':') || null };
+};
+
 const GOOGLE_SHEETS_KPI_DATE_COLUMN_PATTERN = /^(date|week|day|time|timestamp|period|month|year)/i;
 const GOOGLE_SHEETS_KPI_CURRENCY_COLUMN_PATTERN = /(\$|revenue|spend|cost|budget|profit|cpa|cpc|cpm)/i;
 const GOOGLE_SHEETS_KPI_NEAR_TARGET_BAND_PCT = 5;
@@ -359,7 +374,7 @@ export default function GoogleSheetsData() {
       const currentValue = activeSpreadsheetId;
       let wasActive = false;
       if (currentValue) {
-        const [spreadsheetId, identifier] = currentValue.includes(':') ? currentValue.split(':') : [currentValue, null];
+        const { spreadsheetId, identifier } = parseGoogleSheetsConnectionValue(currentValue);
         const activeConn = prevConnections.find((c: any) =>
           c.spreadsheetId === spreadsheetId && (identifier === null || c.sheetName === identifier || c.id === identifier)
         );
@@ -377,8 +392,7 @@ export default function GoogleSheetsData() {
         const remaining = prevConnections.filter((c: any) => c.id !== connectionId);
         const next = remaining[0];
         if (next) {
-          const nextValue = next.sheetName ? `${next.spreadsheetId}:${next.sheetName}` : `${next.spreadsheetId}:${next.id}`;
-          handleSheetChange(nextValue);
+          handleSheetChange(getGoogleSheetsConnectionValue(next));
         }
       }
 
@@ -443,24 +457,20 @@ export default function GoogleSheetsData() {
   const activeSpreadsheetId = useMemo(() => {
     if (selectedSpreadsheetId) {
       // Parse composite value (spreadsheetId:sheetName or spreadsheetId:connectionId)
-      const [spreadsheetId, identifier] = selectedSpreadsheetId.includes(':') 
-        ? selectedSpreadsheetId.split(':') 
-        : [selectedSpreadsheetId, null];
+      const { spreadsheetId, identifier } = parseGoogleSheetsConnectionValue(selectedSpreadsheetId);
       
       // Verify the selected connection exists
       // identifier can be sheetName or connectionId (for tabs without sheetName)
-      const exists = googleSheetsConnections.some((conn: any) => 
-        conn.spreadsheetId === spreadsheetId && 
+      const selectedConn = googleSheetsConnections.find((conn: any) =>
+        conn.spreadsheetId === spreadsheetId &&
         (identifier === null || conn.sheetName === identifier || conn.id === identifier)
       );
-      if (exists) return selectedSpreadsheetId;
+      if (selectedConn) return getGoogleSheetsConnectionValue(selectedConn);
     }
     // Default to primary or first connection
     const defaultConn = primaryConnection || googleSheetsConnections[0];
     if (defaultConn) {
-      return defaultConn.sheetName 
-        ? `${defaultConn.spreadsheetId}:${defaultConn.sheetName}`
-        : `${defaultConn.spreadsheetId}:${defaultConn.id}`;
+      return getGoogleSheetsConnectionValue(defaultConn);
     }
     return null;
   }, [selectedSpreadsheetId, primaryConnection, googleSheetsConnections]);
@@ -483,9 +493,7 @@ export default function GoogleSheetsData() {
 
   const activeGoogleSheetsSourceScope = useMemo<GoogleSheetsAnalysisSourceScope | null>(() => {
     if (!activeSpreadsheetId) return null;
-
-    const [spreadsheetId, ...identifierParts] = activeSpreadsheetId.split(':');
-    const identifier = identifierParts.join(':') || null;
+    const { spreadsheetId, identifier } = parseGoogleSheetsConnectionValue(activeSpreadsheetId);
     const activeConn = googleSheetsConnections.find((conn: any) =>
       conn.spreadsheetId === spreadsheetId &&
       (identifier === null || conn.sheetName === identifier || conn.id === identifier)
@@ -510,9 +518,7 @@ export default function GoogleSheetsData() {
     
     const newParams = new URLSearchParams(window.location.search);
     // Parse composite value (spreadsheetId:sheetName or spreadsheetId:connectionId)
-    const [spreadsheetId, identifier] = value.includes(':')
-      ? value.split(':')
-      : [value, null];
+    const { spreadsheetId, identifier } = parseGoogleSheetsConnectionValue(value);
 
     // Verify the value exists in connections before setting it
     // identifier can be sheetName or connectionId (for tabs without sheetName)
@@ -708,6 +714,11 @@ export default function GoogleSheetsData() {
     setReportEditSnapshot("");
   };
 
+  const withGoogleSheetsSourceScope = useCallback((configuration: any = {}) => ({
+    ...(configuration && typeof configuration === "object" && !Array.isArray(configuration) ? configuration : {}),
+    sourceScope: activeGoogleSheetsSourceScope,
+  }), [activeGoogleSheetsSourceScope]);
+
   const buildGoogleSheetsReportPayload = (overrides: any = {}) => {
     const scheduled = !!reportForm.scheduleEnabled;
     const recipients = reportForm.emailRecipients ? reportForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : [];
@@ -717,7 +728,7 @@ export default function GoogleSheetsData() {
       name: String(reportForm.name || "").trim(),
       description: String(reportForm.description || "").trim() || null,
       reportType: String(overrides.reportType || reportForm.reportType || "").trim().toLowerCase(),
-      configuration: overrides.configuration,
+      configuration: withGoogleSheetsSourceScope(overrides.configuration),
       status: reportForm.status || "active",
       scheduleEnabled: scheduled,
     };
@@ -1642,6 +1653,7 @@ export default function GoogleSheetsData() {
         source: "google_sheets_main",
         valueSource: "source_backed_summary",
         metric: kpiForm.metric,
+        sourceScope: activeGoogleSheetsSourceScope,
       },
     };
     if (editingKpi) {
@@ -1685,6 +1697,7 @@ export default function GoogleSheetsData() {
         source: "google_sheets_main",
         valueSource: "source_backed_summary",
         metric: benchmarkForm.metric,
+        sourceScope: activeGoogleSheetsSourceScope,
       },
     };
     if (editingBenchmark) {
@@ -1714,7 +1727,7 @@ export default function GoogleSheetsData() {
     const payload = buildGoogleSheetsReportPayload();
     if (!payload.scheduleEnabled) {
       try {
-        await downloadGoogleSheetsReport({ reportType: payload.reportType, reportName: payload.name });
+        await downloadGoogleSheetsReport({ reportType: payload.reportType, configuration: payload.configuration, reportName: payload.name });
         setIsReportModalOpen(false);
       } catch (error: any) {
         toast({ title: "Failed to generate report", description: error?.message || "An unexpected error occurred", variant: "destructive" });
@@ -1750,7 +1763,7 @@ export default function GoogleSheetsData() {
     });
     if (!payload.scheduleEnabled) {
       try {
-        await downloadGoogleSheetsReport({ reportType: "custom", configuration: customReportConfig, reportName: payload.name });
+        await downloadGoogleSheetsReport({ reportType: "custom", configuration: payload.configuration, reportName: payload.name });
         setIsReportModalOpen(false);
       } catch (error: any) {
         toast({ title: "Failed to generate report", description: error?.message || "An unexpected error occurred", variant: "destructive" });
@@ -2003,9 +2016,7 @@ export default function GoogleSheetsData() {
                     value={(() => {
                       if (activeSpreadsheetId) {
                         // Parse activeSpreadsheetId to verify it exists
-                        const [spreadsheetId, identifier] = activeSpreadsheetId.includes(':') 
-                          ? activeSpreadsheetId.split(':') 
-                          : [activeSpreadsheetId, null];
+                        const { spreadsheetId, identifier } = parseGoogleSheetsConnectionValue(activeSpreadsheetId);
                         const exists = googleSheetsConnections.some((conn: any) => 
                           conn.spreadsheetId === spreadsheetId && 
                           (identifier === null || conn.sheetName === identifier || conn.id === identifier)
@@ -2015,9 +2026,7 @@ export default function GoogleSheetsData() {
                       // Default to first connection if available
                       const defaultConn = googleSheetsConnections[0];
                       if (defaultConn) {
-                        return defaultConn.sheetName 
-                          ? `${defaultConn.spreadsheetId}:${defaultConn.sheetName}`
-                          : `${defaultConn.spreadsheetId}:${defaultConn.id}`;
+                        return getGoogleSheetsConnectionValue(defaultConn);
                       }
                       return '';
                     })()}
@@ -2055,7 +2064,7 @@ export default function GoogleSheetsData() {
                         }
                         
                         return (
-                          <SelectItem key={conn.id} value={`${conn.spreadsheetId}${conn.sheetName ? `:${conn.sheetName}` : `:${conn.id}`}`}>
+                          <SelectItem key={conn.id} value={getGoogleSheetsConnectionValue(conn)}>
                             <div className="flex items-center gap-2 w-full">
                               <FileSpreadsheet className="w-4 h-4 flex-shrink-0" />
                               <span className="flex-1 truncate">{displayName}</span>

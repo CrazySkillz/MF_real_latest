@@ -1511,6 +1511,7 @@ export function AddRevenueWizardModal(props: {
     ? (platformContext === 'linkedin' ? "Choose the source that attributes revenue back to LinkedIn ad activity." : platformContext === 'google_ads' ? "Choose the source that attributes revenue back to Google Ads activity." : platformContext === 'instagram' ? "Choose the source that attributes revenue back to Instagram ad activity." : platformContext === 'tiktok' ? "Choose the source that attributes revenue back to TikTok ad activity." : platformContext === 'google_sheets' ? "Choose the confirmed revenue source for Google Sheets analytics." : "Choose where your revenue data comes from.")
     : `Currency: ${currency} • Revenue is treated as “to date” (campaign lifetime)`;
 
+  const shouldShowGoogleSheetsCreatePicker = !isEditing && platformContext === "google_sheets" && !sheetsConnectionId;
   const isEmbeddedWizardStep = step === "hubspot" || step === "salesforce" || step === "shopify";
 
   return (
@@ -2076,7 +2077,7 @@ export function AddRevenueWizardModal(props: {
                     <CardDescription>Choose the Google Sheet tab that contains your revenue data.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {sheetsConnections.length === 0 ? (
+                    {sheetsConnections.length === 0 || shouldShowGoogleSheetsCreatePicker ? (
                       <div className="space-y-3">
                         <div className="text-sm font-medium">Connect Google Sheets</div>
                         <p className="text-xs text-muted-foreground/70">

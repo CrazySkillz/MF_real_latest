@@ -192,6 +192,8 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(revenueModal).toContain("if (open && initialSource) return;");
     expect(revenueModal).toContain('const shouldAutoSelectExistingSheet = isEditing || (platformContext !== "google_sheets" && platformContext !== "tiktok");');
     expect(revenueModal).toContain("&& shouldAutoSelectExistingSheet");
+    expect(revenueModal).toContain('const shouldShowGoogleSheetsCreatePicker = !isEditing && platformContext === "google_sheets" && !sheetsConnectionId;');
+    expect(revenueModal).toContain("sheetsConnections.length === 0 || shouldShowGoogleSheetsCreatePicker");
     expect(revenueModal).toContain("if (!initialSource) return;");
     expect(spendModal).toContain("if (props.open && props.initialSource) return;");
     expect(spendModal).toContain('setSelectedSheetConnectionId("");');

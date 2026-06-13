@@ -124,6 +124,17 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("Requires confirmed revenue and spend");
   });
 
+  it("keeps Google Sheets Insights scoped to spreadsheet-generated insights", () => {
+    const page = readSource("client", "src", "pages", "google-sheets-data.tsx");
+    const insightsTab = sliceBetween(page, "INSIGHTS TAB", "REPORTS TAB");
+
+    expect(insightsTab).toContain("sheetsData.insights.topPerformers");
+    expect(insightsTab).toContain("sheetsData.insights.recommendations");
+    expect(insightsTab).not.toContain("Goal Impact");
+    expect(insightsTab).not.toContain("visibleGoogleSheetsKpisData");
+    expect(insightsTab).not.toContain("visibleGoogleSheetsBenchmarksData");
+  });
+
   it("filters Google Sheets spend totals by google_sheets platformContext for derived financial cards", () => {
     const routes = readSource("server", "routes-oauth.ts");
     const spendTotalsRoute = sliceBetween(

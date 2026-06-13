@@ -952,7 +952,7 @@ Analytics:
 - [x] Google Sheets Total Revenue follows the Meta-pattern confirmed revenue source boundary for the Commit 9 scope.
 - [x] Commit 9 browser validation passed after deploy for persistent Total Revenue card rendering, explicit confirmed revenue mapping, `Sources (1)` source dialog access, and campaign-lifetime revenue totals via `dateRange=all`.
 - [x] Commit 9 browser validation passed after deploy for Pipeline Proxy separation, ROAS/ROI requiring confirmed revenue plus confirmed spend, the separate Total Spend card and source dialog, Google-Sheets-scoped spend wizard behavior, seamless financial-card loading, and selected-campaign provenance that uses explicit source values rather than auto-inferred MimoSaaS campaign names.
-- [ ] Insights and Reports use current source-backed values.
+- [ ] Insights use selected spreadsheet data metrics; Reports use current source-backed values.
 - [x] Commit 10 browser validation passed after deploy for refresh/scheduler/cache scope: manual refresh and scheduled refresh preserve main/general Google Sheets source scope and Google-Sheets-scoped confirmed financial sources.
 - [x] Commit 12F-12K local regression: saved report download and scheduled report generation resolve Google Sheets metrics from saved source scope instead of the current dropdown or all cached sheets.
 - [x] Commit 12B-12E local regression: KPI create/update payloads, Benchmark create/update payloads, and saved/scheduled Report payloads persist their Google Sheets sheet/tab source scope.
@@ -963,7 +963,8 @@ Analytics:
 - [x] Commit 12 local regression: changing `Analyze Sheet/Tab` does not change existing saved KPI, Benchmark, or Report source scope.
 - [x] Commit 12 local regression: saved objects whose source is missing, disconnected, deleted, unloaded, or missing the selected metric render unavailable with explicit reasons and do not fall back to the current dropdown sheet.
 - [x] Commit 12 local regression: legacy KPI/Benchmark rows without saved source scope render unavailable until edited/resaved.
-- [ ] Commit 12 browser/deployed validation remains pending for saved KPI, Benchmark, and Report source labels, dropdown-change stability, and delete/disconnect unavailable reasons.
+- [x] Commit 12F-12K browser validation passed after deploy for saved KPI, Benchmark, and Report source labels, dropdown-change stability, saved source-scope evaluation, invalid/missing source unavailable states, Overview metric report values, active source filtering, and Benchmark card metric-label cleanup.
+- [x] Local regression: Google Sheets Insights tab renders only spreadsheet-generated `sheetsData.insights` sections and no longer mixes saved KPI/Benchmark gap analysis into the spreadsheet Insights surface.
 
 DeepDive:
 
@@ -1206,3 +1207,14 @@ Google Sheets can be marked locally production-ready only when:
   - Primary/source selection changes visible metrics only to the selected active connection.
   - Total Revenue and Total Spend `+` add-source flows open with empty create state, and Google Sheets revenue source creation opens the spreadsheet picker instead of a saved tab dropdown.
   - Selected Campaigns shows the user-entered display label when provided and totals remain unchanged because the label is not used for matching or calculations.
+- Commit 12 saved source-scope bundle completed and browser-validated after deploy:
+  - Root cause: saved Google Sheets KPIs, Benchmarks, and Reports could be evaluated or displayed from the current sheet dropdown instead of the saved object's source scope.
+  - Fix: saved KPIs, Benchmarks, and Reports persist and resolve their Google Sheets sheet/tab source scope; saved source labels render on cards/reports; missing source or metric states render unavailable with explicit reasons.
+  - Overview metrics selected for KPI/Benchmark/Report rows resolve from confirmed Google-Sheets-scoped financial totals instead of arbitrary sheet-column metrics.
+  - Follow-up root cause: KPI/Benchmark lists were fetched for the app campaign but rendered all saved rows for that campaign even when the active sheet/tab changed.
+  - Follow-up fix: Google Sheets KPI/Benchmark cards, trackers, report selections, and local downloads now use active-source-visible rows while saved-object lookup still preserves existing saved source scopes.
+  - Follow-up root cause: Benchmark cards rendered the metric twice, once as the title and once as a duplicate metric badge.
+  - Follow-up fix: the duplicate Benchmark metric badge was removed so a card titled `ROAS` shows only that title plus the source label.
+- Google Sheets Insights tab source-boundary follow-up completed locally:
+  - Root cause: the Insights tab was mostly generated from filtered spreadsheet rows, but its `Goal Impact` block mixed in saved KPI/Benchmark rows and even evaluated Benchmarks with `targetValue` instead of `benchmarkValue`.
+  - Fix: the non-spreadsheet `Goal Impact` block was removed from Insights so the tab stays driven by server-generated `sheetsData.insights` from selected spreadsheet rows and detected numeric columns.

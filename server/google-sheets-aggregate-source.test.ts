@@ -143,6 +143,10 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(generator).toContain("cac|cost per");
     expect(generator).toContain("customer acquisition cost|acquisition cost");
     expect(generator).toContain("const neutralCostMetric =");
+    expect(generator).toContain("const minPerformanceDataPoints = 10;");
+    expect(generator).toContain("groupAvgs.filter(g => g.count >= minPerformanceDataPoints)");
+    expect(generator).toContain("!neutralCostMetric && values.length >= minPerformanceDataPoints");
+    expect(generator).toContain("if (values1.length >= 10)");
     expect(generator).toContain("return lowerIsBetter ? aValue - bValue : bValue - aValue;");
     expect(generator).toContain("return lowerIsBetter ? bValue - aValue : aValue - bValue;");
     expect(generator).toContain("!neutralCostMetric");

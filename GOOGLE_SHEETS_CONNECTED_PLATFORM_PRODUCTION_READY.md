@@ -1223,3 +1223,4 @@ Google Sheets can be marked locally production-ready only when:
   - Root cause: the spreadsheet Insights generator treated higher values as better for every metric, so cost-efficiency metrics such as CPA, CPC, CPM, and CPL could be ranked and recommended incorrectly.
   - Fix: Performance ranking and What to do next recommendations now use metric-direction rules: lower-is-better cost-efficiency metrics rank low values as better, adverse trends are direction-aware, and neutral spend/cost/budget fields do not produce top/bottom performer claims.
   - Follow-up fix: CAC and customer-acquisition-cost aliases are now included in the lower-is-better rule so CAC is not treated as a high-value winner.
+  - Follow-up fix: Performance and recommendation signals now require at least 10 data points for grouped/row ranking, and correlations require at least 10 paired observations, so 1-2 row observations are not promoted as executive actions.

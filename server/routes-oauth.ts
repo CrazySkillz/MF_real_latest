@@ -16737,6 +16737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const performanceVerb = lowerIsBetter ? "best" : "highest";
       const weaknessVerb = lowerIsBetter ? "weakest" : "lowest";
+      const minPerformanceDataPoints = 10;
 
       // --- Top/Bottom Performers ---
       if (!neutralCostMetric && labelsRepeat && labelColIndex >= 0) {
@@ -16755,7 +16756,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
 
         // Top 3 groups
-        const topGroups = [...groupAvgs].sort(rankBestFirst).slice(0, 3);
+        const qualifiedGroups = groupAvgs.filter(g => g.count >= minPerformanceDataPoints);
+        const topGroups = [...qualifiedGroups].sort(rankBestFirst).slice(0, 3);
         topGroups.forEach(g => {
           insights.topPerformers.push({
             metric: col.name,
@@ -16776,7 +16778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         // Bottom 3 groups
-        const bottomGroups = [...groupAvgs].filter(g => g.avg > 0).sort(rankWeakestFirst).slice(0, 3);
+        const bottomGroups = [...qualifiedGroups].filter(g => g.avg > 0).sort(rankWeakestFirst).slice(0, 3);
         bottomGroups.forEach(g => {
           insights.bottomPerformers.push({
             metric: col.name,
@@ -16795,7 +16797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `${g.label} has the ${weaknessVerb} average ${col.name} (${fmtVal(g.avg)}) across ${g.count} data points`
           });
         });
-      } else if (!neutralCostMetric) {
+      } else if (!neutralCostMetric && values.length >= minPerformanceDataPoints) {
         // Unique labels: rank individual rows
         const topRows = [...rowData].sort(rankBestFirst).slice(0, 3);
         topRows.forEach(item => {
@@ -16956,7 +16958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
 
-          if (values1.length >= 5) {
+          if (values1.length >= 10) {
             const mean1 = values1.reduce((a, b) => a + b, 0) / values1.length;
             const mean2 = values2.reduce((a, b) => a + b, 0) / values2.length;
 

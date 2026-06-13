@@ -140,6 +140,8 @@ describe("Google Sheets aggregate source adapter", () => {
     const generator = sliceBetween(routes, "function generateInsights(", "// Google Trends API endpoint");
 
     expect(generator).toContain("const lowerIsBetter =");
+    expect(generator).toContain("cac|cost per");
+    expect(generator).toContain("customer acquisition cost|acquisition cost");
     expect(generator).toContain("const neutralCostMetric =");
     expect(generator).toContain("return lowerIsBetter ? aValue - bValue : bValue - aValue;");
     expect(generator).toContain("return lowerIsBetter ? bValue - aValue : aValue - bValue;");

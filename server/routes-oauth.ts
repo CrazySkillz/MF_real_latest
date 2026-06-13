@@ -16723,7 +16723,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const metricName = col.name.toLowerCase();
-      const lowerIsBetter = /\b(cpa|cpc|cpm|cpl|cost per|cost\/conversion|cost per conversion|cost_per)\b/i.test(metricName);
+      const lowerIsBetter = /\b(cpa|cpc|cpm|cpl|cac|cost per|cost\/conversion|cost per conversion|cost_per|customer acquisition cost|acquisition cost)\b/i.test(metricName);
       const neutralCostMetric = !lowerIsBetter && /\b(spend|cost|budget|investment)\b/i.test(metricName);
       const rankBestFirst = (a: { avg?: number; value?: number }, b: { avg?: number; value?: number }) => {
         const aValue = a.avg ?? a.value ?? 0;

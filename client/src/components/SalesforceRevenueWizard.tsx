@@ -41,6 +41,7 @@ export function SalesforceRevenueWizard(props: {
     lastTotalRevenue?: number;
     dateField?: string;
     campaignMappings?: PlatformCampaignMapping[];
+    campaignDisplayName?: string;
   } | null;
   connectOnly?: boolean;
   /**
@@ -123,6 +124,7 @@ export function SalesforceRevenueWizard(props: {
 
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const [campaignDisplayName, setCampaignDisplayName] = useState<string>("");
   const [platformCampaigns, setPlatformCampaigns] = useState<Array<{ id: string; name: string }>>([]);
   const [campaignMappings, setCampaignMappings] = useState<PlatformCampaignMapping[]>([]);
   const [valuesLoading, setValuesLoading] = useState(false);
@@ -139,6 +141,7 @@ export function SalesforceRevenueWizard(props: {
       pipelineEnabled: cfg?.pipelineEnabled === true,
       pipelineStageName: cfg?.pipelineEnabled === true ? String(cfg?.pipelineStageName || "") : "",
       dateField: String(cfg?.dateField || "CloseDate"),
+      campaignDisplayName: String(cfg?.campaignDisplayName || ""),
       campaignMappings: Array.isArray(cfg?.campaignMappings)
         ? cfg.campaignMappings.map((m: any) => ({
             crmValue: String(m?.crmValue || "").trim(),
@@ -146,8 +149,8 @@ export function SalesforceRevenueWizard(props: {
           })).filter((m: any) => m.crmValue && m.linkedinCampaignUrn).sort((a: any, b: any) => a.crmValue.localeCompare(b.crmValue))
         : [],
     });
-    return normalize({ campaignField, selectedValues, revenueField, valueSource, pipelineEnabled, pipelineStageName, dateField, campaignMappings }) !== normalize(initialMappingConfig);
-  }, [campaignField, campaignMappings, dateField, initialMappingConfig, mode, pipelineEnabled, pipelineStageName, revenueField, selectedValues, valueSource]);
+    return normalize({ campaignField, selectedValues, revenueField, valueSource, pipelineEnabled, pipelineStageName, dateField, campaignDisplayName, campaignMappings }) !== normalize(initialMappingConfig);
+  }, [campaignDisplayName, campaignField, campaignMappings, dateField, initialMappingConfig, mode, pipelineEnabled, pipelineStageName, revenueField, selectedValues, valueSource]);
 
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -306,6 +309,7 @@ export function SalesforceRevenueWizard(props: {
       setStages([]);
       setUniqueValues([]);
       setSelectedValues([]);
+      setCampaignDisplayName("");
       setCampaignMappings([]);
       setLastSaveResult(null);
       crosswalkFetchedRef.current = false;
@@ -333,6 +337,7 @@ export function SalesforceRevenueWizard(props: {
     setPipelineStageName(nextPipelineStageName);
     setPipelineStageLabel(nextPipelineStageLabel);
     setSelectedValues(nextSelectedValues);
+    setCampaignDisplayName(String((cfg as any).campaignDisplayName || ""));
     setCampaignMappings(Array.isArray((cfg as any).campaignMappings) ? (cfg as any).campaignMappings : []);
     // Synthesize uniqueValues from selectedValues so crosswalk checkboxes render
     // when user navigates back (API may be unavailable with expired tokens)
@@ -879,6 +884,7 @@ export function SalesforceRevenueWizard(props: {
           revenueClassification,
           days,
           dateField,
+          campaignDisplayName: selectedValues.length > 0 ? (campaignDisplayName.trim() || null) : null,
           pipelineEnabled,
           pipelineStageName: pipelineEnabled ? (pipelineStageName || null) : null,
           pipelineStageLabel: pipelineEnabled ? (pipelineStageLabel || null) : null,
@@ -1224,6 +1230,7 @@ export function SalesforceRevenueWizard(props: {
                   onValueChange={(v) => {
                     setCampaignField(v);
                     setCampaignMappings([]);
+                    setCampaignDisplayName("");
                   }}
                   disabled={!isConnected || statusLoading || fieldsLoading}
                 >
@@ -1295,6 +1302,17 @@ export function SalesforceRevenueWizard(props: {
                   Selected: <strong>{selectedValues.length}</strong>
                 </div>
               </div>
+              {selectedValues.length > 0 && (
+                <div className="space-y-1">
+                  <Label className="font-normal">Selected Campaigns label</Label>
+                  <Input
+                    value={campaignDisplayName}
+                    onChange={(e) => setCampaignDisplayName(e.target.value)}
+                    placeholder={selectedValues[0] || "Campaign label"}
+                    maxLength={80}
+                  />
+                </div>
+              )}
               <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
                 {valuesLoading ? (
                   <div className="text-sm text-muted-foreground">Loading values…</div>

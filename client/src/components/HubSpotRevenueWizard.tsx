@@ -42,6 +42,7 @@ export function HubSpotRevenueWizard(props: {
     lastTotalRevenue?: number;
     dateField?: string;
     campaignMappings?: PlatformCampaignMapping[];
+    campaignDisplayName?: string;
   } | null;
   onBack?: () => void;
   onSuccess?: (result: any) => void;
@@ -102,6 +103,7 @@ export function HubSpotRevenueWizard(props: {
 
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const [campaignDisplayName, setCampaignDisplayName] = useState<string>("");
   const [platformCampaigns, setPlatformCampaigns] = useState<Array<{ id: string; name: string }>>([]);
   const [campaignMappings, setCampaignMappings] = useState<PlatformCampaignMapping[]>([]);
   const [valuesLoading, setValuesLoading] = useState(false);
@@ -128,6 +130,7 @@ export function HubSpotRevenueWizard(props: {
       pipelineEnabled: cfg?.pipelineEnabled === true,
       pipelineStageId: cfg?.pipelineEnabled === true ? String(cfg?.pipelineStageId || "") : "",
       dateField: String(cfg?.dateField || "closedate"),
+      campaignDisplayName: String(cfg?.campaignDisplayName || ""),
       campaignMappings: Array.isArray(cfg?.campaignMappings)
         ? cfg.campaignMappings.map((m: any) => ({
             crmValue: String(m?.crmValue || "").trim(),
@@ -135,8 +138,8 @@ export function HubSpotRevenueWizard(props: {
           })).filter((m: any) => m.crmValue && m.linkedinCampaignUrn).sort((a: any, b: any) => a.crmValue.localeCompare(b.crmValue))
         : [],
     });
-    return normalize({ campaignProperty, selectedValues, revenueProperty, revenueClassification, pipelineEnabled, pipelineStageId, dateField, campaignMappings }) !== normalize(initialMappingConfig);
-  }, [campaignMappings, campaignProperty, dateField, initialMappingConfig, isLinkedIn, mode, pipelineEnabled, pipelineStageId, revenueClassification, revenueProperty, selectedValues]);
+    return normalize({ campaignProperty, selectedValues, revenueProperty, revenueClassification, pipelineEnabled, pipelineStageId, dateField, campaignDisplayName, campaignMappings }) !== normalize(initialMappingConfig);
+  }, [campaignDisplayName, campaignMappings, campaignProperty, dateField, initialMappingConfig, isLinkedIn, mode, pipelineEnabled, pipelineStageId, revenueClassification, revenueProperty, selectedValues]);
 
   const reviewPipelineProxyDisplayAmount = useMemo(() => {
     if (reviewPipelineProxyAmount != null) return reviewPipelineProxyAmount;
@@ -164,6 +167,7 @@ export function HubSpotRevenueWizard(props: {
 
     setCampaignProperty(nextCampaignProperty);
     setSelectedValues(nextSelectedValues);
+    setCampaignDisplayName(String(cfg.campaignDisplayName || ""));
     setCampaignMappings(Array.isArray(cfg.campaignMappings) ? cfg.campaignMappings : []);
     setRevenueProperty(nextRevenueProperty);
     // Deprecated: Conversion Value mode. Keep reading it (for display/debug) but do not keep the wizard in CV mode.
@@ -588,6 +592,7 @@ export function HubSpotRevenueWizard(props: {
           ...(sourceId ? { sourceId } : {}),
           days,
           dateField,
+          campaignDisplayName: selectedValues.length > 0 ? (campaignDisplayName.trim() || null) : null,
           pipelineEnabled,
           pipelineStageId: pipelineEnabled ? pipelineStageId : null,
           pipelineStageLabel: pipelineEnabled ? (pipelineStageLabel || null) : null,
@@ -944,6 +949,7 @@ export function HubSpotRevenueWizard(props: {
                       onValueChange={(v) => {
                         setCampaignProperty(v);
                         setCampaignMappings([]);
+                        setCampaignDisplayName("");
                       }}
                       disabled={!isConnected || statusLoading}
                     >
@@ -988,6 +994,18 @@ export function HubSpotRevenueWizard(props: {
                     Selected: <strong>{selectedValues.length}</strong>
                   </div>
                 </div>
+
+                {selectedValues.length > 0 && (
+                  <div className="space-y-1">
+                    <Label className="font-normal">Selected Campaigns label</Label>
+                    <Input
+                      value={campaignDisplayName}
+                      onChange={(e) => setCampaignDisplayName(e.target.value)}
+                      placeholder={selectedValues[0] || "Campaign label"}
+                      maxLength={80}
+                    />
+                  </div>
+                )}
 
                 <div className="border rounded p-3 flex-1 min-h-0 overflow-y-auto">
                   {valuesLoading ? (

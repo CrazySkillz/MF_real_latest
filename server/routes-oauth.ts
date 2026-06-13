@@ -14321,6 +14321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pipelineStageName = String(body.data.pipelineStageName || "").trim();
       const pipelineStageLabel = String(body.data.pipelineStageLabel || "").trim();
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
+      const campaignDisplayName = String((body.data as any).campaignDisplayName || "").trim();
       const dateFieldChoice = body.data.dateField || "CloseDate";
       const platformContextRaw = String(platformContext || "ga4").trim().toLowerCase();
       const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : platformContextRaw === "tiktok" ? "tiktok" : platformContextRaw === "google_sheets" ? "google_sheets" : "ga4";
@@ -14600,6 +14601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             platformContext: platformCtx,
             campaignField: attribField,
             selectedValues: selected,
+            ...(campaignDisplayName ? { campaignDisplayName } : {}),
             revenueField: revenue,
             conversionValueField: convValueField,
             valueSource: 'conversion_value',
@@ -14627,6 +14629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               valueSource: "conversion_value",
               campaignField: attribField,
               selectedValues: selected,
+              ...(campaignDisplayName ? { campaignDisplayName } : {}),
               revenueField: revenue,
               conversionValueField: convValueField,
               days: rangeDays,
@@ -14710,6 +14713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           platformContext: platformCtx,
           campaignField: attribField,
           selectedValues: selected,
+          ...(campaignDisplayName ? { campaignDisplayName } : {}),
           revenueField: revenue,
           conversionValueField: null,
           valueSource: 'revenue',
@@ -14829,6 +14833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           valueSource: "revenue",
           campaignField: attribField,
           selectedValues: selected,
+          ...(campaignDisplayName ? { campaignDisplayName } : {}),
           revenueField: revenue,
           days: rangeDays,
           dateField: dateFieldChoice,
@@ -15761,6 +15766,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pipelineStageId = String(body.data.pipelineStageId || "").trim();
       const pipelineStageLabel = String(body.data.pipelineStageLabel || "").trim();
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
+      const campaignDisplayName = String((body.data as any).campaignDisplayName || "").trim();
       const platformContextRaw = String(platformContext || "ga4").trim().toLowerCase();
       const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : platformContextRaw === "tiktok" ? "tiktok" : platformContextRaw === "google_sheets" ? "google_sheets" : "ga4";
       const activeGoogleAdsCampaignIds = platformCtx === "google_ads"
@@ -15954,6 +15960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           platformContext: platformCtx,
           campaignProperty: campaignProp,
           selectedValues: selected,
+          ...(campaignDisplayName ? { campaignDisplayName } : {}),
           revenueProperty: revenueProp,
           conversionValueProperty: convValueProp || null,
           valueSource: effectiveValueSource,
@@ -16089,6 +16096,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           valueSource: effectiveValueSource,
           campaignProperty: campaignProp,
           selectedValues: selected,
+          ...(campaignDisplayName ? { campaignDisplayName } : {}),
           revenueProperty: revenueProp,
           conversionValueProperty: convValueProp || null,
           days: rangeDays,
@@ -30771,6 +30779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const effectiveValueSource: "revenue" = "revenue";
       const isDryRun = Boolean(body.data.dryRun);
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
+      const campaignDisplayName = String((body.data as any).campaignDisplayName || "").trim();
       const activeGoogleAdsCampaignIds = platformCtx === "google_ads"
         ? await getActiveGoogleAdsCampaignIdSet(campaignId)
         : platformCtx === "meta"
@@ -30929,6 +30938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           valueSource: effectiveValueSource,
           campaignField: field,
           selectedValues: selected,
+          ...(campaignDisplayName ? { campaignDisplayName } : {}),
           revenueMetric: metric,
           days: rangeDays,
           shopDomain: conn.shopDomain,
@@ -30980,6 +30990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           valueSource: effectiveValueSource,
           campaignField: field,
           selectedValues: selected,
+          ...(campaignDisplayName ? { campaignDisplayName } : {}),
           revenueMetric: metric,
           days: rangeDays,
           revenueClassification: rc,

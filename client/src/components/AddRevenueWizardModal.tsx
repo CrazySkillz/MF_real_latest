@@ -204,6 +204,7 @@ export function AddRevenueWizardModal(props: {
     lastTotalRevenue?: number;
     dateField?: string;
     campaignMappings?: PlatformCampaignMapping[];
+    campaignDisplayName?: string;
   }>(null);
   const [hubspotInitialMappingConfig, setHubspotInitialMappingConfig] = useState<null | {
     campaignProperty?: string;
@@ -220,6 +221,7 @@ export function AddRevenueWizardModal(props: {
     lastTotalRevenue?: number;
     dateField?: string;
     campaignMappings?: PlatformCampaignMapping[];
+    campaignDisplayName?: string;
   }>(null);
 
   // Manual
@@ -258,6 +260,7 @@ export function AddRevenueWizardModal(props: {
   const [csvDateCol, setCsvDateCol] = useState<string>("");
   const [csvCampaignQuery, setCsvCampaignQuery] = useState<string>("");
   const [csvCampaignValues, setCsvCampaignValues] = useState<string[]>([]);
+  const [csvCampaignDisplayName, setCsvCampaignDisplayName] = useState<string>("");
   const [csvProcessing, setCsvProcessing] = useState(false);
   const [csvPreviewing, setCsvPreviewing] = useState(false);
   const [csvPrefill, setCsvPrefill] = useState<null | {
@@ -519,6 +522,7 @@ export function AddRevenueWizardModal(props: {
     setCsvCampaignQuery("");
     setCsvDateCol("");
     setCsvCampaignValues([]);
+    setCsvCampaignDisplayName("");
     setCsvProcessing(false);
     setCsvPreviewing(false);
     setCsvPrefill(null);
@@ -555,6 +559,7 @@ export function AddRevenueWizardModal(props: {
     setCsvCampaignQuery("");
     setCsvDateCol("");
     setCsvCampaignValues([]);
+    setCsvCampaignDisplayName("");
     setRevenueCampaignMappings([]);
   };
 
@@ -719,7 +724,7 @@ export function AddRevenueWizardModal(props: {
       setCsvRevenueCol(String(config?.revenueColumn || ""));
       setCsvCampaignCol(String(config?.campaignColumn || ""));
       setCsvCampaignValues(Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : []);
-      setSheetsCampaignDisplayName(String(config?.campaignDisplayName || ""));
+      setCsvCampaignDisplayName(String(config?.campaignDisplayName || ""));
       setCsvDateCol(String(config?.dateColumn || ""));
       setRevenueCampaignMappings(Array.isArray(config?.campaignMappings) ? config.campaignMappings : []);
       return;
@@ -741,6 +746,7 @@ export function AddRevenueWizardModal(props: {
           : Number.isFinite(Number(config?.lastTotalRevenue)) ? Number(config.lastTotalRevenue) : undefined,
         dateField: config?.dateField ? String(config.dateField) : undefined,
         campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : undefined,
+        campaignDisplayName: config?.campaignDisplayName ? String(config.campaignDisplayName) : undefined,
       };
       setSalesforceInitialMappingConfig(next);
       setStep("salesforce");
@@ -764,6 +770,7 @@ export function AddRevenueWizardModal(props: {
           : Number.isFinite(Number(initialSource?.revenue)) ? Number(initialSource.revenue) : undefined,
         dateField: config?.dateField ? String(config.dateField) : undefined,
         campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : undefined,
+        campaignDisplayName: config?.campaignDisplayName ? String(config.campaignDisplayName) : undefined,
       };
       setHubspotInitialMappingConfig(next);
       setStep("hubspot");
@@ -777,6 +784,7 @@ export function AddRevenueWizardModal(props: {
         selectedValues: Array.isArray(config?.selectedValues) ? config.selectedValues.map(String) : undefined,
         revenueMetric: config?.revenueMetric ? String(config.revenueMetric) : undefined,
         campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : undefined,
+        campaignDisplayName: config?.campaignDisplayName ? String(config.campaignDisplayName) : undefined,
       };
       setShopifyInitialMappingConfig(next);
       setStep("shopify");
@@ -1018,6 +1026,7 @@ export function AddRevenueWizardModal(props: {
     const initialCampaignValues = Array.isArray(csvPrefill?.campaignValues)
       ? csvPrefill.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v)
       : [];
+    const initialCampaignDisplayName = String(csvPrefill?.campaignDisplayName || "");
     const currentCampaignValues = csvCampaignValues.map((v) => String(v ?? "").trim()).filter(Boolean);
     const normalizeMappings = (items: any[]) => JSON.stringify((Array.isArray(items) ? items : [])
       .map((item: any) => ({
@@ -1031,6 +1040,7 @@ export function AddRevenueWizardModal(props: {
     if (String(csvRevenueCol || "") !== initialRevenueColumn) return true;
     if (String(csvCampaignCol || "") !== initialCampaignColumn) return true;
     if (String(csvDateCol || "") !== initialDateColumn) return true;
+    if (String(csvCampaignDisplayName || "").trim() !== initialCampaignDisplayName) return true;
     if (currentCampaignValues.length !== initialCampaignValues.length) return true;
     if (normalizeMappings(mappedRevenueCampaignsForValues(currentCampaignValues)) !== normalizeMappings(csvPrefill?.campaignMappings || [])) return true;
 
@@ -1039,7 +1049,7 @@ export function AddRevenueWizardModal(props: {
       if (!initialSet.has(value)) return true;
     }
     return false;
-  }, [isEditing, csvFile, csvPrefill, csvRevenueCol, csvCampaignCol, csvDateCol, csvCampaignValues, revenueCampaignMappings, platformCampaignOptions]);
+  }, [isEditing, csvFile, csvPrefill, csvRevenueCol, csvCampaignCol, csvDateCol, csvCampaignValues, csvCampaignDisplayName, revenueCampaignMappings, platformCampaignOptions]);
 
   const filteredSheetsPreviewRows = useMemo(() => {
     const rows = Array.isArray(sheetsPreview?.sampleRows) ? sheetsPreview!.sampleRows : [];
@@ -1243,6 +1253,7 @@ export function AddRevenueWizardModal(props: {
       setCsvDateCol(headers.find((h) => /^(date|day|time|timestamp)$/i.test(h.trim())) || "");
       setCsvCampaignValues([]);
       setCsvCampaignQuery("");
+      setCsvCampaignDisplayName("");
       setStep("csv_map");
 
       // If editing, apply prefilled mapping after preview (CSV requires re-upload).
@@ -1257,6 +1268,7 @@ export function AddRevenueWizardModal(props: {
         if (Array.isArray(csvPrefill.campaignValues) && csvPrefill.campaignValues.length > 0) {
           setCsvCampaignValues(csvPrefill.campaignValues.map(String));
         }
+        setCsvCampaignDisplayName(String(csvPrefill.campaignDisplayName || ""));
         setCsvPrefill(null);
       }
     } catch (e: any) {
@@ -1301,6 +1313,7 @@ export function AddRevenueWizardModal(props: {
         campaignColumn: csvCampaignCol,
         campaignValue: csvCampaignValues.length === 1 ? csvCampaignValues[0] : null,
         campaignValues: csvCampaignValues,
+        campaignDisplayName: csvCampaignValues.length > 0 ? (csvCampaignDisplayName.trim() || null) : null,
         dateColumn: csvDateCol || null,
         currency,
         displayName: csvFile?.name || csvPrefill?.displayName || initialSource?.displayName || "CSV",
@@ -1881,6 +1894,7 @@ export function AddRevenueWizardModal(props: {
                             setCsvDateCol("");
                             setCsvCampaignCol("");
                             setCsvCampaignValues([]);
+                            setCsvCampaignDisplayName("");
                             setCsvCampaignQuery("");
                             setCsvPrefill(null);
                           }}
@@ -1975,6 +1989,7 @@ export function AddRevenueWizardModal(props: {
                                 onValueChange={(v) => {
                                   setCsvCampaignCol(v === SELECT_NONE ? "" : v);
                                   setCsvCampaignValues([]);
+                                  setCsvCampaignDisplayName("");
                                   setRevenueCampaignMappings([]);
                                   setCsvCampaignQuery("");
                                 }}
@@ -2028,6 +2043,18 @@ export function AddRevenueWizardModal(props: {
                             </div>
                           </div>
                         </div>
+
+                        {csvCampaignValues.length > 0 && (
+                          <div className="space-y-1">
+                            <Label className="font-normal">Selected Campaigns label</Label>
+                            <Input
+                              value={csvCampaignDisplayName}
+                              onChange={(e) => setCsvCampaignDisplayName(e.target.value)}
+                              placeholder={csvCampaignValues[0] || "Campaign label"}
+                              maxLength={80}
+                            />
+                          </div>
+                        )}
 
                         {renderPlatformCampaignMapping(csvCampaignValues)}
 

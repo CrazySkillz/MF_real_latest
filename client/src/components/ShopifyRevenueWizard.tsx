@@ -35,6 +35,7 @@ export function ShopifyRevenueWizard(props: {
     selectedValues?: string[];
     revenueMetric?: string;
     campaignMappings?: Array<{ crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string }>;
+    campaignDisplayName?: string;
   } | null;
 }) {
   const { campaignId, onBack, onClose, onSuccess, platformContext = "ga4", externalStep, externalNavNonce, onStepChange, mode = "connect", initialMappingConfig } = props;
@@ -84,6 +85,7 @@ export function ShopifyRevenueWizard(props: {
   const [valuesLoading, setValuesLoading] = useState(false);
   const [uniqueValues, setUniqueValues] = useState<UniqueValue[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const [campaignDisplayName, setCampaignDisplayName] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const loadedValuesFieldRef = useRef<string>("");
 
@@ -93,6 +95,7 @@ export function ShopifyRevenueWizard(props: {
     setCampaignField(nextField);
     loadedValuesFieldRef.current = nextField;
     setSelectedValues(Array.isArray(initialMappingConfig.selectedValues) ? initialMappingConfig.selectedValues.map(String) : []);
+    setCampaignDisplayName(String(initialMappingConfig.campaignDisplayName || ""));
     setCampaignMappings(Array.isArray(initialMappingConfig.campaignMappings) ? initialMappingConfig.campaignMappings : []);
     if (initialMappingConfig.revenueMetric) setRevenueMetric(String(initialMappingConfig.revenueMetric));
     setStep("review");
@@ -108,10 +111,11 @@ export function ShopifyRevenueWizard(props: {
       campaignField: String(cfg?.campaignField || "utm_campaign"),
       selectedValues: Array.isArray(cfg?.selectedValues) ? cfg.selectedValues.map(String).sort() : [],
       revenueMetric: String(cfg?.revenueMetric || "total_price"),
+      campaignDisplayName: String(cfg?.campaignDisplayName || ""),
       campaignMappings: Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [],
     });
-    return normalize({ campaignField, selectedValues, revenueMetric, campaignMappings }) !== normalize(initialMappingConfig);
-  }, [campaignField, campaignMappings, initialMappingConfig, mode, revenueMetric, selectedValues]);
+    return normalize({ campaignField, selectedValues, revenueMetric, campaignDisplayName, campaignMappings }) !== normalize(initialMappingConfig);
+  }, [campaignDisplayName, campaignField, campaignMappings, initialMappingConfig, mode, revenueMetric, selectedValues]);
 
   const campaignFieldLabel = useMemo(() => {
     if (campaignField === "utm_campaign") return "UTM Campaign (recommended)";
@@ -514,6 +518,7 @@ export function ShopifyRevenueWizard(props: {
             selectedValues,
             revenueMetric,
             days,
+            campaignDisplayName: selectedValues.length > 0 ? (campaignDisplayName.trim() || null) : null,
             platformContext,
             valueSource: "revenue",
             revenueClassification: isLinkedIn ? "offsite_not_in_ga4" : "onsite_in_ga4",
@@ -765,6 +770,7 @@ export function ShopifyRevenueWizard(props: {
                 <Select value={campaignField} onValueChange={(v) => {
                   setCampaignField(v);
                   setCampaignMappings([]);
+                  setCampaignDisplayName("");
                 }}>
                 <SelectTrigger>
                   <span>{campaignFieldLabel}</span>
@@ -790,6 +796,17 @@ export function ShopifyRevenueWizard(props: {
                   {valuesLoading ? "Refreshing…" : "Refresh values"}
                 </Button>
               </div>
+              {selectedValues.length > 0 && (
+                <div className="space-y-1">
+                  <Label className="font-normal">Selected Campaigns label</Label>
+                  <Input
+                    value={campaignDisplayName}
+                    onChange={(e) => setCampaignDisplayName(e.target.value)}
+                    placeholder={selectedValues[0] || "Campaign label"}
+                    maxLength={80}
+                  />
+                </div>
+              )}
               <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
                 {valuesLoading ? (
                   <div className="text-sm text-muted-foreground">Loading values…</div>

@@ -187,14 +187,24 @@ describe("Google Sheets aggregate source adapter", () => {
     const page = readSource("client", "src", "pages", "google-sheets-data.tsx");
     const revenueModal = readSource("client", "src", "components", "AddRevenueWizardModal.tsx");
     const spendModal = readSource("client", "src", "components", "AddSpendWizardModal.tsx");
+    const hubspotWizard = readSource("client", "src", "components", "HubSpotRevenueWizard.tsx");
+    const salesforceWizard = readSource("client", "src", "components", "SalesforceRevenueWizard.tsx");
+    const shopifyWizard = readSource("client", "src", "components", "ShopifyRevenueWizard.tsx");
+    const routes = readSource("server", "routes-oauth.ts");
 
     expect(page).toContain('const displayName = String(cfg?.campaignDisplayName || "").trim();');
     expect(page).toContain("addValue(displayName);");
     expect(page).toContain("addValues(cfg?.campaignValues);");
     expect(revenueModal).toContain("campaignDisplayName: hasCampaignScope ? (sheetsCampaignDisplayName.trim() || null) : null");
-    expect(spendModal).toContain("campaignDisplayName: hasCampaignScope ? (campaignDisplayName.trim() || null) : null");
+    expect(revenueModal).toContain("campaignDisplayName: csvCampaignValues.length > 0 ? (csvCampaignDisplayName.trim() || null) : null");
+    expect((spendModal.match(/campaignDisplayName: hasCampaignScope \? \(campaignDisplayName\.trim\(\) \|\| null\) : null/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect(hubspotWizard).toContain("campaignDisplayName: selectedValues.length > 0 ? (campaignDisplayName.trim() || null) : null");
+    expect(salesforceWizard).toContain("campaignDisplayName: selectedValues.length > 0 ? (campaignDisplayName.trim() || null) : null");
+    expect(shopifyWizard).toContain("campaignDisplayName: selectedValues.length > 0 ? (campaignDisplayName.trim() || null) : null");
+    expect((routes.match(/\.\.\.\(campaignDisplayName \? \{ campaignDisplayName \} : \{\}\)/g) || []).length).toBeGreaterThanOrEqual(8);
     expect(revenueModal).toContain("Selected Campaigns label");
     expect(spendModal).toContain("Selected Campaigns label");
+    expect(spendModal).toContain('(step === "csv_map" || step === "sheets_map") && campaignKeyValues.length > 0');
   });
 
   it("opens Google Sheets add-source modals without prefilled create data", () => {

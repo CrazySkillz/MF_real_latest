@@ -495,6 +495,7 @@ export function AddSpendWizardModal(props: {
     const initialCampaignValues = Array.isArray(csvPrefillMapping?.campaignValues)
       ? csvPrefillMapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v)
       : (csvPrefillMapping?.campaignValue ? [String(csvPrefillMapping.campaignValue).trim()] : []);
+    const initialCampaignDisplayName = String(csvPrefillMapping?.campaignDisplayName || "");
 
     const currentCampaignColumn = String(effectiveCampaignColumn || "");
     const currentCampaignValues = campaignKeyValues.map((v) => String(v ?? "").trim()).filter(Boolean);
@@ -502,6 +503,7 @@ export function AddSpendWizardModal(props: {
     if (String(spendColumn || "") !== initialSpendColumn) return true;
     if (String(spendDateColumn || "") !== initialDateColumn) return true;
     if (currentCampaignColumn !== initialCampaignColumn) return true;
+    if (String(campaignDisplayName || "").trim() !== initialCampaignDisplayName) return true;
     if (currentCampaignValues.length !== initialCampaignValues.length) return true;
 
     const initialSet = new Set(initialCampaignValues);
@@ -509,7 +511,7 @@ export function AddSpendWizardModal(props: {
       if (!initialSet.has(value)) return true;
     }
     return false;
-  }, [isEditing, csvFile, csvPrefillMapping, spendColumn, spendDateColumn, effectiveCampaignColumn, campaignKeyValues]);
+  }, [isEditing, csvFile, csvPrefillMapping, spendColumn, spendDateColumn, effectiveCampaignColumn, campaignKeyValues, campaignDisplayName]);
 
   const hasMeaningfulSheetsEditChanges = useMemo(() => {
     if (!isEditing) return true;
@@ -901,6 +903,7 @@ export function AddSpendWizardModal(props: {
         campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null,
         campaignValue: hasCampaignScope && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
         campaignValues: hasCampaignScope ? campaignKeyValues : null,
+        campaignDisplayName: hasCampaignScope ? (campaignDisplayName.trim() || null) : null,
         currency: props.currency || "USD",
         dateRange: props.dateRange || "30days",
         sheetHeaders: Array.isArray(csvPreview?.headers) ? csvPreview.headers : undefined,
@@ -2444,7 +2447,7 @@ export function AddSpendWizardModal(props: {
                           </div>
                         </div>
 
-                        {step === "sheets_map" && campaignKeyValues.length > 0 && (
+                        {(step === "csv_map" || step === "sheets_map") && campaignKeyValues.length > 0 && (
                           <div className="space-y-1">
                             <Label className="font-normal">Selected Campaigns label</Label>
                             <Input

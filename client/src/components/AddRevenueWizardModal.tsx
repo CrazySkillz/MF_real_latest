@@ -275,6 +275,7 @@ export function AddRevenueWizardModal(props: {
     storedDateColumn?: string;
     csvStoredRevenueRows?: Array<Record<string, string>>;
     campaignMappings?: PlatformCampaignMapping[];
+    campaignDisplayName?: string;
   }>(null);
 
   // Sheets
@@ -296,6 +297,7 @@ export function AddRevenueWizardModal(props: {
   const [sheetsDateCol, setSheetsDateCol] = useState<string>("");
   const [sheetsCampaignQuery, setSheetsCampaignQuery] = useState<string>("");
   const [sheetsCampaignValues, setSheetsCampaignValues] = useState<string[]>([]);
+  const [sheetsCampaignDisplayName, setSheetsCampaignDisplayName] = useState<string>("");
   const [sheetsProcessing, setSheetsProcessing] = useState(false);
 
   // Embedded wizard navigation helpers (outer modal Back button should behave like the wizard back).
@@ -531,6 +533,7 @@ export function AddRevenueWizardModal(props: {
     setSheetsDateCol("");
     setSheetsCampaignQuery("");
     setSheetsCampaignValues([]);
+    setSheetsCampaignDisplayName("");
     setSheetsProcessing(false);
     setShopifyWizardStep("campaign-field");
     setShopifyExternalStep(null);
@@ -673,6 +676,7 @@ export function AddRevenueWizardModal(props: {
       setSheetsConversionValueCol("");
       setSheetsCampaignCol(String(config?.campaignColumn || ""));
       setSheetsCampaignValues(Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : []);
+      setSheetsCampaignDisplayName(String(config?.campaignDisplayName || ""));
       setSheetsDateCol(String(config?.dateColumn || ""));
       setRevenueCampaignMappings(Array.isArray(config?.campaignMappings) ? config.campaignMappings : []);
       return;
@@ -697,6 +701,7 @@ export function AddRevenueWizardModal(props: {
         storedDateColumn: String(config?.storedDateColumn || ""),
         csvStoredRevenueRows: Array.isArray(config?.csvStoredRevenueRows) ? config.csvStoredRevenueRows : [],
         campaignMappings: Array.isArray(config?.campaignMappings) ? config.campaignMappings : [],
+        campaignDisplayName: String(config?.campaignDisplayName || ""),
       });
       const savedHeaders = Array.isArray(config?.csvHeaders) ? config.csvHeaders.map(String).filter(Boolean) : [];
       const savedSampleRows = Array.isArray(config?.csvSampleRows) ? config.csvSampleRows : [];
@@ -714,6 +719,7 @@ export function AddRevenueWizardModal(props: {
       setCsvRevenueCol(String(config?.revenueColumn || ""));
       setCsvCampaignCol(String(config?.campaignColumn || ""));
       setCsvCampaignValues(Array.isArray(config?.campaignValues) ? config.campaignValues.map(String) : []);
+      setSheetsCampaignDisplayName(String(config?.campaignDisplayName || ""));
       setCsvDateCol(String(config?.dateColumn || ""));
       setRevenueCampaignMappings(Array.isArray(config?.campaignMappings) ? config.campaignMappings : []);
       return;
@@ -857,6 +863,7 @@ export function AddRevenueWizardModal(props: {
       setSheetsCampaignCol("");
       setSheetsCampaignQuery("");
       setSheetsCampaignValues([]);
+      setSheetsCampaignDisplayName("");
       if (!filtered || filtered.length === 0) setShowSheetsConnect(false);
       toast({ title: "Google Sheet removed", description: "You can now connect a different sheet/tab." });
     } catch (e: any) {
@@ -1065,6 +1072,7 @@ export function AddRevenueWizardModal(props: {
     const initialConversionValueColumn = String(config?.conversionValueColumn || "");
     const initialCampaignColumn = String(config?.campaignColumn || "");
     const initialDateColumn = String(config?.dateColumn || "");
+    const initialCampaignDisplayName = String(config?.campaignDisplayName || "");
     const initialCampaignValues = Array.isArray(config?.campaignValues)
       ? config.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v)
       : [];
@@ -1084,6 +1092,7 @@ export function AddRevenueWizardModal(props: {
     if (String(sheetsConversionValueCol || "") !== initialConversionValueColumn) return true;
     if (String(sheetsCampaignCol || "") !== initialCampaignColumn) return true;
     if (String(sheetsDateCol || "") !== initialDateColumn) return true;
+    if (String(sheetsCampaignDisplayName || "").trim() !== initialCampaignDisplayName) return true;
     if (currentCampaignValues.length !== initialCampaignValues.length) return true;
     if (normalizeMappings(mappedRevenueCampaignsForValues(currentCampaignValues)) !== normalizeMappings(config?.campaignMappings || [])) return true;
 
@@ -1092,7 +1101,7 @@ export function AddRevenueWizardModal(props: {
       if (!initialSet.has(value)) return true;
     }
     return false;
-  }, [isEditing, initialSource, sheetsConnectionId, sheetsRevenueCol, sheetsConversionValueCol, sheetsCampaignCol, sheetsDateCol, sheetsCampaignValues, revenueCampaignMappings, platformCampaignOptions]);
+  }, [isEditing, initialSource, sheetsConnectionId, sheetsRevenueCol, sheetsConversionValueCol, sheetsCampaignCol, sheetsDateCol, sheetsCampaignValues, sheetsCampaignDisplayName, revenueCampaignMappings, platformCampaignOptions]);
 
   const handleBack = () => {
     if (step === "select") return;
@@ -1360,6 +1369,7 @@ export function AddRevenueWizardModal(props: {
         setSheetsCampaignCol(headers.find((h) => /campaign/i.test(h)) || "");
         setSheetsCampaignValues([]);
         setSheetsCampaignQuery("");
+        setSheetsCampaignDisplayName("");
       } else {
         // keep existing selections; only fill gaps
         if (!sheetsRevenueCol) setSheetsRevenueCol(guess);
@@ -1395,6 +1405,7 @@ export function AddRevenueWizardModal(props: {
       setSheetsDateCol("");
       setSheetsCampaignQuery("");
       setSheetsCampaignValues([]);
+      setSheetsCampaignDisplayName("");
       setSheetsConnections((prev) => {
         const exists = prev.some((c: any) => String(c?.id) === preferredId);
         if (exists) return prev;
@@ -1466,6 +1477,7 @@ export function AddRevenueWizardModal(props: {
         campaignColumn: hasCampaignScope ? sheetsCampaignCol : null,
         campaignValue: hasCampaignScope && sheetsCampaignValues.length === 1 ? sheetsCampaignValues[0] : null,
         campaignValues: hasCampaignScope ? sheetsCampaignValues : null,
+        campaignDisplayName: hasCampaignScope ? (sheetsCampaignDisplayName.trim() || null) : null,
         dateColumn: sheetsDateCol || null,
         currency,
         displayName: "Google Sheets revenue",
@@ -2140,6 +2152,7 @@ export function AddRevenueWizardModal(props: {
                             setSheetsDateCol("");
                             setSheetsCampaignQuery("");
                             setSheetsCampaignValues([]);
+                            setSheetsCampaignDisplayName("");
                           }}
                         >
                           <SelectTrigger>
@@ -2206,6 +2219,7 @@ export function AddRevenueWizardModal(props: {
                                 setSheetsCampaignValues([]);
                                 setRevenueCampaignMappings([]);
                                 setSheetsCampaignQuery("");
+                                setSheetsCampaignDisplayName("");
                               }}
                             >
                               <SelectTrigger>
@@ -2299,6 +2313,18 @@ export function AddRevenueWizardModal(props: {
                         </div>
 
                         {renderPlatformCampaignMapping(sheetsCampaignValues)}
+
+                        {sheetsCampaignValues.length > 0 && (
+                          <div className="space-y-1">
+                            <Label className="font-normal">Selected Campaigns label</Label>
+                            <Input
+                              value={sheetsCampaignDisplayName}
+                              onChange={(e) => setSheetsCampaignDisplayName(e.target.value)}
+                              placeholder={sheetsCampaignValues[0] || "Campaign label"}
+                              maxLength={80}
+                            />
+                          </div>
+                        )}
 
                         {/* Preview table */}
                         <div className="rounded-md border overflow-hidden">

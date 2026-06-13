@@ -94,6 +94,7 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("renderGoogleSheetsCampaignScopeCard");
     expect(page).toContain("Selected Campaigns");
     expect(page).toContain("googleSheetsCampaignScopeValues");
+    expect(page).toContain("cfg?.campaignDisplayName");
     expect(page).toContain("addValues(cfg?.campaignValues)");
     expect(page).toContain("addValues(cfg?.selectedValues)");
     expect(page).toContain("cfg?.campaignValueRevenueTotals");
@@ -180,6 +181,20 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(linkedInSpendRoute).toContain('requestedPlatformContext !== "google_sheets"');
     expect(linkedInSpendRoute).toContain("platformContext: platformContext || null");
     expect(linkedInSpendRoute).toContain('String((s as any).platformContext || "").trim().toLowerCase() !== platformContext');
+  });
+
+  it("keeps Google Sheets campaign display labels separate from source values", () => {
+    const page = readSource("client", "src", "pages", "google-sheets-data.tsx");
+    const revenueModal = readSource("client", "src", "components", "AddRevenueWizardModal.tsx");
+    const spendModal = readSource("client", "src", "components", "AddSpendWizardModal.tsx");
+
+    expect(page).toContain('const displayName = String(cfg?.campaignDisplayName || "").trim();');
+    expect(page).toContain("addValue(displayName);");
+    expect(page).toContain("addValues(cfg?.campaignValues);");
+    expect(revenueModal).toContain("campaignDisplayName: hasCampaignScope ? (sheetsCampaignDisplayName.trim() || null) : null");
+    expect(spendModal).toContain("campaignDisplayName: hasCampaignScope ? (campaignDisplayName.trim() || null) : null");
+    expect(revenueModal).toContain("Selected Campaigns label");
+    expect(spendModal).toContain("Selected Campaigns label");
   });
 
   it("opens Google Sheets add-source modals without prefilled create data", () => {

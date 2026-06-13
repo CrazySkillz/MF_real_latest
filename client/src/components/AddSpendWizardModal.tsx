@@ -96,6 +96,7 @@ export function AddSpendWizardModal(props: {
   const [campaignKeyColumn, setCampaignKeyColumn] = useState<string>("");
   const [campaignKeyValues, setCampaignKeyValues] = useState<string[]>([]);
   const [campaignKeySearch, setCampaignKeySearch] = useState<string>("");
+  const [campaignDisplayName, setCampaignDisplayName] = useState<string>("");
 
   const CAMPAIGN_COL_NONE = "__none__";
 
@@ -182,6 +183,7 @@ export function AddSpendWizardModal(props: {
       setCampaignKeyColumn("");
       setCampaignKeyValues([]);
       setCampaignKeySearch("");
+      setCampaignDisplayName("");
       setManualAmount("");
       setPasteText("");
       setShowSheetsConnect(false);
@@ -248,6 +250,7 @@ export function AddSpendWizardModal(props: {
         setCampaignKeyColumn(mapCampaignCol);
       }
       if (mapCampaignVals.length) setCampaignKeyValues(mapCampaignVals);
+      setCampaignDisplayName(String(mapping?.campaignDisplayName || ""));
 
       const connectionId = String(mapping?.connectionId || "").trim();
       if (connectionId) {
@@ -293,6 +296,7 @@ export function AddSpendWizardModal(props: {
         setCampaignKeyColumn(mapCampaignCol);
       }
       if (mapCampaignVals.length) setCampaignKeyValues(mapCampaignVals);
+      setCampaignDisplayName(String(mapping?.campaignDisplayName || ""));
       if (mapSpend) setSpendColumn(mapSpend);
       if (mapDate) setSpendDateColumn(mapDate);
       return;
@@ -523,6 +527,7 @@ export function AddSpendWizardModal(props: {
     const initialDateColumn = String(initialMapping?.dateColumn || "");
     const initialCampaignColumn = String(initialMapping?.campaignColumn || "");
     const initialConnectionId = String(initialMapping?.connectionId || "");
+    const initialCampaignDisplayName = String(initialMapping?.campaignDisplayName || "");
     const initialCampaignValues = Array.isArray(initialMapping?.campaignValues)
       ? initialMapping.campaignValues.map((v: any) => String(v ?? "").trim()).filter((v: string) => !!v)
       : (initialMapping?.campaignValue ? [String(initialMapping.campaignValue).trim()] : []);
@@ -535,6 +540,7 @@ export function AddSpendWizardModal(props: {
     if (String(spendDateColumn || "") !== initialDateColumn) return true;
     if (currentCampaignColumn !== initialCampaignColumn) return true;
     if (currentConnectionId !== initialConnectionId) return true;
+    if (String(campaignDisplayName || "").trim() !== initialCampaignDisplayName) return true;
     if (currentCampaignValues.length !== initialCampaignValues.length) return true;
 
     const initialSet = new Set(initialCampaignValues);
@@ -542,7 +548,7 @@ export function AddSpendWizardModal(props: {
       if (!initialSet.has(value)) return true;
     }
     return false;
-  }, [isEditing, props.initialSource?.mappingConfig, spendColumn, spendDateColumn, effectiveCampaignColumn, campaignKeyValues, selectedSheetConnectionId]);
+  }, [isEditing, props.initialSource?.mappingConfig, spendColumn, spendDateColumn, effectiveCampaignColumn, campaignKeyValues, campaignDisplayName, selectedSheetConnectionId]);
 
   const hasMeaningfulManualEditChanges = useMemo(() => {
     if (!isEditing) return true;
@@ -614,6 +620,7 @@ export function AddSpendWizardModal(props: {
     }
     setCampaignKeyValues([]);
     setCampaignKeySearch("");
+    setCampaignDisplayName("");
   }, [campaignKeyColumn]);
 
   const previewCsv = async () => {
@@ -742,6 +749,7 @@ export function AddSpendWizardModal(props: {
       if (changedConnection) {
         setCampaignKeyValues([]);
         setCampaignKeySearch("");
+        setCampaignDisplayName("");
         campaignKeyTouchedRef.current = false;
       }
       setSheetsPreview(json);
@@ -834,6 +842,7 @@ export function AddSpendWizardModal(props: {
         campaignColumn: hasCampaignScope ? effectiveCampaignColumn : null,
         campaignValue: hasCampaignScope && campaignKeyValues.length === 1 ? campaignKeyValues[0] : null,
         campaignValues: hasCampaignScope ? campaignKeyValues : null,
+        campaignDisplayName: hasCampaignScope ? (campaignDisplayName.trim() || null) : null,
         currency: props.currency || "USD",
         dateRange: props.dateRange || "30days",
         // Persist lightweight preview metadata so "Edit" can reopen directly into a pre-filled mapping UI.
@@ -1982,6 +1991,7 @@ export function AddSpendWizardModal(props: {
                             setCampaignKeyColumn("");
                             setCampaignKeyValues([]);
                             setCampaignKeySearch("");
+                            setCampaignDisplayName("");
                             campaignKeyTouchedRef.current = false;
                             setSheetsConnections((prev) => {
                               const exists = prev.some((c: any) => String(c?.id) === preferredId);
@@ -2025,6 +2035,7 @@ export function AddSpendWizardModal(props: {
                               setCampaignKeyColumn("");
                               setCampaignKeyValues([]);
                               setCampaignKeySearch("");
+                              setCampaignDisplayName("");
                               campaignKeyTouchedRef.current = false;
                               setSheetsConnections((prev) => {
                                 const exists = prev.some((c: any) => String(c?.id) === preferredId);
@@ -2081,6 +2092,7 @@ export function AddSpendWizardModal(props: {
                             setCampaignKeyColumn("");
                             setCampaignKeyValues([]);
                             setCampaignKeySearch("");
+                            setCampaignDisplayName("");
                             campaignKeyTouchedRef.current = false;
                           }}
                         >
@@ -2153,6 +2165,7 @@ export function AddSpendWizardModal(props: {
                             setCsvPrefillMapping(null);
                             setCampaignKeyValues([]);
                             setCampaignKeySearch("");
+                            setCampaignDisplayName("");
                             campaignKeyTouchedRef.current = false;
                           }
                         }}
@@ -2386,6 +2399,7 @@ export function AddSpendWizardModal(props: {
                                 onValueChange={(v) => {
                                   campaignKeyTouchedRef.current = true;
                                   setCampaignKeyColumn(v === CAMPAIGN_COL_NONE ? "" : v);
+                                  setCampaignDisplayName("");
                                 }}
                               >
                                 <SelectTrigger><SelectValue placeholder="Search values..." /></SelectTrigger>
@@ -2429,6 +2443,18 @@ export function AddSpendWizardModal(props: {
                             </div>
                           </div>
                         </div>
+
+                        {step === "sheets_map" && campaignKeyValues.length > 0 && (
+                          <div className="space-y-1">
+                            <Label className="font-normal">Selected Campaigns label</Label>
+                            <Input
+                              value={campaignDisplayName}
+                              onChange={(e) => setCampaignDisplayName(e.target.value)}
+                              placeholder={campaignKeyValues[0] || "Campaign label"}
+                              maxLength={80}
+                            />
+                          </div>
+                        )}
 
                     {previewRows.length > 0 && (
                       <div className="rounded-md border overflow-hidden p-3">

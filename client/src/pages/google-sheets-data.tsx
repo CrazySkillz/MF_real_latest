@@ -891,6 +891,11 @@ export default function GoogleSheetsData() {
     };
     const addSourceScope = (source: any) => {
       const cfg = parseRevenueSourceConfig(source);
+      const displayName = String(cfg?.campaignDisplayName || "").trim();
+      if (displayName) {
+        addValue(displayName);
+        return;
+      }
       addValues(cfg?.campaignValues);
       addValue(cfg?.campaignValue);
       addValues(cfg?.selectedValues);

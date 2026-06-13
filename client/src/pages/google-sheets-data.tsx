@@ -54,6 +54,9 @@ interface GoogleSheetsData {
       index: number;
       type: 'currency' | 'integer' | 'decimal';
       total: number;
+      count?: number;
+      summaryValue?: number;
+      aggregation?: string;
     }>;
     // Legacy fields for backward compatibility
     totalImpressions?: number;
@@ -1798,17 +1801,32 @@ export default function GoogleSheetsData() {
   }
 
   // ═══ Summary Tab Helpers ═══
+  type GoogleSheetsSummaryColumn = NonNullable<GoogleSheetsData["summary"]["detectedColumns"]>[number];
+
+  function isSummaryIdentifierColumn(colName: string): boolean {
+    const n = String(colName || "").trim().toLowerCase().replace(/[_-]+/g, " ");
+    return n === "id" || /\b(id|identifier|urn|uuid)\b/.test(n);
+  }
+
+  function getSummaryMetricDisplayValue(col: GoogleSheetsSummaryColumn): number {
+    const summaryValue = Number((col as any)?.summaryValue);
+    if (Number.isFinite(summaryValue)) return summaryValue;
+    const total = Number(col?.total);
+    return Number.isFinite(total) ? total : 0;
+  }
+
   function formatSummaryValue(value: number, colType: string, colName: string): string {
     const n = colName.toLowerCase();
-    if (n.includes('%') || n.includes('rate') || n.includes('ctr') || n.includes('cvr')) {
+    if (n.includes('%') || n.includes('rate') || n.includes('ctr') || n.includes('cvr') || n.includes('roi')) {
       return value.toFixed(2) + '%';
     }
-    if (n.includes('roas') || n.includes('return on')) {
+    if (n.includes('roas') || n.includes('return on ad spend')) {
       return value.toFixed(2) + 'x';
     }
     const isCurrency = colType === 'currency' || n.includes('$') || n.includes('revenue')
       || n.includes('spend') || n.includes('cost') || n.includes('budget')
-      || n.includes('cpc') || n.includes('cpm') || n.includes('cpa');
+      || n.includes('cpc') || n.includes('cpm') || n.includes('cpa')
+      || n.includes('cac') || n.includes('cpl');
     if (isCurrency) {
       if (Math.abs(value) >= 1_000_000) return '$' + (value / 1_000_000).toFixed(1) + 'M';
       if (Math.abs(value) >= 10_000) return '$' + (value / 1_000).toFixed(1) + 'K';
@@ -1822,27 +1840,30 @@ export default function GoogleSheetsData() {
     return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
   }
 
-  function classifyColumns(cols: Array<{ name: string; index: number; type: string; total: number }>) {
+  function classifyColumns(cols: GoogleSheetsSummaryColumn[]) {
     const hero: typeof cols = [];
     const supporting: typeof cols = [];
     for (const col of cols) {
+      if (isSummaryIdentifierColumn(col.name)) continue;
       const n = col.name.toLowerCase();
+      const value = getSummaryMetricDisplayValue(col);
       const isPct = n.includes('%') || n.includes('rate') || n.includes('ctr') || n.includes('cvr');
       const isRoas = n.includes('roas') || n.includes('return on');
       const isCurrency = col.type === 'currency' || n.includes('$') || n.includes('revenue')
-        || n.includes('spend') || n.includes('cost') || n.includes('budget');
+        || n.includes('spend') || n.includes('cost') || n.includes('budget')
+        || n.includes('cac') || n.includes('cpa') || n.includes('cpc') || n.includes('cpm') || n.includes('cpl');
       const isUtility = n.includes('days') || n.includes('month');
-      const isSmallCount = col.type === 'integer' && col.total < 100;
+      const isSmallCount = col.type === 'integer' && value < 100;
       if (isPct || isRoas || isSmallCount || isUtility) {
         supporting.push(col);
-      } else if (isCurrency || (col.type === 'integer' && col.total >= 100)) {
+      } else if (isCurrency || (col.type === 'integer' && value >= 100)) {
         hero.push(col);
       } else {
         supporting.push(col);
       }
     }
     if (hero.length > 4) {
-      hero.sort((a, b) => b.total - a.total);
+      hero.sort((a, b) => getSummaryMetricDisplayValue(b) - getSummaryMetricDisplayValue(a));
       supporting.unshift(...hero.splice(4));
     }
     return { hero, supporting };
@@ -1850,7 +1871,7 @@ export default function GoogleSheetsData() {
 
   function getSummaryIcon(colName: string) {
     const n = colName.toLowerCase();
-    if (n.includes('revenue') || n.includes('spend') || n.includes('cost') || n.includes('budget') || n.includes('$')) return DollarSign;
+    if (n.includes('revenue') || n.includes('spend') || n.includes('cost') || n.includes('budget') || n.includes('$') || n.includes('cac') || n.includes('cpa') || n.includes('cpc') || n.includes('cpm') || n.includes('cpl')) return DollarSign;
     if (n.includes('impression') || n.includes('reach') || n.includes('view')) return Eye;
     if (n.includes('click')) return MousePointerClick;
     if (n.includes('conversion') || n.includes('lead') || n.includes('mql') || n.includes('sql') || n.includes('opportunit')) return Target;
@@ -2300,7 +2321,8 @@ export default function GoogleSheetsData() {
                       }
 
                       return sections.map((section) => {
-                        const { hero, supporting } = classifyColumns(section.detectedColumns);
+                        const displayColumns = (section.detectedColumns || []).filter((col: any) => !isSummaryIdentifierColumn(col?.name || ""));
+                        const { hero, supporting } = classifyColumns(displayColumns);
 
                         return (
                           <Card key={section.key}>
@@ -2317,7 +2339,7 @@ export default function GoogleSheetsData() {
                                     {(section.rowCount || 0).toLocaleString()} rows
                                   </Badge>
                                   <Badge variant="secondary" className="text-xs">
-                                    {section.detectedColumns.length} metrics
+                                    {displayColumns.length} metrics
                                   </Badge>
                                 </div>
                               </div>
@@ -2339,7 +2361,7 @@ export default function GoogleSheetsData() {
                                           </div>
                                         </div>
                                         <p className="text-2xl font-bold text-foreground tracking-tight">
-                                          {formatSummaryValue(col.total, col.type, col.name)}
+                                          {formatSummaryValue(getSummaryMetricDisplayValue(col), col.type, col.name)}
                                         </p>
                                         <p className="text-xs text-muted-foreground/70 mt-1 truncate" title={col.name}>
                                           {col.name}
@@ -2366,7 +2388,7 @@ export default function GoogleSheetsData() {
                                           {col.name}
                                         </p>
                                         <p className="text-sm font-semibold text-foreground dark:text-slate-200">
-                                          {formatSummaryValue(col.total, col.type, col.name)}
+                                          {formatSummaryValue(getSummaryMetricDisplayValue(col), col.type, col.name)}
                                         </p>
                                       </div>
                                     ))}

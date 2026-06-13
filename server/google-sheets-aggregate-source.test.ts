@@ -224,4 +224,22 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(spendModal).toContain('setSelectedSheetConnectionId("");');
     expect(spendModal).toContain("if (!props.initialSource) return;");
   });
+
+  it("keeps Google Sheets Summary tab values display-safe for identifiers and non-additive metrics", () => {
+    const page = readSource("client", "src", "pages", "google-sheets-data.tsx");
+    const routes = readSource("server", "routes-oauth.ts");
+
+    expect(routes).toContain("const isGoogleSheetsSummaryIdentifierColumn");
+    expect(routes).toContain("getGoogleSheetsSummaryDisplayValue");
+    expect(routes).toContain("isGoogleSheetsSummaryIdentifierColumn(headerStr)");
+    expect(routes).toContain("summaryValue: revenueTotal / spendTotal");
+    expect(routes).toContain("derived_profit_per_spend_pct");
+    expect(routes).toContain("derived_spend_per_customer");
+    expect(routes).toContain("detectedColumns: summaryDetectedColumns");
+    expect(page).toContain("getSummaryMetricDisplayValue(col)");
+    expect(page).toContain("!isSummaryIdentifierColumn(col?.name || \"\")");
+    expect(page).toContain("{displayColumns.length} metrics");
+    expect(page).toContain("n.includes('roi')");
+    expect(page).toContain("n.includes('cac') || n.includes('cpl')");
+  });
 });

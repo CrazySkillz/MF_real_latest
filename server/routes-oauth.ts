@@ -17044,6 +17044,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return insights;
   }
 
+  const normalizeGoogleSheetsSummaryHeader = (header: any) =>
+    String(header || '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+
+  const isGoogleSheetsSummaryIdentifierColumn = (header: any) => {
+    const h = normalizeGoogleSheetsSummaryHeader(header);
+    return h === 'id' || /\b(id|identifier|urn|uuid)\b/.test(h);
+  };
+
+  const googleSheetsMetricTotal = (
+    metrics: Record<string, number>,
+    includes: RegExp[],
+    excludes: RegExp[] = []
+  ): number | null => {
+    for (const [name, value] of Object.entries(metrics || {})) {
+      const h = normalizeGoogleSheetsSummaryHeader(name);
+      if (includes.some((re) => re.test(h)) && !excludes.some((re) => re.test(h))) {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
+      }
+    }
+    return null;
+  };
+
+  const getGoogleSheetsSummaryDisplayValue = (
+    col: { name: string; total: number; count?: number },
+    metrics: Record<string, number>
+  ): { summaryValue: number; aggregation: string } => {
+    const h = normalizeGoogleSheetsSummaryHeader(col.name);
+    const total = Number(col.total || 0);
+    const count = Number(col.count || 0);
+    const average = count > 0 ? total / count : total;
+    const revenueTotal = googleSheetsMetricTotal(metrics, [/\brevenue\b/, /\bsales\b/, /\bconversion value\b/], [/roas/, /roi/, /rate/, /%/, /\bper\b/]);
+    const spendTotal = googleSheetsMetricTotal(metrics, [/\bspend\b/, /\bcost\b/, /\bbudget\b/], [/\bcost per\b/, /\bper\b/, /cac/, /cpc/, /cpm/, /cpa/, /cpl/]);
+    const customersTotal = googleSheetsMetricTotal(metrics, [/\bcustomers?\b/]);
+    const leadsTotal = googleSheetsMetricTotal(metrics, [/\bleads?\b/]);
+    const clicksTotal = googleSheetsMetricTotal(metrics, [/\bclicks?\b/]);
+    const impressionsTotal = googleSheetsMetricTotal(metrics, [/\bimpressions?\b/, /\breach\b/, /\bviews?\b/]);
+    const conversionsTotal = googleSheetsMetricTotal(metrics, [/\bconversions?\b/], [/\bvalue\b/]);
+
+    if (h.includes('roas') && revenueTotal !== null && spendTotal !== null && spendTotal > 0) {
+      return { summaryValue: revenueTotal / spendTotal, aggregation: 'derived_revenue_per_spend' };
+    }
+    if ((h.includes('roi') || h.includes('return on investment')) && revenueTotal !== null && spendTotal !== null && spendTotal > 0) {
+      return { summaryValue: ((revenueTotal - spendTotal) / spendTotal) * 100, aggregation: 'derived_profit_per_spend_pct' };
+    }
+    if (h.includes('cac') && spendTotal !== null && customersTotal !== null && customersTotal > 0) {
+      return { summaryValue: spendTotal / customersTotal, aggregation: 'derived_spend_per_customer' };
+    }
+    if (h.includes('cpl') && spendTotal !== null && leadsTotal !== null && leadsTotal > 0) {
+      return { summaryValue: spendTotal / leadsTotal, aggregation: 'derived_spend_per_lead' };
+    }
+    if (h.includes('cpc') && spendTotal !== null && clicksTotal !== null && clicksTotal > 0) {
+      return { summaryValue: spendTotal / clicksTotal, aggregation: 'derived_spend_per_click' };
+    }
+    if (h.includes('cpm') && spendTotal !== null && impressionsTotal !== null && impressionsTotal > 0) {
+      return { summaryValue: (spendTotal / impressionsTotal) * 1000, aggregation: 'derived_spend_per_thousand_impressions' };
+    }
+    if (h.includes('cpa') && spendTotal !== null) {
+      const denominator = conversionsTotal || customersTotal;
+      if (denominator !== null && denominator > 0) {
+        return { summaryValue: spendTotal / denominator, aggregation: 'derived_spend_per_acquisition' };
+      }
+    }
+    if (h.includes('%') || h.includes('rate') || h.includes('ctr') || h.includes('cvr') || h.includes('roas') || h.includes('roi') || h.includes('cac') || h.includes('cpc') || h.includes('cpm') || h.includes('cpa') || h.includes('cpl') || h.includes('cost per')) {
+      return { summaryValue: average, aggregation: 'average' };
+    }
+    return { summaryValue: total, aggregation: 'sum' };
+  };
+
   // Get spreadsheet data for a campaign
   app.get("/api/campaigns/:id/google-sheets-data", googleSheetsRateLimiter, requireCampaignAccessParamId, async (req, res) => {
     const campaignId = req.params.id;
@@ -17261,11 +17330,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // Per-sheet numeric column detection (mirrors aggregated logic below)
             const perSheetMetrics: Record<string, number> = {};
-            const perSheetDetectedColumns: Array<{ name: string, index: number, type: string, total: number }> = [];
+            const perSheetDetectedColumns: Array<{ name: string, index: number, type: string, total: number, count?: number, summaryValue?: number, aggregation?: string }> = [];
             const dateColumnPattern = /^(date|week|day|time|timestamp|period|month|year)/i;
             headers.forEach((header: string, colIndex: number) => {
               const headerStr = String(header || '').trim();
-              if (!headerStr || dateColumnPattern.test(headerStr)) return;
+              if (!headerStr || dateColumnPattern.test(headerStr) || isGoogleSheetsSummaryIdentifierColumn(headerStr)) return;
               let total = 0;
               let count = 0;
               let hasCurrency = false;
@@ -17289,19 +17358,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   name: headerStr,
                   index: colIndex,
                   type: hasCurrency ? 'currency' : (hasDecimals ? 'decimal' : 'integer'),
-                  total
+                  total,
+                  count
                 });
               }
             });
+            const perSheetSummaryColumns = perSheetDetectedColumns.map((col) => ({
+              ...col,
+              ...getGoogleSheetsSummaryDisplayValue(col, perSheetMetrics)
+            }));
 
             // Per-sheet categorical column detection
-            const numericColNames = new Set(perSheetDetectedColumns.map((c: any) => c.name));
+            const numericColNames = new Set(perSheetSummaryColumns.map((c: any) => c.name));
             const datePatterns = /^(date|week|day|time|timestamp|period|month|year)/i;
             const perSheetCategoricalColumns: Array<{ name: string, index: number, uniqueCount: number, topValues: Array<{ value: string, count: number, percentage: number }> }> = [];
 
             headers.forEach((header: string, colIndex: number) => {
               const headerStr = String(header || '').trim();
-              if (!headerStr || numericColNames.has(headerStr) || datePatterns.test(headerStr)) return;
+              if (!headerStr || isGoogleSheetsSummaryIdentifierColumn(headerStr) || numericColNames.has(headerStr) || datePatterns.test(headerStr)) return;
 
               const freq: Record<string, number> = {};
               let nonEmpty = 0;
@@ -17337,7 +17411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalRows: rows.length,
               headers: headers as string[],
               metrics: perSheetMetrics,
-              detectedColumns: perSheetDetectedColumns,
+              detectedColumns: perSheetSummaryColumns,
               categoricalColumns: perSheetCategoricalColumns
             });
           } catch (error) {
@@ -17349,13 +17423,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Generate summary from aggregated data
         const headers = Array.from(aggregatedData.allHeaders);
         const summaryMetrics: Record<string, number> = {};
-        const detectedColumns: Array<{ name: string, index: number, type: string, total: number }> = [];
+        const detectedColumns: Array<{ name: string, index: number, type: string, total: number, count?: number, summaryValue?: number, aggregation?: string }> = [];
 
         // Aggregate numeric columns
         const aggDatePattern = /^(date|week|day|time|timestamp|period|month|year)/i;
         headers.forEach((header: unknown, index: number) => {
           const headerStr = String(header || '').trim();
-          if (!headerStr || aggDatePattern.test(headerStr)) return;
+          if (!headerStr || aggDatePattern.test(headerStr) || isGoogleSheetsSummaryIdentifierColumn(headerStr)) return;
 
           let total = 0;
           let count = 0;
@@ -17385,10 +17459,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               name: headerStr,
               index,
               type: hasCurrency ? 'currency' : (hasDecimals ? 'decimal' : 'integer'),
-              total
+              total,
+              count
             });
           }
         });
+        const summaryDetectedColumns = detectedColumns.map((col) => ({
+          ...col,
+          ...getGoogleSheetsSummaryDisplayValue(col, summaryMetrics)
+        }));
 
         return res.json({
           success: true,
@@ -17400,7 +17479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           data: aggregatedData.allRows,
           summary: {
             metrics: summaryMetrics,
-            detectedColumns: detectedColumns,
+            detectedColumns: summaryDetectedColumns,
             totalImpressions: summaryMetrics['Impressions'] || summaryMetrics['impressions'] || 0,
             totalClicks: summaryMetrics['Clicks'] || summaryMetrics['clicks'] || 0,
             totalSpend: summaryMetrics['Spend (USD)'] || summaryMetrics['Budget'] || summaryMetrics['Cost'] || 0,
@@ -17933,7 +18012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: allRows, // Show all rows in the table (not filtered)
         sampleData: rowsForSummary.slice(0, 6), // First 5 filtered data rows
         metrics: {} as Record<string, number>,
-        detectedColumns: [] as Array<{ name: string, index: number, type: string, total: number }>
+        detectedColumns: [] as Array<{ name: string, index: number, type: string, total: number, count?: number, summaryValue?: number, aggregation?: string }>
       };
 
       // Dynamically detect and aggregate numeric columns from FILTERED rows
@@ -17946,7 +18025,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         headers.forEach((header: string, index: number) => {
           const headerStr = String(header || '').trim();
-          if (!headerStr || singleSheetDatePattern.test(headerStr)) return; // Skip empty headers and date columns
+          if (!headerStr || singleSheetDatePattern.test(headerStr) || isGoogleSheetsSummaryIdentifierColumn(headerStr)) return; // Skip empty headers, IDs, and date columns
 
           // Sample first 5 filtered data rows to determine if column is numeric
           const samples: number[] = [];
@@ -18007,7 +18086,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               name: col.name,
               index: col.index,
               type: col.type,
-              total: total
+              total: total,
+              count
             });
 
             devLog(`  ✓ ${col.name}: ${total.toLocaleString()} (${count} filtered rows)`);
@@ -18015,6 +18095,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         devLog(`📊 Successfully aggregated ${campaignData.detectedColumns.length} metrics from ${rowsForSummary.length} filtered rows (campaign: "${campaignName}")`);
+        campaignData.detectedColumns = campaignData.detectedColumns.map((col) => ({
+          ...col,
+          ...getGoogleSheetsSummaryDisplayValue(col, campaignData.metrics)
+        }));
       }
 
       // Categorical column detection for single-sheet view
@@ -18025,7 +18109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         headers.forEach((header: string, colIndex: number) => {
           const headerStr = String(header || '').trim();
-          if (!headerStr || numericColNames.has(headerStr) || datePatterns.test(headerStr)) return;
+          if (!headerStr || isGoogleSheetsSummaryIdentifierColumn(headerStr) || numericColNames.has(headerStr) || datePatterns.test(headerStr)) return;
 
           const freq: Record<string, number> = {};
           for (const row of rowsForSummary) {

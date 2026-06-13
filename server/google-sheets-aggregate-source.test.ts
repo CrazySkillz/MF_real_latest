@@ -242,6 +242,9 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("!isSummaryIdentifierColumn(col?.name || \"\")");
     expect(page).toContain("{displayColumns.length} metrics");
     expect(page).toContain("return executiveColumns.length > 0 ? executiveColumns : candidates;");
+    expect(page).toContain("Data Breakdown");
+    expect(page).toContain("const categoricalColumns = section.categoricalColumns || [];");
+    expect(page).toContain("No categorical breakdown column detected for this selected spreadsheet.");
     expect(page).toContain("n.includes('roi')");
     expect(page).toContain("n.includes('cac') || n.includes('cpl')");
   });

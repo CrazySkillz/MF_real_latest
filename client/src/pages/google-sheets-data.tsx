@@ -2349,6 +2349,7 @@ export default function GoogleSheetsData() {
                       return sections.map((section) => {
                         const displayColumns = getExecutiveSummaryColumns(section.detectedColumns || []);
                         const { hero, supporting } = classifyColumns(displayColumns);
+                        const categoricalColumns = section.categoricalColumns || [];
 
                         return (
                           <Card key={section.key}>
@@ -2422,58 +2423,59 @@ export default function GoogleSheetsData() {
                                 </>
                               )}
 
-                              {/* Data Breakdown — categorical columns */}
-                              {section.categoricalColumns && section.categoricalColumns.length > 0 && (
-                                <>
-                                  <div className="border-t border-slate-100 mt-6 mb-4" />
-                                  <div className="mb-2">
-                                    <p className="text-sm font-semibold text-foreground/80/60">Data Breakdown</p>
-                                  </div>
-                                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                                    {section.categoricalColumns.map((cat: any) => {
-                                      const maxCount = cat.topValues[0]?.count || 1;
-                                      return (
-                                        <div key={cat.name} className="rounded-lg border border-border bg-card/50 p-4">
-                                          <div className="flex items-center justify-between mb-3">
-                                            <p className="text-sm font-medium text-foreground dark:text-slate-200">{cat.name}</p>
-                                            <Badge variant="outline" className="text-[10px]">
-                                              {cat.uniqueCount} unique
-                                            </Badge>
-                                          </div>
-                                          <div className="space-y-2">
-                                            {cat.topValues.slice(0, 8).map((v: any) => (
-                                              <div key={v.value}>
-                                                <div className="flex items-center justify-between text-xs mb-0.5">
-                                                  <span className="text-foreground/80/60 truncate mr-2 max-w-[60%]" title={v.value}>
-                                                    {v.value}
-                                                  </span>
-                                                  <span className="text-muted-foreground/70 whitespace-nowrap">
-                                                    {v.count.toLocaleString()} <span className="text-muted-foreground/70">({v.percentage}%)</span>
-                                                  </span>
-                                                </div>
-                                                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                                                  <div
-                                                    className="h-full rounded-full bg-blue-500 dark:bg-blue-400"
-                                                    style={{ width: `${Math.round((v.count / maxCount) * 100)}%` }}
-                                                  />
-                                                </div>
-                                              </div>
-                                            ))}
-                                            {cat.topValues.length > 8 && (
-                                              <p className="text-[11px] text-muted-foreground/70 pt-1">
-                                                +{cat.topValues.length - 8} more
-                                              </p>
-                                            )}
-                                          </div>
+                              <div className="border-t border-slate-100 mt-6 mb-4" />
+                              <div className="mb-2">
+                                <p className="text-sm font-semibold text-foreground/80/60">Data Breakdown</p>
+                              </div>
+                              {categoricalColumns.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                  {categoricalColumns.map((cat: any) => {
+                                    const maxCount = cat.topValues[0]?.count || 1;
+                                    return (
+                                      <div key={cat.name} className="rounded-lg border border-border bg-card/50 p-4">
+                                        <div className="flex items-center justify-between mb-3">
+                                          <p className="text-sm font-medium text-foreground dark:text-slate-200">{cat.name}</p>
+                                          <Badge variant="outline" className="text-[10px]">
+                                            {cat.uniqueCount} unique
+                                          </Badge>
                                         </div>
-                                      );
-                                    })}
-                                  </div>
-                                </>
+                                        <div className="space-y-2">
+                                          {cat.topValues.slice(0, 8).map((v: any) => (
+                                            <div key={v.value}>
+                                              <div className="flex items-center justify-between text-xs mb-0.5">
+                                                <span className="text-foreground/80/60 truncate mr-2 max-w-[60%]" title={v.value}>
+                                                  {v.value}
+                                                </span>
+                                                <span className="text-muted-foreground/70 whitespace-nowrap">
+                                                  {v.count.toLocaleString()} <span className="text-muted-foreground/70">({v.percentage}%)</span>
+                                                </span>
+                                              </div>
+                                              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                                                <div
+                                                  className="h-full rounded-full bg-blue-500 dark:bg-blue-400"
+                                                  style={{ width: `${Math.round((v.count / maxCount) * 100)}%` }}
+                                                />
+                                              </div>
+                                            </div>
+                                          ))}
+                                          {cat.topValues.length > 8 && (
+                                            <p className="text-[11px] text-muted-foreground/70 pt-1">
+                                              +{cat.topValues.length - 8} more
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-5 text-sm text-muted-foreground">
+                                  No categorical breakdown column detected for this selected spreadsheet.
+                                </div>
                               )}
 
                               {/* Edge case: no metrics at all */}
-                              {hero.length === 0 && supporting.length === 0 && (!section.categoricalColumns || section.categoricalColumns.length === 0) && (
+                              {hero.length === 0 && supporting.length === 0 && categoricalColumns.length === 0 && (
                                 <p className="text-sm text-muted-foreground text-center py-4">
                                   No data detected in this sheet
                                 </p>

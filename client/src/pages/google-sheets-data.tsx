@@ -1,4 +1,4 @@
-﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { ArrowLeft, FileSpreadsheet, Calendar, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Lightbulb, Target, CheckCircle2, XCircle, AlertCircle, Loader2, Star, Plus, Trash2, X, DollarSign, Eye, MousePointerClick, BarChart3, Hash, Percent } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -137,6 +137,18 @@ interface GoogleSheetsData {
     };
   };
 }
+
+type GoogleSheetsAnalysisSourceScope = {
+  platform: "google_sheets";
+  scopeType: "single" | "combined";
+  activeSpreadsheetId: string;
+  connectionId: string | null;
+  connectionIds?: string[];
+  spreadsheetId: string | null;
+  spreadsheetName: string | null;
+  sheetName: string | null;
+  displayName: string;
+};
 
 type GoogleSheetsKpiMetricOption = {
   key: string;
@@ -457,6 +469,58 @@ export default function GoogleSheetsData() {
     }
     return null;
   }, [selectedSpreadsheetId, isCombinedView, primaryConnection, googleSheetsConnections]);
+
+  const getGoogleSheetsConnectionDisplayName = useCallback((conn: any): string => {
+    if (!conn) return 'Unknown';
+    const connectionsFromSameSpreadsheet = googleSheetsConnections.filter(
+      (c: any) => c.spreadsheetId === conn.spreadsheetId
+    );
+    const hasMultipleTabs = connectionsFromSameSpreadsheet.length > 1;
+
+    if (hasMultipleTabs) {
+      if (conn.sheetName) return `${conn.sheetName} - ${conn.spreadsheetName || 'Sheet'}`;
+      const tabIndex = connectionsFromSameSpreadsheet.findIndex((c: any) => c.id === conn.id) + 1;
+      return `${conn.spreadsheetName || 'Sheet'} (Tab ${tabIndex})`;
+    }
+    if (conn.sheetName) return `${conn.spreadsheetName || 'Sheet'} (${conn.sheetName})`;
+    return conn.spreadsheetName || 'Sheet';
+  }, [googleSheetsConnections]);
+
+  const activeGoogleSheetsSourceScope = useMemo<GoogleSheetsAnalysisSourceScope | null>(() => {
+    if (!activeSpreadsheetId) return null;
+    if (activeSpreadsheetId === 'combined') {
+      return {
+        platform: "google_sheets",
+        scopeType: "combined",
+        activeSpreadsheetId,
+        connectionId: null,
+        connectionIds: googleSheetsConnections.map((conn: any) => String(conn.id)).filter(Boolean),
+        spreadsheetId: null,
+        spreadsheetName: "Combined",
+        sheetName: null,
+        displayName: "All Sheets (Combined)",
+      };
+    }
+
+    const [spreadsheetId, ...identifierParts] = activeSpreadsheetId.split(':');
+    const identifier = identifierParts.join(':') || null;
+    const activeConn = googleSheetsConnections.find((conn: any) =>
+      conn.spreadsheetId === spreadsheetId &&
+      (identifier === null || conn.sheetName === identifier || conn.id === identifier)
+    );
+    if (!activeConn) return null;
+
+    return {
+      platform: "google_sheets",
+      scopeType: "single",
+      activeSpreadsheetId,
+      connectionId: activeConn.id || null,
+      spreadsheetId: activeConn.spreadsheetId || spreadsheetId || null,
+      spreadsheetName: activeConn.spreadsheetName || null,
+      sheetName: activeConn.sheetName || null,
+      displayName: getGoogleSheetsConnectionDisplayName(activeConn),
+    };
+  }, [activeSpreadsheetId, getGoogleSheetsConnectionDisplayName, googleSheetsConnections]);
 
   // Handle sheet selection change with smooth transition
   const handleSheetChange = useCallback((value: string) => {
@@ -1504,7 +1568,7 @@ export default function GoogleSheetsData() {
 
     text(opts.reportName || reportForm.name || "Google Sheets Report", margin, y, 16, "bold");
     y += 8;
-    text(`Source: ${sheetsData?.spreadsheetName || "Google Sheets"}`, margin, y, 9);
+    text(`Source: ${activeGoogleSheetsSourceScope?.displayName || sheetsData?.spreadsheetName || "Google Sheets"}`, margin, y, 9);
     y += 6;
     text(`Rows: ${(sheetsData?.filteredRows ?? sheetsData?.totalRows ?? 0).toLocaleString()} | Generated: ${new Date().toLocaleString()}`, margin, y, 9);
     y += 10;
@@ -2041,37 +2105,7 @@ export default function GoogleSheetsData() {
                       ) : (
                         <>
                           <FileSpreadsheet className="w-3 h-3 mr-1" />
-                          Active: {(() => {
-                          // Parse activeSpreadsheetId to find the correct connection
-                          const [spreadsheetId, identifier] = activeSpreadsheetId?.includes(':') 
-                            ? activeSpreadsheetId.split(':') 
-                            : [activeSpreadsheetId, null];
-                          const activeConn = googleSheetsConnections.find((conn: any) => 
-                            conn.spreadsheetId === spreadsheetId && 
-                            (identifier === null || conn.sheetName === identifier || conn.id === identifier)
-                          );
-                          if (!activeConn) return 'Unknown';
-                          
-                          // Show tab name prominently if multiple tabs from same spreadsheet
-                          const connectionsFromSameSpreadsheet = googleSheetsConnections.filter(
-                            (c: any) => c.spreadsheetId === activeConn.spreadsheetId
-                          );
-                          const hasMultipleTabs = connectionsFromSameSpreadsheet.length > 1;
-                          
-                          if (hasMultipleTabs) {
-                            if (activeConn.sheetName) {
-                              return `${activeConn.sheetName} - ${activeConn.spreadsheetName || 'Sheet'}`;
-                            } else {
-                              const tabIndex = connectionsFromSameSpreadsheet.findIndex((c: any) => c.id === activeConn.id) + 1;
-                              return `${activeConn.spreadsheetName || 'Sheet'} (Tab ${tabIndex})`;
-                            }
-                          } else {
-                            if (activeConn.sheetName) {
-                              return `${activeConn.spreadsheetName || 'Sheet'} (${activeConn.sheetName})`;
-                            }
-                            return activeConn.spreadsheetName || 'Sheet';
-                          }
-                          })()}
+                          Active: {activeGoogleSheetsSourceScope?.displayName || 'Unknown'}
                         </>
                       )}
                     </Badge>

@@ -73,10 +73,13 @@ Required adapter fields:
 - `queryKeys`: all queries that must be invalidated/refetched after create, update, delete, refresh, or import.
 - `reportSections`: Overview, KPIs, Benchmarks, Ad Comparison, Insights, and any approved platform-specific sections.
 - `sourceRows`: persisted selected source rows that back the visible metrics.
+- `sourceScope`: when a platform has selectable sub-sources, properties, accounts, spreadsheets, tabs, datasets, or views, the stable selected source identity that backs a saved KPI, Benchmark, or Report.
 
 Adapter rules:
 
 - Current values must come from persisted selected source rows or validated platform-scoped financial rows.
+- If the analytics page has a dropdown or selector for active sub-source/dataset analysis, saved KPI, Benchmark, and Report rows must persist the selected source scope at create/update time and continue resolving from that saved scope after the selector changes.
+- Page-level selectors may control live Overview/Summary/Insights analysis, but they must not silently change the source scope of existing saved KPI, Benchmark, Report, scheduled report, alert, or snapshot records.
 - Revenue-dependent metrics must remain unavailable until platform-scoped attributed revenue exists.
 - Spend-dependent metrics must remain unavailable until platform-scoped spend exists.
 - Missing current values must render unavailable or blank with a reason; do not write or display invented zeroes.

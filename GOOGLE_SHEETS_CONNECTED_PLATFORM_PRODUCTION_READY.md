@@ -92,6 +92,8 @@ Google Sheets is production-ready only when all of the following are true:
 - Google Sheets child connections used by another platform's revenue/spend wizard do not appear as main Connected Platforms unless Google Sheets was explicitly connected as a main platform.
 - Google Sheets analytics reads only active, campaign-scoped, selected Google Sheets connection rows.
 - Metrics shown in Overview, KPIs, Benchmarks, Insights, Reports, and Campaign DeepDive are sourced from selected sheet rows and mapped/detected metric columns for that connection.
+- The Google Sheets page dropdown is the active analysis dataset selector for live sheet-derived surfaces; it must not silently change the source scope of already-saved KPI, Benchmark, or Report records.
+- Saved Google Sheets KPIs, Benchmarks, and Reports persist their own sheet/tab source scope in existing configuration fields and resolve current values from that saved source scope.
 - Missing or unmapped metrics render unavailable with reasons, not zero-filled conclusions.
 - Total Revenue is available only when an explicit Google Sheets revenue mapping is configured for the Google Sheets platform context or the platform-specific child context being used.
 - ROI and ROAS remain unavailable until both confirmed revenue and spend are available from the same approved Google Sheets source scope.
@@ -105,6 +107,7 @@ Google Sheets is production-ready only when all of the following are true:
 Google Sheets may provide:
 
 - Custom numeric metrics from selected active sheet rows.
+- Saved KPI, Benchmark, and Report current values from the saved Google Sheets source scope attached to that object.
 - Spend when a mapped spend column is explicitly selected for the Google Sheets source scope.
 - Revenue when a mapped revenue column is explicitly selected for the Google Sheets source scope.
 - Conversions, leads, impressions, clicks, sessions, users, or other metrics only when those columns exist and are selected/mapped for the campaign source.
@@ -116,6 +119,7 @@ Google Sheets must not provide:
 - Paid-media metrics from another main platform unless those values are physically present in the selected sheet rows and explicitly mapped for Google Sheets.
 - Revenue from another platform's attributed revenue child source unless the active Google Sheets platform scope explicitly owns that source.
 - Campaign-wide generic totals from unrelated sources.
+- KPI, Benchmark, or scheduled Report values from whichever sheet/tab is currently selected in the dropdown when the saved object has its own persisted Google Sheets source scope.
 - Placeholder campaign splits.
 - Unscoped values from inactive, deleted, stale, or child-only sheet connections.
 - ROI or ROAS from Pipeline Proxy.
@@ -439,6 +443,7 @@ Status:
   - Explicit numeric sheet columns such as Revenue, Spend, ROI, and ROAS are selectable as source-backed Google Sheets KPI metrics without feeding Campaign DeepDive confirmed financial totals.
   - Existing KPI rows whose metric is missing render as unavailable and are excluded from KPI summary scoring instead of falling back to saved values.
   - KPI section now follows the GA4-style header, Create KPI action, summary tracker, edit/delete controls, immediate alert-frequency default, and alert settings layout.
+  - Known remaining source-scope gap tracked in Commit 12: saved KPI rows must persist the sheet/tab source selected at creation/edit time and continue evaluating against that saved source after the page dropdown changes.
   - Follow-up root cause: the Google Sheets KPI performance tracker and KPI cards still used local pre-template status buckets/card markup after the source-backed KPI adapter was added.
   - Follow-up fix: Google Sheets KPI tracker now uses the same GA4 `+/-5%` target banding and shared KPI math helpers, and KPI cards now follow the GA4 icon/header, current/target panel, progress bar, and target-delta pattern.
 - [x] Regression guard added in `server/source-safety-regression.test.ts`.
@@ -500,6 +505,7 @@ Status:
   - Benchmark cards now follow the GA4 icon/header, metric badge, Current/Benchmark panel, progress bar, performance delta, alert indicator, edit action, and delete confirmation pattern.
   - Existing Benchmark rows whose metric is missing render as unavailable and are excluded from Benchmark summary scoring instead of falling back to saved current values.
   - Explicit numeric sheet columns such as Revenue, Spend, ROI, and ROAS are selectable as source-backed Google Sheets Benchmark metrics without feeding Campaign DeepDive confirmed financial totals.
+  - Known remaining source-scope gap tracked in Commit 12: saved Benchmark rows must persist the sheet/tab source selected at creation/edit time and continue evaluating against that saved source after the page dropdown changes.
   - Alert settings keep the existing Google Sheets platform Benchmark routes and use the GA4 immediate default for new Benchmark alerts.
   - Intentional Google Sheets-specific deviation: free-form `Create Custom Benchmark` is not exposed in this Commit 7 scope because Google Sheets Benchmark current values must be source-backed from selected sheet columns; adding a manual-current Benchmark path would violate the source-backed rule.
   - Follow-up root cause: Google Sheets Benchmark create/update normalized `benchmarkValue` and source-backed `currentValue` to numbers, but the shared Benchmark insert schema expects decimal fields as strings, causing the backend to reject creates with `Invalid benchmark data`.
@@ -541,7 +547,7 @@ Validation:
 
 - Create, edit, delete, download, and schedule report flows match GA4 behavior.
 - Report cards use Download/Pencil/Trash icons and delete confirmation.
-- Report output uses selected Google Sheets current values, KPI rows, and Benchmark rows.
+- Report output uses selected Google Sheets current values for unsaved immediate reports and the saved Google Sheets source scope for saved/scheduled reports.
 - Scheduled reports do not send or snapshot when campaign/source scope is invalid.
 - Regression test fails if any locally assertable Reports template behavior is missing.
 - Any Reports template item not validated in code/browser must remain documented as pending or as an intentional deviation.
@@ -561,6 +567,7 @@ Status:
   - Scheduled report create/update now sends schedule fields in the shared route contract shape and includes the browser IANA time zone.
   - Browser/download PDF generation uses the current loaded Google Sheets metric adapter plus current KPI/Benchmark rows instead of saved KPI/Benchmark current values.
   - Scheduled/test/direct snapshot PDF generation now uses a Google Sheets-specific source-backed builder from cached sheet rows and current platform KPI/Benchmark rows; Google Sheets reports are included in scheduler selection and fail closed when source-backed output cannot be built.
+  - Known remaining source-scope gap tracked in Commit 12: saved/scheduled Reports must persist the sheet/tab source selected at creation/edit time and keep using that saved source after the page dropdown changes.
   - Intentional Google Sheets-specific deviation: Ad Comparison remains visible but disabled/unavailable until a source contract supplies ad-level rows; this is documented in the UI and covered by regression.
 - [x] Regression guard added in `server/source-safety-regression.test.ts`.
 - [x] Local validation passed: `npm test -- server/source-safety-regression.test.ts`.
@@ -655,7 +662,7 @@ Status:
   - Total Spend appears as its own card with a `+` action and `Sources (#)` dialog.
   - The Total Spend `+` action opens the shared spend source chooser and saves Google-Sheets-scoped spend sources.
   - Financial cards no longer flash false `Not connected`, `Unavailable`, or `Not configured` content on page refresh.
-  - The `Selected Campaigns` provenance card shows explicit selected Google Sheets source values, such as `yesop_prospecting`, and does not show the MimoSaaS campaign name such as `GS1`.
+  - The `Selected Campaigns` provenance card shows explicit selected Google Sheets source values, such as `yesop_prospecting`, or a user-entered display label saved on the source mapping. It does not auto-infer unrelated MimoSaaS campaign names such as `GS1`.
 
 ### Commit 10: Refresh, Scheduler, Token, And Cache Safety
 
@@ -748,9 +755,82 @@ Status:
 - [x] Commit 11 follow-up validation passed locally: `npm run check`.
 - [x] Commit 11 follow-up validation passed locally: `git diff --check`.
 - [x] Commit 11 follow-up full regression suite passed: `npm test` with 74 files and 656 tests.
-- [x] Browser/deployed validation passed after deploy for delete, reconnect, primary/source change lifecycle behavior, and empty create-mode Google Sheets revenue/spend add-source flows.
+- [x] Commit 11 selected-campaign display-label follow-up completed locally:
+  - Root cause: the Selected Campaigns provenance card already read optional `campaignDisplayName`, but only part of the Google Sheets financial setup flow persisted that display-only alias. CSV revenue, CSV spend, HubSpot, Salesforce, and Shopify selected-value sources still saved only raw source-system values, and Google Sheets spend had UI state without matching sheet-spend save persistence.
+  - Fix: selected-value revenue/spend wizards now expose `Selected Campaigns label` only after explicit campaign/source values are selected and persist the label as `mappingConfig.campaignDisplayName`.
+  - Fix: server save routes for HubSpot, Salesforce, and Shopify persist the label into existing source mapping metadata while retaining raw `selectedValues` for filters and calculations.
+  - Analytics safety: the label is display-only. It is not used for row matching, CRM/ecommerce filters, spend/revenue totals, Pipeline Proxy, ROI, or ROAS.
+- [x] Commit 11 selected-campaign display-label validation passed locally: `npm test -- --run server/google-sheets-aggregate-source.test.ts`, `npm run check`, `git diff --check`, and full `npm test` with 74 files and 657 tests.
+- [x] Browser/deployed validation passed after deploy for delete, reconnect, primary/source change lifecycle behavior, empty create-mode Google Sheets revenue/spend add-source flows, and selected-campaign display labels.
 
-### Commit 12: Final Local Regression And Evidence
+### Commit 12: Analysis Source Scope Persistence For Saved Objects
+
+Goal:
+
+- Make the Google Sheets sheet/tab dropdown the active analysis context without letting saved KPIs, Benchmarks, or Reports silently drift when the user later selects a different sheet.
+
+Root cause:
+
+- The page-level dropdown currently controls the `sheetsData` query used by Overview, Summary, Insights, KPI/Benchmark metric options, and Report metric options.
+- Saved KPI, Benchmark, and Report rows are campaign-level records, but Google Sheets saved objects do not yet persist the exact sheet/tab scope they were created against.
+- That means a KPI created from Sheet A can later be evaluated against Sheet B if the user changes the dropdown and Sheet B has a same-named metric column.
+- This violates the source-backed contract because the saved object no longer has a stable source boundary.
+
+Correct product model:
+
+- The dropdown should be renamed conceptually to `Analyze Sheet/Tab` and should define the active analysis dataset for live/unsaved sheet-derived surfaces.
+- Overview raw spreadsheet table, Summary, and Insights use the currently selected analysis sheet/tab.
+- KPI, Benchmark, and Report create flows use the currently selected analysis sheet/tab as the default source scope.
+- Saved KPI rows, Benchmark rows, and scheduled/saved Reports must persist their own Google Sheets source scope and resolve current values from that saved scope, not whichever sheet is currently selected in the dropdown.
+- The UI may still list all campaign-level saved KPI/Benchmark/Report rows, but each row/card must display the saved source, such as `Source: B2B - ROI_ROAS_Calculations`.
+- If a saved source is missing, disconnected, inactive, or no longer has the selected metric, the row must show unavailable with a clear reason instead of falling back to the current dropdown sheet or saved stale `currentValue`.
+
+Implementation approach:
+
+- 12A: Define a Google Sheets source-scope object using existing fields and stable identifiers:
+  - `platform: "google_sheets"`
+  - `scopeType: "single" | "combined"`
+  - `activeSpreadsheetId`
+  - `connectionId`
+  - `spreadsheetId`
+  - `spreadsheetName`
+  - `sheetName`
+  - `displayName`
+- 12B: Use a stable `connectionId` for single-tab dropdown values where possible; keep backward-compatible parsing for legacy `spreadsheetId:sheetName` and `spreadsheetId:connectionId` URL values.
+- 12C: Persist the source-scope object in KPI `calculationConfig` on create/update.
+- 12D: Persist the source-scope object in Benchmark `calculationConfig` on create/update.
+- 12E: Persist the source-scope object in Report `configuration` for saved and scheduled reports.
+- 12F: Update KPI current-value resolution so saved source scope wins over the current dropdown; legacy rows without source scope may fall back to the current analysis sheet and should display a legacy/current-sheet notice.
+- 12G: Update Benchmark current-value resolution using the same saved-source rule.
+- 12H: Update report download/scheduled generation so saved reports use their saved source scope and unsaved immediate reports use the current analysis sheet.
+- 12I: Add source labels to KPI, Benchmark, and Report cards.
+- 12J: Add fail-closed unavailable reasons for missing source, disconnected source, deleted source, inactive source, and metric-not-found-in-saved-source.
+- 12K: Add regression coverage for saved-source persistence, dropdown-change stability, legacy fallback, report configuration scope, and unavailable reasons.
+
+Validation:
+
+- Create a KPI while Sheet A is selected, switch to Sheet B, and confirm the KPI still evaluates from Sheet A.
+- Create a Benchmark while Sheet A is selected, switch to Sheet B, and confirm the Benchmark still evaluates from Sheet A.
+- Create or schedule a Report while Sheet A is selected, switch to Sheet B, and confirm saved report generation still uses Sheet A.
+- Create an unsaved immediate report from the current dropdown and confirm it uses the currently selected sheet.
+- Confirm KPI/Benchmark/Report cards show their saved source label.
+- Disconnect/delete the saved source and confirm affected rows become unavailable with clear reasons.
+- Confirm legacy KPI/Benchmark rows without saved source scope retain backward-compatible current-analysis-sheet fallback and are visibly marked as using the current analysis sheet until edited/resaved.
+- Confirm Overview, Summary, and Insights still update when the dropdown changes.
+
+Status:
+
+- [x] Commit 12A completed locally:
+  - Root cause: the Google Sheets analytics page had an `activeSpreadsheetId` string and repeated local parsing, but no structured source-scope object that later KPI, Benchmark, or Report persistence work could safely reuse.
+  - Fix: the frontend now defines `GoogleSheetsAnalysisSourceScope` and resolves `activeGoogleSheetsSourceScope` from the current page dropdown selection.
+  - Scope fields include platform, `single` versus `combined`, active dropdown value, connection ID, spreadsheet ID, spreadsheet name, sheet name, display name, and combined connection IDs.
+  - Safety: Commit 12A does not persist source scope to KPI `calculationConfig`, Benchmark `calculationConfig`, or Report `configuration`; those behavior changes remain pending in Commit 12C-12H.
+  - Display-only use: the active source badge and immediate PDF source label now read from the resolved source-scope display name.
+- [x] Commit 12A validation passed locally: `npm test -- --run server/google-sheets-aggregate-source.test.ts`.
+- [x] Commit 12A validation passed locally: `npm run check`.
+- [ ] Commit 12B-12K remain pending.
+
+### Commit 13: Final Local Regression And Evidence
 
 Goal:
 
@@ -758,13 +838,14 @@ Goal:
 
 Subcommits:
 
-- 12A: Run targeted Google Sheets source safety tests.
-- 12B: Run shared revenue/spend source tests.
-- 12C: Run Campaign DeepDive aggregate tests after Google Sheets aggregate wiring.
-- 12D: Run KPI/Benchmark/Report section template regression tests that enforce every locally assertable applicable item from `CONNECTED_PLATFORM_SECTION_TEMPLATES.md`.
-- 12E: Run `npm run check`.
-- 12F: Record browser validation evidence for Create Campaign and Connected Platforms paths.
-- 12G: Reconcile the final Google Sheets implementation against `CONNECTED_PLATFORM_SECTION_TEMPLATES.md` item by item and leave no applicable item unmarked. Each item must be implemented, regression-covered, browser/provider-validated, or documented as an intentional Google Sheets-specific deviation.
+- 13A: Run targeted Google Sheets source safety tests.
+- 13B: Run shared revenue/spend source tests.
+- 13C: Run Campaign DeepDive aggregate tests after Google Sheets aggregate wiring.
+- 13D: Run KPI/Benchmark/Report section template regression tests that enforce every locally assertable applicable item from `CONNECTED_PLATFORM_SECTION_TEMPLATES.md`.
+- 13E: Run `npm run check`.
+- 13F: Record browser validation evidence for Create Campaign and Connected Platforms paths.
+- 13G: Reconcile the final Google Sheets implementation against `CONNECTED_PLATFORM_SECTION_TEMPLATES.md` item by item and leave no applicable item unmarked. Each item must be implemented, regression-covered, browser/provider-validated, or documented as an intentional Google Sheets-specific deviation.
+- 13H: Confirm Commit 12 source-scope persistence evidence is complete before final-readiness status is considered.
 
 Validation:
 
@@ -778,7 +859,7 @@ Status:
 
 - [ ] Pending.
 
-### Commit 13: Live Google OAuth/Provider Validation
+### Commit 14: Live Google OAuth/Provider Validation
 
 Goal:
 
@@ -786,13 +867,13 @@ Goal:
 
 Subcommits:
 
-- 13A: Live OAuth start/callback validation.
-- 13B: Spreadsheet discovery validation.
-- 13C: Tab selection and mapping validation.
-- 13D: Token refresh validation.
-- 13E: Raw data refresh validation.
-- 13F: Scheduled report/provider evidence.
-- 13G: Final live-readiness documentation update.
+- 14A: Live OAuth start/callback validation.
+- 14B: Spreadsheet discovery validation.
+- 14C: Tab selection and mapping validation.
+- 14D: Token refresh validation.
+- 14E: Raw data refresh validation.
+- 14F: Scheduled report/provider evidence.
+- 14G: Final live-readiness documentation update.
 
 Validation:
 
@@ -835,10 +916,16 @@ Analytics:
 - [x] Commit 7 Benchmark browser validation passed after deploy for metric tiles, read-only source-backed Current Value, successful Create Benchmark save, count edit-prefill formatting, GA4 `90% / 70%` tracker thresholds, and GA4-pattern Benchmark cards.
 - [x] Google Sheets Total Revenue follows the Meta-pattern confirmed revenue source boundary for the Commit 9 scope.
 - [x] Commit 9 browser validation passed after deploy for persistent Total Revenue card rendering, explicit confirmed revenue mapping, `Sources (1)` source dialog access, and campaign-lifetime revenue totals via `dateRange=all`.
-- [x] Commit 9 browser validation passed after deploy for Pipeline Proxy separation, ROAS/ROI requiring confirmed revenue plus confirmed spend, the separate Total Spend card and source dialog, Google-Sheets-scoped spend wizard behavior, seamless financial-card loading, and selected-campaign provenance that excludes the MimoSaaS campaign name.
+- [x] Commit 9 browser validation passed after deploy for Pipeline Proxy separation, ROAS/ROI requiring confirmed revenue plus confirmed spend, the separate Total Spend card and source dialog, Google-Sheets-scoped spend wizard behavior, seamless financial-card loading, and selected-campaign provenance that uses explicit source values rather than auto-inferred MimoSaaS campaign names.
 - [ ] Insights and Reports use current source-backed values.
 - [x] Commit 10 browser validation passed after deploy for refresh/scheduler/cache scope: manual refresh and scheduled refresh preserve main/general Google Sheets source scope and Google-Sheets-scoped confirmed financial sources.
 - [ ] Reports and scheduled reports use latest values.
+- [ ] Commit 12: Saved KPI rows persist and display their Google Sheets sheet/tab source scope.
+- [ ] Commit 12: Saved Benchmark rows persist and display their Google Sheets sheet/tab source scope.
+- [ ] Commit 12: Saved and scheduled Reports persist their Google Sheets sheet/tab source scope.
+- [ ] Commit 12: Changing `Analyze Sheet/Tab` updates Overview, Summary, and Insights but does not change existing saved KPI, Benchmark, or Report source scope.
+- [ ] Commit 12: Saved objects whose source is missing, inactive, disconnected, deleted, or missing the selected metric render unavailable with explicit reasons and do not fall back to the current dropdown sheet.
+- [ ] Commit 12: Legacy KPI/Benchmark rows without saved source scope retain a documented current-analysis-sheet fallback until edited/resaved.
 
 DeepDive:
 
@@ -854,6 +941,7 @@ Lifecycle:
 - [x] Commit 11 local regression: reconnect and replacement paths clear stale cached rows/mappings.
 - [x] Commit 11 browser validation passed after deploy for delete, reconnect, and primary/source change lifecycle behavior.
 - [x] Commit 11 browser validation passed after deploy for empty Google Sheets Total Revenue/Total Spend create-mode source flows; new Google Sheets revenue source creation opens the spreadsheet picker instead of a saved tab dropdown.
+- [x] Commit 11 browser validation passed after deploy for selected-campaign display labels; labels are provenance display metadata only and do not affect source matching or financial totals.
 - [x] Token refresh and data refresh preserve source scope for the Commit 10 refresh/scheduler/cache boundary.
 
 ## Production-Ready Exit Criteria
@@ -864,6 +952,7 @@ Google Sheets can be marked locally production-ready only when:
 - Create Campaign and Connected Platforms setup paths are validated.
 - Analytics values come only from selected active Google Sheets source rows.
 - KPIs, Benchmarks, and Reports follow the GA4 template contract.
+- Saved KPI, Benchmark, and Report values resolve from each saved object's persisted Google Sheets source scope, not the current page dropdown.
 - Total Revenue and Pipeline Proxy follow the Meta template contract where supported.
 - Every applicable item in `CONNECTED_PLATFORM_SECTION_TEMPLATES.md` has been traced and marked implemented, regression-covered, browser/provider-validated, or documented as an intentional Google Sheets-specific deviation.
 - Regression coverage enforces every locally assertable required template behavior instead of only checking for high-level labels or absence of old UI.
@@ -893,6 +982,7 @@ Google Sheets can be marked locally production-ready only when:
 
 ## Latest Validation
 
+- Tracker plan update: Google Sheets saved-object sheet/tab source scope is now a required Commit 12 implementation before final regression. Final local regression moves to Commit 13, and live Google OAuth/provider validation moves to Commit 14.
 - Tracker guard update: remaining Google Sheets section commits must treat `CONNECTED_PLATFORM_SECTION_TEMPLATES.md` as a strict checklist, trace every applicable item, and add regression coverage for every locally assertable required behavior before any section can be marked complete.
 - Commit 1 tracker created locally after reading required project guidance and tracing current Google Sheets code paths.
 - Commit 2 Connected Platforms source-identity slice completed locally: main Google Sheets platform status now uses the campaign-level Google Sheets eligibility flag instead of any active Google Sheets connection.
@@ -1044,7 +1134,7 @@ Google Sheets can be marked locally production-ready only when:
   - Total Spend appears as a separate card and uses Google-Sheets-scoped spend sources.
   - The Total Spend `+` action opens the shared spend source chooser and saves scoped spend sources.
   - Financial cards no longer flash false disconnected/unavailable text during initial page refresh.
-  - Selected Campaigns shows explicit selected Google Sheets source values and does not show the MimoSaaS campaign name.
+  - Selected Campaigns shows explicit selected Google Sheets source values or a user-entered display label and does not auto-infer the MimoSaaS campaign name.
 - Commit 10 refresh/scheduler/cache safety completed locally:
   - Root cause: raw Google Sheets cache refresh used every active campaign Google Sheets connection, while the UI and aggregate adapter read only main/general connections.
   - Fix: raw cache refresh now fails closed unless Google Sheets is a main campaign platform and then refreshes only active main/general connections.
@@ -1068,8 +1158,13 @@ Google Sheets can be marked locally production-ready only when:
   - Shared revenue and spend source modals now reset create-mode state on open while preserving edit-mode prefill.
   - New Google Sheets revenue create mode now opens the spreadsheet picker (`Select Your Spreadsheet` or `Connect Google Sheets`) instead of the saved tab dropdown when no new connection is selected.
 - Commit 11 follow-up validation passed locally: `npm test -- --run server/google-sheets-aggregate-source.test.ts server/tiktok-create-campaign-regression.test.ts`, `npm run check`, `git diff --check`, and full `npm test` with 74 files and 656 tests.
+- Commit 11 selected-campaign display-label follow-up completed locally:
+  - Source setup wizards now allow a display-only `Selected Campaigns label` after explicit campaign/source values are selected for Google Sheets/CSV revenue and spend, HubSpot, Salesforce, and Shopify.
+  - Server mapping persistence keeps `campaignDisplayName` as metadata only; raw selected source values remain the filter/matching keys.
+- Commit 11 selected-campaign display-label validation passed locally: `npm test -- --run server/google-sheets-aggregate-source.test.ts`, `npm run check`, `git diff --check`, and full `npm test` with 74 files and 657 tests.
 - Commit 11 browser/deployed validation passed after deploy:
   - Deleting a Google Sheets connection/source leaves unrelated campaign/platform sources intact.
   - Reconnect/select current spreadsheet/tab does not show old cached rows or old mappings.
   - Primary/source selection changes visible metrics only to the selected active connection.
   - Total Revenue and Total Spend `+` add-source flows open with empty create state, and Google Sheets revenue source creation opens the spreadsheet picker instead of a saved tab dropdown.
+  - Selected Campaigns shows the user-entered display label when provided and totals remain unchanged because the label is not used for matching or calculations.

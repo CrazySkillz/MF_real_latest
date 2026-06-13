@@ -242,4 +242,18 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("n.includes('roi')");
     expect(page).toContain("n.includes('cac') || n.includes('cpl')");
   });
+
+  it("defines an active Google Sheets analysis source scope for saved-object persistence follow-up", () => {
+    const page = readSource("client", "src", "pages", "google-sheets-data.tsx");
+
+    expect(page).toContain("type GoogleSheetsAnalysisSourceScope");
+    expect(page).toContain("const activeGoogleSheetsSourceScope = useMemo<GoogleSheetsAnalysisSourceScope | null>");
+    expect(page).toContain('scopeType: "combined"');
+    expect(page).toContain('scopeType: "single"');
+    expect(page).toContain("connectionIds: googleSheetsConnections.map");
+    expect(page).toContain("connectionId: activeConn.id || null");
+    expect(page).toContain("displayName: getGoogleSheetsConnectionDisplayName(activeConn)");
+    expect(page).toContain("Active: {activeGoogleSheetsSourceScope?.displayName || 'Unknown'}");
+    expect(page).toContain('Source: ${activeGoogleSheetsSourceScope?.displayName || sheetsData?.spreadsheetName || "Google Sheets"}');
+  });
 });

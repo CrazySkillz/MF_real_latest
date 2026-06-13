@@ -237,8 +237,11 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(routes).toContain("derived_spend_per_customer");
     expect(routes).toContain("detectedColumns: campaignData.detectedColumns");
     expect(page).toContain("getSummaryMetricDisplayValue(col)");
+    expect(page).toContain("getSummaryMetricBusinessPriority");
+    expect(page).toContain("getExecutiveSummaryColumns");
     expect(page).toContain("!isSummaryIdentifierColumn(col?.name || \"\")");
     expect(page).toContain("{displayColumns.length} metrics");
+    expect(page).toContain("return executiveColumns.length > 0 ? executiveColumns : candidates;");
     expect(page).toContain("n.includes('roi')");
     expect(page).toContain("n.includes('cac') || n.includes('cpl')");
   });

@@ -1867,6 +1867,32 @@ export default function GoogleSheetsData() {
     return Number.isFinite(total) ? total : 0;
   }
 
+  function getSummaryMetricBusinessPriority(colName: string): number | null {
+    const n = String(colName || "").trim().toLowerCase().replace(/[_-]+/g, " ");
+    const priorities: Array<[RegExp, number]> = [
+      [/\brevenue\b|\bsales\b|\bconversion value\b/, 10],
+      [/\bspend\b|\bcost\b|\bbudget\b/, 20],
+      [/\broas\b|\breturn on ad spend\b/, 30],
+      [/\broi\b|\breturn on investment\b/, 40],
+      [/\bpipeline\b/, 50],
+      [/\bcac\b|\bcpa\b|\bcpl\b|\bcpc\b|\bcpm\b|\bcost per\b/, 60],
+      [/\bcustomers?\b|\bleads?\b|\bconversions?\b|\bmql\b|\bsql\b|\bopportunit/, 70],
+      [/\bclicks?\b|\bimpressions?\b|\breach\b|\bviews?\b|\bsessions?\b|\busers?\b/, 80],
+      [/\bctr\b|\bcvr\b|\bconversion rate\b|\brate\b|%/, 90],
+    ];
+    return priorities.find(([pattern]) => pattern.test(n))?.[1] ?? null;
+  }
+
+  function getExecutiveSummaryColumns(cols: GoogleSheetsSummaryColumn[]) {
+    const candidates = cols.filter((col: any) => !isSummaryIdentifierColumn(col?.name || ""));
+    const executiveColumns = candidates
+      .map((col) => ({ col, priority: getSummaryMetricBusinessPriority(col.name) }))
+      .filter((item): item is { col: GoogleSheetsSummaryColumn; priority: number } => item.priority !== null)
+      .sort((a, b) => a.priority - b.priority || a.col.name.localeCompare(b.col.name))
+      .map((item) => item.col);
+    return executiveColumns.length > 0 ? executiveColumns : candidates;
+  }
+
   function formatSummaryValue(value: number, colType: string, colName: string): string {
     const n = colName.toLowerCase();
     if (n.includes('%') || n.includes('rate') || n.includes('ctr') || n.includes('cvr') || n.includes('roi')) {
@@ -1915,7 +1941,10 @@ export default function GoogleSheetsData() {
       }
     }
     if (hero.length > 4) {
-      hero.sort((a, b) => getSummaryMetricDisplayValue(b) - getSummaryMetricDisplayValue(a));
+      hero.sort((a, b) =>
+        (getSummaryMetricBusinessPriority(a.name) ?? 999) - (getSummaryMetricBusinessPriority(b.name) ?? 999)
+        || getSummaryMetricDisplayValue(b) - getSummaryMetricDisplayValue(a)
+      );
       supporting.unshift(...hero.splice(4));
     }
     return { hero, supporting };
@@ -2318,7 +2347,7 @@ export default function GoogleSheetsData() {
                       }
 
                       return sections.map((section) => {
-                        const displayColumns = (section.detectedColumns || []).filter((col: any) => !isSummaryIdentifierColumn(col?.name || ""));
+                        const displayColumns = getExecutiveSummaryColumns(section.detectedColumns || []);
                         const { hero, supporting } = classifyColumns(displayColumns);
 
                         return (

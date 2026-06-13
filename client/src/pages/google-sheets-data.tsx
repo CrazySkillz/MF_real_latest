@@ -2983,11 +2983,6 @@ export default function GoogleSheetsData() {
                                       <div className="min-w-0">
                                         <div className="flex items-center gap-2 mb-1">
                                           <CardTitle className="text-lg truncate">{bm.name}</CardTitle>
-                                          {(bm.metric || bm.metricKey) && (
-                                            <Badge variant="outline" className="bg-muted text-foreground/80 font-mono text-xs shrink-0">
-                                              {bm.metric || bm.metricKey}
-                                            </Badge>
-                                          )}
                                           {bm.alertsEnabled && <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0" />}
                                         </div>
                                         {bm.description && <CardDescription className="text-sm">{bm.description}</CardDescription>}

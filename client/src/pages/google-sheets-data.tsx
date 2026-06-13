@@ -815,6 +815,21 @@ export default function GoogleSheetsData() {
     return Array.from(values);
   }, [activeSpreadsheetId, benchmarksData, getSavedGoogleSheetsSourceScope, kpisData, reportsData]);
 
+  const googleSheetsRowMatchesActiveSource = useCallback((row: any) => {
+    const scope = getSavedGoogleSheetsSourceScope(row);
+    return !scope?.activeSpreadsheetId || scope.activeSpreadsheetId === activeSpreadsheetId;
+  }, [activeSpreadsheetId, getSavedGoogleSheetsSourceScope]);
+
+  const visibleGoogleSheetsKpisData = useMemo(
+    () => (Array.isArray(kpisData) ? kpisData : []).filter(googleSheetsRowMatchesActiveSource),
+    [googleSheetsRowMatchesActiveSource, kpisData]
+  );
+
+  const visibleGoogleSheetsBenchmarksData = useMemo(
+    () => (Array.isArray(benchmarksData) ? benchmarksData : []).filter(googleSheetsRowMatchesActiveSource),
+    [benchmarksData, googleSheetsRowMatchesActiveSource]
+  );
+
   const savedGoogleSheetsSourceQueries = useQueries({
     queries: savedGoogleSheetsSourceValues.map((sourceValue) => ({
       queryKey: ["/api/campaigns", campaignId, "google-sheets-data", sourceValue, "saved-source-scope"],
@@ -1565,7 +1580,7 @@ export default function GoogleSheetsData() {
   }, []);
 
   const googleSheetsKpiTracker = useMemo(() => {
-    const list = Array.isArray(kpisData) ? kpisData : [];
+    const list = visibleGoogleSheetsKpisData;
     let above = 0;
     let near = 0;
     let below = 0;
@@ -1594,7 +1609,7 @@ export default function GoogleSheetsData() {
       blocked,
       avgPct: progressCount > 0 ? progressTotal / progressCount : 0,
     };
-  }, [computeGoogleSheetsKpiProgress, kpisData, parseSheetMetricNumber, resolveGoogleSheetsKpiMetric]);
+  }, [computeGoogleSheetsKpiProgress, parseSheetMetricNumber, resolveGoogleSheetsKpiMetric, visibleGoogleSheetsKpisData]);
 
   const resolveGoogleSheetsBenchmarkMetric = useCallback((benchmark: any) => {
     const metricKey = String(benchmark?.metric || benchmark?.metricKey || "").trim();
@@ -1635,7 +1650,7 @@ export default function GoogleSheetsData() {
   }, []);
 
   const googleSheetsBenchmarkTracker = useMemo(() => {
-    const list = Array.isArray(benchmarksData) ? benchmarksData : [];
+    const list = visibleGoogleSheetsBenchmarksData;
     let onTrack = 0;
     let needsAttention = 0;
     let behind = 0;
@@ -1664,7 +1679,7 @@ export default function GoogleSheetsData() {
       blocked,
       avgPct: progressCount > 0 ? progressTotal / progressCount : 0,
     };
-  }, [benchmarksData, computeGoogleSheetsBenchmarkProgress, parseSheetMetricNumber, resolveGoogleSheetsBenchmarkMetric]);
+  }, [computeGoogleSheetsBenchmarkProgress, parseSheetMetricNumber, resolveGoogleSheetsBenchmarkMetric, visibleGoogleSheetsBenchmarksData]);
 
   const downloadGoogleSheetsReport = async (opts: { reportType: string; configuration?: any; reportName?: string }) => {
     const { jsPDF } = await import("jspdf");
@@ -1724,14 +1739,14 @@ export default function GoogleSheetsData() {
     } else if (reportType === "kpis") {
       text("KPIs", margin, y, 12, "bold");
       y += 8;
-      (Array.isArray(kpisData) ? kpisData : []).forEach((kpi: any) => {
+      visibleGoogleSheetsKpisData.forEach((kpi: any) => {
         const resolved = resolveGoogleSheetsKpiMetric(kpi);
         addRow(String(kpi.name || kpi.metric || "KPI"), `${formatValue(resolved.currentValue, resolved.option?.unit, resolved.option?.type)} / ${formatValue(kpi.targetValue, resolved.option?.unit, resolved.option?.type)}`);
       });
     } else if (reportType === "benchmarks") {
       text("Benchmarks", margin, y, 12, "bold");
       y += 8;
-      (Array.isArray(benchmarksData) ? benchmarksData : []).forEach((benchmark: any) => {
+      visibleGoogleSheetsBenchmarksData.forEach((benchmark: any) => {
         const resolved = resolveGoogleSheetsBenchmarkMetric(benchmark);
         addRow(String(benchmark.name || benchmark.metric || "Benchmark"), `${formatValue(resolved.currentValue, resolved.option?.unit, resolved.option?.type)} / ${formatValue(benchmark.benchmarkValue, resolved.option?.unit, resolved.option?.type)}`);
       });
@@ -1745,12 +1760,12 @@ export default function GoogleSheetsData() {
         addMetrics(selectedMetrics);
       }
       const selectedKpis = new Set([...(selectedConfig.kpis || []), ...(selectedConfig.selectedKpiIds || [])].map(String));
-      (Array.isArray(kpisData) ? kpisData : []).filter((kpi: any) => selectedKpis.has(String(kpi.id))).forEach((kpi: any) => {
+      visibleGoogleSheetsKpisData.filter((kpi: any) => selectedKpis.has(String(kpi.id))).forEach((kpi: any) => {
         const resolved = resolveGoogleSheetsKpiMetric(kpi);
         addRow(`KPI: ${String(kpi.name || kpi.metric || "")}`, formatValue(resolved.currentValue, resolved.option?.unit, resolved.option?.type));
       });
       const selectedBenchmarks = new Set([...(selectedConfig.benchmarks || []), ...(selectedConfig.selectedBenchmarkIds || [])].map(String));
-      (Array.isArray(benchmarksData) ? benchmarksData : []).filter((benchmark: any) => selectedBenchmarks.has(String(benchmark.id))).forEach((benchmark: any) => {
+      visibleGoogleSheetsBenchmarksData.filter((benchmark: any) => selectedBenchmarks.has(String(benchmark.id))).forEach((benchmark: any) => {
         const resolved = resolveGoogleSheetsBenchmarkMetric(benchmark);
         addRow(`Benchmark: ${String(benchmark.name || benchmark.metric || "")}`, formatValue(resolved.currentValue, resolved.option?.unit, resolved.option?.type));
       });
@@ -2753,9 +2768,9 @@ export default function GoogleSheetsData() {
                             </div>
                           )}
 
-                          {(kpisData as any[])?.length > 0 ? (
+                          {visibleGoogleSheetsKpisData.length > 0 ? (
                             <div className="grid gap-6 lg:grid-cols-2">
-                        {(kpisData as any[]).map((kpi: any) => {
+                        {visibleGoogleSheetsKpisData.map((kpi: any) => {
                           const resolved = resolveGoogleSheetsKpiMetric(kpi);
                           const currentVal = resolved.currentValue;
                           const targetVal = parseSheetMetricNumber(kpi.targetValue);
@@ -2941,9 +2956,9 @@ export default function GoogleSheetsData() {
                         </div>
                       )}
 
-                      {(benchmarksData as any[])?.length > 0 ? (
+                      {visibleGoogleSheetsBenchmarksData.length > 0 ? (
                         <div className="grid gap-6 lg:grid-cols-2">
-                          {(benchmarksData as any[]).map((bm: any) => {
+                          {visibleGoogleSheetsBenchmarksData.map((bm: any) => {
                             const resolved = resolveGoogleSheetsBenchmarkMetric(bm);
                             const currentVal = resolved.currentValue;
                             const benchmarkVal = parseSheetMetricNumber(bm.benchmarkValue);
@@ -3470,8 +3485,8 @@ export default function GoogleSheetsData() {
 
                       {/* KPI & Benchmark Gap Analysis */}
                       {(() => {
-                        const kpiList = Array.isArray(kpisData) ? kpisData : [];
-                        const bmList = Array.isArray(benchmarksData) ? benchmarksData : [];
+                        const kpiList = visibleGoogleSheetsKpisData;
+                        const bmList = visibleGoogleSheetsBenchmarksData;
                         const atRiskKpis = kpiList.filter((k: any) => k.status === 'at_risk' || k.status === 'critical');
                         const missedBenchmarks = bmList.filter((b: any) => {
                           const current = parseFloat(String(b.currentValue || '0'));
@@ -4225,8 +4240,8 @@ export default function GoogleSheetsData() {
             expandedSections={expandedCustomReportSections}
             setExpandedSections={setExpandedCustomReportSections}
             detectedColumns={sheetsData?.summary?.detectedColumns || []}
-            kpisData={kpisData}
-            benchmarksData={benchmarksData}
+            kpisData={visibleGoogleSheetsKpisData}
+            benchmarksData={visibleGoogleSheetsBenchmarksData}
             handleTypeSelect={handleReportTypeSelect}
             handleCreate={handleCreateReport}
             handleUpdate={handleUpdateReport}

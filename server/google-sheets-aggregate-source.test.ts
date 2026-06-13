@@ -282,6 +282,11 @@ describe("Google Sheets aggregate source adapter", () => {
     expect((page.match(/sourceScope: activeGoogleSheetsSourceScope/g) || []).length).toBeGreaterThanOrEqual(3);
     expect(page).toContain("configuration: withGoogleSheetsSourceScope(overrides.configuration)");
     expect(page).toContain("const getSavedGoogleSheetsSourceScope = useCallback");
+    expect(page).toContain("const googleSheetsRowMatchesActiveSource = useCallback");
+    expect(page).toContain("const visibleGoogleSheetsKpisData = useMemo");
+    expect(page).toContain("const visibleGoogleSheetsBenchmarksData = useMemo");
+    expect(page).toContain("kpisData={visibleGoogleSheetsKpisData}");
+    expect(page).toContain("benchmarksData={visibleGoogleSheetsBenchmarksData}");
     expect(page).toContain("Saved Google Sheets source scope is missing");
     expect(page).toContain("This KPI metric is not available from the saved Google Sheets source");
     expect(page).toContain("This Benchmark metric is not available from the saved Google Sheets source");

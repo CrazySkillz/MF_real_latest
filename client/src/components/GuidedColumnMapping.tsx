@@ -522,7 +522,7 @@ export function GuidedColumnMapping({
       });
       return;
     }
-    handleSave();
+    handleSave({ includePlatform: false });
   };
 
   const handleBack = () => {
@@ -535,7 +535,8 @@ export function GuidedColumnMapping({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = (opts: { includePlatform?: boolean } = {}) => {
+    const includePlatform = opts.includePlatform !== false;
     const mappings: any[] = [];
     
     // Identifier mapping (campaign_name OR campaign_id) + selected crosswalk value
@@ -603,7 +604,7 @@ export function GuidedColumnMapping({
     }
 
     // Add platform mapping (if selected and not skipped)
-    if (selectedPlatform && !skipPlatform) {
+    if (includePlatform && selectedPlatform && !skipPlatform) {
       const column = detectedColumns.find(c => c.index.toString() === selectedPlatform);
       if (column) {
         mappings.push({
@@ -838,41 +839,6 @@ export function GuidedColumnMapping({
               )}
             </div>
           )}
-
-          <div>
-            <Label className="text-sm font-medium mb-2 block">Platform filter</Label>
-            <Select
-              value={skipPlatform ? "skip" : (selectedPlatform || "")}
-              onValueChange={(value) => {
-                if (value === "skip") {
-                  setSkipPlatform(true);
-                  setSelectedPlatform(null);
-                } else {
-                  setSkipPlatform(false);
-                  setSelectedPlatform(value);
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Optional platform column..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="skip">
-                  <span className="text-muted-foreground">Skip platform filter</span>
-                </SelectItem>
-                {detectedColumns.map((column) => (
-                  <SelectItem key={column.index} value={column.index.toString()}>
-                    <div className="flex items-center justify-between w-full">
-                      <span>{column.originalName}</span>
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        {column.detectedType}
-                      </Badge>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
           <div className="flex justify-end gap-3 border-t border-border pt-4">
             <Button variant="outline" onClick={onCancel}>
@@ -1352,7 +1318,7 @@ export function GuidedColumnMapping({
             <div>
               {currentStep === 'platform' ? (
                 <Button
-                  onClick={handleSave}
+                  onClick={() => handleSave()}
                   disabled={saveMappingsMutation.isPending}
                 >
                   {saveMappingsMutation.isPending ? (

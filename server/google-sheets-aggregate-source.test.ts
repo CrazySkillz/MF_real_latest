@@ -294,6 +294,7 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(guidedMapping).toContain("Save Dataset Setup");
     expect(guidedMapping).toContain("Choose the sheet rows and value column that power this campaign.");
     expect(guidedMapping).toContain("Value column");
+    expect(guidedMapping).toContain("handleSave({ includePlatform: false });");
     expect(kpiModal).toContain("Overview metrics use confirmed Google Sheets financial totals and may include multiple confirmed sources.");
     expect(benchmarkModal).toContain("Sheet column metrics use the selected spreadsheet data only.");
     expect(page).toContain("const categoricalColumns = section.categoricalColumns || [];");

@@ -1602,6 +1602,11 @@ describe("source safety regression guards", () => {
     expect(source).toContain("sourceScope: activeCustomIntegrationSourceScope");
     expect(source).toContain("data-source-backed-current-value={benchmarkFormUsesSourceBackedMetric ? 'custom_integration_benchmark' : undefined}");
     expect(source).not.toContain('data-testid="select-benchmark-metric"');
+    expect(source).not.toContain('data-testid="input-benchmark-industry"');
+    expect(source).not.toContain('data-testid="input-benchmark-source"');
+    expect(source).not.toContain('data-testid="select-benchmark-period"');
+    expect(source).not.toContain('data-testid="select-benchmark-type"');
+    expect(source).not.toContain('data-testid="select-benchmark-confidence"');
     expect(source).not.toContain("current >= benchmarkVal * 1.2");
     expect(source).not.toContain("Progress to Benchmark");
   });

@@ -906,7 +906,20 @@ Validation:
 
 Status:
 
-- [ ] Pending.
+- [x] Commit 13 completed locally for the implemented source-backed Google Sheets scope:
+  - Root cause: Commit 12 and the later dataset simplification had validated runtime behavior, but the final evidence pass still had to prove the completed Google Sheets implementation against source-safety, revenue/spend, aggregate, KPI, Benchmark, Report, Insights, and TypeScript guards.
+  - Follow-up root cause found during Commit 13: removing the visible active/row-count status line also removed the one-line height reserved by the loading layout, causing the top-layout stability regression guard to fail.
+  - Fix: added a hidden one-line spacer under the sheet selector so layout height remains stable without restoring the removed visible status copy.
+  - Evidence 13A/13D/13H: Google Sheets source safety, mapping, Insights, KPI, Benchmark, Report, saved source-scope, unavailable-state, lifecycle, and layout guards passed locally.
+  - Evidence 13B: shared Google Sheets revenue/spend source additivity, source identity, wizard context, and refresh guards passed locally.
+  - Evidence 13C: Campaign DeepDive, Executive Summary, Performance Summary, Platform Comparison, and Campaign Financial Analysis aggregate guards passed locally.
+  - Evidence 13F: Create Campaign, Connected Platforms, Add Dataset, and source-scope browser validations are recorded in earlier completed commits and the validation matrix; live Google provider validation remains Commit 14.
+  - Evidence 13G: applicable Google Sheets KPI, Benchmark, Report, Total Revenue, Pipeline Proxy, mapping, Insights, refresh, lifecycle, and aggregate template items are now recorded as implemented, regression-covered, browser/user validated, or deferred to live provider validation.
+- [x] Commit 13 validation passed locally: `npm test -- --run server/source-safety-regression.test.ts server/google-sheets-aggregate-source.test.ts`.
+- [x] Commit 13 validation passed locally: `npm test -- --run server/revenue-additivity.test.ts server/spend-source-additivity.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-wizard-context.test.ts server/ga4-auto-refresh-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/executive-summary-regression.test.ts server/campaign-performance-overview-regression.test.ts server/performance-summary-insights-regression.test.ts server/platform-comparison-regression.test.ts server/campaign-financial-analysis-regression.test.ts server/report-email-regression.test.ts`.
+- [x] Commit 13 validation passed locally: `npm run check`.
+- [x] Commit 13 full regression passed locally: `npm test` with 74 files and 661 tests.
+- [ ] Live Google OAuth/provider validation remains deferred to Commit 14.
 
 ### Commit 14: Live Google OAuth/Provider Validation
 
@@ -940,19 +953,19 @@ Status:
 
 Create Campaign:
 
-- [ ] Select Google Sheets during campaign creation.
-- [ ] Connect OAuth or approved test connection.
-- [ ] Select spreadsheet and tab.
-- [ ] Finalize campaign.
-- [ ] Confirm Google Sheets appears as a main Connected Platform only for that campaign.
-- [ ] Confirm Google Sheets analytics opens with selected source-backed values.
+- [x] Select Google Sheets during campaign creation.
+- [x] Connect OAuth or approved test connection for the browser-validated setup path; live Google OAuth/provider validation remains Commit 14.
+- [x] Select spreadsheet and tab.
+- [x] Finalize campaign.
+- [x] Confirm Google Sheets appears as a main Connected Platform only for that campaign.
+- [x] Confirm Google Sheets analytics opens with selected source-backed values.
 
 Connected Platforms:
 
-- [ ] Add Google Sheets to an existing campaign.
-- [ ] Select spreadsheet and tab.
-- [ ] Confirm Connected Platforms updates without fake metrics.
-- [ ] Confirm child revenue/spend Google Sheets does not appear as a main platform.
+- [x] Add Google Sheets to an existing campaign.
+- [x] Select spreadsheet and tab.
+- [x] Confirm Connected Platforms updates without fake metrics.
+- [x] Confirm child revenue/spend Google Sheets does not appear as a main platform.
 
 Analytics:
 
@@ -1248,3 +1261,8 @@ Google Sheets can be marked locally production-ready only when:
   - Fix: multiple campaign values are persisted in `selectedValues`, with legacy single-value fields retained for compatibility.
   - Fix: Overview Spreadsheet Data, Summary, Insights, and live metric option surfaces use the same mapped row scope.
   - Fix: the standalone `Selected Campaigns` card and active/row-count status line were removed; current scope is shown as two `Sheet Data` status lines: mapped rows and value column.
+- Commit 13 final local evidence pass completed:
+  - Root cause: final readiness evidence still needed one consolidated local pass after the Commit 12 saved-object scope bundle and dataset mapping simplification.
+  - Fix from Commit 13 regression: the hidden one-line selector spacer was restored so loading layout remains stable without showing the removed active/row-count text.
+  - Validation passed locally: targeted Google Sheets source-safety and aggregate tests, shared revenue/spend and aggregate-adjacent tests, `npm run check`, and full `npm test` with 74 files and 661 tests.
+  - Status: Google Sheets local/test-mode evidence is complete for the implemented source-backed scope; live OAuth/provider evidence remains Commit 14.

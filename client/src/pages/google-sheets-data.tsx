@@ -1248,11 +1248,12 @@ export default function GoogleSheetsData() {
     const mapped = isMapped(activeGoogleSheetsConnection);
     const mappedCampaignFilter = getGoogleSheetsMappedCampaignFilter(activeGoogleSheetsConnection);
     const valueLabel = getGoogleSheetsMappedValueLabel(activeGoogleSheetsConnection);
-    const statusText = mappedCampaignFilter
-      ? `Using rows where ${mappedCampaignFilter.column} ${mappedCampaignFilter.values.length === 1 ? "=" : "in"} ${formatGoogleSheetsScopeValues(mappedCampaignFilter.values)}. Value column: ${valueLabel}.`
+    const rowsStatusText = mappedCampaignFilter
+      ? `Using rows with ${mappedCampaignFilter.column}: ${formatGoogleSheetsScopeValues(mappedCampaignFilter.values)}`
       : mapped
-        ? `Mappings saved. Overview uses all rows from this source. Value column: ${valueLabel}.`
+        ? "Mappings saved. Overview uses all rows from this source."
         : "Sheet data is not mapped yet. Overview may use all rows.";
+    const valueStatusText = mapped ? `Value column: ${valueLabel}` : null;
 
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-border bg-card px-4 py-3 md:flex-row md:items-center md:justify-between">
@@ -1261,8 +1262,13 @@ export default function GoogleSheetsData() {
           <div>
             <p className="text-sm font-semibold text-foreground">{mapped ? "Sheet Data" : "Sheet Data Not Mapped"}</p>
             <p className="text-sm text-muted-foreground">
-              {statusText}
+              {rowsStatusText}
             </p>
+            {valueStatusText && (
+              <p className="text-sm text-muted-foreground">
+                {valueStatusText}
+              </p>
+            )}
           </div>
         </div>
         <Button

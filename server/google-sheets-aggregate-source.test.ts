@@ -94,7 +94,7 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("renderGoogleSheetsDatasetSetupCard");
     expect(page).toContain("getGoogleSheetsMappedCampaignFilter");
     expect(page).toContain("Sheet Data Not Mapped");
-    expect(page).toContain("Using rows where");
+    expect(page).toContain("Using rows with");
     expect(page).toContain("Value column:");
     expect(page).not.toContain("renderGoogleSheetsCampaignScopeCard");
     expect(page).not.toContain("Selected Campaigns");

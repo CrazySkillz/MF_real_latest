@@ -63,12 +63,12 @@ Current implementation foundations observed:
 - `client/src/pages/google-sheets-data.tsx` renders the Google Sheets analytics surface with Overview, Summary, KPIs, Benchmarks, Insights, and Reports. Dataset mapping is configured from the Overview `Sheet Data` status row.
 - `client/src/pages/google-sheets-analytics/GoogleSheetsKpiModal.tsx`, `GoogleSheetsBenchmarkModal.tsx`, and `GoogleSheetsReportModal.tsx` provide Google Sheets-specific KPI, Benchmark, and Report modals.
 
-Current risk:
+Current remaining risk:
 
-- The existing Google Sheets implementation predates the reusable connected-platform section contract.
-- Benchmark and Report modals are Google Sheets-specific and not yet proven to match the full GA4 template; the Commit 6 KPI scope has passed browser validation for the implemented Google Sheets dynamic-metric KPI behavior.
-- Google Sheets analytics uses dynamic sheet columns, which is valid, but production readiness requires explicit source-backed current-value resolution and unavailable reasons instead of generic numeric-column assumptions.
-- Google Sheets can be a main platform or a child financial source, so source identity must be tightened before aggregate participation, revenue, ROI, ROAS, KPI, Benchmark, Insights, or Reports are trusted.
+- The existing Google Sheets implementation predates the reusable connected-platform section contract, so this tracker remains the source of evidence for what has been normalized.
+- KPI, Benchmark, Report, Total Revenue, Pipeline Proxy, mapping, Insights, refresh, lifecycle, and aggregate behavior are locally regression-covered and browser/user validated for the implemented source-backed scope.
+- Google Sheets analytics uses dynamic sheet columns, which is valid, but trust still depends on explicit selected rows, saved source scopes, mapped value columns, and unavailable reasons instead of generic numeric-column assumptions.
+- Live Google OAuth/provider behavior, token refresh against Google, provider row freshness, and deployed scheduler/provider evidence remain deferred to Commit 14.
 
 ## Root Cause Analysis
 
@@ -77,7 +77,7 @@ The root issue is not that Google Sheets is absent. It is already partially impl
 Specific root causes to address:
 
 - Source role ambiguity: `google_sheets_connections` can represent a main campaign source, a revenue child source, a spend child source, or a legacy shared connection. Those roles can be confused unless purpose/platform context is enforced at every read and render boundary.
-- Template drift: Google Sheets Benchmark and Report modals do not yet prove full GA4 template parity, including template panels, field order, no default selections, source-backed current values, alert behavior, edit mode, delete confirmation, custom reports, and scheduled report semantics. Commit 6 KPI behavior is validated for the implemented Google Sheets dynamic-metric scope, while any broader final-readiness checklist reconciliation remains governed by the strict template enforcement rule.
+- Template drift: Google Sheets KPI, Benchmark, and Report sections now have local regression and browser/user evidence for the implemented source-backed scope; final live provider evidence remains governed by Commit 14.
 - Dynamic metric ambiguity: Google Sheets can contain arbitrary columns. A numeric column should not automatically become a trusted executive metric unless it is selected/mapped and tied to the active campaign/source scope.
 - Aggregate participation: Google Sheets now feeds the shared Campaign DeepDive connected-source aggregate contract locally, with browser/API validation passed for the child financial source exclusion path.
 - Revenue and pipeline risk: Google Sheets may contain revenue or pipeline-like values, but Total Revenue, ROI, ROAS, and Pipeline Proxy must follow the Meta pattern and remain separate from arbitrary sheet metrics.
@@ -919,6 +919,11 @@ Status:
 - [x] Commit 13 validation passed locally: `npm test -- --run server/revenue-additivity.test.ts server/spend-source-additivity.test.ts server/google-ads-revenue-sheets-flow.test.ts server/google-ads-revenue-wizard-context.test.ts server/ga4-auto-refresh-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/executive-summary-regression.test.ts server/campaign-performance-overview-regression.test.ts server/performance-summary-insights-regression.test.ts server/platform-comparison-regression.test.ts server/campaign-financial-analysis-regression.test.ts server/report-email-regression.test.ts`.
 - [x] Commit 13 validation passed locally: `npm run check`.
 - [x] Commit 13 full regression passed locally: `npm test` with 74 files and 661 tests.
+- [x] Commit 13 browser/user validation passed after deploy:
+  - `View Data From` remains stable during Google Sheets data load/refresh.
+  - Removed status copy remains removed: no `Active: ...` and no row-count summary line under the selector.
+  - Overview `Sheet Data` still shows mapped row scope and value column as separate lines.
+  - `Edit Mappings` opens prefilled saved mappings, and `Update Mappings` remains disabled until a real change is made.
 - [ ] Live Google OAuth/provider validation remains deferred to Commit 14.
 
 ### Commit 14: Live Google OAuth/Provider Validation
@@ -992,6 +997,7 @@ Analytics:
 - [x] Commit 12 local regression: legacy KPI/Benchmark rows without saved source scope render unavailable until edited/resaved.
 - [x] Commit 12F-12K browser validation passed after deploy for saved KPI, Benchmark, and Report source labels, dropdown-change stability, saved source-scope evaluation, invalid/missing source unavailable states, Overview metric report values, active source filtering, and Benchmark card metric-label cleanup.
 - [x] Google Sheets dataset mapping simplification passed user/browser validation for multi-value campaign mappings, prefilled edit mappings, disabled no-change `Update Mappings`, filtered Spreadsheet Data rows, and two-line `Sheet Data` status copy.
+- [x] Commit 13 browser/user validation passed after deploy for stable `View Data From` layout, removed selector status copy, two-line `Sheet Data` status copy, prefilled `Edit Mappings`, and disabled no-change `Update Mappings`.
 - [x] Local regression: Google Sheets Insights tab renders only spreadsheet-generated `sheetsData.insights` sections and no longer mixes saved KPI/Benchmark gap analysis into the spreadsheet Insights surface.
 - [x] Local regression: Google Sheets Performance and What to do next insight generation is metric-direction aware, treats CPA/CPC/CPM/CPL-style metrics as lower-is-better, and avoids top/bottom performer claims for neutral spend/cost fields.
 
@@ -1265,4 +1271,5 @@ Google Sheets can be marked locally production-ready only when:
   - Root cause: final readiness evidence still needed one consolidated local pass after the Commit 12 saved-object scope bundle and dataset mapping simplification.
   - Fix from Commit 13 regression: the hidden one-line selector spacer was restored so loading layout remains stable without showing the removed active/row-count text.
   - Validation passed locally: targeted Google Sheets source-safety and aggregate tests, shared revenue/spend and aggregate-adjacent tests, `npm run check`, and full `npm test` with 74 files and 661 tests.
-  - Status: Google Sheets local/test-mode evidence is complete for the implemented source-backed scope; live OAuth/provider evidence remains Commit 14.
+  - Browser/user validation passed after deploy for stable selector layout, removed selector status copy, two-line `Sheet Data` status, prefilled `Edit Mappings`, and disabled no-change `Update Mappings`.
+  - Status: Google Sheets local/test-mode and browser/user evidence is complete for the implemented source-backed scope; live OAuth/provider evidence remains Commit 14.

@@ -1514,6 +1514,8 @@ describe("source safety regression guards", () => {
     expect(source).toContain('data-testid="content-insights"');
     expect(source).toContain('data-testid="button-upload-custom-integration-pdf"');
     expect(source).not.toContain('id="manual-pdf-upload"');
+    expect(source).toContain("Marketing data for ${(campaign as any).name}");
+    expect(source).not.toContain("Marketing data for this campaign");
   });
 
   it("Custom Integration Overview and Summary use source-backed resolved metric groups", () => {

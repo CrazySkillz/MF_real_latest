@@ -2229,7 +2229,9 @@ export default function CustomIntegrationAnalytics() {
                   <h1 className="text-3xl font-bold text-foreground">
                     Custom Integration Analytics
                   </h1>
-                  <p className="text-muted-foreground/70">Marketing data for {(campaign as any)?.name || 'this campaign'}</p>
+                  <p className="min-h-6 text-muted-foreground/70">
+                    {(campaign as any)?.name ? `Marketing data for ${(campaign as any).name}` : ''}
+                  </p>
                 </div>
               </div>
             </div>

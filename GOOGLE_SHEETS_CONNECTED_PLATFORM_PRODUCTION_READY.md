@@ -952,7 +952,17 @@ Validation:
 
 Status:
 
-- [ ] Deferred until real Google OAuth/provider validation evidence is available, if not available during implementation.
+- [x] Commit 14 local provider-path audit completed:
+  - Root cause: live Google OAuth/provider validation cannot be proven from this workspace because no Google OAuth/app-base environment variables are available in the shell and no live deployed OAuth session/provider credentials are present.
+  - Proven locally: Google Sheets OAuth/provider-adjacent route guards, spreadsheet/tab selection guards, raw refresh scoping, token-refresh code paths, scheduled Google Sheets report guards, and saved-source report output guards remain regression-covered.
+  - Validation passed locally: `npm test -- --run server/source-safety-regression.test.ts server/google-sheets-aggregate-source.test.ts server/utils/googleSheetsSelection.test.ts server/ga4-auto-refresh-regression.test.ts server/report-email-regression.test.ts` with 5 files and 100 tests.
+- [ ] Live Google OAuth/provider validation remains required before final live-readiness:
+  - Live OAuth start/callback in deployed or production-like environment.
+  - Drive spreadsheet discovery from a real Google account.
+  - Sheet tab discovery, dataset mapping save, and selected row/value match against the actual spreadsheet.
+  - Token refresh against Google after expiry or forced refresh.
+  - Manual and scheduled raw-data refresh updating scoped cached rows from Google Sheets API.
+  - Scheduled report using Google Sheets values is generated/sent and matches current app values.
 
 ## Validation Matrix
 
@@ -1273,3 +1283,7 @@ Google Sheets can be marked locally production-ready only when:
   - Validation passed locally: targeted Google Sheets source-safety and aggregate tests, shared revenue/spend and aggregate-adjacent tests, `npm run check`, and full `npm test` with 74 files and 661 tests.
   - Browser/user validation passed after deploy for stable selector layout, removed selector status copy, two-line `Sheet Data` status, prefilled `Edit Mappings`, and disabled no-change `Update Mappings`.
   - Status: Google Sheets local/test-mode and browser/user evidence is complete for the implemented source-backed scope; live OAuth/provider evidence remains Commit 14.
+- Commit 14 local provider-path audit completed:
+  - Root cause: this workspace does not have live Google OAuth/app-base environment variables or a live deployed OAuth session/provider credential context, so live provider behavior cannot be honestly marked validated here.
+  - Validation passed locally: `npm test -- --run server/source-safety-regression.test.ts server/google-sheets-aggregate-source.test.ts server/utils/googleSheetsSelection.test.ts server/ga4-auto-refresh-regression.test.ts server/report-email-regression.test.ts` with 5 files and 100 tests.
+  - Status: live Google OAuth start/callback, Drive discovery, tab discovery, real row matching, token refresh against Google, manual/scheduled provider refresh, and scheduled report delivery remain required live validation items.

@@ -24656,14 +24656,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ok = await ensureCampaignAccess(req as any, res as any, String(req.body.campaignId));
       if (!ok) return;
 
+      const toBenchmarkDecimalString = (v: any): string | null | undefined => {
+        if (typeof v === 'undefined') return undefined;
+        if (v === '' || v === null) return null;
+        return typeof v === 'number' ? String(v) : String(v);
+      };
+
       // Convert empty strings to null for numeric fields
       const cleanedData = {
         ...req.body,
         platformType: platformType,
         campaignId: req.body.campaignId || null, // Preserve campaignId from request
-        alertThreshold: req.body.alertThreshold === '' ? null : req.body.alertThreshold,
-        benchmarkValue: req.body.benchmarkValue === '' ? null : req.body.benchmarkValue,
-        currentValue: req.body.currentValue === '' ? null : req.body.currentValue
+        alertThreshold: toBenchmarkDecimalString(req.body.alertThreshold),
+        benchmarkValue: toBenchmarkDecimalString(req.body.benchmarkValue),
+        currentValue: toBenchmarkDecimalString(req.body.currentValue)
       };
 
       const validatedData = insertBenchmarkSchema.parse(cleanedData);
@@ -24712,8 +24718,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Benchmark not found" });
       }
 
+      const toBenchmarkDecimalString = (v: any): string | null | undefined => {
+        if (typeof v === 'undefined') return undefined;
+        if (v === '' || v === null) return null;
+        return typeof v === 'number' ? String(v) : String(v);
+      };
+
       const validatedData = insertBenchmarkSchema.partial().parse({
         ...req.body,
+        alertThreshold: toBenchmarkDecimalString(req.body.alertThreshold),
+        benchmarkValue: toBenchmarkDecimalString(req.body.benchmarkValue),
+        currentValue: toBenchmarkDecimalString(req.body.currentValue),
         campaignId: (existing as any).campaignId,
         platformType: (existing as any).platformType,
       }) as any;

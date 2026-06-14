@@ -1610,4 +1610,24 @@ describe("source safety regression guards", () => {
     expect(source).not.toContain("current >= benchmarkVal * 1.2");
     expect(source).not.toContain("Progress to Benchmark");
   });
+
+  it("platform Benchmark routes normalize decimal values before validation", () => {
+    const source = readRoutesSource();
+    const createStart = source.indexOf('app.post("/api/platforms/:platformType/benchmarks"');
+    const updateStart = source.indexOf('app.put("/api/platforms/:platformType/benchmarks/:benchmarkId"');
+    const deleteStart = source.indexOf('app.delete("/api/platforms/:platformType/benchmarks/:benchmarkId"', updateStart);
+    const createRoute = source.slice(createStart, updateStart);
+    const updateRoute = source.slice(updateStart, deleteStart);
+
+    expect(createStart).toBeGreaterThan(-1);
+    expect(updateStart).toBeGreaterThan(createStart);
+    expect(createRoute).toContain("const toBenchmarkDecimalString = (v: any): string | null | undefined => {");
+    expect(createRoute).toContain("benchmarkValue: toBenchmarkDecimalString(req.body.benchmarkValue)");
+    expect(createRoute).toContain("currentValue: toBenchmarkDecimalString(req.body.currentValue)");
+    expect(createRoute.indexOf("benchmarkValue: toBenchmarkDecimalString(req.body.benchmarkValue)")).toBeLessThan(createRoute.indexOf("insertBenchmarkSchema.parse(cleanedData)"));
+    expect(updateRoute).toContain("const toBenchmarkDecimalString = (v: any): string | null | undefined => {");
+    expect(updateRoute).toContain("benchmarkValue: toBenchmarkDecimalString(req.body.benchmarkValue)");
+    expect(updateRoute).toContain("currentValue: toBenchmarkDecimalString(req.body.currentValue)");
+    expect(updateRoute.indexOf("const toBenchmarkDecimalString = (v: any): string | null | undefined => {")).toBeLessThan(updateRoute.indexOf("insertBenchmarkSchema.partial().parse"));
+  });
 });

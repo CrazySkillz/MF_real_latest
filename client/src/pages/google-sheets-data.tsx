@@ -440,14 +440,43 @@ export default function GoogleSheetsData() {
     },
   });
 
-  const isMapped = (connection: any): boolean => {
-    if (!connection.columnMappings) return false;
-    try {
-      const mappings = JSON.parse(connection.columnMappings);
-      return Array.isArray(mappings) && mappings.length > 0;
-    } catch {
-      return false;
+  const parseGoogleSheetsMappings = (value: any): any[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
     }
+    return [];
+  };
+
+  const isMapped = (connection: any): boolean => {
+    return parseGoogleSheetsMappings(connection?.columnMappings).length > 0;
+  };
+
+  const getGoogleSheetsMappedCampaignFilter = (connection: any): { column: string; value: string } | null => {
+    const mappings = parseGoogleSheetsMappings(connection?.columnMappings);
+    const campaignMapping = mappings.find((m: any) => m?.targetFieldId === "campaign_id")
+      || mappings.find((m: any) => m?.targetFieldId === "campaign_name");
+    const value = String(campaignMapping?.selectedValue ?? campaignMapping?.campaignIdentifierValue ?? "").trim();
+    if (!value) return null;
+    const column = String(campaignMapping?.sourceColumnName || campaignMapping?.sourceColumn || "campaign value").trim();
+    return { column, value };
+  };
+
+  const getGoogleSheetsMappedValueLabel = (connection: any): string => {
+    const mappings = parseGoogleSheetsMappings(connection?.columnMappings);
+    const valueMapping = mappings.find((m: any) => m?.targetFieldId === "revenue")
+      || mappings.find((m: any) => m?.targetFieldId === "conversion_value");
+    return String(valueMapping?.sourceColumnName || valueMapping?.sourceColumn || "selected value column").trim();
+  };
+
+  const formatGoogleSheetsScopeValue = (value: string): string => {
+    return value.length > 64 ? `${value.slice(0, 61)}...` : value;
   };
 
   // Get primary connection for default selection
@@ -1043,41 +1072,6 @@ export default function GoogleSheetsData() {
     ].filter(Boolean) as any[];
   }, [activeGoogleSheetsRevenueSources, hubspotPipelineProxyData, salesforcePipelineProxyData]);
   const googleSheetsPipelineProxyTotal = googleSheetsPipelineProxySourceEntries.reduce((sum: number, entry: any) => sum + Number(entry?.totalToDate || 0), 0);
-  const googleSheetsCampaignScopeValues = (() => {
-    const seen = new Set<string>();
-    const values: string[] = [];
-    const addValue = (value: any) => {
-      const label = String(value ?? "").trim();
-      const key = label.toLowerCase();
-      if (!label || seen.has(key)) return;
-      seen.add(key);
-      values.push(label);
-    };
-    const addValues = (items: any) => {
-      if (!Array.isArray(items)) return;
-      items.forEach(addValue);
-    };
-    const addSourceScope = (source: any) => {
-      const cfg = parseRevenueSourceConfig(source);
-      const displayName = String(cfg?.campaignDisplayName || "").trim();
-      if (displayName) {
-        addValue(displayName);
-        return;
-      }
-      addValues(cfg?.campaignValues);
-      addValue(cfg?.campaignValue);
-      addValues(cfg?.selectedValues);
-      addValues(Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals.map((item: any) => item?.campaignValue) : []);
-      addValues(Array.isArray(cfg?.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals.map((item: any) => item?.campaignValue) : []);
-    };
-    activeGoogleSheetsRevenueSources.forEach(addSourceScope);
-    activeGoogleSheetsSpendSources.forEach(addSourceScope);
-    googleSheetsPipelineProxySourceEntries.forEach((entry: any) => addValues(entry?.campaignValues));
-    return values;
-  })();
-  const googleSheetsCampaignScopeInitialLoading =
-    isDataLoading || googleSheetsFinancialCardsInitialLoading || googleSheetsPipelineProxyInitialLoading;
-
   const refreshGoogleSheetsRevenueQueries = async () => {
     await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "google_sheets"] });
     await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=google_sheets&dateRange=all`], exact: false });
@@ -1231,76 +1225,39 @@ export default function GoogleSheetsData() {
     </div>
   );
 
-  const renderGoogleSheetsCampaignScopeCard = () => (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-sm text-muted-foreground/70">Selected Campaigns</p>
-            <p className="text-xl font-bold text-foreground">
-              {googleSheetsCampaignScopeInitialLoading
-                ? renderGoogleSheetsCardValuePlaceholder()
-                : googleSheetsCampaignScopeValues.length > 0
-                  ? `${googleSheetsCampaignScopeValues.length} campaign value${googleSheetsCampaignScopeValues.length === 1 ? "" : "s"}`
-                  : "All rows"}
-            </p>
-          </div>
-          <Target className="h-4 w-4 shrink-0 text-muted-foreground/70" />
-        </div>
-        {googleSheetsCampaignScopeInitialLoading ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {[...Array(3)].map((_, index) => (
-              <span key={index} className="h-6 w-28 rounded-full bg-muted animate-pulse" aria-hidden="true" />
-            ))}
-          </div>
-        ) : googleSheetsCampaignScopeValues.length > 0 ? (
-          <>
-            <p className="mt-1 text-xs text-muted-foreground">Google Sheets metrics are scoped to these selected campaign values.</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {googleSheetsCampaignScopeValues.slice(0, 8).map((value) => (
-                <Badge key={value} variant="outline" className="max-w-full text-xs" title={value}>
-                  <span className="max-w-[260px] truncate">{value}</span>
-                </Badge>
-              ))}
-              {googleSheetsCampaignScopeValues.length > 8 && (
-                <Badge variant="secondary" className="text-xs">
-                  +{googleSheetsCampaignScopeValues.length - 8} more
-                </Badge>
-              )}
-            </div>
-          </>
-        ) : (
-          <p className="mt-1 text-sm text-muted-foreground">
-            No campaign filter is configured. Google Sheets metrics use all rows from the selected source.
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
-
   const renderGoogleSheetsDatasetSetupCard = () => {
-    if (!activeGoogleSheetsConnection || isMapped(activeGoogleSheetsConnection)) return null;
+    if (!activeGoogleSheetsConnection) return null;
+    const mapped = isMapped(activeGoogleSheetsConnection);
+    const mappedCampaignFilter = getGoogleSheetsMappedCampaignFilter(activeGoogleSheetsConnection);
+    const valueLabel = getGoogleSheetsMappedValueLabel(activeGoogleSheetsConnection);
+    const statusText = mappedCampaignFilter
+      ? `Using rows where ${mappedCampaignFilter.column} = ${formatGoogleSheetsScopeValue(mappedCampaignFilter.value)}. Value column: ${valueLabel}.`
+      : mapped
+        ? `Mappings saved. Overview uses all rows from this source. Value column: ${valueLabel}.`
+        : "Sheet data is not mapped yet. Overview may use all rows.";
 
     return (
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 rounded-lg border border-border bg-card px-4 py-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-start gap-3">
+          <Target className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/70" />
           <div>
-            <p className="text-base font-semibold text-foreground">Set Up Sheet Data</p>
+            <p className="text-sm font-semibold text-foreground">{mapped ? "Sheet Data" : "Sheet Data Not Mapped"}</p>
             <p className="text-sm text-muted-foreground">
-              Choose the campaign value and value column that power Overview, KPIs, Benchmarks, Insights, and Reports.
+              {statusText}
             </p>
           </div>
-          <Button
-            onClick={() => {
-              setMappingConnectionId(activeGoogleSheetsConnection.id);
-              setShowMappingInterface(true);
-            }}
-          >
-            <Pencil className="w-4 h-4 mr-2" />
-            Set Up Mappings
-          </Button>
-        </CardContent>
-      </Card>
+        </div>
+        <Button
+          variant={mapped ? "outline" : "default"}
+          onClick={() => {
+            setMappingConnectionId(activeGoogleSheetsConnection.id);
+            setShowMappingInterface(true);
+          }}
+        >
+          <Pencil className="w-4 h-4 mr-2" />
+          {mapped ? "Edit Mappings" : "Set Up Mappings"}
+        </Button>
+      </div>
     );
   };
 
@@ -2011,20 +1968,6 @@ export default function GoogleSheetsData() {
     return raw;
   };
 
-  const parseGoogleSheetsMappings = (value: any): any[] => {
-    if (!value) return [];
-    if (Array.isArray(value)) return value;
-    if (typeof value === "string") {
-      try {
-        const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  };
-
   const formatConnectionRefreshTime = (value: string | null | undefined): string => {
     if (!value) return "Not refreshed yet";
     const date = new Date(value);
@@ -2338,25 +2281,6 @@ export default function GoogleSheetsData() {
                   </Select>
                 </div>
 
-                {/* Active Sheet Indicator */}
-                {sheetsData ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground/70">
-                    <Badge variant="outline" className="text-xs">
-                      <FileSpreadsheet className="w-3 h-3 mr-1" />
-                      Active: {activeGoogleSheetsSourceScope?.displayName || 'Unknown'}
-                    </Badge>
-                    {sheetsData.filteredRows !== undefined && sheetsData.totalRows !== undefined && (
-                      <span className="text-xs">
-                        • {sheetsData.filteredRows.toLocaleString()} rows used for summary
-                        {sheetsData.filteredRows < sheetsData.totalRows && (
-                          <span className="text-muted-foreground"> (filtered from {sheetsData.totalRows.toLocaleString()} total)</span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <div className="h-5" aria-hidden="true" />
-                )}
                 </>
               )}
             </div>
@@ -2413,7 +2337,6 @@ export default function GoogleSheetsData() {
 
                 <TabsContent value="data" className="mt-6 space-y-6">
                   {renderGoogleSheetsFinancialCards()}
-                  {renderGoogleSheetsCampaignScopeCard()}
                   {renderGoogleSheetsDatasetSetupCard()}
 
                   <Card>
@@ -2476,7 +2399,6 @@ export default function GoogleSheetsData() {
 
                 <TabsContent value="data" className="mt-6 space-y-6">
                   {renderGoogleSheetsFinancialCards()}
-                  {renderGoogleSheetsCampaignScopeCard()}
                   {renderGoogleSheetsDatasetSetupCard()}
 
                   <Card>

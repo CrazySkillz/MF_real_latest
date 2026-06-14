@@ -147,7 +147,7 @@ function formatCustomIntegrationNumberInput(value: any, unit?: string): string {
 }
 
 function normalizeCustomIntegrationKpiFormValue(key: string, value: any): string {
-  if (['targetValue', 'currentValue', 'alertThreshold'].includes(key)) {
+  if (['targetValue', 'benchmarkValue', 'currentValue', 'alertThreshold'].includes(key)) {
     const parsed = parseCustomIntegrationMetricNumber(cleanCustomIntegrationNumberInput(value));
     return parsed === null ? '' : String(parsed);
   }
@@ -350,6 +350,7 @@ export default function CustomIntegrationAnalytics() {
     alertCondition: 'below',
     emailRecipients: ''
   });
+  const [initialBenchmarkForm, setInitialBenchmarkForm] = useState<any>(null);
 
   // Report state management
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -764,6 +765,7 @@ export default function CustomIntegrationAnalytics() {
         description: "Your benchmark has been successfully created.",
       });
       setIsBenchmarkModalOpen(false);
+      setInitialBenchmarkForm(null);
       setBenchmarkForm({
         metric: '',
         name: '',
@@ -809,6 +811,7 @@ export default function CustomIntegrationAnalytics() {
       });
       setIsBenchmarkModalOpen(false);
       setEditingBenchmark(null);
+      setInitialBenchmarkForm(null);
       setBenchmarkForm({
         metric: '',
         name: '',
@@ -863,8 +866,19 @@ export default function CustomIntegrationAnalytics() {
     },
   });
 
+  const isBenchmarkFormDirty = editingBenchmark && initialBenchmarkForm
+    ? Object.keys(initialBenchmarkForm).some((key) =>
+      normalizeCustomIntegrationKpiFormValue(key, (benchmarkForm as any)[key]) !==
+        normalizeCustomIntegrationKpiFormValue(key, initialBenchmarkForm[key])
+    )
+    : true;
+
   // Handle Benchmark form submission
   const handleBenchmarkSubmit = () => {
+    if (editingBenchmark && !isBenchmarkFormDirty) {
+      return;
+    }
+
     if (!campaignId) {
       toast({
         title: "Error",
@@ -3016,6 +3030,7 @@ export default function CustomIntegrationAnalytics() {
                     <Button 
                       onClick={() => {
                         setEditingBenchmark(null);
+                        setInitialBenchmarkForm(null);
                         setBenchmarkForm({
                           metric: '',
                           name: '',
@@ -3134,7 +3149,7 @@ export default function CustomIntegrationAnalytics() {
                                   onClick={() => {
                                     setEditingBenchmark(benchmark);
                                     const editUnit = getCustomIntegrationUnitLabel(displayUnit, resolvedCurrent.option?.type);
-                                    setBenchmarkForm({
+                                    const formData = {
                                       metric: benchmark.metric || benchmark.metricKey || '',
                                       name: benchmark.name || '',
                                       category: benchmark.category || 'performance',
@@ -3153,7 +3168,9 @@ export default function CustomIntegrationAnalytics() {
                                       alertThreshold: benchmark.alertThreshold ? formatCustomIntegrationNumberInput(benchmark.alertThreshold, editUnit) : '',
                                       alertCondition: benchmark.alertCondition || 'below',
                                       emailRecipients: Array.isArray(benchmark.emailRecipients) ? benchmark.emailRecipients.join(', ') : (benchmark.emailRecipients || '')
-                                    });
+                                    };
+                                    setBenchmarkForm(formData);
+                                    setInitialBenchmarkForm(formData);
                                     setIsBenchmarkModalOpen(true);
                                   }}
                                   data-testid={`button-edit-benchmark-${benchmark.id}`}
@@ -4037,6 +4054,7 @@ export default function CustomIntegrationAnalytics() {
                 onClick={() => {
                   setIsBenchmarkModalOpen(false);
                   setEditingBenchmark(null);
+                  setInitialBenchmarkForm(null);
                   setBenchmarkForm({
                     metric: '',
                     name: '',
@@ -4064,7 +4082,7 @@ export default function CustomIntegrationAnalytics() {
               </Button>
               <Button
                 onClick={handleBenchmarkSubmit}
-                disabled={!benchmarkForm.name || !benchmarkForm.metric || !benchmarkForm.benchmarkValue || !campaignId || createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending}
+                disabled={!benchmarkForm.name || !benchmarkForm.metric || !benchmarkForm.benchmarkValue || !campaignId || createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending || (Boolean(editingBenchmark) && !isBenchmarkFormDirty)}
                 className="bg-purple-600 hover:bg-purple-700"
                 data-testid="button-benchmark-submit"
               >

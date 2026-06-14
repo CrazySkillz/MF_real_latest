@@ -1589,6 +1589,9 @@ describe("source safety regression guards", () => {
     expect(source).toContain("const computeCustomIntegrationBenchmarkProgress = (benchmark: any, current: number, benchmarkValue: number) => {");
     expect(source).toContain('const status = ratio >= 0.9 ? "on_track" : ratio >= 0.7 ? "needs_attention" : "behind";');
     expect(source).toContain("customIntegrationBenchmarkTracker.avgPct");
+    expect(source).toContain("const isBenchmarkFormDirty = editingBenchmark && initialBenchmarkForm");
+    expect(source).toContain("setInitialBenchmarkForm(formData)");
+    expect(source).toContain("(Boolean(editingBenchmark) && !isBenchmarkFormDirty)");
     expect(source).toContain("data-custom-integration-benchmark-source-adapter=\"source-backed\"");
     expect(source).toContain("Select Benchmark Template");
     expect(source).toContain("data-testid={`button-benchmark-template-${metric.key}`}");

@@ -1472,11 +1472,21 @@ describe("source safety regression guards", () => {
     expect(source).toContain("const resolveCustomIntegrationCurrentValue = (item: any) => {");
     expect(source).toContain("Metric is not supported by Custom Integration.");
     expect(source).toContain("Current value is not available.");
-    expect(source).toContain("let status = resolvedCurrent.available ? 'Underperforming' : 'Unavailable';");
-    expect(source).toContain("resolvedCurrent.available ? `Source: ${resolvedCurrent.sourceLabel}` : resolvedCurrent.reason");
+    expect(source).toContain("const CUSTOM_INTEGRATION_KPI_NEAR_TARGET_BAND_PCT = 5;");
+    expect(source).toContain("classifyKpiBand({ effectiveDeltaPct, nearTargetBandPct: CUSTOM_INTEGRATION_KPI_NEAR_TARGET_BAND_PCT })");
+    expect(source).toContain("more than +5% above target");
+    expect(source).toContain("within +/-5% of target");
+    expect(source).toContain("more than -5% below target");
+    expect(source).toContain("Source: {resolvedCurrent.sourceLabel || \"Saved Custom Integration source unavailable\"}");
+    expect(source).toContain("formatCustomIntegrationMetricValue(currentVal, displayUnit, resolvedCurrent.option?.type)");
+    expect(source).toContain("formatPct(progress.attainmentPct)");
+    expect(source).toContain("progress.effectiveDeltaPct > 0");
+    expect(source).not.toContain("let status = resolvedCurrent.available ? 'Underperforming' : 'Unavailable';");
+    expect(source).not.toContain("Progress to Target");
+    expect(source).not.toContain("Timeframe Indicator");
     expect(source).toContain("!resolved.available || current === null || target === null || target <= 0");
     expect(source).toContain("resolved.available && current !== null && benchmark > 0");
-    expect(source).toContain("targetVal > 0 && resolvedCurrent.available && currentVal !== null");
+    expect(source).toContain("resolvedCurrent.available && currentVal !== null && targetVal !== null && targetVal > 0");
     expect(source).toContain("resolvedCurrent.available && currentVal !== null && benchmarkVal !== null && benchmarkVal > 0");
   });
 

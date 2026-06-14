@@ -20,6 +20,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatTimeAgo } from "@/lib/utils";
 import { formatPct } from "@shared/metric-math";
+import { computeAttainmentFillPct, computeAttainmentPct, computeEffectiveDeltaPct, classifyKpiBand, isLowerIsBetterKpi } from "@shared/kpi-math";
 
 interface CustomIntegrationConnection {
   id?: string;
@@ -80,6 +81,8 @@ const CUSTOM_INTEGRATION_OVERVIEW_GROUPS = [
   { title: 'Traffic Sources', icon: BarChart3, metricKeys: ['organicSearchShare', 'directBrandedShare', 'emailShare', 'referralShare', 'paidShare', 'socialShare'] },
   { title: 'Email & Newsletter Performance', icon: Mail, metricKeys: ['emailsDelivered', 'openRate', 'clickThroughRate', 'clickToOpen', 'listGrowth'] },
 ];
+
+const CUSTOM_INTEGRATION_KPI_NEAR_TARGET_BAND_PCT = 5;
 
 function createEmptyCustomIntegrationKpiForm() {
   return {
@@ -2069,6 +2072,30 @@ export default function CustomIntegrationAnalytics() {
       : { available: true, currentValue, unit, option: undefined, sourceLabel: 'Manual value', reason: '' };
   };
 
+  const computeCustomIntegrationKpiProgress = (kpi: any, current: number, target: number) => {
+    const safeCurrent = Number.isFinite(current) ? current : 0;
+    const safeTarget = Number.isFinite(target) ? target : 0;
+    const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi?.metric || kpi?.metricKey, name: kpi?.name });
+    const effectiveDeltaPct = computeEffectiveDeltaPct({ current: safeCurrent, target: safeTarget, lowerIsBetter });
+    const band = effectiveDeltaPct !== null
+      ? classifyKpiBand({ effectiveDeltaPct, nearTargetBandPct: CUSTOM_INTEGRATION_KPI_NEAR_TARGET_BAND_PCT })
+      : "below";
+    const attainmentPct = computeAttainmentPct({ current: safeCurrent, target: safeTarget, lowerIsBetter });
+    const fillPct = attainmentPct !== null ? computeAttainmentFillPct(attainmentPct) : 0;
+    const progressColor = band === "above" ? "bg-green-500" : band === "near" ? "bg-blue-500" : "bg-red-500";
+    return { band, effectiveDeltaPct, attainmentPct: attainmentPct ?? 0, fillPct, progressColor };
+  };
+
+  const getCustomIntegrationKpiIcon = (metricName: string) => {
+    const n = String(metricName || "").toLowerCase();
+    if (n.includes("revenue") || n.includes("spend") || n.includes("cost") || n.includes("budget")) return { Icon: DollarSign, color: "text-emerald-600" };
+    if (n.includes("roas") || n.includes("roi") || n.includes("rate") || n.includes("%")) return { Icon: TrendingUp, color: "text-violet-600" };
+    if (n.includes("conversion") || n.includes("lead") || n.includes("customer")) return { Icon: Target, color: "text-indigo-600" };
+    if (n.includes("click")) return { Icon: MousePointerClick, color: "text-orange-600" };
+    if (n.includes("session") || n.includes("time")) return { Icon: Clock, color: "text-muted-foreground" };
+    return { Icon: BarChart3, color: "text-muted-foreground" };
+  };
+
   const customIntegrationEmail = customIntegration?.email;
   const parserMetadata = getCustomIntegrationParserMetadata(metricsData);
   const parserWarnings = Array.isArray(parserMetadata?.warnings) ? parserMetadata.warnings : [];
@@ -2099,12 +2126,12 @@ export default function CustomIntegrationAnalytics() {
       tracker.blocked += 1;
       return tracker;
     }
-    const progress = (current / target) * 100;
-    tracker.progressTotal += progress;
+    const progress = computeCustomIntegrationKpiProgress(kpi, current, target);
+    tracker.progressTotal += progress.fillPct;
     tracker.progressCount += 1;
-    if (progress >= 120) tracker.above += 1;
-    else if (progress >= 100) tracker.onTrack += 1;
-    else tracker.below += 1;
+    if (progress.band === "above") tracker.above += 1;
+    else if (progress.band === "below") tracker.below += 1;
+    else tracker.onTrack += 1;
     return tracker;
   }, { total: 0, above: 0, onTrack: 0, below: 0, blocked: 0, progressTotal: 0, progressCount: 0 });
   customIntegrationKpiTracker.avgProgress = customIntegrationKpiTracker.progressCount > 0
@@ -2539,6 +2566,7 @@ export default function CustomIntegrationAnalytics() {
                               <p className="text-2xl font-bold text-green-600">
                                 {customIntegrationKpiTracker.above}
                               </p>
+                              <p className="text-xs text-muted-foreground">more than +5% above target</p>
                             </div>
                             <TrendingUp className="w-8 h-8 text-green-500" />
                           </div>
@@ -2550,11 +2578,12 @@ export default function CustomIntegrationAnalytics() {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm text-muted-foreground/70">On Track</p>
-                              <p className="text-2xl font-bold text-amber-600">
+                              <p className="text-2xl font-bold text-blue-600">
                                 {customIntegrationKpiTracker.onTrack}
                               </p>
+                              <p className="text-xs text-muted-foreground">within +/-5% of target</p>
                             </div>
-                            <Target className="w-8 h-8 text-amber-500" />
+                            <CheckCircle2 className="w-8 h-8 text-blue-500" />
                           </div>
                         </CardContent>
                       </Card>
@@ -2567,8 +2596,9 @@ export default function CustomIntegrationAnalytics() {
                               <p className="text-2xl font-bold text-red-600">
                                 {customIntegrationKpiTracker.below}
                               </p>
+                              <p className="text-xs text-muted-foreground">more than -5% below target</p>
                             </div>
-                            <TrendingDown className="w-8 h-8 text-red-500" />
+                            <AlertCircle className="w-8 h-8 text-red-500" />
                           </div>
                         </CardContent>
                       </Card>
@@ -2582,7 +2612,7 @@ export default function CustomIntegrationAnalytics() {
                                 {formatPct(customIntegrationKpiTracker.avgProgress)}
                               </p>
                             </div>
-                            <BarChart3 className="w-8 h-8 text-blue-500" />
+                            <TrendingUp className="w-8 h-8 text-violet-600" />
                           </div>
                         </CardContent>
                       </Card>
@@ -2597,78 +2627,39 @@ export default function CustomIntegrationAnalytics() {
                     {/* KPI Cards */}
                     <div className="grid gap-6 lg:grid-cols-2">
                       {customIntegrationKpis.map((kpi: any) => {
-                        // Calculate status using industry-standard 120% threshold
                         const resolvedCurrent = resolveCustomIntegrationCurrentValue(kpi);
                         const currentVal = resolvedCurrent.currentValue;
                         const targetVal = parseCustomIntegrationMetricNumber(kpi.targetValue);
-                        
-                        // Determine status based on percentage of target
-                        let status = resolvedCurrent.available ? 'Underperforming' : 'Unavailable';
-                        if (resolvedCurrent.available && currentVal !== null && targetVal !== null && targetVal > 0) {
-                          if (currentVal >= targetVal * 1.2) {
-                            status = 'Exceeding Target';
-                          } else if (currentVal >= targetVal) {
-                            status = 'Meeting Target';
-                          }
-                        }
-                        
-                        const getStatusColor = (status: string) => {
-                          switch (status) {
-                            case 'Exceeding Target':
-                              return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-                            case 'Meeting Target':
-                              return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300';
-                            case 'Underperforming':
-                              return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-                            case 'Unavailable':
-                              return 'bg-muted text-muted-foreground';
-                            default:
-                              return 'bg-muted text-foreground/60';
-                          }
-                        };
-                        
-                        const getPriorityColor = (priority: string) => {
-                          switch (priority) {
-                            case 'high':
-                              return 'text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-300';
-                            case 'medium':
-                              return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-300';
-                            case 'low':
-                              return 'text-green-600 bg-green-100 dark:bg-green-900 dark:text-green-300';
-                            default:
-                              return 'text-muted-foreground bg-muted/60';
-                          }
-                        };
-                        
+                        const displayUnit = String(kpi.unit || resolvedCurrent.unit || '');
+                        const progress = resolvedCurrent.available && currentVal !== null && targetVal !== null && targetVal > 0
+                          ? computeCustomIntegrationKpiProgress(kpi, currentVal, targetVal)
+                          : null;
+                        const metricLabel = String(kpi.metric || kpi.metricKey || kpi.name || '');
+                        const { Icon, color } = getCustomIntegrationKpiIcon(metricLabel);
+
                         return (
                         <Card key={kpi.id} data-testid={`kpi-card-${kpi.id}`}>
-                          <CardHeader className="pb-3">
+                          <CardContent className="p-6">
                             <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <CardTitle className="text-lg">{kpi.name}</CardTitle>
-                                  {kpi.metric && (
-                                    <Badge variant="outline" className="text-xs font-normal">
-                                      Metric: {kpi.metric}
-                                    </Badge>
-                                  )}
+                              <div className="flex items-start gap-4 min-w-0">
+                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                  <Icon className={`w-5 h-5 ${color}`} />
                                 </div>
-                                <CardDescription className="text-sm">
-                                  {kpi.description || 'No description provided'}
-                                </CardDescription>
-                                <p className="text-xs text-muted-foreground/70 mt-1">
-                                  {resolvedCurrent.available ? `Source: ${resolvedCurrent.sourceLabel}` : resolvedCurrent.reason}
-                                </p>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <CardTitle className="text-lg truncate">{kpi.name}</CardTitle>
+                                    {(kpi.metric || kpi.metricKey) && (
+                                      <Badge variant="outline" className="bg-muted text-foreground/80 font-mono text-xs shrink-0">
+                                        {kpi.metric || kpi.metricKey}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground/70 mt-1">
+                                    Source: {resolvedCurrent.sourceLabel || "Saved Custom Integration source unavailable"}
+                                  </p>
+                                </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Badge className={getStatusColor(status)}>
-                                  {status}
-                                </Badge>
-                                {kpi.priority && (
-                                  <Badge variant="outline" className={getPriorityColor(kpi.priority)}>
-                                    {kpi.priority.charAt(0).toUpperCase() + kpi.priority.slice(1)}
-                                  </Badge>
-                                )}
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
@@ -2713,71 +2704,47 @@ export default function CustomIntegrationAnalytics() {
                                 </AlertDialog>
                               </div>
                             </div>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="p-3 bg-muted rounded-lg">
-                                <div className="text-sm font-medium text-muted-foreground/70 mb-1">
-                                  Current
-                                </div>
+
+                            <div className="grid grid-cols-2 gap-4 mt-4">
+                              <div className="bg-muted rounded-lg p-3">
+                                <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current</div>
                                 <div className="text-xl font-bold text-foreground">
-                                  {resolvedCurrent.available
-                                    ? formatCustomIntegrationMetricValue(currentVal, resolvedCurrent.unit || kpi.unit || '', resolvedCurrent.option?.type)
-                                    : 'Unavailable'}
+                                  {resolvedCurrent.available && currentVal !== null ? formatCustomIntegrationMetricValue(currentVal, displayUnit, resolvedCurrent.option?.type) : 'Unavailable'}
                                 </div>
                               </div>
-                              <div className="p-3 bg-muted rounded-lg">
-                                <div className="text-sm font-medium text-muted-foreground/70 mb-1">
-                                  Target
-                                </div>
+                              <div className="bg-muted rounded-lg p-3">
+                                <div className="text-sm font-medium text-muted-foreground/70 mb-1">Target</div>
                                 <div className="text-xl font-bold text-foreground">
-                                  {targetVal !== null
-                                    ? formatCustomIntegrationMetricValue(targetVal, resolvedCurrent.unit || kpi.unit || '', resolvedCurrent.option?.type)
-                                    : 'Unavailable'}
+                                  {targetVal !== null ? formatCustomIntegrationMetricValue(targetVal, displayUnit, resolvedCurrent.option?.type) : 'Unavailable'}
                                 </div>
                               </div>
                             </div>
-                            
-                            {/* Progress Tracker */}
-                            {targetVal !== null && targetVal > 0 && resolvedCurrent.available && currentVal !== null && (() => {
-                              const actualProgress = (currentVal / targetVal) * 100;
-                              const progressBarWidth = Math.min(actualProgress, 100);
-                              const isOutperforming = actualProgress >= 100;
-                              
-                              return (
-                                <div className="space-y-3">
-                                  {/* Progress to Target */}
-                                  <div className="space-y-2">
-                                    <div className="flex items-center justify-between text-sm">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground/70">Progress to Target</span>
-                                        {isOutperforming && <TrendingUp className="w-4 h-4 text-green-600" />}
-                                        {!isOutperforming && actualProgress > 0 && <Activity className="w-4 h-4 text-blue-600" />}
-                                      </div>
-                                      <span className="font-semibold text-foreground">
-                                        {Math.round(actualProgress)}%
-                                      </span>
-                                    </div>
-                                    <div className="w-full bg-muted rounded-full h-2.5">
-                                      <div 
-                                        className={`h-2.5 rounded-full transition-all ${
-                                          isOutperforming ? 'bg-green-500' : 'bg-blue-500'
-                                        }`}
-                                        style={{ width: `${Math.round(progressBarWidth)}%` }}
-                                      ></div>
-                                    </div>
-                                  </div>
 
-                                  {/* Timeframe Indicator */}
-                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    <span className="capitalize">
-                                      {kpi.timeframe || 'Monthly'}
-                                    </span>
-                                  </div>
+                            {progress ? (
+                              <div className="mt-4 space-y-2">
+                                <div className="flex items-center justify-between text-xs text-muted-foreground/70">
+                                  <span>Progress</span>
+                                  <span>{formatPct(progress.attainmentPct)}</span>
                                 </div>
-                              );
-                            })()}
+                                <div className="w-full bg-muted rounded-full h-2">
+                                  <div className={`h-2 rounded-full ${progress.progressColor}`} style={{ width: `${progress.fillPct}%` }} />
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground/70 mt-4">{resolvedCurrent.reason}</p>
+                            )}
+
+                            {progress && progress.effectiveDeltaPct !== null && (
+                              <div className="mt-2 text-xs text-muted-foreground/70">
+                                {(() => {
+                                  if (Math.abs(progress.effectiveDeltaPct) < 0.0001) return "At target";
+                                  const absStr = formatPct(Math.abs(progress.effectiveDeltaPct)).replace("%", "");
+                                  return progress.effectiveDeltaPct > 0
+                                    ? `${absStr}% above target`
+                                    : `${absStr}% below target`;
+                                })()}
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
                       );

@@ -1987,6 +1987,53 @@ export default function CustomIntegrationAnalytics() {
   const parserMetadata = getCustomIntegrationParserMetadata(metricsData);
   const parserWarnings = Array.isArray(parserMetadata?.warnings) ? parserMetadata.warnings : [];
   const parserRequiresReview = Boolean(parserMetadata?.requiresReview || parserWarnings.length > 0);
+  const latestImportLabel = metricsData ? getCustomIntegrationSourceLabel(metricsData) : 'No import yet';
+  const latestImportStatus = parserRequiresReview ? 'Needs review' : metricsData ? 'Validated' : 'Waiting for data';
+
+  const handleCustomIntegrationPdfUpload = async (file?: File | null) => {
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('pdf', file);
+
+    try {
+      const res = await fetch(`/api/custom-integration/${campaignId}/upload-pdf`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!res.ok) throw new Error('Upload failed');
+
+      toast({
+        title: "Success!",
+        description: "PDF uploaded and metrics extracted",
+      });
+
+      refetchMetrics();
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpis`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=yesterday`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=last_week`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=last_month`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=daily`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=weekly`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=monthly`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "snapshots", "historical"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/meta", campaignId, "analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "outcome-totals"] });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload PDF",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="flex h-screen bg-muted">
@@ -2008,13 +2055,46 @@ export default function CustomIntegrationAnalytics() {
               </Button>
               
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-                  <Plus className="w-6 h-6 text-white" />
-                </div>
+                <FileText className="h-8 w-8 shrink-0 text-purple-600" />
                 <div>
                   <h1 className="text-3xl font-bold text-foreground">
                     Custom Integration Analytics
                   </h1>
+                  <p className="text-muted-foreground/70">Marketing data for {(campaign as any)?.name || 'this campaign'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-6 rounded-lg border border-border bg-card p-4" data-testid="custom-integration-data-status">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-start gap-3">
+                  <FileText className="mt-1 h-5 w-5 text-purple-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Custom Data</p>
+                    <p className="text-sm text-muted-foreground">
+                      {latestImportLabel}
+                      {metricsData?.uploadedAt ? ` - Last updated ${new Date(metricsData.uploadedAt).toLocaleString()}` : ''}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Validation: {latestImportStatus}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    id="custom-integration-pdf-upload"
+                    className="hidden"
+                    onChange={(e) => handleCustomIntegrationPdfUpload(e.target.files?.[0])}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => document.getElementById('custom-integration-pdf-upload')?.click()}
+                    className="gap-2"
+                    data-testid="button-upload-custom-integration-pdf"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload PDF
+                  </Button>
                 </div>
               </div>
             </div>
@@ -2023,8 +2103,10 @@ export default function CustomIntegrationAnalytics() {
             <Tabs defaultValue="overview" className="space-y-6">
               <TabsList className="bg-card border border-border">
                 <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
+                <TabsTrigger value="summary" data-testid="tab-summary">Summary</TabsTrigger>
                 <TabsTrigger value="kpis" data-testid="tab-kpis">KPIs</TabsTrigger>
                 <TabsTrigger value="benchmarks" data-testid="tab-benchmarks">Benchmarks</TabsTrigger>
+                <TabsTrigger value="insights" data-testid="tab-insights">Insights</TabsTrigger>
                 <TabsTrigger value="reports" data-testid="tab-reports">Reports</TabsTrigger>
               </TabsList>
 
@@ -2131,74 +2213,6 @@ export default function CustomIntegrationAnalytics() {
                           </p>
                         </div>
 
-                        {/* Manual Upload Option */}
-                        <div className="pt-4 border-t border-border">
-                          <p className="text-sm text-muted-foreground/70 mb-3">
-                            Don't want to wait? Upload a PDF now:
-                          </p>
-                          <input
-                            type="file"
-                            accept=".pdf"
-                            id="manual-pdf-upload"
-                            className="hidden"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-
-                              const formData = new FormData();
-                              formData.append('pdf', file);
-
-                              try {
-                                const res = await fetch(`/api/custom-integration/${campaignId}/upload-pdf`, {
-                                  method: 'POST',
-                                  body: formData,
-                                  credentials: 'include',
-                                });
-
-                                if (!res.ok) throw new Error('Upload failed');
-
-                                toast({
-                                  title: "Success!",
-                                  description: "PDF uploaded and metrics extracted",
-                                });
-
-                                // Refetch local metrics + invalidate shared DeepDive caches
-                                refetchMetrics();
-                                queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId] });
-                                queryClient.invalidateQueries({ queryKey: ["/api/linkedin/metrics", campaignId] });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/kpis`] });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/benchmarks`] });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=yesterday`] });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=last_week`] });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots/comparison?type=last_month`] });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=daily`] });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=weekly`] });
-                                queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/snapshots?period=monthly`] });
-                                queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "snapshots", "historical"] });
-                                // Other data sources used by DeepDive pages
-                                queryClient.invalidateQueries({ queryKey: ["/api/meta", campaignId, "analytics"] });
-                                queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-metrics"] });
-                                queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "google-sheets-data"] });
-                                queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "outcome-totals"] });
-                              } catch (error) {
-                                toast({
-                                  title: "Error",
-                                  description: "Failed to upload PDF",
-                                  variant: "destructive",
-                                });
-                              }
-                            }}
-                          />
-                          <Button
-                            variant="outline"
-                            onClick={() => document.getElementById('manual-pdf-upload')?.click()}
-                            className="gap-2"
-                          >
-                            <Upload className="w-4 h-4" />
-                            Upload PDF Manually
-                          </Button>
-                        </div>
-
                         {/* Status Footer */}
                         <div className="pt-4 border-t border-border flex items-center justify-center gap-2 text-sm text-muted-foreground/70">
                           <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
@@ -2212,6 +2226,33 @@ export default function CustomIntegrationAnalytics() {
 
                 {hasMetrics && (
                   <>
+                    <Card data-testid="custom-integration-imported-data-card">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-purple-600" />
+                          Imported Data
+                        </CardTitle>
+                        <CardDescription>
+                          {latestImportLabel}
+                          {metricsData?.uploadedAt ? ` - Last updated ${new Date(metricsData.uploadedAt).toLocaleString()}` : ''}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="grid gap-3 md:grid-cols-3">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Validation</p>
+                          <p className="font-medium text-foreground">{latestImportStatus}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Confidence</p>
+                          <p className="font-medium text-foreground">{parserMetadata?.confidence ?? 'Unavailable'}%</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Extracted fields</p>
+                          <p className="font-medium text-foreground">{parserMetadata?.extractedFields ?? 'Unavailable'}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
                     {/* Audience & Traffic Metrics (GA4 Style) */}
                     {hasAudienceMetrics && (
                       <div className="space-y-4">
@@ -2575,16 +2616,30 @@ export default function CustomIntegrationAnalytics() {
                       </div>
                     )}
 
-                    {/* Last Updated Timestamp */}
-                    {metricsData?.uploadedAt && (
-                      <div className="flex justify-end">
-                        <Badge className="bg-blue-600 text-white">
-                          Last Updated: {new Date(metricsData.uploadedAt).toLocaleString()}
-                        </Badge>
-                      </div>
-                    )}
                   </>
                 )}
+              </TabsContent>
+
+              <TabsContent value="summary" className="space-y-6" data-testid="content-summary">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Summary</CardTitle>
+                    <CardDescription>{latestImportLabel}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      { label: 'Campaign metrics', available: Boolean(hasBasicMetrics) },
+                      { label: 'Audience metrics', available: Boolean(hasAudienceMetrics) },
+                      { label: 'Traffic sources', available: Boolean(hasTrafficSources) },
+                      { label: 'Email metrics', available: Boolean(hasEmailMetrics) },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-lg border border-border p-4">
+                        <p className="text-sm text-muted-foreground">{item.label}</p>
+                        <p className="mt-1 font-semibold text-foreground">{item.available ? 'Available' : 'Unavailable'}</p>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* KPIs Tab */}
@@ -3445,6 +3500,37 @@ export default function CustomIntegrationAnalytics() {
                     </CardContent>
                   </Card>
                 )}
+              </TabsContent>
+
+              <TabsContent value="insights" className="space-y-6" data-testid="content-insights">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Insights</CardTitle>
+                    <CardDescription>{latestImportLabel}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="rounded-lg border border-border p-4">
+                      <p className="text-sm text-muted-foreground">Import status</p>
+                      <p className="mt-1 font-semibold text-foreground">{latestImportStatus}</p>
+                    </div>
+                    {!metricsData ? (
+                      <div className="rounded-lg border border-border p-4">
+                        <p className="font-semibold text-foreground">Waiting for data</p>
+                        <p className="mt-1 text-sm text-muted-foreground">No import has been processed yet.</p>
+                      </div>
+                    ) : parserRequiresReview ? (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+                        <p className="font-semibold">Import needs review</p>
+                        {parserWarnings[0] && <p className="mt-1 text-sm">{parserWarnings[0]}</p>}
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-border p-4">
+                        <p className="font-semibold text-foreground">Import validated</p>
+                        <p className="mt-1 text-sm text-muted-foreground">No parser warnings for the selected import.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Reports Tab */}

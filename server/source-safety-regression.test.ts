@@ -1479,4 +1479,30 @@ describe("source safety regression guards", () => {
     expect(source).toContain("targetVal > 0 && resolvedCurrent.available && currentVal !== null");
     expect(source).toContain("resolvedCurrent.available && currentVal !== null && benchmarkVal !== null && benchmarkVal > 0");
   });
+
+  it("Custom Integration analytics shell follows the Google Sheets tab layout", () => {
+    const source = readCustomIntegrationAnalyticsSource();
+
+    const overview = source.indexOf('TabsTrigger value="overview"');
+    const summary = source.indexOf('TabsTrigger value="summary"');
+    const kpis = source.indexOf('TabsTrigger value="kpis"');
+    const benchmarks = source.indexOf('TabsTrigger value="benchmarks"');
+    const insights = source.indexOf('TabsTrigger value="insights"');
+    const reports = source.indexOf('TabsTrigger value="reports"');
+
+    expect(overview).toBeGreaterThan(-1);
+    expect(summary).toBeGreaterThan(overview);
+    expect(kpis).toBeGreaterThan(summary);
+    expect(benchmarks).toBeGreaterThan(kpis);
+    expect(insights).toBeGreaterThan(benchmarks);
+    expect(reports).toBeGreaterThan(insights);
+    expect(source).toContain('data-testid="custom-integration-data-status"');
+    expect(source).toContain("Custom Data");
+    expect(source).toContain('data-testid="custom-integration-imported-data-card"');
+    expect(source).toContain("Imported Data");
+    expect(source).toContain('data-testid="content-summary"');
+    expect(source).toContain('data-testid="content-insights"');
+    expect(source).toContain('data-testid="button-upload-custom-integration-pdf"');
+    expect(source).not.toContain('id="manual-pdf-upload"');
+  });
 });

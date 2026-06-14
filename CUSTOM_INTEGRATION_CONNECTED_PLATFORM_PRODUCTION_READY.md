@@ -303,6 +303,7 @@ Status:
 - Regression evidence: `server/source-safety-regression.test.ts` guards against reintroducing zero-filled Custom Integration KPI/Benchmark metric selection, verifies unavailable metrics are excluded from visible scoring, verifies parsed PDF imports use null-preserving storage across manual upload, webhook upload, and inbound email, verifies no-metrics parses do not assign fake legacy zeros, and verifies parser metadata schema/migration/UI coverage.
 - Parser evidence: `server/pdf-parser-regression.test.ts` covers a known mixed report, an email-only partial report, and a no-metrics report.
 - Local validation completed for final Commit 3 pass: `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts` and `npm run check` passed.
+- User validation passed for Commit 3 after the Render database migration was applied.
 - Deferred by tracker scope: Reports, scheduled reports, Insights, Summary, and full Google Sheets layout parity remain in later commits.
 - Gate cleared for Commit 4 after applying the parser metadata migration.
 
@@ -323,6 +324,14 @@ Tasks:
 Validation:
 
 - Browser validation confirms tab order, page stability, source/status row, and imported-data card.
+
+Status:
+
+- Completed in Commit 4 implementation pass.
+- Root cause: Custom Integration still used the older four-tab analytics shell (`Overview`, `KPIs`, `Benchmarks`, `Reports`) and kept PDF upload inside the empty-state card, while the Google Sheets template uses the source/status area plus six tabs (`Overview`, `Summary`, `KPIs`, `Benchmarks`, `Insights`, `Reports`) and a data provenance card inside Overview.
+- Fixes: added the Google Sheets tab order, added a `Custom Data` status row with latest import label, validation state, and PDF upload action, moved upload out of the empty-state card, added an `Imported Data` provenance card, and added lightweight Summary and Insights shell content based on existing source availability and parser status.
+- Regression evidence: `server/source-safety-regression.test.ts` verifies the Custom Integration tab order, status row, imported-data card, Summary/Insights content targets, and upload button placement.
+- Local validation: `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts` and `npm run check` passed.
 
 ### Commit 5: Overview And Summary
 

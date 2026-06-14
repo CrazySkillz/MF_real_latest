@@ -1488,6 +1488,8 @@ describe("source safety regression guards", () => {
     expect(source).toContain("resolved.available && current !== null && benchmark > 0");
     expect(source).toContain("resolvedCurrent.available && currentVal !== null && targetVal !== null && targetVal > 0");
     expect(source).toContain("resolvedCurrent.available && currentVal !== null && benchmarkVal !== null && benchmarkVal > 0");
+    expect(source).toContain("const [initialKpiForm, setInitialKpiForm] = useState<any>(null)");
+    expect(source).toContain("(Boolean(editingKPI) && !isKpiFormDirty)");
   });
 
   it("Custom Integration analytics shell follows the Google Sheets tab layout", () => {

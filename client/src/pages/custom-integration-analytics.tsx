@@ -146,6 +146,14 @@ function formatCustomIntegrationNumberInput(value: any, unit?: string): string {
   return `${negative ? '-' : ''}${groupedInteger}${decimal}`;
 }
 
+function normalizeCustomIntegrationKpiFormValue(key: string, value: any): string {
+  if (['targetValue', 'currentValue', 'alertThreshold'].includes(key)) {
+    const parsed = parseCustomIntegrationMetricNumber(cleanCustomIntegrationNumberInput(value));
+    return parsed === null ? '' : String(parsed);
+  }
+  return String(value ?? '').trim();
+}
+
 function parseCustomIntegrationMetricNumber(value: any): number | null {
   if (value === null || typeof value === 'undefined' || value === '') return null;
   const parsed = typeof value === 'number'
@@ -317,6 +325,7 @@ export default function CustomIntegrationAnalytics() {
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
   const [editingKPI, setEditingKPI] = useState<any>(null);
   const [kpiForm, setKpiForm] = useState(createEmptyCustomIntegrationKpiForm);
+  const [initialKpiForm, setInitialKpiForm] = useState<any>(null);
 
   // Benchmark state management
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
@@ -405,6 +414,7 @@ export default function CustomIntegrationAnalytics() {
       };
       
       setKpiForm(formData);
+      setInitialKpiForm(formData);
       
       // Open modal if not already open
       if (!isKPIModalOpen) {
@@ -556,6 +566,7 @@ export default function CustomIntegrationAnalytics() {
       
       setIsKPIModalOpen(false);
       setKpiForm(createEmptyCustomIntegrationKpiForm());
+      setInitialKpiForm(null);
     },
   });
 
@@ -592,6 +603,7 @@ export default function CustomIntegrationAnalytics() {
       setIsKPIModalOpen(false);
       setEditingKPI(null);
       setKpiForm(createEmptyCustomIntegrationKpiForm());
+      setInitialKpiForm(null);
     },
     onError: (error: any) => {
       console.error('=== KPI UPDATE ERROR ===');
@@ -622,8 +634,19 @@ export default function CustomIntegrationAnalytics() {
     },
   });
 
+  const isKpiFormDirty = editingKPI && initialKpiForm
+    ? Object.keys(initialKpiForm).some((key) =>
+      normalizeCustomIntegrationKpiFormValue(key, (kpiForm as any)[key]) !==
+        normalizeCustomIntegrationKpiFormValue(key, initialKpiForm[key])
+    )
+    : true;
+
   // Handle KPI form submission
   const handleKPISubmit = () => {
+    if (editingKPI && !isKpiFormDirty) {
+      return;
+    }
+
     if (!campaignId) {
       toast({
         title: "Error",
@@ -3482,6 +3505,7 @@ export default function CustomIntegrationAnalytics() {
           // Reset editing state when modal closes
           setEditingKPI(null);
           setKpiForm(createEmptyCustomIntegrationKpiForm());
+          setInitialKpiForm(null);
         }
       }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -3771,6 +3795,7 @@ export default function CustomIntegrationAnalytics() {
                   setIsKPIModalOpen(false);
                   setEditingKPI(null);
                   setKpiForm(createEmptyCustomIntegrationKpiForm());
+                  setInitialKpiForm(null);
                 }}
                 data-testid="button-kpi-cancel"
               >
@@ -3778,7 +3803,7 @@ export default function CustomIntegrationAnalytics() {
               </Button>
               <Button
                 onClick={handleKPISubmit}
-                disabled={!kpiForm.name || !kpiForm.metric || !kpiForm.targetValue || !campaignId}
+                disabled={!kpiForm.name || !kpiForm.metric || !kpiForm.targetValue || !campaignId || (Boolean(editingKPI) && !isKpiFormDirty)}
                 className="bg-purple-600 hover:bg-purple-700"
                 data-testid="button-kpi-submit"
               >

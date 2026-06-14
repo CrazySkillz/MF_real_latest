@@ -1530,6 +1530,7 @@ export default function Campaigns() {
                             <Button
                               type="button"
                               className="w-full justify-start"
+                              variant="outline"
                               onClick={connectCustomIntegrationEmail}
                               disabled={isCustomIntegrationConnecting}
                             >

@@ -402,6 +402,8 @@ describe("source safety regression guards", () => {
     expect(blockStart).toBeGreaterThan(-1);
     expect(block).toContain("uploadCustomIntegrationPdf");
     expect(block).toContain("connectCustomIntegrationEmail");
+    expect(block.slice(block.lastIndexOf("<Button", block.indexOf("Manual Upload")), block.indexOf("Manual Upload"))).toContain('variant="outline"');
+    expect(block.slice(block.lastIndexOf("<Button", block.indexOf("Set Up Email Forwarding")), block.indexOf("Set Up Email Forwarding"))).toContain('variant="outline"');
     expect(source).toContain("fetch(`/api/custom-integration/${draftCampaignId}/upload-pdf`");
     expect(source).toContain('apiRequest("POST", `/api/custom-integration/${draftCampaignId}/connect`');
     expect(source).toContain("setConnectedPlatformsInDialog(prev => prev.includes('custom-integration') ? prev : [...prev, 'custom-integration'])");

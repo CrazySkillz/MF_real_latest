@@ -162,6 +162,7 @@ Proven from local code review:
 Partially reviewed:
 
 - PDF upload, webhook upload, email inbound, and transfer flows exist, but duplicate route registration and lifecycle side effects need focused review.
+- Create Campaign email-forwarding setup creates the Custom Integration row and generated forwarding email, but the current wizard does not show the generated email address to the user after setup.
 - KPI, Benchmark, and Report create/edit/delete paths exist through generic platform routes, but source-backed current-value behavior is not production-ready.
 - Campaign aggregate paths include Custom Integration, but source availability and unavailable reasons are not fully normalized.
 
@@ -172,6 +173,7 @@ Unverified:
 - Full disconnect cleanup for existing imported metric rows.
 - Scheduled report output and snapshots for Custom Integration.
 - Whether all import paths write identical normalized metric shapes and provenance.
+- End-to-end Mailgun/SendGrid inbound delivery for generated forwarding emails in the deployed environment.
 - Whether existing persisted Custom Integration KPI, Benchmark, or Report rows contain damaged/stale current values from prior silent-zero behavior.
 
 ## Production-Ready Target Contract
@@ -187,6 +189,7 @@ Custom Integration is production-ready only when all of the following are true:
 - Saved KPIs, Benchmarks, and Reports persist enough source scope to resolve current values correctly after later imports.
 - Report downloads and scheduled reports use the same source-backed values visible in the UI.
 - Disconnect, transfer, upload, webhook, email inbound, scheduler, and report paths preserve campaign ownership and do not leak or reuse another campaign's data.
+- Email-forwarding setup shows the generated forwarding email address and copy action before users are expected to send PDF reports by email.
 - Custom Integration aggregate participation is explicit: it may provide web analytics, email/newsletter, paid-media-like, revenue, spend, or conversion values only when those exact fields exist in the selected validated import.
 
 ## Custom Integration Metric Adapter Contract
@@ -446,6 +449,26 @@ Required evidence:
 - Scheduled report validation if scheduling is exposed.
 - Documentation updated with final status, known boundaries, and validation results.
 
+### Deferred Follow-Up: Email Forwarding Usability
+
+Goal:
+
+- Make the existing `Set Up Email Forwarding` path usable for non-technical users.
+
+Root cause:
+
+- The backend returns `campaignEmail` from `/api/custom-integration/:campaignId/connect`, but Create Campaign currently only shows a success toast and does not display the generated forwarding address.
+
+Safe timing:
+
+- This can be deferred until after the remaining layout/analytics commits because Manual Upload already supports immediate data import and the email-forwarding connection row is created correctly.
+- It must be completed before Custom Integration is called production-ready.
+
+Smallest expected fix:
+
+- After email-forwarding setup, show `Forward PDF reports to: <campaignEmail>` with a copy button.
+- Validate deployed Mailgun/SendGrid inbound routing for that generated address before marking email forwarding production-ready.
+
 ## Validation Matrix
 
 Before Custom Integration can be called production-ready, validate:
@@ -453,6 +476,7 @@ Before Custom Integration can be called production-ready, validate:
 - Create/connect Custom Integration from campaign setup and campaign detail.
 - Import metrics by manual PDF upload.
 - Import metrics by webhook and inbound email, if retained.
+- Email-forwarding setup displays the generated forwarding address and copy action.
 - Open Custom Integration analytics from Connected Platforms.
 - Overview shows only source-backed metrics.
 - Summary exists and uses the same source-backed metrics.

@@ -392,6 +392,22 @@ describe("source safety regression guards", () => {
     expect(block).toContain("setWizardStep(5)");
   });
 
+  it("Create Campaign exposes Custom Integration through existing campaign-scoped setup routes", () => {
+    const source = readCampaignsPageSource();
+    const blockStart = source.indexOf("selectedWizardPlatform === 'custom-integration'");
+    const block = source.slice(blockStart, blockStart + 2500);
+
+    expect(source).toContain('id: "custom-integration"');
+    expect(source).toContain('name: "Custom Integration"');
+    expect(blockStart).toBeGreaterThan(-1);
+    expect(block).toContain("uploadCustomIntegrationPdf");
+    expect(block).toContain("connectCustomIntegrationEmail");
+    expect(source).toContain("fetch(`/api/custom-integration/${draftCampaignId}/upload-pdf`");
+    expect(source).toContain('apiRequest("POST", `/api/custom-integration/${draftCampaignId}/connect`');
+    expect(source).toContain("setConnectedPlatformsInDialog(prev => prev.includes('custom-integration') ? prev : [...prev, 'custom-integration'])");
+    expect(source).toContain("setWizardStep(5)");
+  });
+
   it("Connected Platforms Google Sheets setup persists campaign platform intent", () => {
     const source = readCampaignDetailSource();
     const blockStart = source.indexOf('platform.platform === "Google Sheets" ? (');

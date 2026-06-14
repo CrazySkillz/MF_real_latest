@@ -95,6 +95,9 @@ Frontend:
   - Fetches connection, latest metrics, platform KPIs, platform Benchmarks, and platform Reports.
   - Renders Overview, KPIs, Benchmarks, and Reports.
   - Includes PDF upload from the Overview empty state.
+- `client/src/pages/campaigns.tsx`
+  - Exposes Custom Integration in Create Campaign.
+  - Uses the existing campaign-scoped PDF upload and email-forwarding setup routes during campaign creation.
 - `client/src/App.tsx`
   - Routes `/campaigns/:id/custom-integration-analytics`.
   - Also routes `/integrations/:id/analytics`, which depends on the missing by-ID endpoint noted above.

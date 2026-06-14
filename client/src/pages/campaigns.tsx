@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Edit, Trash2, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft, CheckCircle, Loader2, FileText } from "lucide-react";
 import { SiFacebook, SiGoogle, SiInstagram, SiLinkedin, SiTiktok, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -126,6 +126,14 @@ const platforms = [
     type: "credentials"
   },
   {
+    id: "custom-integration",
+    name: "Custom Integration",
+    icon: FileText,
+    color: "text-blue-500",
+    description: "Import metrics from PDF reports or email forwarding",
+    type: "credentials"
+  },
+  {
     id: "twitter",
     name: "X (Twitter) Ads",
     icon: SiX,
@@ -192,6 +200,7 @@ export default function Campaigns() {
   const [tiktokAdvertiserName, setTikTokAdvertiserName] = useState("Test TikTok Advertiser");
   const [tiktokSelectedCampaignIds, setTikTokSelectedCampaignIds] = useState("");
   const [isTikTokConnecting, setIsTikTokConnecting] = useState(false);
+  const [isCustomIntegrationConnecting, setIsCustomIntegrationConnecting] = useState(false);
   const { toast } = useToast();
 
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
@@ -734,6 +743,7 @@ export default function Campaigns() {
     setTikTokAdvertiserName("Test TikTok Advertiser");
     setTikTokSelectedCampaignIds("");
     setIsTikTokConnecting(false);
+    setIsCustomIntegrationConnecting(false);
     form.reset();
   };
 
@@ -866,6 +876,66 @@ export default function Campaigns() {
     if (checked) selected.add(id);
     else selected.delete(id);
     setTikTokSelectedCampaignIds(Array.from(selected).join(", "));
+  };
+
+  const markCustomIntegrationConnected = () => {
+    setConnectedPlatformsInDialog(prev => prev.includes('custom-integration') ? prev : [...prev, 'custom-integration']);
+    setWizardPlatformConnected(true);
+    setWizardStep(5);
+  };
+
+  const uploadCustomIntegrationPdf = () => {
+    if (!draftCampaignId) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      setIsCustomIntegrationConnecting(true);
+      try {
+        const formData = new FormData();
+        formData.append('pdf', file);
+
+        const response = await fetch(`/api/custom-integration/${draftCampaignId}/upload-pdf`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || errorData.message || "Failed to upload PDF");
+        }
+
+        markCustomIntegrationConnected();
+        toast({ title: "Custom Integration Connected", description: "PDF metrics were imported for this campaign." });
+      } catch (error: any) {
+        toast({ title: "Upload Failed", description: error?.message || "Failed to upload PDF", variant: "destructive" });
+      } finally {
+        setIsCustomIntegrationConnecting(false);
+      }
+    };
+    input.click();
+  };
+
+  const connectCustomIntegrationEmail = async () => {
+    if (!draftCampaignId) return;
+
+    setIsCustomIntegrationConnecting(true);
+    try {
+      await apiRequest("POST", `/api/custom-integration/${draftCampaignId}/connect`, {
+        allowedEmailAddresses: [],
+        campaignName: campaignData?.name || "Custom Integration Campaign",
+      });
+      markCustomIntegrationConnected();
+      toast({ title: "Custom Integration Connected", description: "Email forwarding was set up for this campaign." });
+    } catch (error: any) {
+      toast({ title: "Connection Failed", description: error?.message || "Failed to set up Custom Integration", variant: "destructive" });
+    } finally {
+      setIsCustomIntegrationConnecting(false);
+    }
   };
 
   const handleWizardPropertySelection = async () => {
@@ -1435,6 +1505,36 @@ export default function Campaigns() {
                             >
                               {isTikTokConnecting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                               Connect {selectedTikTokCampaignIdList.length} Campaign{selectedTikTokCampaignIdList.length === 1 ? "" : "s"}
+                            </Button>
+                          </div>
+                        )}
+                        {selectedWizardPlatform === 'custom-integration' && (
+                          <div className="space-y-3">
+                            <p className="text-sm text-muted-foreground">
+                              Import metrics now from a PDF report, or set up email forwarding for later reports.
+                            </p>
+                            <Button
+                              type="button"
+                              className="w-full justify-start"
+                              variant="outline"
+                              onClick={uploadCustomIntegrationPdf}
+                              disabled={isCustomIntegrationConnecting}
+                            >
+                              {isCustomIntegrationConnecting ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              ) : (
+                                <FileText className="w-4 h-4 mr-2" />
+                              )}
+                              Manual Upload
+                            </Button>
+                            <Button
+                              type="button"
+                              className="w-full justify-start"
+                              onClick={connectCustomIntegrationEmail}
+                              disabled={isCustomIntegrationConnecting}
+                            >
+                              {isCustomIntegrationConnecting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                              Set Up Email Forwarding
                             </Button>
                           </div>
                         )}

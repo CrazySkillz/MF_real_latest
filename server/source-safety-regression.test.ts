@@ -1451,8 +1451,8 @@ describe("source safety regression guards", () => {
     expect(source).toContain("const CUSTOM_INTEGRATION_METRIC_OPTIONS");
     expect(source).toContain("function resolveCustomIntegrationMetric");
     expect(source).toContain("fields: ['clickToOpenRate', 'clickToOpen']");
-    expect(source).toContain("resolved.available && resolved.currentValue !== null ? String(resolved.currentValue) : ''");
-    expect(source).toContain("disabled={!resolved.available}");
+    expect(source).toContain("metric.resolved.currentValue !== null ? String(metric.resolved.currentValue) : ''");
+    expect(source).toContain("disabled={disabled}");
     expect(source).not.toContain("String(metricsData?.users || 0)");
     expect(source).not.toContain("String(metricsData?.sessions || 0)");
     expect(source).not.toContain("String(metricsData?.pageviews || 0)");
@@ -1589,6 +1589,10 @@ describe("source safety regression guards", () => {
     expect(source).toContain("const computeCustomIntegrationBenchmarkProgress = (benchmark: any, current: number, benchmarkValue: number) => {");
     expect(source).toContain('const status = ratio >= 0.9 ? "on_track" : ratio >= 0.7 ? "needs_attention" : "behind";');
     expect(source).toContain("customIntegrationBenchmarkTracker.avgPct");
+    expect(source).toContain("data-custom-integration-benchmark-source-adapter=\"source-backed\"");
+    expect(source).toContain("Select Benchmark Template");
+    expect(source).toContain("data-testid={`button-benchmark-template-${metric.key}`}");
+    expect(source).toContain('data-testid="button-benchmark-template-custom"');
     expect(source).toContain("Compare Custom Integration metrics against source-backed benchmark values.");
     expect(source).toContain("90% or more of benchmark");
     expect(source).toContain("70% to under 90% of benchmark");
@@ -1597,6 +1601,7 @@ describe("source safety regression guards", () => {
     expect(source).toContain("benchmarkType: benchmarkForm.benchmarkType || 'goal'");
     expect(source).toContain("sourceScope: activeCustomIntegrationSourceScope");
     expect(source).toContain("data-source-backed-current-value={benchmarkFormUsesSourceBackedMetric ? 'custom_integration_benchmark' : undefined}");
+    expect(source).not.toContain('data-testid="select-benchmark-metric"');
     expect(source).not.toContain("current >= benchmarkVal * 1.2");
     expect(source).not.toContain("Progress to Benchmark");
   });

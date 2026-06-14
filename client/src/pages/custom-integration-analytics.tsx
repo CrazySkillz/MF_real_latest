@@ -3825,41 +3825,74 @@ export default function CustomIntegrationAnalytics() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="benchmark-metric">Metric Source</Label>
-                <Select
-                  value={benchmarkForm.metric || undefined}
-                  onValueChange={(value) => {
-                    if (value === 'custom') {
-                      setBenchmarkForm({ ...benchmarkForm, metric: value, currentValue: '', unit: '' });
-                      return;
-                    }
-                    const resolved = resolveCustomIntegrationMetric(metricsData, value);
-                    setBenchmarkForm({
-                      ...benchmarkForm,
-                      metric: value,
-                      currentValue: resolved.available && resolved.currentValue !== null ? String(resolved.currentValue) : '',
-                      unit: getCustomIntegrationUnitLabel(resolved.unit, resolved.option?.type),
-                    });
-                  }}
-                >
-                  <SelectTrigger id="benchmark-metric" data-testid="select-benchmark-metric">
-                    <SelectValue placeholder="Select metric to benchmark" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CUSTOM_INTEGRATION_METRIC_OPTIONS.map((option) => {
-                      const resolved = resolveCustomIntegrationMetric(metricsData, option.key);
-                      return (
-                        <SelectItem key={option.key} value={option.key} disabled={!resolved.available}>
-                          {option.label}{resolved.available ? '' : ' - Unavailable'}
-                        </SelectItem>
-                      );
-                    })}
-                    <SelectItem value="custom">Custom Value</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="space-y-4 rounded-lg bg-muted p-4" data-custom-integration-benchmark-source-adapter="source-backed">
+              <div>
+                <h4 className="font-medium text-foreground">Select Benchmark Template</h4>
+                <p className="mt-1 text-sm text-muted-foreground/70">
+                  Choose an imported Custom Integration metric with a current source-backed value.
+                </p>
               </div>
+              {CUSTOM_INTEGRATION_OVERVIEW_GROUPS.map((group) => {
+                const groupMetrics = group.metricKeys
+                  .map((metricKey) => customIntegrationKpiMetricOptions.find((metric) => metric.key === metricKey))
+                  .filter(Boolean) as any[];
+                if (!groupMetrics.length) return null;
+                return (
+                  <div key={group.title} className="space-y-2">
+                    <p className="text-xs font-semibold uppercase text-muted-foreground/70">{group.title}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {groupMetrics.map((metric) => {
+                        const selected = benchmarkForm.metric === metric.key;
+                        const disabled = metric.resolved.available !== true;
+                        return (
+                          <button
+                            key={metric.key}
+                            type="button"
+                            disabled={disabled}
+                            className={`rounded-lg border-2 p-3 text-left transition-all ${
+                              disabled
+                                ? 'cursor-not-allowed border-border opacity-50'
+                                : selected
+                                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                                  : 'border-border hover:border-purple-300'
+                            }`}
+                            onClick={() => {
+                              if (disabled) return;
+                              setBenchmarkForm({
+                                ...benchmarkForm,
+                                name: editingBenchmark ? benchmarkForm.name || metric.label : metric.label,
+                                metric: metric.key,
+                                currentValue: metric.resolved.currentValue !== null ? String(metric.resolved.currentValue) : '',
+                                unit: getCustomIntegrationUnitLabel(metric.resolved.unit, metric.resolved.option?.type),
+                                description: benchmarkForm.description || `Benchmark ${metric.label} from the active Custom Integration import.`,
+                              });
+                            }}
+                            data-testid={`button-benchmark-template-${metric.key}`}
+                          >
+                            <div className="text-sm font-medium text-foreground">{metric.label}</div>
+                            {disabled && (
+                              <div className="mt-1 text-xs text-muted-foreground/70">{metric.resolved.reason}</div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                className={`rounded-lg border-2 p-3 text-left transition-all ${
+                  benchmarkForm.metric === 'custom'
+                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                    : 'border-border hover:border-purple-300'
+                }`}
+                onClick={() => setBenchmarkForm({ ...benchmarkForm, metric: 'custom', currentValue: '', unit: '' })}
+                data-testid="button-benchmark-template-custom"
+              >
+                <div className="text-sm font-medium text-foreground">Create Custom Benchmark</div>
+                <div className="mt-1 text-xs text-muted-foreground/70">Manual current value and unit</div>
+              </button>
             </div>
 
             <div className="space-y-2">

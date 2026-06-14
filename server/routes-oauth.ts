@@ -17590,6 +17590,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const headers = rows[0] || [];
       let platformColumnIndex = -1;
       let campaignNameColumnIndex = -1;
+      let mappedCampaignColumnIndex = -1;
+      let mappedCampaignValue = "";
 
       // Check if mappings exist and use them to find column indices
       if (connection.columnMappings) {
@@ -17597,11 +17599,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const mappings = JSON.parse(connection.columnMappings);
           if (mappings && mappings.length > 0) {
             // Find mapped columns
+            const campaignIdMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_id');
             const campaignNameMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_name');
             const platformMapping = mappings.find((m: any) => m.targetFieldId === 'platform');
 
+            if (campaignIdMapping) {
+              mappedCampaignColumnIndex = campaignIdMapping.sourceColumnIndex;
+              mappedCampaignValue = String(campaignIdMapping.selectedValue ?? campaignIdMapping.campaignIdentifierValue ?? '').trim();
+            }
             if (campaignNameMapping) {
               campaignNameColumnIndex = campaignNameMapping.sourceColumnIndex;
+              if (mappedCampaignColumnIndex < 0) mappedCampaignColumnIndex = campaignNameMapping.sourceColumnIndex;
+              if (!mappedCampaignValue) {
+                mappedCampaignValue = String(campaignNameMapping.selectedValue ?? campaignNameMapping.campaignIdentifierValue ?? '').trim();
+              }
             }
             if (platformMapping) {
               platformColumnIndex = platformMapping.sourceColumnIndex;
@@ -17623,6 +17634,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           String(h || '').toLowerCase().includes('platform')
         );
       }
+      const campaignFilterColumnIndex = mappedCampaignColumnIndex >= 0 ? mappedCampaignColumnIndex : campaignNameColumnIndex;
+      const campaignFilterValue = String(mappedCampaignValue || campaignName || '').toLowerCase().trim();
+      const hasMappedCampaignFilter = mappedCampaignColumnIndex >= 0 && !!mappedCampaignValue;
 
       // Build platform keywords from ALL connected platforms (not just the campaign's primary platform).
       // A campaign can have LinkedIn, Meta, GA4, etc. all connected simultaneously.
@@ -17644,34 +17658,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allPlatformKeywords.push(...getPlatformKeywords(campaignPlatform));
       }
 
-      // Filter rows by campaign name (and platform if available) for summary
+      // Filter rows by saved mapped campaign value when available, otherwise by campaign name.
       let filteredRowsForSummary: any[] = [];
       const allRows = rows.slice(1); // Skip header row
 
-      if (campaignNameColumnIndex >= 0 && campaignName) {
+      if (campaignFilterColumnIndex >= 0 && campaignFilterValue) {
         // Filter by campaign name (and platform if available)
         if (platformColumnIndex >= 0 && allPlatformKeywords.length > 0) {
           // Strategy 1: Campaign Name + Platform matching (includes ALL connected platforms)
           filteredRowsForSummary = allRows.filter((row: any[]) => {
-            if (!Array.isArray(row) || row.length <= Math.max(platformColumnIndex, campaignNameColumnIndex)) {
+            if (!Array.isArray(row) || row.length <= Math.max(platformColumnIndex, campaignFilterColumnIndex)) {
               return false;
             }
             const platformValue = String(row[platformColumnIndex] || '');
-            const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
+            const campaignNameValue = String(row[campaignFilterColumnIndex] || '').toLowerCase().trim();
+            if (!campaignNameValue) return false;
             const platformMatches = matchesPlatform(platformValue, allPlatformKeywords);
-            const matchesCampaign = campaignNameValue.includes(campaignName.toLowerCase()) ||
-              campaignName.toLowerCase().includes(campaignNameValue);
+            const matchesCampaign = hasMappedCampaignFilter
+              ? campaignNameValue === campaignFilterValue
+              : campaignNameValue === campaignFilterValue ||
+                campaignNameValue.includes(campaignFilterValue) ||
+                campaignFilterValue.includes(campaignNameValue);
             return platformMatches && matchesCampaign;
           });
         } else {
           // Strategy 2: Campaign Name only
           filteredRowsForSummary = allRows.filter((row: any[]) => {
-            if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) {
+            if (!Array.isArray(row) || row.length <= campaignFilterColumnIndex) {
               return false;
             }
-            const campaignNameValue = String(row[campaignNameColumnIndex] || '').toLowerCase();
-            return campaignNameValue.includes(campaignName.toLowerCase()) ||
-              campaignName.toLowerCase().includes(campaignNameValue);
+            const campaignNameValue = String(row[campaignFilterColumnIndex] || '').toLowerCase().trim();
+            if (!campaignNameValue) return false;
+            return hasMappedCampaignFilter
+              ? campaignNameValue === campaignFilterValue
+              : campaignNameValue === campaignFilterValue ||
+                campaignNameValue.includes(campaignFilterValue) ||
+                campaignFilterValue.includes(campaignNameValue);
           });
         }
       } else if (platformColumnIndex >= 0 && allPlatformKeywords.length > 0) {
@@ -17689,11 +17711,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Use filtered rows for summary if we have a campaign name match, otherwise use all rows
-      const rowsForSummary = filteredRowsForSummary.length > 0 && campaignNameColumnIndex >= 0 && campaignName
+      const rowsForSummary = filteredRowsForSummary.length > 0 && campaignFilterColumnIndex >= 0 && campaignFilterValue
         ? filteredRowsForSummary
         : allRows;
 
-      devLog(`[Google Sheets Summary] Using ${rowsForSummary.length} rows for summary (filtered by campaign name "${campaignName}") out of ${allRows.length} total rows`);
+      devLog(`[Google Sheets Summary] Using ${rowsForSummary.length} rows for summary (filtered by campaign value "${campaignFilterValue || campaignName}") out of ${allRows.length} total rows`);
 
       // Process spreadsheet data to extract campaign metrics (using filtered rows for summary, but show all rows in table)
       let campaignData = {

@@ -477,6 +477,15 @@ export default function GoogleSheetsData() {
     return null;
   }, [selectedSpreadsheetId, primaryConnection, googleSheetsConnections]);
 
+  const activeGoogleSheetsConnection = useMemo(() => {
+    if (!activeSpreadsheetId) return null;
+    const { spreadsheetId, identifier } = parseGoogleSheetsConnectionValue(activeSpreadsheetId);
+    return googleSheetsConnections.find((conn: any) =>
+      conn.spreadsheetId === spreadsheetId &&
+      (identifier === null || conn.sheetName === identifier || conn.id === identifier)
+    ) || null;
+  }, [activeSpreadsheetId, googleSheetsConnections]);
+
   const getGoogleSheetsConnectionDisplayName = useCallback((conn: any): string => {
     if (!conn) return 'Unknown';
     const connectionsFromSameSpreadsheet = googleSheetsConnections.filter(
@@ -494,12 +503,9 @@ export default function GoogleSheetsData() {
   }, [googleSheetsConnections]);
 
   const activeGoogleSheetsSourceScope = useMemo<GoogleSheetsAnalysisSourceScope | null>(() => {
-    if (!activeSpreadsheetId) return null;
-    const { spreadsheetId, identifier } = parseGoogleSheetsConnectionValue(activeSpreadsheetId);
-    const activeConn = googleSheetsConnections.find((conn: any) =>
-      conn.spreadsheetId === spreadsheetId &&
-      (identifier === null || conn.sheetName === identifier || conn.id === identifier)
-    );
+    if (!activeSpreadsheetId || !activeGoogleSheetsConnection) return null;
+    const activeConn = activeGoogleSheetsConnection;
+    const { spreadsheetId } = parseGoogleSheetsConnectionValue(activeSpreadsheetId);
     if (!activeConn) return null;
 
     return {
@@ -512,7 +518,7 @@ export default function GoogleSheetsData() {
       sheetName: activeConn.sheetName || null,
       displayName: getGoogleSheetsConnectionDisplayName(activeConn),
     };
-  }, [activeSpreadsheetId, getGoogleSheetsConnectionDisplayName, googleSheetsConnections]);
+  }, [activeGoogleSheetsConnection, activeSpreadsheetId, getGoogleSheetsConnectionDisplayName]);
 
   // Handle sheet selection change with smooth transition
   const handleSheetChange = useCallback((value: string) => {
@@ -1271,6 +1277,32 @@ export default function GoogleSheetsData() {
       </CardContent>
     </Card>
   );
+
+  const renderGoogleSheetsDatasetSetupCard = () => {
+    if (!activeGoogleSheetsConnection || isMapped(activeGoogleSheetsConnection)) return null;
+
+    return (
+      <Card>
+        <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-base font-semibold text-foreground">Set Up Sheet Data</p>
+            <p className="text-sm text-muted-foreground">
+              Choose the campaign value and value column that power Overview, KPIs, Benchmarks, Insights, and Reports.
+            </p>
+          </div>
+          <Button
+            onClick={() => {
+              setMappingConnectionId(activeGoogleSheetsConnection.id);
+              setShowMappingInterface(true);
+            }}
+          >
+            <Pencil className="w-4 h-4 mr-2" />
+            Set Up Mappings
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const deleteGoogleSheetsRevenueSourceMutation = useMutation({
     mutationFn: async (sourceId: string) => {
@@ -2377,12 +2409,12 @@ export default function GoogleSheetsData() {
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="reports">Reports</TabsTrigger>
-                  <TabsTrigger value="connections">Connected Datasets</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="data" className="mt-6 space-y-6">
                   {renderGoogleSheetsFinancialCards()}
                   {renderGoogleSheetsCampaignScopeCard()}
+                  {renderGoogleSheetsDatasetSetupCard()}
 
                   <Card>
                     <CardHeader>
@@ -2440,12 +2472,12 @@ export default function GoogleSheetsData() {
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="reports">Reports</TabsTrigger>
-                  <TabsTrigger value="connections">Connected Datasets</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="data" className="mt-6 space-y-6">
                   {renderGoogleSheetsFinancialCards()}
                   {renderGoogleSheetsCampaignScopeCard()}
+                  {renderGoogleSheetsDatasetSetupCard()}
 
                   <Card>
                     <CardHeader>
@@ -2540,7 +2572,7 @@ export default function GoogleSheetsData() {
                               <div className="text-center">
                                 <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground/70 mb-4" />
                                 <p className="text-muted-foreground/70">No numeric columns detected</p>
-                                <p className="text-sm text-muted-foreground mt-1">Map columns in Connected Datasets to see metrics here</p>
+                                <p className="text-sm text-muted-foreground mt-1">Set up mappings from Overview to see metrics here</p>
                               </div>
                             </CardContent>
                           </Card>

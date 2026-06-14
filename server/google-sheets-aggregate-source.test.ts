@@ -277,6 +277,12 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(routes).toContain("derived_profit_per_spend_pct");
     expect(routes).toContain("derived_spend_per_customer");
     expect(routes).toContain("detectedColumns: campaignData.detectedColumns");
+    expect(routes).toContain('let mappedCampaignValue = "";');
+    expect(routes).toContain("campaignIdMapping.selectedValue ?? campaignIdMapping.campaignIdentifierValue");
+    expect(routes).toContain("const campaignFilterColumnIndex = mappedCampaignColumnIndex >= 0 ? mappedCampaignColumnIndex : campaignNameColumnIndex;");
+    expect(routes).toContain("const campaignFilterValue = String(mappedCampaignValue || campaignName || '').toLowerCase().trim();");
+    expect(routes).toContain("const hasMappedCampaignFilter = mappedCampaignColumnIndex >= 0 && !!mappedCampaignValue;");
+    expect(routes).toContain("campaignNameValue === campaignFilterValue");
     expect(page).toContain("getSummaryMetricDisplayValue(col)");
     expect(page).toContain("getSummaryMetricBusinessPriority");
     expect(page).toContain("getExecutiveSummaryColumns");
@@ -284,7 +290,11 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("{displayColumns.length} metrics");
     expect(page).toContain("return executiveColumns.length > 0 ? executiveColumns : candidates;");
     expect(page).toContain("Data Breakdown");
-    expect(page).toContain("Connected Datasets");
+    expect(page).not.toContain('<TabsTrigger value="connections">Connected Datasets</TabsTrigger>');
+    expect(page).toContain("Set Up Sheet Data");
+    expect(page).toContain("Set Up Mappings");
+    expect(page).toContain("setMappingConnectionId(activeGoogleSheetsConnection.id)");
+    expect(page).toContain("Set up mappings from Overview to see metrics here");
     expect(page).not.toContain("Connection Details");
     expect(page).toContain("Manage connected Google Sheets tabs and column mappings.");
     expect(page).toContain("Last refreshed:");

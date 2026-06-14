@@ -728,6 +728,7 @@ export const customIntegrationMetrics = pgTable("custom_integration_metrics", {
   emailId: text("email_id"), // To track which email was processed
   previousMetrics: text("previous_metrics"), // JSON snapshot of metrics before this update (for change tracking)
   previousUpdateAt: timestamp("previous_update_at"), // Timestamp of previous metrics update
+  parserMetadata: jsonb("parser_metadata"),
   uploadedAt: timestamp("uploaded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

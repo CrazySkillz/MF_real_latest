@@ -133,7 +133,7 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
       viralImpressions: /(?:viral\s*impressions?|organic\s*impressions?)[:\s|]+([0-9,.KM]+)/i,
       
       // Audience & Traffic metrics (GA4 style + William Reed formats)
-      users: /(?:users?\s*\(unique\)|unique\s*users?|unique\s*visitors?|visitors?)[:\s|]+([0-9,.KM]+)/i,
+      users: /(?:users?\s*\(unique\)|users?|unique\s*users?|unique\s*visitors?|visitors?)[:\s|]+([0-9,.KM]+)/i,
       sessions: /(?:sessions?|visits?)[:\s|]+([0-9,.KM]+)/i,
       pageviews: /(?:pageviews?|page\s*views?|pages?\s*viewed)[:\s|]+([0-9,.KM]+)/i,
       avgSessionDuration: /(?:avg\.?\s*session\s*duration|average\s*session\s*duration|avg\.?\s*time\s*on\s*site|average\s*time)[:\s|]+([0-9:]+)/i,
@@ -238,10 +238,18 @@ function validateExtractedMetrics(
     confidence -= 20;
   }
   
-  // Validate required metrics for website analytics
+  // Validate required metrics only when the import contains website analytics fields.
+  const websiteMetrics: (keyof ParsedMetrics)[] = [
+    'users', 'sessions', 'pageviews', 'avgSessionDuration', 'pagesPerSession',
+    'bounceRate', 'organicSearchShare', 'directBrandedShare', 'emailShare',
+    'referralShare', 'paidShare', 'socialShare'
+  ];
+  const hasWebsiteMetrics = websiteMetrics.some(m => metrics[m] !== undefined);
   const requiredMetrics: (keyof ParsedMetrics)[] = ['users', 'sessions', 'pageviews'];
-  const missingRequired = requiredMetrics.filter(m => metrics[m] === undefined || metrics[m] === 0);
-  
+  const missingRequired = hasWebsiteMetrics
+    ? requiredMetrics.filter(m => metrics[m] === undefined || metrics[m] === 0)
+    : [];
+
   if (missingRequired.length > 0) {
     warnings.push(`❌ CRITICAL: Missing required metrics: ${missingRequired.join(', ')}`);
     confidence -= missingRequired.length * 25; // -25% per missing required metric

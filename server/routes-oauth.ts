@@ -67,6 +67,12 @@ function normalizeCustomIntegrationMetrics(metrics: ParsedMetrics) {
     const normalized = metric(value);
     return normalized === null ? null : String(normalized);
   };
+  const parserMetadata = {
+    confidence: metrics._confidence ?? null,
+    warnings: Array.isArray(metrics._warnings) ? metrics._warnings : [],
+    extractedFields: metrics._extractedFields ?? null,
+    requiresReview: Boolean(metrics._requiresReview),
+  };
   return {
     impressions: metric(metrics.impressions),
     reach: metric(metrics.reach),
@@ -96,6 +102,7 @@ function normalizeCustomIntegrationMetrics(metrics: ParsedMetrics) {
     hardBounces: decimalMetric(metrics.hardBounces),
     spamComplaints: decimalMetric(metrics.spamComplaints),
     listGrowth: metric(metrics.listGrowth),
+    parserMetadata,
   };
 }
 

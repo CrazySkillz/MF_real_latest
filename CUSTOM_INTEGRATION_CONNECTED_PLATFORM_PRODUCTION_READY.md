@@ -295,16 +295,16 @@ Validation:
 
 Status:
 
-- Commit 3 resolver pass completed; parser missing-field forward path completed in follow-up pass, but Commit 3 remains open for parser fixture/trust metadata coverage.
+- Commit 3 completed.
 - Root cause fixed so far: Custom Integration KPI and Benchmark forms directly read `metricsData?.metric || 0`, so a missing imported metric could be saved, displayed, and scored as a real `0`.
 - Root cause fixed in follow-up pass: parsed PDF insert paths omitted missing fields, allowing nullable metric columns with database defaults to reload as `0`; the no-metrics parser fallback also fabricated legacy zeros. Manual upload, webhook upload, and inbound email now use the same normalizer and store missing parsed metrics as `null` while preserving real extracted zero values; no-metrics parses keep metric fields absent.
-- Root cause still outstanding before Commit 4: parser confidence/warning metadata is still not persisted through the latest metrics path, and deterministic parser fixture tests for known/partial/no-metric reports still need implementation.
-- Fixes completed so far: added a local Custom Integration metric registry/resolver with source labels, unit-aware formatting, ROI/ROAS dependency checks, unavailable reasons, and CTOR field compatibility; KPI and Benchmark metric pickers now disable unavailable imported metrics and only populate current values from available source-backed values; KPI and Benchmark cards/summary scoring exclude unavailable current values and show unavailable reasons instead of treating them as zero; parsed PDF storage now preserves missing imported fields as `null`; no-metrics parses no longer fabricate zeros; parsed metric cards render only non-null values after reload.
-- Fix strategy still required before Commit 4: add a small parser/test seam for deterministic fixture coverage and preserve parser trust metadata through upload and latest-metrics reads.
-- Regression evidence: `server/source-safety-regression.test.ts` guards against reintroducing zero-filled Custom Integration KPI/Benchmark metric selection, verifies unavailable metrics are excluded from visible scoring, verifies parsed PDF imports use null-preserving storage across manual upload, webhook upload, and inbound email, and verifies no-metrics parses do not assign fake legacy zeros.
-- Local validation completed for latest pass: `npm test -- server/source-safety-regression.test.ts` and `npm run check` passed.
+- Root cause fixed in final Commit 3 pass: parser confidence/warning metadata was returned only in immediate upload/webhook responses and was lost after reload because `custom_integration_metrics` had no persisted parser trust field; plain `Users:` labels were also not matched by the parser.
+- Fixes completed: added a nullable `parser_metadata` JSON column and migration; persisted parser confidence, warnings, extracted field count, and review-required state through every parsed PDF ingest path; `/api/custom-integration/:campaignId/metrics` now returns that metadata with the latest metrics row; the Custom Integration Overview shows an import review warning after reload when parser metadata requires review; parser validation now applies website-required warnings only when website analytics fields are present; plain `Users:` labels are extracted.
+- Regression evidence: `server/source-safety-regression.test.ts` guards against reintroducing zero-filled Custom Integration KPI/Benchmark metric selection, verifies unavailable metrics are excluded from visible scoring, verifies parsed PDF imports use null-preserving storage across manual upload, webhook upload, and inbound email, verifies no-metrics parses do not assign fake legacy zeros, and verifies parser metadata schema/migration/UI coverage.
+- Parser evidence: `server/pdf-parser-regression.test.ts` covers a known mixed report, an email-only partial report, and a no-metrics report.
+- Local validation completed for final Commit 3 pass: `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts` and `npm run check` passed.
 - Deferred by tracker scope: Reports, scheduled reports, Insights, Summary, and full Google Sheets layout parity remain in later commits.
-- Gate: do not proceed to Commit 4 until the PDF parser/import availability strategy above is implemented and validated.
+- Gate cleared for Commit 4 after applying the parser metadata migration.
 
 ### Commit 4: Google Sheets Layout Shell
 

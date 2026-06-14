@@ -14,6 +14,14 @@ function readStorageSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "server", "storage.ts"), "utf8");
 }
 
+function readSharedSchemaSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "shared", "schema.ts"), "utf8");
+}
+
+function readMigrationSource(fileName: string): string {
+  return fs.readFileSync(path.join(process.cwd(), "migrations", fileName), "utf8");
+}
+
 function readSchedulerSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "server", "scheduler.ts"), "utf8");
 }
@@ -1404,6 +1412,9 @@ describe("source safety regression guards", () => {
   it("Custom Integration parsed PDF imports preserve missing fields as null", () => {
     const routesSource = readRoutesSource();
     const parserSource = readPdfParserSource();
+    const schemaSource = readSharedSchemaSource();
+    const migrationSource = readMigrationSource("0008_add_custom_integration_parser_metadata.sql");
+    const uiSource = readCustomIntegrationAnalyticsSource();
     const normalizerStart = routesSource.indexOf("function normalizeCustomIntegrationMetrics(metrics: ParsedMetrics)");
     const normalizerEnd = routesSource.indexOf("async function buildGoogleAdsPlatformSourceForAggregate", normalizerStart);
     const normalizer = routesSource.slice(normalizerStart, normalizerEnd);
@@ -1416,6 +1427,9 @@ describe("source safety regression guards", () => {
     expect(normalizer).toContain("users: metric(metrics.users)");
     expect(normalizer).toContain("spend: decimalMetric(metrics.spend)");
     expect(normalizer).toContain("clickToOpenRate: decimalMetric(metrics.clickToOpenRate)");
+    expect(normalizer).toContain("parserMetadata");
+    expect(normalizer).toContain("confidence: metrics._confidence ?? null");
+    expect(normalizer).toContain("warnings: Array.isArray(metrics._warnings) ? metrics._warnings : []");
     expect(normalizer).not.toContain("const normalized: any = { ...metrics };");
     expect((routesSource.match(/normalizeCustomIntegrationMetrics\(parsedMetrics\)/g) || []).length).toBe(3);
     expect((routesSource.match(/normalizeCustomIntegrationMetrics\(metrics\)/g) || []).length).toBe(2);
@@ -1424,6 +1438,11 @@ describe("source safety regression guards", () => {
     expect(noMetricsFallback).not.toContain("metrics.impressions = 0");
     expect(noMetricsFallback).not.toContain("metrics.spend = 0");
     expect(noMetricsFallback).not.toContain("metrics.conversions = 0");
+    expect(schemaSource).toContain('parserMetadata: jsonb("parser_metadata")');
+    expect(migrationSource).toContain("ADD COLUMN IF NOT EXISTS parser_metadata jsonb");
+    expect(uiSource).toContain("function getCustomIntegrationParserMetadata");
+    expect(uiSource).toContain('data-testid="custom-integration-parser-review"');
+    expect(uiSource).toContain("Import needs review");
   });
 
   it("Custom Integration KPI and Benchmark metric selection does not zero-fill missing imports", () => {

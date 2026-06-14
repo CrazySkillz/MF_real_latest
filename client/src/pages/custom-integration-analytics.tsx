@@ -86,6 +86,19 @@ function getCustomIntegrationSourceLabel(metrics: any): string {
   return 'Custom Integration source';
 }
 
+function getCustomIntegrationParserMetadata(metrics: any) {
+  const raw = metrics?.parserMetadata;
+  if (!raw) return null;
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  return raw;
+}
+
 function resolveCustomIntegrationMetric(metrics: any, metricKey: any) {
   const option = getCustomIntegrationMetricOption(metricKey);
   const sourceLabel = getCustomIntegrationSourceLabel(metrics);
@@ -1971,6 +1984,9 @@ export default function CustomIntegrationAnalytics() {
 
   const hasMetrics = hasBasicMetrics || hasAudienceMetrics || hasTrafficSources || hasEmailMetrics;
   const customIntegrationEmail = customIntegration?.email;
+  const parserMetadata = getCustomIntegrationParserMetadata(metricsData);
+  const parserWarnings = Array.isArray(parserMetadata?.warnings) ? parserMetadata.warnings : [];
+  const parserRequiresReview = Boolean(parserMetadata?.requiresReview || parserWarnings.length > 0);
 
   return (
     <div className="flex h-screen bg-muted">
@@ -2018,6 +2034,24 @@ export default function CustomIntegrationAnalytics() {
                 {metricsLoading && (
                   <div className="flex items-center justify-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  </div>
+                )}
+
+                {!metricsLoading && metricsData && parserRequiresReview && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100" data-testid="custom-integration-parser-review">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+                      <div className="space-y-1">
+                        <p className="font-semibold">Import needs review</p>
+                        <p className="text-sm">
+                          Confidence: {parserMetadata?.confidence ?? 'Unavailable'}%
+                          {parserMetadata?.extractedFields != null ? ` - Extracted fields: ${parserMetadata.extractedFields}` : ''}
+                        </p>
+                        {parserWarnings[0] && (
+                          <p className="text-sm">{parserWarnings[0]}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
 

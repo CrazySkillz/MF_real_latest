@@ -72,7 +72,7 @@ Primary root causes:
 - Source contract ambiguity: Custom Integration imports have file/email/webhook provenance, but the analytics UI does not expose a Google-Sheets-style selected source/status row that explains what data powers the page.
 - Metric adapter gap: Current values are read directly from `metricsData` in the page instead of through a source-backed metric adapter with units, formatting, availability, source labels, and unavailable reasons.
 - Silent zero risk: KPI and Benchmark metric selection uses `metricsData?.metric || 0`, which can turn missing metrics into `0`. Google Sheets now treats missing values as unavailable with reasons.
-- Saved object scope risk: Benchmarks and Reports still need saved source-scope proof. KPIs now re-resolve source-backed current values from saved Custom Integration source scope after Commit 6.
+- Saved object scope risk: Reports still need saved source-scope proof. KPIs and Benchmarks now re-resolve source-backed current values from saved Custom Integration source scope after Commits 6 and 7.
 - Insights gap: There is no production-ready Custom Integration Insights tab using source-backed evidence and next-action rules.
 - Route reachability gap: `custom-integration-analytics.tsx` calls `/api/custom-integration-by-id/:id`, but no matching route was found in `server/routes-oauth.ts` during this review.
 - Duplicate route risk: `server/routes-oauth.ts` contains more than one `/api/custom-integration/:campaignId/upload-pdf` registration path, which must be audited before production-ready claims.
@@ -163,7 +163,7 @@ Partially reviewed:
 
 - PDF upload, webhook upload, email inbound, and transfer flows exist, but duplicate route registration and lifecycle side effects need focused review.
 - Create Campaign email-forwarding setup creates the Custom Integration row and generated forwarding email, but the current wizard does not show the generated email address to the user after setup.
-- KPI create/edit/delete paths now use source-backed current values after Commit 6. Benchmark and Report create/edit/delete paths exist through generic platform routes, but their source-backed behavior is not production-ready yet.
+- KPI create/edit/delete paths now use source-backed current values after Commit 6. Benchmark create/edit/delete paths now use source-backed current values after Commit 7. Report create/edit/delete paths exist through generic platform routes, but their source-backed behavior is not production-ready yet.
 - Campaign aggregate paths include Custom Integration, but source availability and unavailable reasons are not fully normalized.
 
 Unverified:
@@ -407,11 +407,27 @@ Tasks:
 - Use source-backed current values from the adapter.
 - Persist saved source scope.
 - Exclude unavailable Benchmarks from scoring and show reasons.
+- Use a metric-tile Benchmark template selector instead of the old metric dropdown.
+- Match Google Sheets Benchmark cards and tracker thresholds.
+- Remove unused modal metadata fields that do not support the source-backed Benchmark flow.
+- Normalize platform Benchmark decimal payloads before server validation.
+- Disable edit-mode `Update Benchmark` until a saved Benchmark actually changes.
 - Preserve edit/delete/alert behavior.
 
 Validation:
 
 - Regression tests for progress calculation, unavailable handling, saved-source behavior, and report-consumer values.
+
+Status:
+
+- Completed and user-validated for Commit 7.
+- Root cause: Custom Integration Benchmarks had the same source-backed accuracy requirements as Google Sheets, but the section still mixed old Custom Integration UI behavior with generic Benchmark behavior. The initial Commit 7 implementation fixed cards, progress scoring, saved source scope, and current-value resolution, but the modal still used the old metric dropdown. Follow-up validation found extra unused modal metadata fields, server-side decimal validation rejecting numeric Benchmark payloads, and edit mode allowing unchanged `Update Benchmark` submissions.
+- Fixes: Benchmark creation now uses a Google-Sheets-style metric tile selector, disables unavailable imported metrics with resolver reasons, makes Current Value read-only for source-backed templates, stores the active Custom Integration source scope in `calculationConfig.sourceScope`, re-resolves Benchmark card and edit-modal current values from that saved source, excludes unavailable Benchmarks from tracker scoring, matches Google Sheets Benchmark card layout and 90%/70% progress thresholds, removes modal-only `Industry`, `Source`, `Period`, `Benchmark Type`, `Confidence Level`, and orphaned competitor fields, normalizes `benchmarkValue`, `currentValue`, and `alertThreshold` before platform Benchmark route validation, and disables `Update Benchmark` until something changes.
+- Runtime commits included in Commit 7 scope: `f7021c4c` source-backed Benchmarks, `b4a2a4e2` Benchmark modal metric tiles, `28bdb85f` Benchmark modal simplification, `dfbbe9a3` platform Benchmark decimal normalization, and `9aad2a9d` unchanged edit-submit disablement.
+- Regression evidence: `server/source-safety-regression.test.ts` verifies source-backed Benchmark templates, disabled unavailable templates, read-only source-backed current values, saved source scope, Google Sheets Benchmark card/threshold parity, modal field cleanup, decimal normalization before platform Benchmark validation, and disabled unchanged edit-mode updates.
+- Local validation: `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts`, `npm test -- server/source-safety-regression.test.ts`, `npm run check`, and targeted `git diff --check` passed during the Commit 7 implementation passes.
+- User validation passed for Commit 7 after deployed browser review.
+- Deferred by tracker scope: Insights, Reports, scheduled reports, campaign aggregates, and existing-data cleanup remain in later commits.
 
 ### Commit 8: Insights
 

@@ -3740,13 +3740,10 @@ export default function GoogleSheetsData() {
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-2 mb-1">
                                             <h4 className="font-medium text-foreground truncate">
-                                              {conn.spreadsheetName || `Sheet ${conn.spreadsheetId?.slice(0, 8)}...`}
+                                              {conn.spreadsheetName || "Google Sheet"}
                                             </h4>
                                           </div>
                                           <div className="space-y-0.5">
-                                            <p className="text-xs text-muted-foreground/70">
-                                              {conn.spreadsheetId}
-                                            </p>
                                             {conn.sheetName && (
                                               <p className="text-xs text-muted-foreground/60">
                                                 Tab: <span className="font-medium">{conn.sheetName}</span>

@@ -262,6 +262,7 @@ describe("Google Sheets aggregate source adapter", () => {
     const guidedMapping = readSource("client", "src", "components", "GuidedColumnMapping.tsx");
     const kpiModal = readSource("client", "src", "pages", "google-sheets-analytics", "GoogleSheetsKpiModal.tsx");
     const benchmarkModal = readSource("client", "src", "pages", "google-sheets-analytics", "GoogleSheetsBenchmarkModal.tsx");
+    const connectedDatasetsCardRender = sliceBetween(page, "{googleSheetsConnections.map((conn: any) => {", "<AlertDialog>");
 
     expect(routes).toContain("const isGoogleSheetsSummaryIdentifierColumn");
     expect(routes).toContain("const isGoogleSheetsSummaryBreakdownIdentifierColumn");
@@ -289,12 +290,18 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("Last refreshed:");
     expect(page).toContain("Mapping status:");
     expect(routes).toContain("lastDataRefreshAt: (conn as any).lastDataRefreshAt");
+    expect(routes).toContain("const isGoogleSheetsMappingPlatform");
+    expect(routes).toContain("platformLowerForMapping.includes('google-sheets')");
+    expect(routes).toContain("platformFields = platformFields.map(f => ({ ...f, required: false }));");
     expect(page).toContain("simplifiedSetup");
     expect(page).toContain("Configure Dataset");
-    expect(guidedMapping).toContain("Save Dataset Setup");
+    expect(guidedMapping).toContain("Save Mappings");
     expect(guidedMapping).toContain("Choose the sheet rows and value column that power this campaign.");
     expect(guidedMapping).toContain("Value column");
     expect(guidedMapping).toContain("handleSave({ includePlatform: false });");
+    expect(connectedDatasetsCardRender).toContain('conn.spreadsheetName || "Google Sheet"');
+    expect(connectedDatasetsCardRender).not.toContain("{conn.spreadsheetId}");
+    expect(connectedDatasetsCardRender).not.toContain('Sheet ${conn.spreadsheetId?.slice(0, 8)}...');
     expect(kpiModal).toContain("Overview metrics use confirmed Google Sheets financial totals and may include multiple confirmed sources.");
     expect(benchmarkModal).toContain("Sheet column metrics use the selected spreadsheet data only.");
     expect(page).toContain("const categoricalColumns = section.categoricalColumns || [];");

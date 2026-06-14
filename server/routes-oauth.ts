@@ -29279,11 +29279,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Connection not found' });
       }
 
+      const platformLowerForMapping = String(platform || '').trim().toLowerCase();
+      const isGoogleSheetsMappingPlatform =
+        platformLowerForMapping.includes('google_sheets') ||
+        platformLowerForMapping.includes('google-sheets') ||
+        platformLowerForMapping.includes('google sheets');
+
       // Get platform fields with dynamic requirements (same logic as /api/platforms/:platform/fields)
       let platformFields = getPlatformFields(platform || 'linkedin');
 
+      if (isGoogleSheetsMappingPlatform) {
+        platformFields = platformFields.map(f => ({ ...f, required: false }));
+      }
+
       // For LinkedIn, adjust field requirements based on whether LinkedIn API is connected
-      if (platform?.toLowerCase() === 'linkedin' || !platform) {
+      if (platformLowerForMapping === 'linkedin' || !platform) {
         try {
           const linkedInConnection = await storage.getLinkedInConnection(campaignId);
           if (linkedInConnection) {
@@ -29315,10 +29325,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate mappings
       const errors = validateMappings(mappings, platformFields);
-      // LinkedIn guided flow "either/or" requirements:
+      // Guided setup requires only:
       // - Must map one identifier: campaign_name OR campaign_id
       // - Must map one value source: conversion_value OR revenue
-      if ((platform?.toLowerCase() === 'linkedin' || !platform)) {
+      if (platformLowerForMapping === 'linkedin' || !platform || isGoogleSheetsMappingPlatform) {
         const hasIdentifier =
           mappings.some((m: any) => m?.targetFieldId === 'campaign_name' || m?.platformField === 'campaign_name') ||
           mappings.some((m: any) => m?.targetFieldId === 'campaign_id' || m?.platformField === 'campaign_id');

@@ -851,7 +851,7 @@ export function GuidedColumnMapping({
                   Saving...
                 </>
               ) : (
-                'Save Dataset Setup'
+                'Save Mappings'
               )}
             </Button>
           </div>

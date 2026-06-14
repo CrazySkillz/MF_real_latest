@@ -458,14 +458,27 @@ export default function GoogleSheetsData() {
     return parseGoogleSheetsMappings(connection?.columnMappings).length > 0;
   };
 
-  const getGoogleSheetsMappedCampaignFilter = (connection: any): { column: string; value: string } | null => {
+  const getGoogleSheetsMappedCampaignFilter = (connection: any): { column: string; values: string[] } | null => {
     const mappings = parseGoogleSheetsMappings(connection?.columnMappings);
     const campaignMapping = mappings.find((m: any) => m?.targetFieldId === "campaign_id")
       || mappings.find((m: any) => m?.targetFieldId === "campaign_name");
-    const value = String(campaignMapping?.selectedValue ?? campaignMapping?.campaignIdentifierValue ?? "").trim();
-    if (!value) return null;
+    const rawValues = [
+      ...(Array.isArray(campaignMapping?.selectedValues) ? campaignMapping.selectedValues : []),
+      campaignMapping?.selectedValue,
+      campaignMapping?.campaignIdentifierValue,
+    ];
+    const seen = new Set<string>();
+    const values = rawValues
+      .map((value) => String(value ?? "").trim())
+      .filter((value) => {
+        const key = value.toLowerCase();
+        if (!value || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    if (values.length === 0) return null;
     const column = String(campaignMapping?.sourceColumnName || campaignMapping?.sourceColumn || "campaign value").trim();
-    return { column, value };
+    return { column, values };
   };
 
   const getGoogleSheetsMappedValueLabel = (connection: any): string => {
@@ -477,6 +490,11 @@ export default function GoogleSheetsData() {
 
   const formatGoogleSheetsScopeValue = (value: string): string => {
     return value.length > 64 ? `${value.slice(0, 61)}...` : value;
+  };
+
+  const formatGoogleSheetsScopeValues = (values: string[]): string => {
+    const visible = values.slice(0, 3).map(formatGoogleSheetsScopeValue).join(", ");
+    return values.length > 3 ? `${visible} +${values.length - 3} more` : visible;
   };
 
   // Get primary connection for default selection
@@ -1231,7 +1249,7 @@ export default function GoogleSheetsData() {
     const mappedCampaignFilter = getGoogleSheetsMappedCampaignFilter(activeGoogleSheetsConnection);
     const valueLabel = getGoogleSheetsMappedValueLabel(activeGoogleSheetsConnection);
     const statusText = mappedCampaignFilter
-      ? `Using rows where ${mappedCampaignFilter.column} = ${formatGoogleSheetsScopeValue(mappedCampaignFilter.value)}. Value column: ${valueLabel}.`
+      ? `Using rows where ${mappedCampaignFilter.column} ${mappedCampaignFilter.values.length === 1 ? "=" : "in"} ${formatGoogleSheetsScopeValues(mappedCampaignFilter.values)}. Value column: ${valueLabel}.`
       : mapped
         ? `Mappings saved. Overview uses all rows from this source. Value column: ${valueLabel}.`
         : "Sheet data is not mapped yet. Overview may use all rows.";

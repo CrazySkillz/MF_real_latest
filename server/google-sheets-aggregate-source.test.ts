@@ -223,9 +223,10 @@ describe("Google Sheets aggregate source adapter", () => {
     const routes = readSource("server", "routes-oauth.ts");
 
     expect(page).toContain("getGoogleSheetsMappedCampaignFilter");
-    expect(page).toContain("campaignMapping?.selectedValue ?? campaignMapping?.campaignIdentifierValue");
+    expect(page).toContain("campaignMapping?.selectedValues");
     expect(page).toContain("mappedCampaignFilter.column");
-    expect(page).toContain("mappedCampaignFilter.value");
+    expect(page).toContain("mappedCampaignFilter.values");
+    expect(page).toContain("formatGoogleSheetsScopeValues");
     expect(revenueModal).toContain("campaignDisplayName: hasCampaignScope ? (sheetsCampaignDisplayName.trim() || null) : null");
     expect(revenueModal).toContain("campaignDisplayName: csvCampaignValues.length > 0 ? (csvCampaignDisplayName.trim() || null) : null");
     expect((spendModal.match(/campaignDisplayName: hasCampaignScope \? \(campaignDisplayName\.trim\(\) \|\| null\) : null/g) || []).length).toBeGreaterThanOrEqual(2);
@@ -277,12 +278,12 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(routes).toContain("derived_profit_per_spend_pct");
     expect(routes).toContain("derived_spend_per_customer");
     expect(routes).toContain("detectedColumns: campaignData.detectedColumns");
-    expect(routes).toContain('let mappedCampaignValue = "";');
-    expect(routes).toContain("campaignIdMapping.selectedValue ?? campaignIdMapping.campaignIdentifierValue");
+    expect(routes).toContain("let mappedCampaignValues: string[] = [];");
+    expect(routes).toContain("mapping?.selectedValues");
     expect(routes).toContain("const campaignFilterColumnIndex = mappedCampaignColumnIndex >= 0 ? mappedCampaignColumnIndex : campaignNameColumnIndex;");
-    expect(routes).toContain("const campaignFilterValue = String(mappedCampaignValue || campaignName || '').toLowerCase().trim();");
-    expect(routes).toContain("const hasMappedCampaignFilter = mappedCampaignColumnIndex >= 0 && !!mappedCampaignValue;");
-    expect(routes).toContain("campaignNameValue === campaignFilterValue");
+    expect(routes).toContain("const campaignFilterValueSet = new Set(campaignFilterValues);");
+    expect(routes).toContain("const hasMappedCampaignFilter = mappedCampaignColumnIndex >= 0 && mappedCampaignValues.length > 0;");
+    expect(routes).toContain("campaignFilterValueSet.has(campaignNameValue)");
     expect(routes).toContain("const rowsForSummary = hasMappedCampaignFilter");
     expect(routes).toContain("data: rowsForSummary");
     expect(routes).not.toContain("data: allRows");
@@ -311,6 +312,15 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("simplifiedSetup");
     expect(page).toContain("Configure Dataset");
     expect(guidedMapping).toContain("Save Mappings");
+    expect(guidedMapping).toContain("Update Mappings");
+    expect(guidedMapping).toContain("suppressIdentifierResetRef.current");
+    expect(guidedMapping).toContain("selectedIdentifierValues");
+    expect(guidedMapping).toContain("selectedValues,");
+    expect(guidedMapping).toContain("Campaign values");
+    expect(guidedMapping).toContain("toggleCampaignValue");
+    expect(guidedMapping).toContain("campaignIdentifierValue");
+    expect(guidedMapping).toContain("currentSimplifiedState !== initialSimplifiedState");
+    expect(guidedMapping).toContain("disabled={simplifiedSaveDisabled}");
     expect(guidedMapping).toContain("Choose the sheet rows and value column that power this campaign.");
     expect(guidedMapping).toContain("Value column");
     expect(guidedMapping).toContain("handleSave({ includePlatform: false });");

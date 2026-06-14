@@ -3,7 +3,7 @@
  * Step-by-step wizard to guide users through mapping columns
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, AlertCircle, Loader2, ArrowRight, ArrowLeft, FileSpreadsheet, DollarSign, Target, Filter } from "lucide-react";
@@ -86,7 +87,34 @@ export function GuidedColumnMapping({
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [skipPlatform, setSkipPlatform] = useState(false);
   const [selectedIdentifierValue, setSelectedIdentifierValue] = useState<string | null>(null);
+  const [selectedIdentifierValues, setSelectedIdentifierValues] = useState<string[]>([]);
+  const suppressIdentifierResetRef = useRef(false);
+  const [initialSimplifiedState, setInitialSimplifiedState] = useState<string | null>(null);
   const effectiveSheetNames = sheetNames || [];
+
+  const normalizeIdentifierValues = (values: any): string[] => {
+    const rawValues = Array.isArray(values) ? values : [values];
+    const seen = new Set<string>();
+    return rawValues
+      .map((value) => String(value ?? '').trim())
+      .filter((value) => {
+        const key = value.toLowerCase();
+        if (!value || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  };
+
+  const getSelectedIdentifierValues = (): string[] => {
+    const values = normalizeIdentifierValues(selectedIdentifierValues);
+    return values.length > 0 ? values : normalizeIdentifierValues(selectedIdentifierValue);
+  };
+
+  const setIdentifierValues = (values: string[]) => {
+    const normalized = normalizeIdentifierValues(values);
+    setSelectedIdentifierValues(normalized);
+    setSelectedIdentifierValue(normalized[0] || null);
+  };
 
   const inferIdentifierRoute = (col?: DetectedColumn | null): 'campaign_name' | 'campaign_id' => {
     if (!col) return 'campaign_name';
@@ -112,7 +140,12 @@ export function GuidedColumnMapping({
 
   // Reset crosswalk selection when identifier column or route changes
   useEffect(() => {
+    if (suppressIdentifierResetRef.current) {
+      suppressIdentifierResetRef.current = false;
+      return;
+    }
     setSelectedIdentifierValue(null);
+    setSelectedIdentifierValues([]);
   }, [identifierRoute, selectedCampaignName]);
   
   // CRITICAL DEBUG LOG
@@ -281,39 +314,93 @@ export function GuidedColumnMapping({
     const revenueMapping = mappings.find((m: any) => m?.targetFieldId === 'revenue' || m?.platformField === 'revenue');
     const convValueMapping = mappings.find((m: any) => m?.targetFieldId === 'conversion_value' || m?.platformField === 'conversion_value');
     const platformMapping = mappings.find((m: any) => m?.targetFieldId === 'platform' || m?.platformField === 'platform');
+    let nextIdentifierRoute: 'campaign_name' | 'campaign_id' = 'campaign_name';
+    let nextSelectedCampaignName = '';
+    let nextSelectedIdentifierValue = '';
+    let nextSelectedIdentifierValues: string[] = [];
+    let nextValueMode: 'conversion_value' | 'revenue' = 'revenue';
+    let nextSelectedRevenue = '';
+    let nextSelectedConversionValue = '';
+    let nextValueColumnMeaning: 'revenue_per_row' | 'revenue_aggregated' | 'value_per_conversion' = 'revenue_per_row';
+    let nextConvValueDateStrategy: 'latest' | 'median' = 'median';
+    let nextConvValueDateColumn = '';
 
     // Identifier route + column
     if (idMapping) {
+      suppressIdentifierResetRef.current = true;
+      nextIdentifierRoute = 'campaign_id';
       setIdentifierRoute('campaign_id');
       setIdentifierRouteAuto(false);
       const choice = findColumnChoice(idMapping);
-      if (choice) setSelectedCampaignName(choice);
-      const selected = String(idMapping?.selectedValue || '').trim();
-      if (selected) setSelectedIdentifierValue(selected);
+      if (choice) {
+        nextSelectedCampaignName = choice;
+        setSelectedCampaignName(choice);
+      }
+      const selected = normalizeIdentifierValues([
+        ...(Array.isArray(idMapping?.selectedValues) ? idMapping.selectedValues : []),
+        idMapping?.selectedValue,
+        idMapping?.campaignIdentifierValue,
+      ]);
+      if (selected.length > 0) {
+        nextSelectedIdentifierValues = selected;
+        nextSelectedIdentifierValue = selected[0];
+        setIdentifierValues(selected);
+      }
     } else if (nameMapping) {
+      suppressIdentifierResetRef.current = true;
+      nextIdentifierRoute = 'campaign_name';
       setIdentifierRoute('campaign_name');
       setIdentifierRouteAuto(false);
       const choice = findColumnChoice(nameMapping);
-      if (choice) setSelectedCampaignName(choice);
-      const selected = String(nameMapping?.selectedValue || '').trim();
-      if (selected) setSelectedIdentifierValue(selected);
+      if (choice) {
+        nextSelectedCampaignName = choice;
+        setSelectedCampaignName(choice);
+      }
+      const selected = normalizeIdentifierValues([
+        ...(Array.isArray(nameMapping?.selectedValues) ? nameMapping.selectedValues : []),
+        nameMapping?.selectedValue,
+        nameMapping?.campaignIdentifierValue,
+      ]);
+      if (selected.length > 0) {
+        nextSelectedIdentifierValues = selected;
+        nextSelectedIdentifierValue = selected[0];
+        setIdentifierValues(selected);
+      }
     }
 
     // Value source
     if (convValueMapping) {
+      nextValueMode = 'conversion_value';
       setValueMode('conversion_value');
-      setValueColumnMeaning(String(convValueMapping?.valueSemantic || 'value_per_conversion') === 'value_per_conversion' ? 'value_per_conversion' : 'value_per_conversion');
+      nextValueColumnMeaning = String(convValueMapping?.valueSemantic || 'value_per_conversion') === 'value_per_conversion' ? 'value_per_conversion' : 'value_per_conversion';
+      setValueColumnMeaning(nextValueColumnMeaning);
       const strat = String(convValueMapping?.dateStrategy || convValueMapping?.aggregation || '').toLowerCase();
-      if (strat === 'latest') setConvValueDateStrategy('latest');
-      if (strat === 'median') setConvValueDateStrategy('median');
+      if (strat === 'latest') {
+        nextConvValueDateStrategy = 'latest';
+        setConvValueDateStrategy('latest');
+      }
+      if (strat === 'median') {
+        nextConvValueDateStrategy = 'median';
+        setConvValueDateStrategy('median');
+      }
       const dateIdx = convValueMapping?.dateColumnIndex;
-      if (typeof dateIdx === 'number') setConvValueDateColumn(String(dateIdx));
+      if (typeof dateIdx === 'number') {
+        nextConvValueDateColumn = String(dateIdx);
+        setConvValueDateColumn(String(dateIdx));
+      }
       const choice = findColumnChoice(convValueMapping);
-      if (choice) setSelectedConversionValue(choice);
+      if (choice) {
+        nextSelectedConversionValue = choice;
+        setSelectedConversionValue(choice);
+      }
     } else if (revenueMapping) {
+      nextValueMode = 'revenue';
       setValueMode('revenue');
       const choice = findColumnChoice(revenueMapping);
-      if (choice) setSelectedRevenue(choice);
+      if (choice) {
+        nextSelectedRevenue = choice;
+        setSelectedRevenue(choice);
+      }
     }
 
     // Platform
@@ -330,6 +417,18 @@ export function GuidedColumnMapping({
 
     // Start at first step when editing, with values prefilled
     setCurrentStep('campaign-name');
+    setInitialSimplifiedState(JSON.stringify({
+      identifierRoute: nextIdentifierRoute,
+      selectedCampaignName: nextSelectedCampaignName,
+      selectedIdentifierValue: nextSelectedIdentifierValue,
+      selectedIdentifierValues: nextSelectedIdentifierValues,
+      valueMode: nextValueMode,
+      selectedRevenue: nextSelectedRevenue,
+      selectedConversionValue: nextSelectedConversionValue,
+      valueColumnMeaning: nextValueColumnMeaning,
+      convValueDateStrategy: nextConvValueDateStrategy,
+      convValueDateColumn: nextConvValueDateColumn,
+    }));
     setHasPrefilled(true);
   }, [hasPrefilled, existingMappingsData, detectedColumns]);
 
@@ -456,7 +555,7 @@ export function GuidedColumnMapping({
       }
       setCurrentStep('crosswalk');
     } else if (currentStep === 'crosswalk') {
-      if (!selectedIdentifierValue) {
+      if (getSelectedIdentifierValues().length === 0) {
         toast({
           title: "Link Required",
           description: `Please select the ${identifierRoute === 'campaign_id' ? 'Campaign ID' : 'Campaign Name'} value that corresponds to "${campaignName}".`,
@@ -498,7 +597,7 @@ export function GuidedColumnMapping({
       });
       return;
     }
-    if (!selectedIdentifierValue) {
+    if (getSelectedIdentifierValues().length === 0) {
       toast({
         title: "Campaign Value Required",
         description: `Select the sheet value that belongs to "${campaignName}".`,
@@ -543,12 +642,15 @@ export function GuidedColumnMapping({
     if (selectedCampaignName) {
       const identifierColumn = detectedColumns.find(c => c.index.toString() === selectedCampaignName);
       if (identifierColumn) {
+        const selectedValues = getSelectedIdentifierValues();
         mappings.push({
           sourceColumnIndex: identifierColumn.index,
           sourceColumnName: identifierColumn.originalName,
           targetFieldId: identifierRoute === 'campaign_id' ? 'campaign_id' : 'campaign_name',
           targetFieldName: identifierRoute === 'campaign_id' ? 'Campaign ID' : 'Campaign Name',
-          selectedValue: selectedIdentifierValue,
+          selectedValue: selectedValues[0] || null,
+          selectedValues,
+          campaignIdentifierValue: selectedValues[0] || null,
           matchType: 'manual',
           confidence: 1.0
         });
@@ -665,11 +767,55 @@ export function GuidedColumnMapping({
   if (simplifiedSetup) {
     const selectedValueColumn = valueMode === 'conversion_value' ? selectedConversionValue : selectedRevenue;
     const selectedValueColumnDetails = detectedColumns.find(c => c.index.toString() === selectedValueColumn);
+    const campaignValueOptions = uniqueValuesData?.values || [];
+    const selectedValuesForUi = getSelectedIdentifierValues();
+    const campaignValueSelectOptions = [
+      ...selectedValuesForUi.filter((value) => !campaignValueOptions.includes(value)),
+      ...campaignValueOptions,
+    ];
+    const selectedValueSet = new Set(selectedValuesForUi.map((value) => value.toLowerCase()));
+    const toggleCampaignValue = (value: string, checked: boolean) => {
+      const current = getSelectedIdentifierValues();
+      const next = checked
+        ? normalizeIdentifierValues([...current, value])
+        : current.filter((item) => item.toLowerCase() !== value.toLowerCase());
+      setIdentifierValues(next);
+    };
+    const manualCampaignValueText = selectedValuesForUi.join(', ');
+    const hasCampaignValues = selectedValuesForUi.length > 0;
+    const campaignValuesSummary = hasCampaignValues
+      ? `${selectedValuesForUi.length} selected`
+      : 'Select matching values...';
+    const selectedCampaignValuesPreview = selectedValuesForUi.length > 0
+      ? selectedValuesForUi.slice(0, 3).join(', ')
+      : '';
+    const selectedCampaignValuesMore = selectedValuesForUi.length > 3
+      ? ` +${selectedValuesForUi.length - 3} more`
+      : '';
+    const hasUniqueCampaignValues = campaignValueSelectOptions.length > 0;
     const showManualCampaignValue = Boolean(
       selectedCampaignName &&
       !uniqueValuesLoading &&
-      (uniqueValuesError || !effectiveSheetNames.length || (uniqueValuesData && (uniqueValuesData.values || []).length === 0))
+      (uniqueValuesError || !effectiveSheetNames.length || !hasUniqueCampaignValues)
     );
+    const currentSimplifiedIdentifierValues = selectedValuesForUi;
+    const hasExistingMappings = !!existingMappingsData?.hasMappings;
+    const currentSimplifiedState = JSON.stringify({
+      identifierRoute,
+      selectedCampaignName: selectedCampaignName || '',
+      selectedIdentifierValue: selectedIdentifierValue || '',
+      selectedIdentifierValues: currentSimplifiedIdentifierValues,
+      valueMode,
+      selectedRevenue: selectedRevenue || '',
+      selectedConversionValue: selectedConversionValue || '',
+      valueColumnMeaning,
+      convValueDateStrategy,
+      convValueDateColumn: convValueDateColumn || '',
+    });
+    const simplifiedMappingsChanged = hasExistingMappings && initialSimplifiedState
+      ? currentSimplifiedState !== initialSimplifiedState
+      : true;
+    const simplifiedSaveDisabled = saveMappingsMutation.isPending || (hasExistingMappings && (!initialSimplifiedState || !simplifiedMappingsChanged));
 
     return (
       <Card>
@@ -709,23 +855,36 @@ export function GuidedColumnMapping({
             </div>
 
             <div>
-              <Label className="text-sm font-medium mb-2 block">Campaign value</Label>
-              <Select
-                value={selectedIdentifierValue || ""}
-                onValueChange={setSelectedIdentifierValue}
-                disabled={!selectedCampaignName || uniqueValuesLoading || showManualCampaignValue}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={uniqueValuesLoading ? "Loading values..." : "Select matching value..."} />
-                </SelectTrigger>
-                <SelectContent>
-                  {(uniqueValuesData?.values || []).map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {v}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <Label className="text-sm font-medium">Campaign values</Label>
+                <span className="text-xs text-muted-foreground">{campaignValuesSummary}</span>
+              </div>
+              <div className="rounded-md border max-h-48 overflow-y-auto p-2 space-y-2">
+                {!selectedCampaignName ? (
+                  <div className="text-xs text-muted-foreground">Select a campaign column first.</div>
+                ) : uniqueValuesLoading ? (
+                  <div className="text-xs text-muted-foreground">Loading values...</div>
+                ) : showManualCampaignValue ? (
+                  <div className="text-xs text-muted-foreground">Enter matching values manually below.</div>
+                ) : campaignValueSelectOptions.length === 0 ? (
+                  <div className="text-xs text-muted-foreground">No values found.</div>
+                ) : (
+                  campaignValueSelectOptions.map((v) => (
+                    <div key={v} className="flex items-start gap-2">
+                      <Checkbox
+                        checked={selectedValueSet.has(v.toLowerCase())}
+                        onCheckedChange={(checked) => toggleCampaignValue(v, Boolean(checked))}
+                      />
+                      <div className="text-sm text-foreground">{v}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+              {selectedCampaignValuesPreview && (
+                <p className="text-xs mt-2 text-muted-foreground">
+                  Selected: {selectedCampaignValuesPreview}{selectedCampaignValuesMore}
+                </p>
+              )}
               {uniqueValuesData?.truncated && (
                 <p className="text-xs mt-2 text-muted-foreground">
                   Showing the first {uniqueValuesData.values.length} values.
@@ -734,9 +893,9 @@ export function GuidedColumnMapping({
               {showManualCampaignValue && (
                 <Input
                   className="mt-2"
-                  value={selectedIdentifierValue || ""}
-                  onChange={(e) => setSelectedIdentifierValue(e.target.value)}
-                  placeholder={identifierRoute === 'campaign_id' ? "Enter campaign ID..." : "Enter campaign value..."}
+                  value={manualCampaignValueText}
+                  onChange={(e) => setIdentifierValues(e.target.value.split(',').map((value) => value.trim()))}
+                  placeholder={identifierRoute === 'campaign_id' ? "Enter campaign IDs separated by commas..." : "Enter campaign values separated by commas..."}
                 />
               )}
             </div>
@@ -844,14 +1003,14 @@ export function GuidedColumnMapping({
             <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button onClick={handleSaveSimplifiedSetup} disabled={saveMappingsMutation.isPending}>
+            <Button onClick={handleSaveSimplifiedSetup} disabled={simplifiedSaveDisabled}>
               {saveMappingsMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
+                  {hasExistingMappings ? 'Updating...' : 'Saving...'}
                 </>
               ) : (
-                'Save Mappings'
+                hasExistingMappings ? 'Update Mappings' : 'Save Mappings'
               )}
             </Button>
           </div>

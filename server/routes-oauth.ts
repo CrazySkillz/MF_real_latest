@@ -17591,7 +17591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let platformColumnIndex = -1;
       let campaignNameColumnIndex = -1;
       let mappedCampaignColumnIndex = -1;
-      let mappedCampaignValue = "";
+      let mappedCampaignValues: string[] = [];
 
       // Check if mappings exist and use them to find column indices
       if (connection.columnMappings) {
@@ -17602,16 +17602,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const campaignIdMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_id');
             const campaignNameMapping = mappings.find((m: any) => m.targetFieldId === 'campaign_name');
             const platformMapping = mappings.find((m: any) => m.targetFieldId === 'platform');
+            const getMappedCampaignValues = (mapping: any): string[] => {
+              const rawValues = [
+                ...(Array.isArray(mapping?.selectedValues) ? mapping.selectedValues : []),
+                mapping?.selectedValue,
+                mapping?.campaignIdentifierValue,
+              ];
+              const seen = new Set<string>();
+              return rawValues
+                .map((value) => String(value ?? '').trim())
+                .filter((value) => {
+                  const key = value.toLowerCase();
+                  if (!value || seen.has(key)) return false;
+                  seen.add(key);
+                  return true;
+                });
+            };
 
             if (campaignIdMapping) {
               mappedCampaignColumnIndex = campaignIdMapping.sourceColumnIndex;
-              mappedCampaignValue = String(campaignIdMapping.selectedValue ?? campaignIdMapping.campaignIdentifierValue ?? '').trim();
+              mappedCampaignValues = getMappedCampaignValues(campaignIdMapping);
             }
             if (campaignNameMapping) {
               campaignNameColumnIndex = campaignNameMapping.sourceColumnIndex;
               if (mappedCampaignColumnIndex < 0) mappedCampaignColumnIndex = campaignNameMapping.sourceColumnIndex;
-              if (!mappedCampaignValue) {
-                mappedCampaignValue = String(campaignNameMapping.selectedValue ?? campaignNameMapping.campaignIdentifierValue ?? '').trim();
+              if (mappedCampaignValues.length === 0) {
+                mappedCampaignValues = getMappedCampaignValues(campaignNameMapping);
               }
             }
             if (platformMapping) {
@@ -17635,8 +17651,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
       const campaignFilterColumnIndex = mappedCampaignColumnIndex >= 0 ? mappedCampaignColumnIndex : campaignNameColumnIndex;
-      const campaignFilterValue = String(mappedCampaignValue || campaignName || '').toLowerCase().trim();
-      const hasMappedCampaignFilter = mappedCampaignColumnIndex >= 0 && !!mappedCampaignValue;
+      const campaignFilterValues = (mappedCampaignValues.length > 0 ? mappedCampaignValues : [campaignName])
+        .map((value) => String(value || '').toLowerCase().trim())
+        .filter(Boolean);
+      const campaignFilterValue = campaignFilterValues[0] || '';
+      const campaignFilterValueSet = new Set(campaignFilterValues);
+      const hasMappedCampaignFilter = mappedCampaignColumnIndex >= 0 && mappedCampaignValues.length > 0;
 
       // Build platform keywords from ALL connected platforms (not just the campaign's primary platform).
       // A campaign can have LinkedIn, Meta, GA4, etc. all connected simultaneously.
@@ -17675,7 +17695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!campaignNameValue) return false;
             const platformMatches = matchesPlatform(platformValue, allPlatformKeywords);
             const matchesCampaign = hasMappedCampaignFilter
-              ? campaignNameValue === campaignFilterValue
+              ? campaignFilterValueSet.has(campaignNameValue)
               : campaignNameValue === campaignFilterValue ||
                 campaignNameValue.includes(campaignFilterValue) ||
                 campaignFilterValue.includes(campaignNameValue);
@@ -17690,7 +17710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const campaignNameValue = String(row[campaignFilterColumnIndex] || '').toLowerCase().trim();
             if (!campaignNameValue) return false;
             return hasMappedCampaignFilter
-              ? campaignNameValue === campaignFilterValue
+              ? campaignFilterValueSet.has(campaignNameValue)
               : campaignNameValue === campaignFilterValue ||
                 campaignNameValue.includes(campaignFilterValue) ||
                 campaignFilterValue.includes(campaignNameValue);
@@ -17717,7 +17737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? filteredRowsForSummary
           : allRows;
 
-      devLog(`[Google Sheets Summary] Using ${rowsForSummary.length} rows for summary (filtered by campaign value "${campaignFilterValue || campaignName}") out of ${allRows.length} total rows`);
+      devLog(`[Google Sheets Summary] Using ${rowsForSummary.length} rows for summary (filtered by campaign value "${campaignFilterValues.join(', ') || campaignName}") out of ${allRows.length} total rows`);
 
       // Process spreadsheet data to extract campaign metrics and table rows from the same filtered scope.
       let campaignData = {
@@ -29600,35 +29620,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     return false;
                   };
 
-                  // 0) If UI provided an explicit crosswalk value, prefer filtering by that exact value first.
-                  const selectedIdValue = String(campaignIdMapping?.selectedValue ?? campaignIdMapping?.campaignIdentifierValue ?? '').trim();
-                  const selectedNameValue = String(campaignNameMapping?.selectedValue ?? campaignNameMapping?.campaignIdentifierValue ?? '').trim();
-                  if (campaignIdMapping && selectedIdValue) {
+                  // 0) If UI provided explicit crosswalk values, prefer filtering by those exact values first.
+                  const getSelectedMappingValues = (mapping: any): string[] => {
+                    const rawValues = [
+                      ...(Array.isArray(mapping?.selectedValues) ? mapping.selectedValues : []),
+                      mapping?.selectedValue,
+                      mapping?.campaignIdentifierValue,
+                    ];
+                    const seen = new Set<string>();
+                    return rawValues
+                      .map((value) => String(value ?? '').trim())
+                      .filter((value) => {
+                        const key = value.toLowerCase();
+                        if (!value || seen.has(key)) return false;
+                        seen.add(key);
+                        return true;
+                      });
+                  };
+                  const selectedIdValues = getSelectedMappingValues(campaignIdMapping);
+                  const selectedNameValues = getSelectedMappingValues(campaignNameMapping);
+                  if (campaignIdMapping && selectedIdValues.length > 0) {
                     const campaignIdColumnIndex = resolveColumnIndex(campaignIdMapping, headers);
                     if (campaignIdColumnIndex >= 0 && campaignIdColumnIndex < headers.length) {
-                      const selectedNumeric = normalizeNumericId(selectedIdValue);
+                      const selectedNumericIds = new Set(selectedIdValues.map((value) => normalizeNumericId(value)).filter(Boolean));
                       const filteredBySelectedId = dataRows.filter((row: any[]) => {
                         if (!Array.isArray(row) || row.length <= campaignIdColumnIndex) return false;
                         const numericCandidate = normalizeNumericId(row[campaignIdColumnIndex]);
-                        return !!selectedNumeric && numericCandidate === selectedNumeric;
+                        return !!numericCandidate && selectedNumericIds.has(numericCandidate);
                       });
-                      if (filteredBySelectedId.length > 0) {
-                        filteredRows = filteredBySelectedId;
-                      }
+                      filteredRows = filteredBySelectedId;
                     }
-                  } else if (campaignNameMapping && selectedNameValue) {
+                  } else if (campaignNameMapping && selectedNameValues.length > 0) {
                     const campaignNameColumnIndex = resolveColumnIndex(campaignNameMapping, headers);
                     if (campaignNameColumnIndex >= 0 && campaignNameColumnIndex < headers.length) {
-                      const selectedLower = selectedNameValue.toLowerCase().trim();
+                      const selectedLowerSet = new Set(selectedNameValues.map((value) => value.toLowerCase().trim()).filter(Boolean));
                       const filteredBySelectedName = dataRows.filter((row: any[]) => {
                         if (!Array.isArray(row) || row.length <= campaignNameColumnIndex) return false;
                         const v = String(row[campaignNameColumnIndex] || '').toLowerCase().trim();
                         if (!v) return false;
-                        return v === selectedLower || v.includes(selectedLower) || selectedLower.includes(v);
+                        return selectedLowerSet.has(v);
                       });
-                      if (filteredBySelectedName.length > 0) {
-                        filteredRows = filteredBySelectedName;
-                      }
+                      filteredRows = filteredBySelectedName;
                     }
                   }
 

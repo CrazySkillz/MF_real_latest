@@ -259,6 +259,9 @@ describe("Google Sheets aggregate source adapter", () => {
   it("keeps Google Sheets Summary tab values display-safe for identifiers and non-additive metrics", () => {
     const page = readSource("client", "src", "pages", "google-sheets-data.tsx");
     const routes = readSource("server", "routes-oauth.ts");
+    const guidedMapping = readSource("client", "src", "components", "GuidedColumnMapping.tsx");
+    const kpiModal = readSource("client", "src", "pages", "google-sheets-analytics", "GoogleSheetsKpiModal.tsx");
+    const benchmarkModal = readSource("client", "src", "pages", "google-sheets-analytics", "GoogleSheetsBenchmarkModal.tsx");
 
     expect(routes).toContain("const isGoogleSheetsSummaryIdentifierColumn");
     expect(routes).toContain("const isGoogleSheetsSummaryBreakdownIdentifierColumn");
@@ -286,6 +289,12 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("Last refreshed:");
     expect(page).toContain("Mapping status:");
     expect(routes).toContain("lastDataRefreshAt: (conn as any).lastDataRefreshAt");
+    expect(page).toContain("simplifiedSetup");
+    expect(page).toContain("Configure Dataset");
+    expect(guidedMapping).toContain("Save Dataset Setup");
+    expect(guidedMapping).toContain("Choose the sheet rows and value column that power this campaign.");
+    expect(kpiModal).toContain("Overview metrics use confirmed Google Sheets financial totals and may include multiple confirmed sources.");
+    expect(benchmarkModal).toContain("Sheet column metrics use the selected spreadsheet data only.");
     expect(page).toContain("const categoricalColumns = section.categoricalColumns || [];");
     expect(page).toContain("No categorical breakdown column detected for this selected spreadsheet.");
     expect(page).toContain("n.includes('roi')");

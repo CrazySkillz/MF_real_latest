@@ -3847,9 +3847,9 @@ export default function GoogleSheetsData() {
           <Dialog open={showMappingInterface} onOpenChange={setShowMappingInterface}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Map Columns</DialogTitle>
+                <DialogTitle>Configure Dataset</DialogTitle>
                 <DialogDescription>
-                  Follow the guided steps to map your campaign identifier, revenue column, and optional platform filter.
+                  Choose which spreadsheet rows and value column power this campaign.
                 </DialogDescription>
               </DialogHeader>
               {showMappingInterface && mappingConnectionId && (() => {
@@ -3867,6 +3867,7 @@ export default function GoogleSheetsData() {
                       spreadsheetId={spreadsheetId}
                       sheetNames={sheetNames.length > 0 ? sheetNames : undefined}
                       platform={platform}
+                      simplifiedSetup
                       onMappingComplete={() => {
                         setShowMappingInterface(false);
                         setMappingConnectionId(null);

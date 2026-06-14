@@ -81,6 +81,9 @@ export function GoogleSheetsBenchmarkModal(props: any) {
               <p className="text-sm text-muted-foreground/70 mt-1">
                 Choose a mapped Google Sheets metric with a current source-backed value.
               </p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                Overview metrics use confirmed Google Sheets financial totals and may include multiple confirmed sources. Sheet column metrics use the selected spreadsheet data only.
+              </p>
             </div>
             {[
               { title: "Overview metrics", metrics: overviewMetrics },

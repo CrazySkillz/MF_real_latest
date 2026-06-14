@@ -36,6 +36,7 @@ interface GuidedColumnMappingProps {
   sheetNames?: string[];
   spreadsheetId?: string;
   platform: string;
+  simplifiedSetup?: boolean;
   onMappingComplete?: () => void;
   onCancel?: () => void;
 }
@@ -49,6 +50,7 @@ export function GuidedColumnMapping({
   sheetNames,
   spreadsheetId,
   platform,
+  simplifiedSetup = false,
   onMappingComplete,
   onCancel
 }: GuidedColumnMappingProps) {
@@ -339,7 +341,7 @@ export function GuidedColumnMapping({
       if (!resp.ok) throw new Error('Failed to fetch unique values');
       return resp.json();
     },
-    enabled: !!campaignId && !!spreadsheetId && !!effectiveSheetNames?.length && !!identifierColumnName && currentStep === 'crosswalk',
+    enabled: !!campaignId && !!spreadsheetId && !!effectiveSheetNames?.length && !!identifierColumnName && (currentStep === 'crosswalk' || simplifiedSetup),
   });
 
   // Auto-advance to first step when columns are detected
@@ -487,6 +489,42 @@ export function GuidedColumnMapping({
     }
   };
 
+  const handleSaveSimplifiedSetup = () => {
+    if (!selectedCampaignName) {
+      toast({
+        title: "Campaign Column Required",
+        description: "Select the sheet column that contains campaign values.",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (!selectedIdentifierValue) {
+      toast({
+        title: "Campaign Value Required",
+        description: `Select the sheet value that belongs to "${campaignName}".`,
+        variant: "destructive"
+      });
+      return;
+    }
+    if (valueMode === 'conversion_value' && !selectedConversionValue) {
+      toast({
+        title: "Value Column Required",
+        description: "Select the conversion value column from your sheet.",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (valueMode === 'revenue' && !selectedRevenue) {
+      toast({
+        title: "Revenue Column Required",
+        description: "Select the revenue column from your sheet.",
+        variant: "destructive"
+      });
+      return;
+    }
+    handleSave();
+  };
+
   const handleBack = () => {
     if (currentStep === 'revenue') {
       setCurrentStep('crosswalk');
@@ -622,6 +660,266 @@ export function GuidedColumnMapping({
   ] as Array<{ id: Step; label: string; icon: any }>;
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep);
+
+  if (simplifiedSetup) {
+    const selectedValueColumn = valueMode === 'conversion_value' ? selectedConversionValue : selectedRevenue;
+    const selectedValueColumnDetails = detectedColumns.find(c => c.index.toString() === selectedValueColumn);
+    const showManualCampaignValue = Boolean(
+      selectedCampaignName &&
+      !uniqueValuesLoading &&
+      (uniqueValuesError || !effectiveSheetNames.length || (uniqueValuesData && (uniqueValuesData.values || []).length === 0))
+    );
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Configure Dataset</CardTitle>
+          <CardDescription>
+            Choose the sheet rows and value column that power this campaign.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Campaign column</Label>
+              <Select
+                value={selectedCampaignName || ""}
+                onValueChange={(v) => {
+                  setIdentifierRouteAuto(true);
+                  setSelectedCampaignName(v);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select campaign column..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {detectedColumns.map((column) => (
+                    <SelectItem key={column.index} value={column.index.toString()}>
+                      <div className="flex items-center justify-between w-full">
+                        <span>{column.originalName}</span>
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          {column.detectedType}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Campaign value</Label>
+              <Select
+                value={selectedIdentifierValue || ""}
+                onValueChange={setSelectedIdentifierValue}
+                disabled={!selectedCampaignName || uniqueValuesLoading || showManualCampaignValue}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={uniqueValuesLoading ? "Loading values..." : "Select matching value..."} />
+                </SelectTrigger>
+                <SelectContent>
+                  {(uniqueValuesData?.values || []).map((v) => (
+                    <SelectItem key={v} value={v}>
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {uniqueValuesData?.truncated && (
+                <p className="text-xs mt-2 text-muted-foreground">
+                  Showing the first {uniqueValuesData.values.length} values.
+                </p>
+              )}
+              {showManualCampaignValue && (
+                <Input
+                  className="mt-2"
+                  value={selectedIdentifierValue || ""}
+                  onChange={(e) => setSelectedIdentifierValue(e.target.value)}
+                  placeholder={identifierRoute === 'campaign_id' ? "Enter campaign ID..." : "Enter campaign value..."}
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant={valueMode === 'revenue' ? "default" : "outline"}
+                onClick={() => {
+                  setValueMode('revenue');
+                  setSelectedConversionValue(null);
+                }}
+                size="sm"
+              >
+                Use Revenue
+              </Button>
+              <Button
+                type="button"
+                variant={valueMode === 'conversion_value' ? "default" : "outline"}
+                onClick={() => {
+                  setValueMode('conversion_value');
+                  setSelectedRevenue(null);
+                  setValueColumnMeaning('revenue_per_row');
+                }}
+                size="sm"
+              >
+                Use Conversion Value
+              </Button>
+            </div>
+            <div>
+              <Label className="text-sm font-medium mb-2 block">
+                {valueMode === 'conversion_value' ? 'Conversion value column' : 'Revenue column'}
+              </Label>
+              <Select
+                value={selectedValueColumn || ""}
+                onValueChange={(v) => {
+                  if (valueMode === 'conversion_value') setSelectedConversionValue(v);
+                  else setSelectedRevenue(v);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select value column..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {detectedColumns.map((column) => (
+                    <SelectItem key={column.index} value={column.index.toString()}>
+                      <div className="flex items-center justify-between w-full">
+                        <span>{column.originalName}</span>
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          {column.detectedType}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedValueColumnDetails && (
+              <p className="text-xs text-muted-foreground">
+                Sample values: {selectedValueColumnDetails.sampleValues.slice(0, 3).join(', ') || 'N/A'}
+              </p>
+            )}
+          </div>
+
+          {valueMode === 'conversion_value' && selectedConversionValue && (
+            <div className="space-y-3 rounded-lg border border-border p-3">
+              <Label className="text-sm font-medium block">Conversion value meaning</Label>
+              <RadioGroup
+                value={valueColumnMeaning}
+                onValueChange={(v) => setValueColumnMeaning(v as any)}
+                className="gap-3"
+              >
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="revenue_per_row" id="simple-meaning-rev-row" className="mt-1" />
+                  <Label htmlFor="simple-meaning-rev-row" className="cursor-pointer">
+                    <div className="font-medium">Actual revenue per row</div>
+                    <div className="text-xs text-muted-foreground">Use this when each row is revenue to be summed.</div>
+                  </Label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="revenue_aggregated" id="simple-meaning-rev-agg" className="mt-1" />
+                  <Label htmlFor="simple-meaning-rev-agg" className="cursor-pointer">
+                    <div className="font-medium">Pre-aggregated campaign revenue</div>
+                    <div className="text-xs text-muted-foreground">Use this when rows already contain campaign totals.</div>
+                  </Label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="value_per_conversion" id="simple-meaning-vpc" className="mt-1" />
+                  <Label htmlFor="simple-meaning-vpc" className="cursor-pointer">
+                    <div className="font-medium">Estimated value per conversion</div>
+                    <div className="text-xs text-muted-foreground">Use this when the column is value per lead/conversion.</div>
+                  </Label>
+                </div>
+              </RadioGroup>
+              {valueColumnMeaning === 'value_per_conversion' && dateCandidates.length > 0 && (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground/70 mb-1 block">Date column</Label>
+                    <Select value={convValueDateColumn || ""} onValueChange={setConvValueDateColumn}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select date column..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dateCandidates.map((c) => (
+                          <SelectItem key={c.index} value={String(c.index)}>
+                            {c.originalName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground/70 mb-1 block">When values change</Label>
+                    <Select value={convValueDateStrategy} onValueChange={(v) => setConvValueDateStrategy(v as any)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="latest">Use latest value</SelectItem>
+                        <SelectItem value="median">Use median value</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Platform filter</Label>
+            <Select
+              value={skipPlatform ? "skip" : (selectedPlatform || "")}
+              onValueChange={(value) => {
+                if (value === "skip") {
+                  setSkipPlatform(true);
+                  setSelectedPlatform(null);
+                } else {
+                  setSkipPlatform(false);
+                  setSelectedPlatform(value);
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Optional platform column..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="skip">
+                  <span className="text-muted-foreground">Skip platform filter</span>
+                </SelectItem>
+                {detectedColumns.map((column) => (
+                  <SelectItem key={column.index} value={column.index.toString()}>
+                    <div className="flex items-center justify-between w-full">
+                      <span>{column.originalName}</span>
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        {column.detectedType}
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex justify-end gap-3 border-t border-border pt-4">
+            <Button variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveSimplifiedSetup} disabled={saveMappingsMutation.isPending}>
+              {saveMappingsMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Dataset Setup'
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -1109,4 +1407,3 @@ export function GuidedColumnMapping({
     </div>
   );
 }
-

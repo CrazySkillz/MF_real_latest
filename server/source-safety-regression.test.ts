@@ -6,6 +6,10 @@ function readRoutesSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "server", "routes-oauth.ts"), "utf8");
 }
 
+function readPdfParserSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "server", "services", "pdf-parser.ts"), "utf8");
+}
+
 function readStorageSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "server", "storage.ts"), "utf8");
 }
@@ -1397,6 +1401,31 @@ describe("source safety regression guards", () => {
     expect(method).toContain("eq(customIntegrations.campaignId, campaignId)");
   });
 
+  it("Custom Integration parsed PDF imports preserve missing fields as null", () => {
+    const routesSource = readRoutesSource();
+    const parserSource = readPdfParserSource();
+    const normalizerStart = routesSource.indexOf("function normalizeCustomIntegrationMetrics(metrics: ParsedMetrics)");
+    const normalizerEnd = routesSource.indexOf("async function buildGoogleAdsPlatformSourceForAggregate", normalizerStart);
+    const normalizer = routesSource.slice(normalizerStart, normalizerEnd);
+    const noMetricsStart = parserSource.indexOf("if (extractedCount === 0)");
+    const noMetricsEnd = parserSource.indexOf("// Sanitize: Convert NaN to undefined", noMetricsStart);
+    const noMetricsFallback = parserSource.slice(noMetricsStart, noMetricsEnd);
+
+    expect(normalizer).toContain('if (value === null || typeof value === "undefined") return null;');
+    expect(normalizer).toContain('return typeof value === "number" && Number.isNaN(value) ? null : value;');
+    expect(normalizer).toContain("users: metric(metrics.users)");
+    expect(normalizer).toContain("spend: decimalMetric(metrics.spend)");
+    expect(normalizer).toContain("clickToOpenRate: decimalMetric(metrics.clickToOpenRate)");
+    expect(normalizer).not.toContain("const normalized: any = { ...metrics };");
+    expect((routesSource.match(/normalizeCustomIntegrationMetrics\(parsedMetrics\)/g) || []).length).toBe(3);
+    expect((routesSource.match(/normalizeCustomIntegrationMetrics\(metrics\)/g) || []).length).toBe(2);
+    expect(routesSource).not.toContain("cleanMetric(parsedMetrics");
+    expect(noMetricsFallback).toContain("metrics._warnings = ['No metrics extracted from PDF']");
+    expect(noMetricsFallback).not.toContain("metrics.impressions = 0");
+    expect(noMetricsFallback).not.toContain("metrics.spend = 0");
+    expect(noMetricsFallback).not.toContain("metrics.conversions = 0");
+  });
+
   it("Custom Integration KPI and Benchmark metric selection does not zero-fill missing imports", () => {
     const source = readCustomIntegrationAnalyticsSource();
 
@@ -1413,6 +1442,9 @@ describe("source safety regression guards", () => {
     expect(source).not.toContain("String(metricsData?.clickToOpen || 0)");
     expect(source).not.toContain("String(metricsData?.listGrowth || 0)");
     expect(source).not.toContain("String(metricsData?.emailsDelivered || 0)");
+    expect(source).toContain("metricsData.users != null");
+    expect(source).toContain("metrics.users != null");
+    expect(source).toContain("metrics.emailsDelivered != null");
   });
 
   it("Custom Integration KPI and Benchmark cards exclude unavailable source metrics from scoring", () => {

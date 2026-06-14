@@ -279,20 +279,32 @@ Tasks:
 - Add unit/type metadata and unavailable reasons.
 - Replace direct `metricsData?.metric || 0` current-value logic with adapter resolution.
 - Define confidence/provenance handling from parsed imports.
+- Add parser regression coverage for known Custom Integration PDF report text before trusting imported values downstream.
+- Preserve extracted-field presence after upload so missing PDF metrics stay unavailable after reload instead of becoming database-default `0`.
+- Persist or return parser trust metadata (`confidence`, `warnings`, `requiresReview`, `extractedFields`) through the latest metrics path, not only the immediate upload/webhook response.
+- Apply the same missing-field and review-required behavior to manual upload, webhook upload, and inbound email parsing.
+- Keep revenue, ROI, and ROAS unavailable unless the selected import explicitly extracts the required revenue and spend inputs.
 
 Validation:
 
 - Unit tests prove missing metrics return unavailable, not `0`.
 - Unit tests prove percent, count, currency, duration, and ratio formatting.
+- Parser regression tests cover at least one known report shape, one no-metrics PDF/text case, and one partial email/ad-only report shape.
+- Upload/reload regression proves absent PDF fields are still unavailable after storage and `/api/custom-integration/:campaignId/metrics` reload.
+- Route parity regression proves manual upload, webhook, and inbound email preserve the same availability and trust metadata.
 
 Status:
 
-- Completed in Commit 3 implementation pass.
-- Root cause: Custom Integration KPI and Benchmark forms directly read `metricsData?.metric || 0`, so a missing imported metric could be saved, displayed, and scored as a real `0`.
-- Fixes: added a local Custom Integration metric registry/resolver with source labels, unit-aware formatting, ROI/ROAS dependency checks, unavailable reasons, and CTOR field compatibility; KPI and Benchmark metric pickers now disable unavailable imported metrics and only populate current values from available source-backed values; KPI and Benchmark cards/summary scoring exclude unavailable current values and show unavailable reasons instead of treating them as zero.
-- Regression evidence: `server/source-safety-regression.test.ts` guards against reintroducing zero-filled Custom Integration KPI/Benchmark metric selection and verifies unavailable metrics are excluded from visible scoring.
-- Local validation: `npm test -- server/source-safety-regression.test.ts`, `npm run check`, `npm test`, and `git diff --check` passed.
+- Commit 3 resolver pass completed; parser missing-field forward path completed in follow-up pass, but Commit 3 remains open for parser fixture/trust metadata coverage.
+- Root cause fixed so far: Custom Integration KPI and Benchmark forms directly read `metricsData?.metric || 0`, so a missing imported metric could be saved, displayed, and scored as a real `0`.
+- Root cause fixed in follow-up pass: parsed PDF insert paths omitted missing fields, allowing nullable metric columns with database defaults to reload as `0`; the no-metrics parser fallback also fabricated legacy zeros. Manual upload, webhook upload, and inbound email now use the same normalizer and store missing parsed metrics as `null` while preserving real extracted zero values; no-metrics parses keep metric fields absent.
+- Root cause still outstanding before Commit 4: parser confidence/warning metadata is still not persisted through the latest metrics path, and deterministic parser fixture tests for known/partial/no-metric reports still need implementation.
+- Fixes completed so far: added a local Custom Integration metric registry/resolver with source labels, unit-aware formatting, ROI/ROAS dependency checks, unavailable reasons, and CTOR field compatibility; KPI and Benchmark metric pickers now disable unavailable imported metrics and only populate current values from available source-backed values; KPI and Benchmark cards/summary scoring exclude unavailable current values and show unavailable reasons instead of treating them as zero; parsed PDF storage now preserves missing imported fields as `null`; no-metrics parses no longer fabricate zeros; parsed metric cards render only non-null values after reload.
+- Fix strategy still required before Commit 4: add a small parser/test seam for deterministic fixture coverage and preserve parser trust metadata through upload and latest-metrics reads.
+- Regression evidence: `server/source-safety-regression.test.ts` guards against reintroducing zero-filled Custom Integration KPI/Benchmark metric selection, verifies unavailable metrics are excluded from visible scoring, verifies parsed PDF imports use null-preserving storage across manual upload, webhook upload, and inbound email, and verifies no-metrics parses do not assign fake legacy zeros.
+- Local validation completed for latest pass: `npm test -- server/source-safety-regression.test.ts` and `npm run check` passed.
 - Deferred by tracker scope: Reports, scheduled reports, Insights, Summary, and full Google Sheets layout parity remain in later commits.
+- Gate: do not proceed to Commit 4 until the PDF parser/import availability strategy above is implemented and validated.
 
 ### Commit 4: Google Sheets Layout Shell
 
@@ -475,6 +487,7 @@ Before Custom Integration can be called production-ready, validate:
 
 - Create/connect Custom Integration from campaign setup and campaign detail.
 - Import metrics by manual PDF upload.
+- PDF parser fixture tests prove extracted fields, missing fields, and low-confidence imports are handled deterministically.
 - Import metrics by webhook and inbound email, if retained.
 - Email-forwarding setup displays the generated forwarding address and copy action.
 - Open Custom Integration analytics from Connected Platforms.
@@ -488,6 +501,7 @@ Before Custom Integration can be called production-ready, validate:
 - Disconnect/reconnect does not leave active stale analytics.
 - Campaign DeepDive aggregate values match the normalized Custom Integration source contract.
 - Missing fields show unavailable reasons and never silently become `0`.
+- Parser confidence and warning metadata remains visible or available after reload when it affects trust in imported metrics.
 
 ## Production-Ready Exit Criteria
 

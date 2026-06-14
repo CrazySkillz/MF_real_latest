@@ -375,12 +375,12 @@ export default function CustomIntegrationAnalytics() {
   // Auto-refresh when awaiting data (poll every 10 seconds)
   useEffect(() => {
     const hasAnyMetrics = metricsData && (
-      metricsData.users !== undefined ||
-      metricsData.sessions !== undefined ||
-      metricsData.pageviews !== undefined ||
-      metricsData.impressions !== undefined ||
-      metricsData.clicks !== undefined ||
-      metricsData.conversions !== undefined
+      metricsData.users != null ||
+      metricsData.sessions != null ||
+      metricsData.pageviews != null ||
+      metricsData.impressions != null ||
+      metricsData.clicks != null ||
+      metricsData.conversions != null
     );
 
     if (!hasAnyMetrics && !metricsLoading && campaignId) {
@@ -2188,7 +2188,7 @@ export default function CustomIntegrationAnalytics() {
                           </h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {metrics.users !== undefined && (
+                          {metrics.users != null && (
                             <Card data-testid="card-metric-users">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
@@ -2206,7 +2206,7 @@ export default function CustomIntegrationAnalytics() {
                             </Card>
                           )}
 
-                          {metrics.sessions !== undefined && (
+                          {metrics.sessions != null && (
                             <Card data-testid="card-metric-sessions">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
@@ -2224,7 +2224,7 @@ export default function CustomIntegrationAnalytics() {
                             </Card>
                           )}
 
-                          {metrics.pageviews !== undefined && (
+                          {metrics.pageviews != null && (
                             <Card data-testid="card-metric-pageviews">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
@@ -2412,7 +2412,7 @@ export default function CustomIntegrationAnalytics() {
                           </h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                          {metrics.emailsDelivered !== undefined && (
+                          {metrics.emailsDelivered != null && (
                             <Card data-testid="card-metric-emails-delivered">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
@@ -2520,7 +2520,7 @@ export default function CustomIntegrationAnalytics() {
                             </Card>
                           )}
 
-                          {metrics.listGrowth !== undefined && (
+                          {metrics.listGrowth != null && (
                             <Card data-testid="card-metric-list-growth">
                               <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">

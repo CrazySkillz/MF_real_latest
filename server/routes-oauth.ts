@@ -59,26 +59,44 @@ function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency'
 }
 
 function normalizeCustomIntegrationMetrics(metrics: ParsedMetrics) {
-  const normalized: any = { ...metrics };
-  for (const key of [
-    "spend",
-    "pagesPerSession",
-    "bounceRate",
-    "organicSearchShare",
-    "directBrandedShare",
-    "emailShare",
-    "referralShare",
-    "paidShare",
-    "socialShare",
-    "openRate",
-    "clickThroughRate",
-    "clickToOpenRate",
-    "hardBounces",
-    "spamComplaints",
-  ]) {
-    if (typeof normalized[key] === "number") normalized[key] = String(normalized[key]);
-  }
-  return normalized;
+  const metric = (value: any) => {
+    if (value === null || typeof value === "undefined") return null;
+    return typeof value === "number" && Number.isNaN(value) ? null : value;
+  };
+  const decimalMetric = (value: any) => {
+    const normalized = metric(value);
+    return normalized === null ? null : String(normalized);
+  };
+  return {
+    impressions: metric(metrics.impressions),
+    reach: metric(metrics.reach),
+    clicks: metric(metrics.clicks),
+    engagements: metric(metrics.engagements),
+    spend: decimalMetric(metrics.spend),
+    conversions: metric(metrics.conversions),
+    leads: metric(metrics.leads),
+    videoViews: metric(metrics.videoViews),
+    viralImpressions: metric(metrics.viralImpressions),
+    users: metric(metrics.users),
+    sessions: metric(metrics.sessions),
+    pageviews: metric(metrics.pageviews),
+    avgSessionDuration: metric(metrics.avgSessionDuration),
+    pagesPerSession: decimalMetric(metrics.pagesPerSession),
+    bounceRate: decimalMetric(metrics.bounceRate),
+    organicSearchShare: decimalMetric(metrics.organicSearchShare),
+    directBrandedShare: decimalMetric(metrics.directBrandedShare),
+    emailShare: decimalMetric(metrics.emailShare),
+    referralShare: decimalMetric(metrics.referralShare),
+    paidShare: decimalMetric(metrics.paidShare),
+    socialShare: decimalMetric(metrics.socialShare),
+    emailsDelivered: metric(metrics.emailsDelivered),
+    openRate: decimalMetric(metrics.openRate),
+    clickThroughRate: decimalMetric(metrics.clickThroughRate),
+    clickToOpenRate: decimalMetric(metrics.clickToOpenRate),
+    hardBounces: decimalMetric(metrics.hardBounces),
+    spamComplaints: decimalMetric(metrics.spamComplaints),
+    listGrowth: metric(metrics.listGrowth),
+  };
 }
 
 async function buildGoogleAdsPlatformSourceForAggregate(campaignId: string, startDate: string, endDate: string) {
@@ -23259,44 +23277,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedMetrics = await parsePDFMetrics(req.file.buffer);
       console.log(`[PDF Upload] Parsed metrics:`, parsedMetrics);
 
-      // Helper to filter out NaN values
-      const cleanMetric = (value: any) => (typeof value === 'number' && isNaN(value)) ? undefined : value;
-
       // Store the metrics in the database
       const metrics = await storage.createCustomIntegrationMetrics({
         campaignId,
-        // Legacy metrics
-        impressions: cleanMetric(parsedMetrics.impressions),
-        reach: cleanMetric(parsedMetrics.reach),
-        clicks: cleanMetric(parsedMetrics.clicks),
-        engagements: cleanMetric(parsedMetrics.engagements),
-        spend: parsedMetrics.spend?.toString(),
-        conversions: cleanMetric(parsedMetrics.conversions),
-        leads: cleanMetric(parsedMetrics.leads),
-        videoViews: cleanMetric(parsedMetrics.videoViews),
-        viralImpressions: cleanMetric(parsedMetrics.viralImpressions),
-        // Audience & Traffic metrics
-        users: parsedMetrics.users,
-        sessions: parsedMetrics.sessions,
-        pageviews: parsedMetrics.pageviews,
-        avgSessionDuration: parsedMetrics.avgSessionDuration,
-        pagesPerSession: parsedMetrics.pagesPerSession?.toString(),
-        bounceRate: parsedMetrics.bounceRate?.toString(),
-        // Traffic sources
-        organicSearchShare: parsedMetrics.organicSearchShare?.toString(),
-        directBrandedShare: parsedMetrics.directBrandedShare?.toString(),
-        emailShare: parsedMetrics.emailShare?.toString(),
-        referralShare: parsedMetrics.referralShare?.toString(),
-        paidShare: parsedMetrics.paidShare?.toString(),
-        socialShare: parsedMetrics.socialShare?.toString(),
-        // Email metrics
-        emailsDelivered: parsedMetrics.emailsDelivered,
-        openRate: parsedMetrics.openRate?.toString(),
-        clickThroughRate: parsedMetrics.clickThroughRate?.toString(),
-        clickToOpenRate: parsedMetrics.clickToOpenRate?.toString(),
-        hardBounces: parsedMetrics.hardBounces?.toString(),
-        spamComplaints: parsedMetrics.spamComplaints?.toString(),
-        listGrowth: parsedMetrics.listGrowth,
+        ...normalizeCustomIntegrationMetrics(parsedMetrics),
         // Metadata
         pdfFileName: req.file.originalname,
         emailSubject: null,
@@ -23398,44 +23382,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn(`[Webhook] ⚠️  MANUAL REVIEW REQUIRED - Confidence: ${parsedMetrics._confidence}%`);
       }
 
-      // Helper to filter out NaN values
-      const cleanMetric = (value: any) => (typeof value === 'number' && isNaN(value)) ? undefined : value;
-
       // Store the metrics in the database
       const metrics = await storage.createCustomIntegrationMetrics({
         campaignId: integration.campaignId,
-        // Legacy metrics
-        impressions: cleanMetric(parsedMetrics.impressions),
-        reach: cleanMetric(parsedMetrics.reach),
-        clicks: cleanMetric(parsedMetrics.clicks),
-        engagements: cleanMetric(parsedMetrics.engagements),
-        spend: parsedMetrics.spend?.toString(),
-        conversions: cleanMetric(parsedMetrics.conversions),
-        leads: cleanMetric(parsedMetrics.leads),
-        videoViews: cleanMetric(parsedMetrics.videoViews),
-        viralImpressions: cleanMetric(parsedMetrics.viralImpressions),
-        // Audience & Traffic metrics
-        users: parsedMetrics.users,
-        sessions: parsedMetrics.sessions,
-        pageviews: parsedMetrics.pageviews,
-        avgSessionDuration: parsedMetrics.avgSessionDuration,
-        pagesPerSession: parsedMetrics.pagesPerSession?.toString(),
-        bounceRate: parsedMetrics.bounceRate?.toString(),
-        // Traffic sources
-        organicSearchShare: parsedMetrics.organicSearchShare?.toString(),
-        directBrandedShare: parsedMetrics.directBrandedShare?.toString(),
-        emailShare: parsedMetrics.emailShare?.toString(),
-        referralShare: parsedMetrics.referralShare?.toString(),
-        paidShare: parsedMetrics.paidShare?.toString(),
-        socialShare: parsedMetrics.socialShare?.toString(),
-        // Email metrics
-        emailsDelivered: parsedMetrics.emailsDelivered,
-        openRate: parsedMetrics.openRate?.toString(),
-        clickThroughRate: parsedMetrics.clickThroughRate?.toString(),
-        clickToOpenRate: parsedMetrics.clickToOpenRate?.toString(),
-        hardBounces: parsedMetrics.hardBounces?.toString(),
-        spamComplaints: parsedMetrics.spamComplaints?.toString(),
-        listGrowth: parsedMetrics.listGrowth,
+        ...normalizeCustomIntegrationMetrics(parsedMetrics),
         // Metadata
         pdfFileName: fileName,
         emailSubject: req.body.subject || req.body.value2 || null,
@@ -23604,44 +23554,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[Email] Saved previous metrics for change tracking`);
       }
 
-      // Helper to filter out NaN values
-      const cleanMetric = (value: any) => (typeof value === 'number' && isNaN(value)) ? undefined : value;
-
       // Store the metrics in the database
       const metrics = await storage.createCustomIntegrationMetrics({
         campaignId: integration.campaignId,
-        // Legacy metrics
-        impressions: cleanMetric(parsedMetrics.impressions),
-        reach: cleanMetric(parsedMetrics.reach),
-        clicks: cleanMetric(parsedMetrics.clicks),
-        engagements: cleanMetric(parsedMetrics.engagements),
-        spend: parsedMetrics.spend?.toString(),
-        conversions: cleanMetric(parsedMetrics.conversions),
-        leads: cleanMetric(parsedMetrics.leads),
-        videoViews: cleanMetric(parsedMetrics.videoViews),
-        viralImpressions: cleanMetric(parsedMetrics.viralImpressions),
-        // Audience & Traffic metrics
-        users: parsedMetrics.users,
-        sessions: parsedMetrics.sessions,
-        pageviews: parsedMetrics.pageviews,
-        avgSessionDuration: parsedMetrics.avgSessionDuration,
-        pagesPerSession: parsedMetrics.pagesPerSession?.toString(),
-        bounceRate: parsedMetrics.bounceRate?.toString(),
-        // Traffic sources
-        organicSearchShare: parsedMetrics.organicSearchShare?.toString(),
-        directBrandedShare: parsedMetrics.directBrandedShare?.toString(),
-        emailShare: parsedMetrics.emailShare?.toString(),
-        referralShare: parsedMetrics.referralShare?.toString(),
-        paidShare: parsedMetrics.paidShare?.toString(),
-        socialShare: parsedMetrics.socialShare?.toString(),
-        // Email metrics
-        emailsDelivered: parsedMetrics.emailsDelivered,
-        openRate: parsedMetrics.openRate?.toString(),
-        clickThroughRate: parsedMetrics.clickThroughRate?.toString(),
-        clickToOpenRate: parsedMetrics.clickToOpenRate?.toString(),
-        hardBounces: parsedMetrics.hardBounces?.toString(),
-        spamComplaints: parsedMetrics.spamComplaints?.toString(),
-        listGrowth: parsedMetrics.listGrowth,
+        ...normalizeCustomIntegrationMetrics(parsedMetrics),
         // Metadata
         pdfFileName: fileName,
         emailSubject: req.body.headers?.subject || null,

@@ -192,17 +192,8 @@ export async function parsePDFMetrics(buffer: Buffer): Promise<ParsedMetrics> {
       console.warn('[PDF Parser] ⚠️  MANUAL REVIEW REQUIRED - Confidence below 95%');
     }
     
-    // Set defaults for backward compatibility if no metrics found
+    // Keep metric fields absent when parsing finds nothing so downstream UI can mark them unavailable.
     if (extractedCount === 0) {
-      metrics.impressions = 0;
-      metrics.reach = 0;
-      metrics.clicks = 0;
-      metrics.engagements = 0;
-      metrics.spend = 0;
-      metrics.conversions = 0;
-      metrics.leads = 0;
-      metrics.videoViews = 0;
-      metrics.viralImpressions = 0;
       metrics._confidence = 0;
       metrics._warnings = ['No metrics extracted from PDF'];
       metrics._requiresReview = true;

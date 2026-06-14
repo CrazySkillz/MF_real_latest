@@ -1319,4 +1319,59 @@ describe("source safety regression guards", () => {
     expect(transferRoute.indexOf("ensureCampaignAccess")).toBeLessThan(transferRoute.indexOf("storage.getCustomIntegration(fromCampaignId)"));
     expect(transferRoute.indexOf("storage.createCustomIntegration")).toBeGreaterThan(transferRoute.indexOf("ensureCampaignAccess"));
   });
+
+  it("Custom Integration by-ID analytics route resolves source before campaign access and keeps client compatibility", () => {
+    const routesSource = readRoutesSource();
+    const routeStart = routesSource.indexOf('app.get("/api/custom-integration-by-id/:id"');
+    const routeEnd = routesSource.indexOf('app.get("/api/custom-integration/:campaignId"', routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(routeStart).toBeGreaterThan(-1);
+    expect(route).toContain("storage.getCustomIntegrationById(req.params.id)");
+    expect(route.indexOf("storage.getCustomIntegrationById")).toBeLessThan(route.indexOf("ensureCampaignAccess"));
+    expect(route).toContain("ensureCampaignAccess(req as any, res as any, customIntegration.campaignId)");
+    expect(route).toContain("campaign_id: customIntegration.campaignId");
+  });
+
+  it("Custom Integration upload path has one canonical campaign-scoped route", () => {
+    const routesSource = readRoutesSource();
+    const uploadRouteMatches = routesSource.match(/app\.post\("\/api\/custom-integration\/:campaignId\/upload-pdf"/g) || [];
+    const routeStart = routesSource.indexOf('app.post("/api/custom-integration/:campaignId/upload-pdf"');
+    const routeEnd = routesSource.indexOf('app.post("/api/webhook/custom-integration/:token"', routeStart);
+    const route = routesSource.slice(routeStart, routeEnd);
+
+    expect(uploadRouteMatches).toHaveLength(1);
+    expect(route).toContain("requireCampaignAccessCampaignIdParam, upload.single('pdf')");
+    expect(route).toContain("storage.getCustomIntegration(campaignId)");
+    expect(route).toContain("storage.createCustomIntegration({");
+    expect(route.indexOf("storage.createCustomIntegration({")).toBeLessThan(route.indexOf("storage.createCustomIntegrationMetrics({"));
+  });
+
+  it("Custom Integration public token ingest routes use direct token lookup", () => {
+    const routesSource = readRoutesSource();
+    const webhookStart = routesSource.indexOf('app.post("/api/webhook/custom-integration/:token"');
+    const webhookEnd = routesSource.indexOf('app.post("/api/email/inbound/:token"', webhookStart);
+    const emailStart = webhookEnd;
+    const emailEnd = routesSource.indexOf("// LinkedIn API routes", emailStart);
+    const webhookRoute = routesSource.slice(webhookStart, webhookEnd);
+    const emailRoute = routesSource.slice(emailStart, emailEnd);
+
+    expect(webhookRoute).toContain("storage.getCustomIntegrationByToken(token)");
+    expect(emailRoute).toContain("storage.getCustomIntegrationByToken(token)");
+    expect(webhookRoute).not.toContain("storage.getAllCustomIntegrations()");
+    expect(emailRoute).not.toContain("storage.getAllCustomIntegrations()");
+  });
+
+  it("Custom Integration disconnect deletes imported metrics with the connection", () => {
+    const storageSource = readStorageSource();
+    const methodStart = storageSource.indexOf("async deleteCustomIntegration(campaignId: string)");
+    const methodEnd = storageSource.indexOf("// Custom Integration Metrics methods", methodStart);
+    const method = storageSource.slice(methodStart, methodEnd);
+
+    expect(method).toContain("return await db.transaction");
+    expect(method).toContain("if (!existing) return false");
+    expect(method.indexOf(".delete(customIntegrationMetrics)")).toBeLessThan(method.indexOf(".delete(customIntegrations)"));
+    expect(method).toContain("eq(customIntegrationMetrics.campaignId, campaignId)");
+    expect(method).toContain("eq(customIntegrations.campaignId, campaignId)");
+  });
 });

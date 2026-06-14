@@ -23116,6 +23116,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/custom-integration-by-id/:id", async (req, res) => {
+    try {
+      const customIntegration = await storage.getCustomIntegrationById(req.params.id);
+      if (!customIntegration) {
+        return res.status(404).json({ message: "Custom integration not found" });
+      }
+      const campaign = await ensureCampaignAccess(req as any, res as any, customIntegration.campaignId);
+      if (!campaign) return;
+
+      res.json({
+        ...customIntegration,
+        campaign_id: customIntegration.campaignId,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch custom integration" });
+    }
+  });
+
   app.get("/api/custom-integration/:campaignId", async (req, res) => {
     try {
       const campaign = await ensureCampaignAccess(req as any, res as any, req.params.campaignId);
@@ -23225,6 +23243,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const existingIntegration = await storage.getCustomIntegration(campaignId);
+      if (!existingIntegration) {
+        await storage.createCustomIntegration({
+          campaignId,
+          email: null,
+          webhookToken: randomBytes(32).toString('hex'),
+          allowedEmailAddresses: []
+        });
+      }
+
       console.log(`[PDF Upload] Processing PDF for campaign ${campaignId}, file: ${req.file.originalname}, size: ${req.file.size} bytes`);
 
       // Parse the PDF to extract metrics
@@ -23306,8 +23334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Webhook] Has file:`, !!req.file);
 
       // Find the custom integration by webhook token
-      const customIntegrations = await storage.getAllCustomIntegrations();
-      const integration = customIntegrations.find(ci => ci.webhookToken === token);
+      const integration = await storage.getCustomIntegrationByToken(token);
 
       if (!integration) {
         console.log(`[Webhook] Invalid token: ${token}`);
@@ -23464,8 +23491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[Email] Subject:`, req.body.headers?.subject);
 
       // Find the custom integration by webhook token
-      const customIntegrations = await storage.getAllCustomIntegrations();
-      const integration = customIntegrations.find(ci => ci.webhookToken === token);
+      const integration = await storage.getCustomIntegrationByToken(token);
 
       if (!integration) {
         console.log(`[Email] Invalid token: ${token}`);
@@ -28309,59 +28335,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[Custom Integration] Delete error:', error);
       res.status(500).json({ error: error.message || 'Failed to delete custom integration' });
-    }
-  });
-
-  /**
-   * Upload PDF for custom integration
-   * Uses multer middleware for file handling (imported at top of file)
-   */
-  app.post("/api/custom-integration/:campaignId/upload-pdf", requireCampaignAccessCampaignIdParam, upload.single('pdf'), async (req, res) => {
-    try {
-      const { campaignId } = req.params;
-      console.log(`[Custom Integration] PDF upload for campaign ${campaignId}`);
-
-      // Check if custom integration exists
-      const integration = await storage.getCustomIntegration(campaignId);
-      if (!integration) {
-        return res.status(404).json({ error: 'Custom integration not found. Please connect first.' });
-      }
-
-      // Check if file was uploaded
-      if (!req.file) {
-        return res.status(400).json({ error: 'No PDF file uploaded' });
-      }
-
-      console.log(`[Custom Integration] Processing PDF: ${req.file.originalname}, size: ${req.file.size} bytes`);
-
-      // Parse the PDF
-      const { parsePDFMetrics } = await import('./services/pdf-parser');
-      const metrics = await parsePDFMetrics(req.file.buffer);
-
-      // Store the metrics
-      await storage.createCustomIntegrationMetrics({
-        campaignId,
-        ...normalizeCustomIntegrationMetrics(metrics),
-        pdfFileName: req.file.originalname,
-        emailSubject: `Manual Upload: ${req.file.originalname}`,
-        emailId: `manual-${Date.now()}`
-      });
-
-      console.log(`[Custom Integration] PDF parsed and metrics stored for campaign ${campaignId}`);
-      console.log(`[Custom Integration] Metrics confidence: ${metrics._confidence}%`);
-
-      // Record current metrics so What's Changed can track deltas between syncs
-      const { recordCampaignMetrics } = await import("./scheduler.js");
-      await recordCampaignMetrics(campaignId);
-
-      res.json({
-        success: true,
-        message: 'PDF uploaded and parsed successfully',
-        ...metrics
-      });
-    } catch (error: any) {
-      console.error('[Custom Integration] PDF upload error:', error);
-      res.status(500).json({ error: error.message || 'Failed to upload PDF' });
     }
   });
 

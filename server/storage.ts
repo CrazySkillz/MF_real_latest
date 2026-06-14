@@ -3301,10 +3301,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteCustomIntegration(campaignId: string): Promise<boolean> {
-    await db
-      .delete(customIntegrations)
-      .where(eq(customIntegrations.campaignId, campaignId));
-    return true;
+    return await db.transaction(async (tx: any) => {
+      const [existing] = await tx.select({ id: customIntegrations.id })
+        .from(customIntegrations)
+        .where(eq(customIntegrations.campaignId, campaignId))
+        .limit(1);
+      if (!existing) return false;
+
+      await tx
+        .delete(customIntegrationMetrics)
+        .where(eq(customIntegrationMetrics.campaignId, campaignId));
+
+      const result = await tx
+        .delete(customIntegrations)
+        .where(eq(customIntegrations.campaignId, campaignId));
+      return (result.rowCount || 0) > 0;
+    });
   }
 
   // Custom Integration Metrics methods

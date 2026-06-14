@@ -253,6 +253,14 @@ Validation:
 
 - Regression tests for by-ID route access, upload route behavior, disconnect cleanup boundary, and transfer ownership.
 
+Status:
+
+- Completed in Commit 2 implementation pass.
+- Root cause: the Custom Integration analytics page had a by-ID route caller without a backend route, the manual PDF upload route was registered twice, public token ingest routes enumerated integrations before matching tokens, and disconnect left imported metric rows able to feed stale analytics.
+- Fixes: added campaign-guarded `/api/custom-integration-by-id/:id`, kept one canonical campaign-scoped upload route, made first PDF upload create the connection when needed, switched token ingest to direct token lookup, and made disconnect delete Custom Integration metric rows with the connection.
+- Regression evidence: `server/source-safety-regression.test.ts` covers by-ID access, single upload route, token lookup, and disconnect metric cleanup.
+- Local validation: `npm test -- server/source-safety-regression.test.ts`, `npm run check`, and `npm test -- server/legacy-route-reachability-regression.test.ts server/performance-summary-scheduler-regression.test.ts server/performance-summary-aggregate.test.ts` passed.
+
 ### Commit 3: Metric Adapter And Availability Rules
 
 Goal:
@@ -455,4 +463,3 @@ Custom Integration is production-ready when:
 - KPIs, Benchmarks, Reports, Insights, scheduler snapshots, and campaign aggregates use the same adapter-resolved values.
 - All add, edit, delete, import, transfer, disconnect, scheduler, and report lifecycle paths have been traced and validated.
 - Existing damaged/stale records are either safely resolved from exact source data or fail closed as unavailable.
-

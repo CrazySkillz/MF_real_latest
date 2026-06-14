@@ -1474,7 +1474,7 @@ describe("source safety regression guards", () => {
     expect(source).toContain("Current value is not available.");
     expect(source).toContain("let status = resolvedCurrent.available ? 'Underperforming' : 'Unavailable';");
     expect(source).toContain("resolvedCurrent.available ? `Source: ${resolvedCurrent.sourceLabel}` : resolvedCurrent.reason");
-    expect(source).toContain("resolved.available && current !== null && target > 0");
+    expect(source).toContain("!resolved.available || current === null || target === null || target <= 0");
     expect(source).toContain("resolved.available && current !== null && benchmark > 0");
     expect(source).toContain("targetVal > 0 && resolvedCurrent.available && currentVal !== null");
     expect(source).toContain("resolvedCurrent.available && currentVal !== null && benchmarkVal !== null && benchmarkVal > 0");
@@ -1523,5 +1523,32 @@ describe("source safety regression guards", () => {
     expect(source).toContain("Revenue is not available in the selected Custom Integration import.");
     expect(source).toContain("Spend is not available in the selected Custom Integration import.");
     expect(source).not.toContain("metricsData.revenue !== undefined && parseFloat(metricsData.revenue || '0') > 0");
+  });
+
+  it("Custom Integration KPIs use source-backed templates and saved source scope", () => {
+    const source = readCustomIntegrationAnalyticsSource();
+
+    expect(source).toContain("type CustomIntegrationSourceScope");
+    expect(source).toContain("getSavedCustomIntegrationSourceScope");
+    expect(source).toContain("activeCustomIntegrationSourceScope");
+    expect(source).toContain("customIntegrationKpiMetricOptions");
+    expect(source).toContain("resolveCustomIntegrationCurrentValue({ ...editingKPI, metric: metricKey })");
+    expect(source).toContain("resolvedCurrent.available && resolvedCurrent.currentValue !== null ? String(resolvedCurrent.currentValue) : ''");
+    expect(source).toContain("data-custom-integration-kpi-source-adapter=\"source-backed\"");
+    expect(source).toContain("Select KPI Template");
+    expect(source).toContain("data-testid={`button-kpi-template-${metric.key}`}");
+    expect(source).toContain("disabled={disabled}");
+    expect(source).toContain("metric.resolved.available ? metric.resolved.sourceLabel : metric.resolved.reason");
+    expect(source).toContain("data-source-backed-current-value={kpiFormUsesSourceBackedMetric ? 'custom_integration' : undefined}");
+    expect(source).toContain("readOnly={kpiFormUsesSourceBackedMetric}");
+    expect(source).toContain("metricKey: isCustomKpi ? null : kpiForm.metric");
+    expect(source).toContain("sourceType: isCustomKpi ? 'manual' : 'platform'");
+    expect(source).toContain("calculationConfig: isCustomKpi");
+    expect(source).toContain("sourceScope: activeCustomIntegrationSourceScope");
+    expect(source).toContain("valueSource: 'latest_validated_import'");
+    expect(source).toContain("Select a Custom Integration metric with a current source-backed value.");
+    expect(source).toContain("!kpiForm.name || !kpiForm.metric || !kpiForm.targetValue || !campaignId");
+    expect(source).toContain("customIntegrationKpiTracker.blocked");
+    expect(source).not.toContain("currentValue: toDecimalString(req.body.currentValue, \"0\")");
   });
 });

@@ -22,10 +22,21 @@ import { formatTimeAgo } from "@/lib/utils";
 import { formatPct } from "@shared/metric-math";
 
 interface CustomIntegrationConnection {
+  id?: string;
+  campaignId?: string;
   email?: string;
 }
 
 type CustomIntegrationMetricType = 'count' | 'currency' | 'percent' | 'duration' | 'ratio';
+
+type CustomIntegrationSourceScope = {
+  platform: 'custom_integration';
+  scopeType: 'latest_validated_import';
+  integrationId: string | null;
+  campaignId: string;
+  selectedImportId: string | null;
+  sourceLabel: string;
+};
 
 interface CustomIntegrationMetricOption {
   key: string;
@@ -69,6 +80,61 @@ const CUSTOM_INTEGRATION_OVERVIEW_GROUPS = [
   { title: 'Traffic Sources', icon: BarChart3, metricKeys: ['organicSearchShare', 'directBrandedShare', 'emailShare', 'referralShare', 'paidShare', 'socialShare'] },
   { title: 'Email & Newsletter Performance', icon: Mail, metricKeys: ['emailsDelivered', 'openRate', 'clickThroughRate', 'clickToOpen', 'listGrowth'] },
 ];
+
+function createEmptyCustomIntegrationKpiForm() {
+  return {
+    name: '',
+    description: '',
+    category: 'performance',
+    metric: '',
+    targetValue: '',
+    currentValue: '',
+    unit: '',
+    priority: 'medium',
+    status: 'active',
+    timeframe: 'monthly',
+    alertsEnabled: false,
+    emailNotifications: false,
+    alertFrequency: 'immediate',
+    alertThreshold: '',
+    alertCondition: 'below',
+    emailRecipients: ''
+  };
+}
+
+function parseCustomIntegrationSavedConfig(value: any) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return typeof value === 'object' ? value : null;
+}
+
+function getSavedCustomIntegrationSourceScope(row: any): CustomIntegrationSourceScope | null {
+  const config = parseCustomIntegrationSavedConfig(row?.calculationConfig);
+  const scope = config?.sourceScope;
+  return scope?.platform === 'custom_integration' ? scope : null;
+}
+
+function cleanCustomIntegrationNumberInput(value: any): string {
+  return String(value || '').replace(/,/g, '').replace(/[^0-9.\-]/g, '');
+}
+
+function formatCustomIntegrationNumberInput(value: any): string {
+  const cleaned = cleanCustomIntegrationNumberInput(value);
+  if (!cleaned || cleaned === '-') return cleaned;
+  const negative = cleaned.startsWith('-');
+  const unsigned = cleaned.replace(/-/g, '');
+  const [integerPart, ...decimalParts] = unsigned.split('.');
+  const normalizedInteger = (integerPart || '0').replace(/^0+(?=\d)/, '');
+  const groupedInteger = normalizedInteger.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const decimal = decimalParts.length > 0 ? `.${decimalParts.join('')}` : '';
+  return `${negative ? '-' : ''}${groupedInteger}${decimal}`;
+}
 
 function parseCustomIntegrationMetricNumber(value: any): number | null {
   if (value === null || typeof value === 'undefined' || value === '') return null;
@@ -240,21 +306,7 @@ export default function CustomIntegrationAnalytics() {
   // KPI state management
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
   const [editingKPI, setEditingKPI] = useState<any>(null);
-  const [kpiForm, setKpiForm] = useState({
-    name: '',
-    description: '',
-    category: 'performance',
-    metric: '',
-    targetValue: '',
-    currentValue: '',
-    unit: '',
-    priority: 'medium',
-    timeframe: 'monthly',
-    alertsEnabled: false,
-    alertThreshold: '',
-    alertCondition: 'below',
-    emailRecipients: ''
-  });
+  const [kpiForm, setKpiForm] = useState(createEmptyCustomIntegrationKpiForm);
 
   // Benchmark state management
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
@@ -315,17 +367,26 @@ export default function CustomIntegrationAnalytics() {
   // Sync kpiForm when editingKPI changes
   useEffect(() => {
     if (editingKPI) {
+      const metricKey = String(editingKPI.metric || editingKPI.metricKey || '').trim();
+      const resolvedCurrent = metricKey && metricKey !== 'custom'
+        ? resolveCustomIntegrationCurrentValue({ ...editingKPI, metric: metricKey })
+        : null;
       const formData = {
         name: editingKPI.name,
         description: editingKPI.description || '',
         category: editingKPI.category || 'performance',
-        metric: editingKPI.metric || '',
+        metric: metricKey,
         targetValue: editingKPI.targetValue || '',
-        currentValue: editingKPI.currentValue || '',
-        unit: editingKPI.unit || '',
+        currentValue: resolvedCurrent
+          ? (resolvedCurrent.available && resolvedCurrent.currentValue !== null ? String(resolvedCurrent.currentValue) : '')
+          : editingKPI.currentValue || '',
+        unit: resolvedCurrent?.unit || editingKPI.unit || '',
         priority: editingKPI.priority || 'medium',
+        status: editingKPI.status || 'active',
         timeframe: editingKPI.timeframe || 'monthly',
         alertsEnabled: editingKPI.alertsEnabled || false,
+        emailNotifications: editingKPI.emailNotifications || Boolean(editingKPI.emailRecipients),
+        alertFrequency: editingKPI.alertFrequency || 'immediate',
         alertThreshold: editingKPI.alertThreshold || '',
         alertCondition: editingKPI.alertCondition || 'below',
         emailRecipients: editingKPI.emailRecipients || ''
@@ -482,21 +543,7 @@ export default function CustomIntegrationAnalytics() {
       }
       
       setIsKPIModalOpen(false);
-      setKpiForm({
-        name: '',
-        description: '',
-        category: 'performance',
-        metric: '',
-        targetValue: '',
-        currentValue: '',
-        unit: '',
-        priority: 'medium',
-        timeframe: 'monthly',
-        alertsEnabled: false,
-        alertThreshold: '',
-        alertCondition: 'below',
-        emailRecipients: ''
-      });
+      setKpiForm(createEmptyCustomIntegrationKpiForm());
     },
   });
 
@@ -532,21 +579,7 @@ export default function CustomIntegrationAnalytics() {
       });
       setIsKPIModalOpen(false);
       setEditingKPI(null);
-      setKpiForm({
-        name: '',
-        description: '',
-        category: 'performance',
-        metric: '',
-        targetValue: '',
-        currentValue: '',
-        unit: '',
-        priority: 'medium',
-        timeframe: 'monthly',
-        alertsEnabled: false,
-        alertThreshold: '',
-        alertCondition: 'below',
-        emailRecipients: ''
-      });
+      setKpiForm(createEmptyCustomIntegrationKpiForm());
     },
     onError: (error: any) => {
       console.error('=== KPI UPDATE ERROR ===');
@@ -579,12 +612,6 @@ export default function CustomIntegrationAnalytics() {
 
   // Handle KPI form submission
   const handleKPISubmit = () => {
-    console.log('[KPI Submit] campaignId value:', campaignId);
-    console.log('[KPI Submit] integrationData:', integrationData);
-    console.log('[KPI Submit] matchCampaignRoute:', matchCampaignRoute);
-    console.log('[KPI Submit] matchIntegrationRoute:', matchIntegrationRoute);
-    console.log('[KPI Submit] kpiForm:', kpiForm);
-    
     if (!campaignId) {
       toast({
         title: "Error",
@@ -593,26 +620,99 @@ export default function CustomIntegrationAnalytics() {
       });
       return;
     }
+
+    if (!kpiForm.name || !kpiForm.metric || !kpiForm.targetValue) {
+      toast({
+        title: "Required Fields",
+        description: "Please select a KPI template, enter a KPI name, and set a target value.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const targetValue = parseCustomIntegrationMetricNumber(cleanCustomIntegrationNumberInput(kpiForm.targetValue));
+    if (targetValue === null) {
+      toast({
+        title: "Invalid Target",
+        description: "Please enter a valid numeric target value.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (kpiForm.alertsEnabled && !kpiForm.alertThreshold) {
+      toast({
+        title: "Alert Threshold Required",
+        description: "Please set an alert threshold value.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (kpiForm.alertsEnabled && kpiForm.emailNotifications && !String(kpiForm.emailRecipients || '').trim()) {
+      toast({
+        title: "Email Recipients Required",
+        description: "Please enter at least one email address for KPI alert notifications.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const isCustomKpi = kpiForm.metric === 'custom';
+    const metricOption = isCustomKpi ? null : resolveCustomIntegrationMetric(metricsData, kpiForm.metric);
+    if (!isCustomKpi && (!metricOption?.available || metricOption.currentValue === null)) {
+      toast({
+        title: "Metric Unavailable",
+        description: metricOption?.reason || "Select a Custom Integration metric with a current source-backed value.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!isCustomKpi && !activeCustomIntegrationSourceScope) {
+      toast({
+        title: "Source Unavailable",
+        description: "The active Custom Integration source is not loaded yet. Please refresh and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const manualCurrentValue = parseCustomIntegrationMetricNumber(cleanCustomIntegrationNumberInput(kpiForm.currentValue));
+    const alertThreshold = kpiForm.alertThreshold
+      ? parseCustomIntegrationMetricNumber(cleanCustomIntegrationNumberInput(kpiForm.alertThreshold))
+      : null;
+    const payload = {
+      ...kpiForm,
+      platformType: 'custom-integration',
+      campaignId: campaignId,
+      targetValue,
+      currentValue: isCustomKpi ? (manualCurrentValue ?? '') : metricOption?.currentValue,
+      alertThreshold,
+      emailRecipients: kpiForm.emailRecipients ? kpiForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean).join(', ') : null,
+      metricKey: isCustomKpi ? null : kpiForm.metric,
+      sourceType: isCustomKpi ? 'manual' : 'platform',
+      calculationConfig: isCustomKpi
+        ? {
+          source: 'manual',
+          valueSource: 'manual_current_value',
+          metric: 'custom',
+        }
+        : {
+          source: 'custom_integration',
+          valueSource: 'latest_validated_import',
+          metric: kpiForm.metric,
+          sourceScope: activeCustomIntegrationSourceScope,
+          sourceLabel: metricOption?.sourceLabel || latestImportLabel,
+        },
+    };
     
     if (editingKPI) {
       const updateData = {
         id: editingKPI.id,
-        data: {
-          ...kpiForm,
-          platformType: 'custom-integration',
-          campaignId: campaignId,
-        }
+        data: payload,
       };
-      console.log('[KPI Submit] Update data:', updateData);
       updateKpiMutation.mutate(updateData);
     } else {
-      const createData = {
-        ...kpiForm,
-        platformType: 'custom-integration',
-        campaignId: campaignId,
-      };
-      console.log('[KPI Submit] Create data:', createData);
-      createKpiMutation.mutate(createData);
+      createKpiMutation.mutate(payload);
     }
   };
 
@@ -1951,6 +2051,14 @@ export default function CustomIntegrationAnalytics() {
   const resolveCustomIntegrationCurrentValue = (item: any) => {
     const metricKey = String(item?.metric || item?.metricKey || '').trim();
     if (metricKey && metricKey !== 'custom') {
+      const savedScope = getSavedCustomIntegrationSourceScope(item);
+      const activeIntegrationId = String(customIntegration?.id || '').trim();
+      if (savedScope?.scopeType && savedScope.scopeType !== 'latest_validated_import') {
+        return { available: false, currentValue: null as number | null, unit: String(item?.unit || ''), option: undefined, sourceLabel: '', reason: 'Saved Custom Integration source scope is unsupported.' };
+      }
+      if (savedScope?.integrationId && activeIntegrationId && savedScope.integrationId !== activeIntegrationId) {
+        return { available: false, currentValue: null as number | null, unit: String(item?.unit || ''), option: undefined, sourceLabel: '', reason: 'Saved Custom Integration source is no longer connected.' };
+      }
       return resolveCustomIntegrationMetric(metricsData, metricKey);
     }
 
@@ -1967,6 +2075,42 @@ export default function CustomIntegrationAnalytics() {
   const parserRequiresReview = Boolean(parserMetadata?.requiresReview || parserWarnings.length > 0);
   const latestImportLabel = metricsData ? getCustomIntegrationSourceLabel(metricsData) : 'No import yet';
   const latestImportStatus = parserRequiresReview ? 'Needs review' : metricsData ? 'Validated' : 'Waiting for data';
+  const activeCustomIntegrationSourceScope: CustomIntegrationSourceScope | null = customIntegration?.id && campaignId
+    ? {
+      platform: 'custom_integration',
+      scopeType: 'latest_validated_import',
+      integrationId: String(customIntegration.id),
+      campaignId: String(campaignId),
+      selectedImportId: metricsData?.id ? String(metricsData.id) : null,
+      sourceLabel: latestImportLabel,
+    }
+    : null;
+  const customIntegrationKpiMetricOptions = CUSTOM_INTEGRATION_METRIC_OPTIONS.map((option) => ({
+    ...option,
+    resolved: resolveCustomIntegrationMetric(metricsData, option.key),
+  }));
+  const customIntegrationKpis = Array.isArray(kpisData) ? kpisData : [];
+  const customIntegrationKpiTracker = customIntegrationKpis.reduce((tracker: any, kpi: any) => {
+    const resolved = resolveCustomIntegrationCurrentValue(kpi);
+    const current = resolved.currentValue;
+    const target = parseCustomIntegrationMetricNumber(kpi.targetValue);
+    tracker.total += 1;
+    if (!resolved.available || current === null || target === null || target <= 0) {
+      tracker.blocked += 1;
+      return tracker;
+    }
+    const progress = (current / target) * 100;
+    tracker.progressTotal += progress;
+    tracker.progressCount += 1;
+    if (progress >= 120) tracker.above += 1;
+    else if (progress >= 100) tracker.onTrack += 1;
+    else tracker.below += 1;
+    return tracker;
+  }, { total: 0, above: 0, onTrack: 0, below: 0, blocked: 0, progressTotal: 0, progressCount: 0 });
+  customIntegrationKpiTracker.avgProgress = customIntegrationKpiTracker.progressCount > 0
+    ? customIntegrationKpiTracker.progressTotal / customIntegrationKpiTracker.progressCount
+    : 0;
+  const kpiFormUsesSourceBackedMetric = Boolean(kpiForm.metric && kpiForm.metric !== 'custom');
   const resolvedOverviewGroups = CUSTOM_INTEGRATION_OVERVIEW_GROUPS.map((group) => {
     const metrics = group.metricKeys
       .map((metricKey) => ({ metricKey, resolved: resolveCustomIntegrationMetric(metricsData, metricKey) }))
@@ -2321,7 +2465,7 @@ export default function CustomIntegrationAnalytics() {
                     <div className="h-32 bg-muted rounded"></div>
                     <div className="h-64 bg-muted rounded"></div>
                   </div>
-                ) : kpisData && (kpisData as any[]).length > 0 ? (
+                ) : customIntegrationKpis.length > 0 ? (
                   <>
                     {/* Header with Create Button */}
                     <div className="flex items-center justify-between">
@@ -2359,21 +2503,7 @@ export default function CustomIntegrationAnalytics() {
                         <Button 
                           onClick={() => {
                             setEditingKPI(null);
-                            setKpiForm({
-                              name: '',
-                              description: '',
-                              category: 'performance',
-                              metric: '',
-                              targetValue: '',
-                              currentValue: '',
-                              unit: '',
-                              priority: 'medium',
-                              timeframe: 'monthly',
-                              alertsEnabled: false,
-                              alertThreshold: '',
-                              alertCondition: 'below',
-                              emailRecipients: ''
-                            });
+                            setKpiForm(createEmptyCustomIntegrationKpiForm());
                             setIsKPIModalOpen(true);
                           }}
                           className="bg-purple-600 hover:bg-purple-700 text-white"
@@ -2386,14 +2516,14 @@ export default function CustomIntegrationAnalytics() {
                     </div>
 
                     {/* KPI Summary Cards */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                       <Card>
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm text-muted-foreground/70">Total KPIs</p>
                               <p className="text-2xl font-bold text-foreground">
-                                {(kpisData as any[]).length}
+                                {customIntegrationKpiTracker.total}
                               </p>
                             </div>
                             <Target className="w-8 h-8 text-purple-500" />
@@ -2405,14 +2535,9 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-muted-foreground/70">Exceeding Target</p>
+                              <p className="text-sm text-muted-foreground/70">Above Target</p>
                               <p className="text-2xl font-bold text-green-600">
-                                {(kpisData as any[]).filter((k: any) => {
-                                  const resolved = resolveCustomIntegrationCurrentValue(k);
-                                  const current = resolved.currentValue;
-                                  const target = parseFloat(k.targetValue || '0');
-                                  return resolved.available && current !== null && target > 0 && current >= target * 1.2;
-                                }).length}
+                                {customIntegrationKpiTracker.above}
                               </p>
                             </div>
                             <TrendingUp className="w-8 h-8 text-green-500" />
@@ -2424,14 +2549,9 @@ export default function CustomIntegrationAnalytics() {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm text-muted-foreground/70">Meeting Target</p>
+                              <p className="text-sm text-muted-foreground/70">On Track</p>
                               <p className="text-2xl font-bold text-amber-600">
-                                {(kpisData as any[]).filter((k: any) => {
-                                  const resolved = resolveCustomIntegrationCurrentValue(k);
-                                  const current = resolved.currentValue;
-                                  const target = parseFloat(k.targetValue || '0');
-                                  return resolved.available && current !== null && target > 0 && current >= target && current < target * 1.2;
-                                }).length}
+                                {customIntegrationKpiTracker.onTrack}
                               </p>
                             </div>
                             <Target className="w-8 h-8 text-amber-500" />
@@ -2445,31 +2565,46 @@ export default function CustomIntegrationAnalytics() {
                             <div>
                               <p className="text-sm text-muted-foreground/70">Below Target</p>
                               <p className="text-2xl font-bold text-red-600">
-                                {(kpisData as any[]).filter((k: any) => {
-                                  const resolved = resolveCustomIntegrationCurrentValue(k);
-                                  const current = resolved.currentValue;
-                                  const target = parseFloat(k.targetValue || '0');
-                                  return resolved.available && current !== null && target > 0 && current < target;
-                                }).length}
+                                {customIntegrationKpiTracker.below}
                               </p>
                             </div>
                             <TrendingDown className="w-8 h-8 text-red-500" />
                           </div>
                         </CardContent>
                       </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-muted-foreground/70">Avg. Progress</p>
+                              <p className="text-2xl font-bold text-foreground">
+                                {formatPct(customIntegrationKpiTracker.avgProgress)}
+                              </p>
+                            </div>
+                            <BarChart3 className="w-8 h-8 text-blue-500" />
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
+
+                    {customIntegrationKpiTracker.blocked > 0 && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                        {customIntegrationKpiTracker.blocked} KPI{customIntegrationKpiTracker.blocked === 1 ? '' : 's'} cannot be evaluated from the active Custom Integration source. Blocked KPIs are excluded from scoring.
+                      </div>
+                    )}
 
                     {/* KPI Cards */}
                     <div className="grid gap-6 lg:grid-cols-2">
-                      {(kpisData as any[]).map((kpi: any) => {
+                      {customIntegrationKpis.map((kpi: any) => {
                         // Calculate status using industry-standard 120% threshold
                         const resolvedCurrent = resolveCustomIntegrationCurrentValue(kpi);
                         const currentVal = resolvedCurrent.currentValue;
-                        const targetVal = kpi.targetValue ? parseFloat(kpi.targetValue) : 0;
+                        const targetVal = parseCustomIntegrationMetricNumber(kpi.targetValue);
                         
                         // Determine status based on percentage of target
                         let status = resolvedCurrent.available ? 'Underperforming' : 'Unavailable';
-                        if (resolvedCurrent.available && currentVal !== null && targetVal > 0) {
+                        if (resolvedCurrent.available && currentVal !== null && targetVal !== null && targetVal > 0) {
                           if (currentVal >= targetVal * 1.2) {
                             status = 'Exceeding Target';
                           } else if (currentVal >= targetVal) {
@@ -2596,13 +2731,15 @@ export default function CustomIntegrationAnalytics() {
                                   Target
                                 </div>
                                 <div className="text-xl font-bold text-foreground">
-                                  {formatNumber(kpi.targetValue)}{kpi.unit || ''}
+                                  {targetVal !== null
+                                    ? formatCustomIntegrationMetricValue(targetVal, resolvedCurrent.unit || kpi.unit || '', resolvedCurrent.option?.type)
+                                    : 'Unavailable'}
                                 </div>
                               </div>
                             </div>
                             
                             {/* Progress Tracker */}
-                            {targetVal > 0 && resolvedCurrent.available && currentVal !== null && (() => {
+                            {targetVal !== null && targetVal > 0 && resolvedCurrent.available && currentVal !== null && (() => {
                               const actualProgress = (currentVal / targetVal) * 100;
                               const progressBarWidth = Math.min(actualProgress, 100);
                               const isOutperforming = actualProgress >= 100;
@@ -2685,21 +2822,7 @@ export default function CustomIntegrationAnalytics() {
                         <Button 
                           onClick={() => {
                             setEditingKPI(null);
-                            setKpiForm({
-                              name: '',
-                              description: '',
-                              category: 'performance',
-                              metric: '',
-                              targetValue: '',
-                              currentValue: '',
-                              unit: '',
-                              priority: 'medium',
-                              timeframe: 'monthly',
-                              alertsEnabled: false,
-                              alertThreshold: '',
-                              alertCondition: 'below',
-                              emailRecipients: ''
-                            });
+                            setKpiForm(createEmptyCustomIntegrationKpiForm());
                             setIsKPIModalOpen(true);
                           }}
                           className="bg-purple-600 hover:bg-purple-700 text-white"
@@ -2720,21 +2843,7 @@ export default function CustomIntegrationAnalytics() {
                           <Button 
                             onClick={() => {
                               setEditingKPI(null);
-                              setKpiForm({
-                                name: '',
-                                description: '',
-                                category: 'performance',
-                                metric: '',
-                                targetValue: '',
-                                currentValue: '',
-                                unit: '',
-                                priority: 'medium',
-                                timeframe: 'monthly',
-                                alertsEnabled: false,
-                                alertThreshold: '',
-                                alertCondition: 'below',
-                                emailRecipients: ''
-                              });
+                              setKpiForm(createEmptyCustomIntegrationKpiForm());
                               setIsKPIModalOpen(true);
                             }}
                             className="bg-purple-600 hover:bg-purple-700 text-white"
@@ -3394,79 +3503,96 @@ export default function CustomIntegrationAnalytics() {
         if (!open) {
           // Reset editing state when modal closes
           setEditingKPI(null);
-          setKpiForm({
-            name: '',
-            description: '',
-            category: 'performance',
-            metric: '',
-            targetValue: '',
-            currentValue: '',
-            unit: '',
-            priority: 'medium',
-            timeframe: 'monthly',
-            alertsEnabled: false,
-            alertThreshold: '',
-            alertCondition: 'below',
-            emailRecipients: ''
-          });
+          setKpiForm(createEmptyCustomIntegrationKpiForm());
         }
       }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingKPI ? 'Edit KPI' : 'Create New KPI'}</DialogTitle>
             <DialogDescription>
-              {editingKPI 
-                ? 'Update the KPI details below. The current value can be auto-populated from your metrics data.'
-                : 'Define a new KPI for your custom integration. You can select metrics from the Overview tab as current values.'}
+              Set up a key performance indicator for Custom Integration.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="kpi-name">KPI Name *</Label>
-                <Input
-                  id="kpi-name"
-                  placeholder="e.g., Email Open Rate"
-                  value={kpiForm.name}
-                  onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
-                  data-testid="input-kpi-name"
-                />
+            <div className="space-y-4 rounded-lg bg-muted p-4" data-custom-integration-kpi-source-adapter="source-backed">
+              <div>
+                <h4 className="font-medium text-foreground">Select KPI Template</h4>
+                <p className="mt-1 text-sm text-muted-foreground/70">
+                  Choose an imported Custom Integration metric with a current source-backed value.
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="kpi-metric">Metric Source</Label>
-                <Select
-                  key={`metric-select-${editingKPI?.id || 'new'}-${kpiForm.metric}`}
-                  value={kpiForm.metric || ''}
-                  onValueChange={(value) => {
-                    if (value === 'custom') {
-                      setKpiForm({ ...kpiForm, metric: value, currentValue: '', unit: '' });
-                      return;
-                    }
-                    const resolved = resolveCustomIntegrationMetric(metricsData, value);
-                    setKpiForm({
-                      ...kpiForm,
-                      metric: value,
-                      currentValue: resolved.available && resolved.currentValue !== null ? String(resolved.currentValue) : '',
-                      unit: resolved.unit || '',
-                    });
-                  }}
-                >
-                  <SelectTrigger id="kpi-metric" data-testid="select-kpi-metric">
-                    <SelectValue placeholder="Select metric to track" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CUSTOM_INTEGRATION_METRIC_OPTIONS.map((option) => {
-                      const resolved = resolveCustomIntegrationMetric(metricsData, option.key);
-                      return (
-                        <SelectItem key={option.key} value={option.key} disabled={!resolved.available}>
-                          {option.label}{resolved.available ? '' : ' - Unavailable'}
-                        </SelectItem>
-                      );
-                    })}
-                    <SelectItem value="custom">Custom Value</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {CUSTOM_INTEGRATION_OVERVIEW_GROUPS.map((group) => {
+                const groupMetrics = group.metricKeys
+                  .map((metricKey) => customIntegrationKpiMetricOptions.find((metric) => metric.key === metricKey))
+                  .filter(Boolean) as any[];
+                if (!groupMetrics.length) return null;
+                return (
+                  <div key={group.title} className="space-y-2">
+                    <p className="text-xs font-semibold uppercase text-muted-foreground/70">{group.title}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {groupMetrics.map((metric) => {
+                        const selected = kpiForm.metric === metric.key;
+                        const disabled = metric.resolved.available !== true;
+                        return (
+                          <button
+                            key={metric.key}
+                            type="button"
+                            disabled={disabled}
+                            className={`rounded-lg border-2 p-3 text-left transition-all ${
+                              disabled
+                                ? 'cursor-not-allowed border-border opacity-50'
+                                : selected
+                                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                                  : 'border-border hover:border-purple-300'
+                            }`}
+                            onClick={() => {
+                              if (disabled) return;
+                              setKpiForm({
+                                ...kpiForm,
+                                name: editingKPI ? kpiForm.name || metric.label : metric.label,
+                                metric: metric.key,
+                                currentValue: metric.resolved.currentValue !== null ? String(metric.resolved.currentValue) : '',
+                                unit: metric.resolved.unit || '',
+                                description: kpiForm.description || `Track ${metric.label} from the active Custom Integration import.`,
+                              });
+                            }}
+                            data-testid={`button-kpi-template-${metric.key}`}
+                          >
+                            <div className="text-sm font-medium text-foreground">{metric.label}</div>
+                            <div className="mt-1 text-xs text-muted-foreground/70">
+                              {metric.resolved.available ? metric.resolved.sourceLabel : metric.resolved.reason}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                className={`rounded-lg border-2 p-3 text-left transition-all ${
+                  kpiForm.metric === 'custom'
+                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                    : 'border-border hover:border-purple-300'
+                }`}
+                onClick={() => setKpiForm({ ...kpiForm, metric: 'custom', currentValue: '', unit: '' })}
+                data-testid="button-kpi-template-custom"
+              >
+                <div className="text-sm font-medium text-foreground">Create Custom KPI</div>
+                <div className="mt-1 text-xs text-muted-foreground/70">Manual current value and unit</div>
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="kpi-name">KPI Name *</Label>
+              <Input
+                id="kpi-name"
+                placeholder="e.g., Email Open Rate"
+                value={kpiForm.name}
+                onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
+                data-testid="input-kpi-name"
+              />
             </div>
 
             <div className="space-y-2">
@@ -3488,15 +3614,22 @@ export default function CustomIntegrationAnalytics() {
                   id="kpi-current"
                   type="text"
                   placeholder="0"
-                  value={kpiForm.currentValue ? parseFloat(kpiForm.currentValue).toLocaleString('en-US') : ''}
+                  value={formatCustomIntegrationNumberInput(kpiForm.currentValue)}
+                  readOnly={kpiFormUsesSourceBackedMetric}
+                  className={kpiFormUsesSourceBackedMetric ? 'bg-muted cursor-not-allowed' : undefined}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/,/g, '');
+                    if (kpiFormUsesSourceBackedMetric) return;
+                    const value = cleanCustomIntegrationNumberInput(e.target.value);
                     if (value === '' || !isNaN(parseFloat(value))) {
                       setKpiForm({ ...kpiForm, currentValue: value });
                     }
                   }}
+                  data-source-backed-current-value={kpiFormUsesSourceBackedMetric ? 'custom_integration' : undefined}
                   data-testid="input-kpi-current"
                 />
+                <p className="text-xs text-muted-foreground/70">
+                  {kpiFormUsesSourceBackedMetric ? 'Read from the active Custom Integration import.' : 'Enter a manual value for custom KPIs.'}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="kpi-target">Target Value *</Label>
@@ -3504,9 +3637,9 @@ export default function CustomIntegrationAnalytics() {
                   id="kpi-target"
                   type="text"
                   placeholder="0"
-                  value={kpiForm.targetValue ? parseFloat(kpiForm.targetValue).toLocaleString('en-US') : ''}
+                  value={formatCustomIntegrationNumberInput(kpiForm.targetValue)}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/,/g, '');
+                    const value = cleanCustomIntegrationNumberInput(e.target.value);
                     if (value === '' || !isNaN(parseFloat(value))) {
                       setKpiForm({ ...kpiForm, targetValue: value });
                     }
@@ -3569,16 +3702,21 @@ export default function CustomIntegrationAnalytics() {
 
             {/* Alert Settings Section */}
             <div className="space-y-4 pt-4 border-t">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="kpi-alerts-enabled"
-                  checked={kpiForm.alertsEnabled}
-                  onCheckedChange={(checked) => setKpiForm({ ...kpiForm, alertsEnabled: checked as boolean })}
-                  data-testid="checkbox-kpi-alerts"
-                />
-                <Label htmlFor="kpi-alerts-enabled" className="text-base cursor-pointer font-semibold">
-                  Enable Email Alerts
-                </Label>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="kpi-alerts-enabled"
+                    checked={kpiForm.alertsEnabled}
+                    onCheckedChange={(checked) => setKpiForm({ ...kpiForm, alertsEnabled: checked as boolean })}
+                    data-testid="checkbox-kpi-alerts"
+                  />
+                  <Label htmlFor="kpi-alerts-enabled" className="text-base cursor-pointer font-semibold">
+                    Enable alerts for this KPI
+                  </Label>
+                </div>
+                <p className="pl-6 text-sm text-muted-foreground/70">
+                  Receive notifications when this KPI crosses your alert threshold.
+                </p>
               </div>
 
               {kpiForm.alertsEnabled && (
@@ -3590,9 +3728,9 @@ export default function CustomIntegrationAnalytics() {
                         id="kpi-alert-threshold"
                         type="text"
                         placeholder="e.g., 80"
-                        value={kpiForm.alertThreshold}
+                        value={formatCustomIntegrationNumberInput(kpiForm.alertThreshold)}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/,/g, '');
+                          const value = cleanCustomIntegrationNumberInput(e.target.value);
                           if (value === '' || !isNaN(parseFloat(value))) {
                             setKpiForm({ ...kpiForm, alertThreshold: value });
                           }
@@ -3621,19 +3759,53 @@ export default function CustomIntegrationAnalytics() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="kpi-email-recipients">Email Recipients *</Label>
-                    <Input
-                      id="kpi-email-recipients"
-                      type="text"
-                      placeholder="email1@example.com, email2@example.com"
-                      value={kpiForm.emailRecipients}
-                      onChange={(e) => setKpiForm({ ...kpiForm, emailRecipients: e.target.value })}
-                      data-testid="input-kpi-email-recipients"
-                    />
-                    <p className="text-xs text-muted-foreground/70">
-                      Comma-separated email addresses for alert notifications
-                    </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="kpi-alert-frequency">Alert Frequency</Label>
+                      <Select
+                        value={kpiForm.alertFrequency || 'immediate'}
+                        onValueChange={(value) => setKpiForm({ ...kpiForm, alertFrequency: value })}
+                      >
+                        <SelectTrigger id="kpi-alert-frequency" data-testid="select-kpi-alert-frequency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="immediate">Immediate</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2 pt-1">
+                        <Checkbox
+                          id="kpi-email-notifications"
+                          checked={!!kpiForm.emailNotifications}
+                          onCheckedChange={(checked) => setKpiForm({ ...kpiForm, emailNotifications: checked as boolean })}
+                          data-testid="checkbox-kpi-email-notifications"
+                        />
+                        <Label htmlFor="kpi-email-notifications" className="cursor-pointer font-medium">
+                          Send email notifications
+                        </Label>
+                      </div>
+                      {kpiForm.emailNotifications && (
+                        <div className="space-y-2">
+                          <Label htmlFor="kpi-email-recipients">Email addresses *</Label>
+                          <Input
+                            id="kpi-email-recipients"
+                            type="text"
+                            placeholder="email1@example.com, email2@example.com"
+                            value={kpiForm.emailRecipients}
+                            onChange={(e) => setKpiForm({ ...kpiForm, emailRecipients: e.target.value })}
+                            data-testid="input-kpi-email-recipients"
+                          />
+                          <p className="text-xs text-muted-foreground/70">
+                            Comma-separated email addresses
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -3645,21 +3817,7 @@ export default function CustomIntegrationAnalytics() {
                 onClick={() => {
                   setIsKPIModalOpen(false);
                   setEditingKPI(null);
-                  setKpiForm({
-                    name: '',
-                    description: '',
-                    category: 'performance',
-                    metric: '',
-                    targetValue: '',
-                    currentValue: '',
-                    unit: '',
-                    priority: 'medium',
-                    timeframe: 'monthly',
-                    alertsEnabled: false,
-                    alertThreshold: '',
-                    alertCondition: 'below',
-                    emailRecipients: ''
-                  });
+                  setKpiForm(createEmptyCustomIntegrationKpiForm());
                 }}
                 data-testid="button-kpi-cancel"
               >
@@ -3667,7 +3825,7 @@ export default function CustomIntegrationAnalytics() {
               </Button>
               <Button
                 onClick={handleKPISubmit}
-                disabled={!kpiForm.name || !kpiForm.targetValue || !campaignId}
+                disabled={!kpiForm.name || !kpiForm.metric || !kpiForm.targetValue || !campaignId}
                 className="bg-purple-600 hover:bg-purple-700"
                 data-testid="button-kpi-submit"
               >

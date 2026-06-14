@@ -358,6 +358,7 @@ Status:
 - Fixes: added a source-backed Overview group registry, routed Overview and Summary metric cards through `resolveCustomIntegrationMetric`, kept revenue, spend, ROI, and ROAS visible with unavailable reasons when required imported fields are missing, and added a source-backed metric count to the Imported Data card.
 - Regression evidence: `server/source-safety-regression.test.ts` verifies the Overview/Summary group registry, adapter resolution, source labels, unavailable financial reasons, and no reintroduction of raw revenue checks.
 - Local validation: `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts` and `npm run check` passed.
+- User validation passed for Commit 5 after browser review.
 - Deferred by tracker scope: KPIs, Benchmarks, Insights, Reports, scheduled reports, campaign aggregates, and existing-data cleanup remain in later commits.
 
 ### Commit 6: KPIs
@@ -378,6 +379,15 @@ Tasks:
 Validation:
 
 - Regression tests for create/edit/delete, source-backed current values, unavailable reasons, saved-source behavior, and no silent zeroes.
+
+Status:
+
+- Completed locally in Commit 6 implementation pass.
+- Root cause: Custom Integration KPI cards already had a resolver path, but the create/edit modal still used a plain metric selector and saved form snapshots without persisting a source scope. That allowed unavailable imported metrics to be selected too easily and could show stale saved current values instead of the source-backed current value.
+- Fixes: KPI creation now uses a Google-Sheets-style template grid, disables unavailable imported metrics with resolver reasons, makes Current Value read-only for source-backed templates, stores the active Custom Integration source scope in `calculationConfig.sourceScope`, re-resolves KPI card and edit-modal current values from that scope, and excludes unavailable KPIs from tracker scoring.
+- Regression evidence: `server/source-safety-regression.test.ts` verifies source-backed KPI templates, disabled unavailable templates, read-only source-backed current values, saved source scope, edit-modal resolver prefill, and blocked KPI scoring.
+- Local validation: `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts` and `npm run check` passed.
+- Deferred by tracker scope: Benchmarks, Insights, Reports, scheduled reports, campaign aggregates, and existing-data cleanup remain in later commits.
 
 ### Commit 7: Benchmarks
 

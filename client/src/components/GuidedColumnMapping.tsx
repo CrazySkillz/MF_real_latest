@@ -742,35 +742,8 @@ export function GuidedColumnMapping({
           </div>
 
           <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant={valueMode === 'revenue' ? "default" : "outline"}
-                onClick={() => {
-                  setValueMode('revenue');
-                  setSelectedConversionValue(null);
-                }}
-                size="sm"
-              >
-                Use Revenue
-              </Button>
-              <Button
-                type="button"
-                variant={valueMode === 'conversion_value' ? "default" : "outline"}
-                onClick={() => {
-                  setValueMode('conversion_value');
-                  setSelectedRevenue(null);
-                  setValueColumnMeaning('revenue_per_row');
-                }}
-                size="sm"
-              >
-                Use Conversion Value
-              </Button>
-            </div>
             <div>
-              <Label className="text-sm font-medium mb-2 block">
-                {valueMode === 'conversion_value' ? 'Conversion value column' : 'Revenue column'}
-              </Label>
+              <Label className="text-sm font-medium mb-2 block">Value column</Label>
               <Select
                 value={selectedValueColumn || ""}
                 onValueChange={(v) => {

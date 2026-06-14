@@ -127,7 +127,13 @@ function cleanCustomIntegrationNumberInput(value: any): string {
   return String(value || '').replace(/,/g, '').replace(/[^0-9.\-]/g, '');
 }
 
-function formatCustomIntegrationNumberInput(value: any): string {
+function getCustomIntegrationUnitLabel(unit?: string, type?: CustomIntegrationMetricType): string {
+  if (unit) return unit;
+  if (type === 'count') return 'count';
+  return '';
+}
+
+function formatCustomIntegrationNumberInput(value: any, unit?: string): string {
   const cleaned = cleanCustomIntegrationNumberInput(value);
   if (!cleaned || cleaned === '-') return cleaned;
   const negative = cleaned.startsWith('-');
@@ -135,7 +141,8 @@ function formatCustomIntegrationNumberInput(value: any): string {
   const [integerPart, ...decimalParts] = unsigned.split('.');
   const normalizedInteger = (integerPart || '0').replace(/^0+(?=\d)/, '');
   const groupedInteger = normalizedInteger.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  const decimal = decimalParts.length > 0 ? `.${decimalParts.join('')}` : '';
+  const decimalValue = decimalParts.join('');
+  const decimal = decimalParts.length > 0 && !(unit === 'count' && /^0*$/.test(decimalValue)) ? `.${decimalValue}` : '';
   return `${negative ? '-' : ''}${groupedInteger}${decimal}`;
 }
 
@@ -383,7 +390,9 @@ export default function CustomIntegrationAnalytics() {
         currentValue: resolvedCurrent
           ? (resolvedCurrent.available && resolvedCurrent.currentValue !== null ? String(resolvedCurrent.currentValue) : '')
           : editingKPI.currentValue || '',
-        unit: resolvedCurrent?.unit || editingKPI.unit || '',
+        unit: resolvedCurrent
+          ? getCustomIntegrationUnitLabel(resolvedCurrent.unit, resolvedCurrent.option?.type)
+          : editingKPI.unit || '',
         priority: editingKPI.priority || 'medium',
         status: editingKPI.status || 'active',
         timeframe: editingKPI.timeframe || 'monthly',
@@ -3519,7 +3528,7 @@ export default function CustomIntegrationAnalytics() {
                                 name: editingKPI ? kpiForm.name || metric.label : metric.label,
                                 metric: metric.key,
                                 currentValue: metric.resolved.currentValue !== null ? String(metric.resolved.currentValue) : '',
-                                unit: metric.resolved.unit || '',
+                                unit: getCustomIntegrationUnitLabel(metric.resolved.unit, metric.resolved.option?.type),
                                 description: kpiForm.description || `Track ${metric.label} from the active Custom Integration import.`,
                               });
                             }}
@@ -3578,7 +3587,7 @@ export default function CustomIntegrationAnalytics() {
                   id="kpi-current"
                   type="text"
                   placeholder="0"
-                  value={formatCustomIntegrationNumberInput(kpiForm.currentValue)}
+                  value={formatCustomIntegrationNumberInput(kpiForm.currentValue, kpiForm.unit)}
                   readOnly={kpiFormUsesSourceBackedMetric}
                   className={kpiFormUsesSourceBackedMetric ? 'bg-muted cursor-not-allowed' : undefined}
                   onChange={(e) => {
@@ -3601,7 +3610,7 @@ export default function CustomIntegrationAnalytics() {
                   id="kpi-target"
                   type="text"
                   placeholder="0"
-                  value={formatCustomIntegrationNumberInput(kpiForm.targetValue)}
+                  value={formatCustomIntegrationNumberInput(kpiForm.targetValue, kpiForm.unit)}
                   onChange={(e) => {
                     const value = cleanCustomIntegrationNumberInput(e.target.value);
                     if (value === '' || !isNaN(parseFloat(value))) {
@@ -3670,7 +3679,7 @@ export default function CustomIntegrationAnalytics() {
                         id="kpi-alert-threshold"
                         type="text"
                         placeholder="e.g., 80"
-                        value={formatCustomIntegrationNumberInput(kpiForm.alertThreshold)}
+                        value={formatCustomIntegrationNumberInput(kpiForm.alertThreshold, kpiForm.unit)}
                         onChange={(e) => {
                           const value = cleanCustomIntegrationNumberInput(e.target.value);
                           if (value === '' || !isNaN(parseFloat(value))) {

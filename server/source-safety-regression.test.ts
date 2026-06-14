@@ -1544,6 +1544,12 @@ describe("source safety regression guards", () => {
     expect(source).toContain("customIntegrationKpiMetricOptions");
     expect(source).toContain("resolveCustomIntegrationCurrentValue({ ...editingKPI, metric: metricKey })");
     expect(source).toContain("resolvedCurrent.available && resolvedCurrent.currentValue !== null ? String(resolvedCurrent.currentValue) : ''");
+    expect(source).toContain("function getCustomIntegrationUnitLabel");
+    expect(source).toContain("if (type === 'count') return 'count';");
+    expect(source).toContain("unit === 'count' && /^0*$/.test(decimalValue)");
+    expect(source).toContain("getCustomIntegrationUnitLabel(resolvedCurrent.unit, resolvedCurrent.option?.type)");
+    expect(source).toContain("getCustomIntegrationUnitLabel(metric.resolved.unit, metric.resolved.option?.type)");
+    expect(source).toContain("formatCustomIntegrationNumberInput(kpiForm.targetValue, kpiForm.unit)");
     expect(source).toContain("data-custom-integration-kpi-source-adapter=\"source-backed\"");
     expect(source).toContain("Select KPI Template");
     expect(source).toContain("data-testid={`button-kpi-template-${metric.key}`}");

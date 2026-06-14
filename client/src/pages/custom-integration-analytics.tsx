@@ -2314,6 +2314,175 @@ export default function CustomIntegrationAnalytics() {
     0
   );
   const hasMetrics = Boolean(metricsData);
+  const parserConfidenceRaw = parseCustomIntegrationMetricNumber(parserMetadata?.confidence);
+  const parserConfidencePct = parserConfidenceRaw === null
+    ? null
+    : parserConfidenceRaw <= 1 ? parserConfidenceRaw * 100 : parserConfidenceRaw;
+  const insightConfidence = parserRequiresReview
+    ? 'low'
+    : parserConfidencePct === null ? 'medium' : parserConfidencePct >= 95 ? 'high' : parserConfidencePct >= 80 ? 'medium' : 'low';
+  const getInsightMetric = (metricKey: string) => customIntegrationKpiMetricOptions.find((metric) => metric.key === metricKey);
+  const getInsightValue = (metricKey: string) => {
+    const metric = getInsightMetric(metricKey);
+    return metric?.resolved.available && metric.resolved.currentValue !== null ? metric.resolved.currentValue : null;
+  };
+  const formatInsightMetric = (metricKey: string, value: number) => {
+    const metric = getInsightMetric(metricKey);
+    return formatCustomIntegrationMetricValue(value, metric?.resolved.unit || metric?.unit || '', metric?.resolved.option?.type || metric?.type);
+  };
+  const customIntegrationInsights = (() => {
+    const performance: any[] = [];
+    const recommendations: any[] = [];
+    const quality: any[] = [];
+    const sourceEvidence = latestImportLabel ? [`Source: ${latestImportLabel}`] : [];
+
+    const addRecommendation = (insight: any) => {
+      if (!insight.action) return;
+      recommendations.push({
+        priority: insight.severity === 'high' ? 'high' : insight.severity === 'medium' ? 'medium' : 'low',
+        message: insight.recommendation || insight.message,
+        action: insight.action,
+        evidence: insight.evidence,
+      });
+    };
+    const addPerformance = (insight: any) => {
+      performance.push({ confidence: insightConfidence, ...insight });
+      if (insight.severity === 'high' || insight.severity === 'medium') addRecommendation(insight);
+    };
+    const addQuality = (insight: any) => {
+      quality.push({ confidence: insightConfidence, ...insight });
+      addRecommendation(insight);
+    };
+    const addThresholdInsight = (
+      metricKey: string,
+      value: number | null,
+      checks: Array<{ test: (value: number) => boolean; severity: 'high' | 'medium' | 'low'; message: (value: number) => string; action?: string; recommendation?: (value: number) => string }>
+    ) => {
+      if (value === null) return;
+      const metric = getInsightMetric(metricKey);
+      const matched = checks.find((check) => check.test(value));
+      if (!matched) return;
+      const formatted = formatInsightMetric(metricKey, value);
+      addPerformance({
+        metricKey,
+        severity: matched.severity,
+        direction: matched.severity === 'low' ? 'positive' : 'needs_attention',
+        message: matched.message(value),
+        recommendation: matched.recommendation ? matched.recommendation(value) : matched.message(value),
+        action: matched.action,
+        evidence: [`${metric?.label || metricKey}: ${formatted}`, ...sourceEvidence],
+      });
+    };
+
+    if (!metricsData) {
+      return { summary: { total: 0, high: 0, medium: 0 }, performance, recommendations, quality };
+    }
+
+    if (parserRequiresReview) {
+      addQuality({
+        severity: 'high',
+        message: 'Import requires review before these Insights are used for decisions.',
+        recommendation: 'Review the imported report before acting on the generated Insights.',
+        action: 'Open the source PDF/report and verify the extracted metrics with parser warnings.',
+        evidence: [parserWarnings[0] || 'Parser review is required.', ...sourceEvidence],
+      });
+    }
+
+    const revenue = getInsightValue('revenue');
+    const spend = getInsightValue('spend');
+    if (spend !== null && revenue === null) {
+      addQuality({
+        severity: 'high',
+        message: 'Spend is imported but Revenue is unavailable, so ROI and ROAS cannot be evaluated.',
+        recommendation: 'Add source-backed Revenue to evaluate financial return.',
+        action: 'Include a Revenue field in the next Custom Integration import or upload a report with revenue.',
+        evidence: [`Spend: ${formatInsightMetric('spend', spend)}`, getInsightMetric('revenue')?.resolved.reason || 'Revenue unavailable.', ...sourceEvidence],
+      });
+    }
+    if (revenue !== null && spend === null) {
+      addQuality({
+        severity: 'medium',
+        message: 'Revenue is imported but Spend is unavailable, so ROI and ROAS cannot be evaluated.',
+        recommendation: 'Add source-backed Spend to evaluate financial return.',
+        action: 'Include a Spend field in the next Custom Integration import or upload a report with spend.',
+        evidence: [`Revenue: ${formatInsightMetric('revenue', revenue)}`, getInsightMetric('spend')?.resolved.reason || 'Spend unavailable.', ...sourceEvidence],
+      });
+    }
+
+    addThresholdInsight('roas', getInsightValue('roas'), [
+      { test: (v) => v < 1, severity: 'high', message: (v) => `ROAS is below breakeven at ${formatInsightMetric('roas', v)}.`, action: 'Review spend and revenue attribution before scaling this source.' },
+      { test: (v) => v >= 1 && v < 2, severity: 'medium', message: (v) => `ROAS is positive but below 2.00x at ${formatInsightMetric('roas', v)}.`, action: 'Identify which campaigns or offers are limiting return before increasing investment.' },
+      { test: (v) => v >= 3, severity: 'low', message: (v) => `ROAS is strong at ${formatInsightMetric('roas', v)}.`, action: 'Use this import as a comparison point for future reports.' },
+    ]);
+    addThresholdInsight('roi', getInsightValue('roi'), [
+      { test: (v) => v < 0, severity: 'high', message: (v) => `ROI is negative at ${formatInsightMetric('roi', v)}.`, action: 'Review cost and revenue inputs before making budget decisions.' },
+      { test: (v) => v >= 0 && v < 20, severity: 'medium', message: (v) => `ROI is low at ${formatInsightMetric('roi', v)}.`, action: 'Check whether spend is concentrated in low-return activity.' },
+      { test: (v) => v >= 100, severity: 'low', message: (v) => `ROI is strong at ${formatInsightMetric('roi', v)}.`, action: 'Use this return level as a benchmark for future imports.' },
+    ]);
+
+    const clicks = getInsightValue('clicks');
+    const impressions = getInsightValue('impressions');
+    if (clicks !== null && impressions !== null && impressions > 0) {
+      const ctr = (clicks / impressions) * 100;
+      addPerformance({
+        metricKey: 'clicks',
+        severity: ctr < 0.5 ? 'high' : ctr < 1 ? 'medium' : ctr >= 2 ? 'low' : 'medium',
+        direction: ctr >= 2 ? 'positive' : 'needs_attention',
+        message: `Click-through rate from imported clicks and impressions is ${ctr.toFixed(1)}%.`,
+        recommendation: ctr >= 2 ? 'Click engagement is strong for this import.' : 'Click engagement needs attention for this import.',
+        action: ctr >= 2 ? 'Compare future imports against this engagement level.' : 'Review creative, offer, and audience quality for the imported activity.',
+        evidence: [`Clicks: ${formatInsightMetric('clicks', clicks)}`, `Impressions: ${formatInsightMetric('impressions', impressions)}`, ...sourceEvidence],
+      });
+    }
+
+    const conversions = getInsightValue('conversions');
+    if (conversions !== null && clicks !== null && clicks > 0) {
+      const conversionRate = (conversions / clicks) * 100;
+      addPerformance({
+        metricKey: 'conversions',
+        severity: conversionRate < 1 ? 'high' : conversionRate < 3 ? 'medium' : conversionRate >= 5 ? 'low' : 'medium',
+        direction: conversionRate >= 5 ? 'positive' : 'needs_attention',
+        message: `Conversion rate from imported conversions and clicks is ${conversionRate.toFixed(1)}%.`,
+        recommendation: conversionRate >= 5 ? 'Post-click conversion is strong for this import.' : 'Post-click conversion needs attention for this import.',
+        action: conversionRate >= 5 ? 'Use this conversion level as a reference for future reports.' : 'Audit landing page, form, and offer alignment for the imported traffic.',
+        evidence: [`Conversions: ${formatInsightMetric('conversions', conversions)}`, `Clicks: ${formatInsightMetric('clicks', clicks)}`, ...sourceEvidence],
+      });
+    }
+
+    addThresholdInsight('bounceRate', getInsightValue('bounceRate'), [
+      { test: (v) => v > 70, severity: 'high', message: (v) => `Bounce Rate is high at ${formatInsightMetric('bounceRate', v)}.`, action: 'Review landing page relevance, load speed, and traffic quality.' },
+      { test: (v) => v > 55 && v <= 70, severity: 'medium', message: (v) => `Bounce Rate needs attention at ${formatInsightMetric('bounceRate', v)}.`, action: 'Check whether the imported traffic aligns with the landing page offer.' },
+      { test: (v) => v <= 40, severity: 'low', message: (v) => `Bounce Rate is healthy at ${formatInsightMetric('bounceRate', v)}.`, action: 'Use this landing-page engagement as a comparison point.' },
+    ]);
+    addThresholdInsight('pagesPerSession', getInsightValue('pagesPerSession'), [
+      { test: (v) => v < 1.5, severity: 'medium', message: (v) => `Pages per session is low at ${formatInsightMetric('pagesPerSession', v)}.`, action: 'Review content paths and next-step calls to action.' },
+      { test: (v) => v >= 3, severity: 'low', message: (v) => `Pages per session is strong at ${formatInsightMetric('pagesPerSession', v)}.`, action: 'Use this engagement level as a reference for future imports.' },
+    ]);
+    addThresholdInsight('openRate', getInsightValue('openRate'), [
+      { test: (v) => v < 15, severity: 'high', message: (v) => `Email Open Rate is low at ${formatInsightMetric('openRate', v)}.`, action: 'Review subject line, sender reputation, and audience quality.' },
+      { test: (v) => v >= 15 && v < 25, severity: 'medium', message: (v) => `Email Open Rate needs attention at ${formatInsightMetric('openRate', v)}.`, action: 'Test subject line and audience segmentation before the next send.' },
+      { test: (v) => v >= 35, severity: 'low', message: (v) => `Email Open Rate is strong at ${formatInsightMetric('openRate', v)}.`, action: 'Use this audience and subject-line pattern as a comparison point.' },
+    ]);
+    addThresholdInsight('clickThroughRate', getInsightValue('clickThroughRate'), [
+      { test: (v) => v < 1, severity: 'high', message: (v) => `Email CTR is low at ${formatInsightMetric('clickThroughRate', v)}.`, action: 'Review offer strength, email layout, and call-to-action clarity.' },
+      { test: (v) => v >= 1 && v < 2, severity: 'medium', message: (v) => `Email CTR needs attention at ${formatInsightMetric('clickThroughRate', v)}.`, action: 'Test call-to-action placement and message relevance.' },
+      { test: (v) => v >= 5, severity: 'low', message: (v) => `Email CTR is strong at ${formatInsightMetric('clickThroughRate', v)}.`, action: 'Use this message and offer as a comparison point.' },
+    ]);
+    addThresholdInsight('clickToOpen', getInsightValue('clickToOpen'), [
+      { test: (v) => v < 5, severity: 'high', message: (v) => `Email CTOR is low at ${formatInsightMetric('clickToOpen', v)}.`, action: 'Review whether email content matches the subject-line promise.' },
+      { test: (v) => v >= 5 && v < 10, severity: 'medium', message: (v) => `Email CTOR needs attention at ${formatInsightMetric('clickToOpen', v)}.`, action: 'Test offer clarity and call-to-action prominence.' },
+      { test: (v) => v >= 20, severity: 'low', message: (v) => `Email CTOR is strong at ${formatInsightMetric('clickToOpen', v)}.`, action: 'Use this content pattern as a comparison point.' },
+    ]);
+    addThresholdInsight('listGrowth', getInsightValue('listGrowth'), [
+      { test: (v) => v < 0, severity: 'high', message: (v) => `List Growth is negative at ${formatInsightMetric('listGrowth', v)}.`, action: 'Review unsubscribe, bounce, and acquisition quality in the source report.' },
+      { test: (v) => v > 0, severity: 'low', message: (v) => `List Growth is positive at ${formatInsightMetric('listGrowth', v)}.`, action: 'Compare future imports against this growth level.' },
+    ]);
+
+    const allInsights = [...quality, ...performance];
+    const high = allInsights.filter((insight) => insight.severity === 'high').length;
+    const medium = allInsights.filter((insight) => insight.severity === 'medium').length;
+    return { summary: { total: allInsights.length, high, medium }, performance, recommendations, quality };
+  })();
 
   const handleCustomIntegrationPdfUpload = async (file?: File | null) => {
     if (!file) return;
@@ -3290,34 +3459,180 @@ export default function CustomIntegrationAnalytics() {
               </TabsContent>
 
               <TabsContent value="insights" className="space-y-6" data-testid="content-insights">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Insights</CardTitle>
-                    <CardDescription>{latestImportLabel}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="rounded-lg border border-border p-4">
-                      <p className="text-sm text-muted-foreground">Import status</p>
-                      <p className="mt-1 font-semibold text-foreground">{latestImportStatus}</p>
-                    </div>
-                    {!metricsData ? (
-                      <div className="rounded-lg border border-border p-4">
-                        <p className="font-semibold text-foreground">Waiting for data</p>
-                        <p className="mt-1 text-sm text-muted-foreground">No import has been processed yet.</p>
+                <div data-custom-integration-insights-source-adapter="source-backed">
+                  <h2 className="text-2xl font-bold text-foreground">Insights</h2>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
+                    Actionable insights from source-backed Custom Integration metrics.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Card>
+                    <CardContent className="p-5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground/70">Total insights</p>
+                          <p className="text-2xl font-bold text-foreground">{customIntegrationInsights.summary.total}</p>
+                        </div>
+                        <BarChart3 className="w-7 h-7 text-muted-foreground" />
                       </div>
-                    ) : parserRequiresReview ? (
-                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-                        <p className="font-semibold">Import needs review</p>
-                        {parserWarnings[0] && <p className="mt-1 text-sm">{parserWarnings[0]}</p>}
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground/70">High priority</p>
+                          <p className="text-2xl font-bold text-red-600">{customIntegrationInsights.summary.high}</p>
+                        </div>
+                        <AlertTriangle className="w-7 h-7 text-red-600" />
                       </div>
-                    ) : (
-                      <div className="rounded-lg border border-border p-4">
-                        <p className="font-semibold text-foreground">Import validated</p>
-                        <p className="mt-1 text-sm text-muted-foreground">No parser warnings for the selected import.</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground/70">Needs attention</p>
+                          <p className="text-2xl font-bold text-amber-600">{customIntegrationInsights.summary.medium}</p>
+                        </div>
+                        <TrendingDown className="w-7 h-7 text-amber-600" />
                       </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="rounded-md border border-border p-3 text-xs text-muted-foreground/70">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    <div><span className="font-medium text-foreground">Source:</span> {latestImportLabel}</div>
+                    <div><span className="font-medium text-foreground">Import status:</span> {latestImportStatus}</div>
+                    <div><span className="font-medium text-foreground">Metrics analyzed:</span> {sourceBackedMetricCount}</div>
+                    {parserConfidencePct !== null && (
+                      <div><span className="font-medium text-foreground">Parser confidence:</span> {parserConfidencePct.toFixed(0)}%</div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
+
+                {customIntegrationInsights.quality.length > 0 && (
+                  <Card className="border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100" data-testid="custom-integration-insights-quality">
+                    <CardHeader>
+                      <CardTitle>Import quality</CardTitle>
+                      <CardDescription className="text-amber-900/80 dark:text-amber-100/80">Source confidence and completeness checks</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {customIntegrationInsights.quality.map((insight: any, i: number) => (
+                        <div key={`quality-${i}`} className="rounded-lg border border-amber-200 bg-background/60 p-4">
+                          <div className="flex items-start gap-3">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                            <div className="min-w-0">
+                              <p className="font-semibold text-foreground">{insight.message}</p>
+                              {Array.isArray(insight.evidence) && insight.evidence.length > 0 && (
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  <span className="font-medium text-foreground">Evidence:</span> {insight.evidence.join(' | ')}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {customIntegrationInsights.performance.length > 0 && (
+                  <Card className="border-border" data-testid="custom-integration-insights-performance">
+                    <CardHeader>
+                      <CardTitle>Performance</CardTitle>
+                      <CardDescription>Threshold-backed findings from imported source metrics</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {customIntegrationInsights.performance.map((insight: any, i: number) => {
+                        const severityClass = insight.severity === 'high'
+                          ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
+                          : insight.severity === 'medium'
+                            ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
+                            : 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900';
+                        return (
+                          <div key={`performance-${i}`} className="rounded-lg border border-border p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {insight.direction === 'positive' ? (
+                                    <TrendingUp className="h-4 w-4 shrink-0 text-green-600" />
+                                  ) : (
+                                    <TrendingDown className="h-4 w-4 shrink-0 text-amber-600" />
+                                  )}
+                                  <span className="font-semibold text-foreground">{insight.message}</span>
+                                  <Badge className={`text-xs border ${severityClass}`}>
+                                    {insight.severity === 'high' ? 'High' : insight.severity === 'medium' ? 'Medium' : 'Low'}
+                                  </Badge>
+                                  <Badge className="border bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-900 text-xs">
+                                    Confidence: {String(insight.confidence || 'medium').charAt(0).toUpperCase() + String(insight.confidence || 'medium').slice(1)}
+                                  </Badge>
+                                </div>
+                                {Array.isArray(insight.evidence) && insight.evidence.length > 0 && (
+                                  <p className="mt-2 text-xs text-muted-foreground">
+                                    <span className="font-medium text-foreground">Evidence:</span> {insight.evidence.join(' | ')}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {customIntegrationInsights.recommendations.length > 0 && (
+                  <Card className="border-border" data-testid="custom-integration-insights-recommendations">
+                    <CardHeader>
+                      <CardTitle>What to do next</CardTitle>
+                      <CardDescription>Actionable recommendations based on the analysis above</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {customIntegrationInsights.recommendations.map((recommendation: any, i: number) => {
+                        const priorityClass = recommendation.priority === 'high'
+                          ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
+                          : recommendation.priority === 'medium'
+                            ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
+                            : 'bg-muted text-foreground border-border';
+                        return (
+                          <div key={`recommendation-${i}`} className="rounded-lg border border-border p-4">
+                            <div className="flex items-start gap-3">
+                              <Badge className={`shrink-0 text-xs border ${priorityClass}`}>
+                                {recommendation.priority === 'high' ? 'High' : recommendation.priority === 'medium' ? 'Medium' : 'Low'}
+                              </Badge>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-foreground">{recommendation.message}</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  <span className="font-medium text-foreground">Next step:</span> {recommendation.action}
+                                </p>
+                                {Array.isArray(recommendation.evidence) && recommendation.evidence.length > 0 && (
+                                  <p className="mt-2 text-xs text-muted-foreground">
+                                    <span className="font-medium text-foreground">Evidence:</span> {recommendation.evidence.join(' | ')}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {customIntegrationInsights.summary.total === 0 && (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <BarChart3 className="mx-auto mb-4 h-12 w-12 text-muted-foreground/70" />
+                      <h3 className="mb-2 text-lg font-medium text-foreground">No Insights Available</h3>
+                      <p className="text-muted-foreground/70">
+                        Import validated Custom Integration metrics to generate Performance and What to do next insights.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               {/* Reports Tab */}

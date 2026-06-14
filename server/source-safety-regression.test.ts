@@ -1547,6 +1547,26 @@ describe("source safety regression guards", () => {
     expect(source).not.toContain("metricsData.revenue !== undefined && parseFloat(metricsData.revenue || '0') > 0");
   });
 
+  it("Custom Integration Insights use source-backed metrics and evidence-backed actions", () => {
+    const source = readCustomIntegrationAnalyticsSource();
+
+    expect(source).toContain("const customIntegrationInsights = (() => {");
+    expect(source).toContain("data-custom-integration-insights-source-adapter=\"source-backed\"");
+    expect(source).toContain("Actionable insights from source-backed Custom Integration metrics.");
+    expect(source).toContain("metric?.resolved.available && metric.resolved.currentValue !== null ? metric.resolved.currentValue : null");
+    expect(source).toContain("parserRequiresReview");
+    expect(source).toContain("Import requires review before these Insights are used for decisions.");
+    expect(source).toContain("if (spend !== null && revenue === null)");
+    expect(source).toContain("Spend is imported but Revenue is unavailable, so ROI and ROAS cannot be evaluated.");
+    expect(source).toContain("if (revenue !== null && spend === null)");
+    expect(source).toContain("Revenue is imported but Spend is unavailable, so ROI and ROAS cannot be evaluated.");
+    expect(source).toContain("ROAS is below breakeven");
+    expect(source).toContain("customIntegrationInsights.summary.high");
+    expect(source).toContain('data-testid="custom-integration-insights-performance"');
+    expect(source).toContain('data-testid="custom-integration-insights-recommendations"');
+    expect(source).not.toContain("Increase budget");
+  });
+
   it("Custom Integration KPIs use source-backed templates and saved source scope", () => {
     const source = readCustomIntegrationAnalyticsSource();
 

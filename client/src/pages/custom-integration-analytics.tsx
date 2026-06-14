@@ -3559,9 +3559,6 @@ export default function CustomIntegrationAnalytics() {
                             data-testid={`button-kpi-template-${metric.key}`}
                           >
                             <div className="text-sm font-medium text-foreground">{metric.label}</div>
-                            <div className="mt-1 text-xs text-muted-foreground/70">
-                              {metric.resolved.available ? metric.resolved.sourceLabel : metric.resolved.reason}
-                            </div>
                           </button>
                         );
                       })}
@@ -3659,7 +3656,7 @@ export default function CustomIntegrationAnalytics() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="kpi-priority">Priority</Label>
                 <Select
@@ -3675,28 +3672,6 @@ export default function CustomIntegrationAnalytics() {
                     <SelectItem value="high">High</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="kpi-timeframe">Timeframe</Label>
-                <Select
-                  value={kpiForm.timeframe}
-                  onValueChange={(value) => setKpiForm({ ...kpiForm, timeframe: value })}
-                >
-                  <SelectTrigger id="kpi-timeframe" data-testid="select-kpi-timeframe">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily (24 hours)</SelectItem>
-                    <SelectItem value="weekly">Weekly (7 days)</SelectItem>
-                    <SelectItem value="monthly">Monthly (30 days)</SelectItem>
-                    <SelectItem value="quarterly">Quarterly (90 days)</SelectItem>
-                    <SelectItem value="yearly">Yearly (365 days)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground/70">
-                  How often to measure progress toward your target
-                </p>
               </div>
             </div>
 

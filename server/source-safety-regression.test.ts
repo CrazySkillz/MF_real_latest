@@ -1538,7 +1538,9 @@ describe("source safety regression guards", () => {
     expect(source).toContain("Select KPI Template");
     expect(source).toContain("data-testid={`button-kpi-template-${metric.key}`}");
     expect(source).toContain("disabled={disabled}");
-    expect(source).toContain("metric.resolved.available ? metric.resolved.sourceLabel : metric.resolved.reason");
+    expect(source).not.toContain("metric.resolved.available ? metric.resolved.sourceLabel : metric.resolved.reason");
+    expect(source).not.toContain('Label htmlFor="kpi-timeframe">Timeframe</Label>');
+    expect(source).not.toContain('data-testid="select-kpi-timeframe"');
     expect(source).toContain("data-source-backed-current-value={kpiFormUsesSourceBackedMetric ? 'custom_integration' : undefined}");
     expect(source).toContain("readOnly={kpiFormUsesSourceBackedMetric}");
     expect(source).toContain("metricKey: isCustomKpi ? null : kpiForm.metric");

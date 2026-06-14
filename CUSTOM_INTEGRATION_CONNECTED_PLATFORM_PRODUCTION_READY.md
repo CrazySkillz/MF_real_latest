@@ -72,7 +72,7 @@ Primary root causes:
 - Source contract ambiguity: Custom Integration imports have file/email/webhook provenance, but the analytics UI does not expose a Google-Sheets-style selected source/status row that explains what data powers the page.
 - Metric adapter gap: Current values are read directly from `metricsData` in the page instead of through a source-backed metric adapter with units, formatting, availability, source labels, and unavailable reasons.
 - Silent zero risk: KPI and Benchmark metric selection uses `metricsData?.metric || 0`, which can turn missing metrics into `0`. Google Sheets now treats missing values as unavailable with reasons.
-- Saved object scope risk: KPIs, Benchmarks, and Reports save current values but are not proven to re-resolve from a stable Custom Integration source scope after later imports.
+- Saved object scope risk: Benchmarks and Reports still need saved source-scope proof. KPIs now re-resolve source-backed current values from saved Custom Integration source scope after Commit 6.
 - Insights gap: There is no production-ready Custom Integration Insights tab using source-backed evidence and next-action rules.
 - Route reachability gap: `custom-integration-analytics.tsx` calls `/api/custom-integration-by-id/:id`, but no matching route was found in `server/routes-oauth.ts` during this review.
 - Duplicate route risk: `server/routes-oauth.ts` contains more than one `/api/custom-integration/:campaignId/upload-pdf` registration path, which must be audited before production-ready claims.
@@ -163,7 +163,7 @@ Partially reviewed:
 
 - PDF upload, webhook upload, email inbound, and transfer flows exist, but duplicate route registration and lifecycle side effects need focused review.
 - Create Campaign email-forwarding setup creates the Custom Integration row and generated forwarding email, but the current wizard does not show the generated email address to the user after setup.
-- KPI, Benchmark, and Report create/edit/delete paths exist through generic platform routes, but source-backed current-value behavior is not production-ready.
+- KPI create/edit/delete paths now use source-backed current values after Commit 6. Benchmark and Report create/edit/delete paths exist through generic platform routes, but their source-backed behavior is not production-ready yet.
 - Campaign aggregate paths include Custom Integration, but source availability and unavailable reasons are not fully normalized.
 
 Unverified:
@@ -374,6 +374,10 @@ Tasks:
 - Disable unavailable templates with reasons.
 - Persist Custom Integration source scope in existing KPI configuration fields.
 - Re-resolve current values from the saved source scope when rendering.
+- Match Google Sheets KPI card layout and performance tracker thresholds.
+- Remove non-Google-Sheets fields from the KPI modal/card where they created layout drift.
+- Preserve metric units and count formatting in create/edit mode.
+- Disable edit-mode `Update KPI` until a saved KPI actually changes.
 - Keep alerts, edit, delete, and query invalidation behavior intact.
 
 Validation:
@@ -382,11 +386,13 @@ Validation:
 
 Status:
 
-- Completed locally in Commit 6 implementation pass.
-- Root cause: Custom Integration KPI cards already had a resolver path, but the create/edit modal still used a plain metric selector and saved form snapshots without persisting a source scope. That allowed unavailable imported metrics to be selected too easily and could show stale saved current values instead of the source-backed current value.
-- Fixes: KPI creation now uses a Google-Sheets-style template grid, disables unavailable imported metrics with resolver reasons, makes Current Value read-only for source-backed templates, stores the active Custom Integration source scope in `calculationConfig.sourceScope`, re-resolves KPI card and edit-modal current values from that scope, and excludes unavailable KPIs from tracker scoring.
-- Regression evidence: `server/source-safety-regression.test.ts` verifies source-backed KPI templates, disabled unavailable templates, read-only source-backed current values, saved source scope, edit-modal resolver prefill, and blocked KPI scoring.
-- Local validation: `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts` and `npm run check` passed.
+- Completed and user-validated for Commit 6.
+- Root cause: Custom Integration KPI creation/editing and KPI cards had drifted from the Google Sheets KPI pattern. The modal could select source metrics without a stable saved source scope, cards could show stale saved current values, tracker thresholds used a separate Custom Integration pattern, count units/target formatting were inconsistent, and edit mode allowed unchanged `Update KPI` submissions.
+- Fixes: KPI creation now uses a Google-Sheets-style template grid, disables unavailable imported metrics with resolver reasons, makes Current Value read-only for source-backed templates, stores the active Custom Integration source scope in `calculationConfig.sourceScope`, re-resolves KPI card and edit-modal current values from that scope, excludes unavailable KPIs from tracker scoring, matches Google Sheets KPI cards, uses the same +/-5% tracker thresholds, removes the modal `Timeframe` field and card timeframe display, hides metric-tile source text, preserves missing count units as `count`, formats count targets without unnecessary decimals, prevents the analytics header from flashing the generic campaign fallback on refresh, and disables `Update KPI` until something changes.
+- Runtime commits included in Commit 6 scope: `1b6d3730` source-backed KPIs, `71551e7f` KPI modal simplification, `b790c962` KPI card/threshold parity, `7187824c` KPI modal unit/formatting, `3a37c036` header fallback flash fix, and `2a067e39` unchanged edit-submit disablement.
+- Regression evidence: `server/source-safety-regression.test.ts` verifies source-backed KPI templates, disabled unavailable templates, read-only source-backed current values, saved source scope, edit-modal resolver prefill, blocked KPI scoring, Google Sheets card/threshold parity, modal field cleanup, unit/target formatting, no generic header fallback, and disabled unchanged edit-mode updates.
+- Local validation: `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts`, `npm run check`, and targeted `git diff --check` passed during the Commit 6 implementation passes.
+- User validation passed for Commit 6 after deployed browser review.
 - Deferred by tracker scope: Benchmarks, Insights, Reports, scheduled reports, campaign aggregates, and existing-data cleanup remain in later commits.
 
 ### Commit 7: Benchmarks

@@ -332,6 +332,7 @@ Status:
 - Fixes: added the Google Sheets tab order, added a `Custom Data` status row with latest import label, validation state, and PDF upload action, moved upload out of the empty-state card, added an `Imported Data` provenance card, and added lightweight Summary and Insights shell content based on existing source availability and parser status.
 - Regression evidence: `server/source-safety-regression.test.ts` verifies the Custom Integration tab order, status row, imported-data card, Summary/Insights content targets, and upload button placement.
 - Local validation: `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts` and `npm run check` passed.
+- User validation passed for Commit 4 after deployed browser review.
 
 ### Commit 5: Overview And Summary
 
@@ -349,6 +350,15 @@ Tasks:
 Validation:
 
 - Tests and browser validation for available metrics, unavailable metrics, import provenance, and source labels.
+
+Status:
+
+- Completed in Commit 5 implementation pass.
+- Root cause: Overview and Summary still rendered raw `metricsData` groups directly, so available groups were decided by ad hoc field checks and financial metrics could disappear instead of showing a source-backed unavailable reason.
+- Fixes: added a source-backed Overview group registry, routed Overview and Summary metric cards through `resolveCustomIntegrationMetric`, kept revenue, spend, ROI, and ROAS visible with unavailable reasons when required imported fields are missing, and added a source-backed metric count to the Imported Data card.
+- Regression evidence: `server/source-safety-regression.test.ts` verifies the Overview/Summary group registry, adapter resolution, source labels, unavailable financial reasons, and no reintroduction of raw revenue checks.
+- Local validation: `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts` and `npm run check` passed.
+- Deferred by tracker scope: KPIs, Benchmarks, Insights, Reports, scheduled reports, campaign aggregates, and existing-data cleanup remain in later commits.
 
 ### Commit 6: KPIs
 

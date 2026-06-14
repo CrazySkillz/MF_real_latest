@@ -1461,9 +1461,9 @@ describe("source safety regression guards", () => {
     expect(source).not.toContain("String(metricsData?.clickToOpen || 0)");
     expect(source).not.toContain("String(metricsData?.listGrowth || 0)");
     expect(source).not.toContain("String(metricsData?.emailsDelivered || 0)");
-    expect(source).toContain("metricsData.users != null");
-    expect(source).toContain("metrics.users != null");
-    expect(source).toContain("metrics.emailsDelivered != null");
+    expect(source).toContain("parseCustomIntegrationMetricNumber(getCustomIntegrationRawMetric(metrics, option))");
+    expect(source).toContain("currentValue === null");
+    expect(source).toContain("return { available: true, currentValue, unit: option.unit, option, sourceLabel, reason: '' };");
   });
 
   it("Custom Integration KPI and Benchmark cards exclude unavailable source metrics from scoring", () => {
@@ -1504,5 +1504,24 @@ describe("source safety regression guards", () => {
     expect(source).toContain('data-testid="content-insights"');
     expect(source).toContain('data-testid="button-upload-custom-integration-pdf"');
     expect(source).not.toContain('id="manual-pdf-upload"');
+  });
+
+  it("Custom Integration Overview and Summary use source-backed resolved metric groups", () => {
+    const source = readCustomIntegrationAnalyticsSource();
+
+    expect(source).toContain("const CUSTOM_INTEGRATION_OVERVIEW_GROUPS");
+    expect(source).toContain("{ title: 'Financial Metrics'");
+    expect(source).toContain("metricKeys: ['revenue', 'spend', 'roas', 'roi']");
+    expect(source).toContain("showUnavailable: true");
+    expect(source).toContain("resolvedOverviewGroups");
+    expect(source).toContain("resolveCustomIntegrationMetric(metricsData, metricKey)");
+    expect(source).toContain("sourceBackedMetricCount");
+    expect(source).toContain("Source-backed metrics");
+    expect(source).toContain("Required imported fields are unavailable");
+    expect(source).toContain("No source-backed metrics in latest import");
+    expect(source).toContain("resolved.available ? resolved.sourceLabel : resolved.reason");
+    expect(source).toContain("Revenue is not available in the selected Custom Integration import.");
+    expect(source).toContain("Spend is not available in the selected Custom Integration import.");
+    expect(source).not.toContain("metricsData.revenue !== undefined && parseFloat(metricsData.revenue || '0') > 0");
   });
 });

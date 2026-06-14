@@ -39,7 +39,14 @@ const CUSTOM_INTEGRATION_METRIC_OPTIONS: CustomIntegrationMetricOption[] = [
   { key: 'users', label: 'Users', unit: '', type: 'count' },
   { key: 'sessions', label: 'Sessions', unit: '', type: 'count' },
   { key: 'pageviews', label: 'Pageviews', unit: '', type: 'count' },
+  { key: 'pagesPerSession', label: 'Pages / Session', unit: '', type: 'count' },
   { key: 'bounceRate', label: 'Bounce Rate', unit: '%', type: 'percent' },
+  { key: 'organicSearchShare', label: 'Organic Search', unit: '%', type: 'percent' },
+  { key: 'directBrandedShare', label: 'Direct / Branded', unit: '%', type: 'percent' },
+  { key: 'emailShare', label: 'Email Traffic', unit: '%', type: 'percent' },
+  { key: 'referralShare', label: 'Referral / Partners', unit: '%', type: 'percent' },
+  { key: 'paidShare', label: 'Paid Traffic', unit: '%', type: 'percent' },
+  { key: 'socialShare', label: 'Social Traffic', unit: '%', type: 'percent' },
   { key: 'emailsDelivered', label: 'Emails Delivered', unit: '', type: 'count' },
   { key: 'openRate', label: 'Email Open Rate', unit: '%', type: 'percent' },
   { key: 'clickThroughRate', label: 'Email CTR', unit: '%', type: 'percent' },
@@ -53,6 +60,14 @@ const CUSTOM_INTEGRATION_METRIC_OPTIONS: CustomIntegrationMetricOption[] = [
   { key: 'revenue', label: 'Revenue', unit: '$', type: 'currency' },
   { key: 'roi', label: 'ROI', unit: '%', type: 'percent' },
   { key: 'roas', label: 'ROAS', unit: 'x', type: 'ratio' },
+];
+
+const CUSTOM_INTEGRATION_OVERVIEW_GROUPS = [
+  { title: 'Financial Metrics', icon: DollarSign, metricKeys: ['revenue', 'spend', 'roas', 'roi'], showUnavailable: true },
+  { title: 'Campaign Metrics', icon: Activity, metricKeys: ['impressions', 'clicks', 'conversions', 'leads'] },
+  { title: 'Audience & Traffic', icon: Users, metricKeys: ['users', 'sessions', 'pageviews', 'pagesPerSession', 'bounceRate'] },
+  { title: 'Traffic Sources', icon: BarChart3, metricKeys: ['organicSearchShare', 'directBrandedShare', 'emailShare', 'referralShare', 'paidShare', 'socialShare'] },
+  { title: 'Email & Newsletter Performance', icon: Mail, metricKeys: ['emailsDelivered', 'openRate', 'clickThroughRate', 'clickToOpen', 'listGrowth'] },
 ];
 
 function parseCustomIntegrationMetricNumber(value: any): number | null {
@@ -1933,12 +1948,6 @@ export default function CustomIntegrationAnalytics() {
     return `${num.toFixed(1)}%`;
   };
 
-  const isValidNumber = (value: any): boolean => {
-    if (value === undefined || value === null || value === '') return false;
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    return typeof num === 'number' && !Number.isNaN(num) && Number.isFinite(num);
-  };
-
   const resolveCustomIntegrationCurrentValue = (item: any) => {
     const metricKey = String(item?.metric || item?.metricKey || '').trim();
     if (metricKey && metricKey !== 'custom') {
@@ -1952,43 +1961,23 @@ export default function CustomIntegrationAnalytics() {
       : { available: true, currentValue, unit, option: undefined, sourceLabel: 'Manual value', reason: '' };
   };
 
-  // Check for basic campaign metrics (impressions, clicks, etc.)
-  const hasBasicMetrics = metricsData && (
-    (metricsData.impressions !== undefined && metricsData.impressions > 0) ||
-    (metricsData.clicks !== undefined && metricsData.clicks > 0) ||
-    (metricsData.conversions !== undefined && metricsData.conversions > 0) ||
-    (metricsData.spend !== undefined && parseFloat(metricsData.spend || '0') > 0) ||
-    (metricsData.revenue !== undefined && parseFloat(metricsData.revenue || '0') > 0)
-  );
-
-  const hasAudienceMetrics = metricsData && (
-    (metricsData.users !== undefined && metricsData.users > 0) ||
-    (metricsData.sessions !== undefined && metricsData.sessions > 0) ||
-    (metricsData.pageviews !== undefined && metricsData.pageviews > 0)
-  );
-
-  const hasTrafficSources = metricsData && (
-    isValidNumber(metricsData.organicSearchShare) ||
-    isValidNumber(metricsData.directBrandedShare) ||
-    isValidNumber(metricsData.emailShare) ||
-    isValidNumber(metricsData.referralShare) ||
-    isValidNumber(metricsData.paidShare) ||
-    isValidNumber(metricsData.socialShare)
-  );
-
-  const hasEmailMetrics = metricsData && (
-    (metricsData.emailsDelivered !== undefined && metricsData.emailsDelivered > 0) ||
-    isValidNumber(metricsData.openRate) ||
-    isValidNumber(metricsData.clickThroughRate)
-  );
-
-  const hasMetrics = hasBasicMetrics || hasAudienceMetrics || hasTrafficSources || hasEmailMetrics;
   const customIntegrationEmail = customIntegration?.email;
   const parserMetadata = getCustomIntegrationParserMetadata(metricsData);
   const parserWarnings = Array.isArray(parserMetadata?.warnings) ? parserMetadata.warnings : [];
   const parserRequiresReview = Boolean(parserMetadata?.requiresReview || parserWarnings.length > 0);
   const latestImportLabel = metricsData ? getCustomIntegrationSourceLabel(metricsData) : 'No import yet';
   const latestImportStatus = parserRequiresReview ? 'Needs review' : metricsData ? 'Validated' : 'Waiting for data';
+  const resolvedOverviewGroups = CUSTOM_INTEGRATION_OVERVIEW_GROUPS.map((group) => {
+    const metrics = group.metricKeys
+      .map((metricKey) => ({ metricKey, resolved: resolveCustomIntegrationMetric(metricsData, metricKey) }))
+      .filter(({ resolved }) => resolved.available || group.showUnavailable);
+    return { ...group, metrics };
+  });
+  const sourceBackedMetricCount = resolvedOverviewGroups.reduce(
+    (count, group) => count + group.metrics.filter(({ resolved }) => resolved.available).length,
+    0
+  );
+  const hasMetrics = Boolean(metricsData);
 
   const handleCustomIntegrationPdfUpload = async (file?: File | null) => {
     if (!file) return;
@@ -2237,7 +2226,7 @@ export default function CustomIntegrationAnalytics() {
                           {metricsData?.uploadedAt ? ` - Last updated ${new Date(metricsData.uploadedAt).toLocaleString()}` : ''}
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="grid gap-3 md:grid-cols-3">
+                      <CardContent className="grid gap-3 md:grid-cols-4">
                         <div>
                           <p className="text-sm text-muted-foreground">Validation</p>
                           <p className="font-medium text-foreground">{latestImportStatus}</p>
@@ -2250,371 +2239,51 @@ export default function CustomIntegrationAnalytics() {
                           <p className="text-sm text-muted-foreground">Extracted fields</p>
                           <p className="font-medium text-foreground">{parserMetadata?.extractedFields ?? 'Unavailable'}</p>
                         </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Source-backed metrics</p>
+                          <p className="font-medium text-foreground">{sourceBackedMetricCount}</p>
+                        </div>
                       </CardContent>
                     </Card>
 
-                    {/* Audience & Traffic Metrics (GA4 Style) */}
-                    {hasAudienceMetrics && (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-5 h-5 text-blue-600" />
-                          <h3 className="text-lg font-semibold text-foreground">
-                            Audience & Traffic
-                          </h3>
+                    {resolvedOverviewGroups.map((group) => {
+                      if (!group.metrics.length) return null;
+                      const Icon = group.icon;
+                      return (
+                        <div key={group.title} className="space-y-4">
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-5 w-5 text-purple-600" />
+                            <h3 className="text-lg font-semibold text-foreground">{group.title}</h3>
+                          </div>
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            {group.metrics.map(({ metricKey, resolved }) => (
+                              <Card key={metricKey} data-testid={`card-metric-${metricKey}`}>
+                                <CardHeader className="pb-3">
+                                  <div className="flex items-center justify-between">
+                                    <CardTitle className="text-sm font-medium text-muted-foreground/70">
+                                      {resolved.option?.label || metricKey}
+                                    </CardTitle>
+                                    {!resolved.available && (
+                                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                                    )}
+                                  </div>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="text-2xl font-bold text-foreground" data-testid={`value-${metricKey}`}>
+                                    {resolved.available
+                                      ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type)
+                                      : 'Unavailable'}
+                                  </div>
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    {resolved.available ? resolved.sourceLabel : resolved.reason}
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {metrics.users != null && (
-                            <Card data-testid="card-metric-users">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                    Users (unique)
-                                  </CardTitle>
-                                  <Users className="w-4 h-4 text-muted-foreground/70" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-users">
-                                  {formatNumber(metrics.users)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.sessions != null && (
-                            <Card data-testid="card-metric-sessions">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                    Sessions
-                                  </CardTitle>
-                                  <Activity className="w-4 h-4 text-muted-foreground/70" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-sessions">
-                                  {formatNumber(metrics.sessions)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.pageviews != null && (
-                            <Card data-testid="card-metric-pageviews">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                    Pageviews
-                                  </CardTitle>
-                                  <FileSpreadsheet className="w-4 h-4 text-muted-foreground/70" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-pageviews">
-                                  {formatNumber(metrics.pageviews)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.avgSessionDuration && (
-                            <Card data-testid="card-metric-avg-session-duration">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                    Avg. Session Duration
-                                  </CardTitle>
-                                  <Clock className="w-4 h-4 text-muted-foreground/70" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-avg-session-duration">
-                                  {metrics.avgSessionDuration}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.pagesPerSession && (
-                            <Card data-testid="card-metric-pages-per-session">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                    Pages / Session
-                                  </CardTitle>
-                                  <FileSpreadsheet className="w-4 h-4 text-muted-foreground/70" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-pages-per-session">
-                                  {typeof metrics.pagesPerSession === 'string' ? parseFloat(metrics.pagesPerSession).toFixed(2) : metrics.pagesPerSession.toFixed(2)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.bounceRate && (
-                            <Card data-testid="card-metric-bounce-rate">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                    Bounce Rate
-                                  </CardTitle>
-                                  <TrendingDown className="w-4 h-4 text-muted-foreground/70" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-bounce-rate">
-                                  {formatPercent(metrics.bounceRate)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Traffic Sources */}
-                    {hasTrafficSources && (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <BarChart3 className="w-5 h-5 text-green-600" />
-                          <h3 className="text-lg font-semibold text-foreground">
-                            Traffic Sources
-                          </h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {metrics.organicSearchShare && (
-                            <Card data-testid="card-metric-organic-search">
-                              <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                  Organic Search
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-organic-search">
-                                  {formatPercent(metrics.organicSearchShare)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.directBrandedShare && (
-                            <Card data-testid="card-metric-direct-branded">
-                              <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                  Direct / Branded
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-direct-branded">
-                                  {formatPercent(metrics.directBrandedShare)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.emailShare && (
-                            <Card data-testid="card-metric-email-source">
-                              <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                  Email (Newsletters)
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-email-source">
-                                  {formatPercent(metrics.emailShare)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.referralShare && (
-                            <Card data-testid="card-metric-referral">
-                              <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                  Referral / Partners
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-referral">
-                                  {formatPercent(metrics.referralShare)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.paidShare && (
-                            <Card data-testid="card-metric-paid">
-                              <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                  Paid (Display/Search)
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-paid">
-                                  {formatPercent(metrics.paidShare)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.socialShare && (
-                            <Card data-testid="card-metric-social">
-                              <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                  Social
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-social">
-                                  {formatPercent(metrics.socialShare)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Email Performance */}
-                    {hasEmailMetrics && (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-5 h-5 text-purple-600" />
-                          <h3 className="text-lg font-semibold text-foreground">
-                            Email & Newsletter Performance
-                          </h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                          {metrics.emailsDelivered != null && (
-                            <Card data-testid="card-metric-emails-delivered">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                    Emails Delivered
-                                  </CardTitle>
-                                  <Mail className="w-4 h-4 text-muted-foreground/70" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-emails-delivered">
-                                  {formatNumber(metrics.emailsDelivered)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.openRate && (
-                            <Card data-testid="card-metric-open-rate">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                    Open Rate
-                                  </CardTitle>
-                                  <Eye className="w-4 h-4 text-muted-foreground/70" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-open-rate">
-                                  {formatPercent(metrics.openRate)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.clickThroughRate && (
-                            <Card data-testid="card-metric-click-through-rate">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                    Click-Through Rate
-                                  </CardTitle>
-                                  <MousePointerClick className="w-4 h-4 text-muted-foreground/70" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-click-through-rate">
-                                  {formatPercent(metrics.clickThroughRate)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.clickToOpenRate && (
-                            <Card data-testid="card-metric-click-to-open-rate">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                    Click-to-Open
-                                  </CardTitle>
-                                  <Target className="w-4 h-4 text-muted-foreground/70" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-click-to-open-rate">
-                                  {formatPercent(metrics.clickToOpenRate)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.hardBounces && (
-                            <Card data-testid="card-metric-hard-bounces">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                    Hard Bounces
-                                  </CardTitle>
-                                  <TrendingDown className="w-4 h-4 text-muted-foreground/70" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-hard-bounces">
-                                  {formatPercent(metrics.hardBounces)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.spamComplaints && (
-                            <Card data-testid="card-metric-spam-complaints">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                    Spam Complaints
-                                  </CardTitle>
-                                  <TrendingDown className="w-4 h-4 text-muted-foreground/70" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-spam-complaints">
-                                  {formatPercent(metrics.spamComplaints)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-
-                          {metrics.listGrowth != null && (
-                            <Card data-testid="card-metric-list-growth">
-                              <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="text-sm font-medium text-muted-foreground/70">
-                                    List Growth (Net)
-                                  </CardTitle>
-                                  <TrendingUp className="w-4 h-4 text-muted-foreground/70" />
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-foreground" data-testid="value-list-growth">
-                                  +{formatNumber(metrics.listGrowth)}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })}
 
                   </>
                 )}
@@ -2626,18 +2295,21 @@ export default function CustomIntegrationAnalytics() {
                     <CardTitle>Summary</CardTitle>
                     <CardDescription>{latestImportLabel}</CardDescription>
                   </CardHeader>
-                  <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {[
-                      { label: 'Campaign metrics', available: Boolean(hasBasicMetrics) },
-                      { label: 'Audience metrics', available: Boolean(hasAudienceMetrics) },
-                      { label: 'Traffic sources', available: Boolean(hasTrafficSources) },
-                      { label: 'Email metrics', available: Boolean(hasEmailMetrics) },
-                    ].map((item) => (
-                      <div key={item.label} className="rounded-lg border border-border p-4">
-                        <p className="text-sm text-muted-foreground">{item.label}</p>
-                        <p className="mt-1 font-semibold text-foreground">{item.available ? 'Available' : 'Unavailable'}</p>
-                      </div>
-                    ))}
+                  <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {resolvedOverviewGroups.map((group) => {
+                      const availableMetrics = group.metrics.filter(({ resolved }) => resolved.available);
+                      return (
+                        <div key={group.title} className="rounded-lg border border-border p-4">
+                          <p className="text-sm text-muted-foreground">{group.title}</p>
+                          <p className="mt-1 text-2xl font-bold text-foreground">{availableMetrics.length}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {availableMetrics.length > 0
+                              ? availableMetrics.map(({ resolved }) => resolved.option?.label).filter(Boolean).join(', ')
+                              : group.showUnavailable ? 'Required imported fields are unavailable' : 'No source-backed metrics in latest import'}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </CardContent>
                 </Card>
               </TabsContent>

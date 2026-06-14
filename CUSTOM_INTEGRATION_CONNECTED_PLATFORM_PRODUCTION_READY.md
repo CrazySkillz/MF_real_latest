@@ -279,6 +279,15 @@ Validation:
 - Unit tests prove missing metrics return unavailable, not `0`.
 - Unit tests prove percent, count, currency, duration, and ratio formatting.
 
+Status:
+
+- Completed in Commit 3 implementation pass.
+- Root cause: Custom Integration KPI and Benchmark forms directly read `metricsData?.metric || 0`, so a missing imported metric could be saved, displayed, and scored as a real `0`.
+- Fixes: added a local Custom Integration metric registry/resolver with source labels, unit-aware formatting, ROI/ROAS dependency checks, unavailable reasons, and CTOR field compatibility; KPI and Benchmark metric pickers now disable unavailable imported metrics and only populate current values from available source-backed values; KPI and Benchmark cards/summary scoring exclude unavailable current values and show unavailable reasons instead of treating them as zero.
+- Regression evidence: `server/source-safety-regression.test.ts` guards against reintroducing zero-filled Custom Integration KPI/Benchmark metric selection and verifies unavailable metrics are excluded from visible scoring.
+- Local validation: `npm test -- server/source-safety-regression.test.ts`, `npm run check`, `npm test`, and `git diff --check` passed.
+- Deferred by tracker scope: Reports, scheduled reports, Insights, Summary, and full Google Sheets layout parity remain in later commits.
+
 ### Commit 4: Google Sheets Layout Shell
 
 Goal:

@@ -50,6 +50,10 @@ function readGoogleSheetsReportModalSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "google-sheets-analytics", "GoogleSheetsReportModal.tsx"), "utf8");
 }
 
+function readCustomIntegrationAnalyticsSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "custom-integration-analytics.tsx"), "utf8");
+}
+
 function readUploadAdditionalDataModalSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "components", "UploadAdditionalDataModal.tsx"), "utf8");
 }
@@ -1373,5 +1377,37 @@ describe("source safety regression guards", () => {
     expect(method.indexOf(".delete(customIntegrationMetrics)")).toBeLessThan(method.indexOf(".delete(customIntegrations)"));
     expect(method).toContain("eq(customIntegrationMetrics.campaignId, campaignId)");
     expect(method).toContain("eq(customIntegrations.campaignId, campaignId)");
+  });
+
+  it("Custom Integration KPI and Benchmark metric selection does not zero-fill missing imports", () => {
+    const source = readCustomIntegrationAnalyticsSource();
+
+    expect(source).toContain("const CUSTOM_INTEGRATION_METRIC_OPTIONS");
+    expect(source).toContain("function resolveCustomIntegrationMetric");
+    expect(source).toContain("fields: ['clickToOpenRate', 'clickToOpen']");
+    expect(source).toContain("resolved.available && resolved.currentValue !== null ? String(resolved.currentValue) : ''");
+    expect(source).toContain("disabled={!resolved.available}");
+    expect(source).not.toContain("String(metricsData?.users || 0)");
+    expect(source).not.toContain("String(metricsData?.sessions || 0)");
+    expect(source).not.toContain("String(metricsData?.pageviews || 0)");
+    expect(source).not.toContain("String(metricsData?.openRate || 0)");
+    expect(source).not.toContain("String(metricsData?.clickThroughRate || 0)");
+    expect(source).not.toContain("String(metricsData?.clickToOpen || 0)");
+    expect(source).not.toContain("String(metricsData?.listGrowth || 0)");
+    expect(source).not.toContain("String(metricsData?.emailsDelivered || 0)");
+  });
+
+  it("Custom Integration KPI and Benchmark cards exclude unavailable source metrics from scoring", () => {
+    const source = readCustomIntegrationAnalyticsSource();
+
+    expect(source).toContain("const resolveCustomIntegrationCurrentValue = (item: any) => {");
+    expect(source).toContain("Metric is not supported by Custom Integration.");
+    expect(source).toContain("Current value is not available.");
+    expect(source).toContain("let status = resolvedCurrent.available ? 'Underperforming' : 'Unavailable';");
+    expect(source).toContain("resolvedCurrent.available ? `Source: ${resolvedCurrent.sourceLabel}` : resolvedCurrent.reason");
+    expect(source).toContain("resolved.available && current !== null && target > 0");
+    expect(source).toContain("resolved.available && current !== null && benchmark > 0");
+    expect(source).toContain("targetVal > 0 && resolvedCurrent.available && currentVal !== null");
+    expect(source).toContain("resolvedCurrent.available && currentVal !== null && benchmarkVal !== null && benchmarkVal > 0");
   });
 });

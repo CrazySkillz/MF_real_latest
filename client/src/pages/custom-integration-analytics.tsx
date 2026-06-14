@@ -25,6 +25,105 @@ interface CustomIntegrationConnection {
   email?: string;
 }
 
+type CustomIntegrationMetricType = 'count' | 'currency' | 'percent' | 'duration' | 'ratio';
+
+interface CustomIntegrationMetricOption {
+  key: string;
+  label: string;
+  unit: string;
+  type: CustomIntegrationMetricType;
+  fields?: string[];
+}
+
+const CUSTOM_INTEGRATION_METRIC_OPTIONS: CustomIntegrationMetricOption[] = [
+  { key: 'users', label: 'Users', unit: '', type: 'count' },
+  { key: 'sessions', label: 'Sessions', unit: '', type: 'count' },
+  { key: 'pageviews', label: 'Pageviews', unit: '', type: 'count' },
+  { key: 'bounceRate', label: 'Bounce Rate', unit: '%', type: 'percent' },
+  { key: 'emailsDelivered', label: 'Emails Delivered', unit: '', type: 'count' },
+  { key: 'openRate', label: 'Email Open Rate', unit: '%', type: 'percent' },
+  { key: 'clickThroughRate', label: 'Email CTR', unit: '%', type: 'percent' },
+  { key: 'clickToOpen', label: 'Email CTOR', unit: '%', type: 'percent', fields: ['clickToOpenRate', 'clickToOpen'] },
+  { key: 'listGrowth', label: 'List Growth', unit: '', type: 'count' },
+  { key: 'impressions', label: 'Impressions', unit: '', type: 'count' },
+  { key: 'clicks', label: 'Clicks', unit: '', type: 'count' },
+  { key: 'conversions', label: 'Conversions', unit: '', type: 'count' },
+  { key: 'leads', label: 'Leads', unit: '', type: 'count' },
+  { key: 'spend', label: 'Spend', unit: '$', type: 'currency' },
+  { key: 'revenue', label: 'Revenue', unit: '$', type: 'currency' },
+  { key: 'roi', label: 'ROI', unit: '%', type: 'percent' },
+  { key: 'roas', label: 'ROAS', unit: 'x', type: 'ratio' },
+];
+
+function parseCustomIntegrationMetricNumber(value: any): number | null {
+  if (value === null || typeof value === 'undefined' || value === '') return null;
+  const parsed = typeof value === 'number'
+    ? value
+    : parseFloat(String(value).replace(/,/g, '').replace(/[$%x]/gi, '').trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getCustomIntegrationMetricOption(metricKey: any): CustomIntegrationMetricOption | undefined {
+  const key = String(metricKey || '').trim();
+  return CUSTOM_INTEGRATION_METRIC_OPTIONS.find((option) =>
+    option.key === key || (option.fields || []).includes(key)
+  );
+}
+
+function getCustomIntegrationRawMetric(metrics: any, option: CustomIntegrationMetricOption): any {
+  const fields = option.fields || [option.key];
+  for (const field of fields) {
+    const value = metrics?.[field];
+    if (value !== null && typeof value !== 'undefined' && value !== '') return value;
+  }
+  return null;
+}
+
+function getCustomIntegrationSourceLabel(metrics: any): string {
+  if (metrics?.pdfFileName) return `Import: ${metrics.pdfFileName}`;
+  if (metrics?.emailSubject) return `Import: ${metrics.emailSubject}`;
+  if (metrics?.uploadedAt) return `Import: ${new Date(metrics.uploadedAt).toLocaleString()}`;
+  return 'Custom Integration source';
+}
+
+function resolveCustomIntegrationMetric(metrics: any, metricKey: any) {
+  const option = getCustomIntegrationMetricOption(metricKey);
+  const sourceLabel = getCustomIntegrationSourceLabel(metrics);
+  if (!option) {
+    return { available: false, currentValue: null as number | null, unit: '', option: undefined, sourceLabel, reason: 'Metric is not supported by Custom Integration.' };
+  }
+
+  if (option.key === 'roi' || option.key === 'roas') {
+    const revenue = parseCustomIntegrationMetricNumber(metrics?.revenue);
+    const spend = parseCustomIntegrationMetricNumber(metrics?.spend);
+    if (revenue === null) {
+      return { available: false, currentValue: null as number | null, unit: option.unit, option, sourceLabel, reason: 'Revenue is not available in the selected Custom Integration import.' };
+    }
+    if (spend === null || spend <= 0) {
+      return { available: false, currentValue: null as number | null, unit: option.unit, option, sourceLabel, reason: 'Spend is not available in the selected Custom Integration import.' };
+    }
+    const currentValue = option.key === 'roi' ? ((revenue - spend) / spend) * 100 : revenue / spend;
+    return { available: true, currentValue, unit: option.unit, option, sourceLabel, reason: '' };
+  }
+
+  const currentValue = parseCustomIntegrationMetricNumber(getCustomIntegrationRawMetric(metrics, option));
+  if (currentValue === null) {
+    return { available: false, currentValue: null as number | null, unit: option.unit, option, sourceLabel, reason: `${option.label} is not available in the selected Custom Integration import.` };
+  }
+
+  return { available: true, currentValue, unit: option.unit, option, sourceLabel, reason: '' };
+}
+
+function formatCustomIntegrationMetricValue(value: number | null, unit: string, type?: CustomIntegrationMetricType): string {
+  if (value === null || !Number.isFinite(value)) return 'Unavailable';
+  if (type === 'currency' || unit === '$') {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+  }
+  if (type === 'percent' || unit === '%') return `${value.toFixed(1)}%`;
+  if (type === 'ratio' || unit === 'x') return `${value.toFixed(2)}x`;
+  return new Intl.NumberFormat('en-US').format(value);
+}
+
 // Helper function to calculate expected progress based on timeframe
 function calculateExpectedProgress(timeframe: string): number {
   const now = new Date();
@@ -1827,6 +1926,19 @@ export default function CustomIntegrationAnalytics() {
     return typeof num === 'number' && !Number.isNaN(num) && Number.isFinite(num);
   };
 
+  const resolveCustomIntegrationCurrentValue = (item: any) => {
+    const metricKey = String(item?.metric || item?.metricKey || '').trim();
+    if (metricKey && metricKey !== 'custom') {
+      return resolveCustomIntegrationMetric(metricsData, metricKey);
+    }
+
+    const currentValue = parseCustomIntegrationMetricNumber(item?.currentValue);
+    const unit = String(item?.unit || '');
+    return currentValue === null
+      ? { available: false, currentValue: null as number | null, unit, option: undefined, sourceLabel: 'Manual value', reason: 'Current value is not available.' }
+      : { available: true, currentValue, unit, option: undefined, sourceLabel: 'Manual value', reason: '' };
+  };
+
   // Check for basic campaign metrics (impressions, clicks, etc.)
   const hasBasicMetrics = metricsData && (
     (metricsData.impressions !== undefined && metricsData.impressions > 0) ||
@@ -2535,9 +2647,10 @@ export default function CustomIntegrationAnalytics() {
                               <p className="text-sm text-muted-foreground/70">Exceeding Target</p>
                               <p className="text-2xl font-bold text-green-600">
                                 {(kpisData as any[]).filter((k: any) => {
-                                  const current = parseFloat(k.currentValue || '0');
+                                  const resolved = resolveCustomIntegrationCurrentValue(k);
+                                  const current = resolved.currentValue;
                                   const target = parseFloat(k.targetValue || '0');
-                                  return target > 0 && current >= target * 1.2;
+                                  return resolved.available && current !== null && target > 0 && current >= target * 1.2;
                                 }).length}
                               </p>
                             </div>
@@ -2553,9 +2666,10 @@ export default function CustomIntegrationAnalytics() {
                               <p className="text-sm text-muted-foreground/70">Meeting Target</p>
                               <p className="text-2xl font-bold text-amber-600">
                                 {(kpisData as any[]).filter((k: any) => {
-                                  const current = parseFloat(k.currentValue || '0');
+                                  const resolved = resolveCustomIntegrationCurrentValue(k);
+                                  const current = resolved.currentValue;
                                   const target = parseFloat(k.targetValue || '0');
-                                  return target > 0 && current >= target && current < target * 1.2;
+                                  return resolved.available && current !== null && target > 0 && current >= target && current < target * 1.2;
                                 }).length}
                               </p>
                             </div>
@@ -2571,9 +2685,10 @@ export default function CustomIntegrationAnalytics() {
                               <p className="text-sm text-muted-foreground/70">Below Target</p>
                               <p className="text-2xl font-bold text-red-600">
                                 {(kpisData as any[]).filter((k: any) => {
-                                  const current = parseFloat(k.currentValue || '0');
+                                  const resolved = resolveCustomIntegrationCurrentValue(k);
+                                  const current = resolved.currentValue;
                                   const target = parseFloat(k.targetValue || '0');
-                                  return target > 0 && current < target;
+                                  return resolved.available && current !== null && target > 0 && current < target;
                                 }).length}
                               </p>
                             </div>
@@ -2587,12 +2702,13 @@ export default function CustomIntegrationAnalytics() {
                     <div className="grid gap-6 lg:grid-cols-2">
                       {(kpisData as any[]).map((kpi: any) => {
                         // Calculate status using industry-standard 120% threshold
-                        const currentVal = kpi.currentValue ? parseFloat(kpi.currentValue) : 0;
+                        const resolvedCurrent = resolveCustomIntegrationCurrentValue(kpi);
+                        const currentVal = resolvedCurrent.currentValue;
                         const targetVal = kpi.targetValue ? parseFloat(kpi.targetValue) : 0;
                         
                         // Determine status based on percentage of target
-                        let status = 'Underperforming';
-                        if (targetVal > 0) {
+                        let status = resolvedCurrent.available ? 'Underperforming' : 'Unavailable';
+                        if (resolvedCurrent.available && currentVal !== null && targetVal > 0) {
                           if (currentVal >= targetVal * 1.2) {
                             status = 'Exceeding Target';
                           } else if (currentVal >= targetVal) {
@@ -2608,6 +2724,8 @@ export default function CustomIntegrationAnalytics() {
                               return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300';
                             case 'Underperforming':
                               return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+                            case 'Unavailable':
+                              return 'bg-muted text-muted-foreground';
                             default:
                               return 'bg-muted text-foreground/60';
                           }
@@ -2642,6 +2760,9 @@ export default function CustomIntegrationAnalytics() {
                                 <CardDescription className="text-sm">
                                   {kpi.description || 'No description provided'}
                                 </CardDescription>
+                                <p className="text-xs text-muted-foreground/70 mt-1">
+                                  {resolvedCurrent.available ? `Source: ${resolvedCurrent.sourceLabel}` : resolvedCurrent.reason}
+                                </p>
                               </div>
                               <div className="flex items-center gap-2">
                                 <Badge className={getStatusColor(status)}>
@@ -2656,7 +2777,11 @@ export default function CustomIntegrationAnalytics() {
                                   variant="ghost" 
                                   size="icon"
                                   className="h-8 w-8 text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
-                                  onClick={() => setEditingKPI(kpi)}
+                                  onClick={() => setEditingKPI({
+                                    ...kpi,
+                                    currentValue: resolvedCurrent.available && currentVal !== null ? String(currentVal) : '',
+                                    unit: kpi.unit || resolvedCurrent.unit || '',
+                                  })}
                                   data-testid={`button-edit-kpi-${kpi.id}`}
                                 >
                                   <Pencil className="h-4 w-4" />
@@ -2700,7 +2825,9 @@ export default function CustomIntegrationAnalytics() {
                                   Current
                                 </div>
                                 <div className="text-xl font-bold text-foreground">
-                                  {formatNumber(kpi.currentValue)}{kpi.unit || ''}
+                                  {resolvedCurrent.available
+                                    ? formatCustomIntegrationMetricValue(currentVal, resolvedCurrent.unit || kpi.unit || '', resolvedCurrent.option?.type)
+                                    : 'Unavailable'}
                                 </div>
                               </div>
                               <div className="p-3 bg-muted rounded-lg">
@@ -2714,8 +2841,8 @@ export default function CustomIntegrationAnalytics() {
                             </div>
                             
                             {/* Progress Tracker */}
-                            {kpi.targetValue && kpi.currentValue && (() => {
-                              const actualProgress = (parseFloat(kpi.currentValue) / parseFloat(kpi.targetValue)) * 100;
+                            {targetVal > 0 && resolvedCurrent.available && currentVal !== null && (() => {
+                              const actualProgress = (currentVal / targetVal) * 100;
                               const progressBarWidth = Math.min(actualProgress, 100);
                               const isOutperforming = actualProgress >= 100;
                               
@@ -2961,9 +3088,10 @@ export default function CustomIntegrationAnalytics() {
                               <p className="text-sm text-muted-foreground/70">Exceeding Target</p>
                               <p className="text-2xl font-bold text-green-600">
                                 {(benchmarksData as any[]).filter((b: any) => {
-                                  const current = parseFloat(b.currentValue || '0');
+                                  const resolved = resolveCustomIntegrationCurrentValue(b);
+                                  const current = resolved.currentValue;
                                   const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return benchmark > 0 && current >= benchmark * 1.2;
+                                  return resolved.available && current !== null && benchmark > 0 && current >= benchmark * 1.2;
                                 }).length}
                               </p>
                             </div>
@@ -2979,9 +3107,10 @@ export default function CustomIntegrationAnalytics() {
                               <p className="text-sm text-muted-foreground/70">Meeting Target</p>
                               <p className="text-2xl font-bold text-amber-600">
                                 {(benchmarksData as any[]).filter((b: any) => {
-                                  const current = parseFloat(b.currentValue || '0');
+                                  const resolved = resolveCustomIntegrationCurrentValue(b);
+                                  const current = resolved.currentValue;
                                   const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return benchmark > 0 && current >= benchmark && current < benchmark * 1.2;
+                                  return resolved.available && current !== null && benchmark > 0 && current >= benchmark && current < benchmark * 1.2;
                                 }).length}
                               </p>
                             </div>
@@ -2997,9 +3126,10 @@ export default function CustomIntegrationAnalytics() {
                               <p className="text-sm text-muted-foreground/70">Below Target</p>
                               <p className="text-2xl font-bold text-red-600">
                                 {(benchmarksData as any[]).filter((b: any) => {
-                                  const current = parseFloat(b.currentValue || '0');
+                                  const resolved = resolveCustomIntegrationCurrentValue(b);
+                                  const current = resolved.currentValue;
                                   const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return benchmark > 0 && current < benchmark;
+                                  return resolved.available && current !== null && benchmark > 0 && current < benchmark;
                                 }).length}
                               </p>
                             </div>
@@ -3011,7 +3141,11 @@ export default function CustomIntegrationAnalytics() {
 
                     {/* Benchmark Cards */}
                     <div className="space-y-4">
-                      {(benchmarksData as any[]).map((benchmark: any) => (
+                      {(benchmarksData as any[]).map((benchmark: any) => {
+                        const resolvedCurrent = resolveCustomIntegrationCurrentValue(benchmark);
+                        const currentVal = resolvedCurrent.currentValue;
+                        const benchmarkVal = parseCustomIntegrationMetricNumber(benchmark.benchmarkValue || benchmark.targetValue);
+                        return (
                         <Card key={benchmark.id} data-testid={`benchmark-card-${benchmark.id}`}>
                           <CardContent className="p-6">
                             <div className="flex items-start justify-between mb-4">
@@ -3028,6 +3162,9 @@ export default function CustomIntegrationAnalytics() {
                                 </div>
                                 <p className="text-sm text-muted-foreground/70 mt-1">
                                   {benchmark.description || 'No description provided'}
+                                </p>
+                                <p className="text-xs text-muted-foreground/70 mt-1">
+                                  {resolvedCurrent.available ? `Source: ${resolvedCurrent.sourceLabel}` : resolvedCurrent.reason}
                                 </p>
                                 <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
                                   {benchmark.benchmarkType && <span>Type: {benchmark.benchmarkType}</span>}
@@ -3065,7 +3202,7 @@ export default function CustomIntegrationAnalytics() {
                                       competitorName: benchmark.competitorName || '',
                                       unit: benchmark.unit || '',
                                       benchmarkValue: benchmark.benchmarkValue || '',
-                                      currentValue: benchmark.currentValue || '',
+                                      currentValue: resolvedCurrent.available && currentVal !== null ? String(currentVal) : '',
                                       industry: benchmark.industry || '',
                                       description: benchmark.description || '',
                                       source: benchmark.source || '',
@@ -3122,7 +3259,9 @@ export default function CustomIntegrationAnalytics() {
                                   Your Performance
                                 </div>
                                 <div className="text-lg font-bold text-foreground">
-                                  {formatNumber(benchmark.currentValue)}{benchmark.unit || ''}
+                                  {resolvedCurrent.available
+                                    ? formatCustomIntegrationMetricValue(currentVal, resolvedCurrent.unit || benchmark.unit || '', resolvedCurrent.option?.type)
+                                    : 'Unavailable'}
                                 </div>
                               </div>
 
@@ -3131,7 +3270,9 @@ export default function CustomIntegrationAnalytics() {
                                   Benchmark Value
                                 </div>
                                 <div className="text-lg font-bold text-foreground">
-                                  {formatNumber(benchmark.benchmarkValue || benchmark.targetValue)}{benchmark.unit || ''}
+                                  {benchmarkVal !== null
+                                    ? formatCustomIntegrationMetricValue(benchmarkVal, benchmark.unit || resolvedCurrent.unit || '', resolvedCurrent.option?.type)
+                                    : 'Unavailable'}
                                 </div>
                               </div>
 
@@ -3146,10 +3287,9 @@ export default function CustomIntegrationAnalytics() {
                             </div>
                             
                             {/* Progress Tracker - Benchmark Comparison */}
-                            {benchmark.currentValue && benchmark.benchmarkValue && (() => {
+                            {resolvedCurrent.available && currentVal !== null && benchmarkVal !== null && benchmarkVal > 0 && (() => {
                               // Calculate accurate progress and comparison
-                              const current = parseFloat(benchmark.currentValue);
-                              const benchmarkVal = parseFloat(benchmark.benchmarkValue);
+                              const current = currentVal;
                               
                               // Progress: percentage of benchmark achieved (no Math.min cap, use precision)
                               const progressTowardBenchmark = (current / benchmarkVal) * 100;
@@ -3239,7 +3379,8 @@ export default function CustomIntegrationAnalytics() {
                             })()}
                           </CardContent>
                         </Card>
-                      ))}
+                      );
+                      })}
                     </div>
                   </>
                 ) : (
@@ -3505,54 +3646,31 @@ export default function CustomIntegrationAnalytics() {
                   key={`metric-select-${editingKPI?.id || 'new'}-${kpiForm.metric}`}
                   value={kpiForm.metric || ''}
                   onValueChange={(value) => {
-                    setKpiForm({ ...kpiForm, metric: value });
-                    // Auto-populate current value from metrics
-                    let currentValue = '';
-                    let unit = '';
-                    switch(value) {
-                      case 'users':
-                        currentValue = String(metricsData?.users || 0);
-                        break;
-                      case 'sessions':
-                        currentValue = String(metricsData?.sessions || 0);
-                        break;
-                      case 'pageviews':
-                        currentValue = String(metricsData?.pageviews || 0);
-                        break;
-                      case 'openRate':
-                        currentValue = String(metricsData?.openRate || 0);
-                        unit = '%';
-                        break;
-                      case 'clickThroughRate':
-                        currentValue = String(metricsData?.clickThroughRate || 0);
-                        unit = '%';
-                        break;
-                      case 'clickToOpen':
-                        currentValue = String(metricsData?.clickToOpen || 0);
-                        unit = '%';
-                        break;
-                      case 'listGrowth':
-                        currentValue = String(metricsData?.listGrowth || 0);
-                        break;
-                      case 'emailsDelivered':
-                        currentValue = String(metricsData?.emailsDelivered || 0);
-                        break;
+                    if (value === 'custom') {
+                      setKpiForm({ ...kpiForm, metric: value, currentValue: '', unit: '' });
+                      return;
                     }
-                    setKpiForm({ ...kpiForm, metric: value, currentValue, unit });
+                    const resolved = resolveCustomIntegrationMetric(metricsData, value);
+                    setKpiForm({
+                      ...kpiForm,
+                      metric: value,
+                      currentValue: resolved.available && resolved.currentValue !== null ? String(resolved.currentValue) : '',
+                      unit: resolved.unit || '',
+                    });
                   }}
                 >
                   <SelectTrigger id="kpi-metric" data-testid="select-kpi-metric">
                     <SelectValue placeholder="Select metric to track" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="users">Users (from metrics)</SelectItem>
-                    <SelectItem value="sessions">Sessions (from metrics)</SelectItem>
-                    <SelectItem value="pageviews">Pageviews (from metrics)</SelectItem>
-                    <SelectItem value="openRate">Email Open Rate (from metrics)</SelectItem>
-                    <SelectItem value="clickThroughRate">Email CTR (from metrics)</SelectItem>
-                    <SelectItem value="clickToOpen">Email CTOR (from metrics)</SelectItem>
-                    <SelectItem value="listGrowth">List Growth (from metrics)</SelectItem>
-                    <SelectItem value="emailsDelivered">Emails Delivered (from metrics)</SelectItem>
+                    {CUSTOM_INTEGRATION_METRIC_OPTIONS.map((option) => {
+                      const resolved = resolveCustomIntegrationMetric(metricsData, option.key);
+                      return (
+                        <SelectItem key={option.key} value={option.key} disabled={!resolved.available}>
+                          {option.label}{resolved.available ? '' : ' - Unavailable'}
+                        </SelectItem>
+                      );
+                    })}
                     <SelectItem value="custom">Custom Value</SelectItem>
                   </SelectContent>
                 </Select>
@@ -3797,54 +3915,31 @@ export default function CustomIntegrationAnalytics() {
                 <Select
                   value={benchmarkForm.metric || undefined}
                   onValueChange={(value) => {
-                    setBenchmarkForm({ ...benchmarkForm, metric: value });
-                    // Auto-populate current value from metrics
-                    let currentValue = '';
-                    let unit = '';
-                    switch(value) {
-                      case 'users':
-                        currentValue = String(metricsData?.users || 0);
-                        break;
-                      case 'sessions':
-                        currentValue = String(metricsData?.sessions || 0);
-                        break;
-                      case 'pageviews':
-                        currentValue = String(metricsData?.pageviews || 0);
-                        break;
-                      case 'openRate':
-                        currentValue = String(metricsData?.openRate || 0);
-                        unit = '%';
-                        break;
-                      case 'clickThroughRate':
-                        currentValue = String(metricsData?.clickThroughRate || 0);
-                        unit = '%';
-                        break;
-                      case 'clickToOpen':
-                        currentValue = String(metricsData?.clickToOpen || 0);
-                        unit = '%';
-                        break;
-                      case 'listGrowth':
-                        currentValue = String(metricsData?.listGrowth || 0);
-                        break;
-                      case 'emailsDelivered':
-                        currentValue = String(metricsData?.emailsDelivered || 0);
-                        break;
+                    if (value === 'custom') {
+                      setBenchmarkForm({ ...benchmarkForm, metric: value, currentValue: '', unit: '' });
+                      return;
                     }
-                    setBenchmarkForm({ ...benchmarkForm, metric: value, currentValue, unit });
+                    const resolved = resolveCustomIntegrationMetric(metricsData, value);
+                    setBenchmarkForm({
+                      ...benchmarkForm,
+                      metric: value,
+                      currentValue: resolved.available && resolved.currentValue !== null ? String(resolved.currentValue) : '',
+                      unit: resolved.unit || '',
+                    });
                   }}
                 >
                   <SelectTrigger id="benchmark-metric" data-testid="select-benchmark-metric">
                     <SelectValue placeholder="Select metric to benchmark" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="users">Users (from metrics)</SelectItem>
-                    <SelectItem value="sessions">Sessions (from metrics)</SelectItem>
-                    <SelectItem value="pageviews">Pageviews (from metrics)</SelectItem>
-                    <SelectItem value="openRate">Email Open Rate (from metrics)</SelectItem>
-                    <SelectItem value="clickThroughRate">Email CTR (from metrics)</SelectItem>
-                    <SelectItem value="clickToOpen">Email CTOR (from metrics)</SelectItem>
-                    <SelectItem value="listGrowth">List Growth (from metrics)</SelectItem>
-                    <SelectItem value="emailsDelivered">Emails Delivered (from metrics)</SelectItem>
+                    {CUSTOM_INTEGRATION_METRIC_OPTIONS.map((option) => {
+                      const resolved = resolveCustomIntegrationMetric(metricsData, option.key);
+                      return (
+                        <SelectItem key={option.key} value={option.key} disabled={!resolved.available}>
+                          {option.label}{resolved.available ? '' : ' - Unavailable'}
+                        </SelectItem>
+                      );
+                    })}
                     <SelectItem value="custom">Custom Value</SelectItem>
                   </SelectContent>
                 </Select>

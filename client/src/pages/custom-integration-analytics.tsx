@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, FileText, TrendingUp, Users, Activity, FileSpreadsheet, Clock, BarChart3, Mail, TrendingDown, Zap, Link2, CheckCircle2, AlertCircle, Pencil, Trash2, Award, Trophy, Download, Settings, Copy, Upload } from "lucide-react";
+import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, FileText, TrendingUp, Users, Activity, FileSpreadsheet, Clock, BarChart3, Mail, TrendingDown, Zap, Link2, CheckCircle2, AlertCircle, AlertTriangle, Pencil, Trash2, Trophy, Download, Settings, Copy, Upload } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -865,21 +865,96 @@ export default function CustomIntegrationAnalytics() {
 
   // Handle Benchmark form submission
   const handleBenchmarkSubmit = () => {
+    if (!campaignId) {
+      toast({
+        title: "Error",
+        description: "Campaign ID not available. Please wait for the page to fully load.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!benchmarkForm.name || !benchmarkForm.metric || !benchmarkForm.benchmarkValue) {
+      toast({
+        title: "Required Fields",
+        description: "Please select a Benchmark template, enter a Benchmark name, and set a benchmark value.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const benchmarkValue = parseCustomIntegrationMetricNumber(cleanCustomIntegrationNumberInput(benchmarkForm.benchmarkValue));
+    if (benchmarkValue === null) {
+      toast({
+        title: "Invalid Benchmark",
+        description: "Please enter a valid numeric benchmark value.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (benchmarkForm.alertsEnabled && !benchmarkForm.alertThreshold) {
+      toast({
+        title: "Alert Threshold Required",
+        description: "Please set an alert threshold value.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const isCustomBenchmark = benchmarkForm.metric === 'custom';
+    const metricOption = isCustomBenchmark ? null : resolveCustomIntegrationMetric(metricsData, benchmarkForm.metric);
+    if (!isCustomBenchmark && (!metricOption?.available || metricOption.currentValue === null)) {
+      toast({
+        title: "Metric Unavailable",
+        description: metricOption?.reason || "Select a Custom Integration metric with a current source-backed value.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!isCustomBenchmark && !activeCustomIntegrationSourceScope) {
+      toast({
+        title: "Source Unavailable",
+        description: "The active Custom Integration source is not loaded yet. Please refresh and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const manualCurrentValue = parseCustomIntegrationMetricNumber(cleanCustomIntegrationNumberInput(benchmarkForm.currentValue));
+    const alertThreshold = benchmarkForm.alertThreshold
+      ? parseCustomIntegrationMetricNumber(cleanCustomIntegrationNumberInput(benchmarkForm.alertThreshold))
+      : null;
+    const payload = {
+      ...benchmarkForm,
+      platformType: 'custom-integration',
+      campaignId: campaignId,
+      benchmarkType: benchmarkForm.benchmarkType || 'goal',
+      benchmarkValue,
+      currentValue: isCustomBenchmark ? (manualCurrentValue ?? '') : metricOption?.currentValue,
+      alertThreshold,
+      calculationConfig: isCustomBenchmark
+        ? {
+          source: 'manual',
+          valueSource: 'manual_current_value',
+          metric: 'custom',
+        }
+        : {
+          source: 'custom_integration',
+          valueSource: 'latest_validated_import',
+          metric: benchmarkForm.metric,
+          sourceScope: activeCustomIntegrationSourceScope,
+          sourceLabel: metricOption?.sourceLabel || latestImportLabel,
+        },
+    };
+
     if (editingBenchmark) {
       updateBenchmarkMutation.mutate({
         id: editingBenchmark.id,
-        data: {
-          ...benchmarkForm,
-          platformType: 'custom-integration',
-          campaignId: campaignId,
-        }
+        data: payload
       });
     } else {
-      createBenchmarkMutation.mutate({
-        ...benchmarkForm,
-        platformType: 'custom-integration',
-        campaignId: campaignId,
-      });
+      createBenchmarkMutation.mutate(payload);
     }
   };
 
@@ -2118,6 +2193,28 @@ export default function CustomIntegrationAnalytics() {
     return { band, effectiveDeltaPct, attainmentPct: attainmentPct ?? 0, fillPct, progressColor };
   };
 
+  const computeCustomIntegrationBenchmarkProgress = (benchmark: any, current: number, benchmarkValue: number) => {
+    const safeCurrent = Number.isFinite(current) ? current : 0;
+    const safeBenchmark = Number.isFinite(benchmarkValue) ? benchmarkValue : 0;
+    const lowerIsBetter = isLowerIsBetterKpi({ metric: benchmark?.metric || benchmark?.metricKey, name: benchmark?.name });
+    const attainmentPct = computeAttainmentPct({ current: safeCurrent, target: safeBenchmark, lowerIsBetter });
+    const fillPct = attainmentPct !== null ? computeAttainmentFillPct(attainmentPct) : 0;
+    const ratio = (attainmentPct ?? 0) / 100;
+    const status = ratio >= 0.9 ? "on_track" : ratio >= 0.7 ? "needs_attention" : "behind";
+    const color = status === "on_track" ? "bg-green-500" : status === "needs_attention" ? "bg-yellow-500" : "bg-red-500";
+    const deltaPct = computeEffectiveDeltaPct({ current: safeCurrent, target: safeBenchmark, lowerIsBetter });
+    return {
+      ratio,
+      pct: fillPct,
+      labelPct: (attainmentPct ?? 0).toFixed(1),
+      status,
+      color,
+      deltaPct: deltaPct ?? 0,
+      attainmentPct: attainmentPct ?? 0,
+      fillPct,
+    };
+  };
+
   const getCustomIntegrationKpiIcon = (metricName: string) => {
     const n = String(metricName || "").toLowerCase();
     if (n.includes("revenue") || n.includes("spend") || n.includes("cost") || n.includes("budget")) return { Icon: DollarSign, color: "text-emerald-600" };
@@ -2170,6 +2267,28 @@ export default function CustomIntegrationAnalytics() {
     ? customIntegrationKpiTracker.progressTotal / customIntegrationKpiTracker.progressCount
     : 0;
   const kpiFormUsesSourceBackedMetric = Boolean(kpiForm.metric && kpiForm.metric !== 'custom');
+  const customIntegrationBenchmarks = Array.isArray(benchmarksData) ? benchmarksData : [];
+  const customIntegrationBenchmarkTracker = customIntegrationBenchmarks.reduce((tracker: any, benchmark: any) => {
+    const resolved = resolveCustomIntegrationCurrentValue(benchmark);
+    const current = resolved.currentValue;
+    const benchmarkValue = parseCustomIntegrationMetricNumber(benchmark.benchmarkValue);
+    tracker.total += 1;
+    if (!resolved.available || current === null || benchmarkValue === null || benchmarkValue <= 0) {
+      tracker.blocked += 1;
+      return tracker;
+    }
+    const progress = computeCustomIntegrationBenchmarkProgress(benchmark, current, benchmarkValue);
+    tracker.progressTotal += progress.fillPct;
+    tracker.progressCount += 1;
+    if (progress.status === "on_track") tracker.onTrack += 1;
+    else if (progress.status === "needs_attention") tracker.needsAttention += 1;
+    else tracker.behind += 1;
+    return tracker;
+  }, { total: 0, onTrack: 0, needsAttention: 0, behind: 0, blocked: 0, progressTotal: 0, progressCount: 0 });
+  customIntegrationBenchmarkTracker.avgPct = customIntegrationBenchmarkTracker.progressCount > 0
+    ? customIntegrationBenchmarkTracker.progressTotal / customIntegrationBenchmarkTracker.progressCount
+    : 0;
+  const benchmarkFormUsesSourceBackedMetric = Boolean(benchmarkForm.metric && benchmarkForm.metric !== 'custom');
   const resolvedOverviewGroups = CUSTOM_INTEGRATION_OVERVIEW_GROUPS.map((group) => {
     const metrics = group.metricKeys
       .map((metricKey) => ({ metricKey, resolved: resolveCustomIntegrationMetric(metricsData, metricKey) }))
@@ -2862,12 +2981,11 @@ export default function CustomIntegrationAnalytics() {
 
               {/* Benchmarks Tab */}
               <TabsContent value="benchmarks" className="space-y-6" data-testid="content-benchmarks">
-                {/* Header with Create Button */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-foreground">Benchmarks</h2>
+                    <h2 className="text-2xl font-bold text-foreground">Performance Benchmarks</h2>
                     <p className="text-sm text-muted-foreground/70 mt-1">
-                      Compare your performance against industry benchmarks
+                      Compare Custom Integration metrics against source-backed benchmark values.
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -2936,106 +3054,55 @@ export default function CustomIntegrationAnalytics() {
                   </div>
                 ) : benchmarksData && (benchmarksData as any[]).length > 0 ? (
                   <>
-                    {/* Benchmark Summary Cards */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-muted-foreground/70">Total Benchmarks</p>
-                              <p className="text-2xl font-bold text-foreground">
-                                {(benchmarksData as any[]).length}
-                              </p>
-                            </div>
-                            <Award className="w-8 h-8 text-purple-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-muted-foreground/70">Exceeding Target</p>
-                              <p className="text-2xl font-bold text-green-600">
-                                {(benchmarksData as any[]).filter((b: any) => {
-                                  const resolved = resolveCustomIntegrationCurrentValue(b);
-                                  const current = resolved.currentValue;
-                                  const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return resolved.available && current !== null && benchmark > 0 && current >= benchmark * 1.2;
-                                }).length}
-                              </p>
-                            </div>
-                            <TrendingUp className="w-8 h-8 text-green-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-muted-foreground/70">Meeting Target</p>
-                              <p className="text-2xl font-bold text-amber-600">
-                                {(benchmarksData as any[]).filter((b: any) => {
-                                  const resolved = resolveCustomIntegrationCurrentValue(b);
-                                  const current = resolved.currentValue;
-                                  const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return resolved.available && current !== null && benchmark > 0 && current >= benchmark && current < benchmark * 1.2;
-                                }).length}
-                              </p>
-                            </div>
-                            <Target className="w-8 h-8 text-amber-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm text-muted-foreground/70">Below Target</p>
-                              <p className="text-2xl font-bold text-red-600">
-                                {(benchmarksData as any[]).filter((b: any) => {
-                                  const resolved = resolveCustomIntegrationCurrentValue(b);
-                                  const current = resolved.currentValue;
-                                  const benchmark = parseFloat(b.benchmarkValue || '0');
-                                  return resolved.available && current !== null && benchmark > 0 && current < benchmark;
-                                }).length}
-                              </p>
-                            </div>
-                            <TrendingDown className="w-8 h-8 text-red-500" />
-                          </div>
-                        </CardContent>
-                      </Card>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                      <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Total Benchmarks</p><p className="text-2xl font-bold text-foreground">{customIntegrationBenchmarkTracker.total}</p></div><Target className="w-8 h-8 text-purple-500" /></div></CardContent></Card>
+                      <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">On Track</p><p className="text-2xl font-bold text-green-600">{customIntegrationBenchmarkTracker.onTrack}</p><p className="text-xs text-muted-foreground">90% or more of benchmark</p></div><CheckCircle2 className="w-8 h-8 text-green-500" /></div></CardContent></Card>
+                      <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Needs Attention</p><p className="text-2xl font-bold text-amber-600">{customIntegrationBenchmarkTracker.needsAttention}</p><p className="text-xs text-muted-foreground">70% to under 90% of benchmark</p></div><AlertCircle className="w-8 h-8 text-amber-500" /></div></CardContent></Card>
+                      <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Behind</p><p className="text-2xl font-bold text-red-600">{customIntegrationBenchmarkTracker.behind}</p><p className="text-xs text-muted-foreground">below 70% of benchmark</p></div><AlertTriangle className="w-8 h-8 text-red-500" /></div></CardContent></Card>
+                      <Card><CardContent className="p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground/70">Avg. Progress</p><p className="text-2xl font-bold text-foreground">{customIntegrationBenchmarkTracker.avgPct.toFixed(1)}%</p></div><TrendingUp className="w-8 h-8 text-violet-600" /></div></CardContent></Card>
                     </div>
 
+                    {customIntegrationBenchmarkTracker.blocked > 0 && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                        {customIntegrationBenchmarkTracker.blocked} Benchmark{customIntegrationBenchmarkTracker.blocked === 1 ? '' : 's'} cannot be evaluated from the active Custom Integration source. Blocked Benchmarks are excluded from scoring.
+                      </div>
+                    )}
+
                     {/* Benchmark Cards */}
-                    <div className="space-y-4">
-                      {(benchmarksData as any[]).map((benchmark: any) => {
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      {customIntegrationBenchmarks.map((benchmark: any) => {
                         const resolvedCurrent = resolveCustomIntegrationCurrentValue(benchmark);
                         const currentVal = resolvedCurrent.currentValue;
-                        const benchmarkVal = parseCustomIntegrationMetricNumber(benchmark.benchmarkValue || benchmark.targetValue);
+                        const benchmarkVal = parseCustomIntegrationMetricNumber(benchmark.benchmarkValue);
+                        const displayUnit = String(benchmark.unit || resolvedCurrent.unit || '');
+                        const progress = resolvedCurrent.available && currentVal !== null && benchmarkVal !== null && benchmarkVal > 0
+                          ? computeCustomIntegrationBenchmarkProgress(benchmark, currentVal, benchmarkVal)
+                          : null;
+                        const metricLabel = String(benchmark.metric || benchmark.metricKey || benchmark.name || '');
+                        const { Icon, color } = getCustomIntegrationKpiIcon(metricLabel);
+                        const statusLabel = progress?.status === 'on_track' ? 'On Track' : progress?.status === 'needs_attention' ? 'Needs Attention' : 'Behind';
+                        const statusColor = progress?.status === 'on_track' ? 'text-green-600' : progress?.status === 'needs_attention' ? 'text-yellow-600' : 'text-red-600';
+                        const delta = Number.isFinite(progress?.deltaPct) ? progress?.deltaPct || 0 : 0;
+                        const deltaLabel = `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`;
                         return (
                         <Card key={benchmark.id} data-testid={`benchmark-card-${benchmark.id}`}>
                           <CardContent className="p-6">
                             <div className="flex items-start justify-between mb-4">
-                              <div>
+                              <div className="flex items-start gap-4 min-w-0">
+                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                  <Icon className={`w-5 h-5 ${color}`} />
+                                </div>
+                                <div className="min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                   <h3 className="font-semibold text-foreground text-lg">
                                     {benchmark.name}
                                   </h3>
-                                  {benchmark.metric && (
-                                    <Badge variant="outline" className="text-xs font-normal">
-                                      Metric: {benchmark.metric}
-                                    </Badge>
-                                  )}
                                 </div>
                                 <p className="text-sm text-muted-foreground/70 mt-1">
                                   {benchmark.description || 'No description provided'}
                                 </p>
                                 <p className="text-xs text-muted-foreground/70 mt-1">
-                                  {resolvedCurrent.available ? `Source: ${resolvedCurrent.sourceLabel}` : resolvedCurrent.reason}
+                                  Source: {resolvedCurrent.sourceLabel || 'Saved Custom Integration source unavailable'}
                                 </p>
                                 <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
                                   {benchmark.benchmarkType && <span>Type: {benchmark.benchmarkType}</span>}
@@ -3059,20 +3126,22 @@ export default function CustomIntegrationAnalytics() {
                                   )}
                                 </div>
                               </div>
+                              </div>
                               <div className="flex items-center gap-2">
                                 <Button
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => {
                                     setEditingBenchmark(benchmark);
+                                    const editUnit = getCustomIntegrationUnitLabel(displayUnit, resolvedCurrent.option?.type);
                                     setBenchmarkForm({
-                                      metric: benchmark.metric || '',
+                                      metric: benchmark.metric || benchmark.metricKey || '',
                                       name: benchmark.name || '',
                                       category: benchmark.category || 'performance',
                                       benchmarkType: benchmark.benchmarkType || '',
                                       competitorName: benchmark.competitorName || '',
-                                      unit: benchmark.unit || '',
-                                      benchmarkValue: benchmark.benchmarkValue || '',
+                                      unit: editUnit,
+                                      benchmarkValue: formatCustomIntegrationNumberInput(benchmark.benchmarkValue || '', editUnit),
                                       currentValue: resolvedCurrent.available && currentVal !== null ? String(currentVal) : '',
                                       industry: benchmark.industry || '',
                                       description: benchmark.description || '',
@@ -3081,9 +3150,9 @@ export default function CustomIntegrationAnalytics() {
                                       period: benchmark.period || 'monthly',
                                       confidenceLevel: benchmark.confidenceLevel || '',
                                       alertsEnabled: benchmark.alertsEnabled || false,
-                                      alertThreshold: benchmark.alertThreshold || '',
+                                      alertThreshold: benchmark.alertThreshold ? formatCustomIntegrationNumberInput(benchmark.alertThreshold, editUnit) : '',
                                       alertCondition: benchmark.alertCondition || 'below',
-                                      emailRecipients: benchmark.emailRecipients || ''
+                                      emailRecipients: Array.isArray(benchmark.emailRecipients) ? benchmark.emailRecipients.join(', ') : (benchmark.emailRecipients || '')
                                     });
                                     setIsBenchmarkModalOpen(true);
                                   }}
@@ -3124,130 +3193,49 @@ export default function CustomIntegrationAnalytics() {
                               </div>
                             </div>
 
-                            <div className="grid gap-4 md:grid-cols-3">
+                            <div className="grid grid-cols-2 gap-4 mt-4">
                               <div className="p-3 bg-muted rounded-lg">
                                 <div className="text-sm font-medium text-muted-foreground/70 mb-1">
-                                  Your Performance
+                                  Current
                                 </div>
-                                <div className="text-lg font-bold text-foreground">
-                                  {resolvedCurrent.available
-                                    ? formatCustomIntegrationMetricValue(currentVal, resolvedCurrent.unit || benchmark.unit || '', resolvedCurrent.option?.type)
-                                    : 'Unavailable'}
+                                <div className="text-xl font-bold text-foreground">
+                                  {currentVal !== null ? formatCustomIntegrationMetricValue(currentVal, displayUnit, resolvedCurrent.option?.type) : 'Unavailable'}
                                 </div>
                               </div>
 
                               <div className="p-3 bg-muted rounded-lg">
                                 <div className="text-sm font-medium text-muted-foreground/70 mb-1">
-                                  Benchmark Value
+                                  Benchmark
                                 </div>
-                                <div className="text-lg font-bold text-foreground">
-                                  {benchmarkVal !== null
-                                    ? formatCustomIntegrationMetricValue(benchmarkVal, benchmark.unit || resolvedCurrent.unit || '', resolvedCurrent.option?.type)
-                                    : 'Unavailable'}
-                                </div>
-                              </div>
-
-                              <div className="p-3 bg-muted rounded-lg">
-                                <div className="text-sm font-medium text-muted-foreground/70 mb-1">
-                                  Source
-                                </div>
-                                <div className="text-lg font-bold text-foreground">
-                                  {benchmark.source || 'Custom Integration'}
+                                <div className="text-xl font-bold text-foreground">
+                                  {benchmarkVal !== null ? formatCustomIntegrationMetricValue(benchmarkVal, displayUnit, resolvedCurrent.option?.type) : 'Unavailable'}
                                 </div>
                               </div>
                             </div>
                             
-                            {/* Progress Tracker - Benchmark Comparison */}
-                            {resolvedCurrent.available && currentVal !== null && benchmarkVal !== null && benchmarkVal > 0 && (() => {
-                              // Calculate accurate progress and comparison
-                              const current = currentVal;
-                              
-                              // Progress: percentage of benchmark achieved (no Math.min cap, use precision)
-                              const progressTowardBenchmark = (current / benchmarkVal) * 100;
-                              
-                              // Performance comparison
-                              const diff = current - benchmarkVal;
-                              const percentDiff = benchmarkVal > 0 ? ((diff / benchmarkVal) * 100) : 0;
-                              
-                              // Status determination based on industry-standard 120% threshold
-                              const isExceeding = current >= benchmarkVal * 1.2; // 120% or more
-                              const isMeetingBenchmark = current >= benchmarkVal && current < benchmarkVal * 1.2; // 100-119%
-                              const isBelowBenchmark = current < benchmarkVal; // Below 100%
-                              
-                              // Display values with appropriate precision
-                              const displayProgress = progressTowardBenchmark >= 100 
-                                ? '100' 
-                                : progressTowardBenchmark.toFixed(2);
-                              
-                              return (
-                                <div className="mt-4 space-y-3">
-                                  {/* Progress to Benchmark */}
-                                  <div className="space-y-2">
-                                    <div className="flex items-center justify-between text-sm">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground/70">Progress to Benchmark</span>
-                                        {(isExceeding || isMeetingBenchmark) && <TrendingUp className="w-4 h-4 text-green-600" />}
-                                        {isBelowBenchmark && <TrendingDown className="w-4 h-4 text-red-600" />}
-                                      </div>
-                                      <span className="font-semibold text-foreground">
-                                        {displayProgress}%
-                                      </span>
-                                    </div>
-                                    <div className="w-full bg-muted rounded-full h-2.5">
-                                      <div 
-                                        className={`h-2.5 rounded-full transition-all ${
-                                          isExceeding
-                                            ? 'bg-green-500'
-                                            : isMeetingBenchmark
-                                            ? 'bg-amber-500'
-                                            : 'bg-red-500'
-                                        }`}
-                                        style={{ width: `${Math.min(progressTowardBenchmark, 100)}%` }}
-                                      ></div>
-                                    </div>
+                            {progress ? (
+                              <div className="mt-4 space-y-3">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground/70">
+                                    <span>Progress</span>
+                                    <span>{progress.labelPct}%</span>
                                   </div>
-
-                                  {/* Benchmark Status and Comparison */}
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <div className={`text-xs px-2 py-1 rounded-md inline-flex items-center gap-1 ${
-                                      isExceeding
-                                        ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400'
-                                        : isMeetingBenchmark
-                                        ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400'
-                                        : 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400'
-                                    }`}>
-                                      {isExceeding && <CheckCircle2 className="w-3 h-3" />}
-                                      {isMeetingBenchmark && <CheckCircle2 className="w-3 h-3" />}
-                                      {isBelowBenchmark && <AlertCircle className="w-3 h-3" />}
-                                      <span>
-                                        {isExceeding
-                                          ? 'Exceeding Target' 
-                                          : isMeetingBenchmark
-                                          ? 'Meeting Target'
-                                          : 'Below Target'}
-                                      </span>
-                                    </div>
-                                    
-                                    <Badge 
-                                      variant={isExceeding || isMeetingBenchmark ? "default" : "secondary"}
-                                      className={isExceeding ? "bg-green-600 text-white" : isMeetingBenchmark ? "bg-amber-600 text-white" : "bg-red-600 text-white"}
-                                    >
-                                      {current >= benchmarkVal ? (
-                                        <>
-                                          <TrendingUp className="w-3 h-3 mr-1" />
-                                          {formatPct(percentDiff)} Above Benchmark
-                                        </>
-                                      ) : (
-                                        <>
-                                          <TrendingDown className="w-3 h-3 mr-1" />
-                                          {formatPct(Math.abs(percentDiff))} Below Benchmark
-                                        </>
-                                      )}
-                                    </Badge>
+                                  <div className="w-full bg-muted rounded-full h-2">
+                                    <div className={`h-2 rounded-full ${progress.color}`} style={{ width: `${progress.pct}%` }} />
                                   </div>
                                 </div>
-                              );
-                            })()}
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm text-muted-foreground/70">Performance</span>
+                                  <div className="flex items-center space-x-2">
+                                    <span className={`font-medium ${statusColor}`}>{deltaLabel}</span>
+                                    {delta >= 0 ? <TrendingUp className="w-4 h-4 text-green-600" /> : <TrendingDown className="w-4 h-4 text-red-600" />}
+                                    <span className={`text-xs font-medium ${statusColor}`}>{statusLabel}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground/70 mt-4">{resolvedCurrent.reason}</p>
+                            )}
                           </CardContent>
                         </Card>
                       );
@@ -3852,7 +3840,7 @@ export default function CustomIntegrationAnalytics() {
                       ...benchmarkForm,
                       metric: value,
                       currentValue: resolved.available && resolved.currentValue !== null ? String(resolved.currentValue) : '',
-                      unit: resolved.unit || '',
+                      unit: getCustomIntegrationUnitLabel(resolved.unit, resolved.option?.type),
                     });
                   }}
                 >
@@ -3893,15 +3881,22 @@ export default function CustomIntegrationAnalytics() {
                   id="benchmark-current"
                   type="text"
                   placeholder="0"
-                  value={benchmarkForm.currentValue ? parseFloat(benchmarkForm.currentValue).toLocaleString('en-US') : ''}
+                  value={formatCustomIntegrationNumberInput(benchmarkForm.currentValue, benchmarkForm.unit)}
+                  readOnly={benchmarkFormUsesSourceBackedMetric}
+                  className={benchmarkFormUsesSourceBackedMetric ? 'bg-muted cursor-not-allowed' : undefined}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/,/g, '');
+                    if (benchmarkFormUsesSourceBackedMetric) return;
+                    const value = cleanCustomIntegrationNumberInput(e.target.value);
                     if (value === '' || !isNaN(parseFloat(value))) {
                       setBenchmarkForm({ ...benchmarkForm, currentValue: value });
                     }
                   }}
+                  data-source-backed-current-value={benchmarkFormUsesSourceBackedMetric ? 'custom_integration_benchmark' : undefined}
                   data-testid="input-benchmark-current"
                 />
+                <p className="text-xs text-muted-foreground/70">
+                  {benchmarkFormUsesSourceBackedMetric ? 'Read from the active Custom Integration import.' : 'Enter a manual value for custom Benchmarks.'}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="benchmark-value">Benchmark Value *</Label>
@@ -3909,9 +3904,9 @@ export default function CustomIntegrationAnalytics() {
                   id="benchmark-value"
                   type="text"
                   placeholder="0"
-                  value={benchmarkForm.benchmarkValue ? parseFloat(benchmarkForm.benchmarkValue).toLocaleString('en-US') : ''}
+                  value={formatCustomIntegrationNumberInput(benchmarkForm.benchmarkValue, benchmarkForm.unit)}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/,/g, '');
+                    const value = cleanCustomIntegrationNumberInput(e.target.value);
                     if (value === '' || !isNaN(parseFloat(value))) {
                       setBenchmarkForm({ ...benchmarkForm, benchmarkValue: value });
                     }
@@ -4047,9 +4042,9 @@ export default function CustomIntegrationAnalytics() {
                         id="benchmark-alert-threshold"
                         type="text"
                         placeholder="e.g., 80"
-                        value={benchmarkForm.alertThreshold}
+                        value={formatCustomIntegrationNumberInput(benchmarkForm.alertThreshold, benchmarkForm.unit)}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/,/g, '');
+                          const value = cleanCustomIntegrationNumberInput(e.target.value);
                           if (value === '' || !isNaN(parseFloat(value))) {
                             setBenchmarkForm({ ...benchmarkForm, alertThreshold: value });
                           }
@@ -4129,7 +4124,7 @@ export default function CustomIntegrationAnalytics() {
               </Button>
               <Button
                 onClick={handleBenchmarkSubmit}
-                disabled={!benchmarkForm.name || !benchmarkForm.benchmarkValue || !campaignId || createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending}
+                disabled={!benchmarkForm.name || !benchmarkForm.metric || !benchmarkForm.benchmarkValue || !campaignId || createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending}
                 className="bg-purple-600 hover:bg-purple-700"
                 data-testid="button-benchmark-submit"
               >

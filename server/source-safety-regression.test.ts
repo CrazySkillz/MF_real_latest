@@ -1485,11 +1485,19 @@ describe("source safety regression guards", () => {
     expect(source).not.toContain("Progress to Target");
     expect(source).not.toContain("Timeframe Indicator");
     expect(source).toContain("!resolved.available || current === null || target === null || target <= 0");
-    expect(source).toContain("resolved.available && current !== null && benchmark > 0");
+    expect(source).toContain("!resolved.available || current === null || benchmarkValue === null || benchmarkValue <= 0");
     expect(source).toContain("resolvedCurrent.available && currentVal !== null && targetVal !== null && targetVal > 0");
     expect(source).toContain("resolvedCurrent.available && currentVal !== null && benchmarkVal !== null && benchmarkVal > 0");
     expect(source).toContain("const [initialKpiForm, setInitialKpiForm] = useState<any>(null)");
     expect(source).toContain("(Boolean(editingKPI) && !isKpiFormDirty)");
+    expect(source).toContain("computeCustomIntegrationBenchmarkProgress");
+    expect(source).toContain("90% or more of benchmark");
+    expect(source).toContain("70% to under 90% of benchmark");
+    expect(source).toContain("below 70% of benchmark");
+    expect(source).toContain("customIntegrationBenchmarkTracker.blocked");
+    expect(source).toContain("data-source-backed-current-value={benchmarkFormUsesSourceBackedMetric ? 'custom_integration_benchmark' : undefined}");
+    expect(source).not.toContain("current >= benchmarkVal * 1.2");
+    expect(source).not.toContain("Progress to Benchmark");
   });
 
   it("Custom Integration analytics shell follows the Google Sheets tab layout", () => {
@@ -1572,5 +1580,24 @@ describe("source safety regression guards", () => {
     expect(source).toContain("!kpiForm.name || !kpiForm.metric || !kpiForm.targetValue || !campaignId");
     expect(source).toContain("customIntegrationKpiTracker.blocked");
     expect(source).not.toContain("currentValue: toDecimalString(req.body.currentValue, \"0\")");
+  });
+
+  it("Custom Integration Benchmarks use source-backed values and Google Sheets thresholds", () => {
+    const source = readCustomIntegrationAnalyticsSource();
+
+    expect(source).toContain("const benchmarkFormUsesSourceBackedMetric = Boolean(benchmarkForm.metric && benchmarkForm.metric !== 'custom')");
+    expect(source).toContain("const computeCustomIntegrationBenchmarkProgress = (benchmark: any, current: number, benchmarkValue: number) => {");
+    expect(source).toContain('const status = ratio >= 0.9 ? "on_track" : ratio >= 0.7 ? "needs_attention" : "behind";');
+    expect(source).toContain("customIntegrationBenchmarkTracker.avgPct");
+    expect(source).toContain("Compare Custom Integration metrics against source-backed benchmark values.");
+    expect(source).toContain("90% or more of benchmark");
+    expect(source).toContain("70% to under 90% of benchmark");
+    expect(source).toContain("below 70% of benchmark");
+    expect(source).toContain("Read from the active Custom Integration import.");
+    expect(source).toContain("benchmarkType: benchmarkForm.benchmarkType || 'goal'");
+    expect(source).toContain("sourceScope: activeCustomIntegrationSourceScope");
+    expect(source).toContain("data-source-backed-current-value={benchmarkFormUsesSourceBackedMetric ? 'custom_integration_benchmark' : undefined}");
+    expect(source).not.toContain("current >= benchmarkVal * 1.2");
+    expect(source).not.toContain("Progress to Benchmark");
   });
 });

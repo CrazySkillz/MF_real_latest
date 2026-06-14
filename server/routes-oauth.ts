@@ -17711,18 +17711,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Use filtered rows for summary if we have a campaign name match, otherwise use all rows
-      const rowsForSummary = filteredRowsForSummary.length > 0 && campaignFilterColumnIndex >= 0 && campaignFilterValue
+      const rowsForSummary = hasMappedCampaignFilter
         ? filteredRowsForSummary
-        : allRows;
+        : filteredRowsForSummary.length > 0 && campaignFilterColumnIndex >= 0 && campaignFilterValue
+          ? filteredRowsForSummary
+          : allRows;
 
       devLog(`[Google Sheets Summary] Using ${rowsForSummary.length} rows for summary (filtered by campaign value "${campaignFilterValue || campaignName}") out of ${allRows.length} total rows`);
 
-      // Process spreadsheet data to extract campaign metrics (using filtered rows for summary, but show all rows in table)
+      // Process spreadsheet data to extract campaign metrics and table rows from the same filtered scope.
       let campaignData = {
         totalRows: rows.length, // Keep original total for reference
         filteredRows: rowsForSummary.length, // Number of rows used for summary
         headers: headers,
-        data: allRows, // Show all rows in the table (not filtered)
+        data: rowsForSummary,
         sampleData: rowsForSummary.slice(0, 6), // First 5 filtered data rows
         metrics: {} as Record<string, number>,
         detectedColumns: [] as Array<{ name: string, index: number, type: string, total: number, count?: number, summaryValue?: number, aggregation?: string }>

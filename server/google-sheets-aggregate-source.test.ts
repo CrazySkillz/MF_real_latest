@@ -283,6 +283,10 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(routes).toContain("const campaignFilterValue = String(mappedCampaignValue || campaignName || '').toLowerCase().trim();");
     expect(routes).toContain("const hasMappedCampaignFilter = mappedCampaignColumnIndex >= 0 && !!mappedCampaignValue;");
     expect(routes).toContain("campaignNameValue === campaignFilterValue");
+    expect(routes).toContain("const rowsForSummary = hasMappedCampaignFilter");
+    expect(routes).toContain("data: rowsForSummary");
+    expect(routes).not.toContain("data: allRows");
+    expect(page).toContain("(sheetsData.filteredRows ?? sheetsData.data?.length ?? sheetsData.totalRows).toLocaleString()");
     expect(page).toContain("getSummaryMetricDisplayValue(col)");
     expect(page).toContain("getSummaryMetricBusinessPriority");
     expect(page).toContain("getExecutiveSummaryColumns");

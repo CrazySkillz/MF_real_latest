@@ -2409,7 +2409,7 @@ export default function GoogleSheetsData() {
                       </CardTitle>
                       <CardDescription className="flex items-center justify-between">
                         <span>
-                          {sheetsData.totalRows} rows • Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
+                          {(sheetsData.filteredRows ?? sheetsData.data?.length ?? sheetsData.totalRows).toLocaleString()} rows - Last updated {new Date(sheetsData.lastUpdated).toLocaleString()}
                           {sheetsData.lastDataRefreshAt && (
                             <span className="ml-2 text-xs text-muted-foreground/70">
                               (cached {new Date(sheetsData.lastDataRefreshAt).toLocaleString()})

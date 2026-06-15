@@ -217,6 +217,15 @@ function getSavedCustomIntegrationSourceScope(row: any): CustomIntegrationSource
   return scope?.platform === 'custom_integration' ? scope : null;
 }
 
+function getCustomIntegrationReportSourceScope(config: any): CustomIntegrationSourceScope | null {
+  const scope = config?.sourceScope;
+  return scope?.platform === 'custom_integration'
+    && scope?.scopeType === 'latest_validated_import'
+    && String(scope?.integrationId || '').trim()
+    ? scope
+    : null;
+}
+
 function cleanCustomIntegrationNumberInput(value: any): string {
   return String(value || '').replace(/,/g, '').replace(/[^0-9.\-]/g, '');
 }
@@ -1255,6 +1264,25 @@ export default function CustomIntegrationAnalytics() {
   const handleGenerateReport = async (overrideReport?: any) => {
     const reportName = overrideReport?.name || reportForm.name || 'Custom Integration Report';
     const reportType = overrideReport?.reportType || reportForm.reportType || 'overview';
+    const config = parseCustomIntegrationReportConfiguration(overrideReport?.configuration || customReportConfig);
+    const savedReportSourceScope = getCustomIntegrationReportSourceScope(config);
+    const activeIntegrationId = String(customIntegration?.id || '').trim();
+    if (overrideReport && !savedReportSourceScope) {
+      toast({
+        title: "Report Source Unavailable",
+        description: "Saved Custom Integration report source scope is missing. Edit and update this report before downloading it.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (overrideReport && savedReportSourceScope?.integrationId && (!activeIntegrationId || savedReportSourceScope.integrationId !== activeIntegrationId)) {
+      toast({
+        title: "Report Source Unavailable",
+        description: "Saved Custom Integration report source is no longer connected.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     // Dynamically import jsPDF
     const { jsPDF } = await import('jspdf');
@@ -1265,7 +1293,6 @@ export default function CustomIntegrationAnalytics() {
     
     let y = 70;
 
-    const config = parseCustomIntegrationReportConfiguration(overrideReport?.configuration || customReportConfig);
     const safeText = (value: any) => String(value ?? '').replace(/[^\x20-\x7E]/g, ' ').trim();
     const ensureSpace = (height: number) => {
       if (y + height > 280) {
@@ -2412,10 +2439,13 @@ export default function CustomIntegrationAnalytics() {
     if (metricKey && metricKey !== 'custom') {
       const savedScope = getSavedCustomIntegrationSourceScope(item);
       const activeIntegrationId = String(customIntegration?.id || '').trim();
-      if (savedScope?.scopeType && savedScope.scopeType !== 'latest_validated_import') {
+      if (!savedScope || !String(savedScope?.integrationId || '').trim()) {
+        return { available: false, currentValue: null as number | null, unit: String(item?.unit || ''), option: undefined, sourceLabel: '', reason: 'Saved Custom Integration source scope is missing. Edit and update this row to reconnect it to a source.' };
+      }
+      if (savedScope.scopeType !== 'latest_validated_import') {
         return { available: false, currentValue: null as number | null, unit: String(item?.unit || ''), option: undefined, sourceLabel: '', reason: 'Saved Custom Integration source scope is unsupported.' };
       }
-      if (savedScope?.integrationId && activeIntegrationId && savedScope.integrationId !== activeIntegrationId) {
+      if (!activeIntegrationId || savedScope.integrationId !== activeIntegrationId) {
         return { available: false, currentValue: null as number | null, unit: String(item?.unit || ''), option: undefined, sourceLabel: '', reason: 'Saved Custom Integration source is no longer connected.' };
       }
       return resolveCustomIntegrationMetric(metricsData, metricKey);

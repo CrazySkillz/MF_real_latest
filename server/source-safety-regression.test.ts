@@ -1478,6 +1478,8 @@ describe("source safety regression guards", () => {
     expect(source).toContain("within +/-5% of target");
     expect(source).toContain("more than -5% below target");
     expect(source).toContain("Source: {resolvedCurrent.sourceLabel || \"Saved Custom Integration source unavailable\"}");
+    expect(source).toContain("if (!savedScope || !String(savedScope?.integrationId || '').trim())");
+    expect(source).toContain("Saved Custom Integration source scope is missing. Edit and update this row to reconnect it to a source.");
     expect(source).toContain("formatCustomIntegrationMetricValue(currentVal, displayUnit, resolvedCurrent.option?.type)");
     expect(source).toContain("formatPct(progress.attainmentPct)");
     expect(source).toContain("progress.effectiveDeltaPct > 0");
@@ -1687,14 +1689,24 @@ describe("source safety regression guards", () => {
     expect(source).toContain("formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type)");
     expect(source).toContain("resolveCustomIntegrationCurrentValue(kpi)");
     expect(source).toContain("resolveCustomIntegrationCurrentValue(benchmark)");
+    expect(source).toContain("getCustomIntegrationReportSourceScope(config)");
+    expect(source).toContain("Saved Custom Integration report source scope is missing. Edit and update this report before downloading it.");
+    expect(source).toContain("Saved Custom Integration report source is no longer connected.");
     expect(source).toContain("customIntegrationInsights.recommendations.forEach");
     expect(source).not.toContain("Source: {parseCustomIntegrationReportConfiguration(report.configuration).sourceLabel || latestImportLabel}");
     expect(source).not.toContain("handleGenerateReport();\n      return;\n    }\n    \n    const reportData: any = {\n      ...reportForm");
 
     expect(scheduler).toContain("'custom-integration'");
     expect(scheduler).toContain('normalized === "custom-integration" || normalized === "custom_integration"');
+    expect(scheduler).toContain("function getCustomIntegrationReportSourceScope");
     expect(scheduler).toContain("async function buildCustomIntegrationScheduledPdfAttachment");
+    expect(scheduler).toContain("const reportSourceScope = getCustomIntegrationReportSourceScope(configuration);");
+    expect(scheduler).toContain("if (!reportSourceScope) return null;");
+    expect(scheduler).toContain("storage.getCustomIntegration(campaignId)");
     expect(scheduler).toContain("storage.getLatestCustomIntegrationMetrics(campaignId)");
+    expect(scheduler).toContain("const rowScope = getCustomIntegrationReportSourceScope(row?.calculationConfig);");
+    expect(scheduler).toContain("Saved Custom Integration source scope is missing; Target");
+    expect(scheduler).toContain("Saved Custom Integration source scope is missing; Benchmark");
     expect(scheduler).toContain("resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey)");
     expect(scheduler).toContain('storage.getPlatformKPIs("custom-integration", campaignId)');
     expect(scheduler).toContain('storage.getPlatformBenchmarks("custom-integration", campaignId)');

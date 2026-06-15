@@ -185,6 +185,19 @@ function parseReportConfiguration(configuration: any): Record<string, any> {
   return typeof configuration === "object" ? configuration : {};
 }
 
+function getCustomIntegrationReportSourceScope(configuration: any): Record<string, any> | null {
+  const scope = parseReportConfiguration(configuration)?.sourceScope;
+  const platform = String(scope?.platform || "").replace("-", "_");
+  const integrationId = String(scope?.integrationId || "").trim();
+  return platform === "custom_integration" && scope?.scopeType === "latest_validated_import" && integrationId ? scope : null;
+}
+
+function customIntegrationSourceScopeMatchesReport(rowScope: any, reportScope: any): boolean {
+  const rowIntegrationId = String(rowScope?.integrationId || "").trim();
+  const reportIntegrationId = String(reportScope?.integrationId || "").trim();
+  return Boolean(rowIntegrationId && reportIntegrationId && rowIntegrationId === reportIntegrationId);
+}
+
 function platformRequiresSourceBackedReportOutput(platformType: any): boolean {
   const normalized = String(platformType || "").trim().toLowerCase();
   return normalized === "instagram" || normalized === "tiktok" || normalized === "google_sheets" || normalized === "custom-integration" || normalized === "custom_integration";
@@ -280,6 +293,14 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
   const { report, windowStart, windowEnd, campaignName } = args;
   const campaignId = String(report?.campaignId || "").trim();
   if (!campaignId) return null;
+  const configuration = parseReportConfiguration(report?.configuration);
+  const reportSourceScope = getCustomIntegrationReportSourceScope(configuration);
+  if (!reportSourceScope) return null;
+  const sourceIntegrationId = String(reportSourceScope.integrationId || "").trim();
+  if (sourceIntegrationId) {
+    const integration = await storage.getCustomIntegration(campaignId).catch(() => null as any);
+    if (String(integration?.id || "").trim() !== sourceIntegrationId) return null;
+  }
   const metrics = await storage.getLatestCustomIntegrationMetrics(campaignId).catch(() => null as any);
   if (!metrics) return null;
 
@@ -311,6 +332,11 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
       : `Unavailable - ${resolved.reason}`;
     addText(`- ${resolved.label}: ${value}`, { indent: 4 });
   };
+  const formatSavedCustomIntegrationGoal = (value: any, unit: any) => {
+    const normalizedUnit = String(unit || "");
+    const type = normalizedUnit === "$" ? "currency" : normalizedUnit === "%" ? "percent" : normalizedUnit === "x" ? "ratio" : "count";
+    return formatCustomIntegrationReportMetric(parseCustomIntegrationMetricNumber(value), normalizedUnit, type);
+  };
   const addKpiRows = async (selectedIds?: Set<string>) => {
     const rows = await storage.getPlatformKPIs("custom-integration", campaignId).catch(() => [] as any[]);
     const filtered = rows.filter((row: any) => !selectedIds || selectedIds.has(String(row?.id || "")));
@@ -319,10 +345,20 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
       return;
     }
     filtered.forEach((row: any) => {
+      const rowScope = getCustomIntegrationReportSourceScope(row?.calculationConfig);
+      const name = safeText(row?.name || row?.metric || "KPI");
+      if (!rowScope) {
+        addText(`- ${name}: Current Unavailable - Saved Custom Integration source scope is missing; Target ${formatSavedCustomIntegrationGoal(row?.targetValue, row?.unit)}`, { indent: 4 });
+        return;
+      }
+      if (!customIntegrationSourceScopeMatchesReport(rowScope, reportSourceScope)) {
+        addText(`- ${name}: Current Unavailable - Saved Custom Integration source is no longer connected; Target ${formatSavedCustomIntegrationGoal(row?.targetValue, row?.unit)}`, { indent: 4 });
+        return;
+      }
       const resolved = resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey);
       const current = resolved.available ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type) : `Unavailable - ${resolved.reason}`;
       const target = formatCustomIntegrationReportMetric(parseCustomIntegrationMetricNumber(row?.targetValue), resolved.unit || row?.unit || "", resolved.type);
-      addText(`- ${safeText(row?.name || row?.metric || "KPI")}: Current ${current}; Target ${target}`, { indent: 4 });
+      addText(`- ${name}: Current ${current}; Target ${target}`, { indent: 4 });
     });
   };
   const addBenchmarkRows = async (selectedIds?: Set<string>) => {
@@ -333,10 +369,20 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
       return;
     }
     filtered.forEach((row: any) => {
+      const rowScope = getCustomIntegrationReportSourceScope(row?.calculationConfig);
+      const name = safeText(row?.name || row?.metric || "Benchmark");
+      if (!rowScope) {
+        addText(`- ${name}: Current Unavailable - Saved Custom Integration source scope is missing; Benchmark ${formatSavedCustomIntegrationGoal(row?.benchmarkValue, row?.unit)}`, { indent: 4 });
+        return;
+      }
+      if (!customIntegrationSourceScopeMatchesReport(rowScope, reportSourceScope)) {
+        addText(`- ${name}: Current Unavailable - Saved Custom Integration source is no longer connected; Benchmark ${formatSavedCustomIntegrationGoal(row?.benchmarkValue, row?.unit)}`, { indent: 4 });
+        return;
+      }
       const resolved = resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey);
       const current = resolved.available ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type) : `Unavailable - ${resolved.reason}`;
       const benchmark = formatCustomIntegrationReportMetric(parseCustomIntegrationMetricNumber(row?.benchmarkValue), resolved.unit || row?.unit || "", resolved.type);
-      addText(`- ${safeText(row?.name || row?.metric || "Benchmark")}: Current ${current}; Benchmark ${benchmark}`, { indent: 4 });
+      addText(`- ${name}: Current ${current}; Benchmark ${benchmark}`, { indent: 4 });
     });
   };
   const addInsightRows = () => {
@@ -355,7 +401,6 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
     }
   };
 
-  const configuration = parseReportConfiguration(report?.configuration);
   const reportType = String(report?.reportType || "overview").toLowerCase();
   addText(String(report?.name || "Custom Integration Report"), { size: 18, bold: true });
   addText(`Campaign: ${campaignName || "Campaign"}`);

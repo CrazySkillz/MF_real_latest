@@ -1636,6 +1636,7 @@ describe("source safety regression guards", () => {
 
   it("Custom Integration Reports use source-backed values and scheduler-safe schedule payloads", () => {
     const source = readCustomIntegrationAnalyticsSource();
+    const storage = readStorageSource();
     const scheduler = fs.readFileSync(path.join(process.cwd(), "server", "report-scheduler.ts"), "utf8");
     const routesSource = readRoutesSource();
 
@@ -1648,6 +1649,9 @@ describe("source safety regression guards", () => {
     expect(source).toContain("onClick={() => handleDownloadReport(report)}");
     expect(source).toContain("onClick={() => handleEditReport(report)}");
     expect(source).toContain("onClick={() => deleteReportMutation.mutate(report.id)}");
+    expect(source).toContain("status: 'active'");
+    expect(source).not.toContain("Back to Standard Reports");
+    expect(source).not.toContain('data-testid="button-back-to-standard"');
     expect(source).toContain("CUSTOM_INTEGRATION_REPORT_TEMPLATES");
     expect(source).toContain("max-w-5xl max-h-[90vh] overflow-y-auto");
     expect(source).toContain("Pre-built professional report templates");
@@ -1695,6 +1699,10 @@ describe("source safety regression guards", () => {
     expect(scheduler).toContain('storage.getPlatformKPIs("custom-integration", campaignId)');
     expect(scheduler).toContain('storage.getPlatformBenchmarks("custom-integration", campaignId)');
     expect(scheduler).toContain("return buildCustomIntegrationScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });");
+
+    expect(storage).toContain('platformType === "custom-integration" || platformType === "custom_integration"');
+    expect(storage).toContain('["custom-integration", "custom_integration"]');
+    expect(storage).toContain("inArray(linkedinReports.platformType, platformTypes)");
 
     expect(routesSource).toContain('...(normalizedPlatformType === "custom-integration" ? ["summary"] : [])');
     expect(routesSource).toContain('sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration"');

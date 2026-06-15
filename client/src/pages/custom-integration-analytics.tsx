@@ -172,7 +172,7 @@ function createEmptyCustomIntegrationReportForm() {
     quarterTiming: 'end',
     scheduleTime: '9:00 AM',
     emailRecipients: '',
-    status: 'draft'
+    status: 'active'
   };
 }
 
@@ -5320,19 +5320,6 @@ export default function CustomIntegrationAnalytics() {
               </Button>
               
               <div className="flex items-center gap-2">
-                {reportModalStep === 'custom' && (
-                  <Button
-                    variant="link"
-                    onClick={() => {
-                      setReportModalStep('standard');
-                      setReportForm({ ...reportForm, reportType: '' });
-                    }}
-                    data-testid="button-back-to-standard"
-                  >
-                    Back to Standard Reports
-                  </Button>
-                )}
-                
                 {reportForm.reportType && reportForm.reportType !== 'custom' && (
                   <Button
                     onClick={editingReportId ? handleUpdateReport : handleCreateReport}

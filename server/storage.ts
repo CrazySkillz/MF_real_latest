@@ -3214,15 +3214,18 @@ export class DatabaseStorage implements IStorage {
   // Platform Reports methods
   async getPlatformReports(platformType: string, campaignId?: string): Promise<LinkedInReport[]> {
     // Filter reports by platformType and optionally by campaignId
+    const platformTypes = platformType === "custom-integration" || platformType === "custom_integration"
+      ? ["custom-integration", "custom_integration"]
+      : [platformType];
     if (campaignId) {
       return await db.select()
         .from(linkedinReports)
-        .where(and(eq(linkedinReports.platformType, platformType), eq(linkedinReports.campaignId, campaignId)))
+        .where(and(inArray(linkedinReports.platformType, platformTypes), eq(linkedinReports.campaignId, campaignId)))
         .orderBy(linkedinReports.createdAt);
     } else {
       return await db.select()
         .from(linkedinReports)
-        .where(and(eq(linkedinReports.platformType, platformType), isNull(linkedinReports.campaignId)))
+        .where(and(inArray(linkedinReports.platformType, platformTypes), isNull(linkedinReports.campaignId)))
         .orderBy(linkedinReports.createdAt);
     }
   }

@@ -224,10 +224,12 @@ GA4 Reports is the required layout and interaction template for connected-platfo
 Any connected-platform Reports implementation, including Custom Integration, must preserve this standard pattern:
 
 - report cards use the GA4 summary-card layout with title, optional description, report type pill, schedule/last-sent/created metadata, and Download/Edit/Delete actions
+- scheduled and unscheduled saved reports must appear in that same GA4-style report card list
 - Custom Report creation uses the GA4 Custom Report section picker pattern, with clickable expandable sections for each analytics tab and selectable rows inside the relevant section
 - Edit must reopen the report dialog with saved values prefilled
 - Update Report must remain disabled until the user changes at least one saved value
 - Download and Delete actions must remain wired to the saved report row and must not depend on visible card-only metadata
+- do not add extra modal navigation links, such as `Back to Standard Reports`, unless the GA4 Reports template has the same control
 
 ## Platform-Level vs Campaign-Level Analytics
 

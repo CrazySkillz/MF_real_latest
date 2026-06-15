@@ -408,4 +408,67 @@ describe("Performance Summary aggregate contract", () => {
     expect(aggregate.totals.spend).toMatchObject({ available: true, value: 0, sources: ["linkedin"] });
     expect(aggregate.totals.sessions.available).toBe(false);
   });
+
+  it("keeps missing Custom Integration fields unavailable instead of zero-filling aggregate availability", () => {
+    const aggregate = buildPerformanceSummaryAggregate({
+      campaignId: "campaign-custom-partial",
+      dateRange: "30days",
+      ga4: { connected: false },
+      webAnalytics: { connected: false, provider: null },
+      spend: { unifiedSpend: 100, spendSource: "platform_spend_fallback" },
+      platforms: {
+        customIntegration: { connected: true, clicks: 0, spend: 100 },
+      },
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [],
+    });
+    const custom = aggregate.sources.find((source) => source.id === "custom_integration");
+
+    expect(custom?.includedMetrics).toEqual(["clicks", "spend"]);
+    expect(custom?.excludedMetrics).toContainEqual({
+      metric: "impressions",
+      reason: "Selected Custom Integration import does not include impressions",
+    });
+    expect(aggregate.totals.clicks).toMatchObject({ available: true, value: 0, sources: ["custom_integration"] });
+    expect(aggregate.totals.spend).toMatchObject({ available: true, value: 100, sources: ["custom_integration"] });
+    expect(aggregate.totals.impressions.available).toBe(false);
+    expect(aggregate.totals.conversions.available).toBe(false);
+    expect(aggregate.totals.sessions).toMatchObject({
+      available: false,
+      unavailableReasons: ["No connected web analytics source provides sessions"],
+    });
+  });
+
+  it("only treats Custom Integration as a web analytics source when the caller selects it as the web provider", () => {
+    const baseInput = {
+      campaignId: "campaign-custom-web",
+      dateRange: "30days",
+      ga4: { connected: false },
+      spend: { unifiedSpend: 0, spendSource: "platform_spend_fallback" },
+      platforms: {
+        customIntegration: { connected: true, users: 120, sessions: 300, pageviews: 650, conversions: 12 },
+      },
+      revenue: { onsiteRevenue: 0, offsiteRevenue: 0, totalRevenue: 0 },
+      revenueSources: [],
+    };
+    const notWeb = buildPerformanceSummaryAggregate({
+      ...baseInput,
+      webAnalytics: { connected: false, provider: null },
+    });
+    const asWeb = buildPerformanceSummaryAggregate({
+      ...baseInput,
+      webAnalytics: { connected: true, provider: "custom_integration", users: 120, sessions: 300, conversions: 12 },
+    });
+
+    expect(notWeb.sources.find((source) => source.id === "custom_integration")?.includedMetrics).toEqual(["conversions"]);
+    expect(notWeb.totals.sessions.available).toBe(false);
+    expect(notWeb.sources.find((source) => source.id === "custom_integration")?.excludedMetrics).toContainEqual({
+      metric: "sessions",
+      reason: "Custom Integration is not the active web analytics source",
+    });
+    expect(asWeb.sources.find((source) => source.id === "custom_integration")?.includedMetrics).toEqual(["conversions", "users", "sessions", "pageviews"]);
+    expect(asWeb.totals.sessions).toMatchObject({ available: true, value: 300, sources: ["custom_integration"] });
+    expect(asWeb.totals.users).toMatchObject({ available: true, value: 120, sources: ["custom_integration"] });
+    expect(asWeb.totals.conversions).toMatchObject({ available: true, value: 12, sources: ["custom_integration"] });
+  });
 });

@@ -24,6 +24,40 @@ const parseNum = (val: any): number => {
   return isNaN(num) || !isFinite(num) ? 0 : num;
 };
 
+const hasImportedMetric = (source: any, metricName: string): boolean => {
+  const value = source?.[metricName];
+  return value !== null && typeof value !== 'undefined' && value !== '';
+};
+
+const buildCustomIntegrationAggregateMetricLists = (source: any, isWebProvider: boolean) => {
+  const paidMetricKeys = ['impressions', 'clicks', 'spend', 'conversions'];
+  const webMetricKeys = ['users', 'sessions', 'pageviews', 'revenue'];
+  return {
+    includedMetrics: [
+      ...paidMetricKeys.filter((metricName) => hasImportedMetric(source, metricName)),
+      ...(isWebProvider ? webMetricKeys.filter((metricName) => hasImportedMetric(source, metricName)) : []),
+    ],
+    excludedMetrics: [
+      ...paidMetricKeys
+        .filter((metricName) => !hasImportedMetric(source, metricName))
+        .map((metricName) => ({
+          metric: metricName,
+          reason: `Selected Custom Integration import does not include ${metricName}`,
+        })),
+      ...webMetricKeys
+        .filter((metricName) => !isWebProvider || !hasImportedMetric(source, metricName))
+        .map((metricName) => ({
+          metric: metricName,
+          reason: isWebProvider
+            ? `Selected Custom Integration import does not include ${metricName}`
+            : hasImportedMetric(source, metricName)
+              ? 'Custom Integration is not the active web analytics source'
+              : `Selected Custom Integration import does not include ${metricName}`,
+        })),
+    ],
+  };
+};
+
 const hasSnapshotMetricValue = (metrics: SnapshotMetrics & { detailedMetrics: any }) => {
   const totals = metrics.detailedMetrics?.performanceSummary?.totals || {};
   return metrics.totalImpressions > 0
@@ -352,14 +386,17 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
 
   const googleSheetsConnections = await storage.getGoogleSheetsConnections(campaignId).catch(() => [] as any[]);
   const googleSheets = buildGoogleSheetsPlatformSourceForAggregate(campaign, googleSheetsConnections);
+  const customIntegrationHasWebAnalytics = ['users', 'sessions', 'pageviews'].some((metricName) => hasImportedMetric(customIntegrationData, metricName));
+  const customIntegrationIsWebProvider = !ga4Connected && customIntegrationConnected && customIntegrationHasWebAnalytics;
+  const customIntegrationAggregateMetrics = buildCustomIntegrationAggregateMetricLists(customIntegrationData, customIntegrationIsWebProvider);
 
   const performanceSummary = buildPerformanceSummaryAggregate({
     campaignId,
     dateRange: "90days",
     ga4: { connected: ga4Connected, ...ga4Data },
     webAnalytics: {
-      connected: ga4Connected || customIntegrationConnected,
-      provider: ga4Connected ? "ga4" : customIntegrationConnected ? "custom_integration" : null,
+      connected: ga4Connected || customIntegrationIsWebProvider,
+      provider: ga4Connected ? "ga4" : customIntegrationIsWebProvider ? "custom_integration" : null,
       revenue: ga4Connected ? ga4Data.revenue : parseNum(customIntegrationData.revenue),
       conversions: ga4Connected ? ga4Data.conversions : parseNum(customIntegrationData.conversions),
       sessions: ga4Connected ? ga4Data.sessions : parseNum(customIntegrationData.sessions),
@@ -610,8 +647,8 @@ export async function aggregateCampaignMetrics(campaignId: string, options: Aggr
         category: "custom",
         connected: customIntegrationConnected,
         capabilities: ["impressions", "clicks", "spend", "conversions", "users", "sessions", "pageviews", "revenue"],
-        includedMetrics: customIntegrationConnected ? ["impressions", "clicks", "spend", "conversions", "users", "sessions", "pageviews", "revenue"] : [],
-        excludedMetrics: [],
+        includedMetrics: customIntegrationConnected ? customIntegrationAggregateMetrics.includedMetrics : [],
+        excludedMetrics: customIntegrationConnected ? customIntegrationAggregateMetrics.excludedMetrics : [],
         dailyRows: [],
       },
     ],

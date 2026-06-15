@@ -49,6 +49,11 @@ const parseNum = (value: any): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const hasSourceMetric = (source: any, metricName: string): boolean => {
+  const value = source?.[metricName];
+  return value !== null && typeof value !== "undefined" && value !== "";
+};
+
 const round2 = (value: number): number => parseFloat(value.toFixed(2));
 
 const metric = (value: number | null, sources: string[], unavailableReasons: string[] = []): MetricAvailability => ({
@@ -197,6 +202,12 @@ const mainSourceAdapters: SourceAdapter[] = [
       const custom = input.platforms?.customIntegration || {};
       const customConnected = custom.connected === true;
       const customIsWebProvider = input.webAnalytics?.provider === "custom_integration";
+      const paidMetricKeys = ["impressions", "clicks", "spend", "conversions"];
+      const webMetricKeys = ["users", "sessions", "pageviews", "revenue"];
+      const includedPaidMetrics = paidMetricKeys.filter((metricName) => hasSourceMetric(custom, metricName));
+      const includedWebMetrics = customIsWebProvider
+        ? webMetricKeys.filter((metricName) => hasSourceMetric(custom, metricName))
+        : [];
       return {
         id: "custom_integration",
         label: "Custom Integration",
@@ -204,13 +215,28 @@ const mainSourceAdapters: SourceAdapter[] = [
         connected: customConnected,
         capabilities: ["impressions", "clicks", "spend", "conversions", "users", "sessions", "pageviews", "revenue"],
         includedMetrics: customConnected
-          ? ["impressions", "clicks", "spend", "conversions", ...(customIsWebProvider ? ["users", "sessions", "pageviews", "revenue"] : [])]
+          ? [...includedPaidMetrics, ...includedWebMetrics]
           : [],
-        excludedMetrics: customConnected && !customIsWebProvider
+        excludedMetrics: customConnected
           ? [
-              { metric: "users", reason: "GA4 is the primary web analytics source" },
-              { metric: "sessions", reason: "GA4 is the primary web analytics source" },
-              { metric: "pageviews", reason: "GA4 is the primary web analytics source" },
+              ...paidMetricKeys
+                .filter((metricName) => !hasSourceMetric(custom, metricName))
+                .map((metricName) => ({
+                  metric: metricName,
+                  reason: `Selected Custom Integration import does not include ${metricName}`,
+                })),
+              ...webMetricKeys
+                .filter((metricName) => !customIsWebProvider || !hasSourceMetric(custom, metricName))
+                .map((metricName) => ({
+                  metric: metricName,
+                  reason: customIsWebProvider
+                    ? `Selected Custom Integration import does not include ${metricName}`
+                    : input.webAnalytics?.provider === "ga4"
+                      ? "GA4 is the primary web analytics source"
+                      : hasSourceMetric(custom, metricName)
+                        ? "Custom Integration is not the active web analytics source"
+                        : `Selected Custom Integration import does not include ${metricName}`,
+                })),
             ]
           : [],
         metrics: {

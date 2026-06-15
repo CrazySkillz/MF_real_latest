@@ -11710,20 +11710,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Custom integration inputs (webhook-fed)
       let custom: any = { connected: false };
+      const hasImportedCustomMetric = (source: any, key: string) => {
+        const value = source?.[key];
+        return value !== null && typeof value !== "undefined" && value !== "";
+      };
+      const customMetricValue = (source: any, key: string) =>
+        hasImportedCustomMetric(source, key) ? parseNum(source?.[key]) : null;
       try {
         if (customIntegration) {
           const latest = await storage.getLatestCustomIntegrationMetrics(campaignId);
           const m: any = latest || {};
           custom = {
             connected: true,
-            spend: parseNum(m.spend),
-            clicks: parseNum(m.clicks),
-            impressions: parseNum(m.impressions),
-            conversions: parseNum(m.conversions),
-            users: parseNum(m.users),
-            sessions: parseNum(m.sessions),
-            pageviews: parseNum(m.pageviews),
-            revenue: parseNum((m as any).revenue),
+            spend: customMetricValue(m, "spend"),
+            clicks: customMetricValue(m, "clicks"),
+            impressions: customMetricValue(m, "impressions"),
+            conversions: customMetricValue(m, "conversions"),
+            users: customMetricValue(m, "users"),
+            sessions: customMetricValue(m, "sessions"),
+            pageviews: customMetricValue(m, "pageviews"),
+            revenue: customMetricValue(m, "revenue"),
             lastUploadedAt: m.uploadedAt || null,
           };
         }
@@ -11732,11 +11738,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Web Analytics (platform-agnostic outcome source):
-      // Prefer GA4 when connected; otherwise allow Custom Integration to serve as the web analytics outcome source.
+      // Prefer GA4 when connected; otherwise allow Custom Integration only when the import contains web analytics fields.
+      const customHasWebAnalytics = ["users", "sessions", "pageviews"].some((key) => hasImportedCustomMetric(custom, key));
       const webAnalyticsProvider =
         ga4Totals?.connected === true
           ? "ga4"
-          : custom?.connected === true
+          : custom?.connected === true && customHasWebAnalytics
             ? "custom_integration"
             : null;
       const webAnalytics = {
@@ -11772,7 +11779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // - If the user imported spend (persistedSpend > 0), use that as campaign marketing spend.
       // - Otherwise, fall back to sum of connected ad-platform spends.
       const instagramSpendForAggregate = instagramSpend;
-      const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend).toFixed(2));
+      const platformSpendFallback = parseFloat((linkedInSpend + metaSpend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend + parseNum(custom?.spend)).toFixed(2));
       const unifiedSpend = persistedSpend > 0 ? persistedSpend : platformSpendFallback;
       const spendSource = persistedSpend > 0 ? "persisted_spend_sources" : "platform_spend_fallback";
 
@@ -27530,22 +27537,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch Custom Integration metrics
-      let customMetrics: any = { impressions: 0, engagements: 0, clicks: 0, conversions: 0, spend: 0, revenue: 0 };
+      let customMetrics: any = { impressions: null, engagements: null, clicks: null, conversions: null, spend: null, revenue: null };
       let customIntegrationRawData: any = null;
       let customIntegrationLastUpdate: string | null = null;
       let hasCustomIntegration = false;
+      const hasImportedCustomExecutiveMetric = (source: any, key: string) => {
+        const value = source?.[key];
+        return value !== null && typeof value !== "undefined" && value !== "";
+      };
+      const customExecutiveMetricValue = (source: any, key: string) =>
+        hasImportedCustomExecutiveMetric(source, key) ? parseNum(source?.[key]) : null;
 
       try {
         const customIntegration = await storage.getLatestCustomIntegrationMetrics(id);
         if (customIntegration) {
           hasCustomIntegration = true;
           customIntegrationRawData = customIntegration;
-          customMetrics.impressions = parseNum(customIntegration.pageviews);
-          customMetrics.engagements = parseNum(customIntegration.sessions);
-          customMetrics.clicks = parseNum(customIntegration.clicks);
-          customMetrics.conversions = parseNum(customIntegration.conversions);
-          customMetrics.spend = parseNum(customIntegration.spend);
-          customMetrics.revenue = 0;
+          customMetrics.impressions = customExecutiveMetricValue(customIntegration, "impressions");
+          customMetrics.engagements = customExecutiveMetricValue(customIntegration, "engagements");
+          customMetrics.clicks = customExecutiveMetricValue(customIntegration, "clicks");
+          customMetrics.conversions = customExecutiveMetricValue(customIntegration, "conversions");
+          customMetrics.spend = customExecutiveMetricValue(customIntegration, "spend");
+          customMetrics.revenue = customExecutiveMetricValue(customIntegration, "revenue");
           customIntegrationLastUpdate = customIntegration.uploadedAt.toISOString();
         }
       } catch (err) {
@@ -27599,13 +27612,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('No canonical spend/revenue data found');
       }
 
-      const webAnalyticsProvider = hasGA4Connection ? "ga4" : hasCustomIntegration ? "custom_integration" : null;
+      const customHasWebAnalytics = ["users", "sessions", "pageviews"].some((key) => hasImportedCustomExecutiveMetric(customIntegrationRawData, key));
+      const webAnalyticsProvider = hasGA4Connection ? "ga4" : hasCustomIntegration && customHasWebAnalytics ? "custom_integration" : null;
       const instagramSpendForAggregate = instagramSpend;
       const platformSpend = linkedinSpend + metaMetrics.spend + customMetrics.spend + googleAdsSpend + instagramSpendForAggregate + tiktokSpend;
       const platformRevenue = parseNum(linkedinMetrics.revenue) + metaMetrics.revenue + customMetrics.revenue + parseNum(googleAds?.metrics?.attributedRevenue);
       const aggregateRevenue = hasGA4Connection
         ? parseFloat((ga4Metrics.revenue + importedRevenueToDateTotal).toFixed(2))
         : (canonicalRevenue > 0 ? canonicalRevenue : platformRevenue);
+      const onsiteExecutiveRevenue = webAnalyticsProvider === "ga4"
+        ? ga4Metrics.revenue
+        : webAnalyticsProvider === "custom_integration"
+          ? parseNum(customMetrics.revenue)
+          : 0;
       const performanceSummary = buildCampaignPerformanceSummaryAggregate({
         campaignId: id,
         dateRange: executiveDateRange,
@@ -27615,8 +27634,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           provider: webAnalyticsProvider,
           revenue: webAnalyticsProvider === "ga4" ? ga4Metrics.revenue : customMetrics.revenue,
           conversions: webAnalyticsProvider === "ga4" ? ga4Metrics.conversions : customMetrics.conversions,
-          sessions: webAnalyticsProvider === "ga4" ? ga4Metrics.sessions : customMetrics.engagements,
-          users: webAnalyticsProvider === "ga4" ? ga4Metrics.users : parseNum(customIntegrationRawData?.users),
+          sessions: webAnalyticsProvider === "ga4" ? ga4Metrics.sessions : customExecutiveMetricValue(customIntegrationRawData, "sessions"),
+          users: webAnalyticsProvider === "ga4" ? ga4Metrics.users : customExecutiveMetricValue(customIntegrationRawData, "users"),
         },
         spend: {
           persistedSpend: performanceSummarySpend,
@@ -27629,12 +27648,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platforms: {
           linkedin: linkedinMetrics,
           meta: { connected: hasMetaConnection, ...metaMetrics, attributedRevenue: metaMetrics.revenue },
-          customIntegration: { connected: hasCustomIntegration, ...customMetrics, users: parseNum(customIntegrationRawData?.users), sessions: parseNum(customIntegrationRawData?.sessions), pageviews: parseNum(customIntegrationRawData?.pageviews), revenue: customMetrics.revenue },
+          customIntegration: { connected: hasCustomIntegration, ...customMetrics, users: customExecutiveMetricValue(customIntegrationRawData, "users"), sessions: customExecutiveMetricValue(customIntegrationRawData, "sessions"), pageviews: customExecutiveMetricValue(customIntegrationRawData, "pageviews"), revenue: customMetrics.revenue },
         },
         mainPlatformSources: { googleAds, instagram, tiktok, googleSheets },
         revenue: {
-          onsiteRevenue: ga4Metrics.revenue,
-          offsiteRevenue: aggregateRevenue > ga4Metrics.revenue ? aggregateRevenue - ga4Metrics.revenue : 0,
+          onsiteRevenue: onsiteExecutiveRevenue,
+          offsiteRevenue: aggregateRevenue > onsiteExecutiveRevenue ? aggregateRevenue - onsiteExecutiveRevenue : 0,
           totalRevenue: aggregateRevenue,
         },
         revenueSources: executiveRevenueSources,
@@ -27807,7 +27826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Funnel breakdown
       const advertisingImpressions = totalImpressions;
-      const websitePageviews = (customIntegrationRawData ? parseNum(customIntegrationRawData.pageviews) : 0) + ga4Metrics.pageviews;
+      const websitePageviews = (webAnalyticsProvider === "custom_integration" ? parseNum(customIntegrationRawData?.pageviews) : 0) + ga4Metrics.pageviews;
       const advertisingClicks = totalClicks;
       const websiteClicks = customIntegrationRawData ? parseNum(customIntegrationRawData.clicks) : 0;
 

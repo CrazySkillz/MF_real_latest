@@ -29,6 +29,17 @@ describe("Performance Summary scheduler snapshot alignment", () => {
     expect(scheduler).not.toContain("totalImpressions = advertisingImpressions + webPageviews");
   });
 
+  it("gates Custom Integration web analytics snapshot participation by imported web fields", () => {
+    const scheduler = readFileSync(join(process.cwd(), "server", "scheduler.ts"), "utf-8");
+
+    expect(scheduler).toContain("const customIntegrationHasWebAnalytics = ['users', 'sessions', 'pageviews'].some((metricName) => hasImportedMetric(customIntegrationData, metricName));");
+    expect(scheduler).toContain("const customIntegrationIsWebProvider = !ga4Connected && customIntegrationConnected && customIntegrationHasWebAnalytics;");
+    expect(scheduler).toContain('provider: ga4Connected ? "ga4" : customIntegrationIsWebProvider ? "custom_integration" : null');
+    expect(scheduler).toContain("includedMetrics: customIntegrationConnected ? customIntegrationAggregateMetrics.includedMetrics : []");
+    expect(scheduler).toContain("excludedMetrics: customIntegrationConnected ? customIntegrationAggregateMetrics.excludedMetrics : []");
+    expect(scheduler).not.toContain("provider: ga4Connected ? \"ga4\" : customIntegrationConnected ? \"custom_integration\" : null");
+  });
+
   it("keeps the legacy manual snapshot route on the scheduler aggregate path", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const start = routes.indexOf('app.post("/api/campaigns/:id/snapshots"');

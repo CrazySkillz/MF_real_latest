@@ -1709,6 +1709,17 @@ describe("source safety regression guards", () => {
     expect(routesSource).toContain('sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram"');
   });
 
+  it("Custom Integration campaign aggregates require imported fields before advertising availability", () => {
+    const routesSource = readRoutesSource();
+
+    expect(routesSource).toContain('const customHasWebAnalytics = ["users", "sessions", "pageviews"].some((key) => hasImportedCustomMetric(custom, key));');
+    expect(routesSource).toContain('custom?.connected === true && customHasWebAnalytics');
+    expect(routesSource).toContain('const customHasWebAnalytics = ["users", "sessions", "pageviews"].some((key) => hasImportedCustomExecutiveMetric(customIntegrationRawData, key));');
+    expect(routesSource).toContain('hasCustomIntegration && customHasWebAnalytics ? "custom_integration" : null');
+    expect(routesSource).toContain("+ parseNum(custom?.spend)).toFixed(2)");
+    expect(routesSource).not.toContain('const webAnalyticsProvider = hasGA4Connection ? "ga4" : hasCustomIntegration ? "custom_integration" : null;');
+  });
+
   it("platform Benchmark routes normalize decimal values before validation", () => {
     const source = readRoutesSource();
     const createStart = source.indexOf('app.post("/api/platforms/:platformType/benchmarks"');

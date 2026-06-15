@@ -719,7 +719,7 @@ describe("source safety regression guards", () => {
     expect(modal).toContain("Update Report");
 
     expect(reportScheduler).toContain("'google_sheets'");
-    expect(reportScheduler).toContain("return normalized === \"instagram\" || normalized === \"tiktok\" || normalized === \"google_sheets\";");
+    expect(reportScheduler).toContain("return normalized === \"instagram\" || normalized === \"tiktok\" || normalized === \"google_sheets\" || normalized === \"custom-integration\" || normalized === \"custom_integration\";");
     expect(reportScheduler).toContain("buildGoogleSheetsCachedMetricSummary");
     expect(reportScheduler).toContain("function getGoogleSheetsReportSourceScope");
     expect(reportScheduler).toContain("function isGoogleSheetsConfirmedFinancialMetric");
@@ -736,8 +736,8 @@ describe("source safety regression guards", () => {
     expect(reportScheduler).toContain("return buildGoogleSheetsScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });");
     expect(reportScheduler).not.toContain("if (String((report as any)?.platformType || \"\") === \"google_sheets\") {\n    const { jsPDF }");
 
-    expect(routesSource).toContain('sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets"');
-    expect(routesSource).toContain('sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : "Instagram"');
+    expect(routesSource).toContain('sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets" || sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration"');
+    expect(routesSource).toContain('sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram"');
   });
 
   it("Google Sheets-only Add Dataset connections append instead of replacing existing tabs", () => {
@@ -1632,6 +1632,48 @@ describe("source safety regression guards", () => {
     expect(source).not.toContain('data-testid="select-benchmark-confidence"');
     expect(source).not.toContain("current >= benchmarkVal * 1.2");
     expect(source).not.toContain("Progress to Benchmark");
+  });
+
+  it("Custom Integration Reports use source-backed values and scheduler-safe schedule payloads", () => {
+    const source = readCustomIntegrationAnalyticsSource();
+    const scheduler = fs.readFileSync(path.join(process.cwd(), "server", "report-scheduler.ts"), "utf8");
+    const routesSource = readRoutesSource();
+
+    expect(source).toContain("Report Type");
+    expect(source).toContain("Standard Templates");
+    expect(source).toContain("Custom Report");
+    expect(source).toContain("Choose Template");
+    expect(source).toContain("Summary Report");
+    expect(source).toContain("Insights Report");
+    expect(source).toContain("createEmptyCustomIntegrationReportConfig");
+    expect(source).toContain("parseCustomIntegrationReportConfiguration");
+    expect(source).toContain("serializeCustomIntegrationReportState(reportForm, customReportConfig, reportModalStep)");
+    expect(source).toContain("const reportHasChanges = !editingReportId");
+    expect(source).toContain("Boolean(editingReportId) && !reportHasChanges");
+    expect(source).toContain("sourceScope: activeCustomIntegrationSourceScope");
+    expect(source).toContain("valueSource: 'latest_validated_import'");
+    expect(source).toContain("scheduleTime: to24HourHHMM(nextForm.scheduleTime)");
+    expect(source).toContain("scheduleTimeZone: userTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone");
+    expect(source).toContain("scheduleDayOfMonth: nextForm.scheduleFrequency === 'monthly' || nextForm.scheduleFrequency === 'quarterly' ? dayOfMonthToNumber(nextForm.scheduleDayOfMonth) : null");
+    expect(source).toContain("formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type)");
+    expect(source).toContain("resolveCustomIntegrationCurrentValue(kpi)");
+    expect(source).toContain("resolveCustomIntegrationCurrentValue(benchmark)");
+    expect(source).toContain("customIntegrationInsights.recommendations.forEach");
+    expect(source).toContain("Source: {parseCustomIntegrationReportConfiguration(report.configuration).sourceLabel || latestImportLabel}");
+    expect(source).not.toContain("handleGenerateReport();\n      return;\n    }\n    \n    const reportData: any = {\n      ...reportForm");
+
+    expect(scheduler).toContain("'custom-integration'");
+    expect(scheduler).toContain('normalized === "custom-integration" || normalized === "custom_integration"');
+    expect(scheduler).toContain("async function buildCustomIntegrationScheduledPdfAttachment");
+    expect(scheduler).toContain("storage.getLatestCustomIntegrationMetrics(campaignId)");
+    expect(scheduler).toContain("resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey)");
+    expect(scheduler).toContain('storage.getPlatformKPIs("custom-integration", campaignId)');
+    expect(scheduler).toContain('storage.getPlatformBenchmarks("custom-integration", campaignId)');
+    expect(scheduler).toContain("return buildCustomIntegrationScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });");
+
+    expect(routesSource).toContain('...(normalizedPlatformType === "custom-integration" ? ["summary"] : [])');
+    expect(routesSource).toContain('sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration"');
+    expect(routesSource).toContain('sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram"');
   });
 
   it("platform Benchmark routes normalize decimal values before validation", () => {

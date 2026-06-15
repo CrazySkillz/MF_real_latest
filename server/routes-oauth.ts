@@ -24910,12 +24910,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const allowedReportTypes = new Set(["overview", "kpis", "benchmarks", "ads", "insights", "custom"]);
+      const normalizedPlatformType = String(platformType || "").trim().toLowerCase();
+      const allowedReportTypes = new Set([
+        "overview",
+        "kpis",
+        "benchmarks",
+        "ads",
+        "insights",
+        "custom",
+        ...(normalizedPlatformType === "custom-integration" ? ["summary"] : []),
+      ]);
       const reportType = String(body?.reportType || "").toLowerCase();
       if (!reportType || !allowedReportTypes.has(reportType)) {
         return res.status(400).json({
           success: false,
-          message: "reportType must be one of: overview, kpis, benchmarks, ads, insights, custom",
+          message: `reportType must be one of: ${Array.from(allowedReportTypes).join(", ")}`,
         });
       }
 
@@ -24976,13 +24985,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const allowedReportTypes = new Set(["overview", "kpis", "benchmarks", "ads", "insights", "custom"]);
+      const normalizedPlatformType = String(platformType || "").trim().toLowerCase();
+      const allowedReportTypes = new Set([
+        "overview",
+        "kpis",
+        "benchmarks",
+        "ads",
+        "insights",
+        "custom",
+        ...(normalizedPlatformType === "custom-integration" ? ["summary"] : []),
+      ]);
       if (typeof body?.reportType !== "undefined") {
         const reportType = String(body?.reportType || "").toLowerCase();
         if (!reportType || !allowedReportTypes.has(reportType)) {
           return res.status(400).json({
             success: false,
-            message: "reportType must be one of: overview, kpis, benchmarks, ads, insights, custom",
+            message: `reportType must be one of: ${Array.from(allowedReportTypes).join(", ")}`,
           });
         }
         body.reportType = reportType;
@@ -25146,7 +25164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const sourceBackedReportPlatform = String(payload.platformType || "").trim().toLowerCase();
-      if (sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets") {
+      if (sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets" || sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration") {
         const { buildPdfAttachmentForReport } = await import("./report-scheduler.js");
         const buf = await buildPdfAttachmentForReport({
           report: existing,
@@ -25156,7 +25174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isTest: true,
         });
         if (!buf) {
-          const label = sourceBackedReportPlatform === "tiktok" ? "TikTok" : sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : "Instagram";
+          const label = sourceBackedReportPlatform === "tiktok" ? "TikTok" : sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram";
           return res.status(422).json({ success: false, error: `${label} source-backed PDF output unavailable; snapshot not created` });
         }
       }

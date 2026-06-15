@@ -447,6 +447,17 @@ Validation:
 
 - Regression tests for High priority, Needs attention, Performance, What to do next, unavailable inputs, and confidence warnings.
 
+Status:
+
+- Completed and user-validated for Commit 8.
+- Root cause: the Custom Integration Insights tab only showed import status, so it did not produce Google-Sheets-style `Performance` or `What to do next` sections from source-backed metrics.
+- Fixes: added source-backed Insights generation from the validated Custom Integration metric resolver, added summary cards for `Total insights`, `High priority`, and `Needs attention`, added evidence-backed `Performance` findings, added `What to do next` recommendations tied to those findings, surfaced import quality/parser warning context, and prevented ROI/ROAS/revenue guidance unless required source fields exist.
+- Runtime commit included in Commit 8 scope: `047dfb3d` source-backed Custom Integration Insights.
+- Regression evidence: `server/source-safety-regression.test.ts` verifies source-backed Insights, parser review warnings, high-priority/needs-attention summary values, Performance, What to do next, revenue/spend unavailable handling, and no generic budget guidance.
+- Local validation: `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts`, `npm run check`, and targeted `git diff --check` passed.
+- User validation passed for Commit 8 after deployed browser review.
+- Deferred by tracker scope: Reports, scheduled reports, campaign aggregates, and existing-data cleanup remain in later commits.
+
 ### Commit 9: Reports And Scheduled Reports
 
 Goal:
@@ -464,6 +475,19 @@ Tasks:
 Validation:
 
 - Regression tests for report values, custom report sections, schedule validation, snapshot consistency, and platform access guards.
+
+Status:
+
+- Completed locally for the Commit 9 Reports boundary.
+- Root cause: Custom Integration Reports used the generic platform report route, but the page-level PDF download still read raw/stored values and scheduled report payloads sent UI values such as `9:00 AM` without `scheduleTimeZone`, while the shared backend route requires `HH:MM`, IANA time zone, and normalized schedule fields.
+- Root cause: the report scheduler did not include `custom-integration` in scheduled platform selection and had no Custom Integration source-backed PDF builder, so scheduled/test/snapshot output could fall through generic stored-row behavior or skip the platform entirely.
+- Fixes: Custom Integration Report modal now exposes `Report Type`, `Standard Templates`, `Custom Report`, `Choose Template`, Overview, Summary, KPIs, Benchmarks, Insights, and collapsed custom section controls with no default custom selections.
+- Fixes: downloaded Custom Integration reports now use the source-backed metric resolver, current KPI/Benchmark resolver, unavailable reasons, and source/provenance labels instead of raw metric fields or saved KPI/Benchmark current-value snapshots.
+- Fixes: scheduled report create/update now persists Custom Integration source scope in report `configuration`, sends normalized schedule fields, includes browser time zone, and disables edit-mode `Update Report` until something changes.
+- Fixes: scheduled/test/snapshot PDF generation now has a Custom Integration source-backed builder using the latest imported metric row plus current platform KPI/Benchmark rows; missing source-backed output fails closed instead of creating misleading snapshots.
+- Regression evidence: `server/source-safety-regression.test.ts` verifies the Custom Integration Reports modal anchors, no default custom selection, source-backed report values, saved source scope, schedule payload normalization, scheduler inclusion, source-backed builder, summary report allowance, and snapshot fail-closed guard.
+- Local validation: `npm test -- server/source-safety-regression.test.ts`, `npm run check`, and targeted `git diff --check` passed.
+- Deferred by tracker scope: campaign aggregates, Campaign DeepDive, existing-data cleanup, email-forwarding live delivery, and full final production-readiness evidence remain in later commits.
 
 ### Commit 10: Campaign Aggregates And DeepDive
 

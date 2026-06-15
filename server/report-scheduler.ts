@@ -19,7 +19,7 @@ interface ReportWithCampaign extends LinkedInReport {
   platformType: string;
 }
 
-const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram', 'tiktok', 'google_sheets'];
+const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram', 'tiktok', 'google_sheets', 'custom-integration'];
 
 // Monitoring metrics for scheduler health
 const schedulerMetrics = {
@@ -187,13 +187,224 @@ function parseReportConfiguration(configuration: any): Record<string, any> {
 
 function platformRequiresSourceBackedReportOutput(platformType: any): boolean {
   const normalized = String(platformType || "").trim().toLowerCase();
-  return normalized === "instagram" || normalized === "tiktok" || normalized === "google_sheets";
+  return normalized === "instagram" || normalized === "tiktok" || normalized === "google_sheets" || normalized === "custom-integration" || normalized === "custom_integration";
 }
 
 function sourceBackedReportOutputUnavailableMessage(platformType: any): string {
   const normalized = String(platformType || "").trim().toLowerCase();
-  const label = normalized === "tiktok" ? "TikTok" : normalized === "google_sheets" ? "Google Sheets" : "Instagram";
+  const label = normalized === "tiktok" ? "TikTok" : normalized === "google_sheets" ? "Google Sheets" : normalized === "custom-integration" || normalized === "custom_integration" ? "Custom Integration" : "Instagram";
   return `${label} source-backed PDF output unavailable`;
+}
+
+const CUSTOM_INTEGRATION_REPORT_METRICS = [
+  { key: "revenue", label: "Revenue", unit: "$", type: "currency" },
+  { key: "spend", label: "Spend", unit: "$", type: "currency" },
+  { key: "roas", label: "ROAS", unit: "x", type: "ratio" },
+  { key: "roi", label: "ROI", unit: "%", type: "percent" },
+  { key: "impressions", label: "Impressions", unit: "", type: "count" },
+  { key: "clicks", label: "Clicks", unit: "", type: "count" },
+  { key: "conversions", label: "Conversions", unit: "", type: "count" },
+  { key: "leads", label: "Leads", unit: "", type: "count" },
+  { key: "users", label: "Users", unit: "", type: "count" },
+  { key: "sessions", label: "Sessions", unit: "", type: "count" },
+  { key: "pageviews", label: "Pageviews", unit: "", type: "count" },
+  { key: "pagesPerSession", label: "Pages / Session", unit: "", type: "count" },
+  { key: "bounceRate", label: "Bounce Rate", unit: "%", type: "percent" },
+  { key: "organicSearchShare", label: "Organic Search", unit: "%", type: "percent" },
+  { key: "directBrandedShare", label: "Direct / Branded", unit: "%", type: "percent" },
+  { key: "emailShare", label: "Email Traffic", unit: "%", type: "percent" },
+  { key: "referralShare", label: "Referral / Partners", unit: "%", type: "percent" },
+  { key: "paidShare", label: "Paid Traffic", unit: "%", type: "percent" },
+  { key: "socialShare", label: "Social Traffic", unit: "%", type: "percent" },
+  { key: "emailsDelivered", label: "Emails Delivered", unit: "", type: "count" },
+  { key: "openRate", label: "Email Open Rate", unit: "%", type: "percent" },
+  { key: "clickThroughRate", label: "Email CTR", unit: "%", type: "percent" },
+  { key: "clickToOpen", label: "Email CTOR", unit: "%", type: "percent", fields: ["clickToOpenRate", "clickToOpen"] },
+  { key: "listGrowth", label: "List Growth", unit: "", type: "count" },
+];
+
+function getCustomIntegrationSourceLabel(metrics: any): string {
+  if (metrics?.pdfFileName) return `Import: ${metrics.pdfFileName}`;
+  if (metrics?.emailSubject) return `Import: ${metrics.emailSubject}`;
+  if (metrics?.uploadedAt) return `Import: ${new Date(metrics.uploadedAt).toLocaleString()}`;
+  return "Custom Integration import";
+}
+
+function parseCustomIntegrationMetricNumber(value: any): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number"
+    ? value
+    : parseFloat(String(value).replace(/,/g, "").replace(/[$%x]/gi, "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function resolveCustomIntegrationReportMetric(metrics: any, metricKey: any): { available: boolean; value: number | null; label: string; unit: string; type: string; reason: string } {
+  const key = String(metricKey || "").trim();
+  const option = CUSTOM_INTEGRATION_REPORT_METRICS.find((metric: any) => metric.key === key || (metric.fields || []).includes(key)) as any;
+  if (!option) return { available: false, value: null, label: key || "Metric", unit: "", type: "count", reason: "Metric is not supported by Custom Integration." };
+  if (option.key === "roi" || option.key === "roas") {
+    const revenue = parseCustomIntegrationMetricNumber(metrics?.revenue);
+    const spend = parseCustomIntegrationMetricNumber(metrics?.spend);
+    if (revenue === null) return { available: false, value: null, label: option.label, unit: option.unit, type: option.type, reason: "Revenue is not available in the selected Custom Integration import." };
+    if (spend === null || spend <= 0) return { available: false, value: null, label: option.label, unit: option.unit, type: option.type, reason: "Spend is not available in the selected Custom Integration import." };
+    return {
+      available: true,
+      value: option.key === "roi" ? ((revenue - spend) / spend) * 100 : revenue / spend,
+      label: option.label,
+      unit: option.unit,
+      type: option.type,
+      reason: "",
+    };
+  }
+  const fields = option.fields || [option.key];
+  const raw = fields.map((field: string) => metrics?.[field]).find((value: any) => value !== null && value !== undefined && value !== "");
+  const value = parseCustomIntegrationMetricNumber(raw);
+  if (value === null) return { available: false, value: null, label: option.label, unit: option.unit, type: option.type, reason: `${option.label} is not available in the selected Custom Integration import.` };
+  return { available: true, value, label: option.label, unit: option.unit, type: option.type, reason: "" };
+}
+
+function formatCustomIntegrationReportMetric(value: number | null, unit: string, type: string): string {
+  if (value === null || !Number.isFinite(value)) return "Unavailable";
+  if (type === "currency" || unit === "$") return `$${formatNumberLike(value)}`;
+  if (type === "percent" || unit === "%") return `${formatNumberLike(value)}%`;
+  if (type === "ratio" || unit === "x") return `${formatNumberLike(value)}x`;
+  return formatNumberLike(value);
+}
+
+async function buildCustomIntegrationScheduledPdfAttachment(args: {
+  report: any;
+  windowStart: string;
+  windowEnd: string;
+  campaignName: string | null;
+}): Promise<Buffer | null> {
+  const { report, windowStart, windowEnd, campaignName } = args;
+  const campaignId = String(report?.campaignId || "").trim();
+  if (!campaignId) return null;
+  const metrics = await storage.getLatestCustomIntegrationMetrics(campaignId).catch(() => null as any);
+  if (!metrics) return null;
+
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF();
+  const margin = 18;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  let y = margin;
+  const safeText = (value: any) => String(value ?? "").replace(/[^\x20-\x7E]/g, " ").trim();
+  const addText = (value: string, opts: { size?: number; bold?: boolean; indent?: number } = {}) => {
+    const indent = opts.indent || 0;
+    doc.setFontSize(opts.size || 10);
+    doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+    const lines = doc.splitTextToSize(safeText(value), pageWidth - margin * 2 - indent);
+    lines.forEach((line: string) => {
+      if (y > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(line, margin + indent, y);
+      y += opts.size && opts.size >= 14 ? 8 : 6;
+    });
+  };
+  const addMetric = (metricKey: any) => {
+    const resolved = resolveCustomIntegrationReportMetric(metrics, metricKey);
+    const value = resolved.available
+      ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type)
+      : `Unavailable - ${resolved.reason}`;
+    addText(`- ${resolved.label}: ${value}`, { indent: 4 });
+  };
+  const addKpiRows = async (selectedIds?: Set<string>) => {
+    const rows = await storage.getPlatformKPIs("custom-integration", campaignId).catch(() => [] as any[]);
+    const filtered = rows.filter((row: any) => !selectedIds || selectedIds.has(String(row?.id || "")));
+    if (filtered.length === 0) {
+      addText("- No KPI rows selected.", { indent: 4 });
+      return;
+    }
+    filtered.forEach((row: any) => {
+      const resolved = resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey);
+      const current = resolved.available ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type) : `Unavailable - ${resolved.reason}`;
+      const target = formatCustomIntegrationReportMetric(parseCustomIntegrationMetricNumber(row?.targetValue), resolved.unit || row?.unit || "", resolved.type);
+      addText(`- ${safeText(row?.name || row?.metric || "KPI")}: Current ${current}; Target ${target}`, { indent: 4 });
+    });
+  };
+  const addBenchmarkRows = async (selectedIds?: Set<string>) => {
+    const rows = await storage.getPlatformBenchmarks("custom-integration", campaignId).catch(() => [] as any[]);
+    const filtered = rows.filter((row: any) => !selectedIds || selectedIds.has(String(row?.id || "")));
+    if (filtered.length === 0) {
+      addText("- No Benchmark rows selected.", { indent: 4 });
+      return;
+    }
+    filtered.forEach((row: any) => {
+      const resolved = resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey);
+      const current = resolved.available ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type) : `Unavailable - ${resolved.reason}`;
+      const benchmark = formatCustomIntegrationReportMetric(parseCustomIntegrationMetricNumber(row?.benchmarkValue), resolved.unit || row?.unit || "", resolved.type);
+      addText(`- ${safeText(row?.name || row?.metric || "Benchmark")}: Current ${current}; Benchmark ${benchmark}`, { indent: 4 });
+    });
+  };
+  const addInsightRows = () => {
+    const revenue = resolveCustomIntegrationReportMetric(metrics, "revenue");
+    const spend = resolveCustomIntegrationReportMetric(metrics, "spend");
+    const clicks = resolveCustomIntegrationReportMetric(metrics, "clicks");
+    const impressions = resolveCustomIntegrationReportMetric(metrics, "impressions");
+    const conversions = resolveCustomIntegrationReportMetric(metrics, "conversions");
+    if (!revenue.available && spend.available) addText("- Spend is imported but Revenue is unavailable, so ROI and ROAS cannot be evaluated.", { indent: 4 });
+    if (revenue.available && !spend.available) addText("- Revenue is imported but Spend is unavailable, so ROI and ROAS cannot be evaluated.", { indent: 4 });
+    if (clicks.available && impressions.available && impressions.value && impressions.value > 0) {
+      addText(`- Click-through rate from imported clicks and impressions is ${formatNumberLike((Number(clicks.value) / Number(impressions.value)) * 100)}%.`, { indent: 4 });
+    }
+    if (conversions.available && clicks.available && clicks.value && clicks.value > 0) {
+      addText(`- Conversion rate from imported conversions and clicks is ${formatNumberLike((Number(conversions.value) / Number(clicks.value)) * 100)}%.`, { indent: 4 });
+    }
+  };
+
+  const configuration = parseReportConfiguration(report?.configuration);
+  const reportType = String(report?.reportType || "overview").toLowerCase();
+  addText(String(report?.name || "Custom Integration Report"), { size: 18, bold: true });
+  addText(`Campaign: ${campaignName || "Campaign"}`);
+  addText(`Report Type: ${reportType}`);
+  addText(`Window: ${windowStart} to ${windowEnd}`);
+  addText(`Source: ${getCustomIntegrationSourceLabel(metrics)}`);
+  y += 4;
+
+  if (reportType === "overview" || reportType === "summary") {
+    addText(reportType === "summary" ? "Summary" : "Overview", { size: 14, bold: true });
+    CUSTOM_INTEGRATION_REPORT_METRICS.slice(0, reportType === "summary" ? 8 : CUSTOM_INTEGRATION_REPORT_METRICS.length).forEach((metric: any) => addMetric(metric.key));
+  } else if (reportType === "kpis") {
+    addText("KPIs", { size: 14, bold: true });
+    await addKpiRows();
+  } else if (reportType === "benchmarks") {
+    addText("Benchmarks", { size: 14, bold: true });
+    await addBenchmarkRows();
+  } else if (reportType === "insights") {
+    addText("Insights", { size: 14, bold: true });
+    addInsightRows();
+  } else if (reportType === "custom") {
+    const selectedMetrics = Array.from(new Set([...(configuration.coreMetrics || []), ...(configuration.derivedMetrics || [])]));
+    if (configuration.sections?.overview || selectedMetrics.length > 0) {
+      addText("Overview", { size: 14, bold: true });
+      (selectedMetrics.length > 0 ? selectedMetrics : CUSTOM_INTEGRATION_REPORT_METRICS.map((metric: any) => metric.key)).forEach((metricKey: any) => addMetric(metricKey));
+    }
+    if (configuration.sections?.summary) {
+      addText("Summary", { size: 14, bold: true });
+      addText(`- Source: ${getCustomIntegrationSourceLabel(metrics)}`, { indent: 4 });
+      addText(`- Source-backed metrics: ${CUSTOM_INTEGRATION_REPORT_METRICS.filter((metric: any) => resolveCustomIntegrationReportMetric(metrics, metric.key).available).length}`, { indent: 4 });
+    }
+    if (configuration.sections?.kpis || (configuration.kpis || []).length > 0) {
+      addText("KPIs", { size: 14, bold: true });
+      await addKpiRows((configuration.kpis || []).length > 0 ? new Set((configuration.kpis || []).map(String)) : undefined);
+    }
+    if (configuration.sections?.benchmarks || (configuration.benchmarks || []).length > 0) {
+      addText("Benchmarks", { size: 14, bold: true });
+      await addBenchmarkRows((configuration.benchmarks || []).length > 0 ? new Set((configuration.benchmarks || []).map(String)) : undefined);
+    }
+    if (configuration.sections?.insights) {
+      addText("Insights", { size: 14, bold: true });
+      addInsightRows();
+    }
+  } else {
+    addText("Overview", { size: 14, bold: true });
+    CUSTOM_INTEGRATION_REPORT_METRICS.forEach((metric: any) => addMetric(metric.key));
+  }
+
+  return coercePdfBufferFromDoc(doc);
 }
 
 async function validateInstagramScheduledReportScope(report: any): Promise<{ ok: boolean; message?: string; disableSchedule?: boolean }> {
@@ -1099,6 +1310,9 @@ export async function buildPdfAttachmentForReport(args: {
     }
     if (String((report as any)?.platformType || "") === "google_sheets") {
       return buildGoogleSheetsScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });
+    }
+    if (String((report as any)?.platformType || "") === "custom-integration" || String((report as any)?.platformType || "") === "custom_integration") {
+      return buildCustomIntegrationScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });
     }
 
     const { jsPDF } = await import("jspdf");

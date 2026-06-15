@@ -105,6 +105,39 @@ function createEmptyCustomIntegrationKpiForm() {
   };
 }
 
+function createEmptyCustomIntegrationReportConfig() {
+  return {
+    sections: {
+      overview: false,
+      summary: false,
+      kpis: false,
+      benchmarks: false,
+      insights: false,
+    },
+    coreMetrics: [] as string[],
+    derivedMetrics: [] as string[],
+    kpis: [] as string[],
+    benchmarks: [] as string[],
+  };
+}
+
+function createEmptyCustomIntegrationReportForm() {
+  return {
+    name: '',
+    description: '',
+    reportType: '',
+    configuration: null as any,
+    scheduleEnabled: false,
+    scheduleFrequency: 'weekly',
+    scheduleDayOfWeek: 'monday',
+    scheduleDayOfMonth: 'first',
+    quarterTiming: 'end',
+    scheduleTime: '9:00 AM',
+    emailRecipients: '',
+    status: 'draft'
+  };
+}
+
 function parseCustomIntegrationSavedConfig(value: any) {
   if (!value) return null;
   if (typeof value === 'string') {
@@ -115,6 +148,29 @@ function parseCustomIntegrationSavedConfig(value: any) {
     }
   }
   return typeof value === 'object' ? value : null;
+}
+
+function parseCustomIntegrationReportConfiguration(value: any) {
+  const parsed = parseCustomIntegrationSavedConfig(value) || {};
+  return {
+    ...parsed,
+    sections: {
+      overview: false,
+      summary: false,
+      kpis: false,
+      benchmarks: false,
+      insights: false,
+      ...(parsed as any)?.sections,
+    },
+    coreMetrics: Array.isArray((parsed as any)?.coreMetrics) ? (parsed as any).coreMetrics : [],
+    derivedMetrics: Array.isArray((parsed as any)?.derivedMetrics) ? (parsed as any).derivedMetrics : [],
+    kpis: Array.isArray((parsed as any)?.kpis) ? (parsed as any).kpis : [],
+    benchmarks: Array.isArray((parsed as any)?.benchmarks) ? (parsed as any).benchmarks : [],
+  };
+}
+
+function serializeCustomIntegrationReportState(form: any, config: any, step: string) {
+  return JSON.stringify({ form, config: parseCustomIntegrationReportConfiguration(config), step });
 }
 
 function getSavedCustomIntegrationSourceScope(row: any): CustomIntegrationSourceScope | null {
@@ -356,24 +412,9 @@ export default function CustomIntegrationAnalytics() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
   const [reportModalStep, setReportModalStep] = useState<'standard' | 'custom'>('standard');
-  const [reportForm, setReportForm] = useState({
-    name: '',
-    description: '',
-    reportType: '',
-    configuration: null as any,
-    scheduleEnabled: false,
-    scheduleFrequency: 'weekly',
-    scheduleDayOfWeek: 'monday',
-    scheduleTime: '9:00 AM',
-    emailRecipients: '',
-    status: 'draft'
-  });
-  const [customReportConfig, setCustomReportConfig] = useState({
-    coreMetrics: [] as string[],
-    derivedMetrics: [] as string[],
-    kpis: [] as string[],
-    benchmarks: [] as string[]
-  });
+  const [initialReportState, setInitialReportState] = useState<string | null>(null);
+  const [reportForm, setReportForm] = useState(createEmptyCustomIntegrationReportForm);
+  const [customReportConfig, setCustomReportConfig] = useState(createEmptyCustomIntegrationReportConfig);
   
   // Detect user's time zone
   const [userTimeZone, setUserTimeZone] = useState('');
@@ -999,18 +1040,9 @@ export default function CustomIntegrationAnalytics() {
       });
       setIsReportModalOpen(false);
       setEditingReportId(null);
-      setReportForm({
-        name: '',
-        description: '',
-        reportType: '',
-        configuration: null,
-        scheduleEnabled: false,
-        scheduleFrequency: 'weekly',
-        scheduleDayOfWeek: 'monday',
-        scheduleTime: '9:00 AM',
-        emailRecipients: '',
-        status: 'draft'
-      });
+      setInitialReportState(null);
+      setReportForm(createEmptyCustomIntegrationReportForm());
+      setCustomReportConfig(createEmptyCustomIntegrationReportConfig());
     },
     onError: (error: any) => {
       console.error('Report creation error:', error);
@@ -1036,18 +1068,9 @@ export default function CustomIntegrationAnalytics() {
       });
       setIsReportModalOpen(false);
       setEditingReportId(null);
-      setReportForm({
-        name: '',
-        description: '',
-        reportType: '',
-        configuration: null,
-        scheduleEnabled: false,
-        scheduleFrequency: 'weekly',
-        scheduleDayOfWeek: 'monday',
-        scheduleTime: '9:00 AM',
-        emailRecipients: '',
-        status: 'draft'
-      });
+      setInitialReportState(null);
+      setReportForm(createEmptyCustomIntegrationReportForm());
+      setCustomReportConfig(createEmptyCustomIntegrationReportConfig());
     },
     onError: (error: any) => {
       console.error('Report update error:', error);
@@ -1110,6 +1133,45 @@ export default function CustomIntegrationAnalytics() {
     return num !== null ? (mapping[num] || 'monday') : 'monday';
   };
 
+  const dayOfMonthToNumber = (value: any): number => {
+    if (value === 'last') return 0;
+    if (value === 'first') return 1;
+    const parsed = parseInt(String(value || '1'), 10);
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 31 ? parsed : 1;
+  };
+
+  const numberToDayOfMonth = (value: any): string => {
+    const parsed = Number(value);
+    if (parsed === 0) return 'last';
+    if (!Number.isFinite(parsed) || parsed <= 1) return 'first';
+    return String(parsed);
+  };
+
+  const to24HourHHMM = (value: string): string => {
+    const raw = String(value || '').trim();
+    const match = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return raw;
+    let hour = parseInt(match[1], 10);
+    const minute = match[2];
+    const period = match[3].toUpperCase();
+    if (period === 'PM' && hour < 12) hour += 12;
+    if (period === 'AM' && hour === 12) hour = 0;
+    return `${String(hour).padStart(2, '0')}:${minute}`;
+  };
+
+  const to12HourDisplayTime = (value: string): string => {
+    const raw = String(value || '').trim();
+    if (/AM|PM/i.test(raw)) return raw;
+    const match = raw.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return '9:00 AM';
+    const hour24 = parseInt(match[1], 10);
+    const minute = match[2];
+    if (!Number.isFinite(hour24)) return '9:00 AM';
+    const period = hour24 >= 12 ? 'PM' : 'AM';
+    const hour12 = hour24 % 12 || 12;
+    return `${hour12}:${minute} ${period}`;
+  };
+
   // PDF Helper Functions
   const addPDFHeader = (doc: any, title: string, subtitle: string) => {
     // Custom Integration brand color header (purple/blue gradient)
@@ -1164,6 +1226,150 @@ export default function CustomIntegrationAnalytics() {
     addPDFHeader(doc, reportName, 'Custom Integration Analytics');
     
     let y = 70;
+
+    const config = parseCustomIntegrationReportConfiguration(overrideReport?.configuration || customReportConfig);
+    const safeText = (value: any) => String(value ?? '').replace(/[^\x20-\x7E]/g, ' ').trim();
+    const ensureSpace = (height: number) => {
+      if (y + height > 280) {
+        doc.addPage();
+        y = 20;
+      }
+    };
+    const addLine = (label: string, value: any) => {
+      ensureSpace(10);
+      doc.setTextColor(50, 50, 50);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", 'bold');
+      doc.text(safeText(label), 20, y);
+      doc.setFont("helvetica", 'normal');
+      const lines = doc.splitTextToSize(safeText(value), 105);
+      lines.forEach((line: string, index: number) => {
+        if (index > 0) ensureSpace(6);
+        doc.text(line, 90, y);
+        if (index < lines.length - 1) y += 5;
+      });
+      y += 7;
+    };
+    const addSectionTitle = (title: string, color: number[] = [99, 102, 241]) => {
+      y = addPDFSection(doc, title, y, color);
+    };
+    const addSourceMetadata = () => {
+      addLine('Source', latestImportLabel || 'Custom Integration import');
+      addLine('Status', latestImportStatus);
+      if (parserWarnings.length > 0) addLine('Review warning', parserWarnings[0]);
+      y += 3;
+    };
+    const addOverviewSection = () => {
+      addSectionTitle('Overview');
+      resolvedOverviewGroups.forEach((group) => {
+        const rows = group.metrics.filter(({ resolved }: any) => resolved.available || group.showUnavailable);
+        if (rows.length === 0) return;
+        ensureSpace(10);
+        doc.setFont("helvetica", 'bold');
+        doc.setFontSize(11);
+        doc.text(group.title, 20, y);
+        y += 7;
+        rows.forEach(({ resolved }: any) => {
+          const label = resolved.option?.label || 'Metric';
+          const value = resolved.available
+            ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type)
+            : `Unavailable - ${resolved.reason}`;
+          addLine(label, value);
+        });
+        y += 2;
+      });
+    };
+    const addSummarySection = () => {
+      addSectionTitle('Summary', [59, 130, 246]);
+      addLine('Source-backed metrics', sourceBackedMetricCount);
+      addLine('Import status', latestImportStatus);
+      addLine('Financial return', getInsightValue('revenue') !== null && getInsightValue('spend') !== null ? 'Revenue and spend are available.' : 'ROI and ROAS are unavailable until revenue and spend are both imported.');
+    };
+    const addKpiSection = (selectedIds?: Set<string>) => {
+      addSectionTitle('KPIs', [59, 130, 246]);
+      const rows = customIntegrationKpis.filter((kpi: any) => !selectedIds || selectedIds.has(String(kpi.id)));
+      if (rows.length === 0) {
+        addLine('KPIs', 'No KPI rows selected.');
+        return;
+      }
+      rows.forEach((kpi: any) => {
+        const resolved = resolveCustomIntegrationCurrentValue(kpi);
+        const unit = resolved.option?.unit || kpi.unit || '';
+        const type = resolved.option?.type;
+        const current = resolved.available
+          ? formatCustomIntegrationMetricValue(resolved.currentValue, unit, type)
+          : `Unavailable - ${resolved.reason}`;
+        addLine(String(kpi.name || kpi.metric || 'KPI'), `Current: ${current} | Target: ${formatCustomIntegrationMetricValue(parseCustomIntegrationMetricNumber(kpi.targetValue), unit, type)}`);
+      });
+    };
+    const addBenchmarkSection = (selectedIds?: Set<string>) => {
+      addSectionTitle('Benchmarks', [168, 85, 247]);
+      const rows = customIntegrationBenchmarks.filter((benchmark: any) => !selectedIds || selectedIds.has(String(benchmark.id)));
+      if (rows.length === 0) {
+        addLine('Benchmarks', 'No Benchmark rows selected.');
+        return;
+      }
+      rows.forEach((benchmark: any) => {
+        const resolved = resolveCustomIntegrationCurrentValue(benchmark);
+        const unit = resolved.option?.unit || benchmark.unit || '';
+        const type = resolved.option?.type;
+        const current = resolved.available
+          ? formatCustomIntegrationMetricValue(resolved.currentValue, unit, type)
+          : `Unavailable - ${resolved.reason}`;
+        addLine(String(benchmark.name || benchmark.metric || 'Benchmark'), `Current: ${current} | Benchmark: ${formatCustomIntegrationMetricValue(parseCustomIntegrationMetricNumber(benchmark.benchmarkValue), unit, type)}`);
+      });
+    };
+    const addInsightSection = () => {
+      addSectionTitle('Insights', [16, 185, 129]);
+      if (customIntegrationInsights.summary.total === 0) {
+        addLine('Insights', 'No source-backed insights are available for the current import.');
+        return;
+      }
+      customIntegrationInsights.performance.forEach((insight: any) => addLine('Performance', `${insight.message} Evidence: ${(insight.evidence || []).join('; ')}`));
+      customIntegrationInsights.recommendations.forEach((recommendation: any) => addLine('What to do next', `${recommendation.message} Next step: ${recommendation.action}`));
+    };
+    const addSelectedMetricSection = () => {
+      const selected = Array.from(new Set([...(config.coreMetrics || []), ...(config.derivedMetrics || [])]));
+      if (selected.length === 0) return;
+      addSectionTitle('Selected Metrics');
+      selected.forEach((metricKey: any) => {
+        const resolved = resolveCustomIntegrationMetric(metricsData, metricKey);
+        addLine(
+          resolved.option?.label || String(metricKey),
+          resolved.available
+            ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type)
+            : `Unavailable - ${resolved.reason}`
+        );
+      });
+    };
+
+    addSourceMetadata();
+    if (reportType === 'overview') addOverviewSection();
+    else if (reportType === 'summary') addSummarySection();
+    else if (reportType === 'kpis') addKpiSection();
+    else if (reportType === 'benchmarks') addBenchmarkSection();
+    else if (reportType === 'insights') addInsightSection();
+    else if (reportType === 'custom') {
+      if (config.sections?.overview) addOverviewSection();
+      if (config.sections?.summary) addSummarySection();
+      addSelectedMetricSection();
+      const selectedKpis = new Set<string>((config.kpis || []).map(String));
+      const selectedBenchmarks = new Set<string>((config.benchmarks || []).map(String));
+      if (config.sections?.kpis || selectedKpis.size > 0) addKpiSection(selectedKpis.size > 0 ? selectedKpis : undefined);
+      if (config.sections?.benchmarks || selectedBenchmarks.size > 0) addBenchmarkSection(selectedBenchmarks.size > 0 ? selectedBenchmarks : undefined);
+      if (config.sections?.insights) addInsightSection();
+    } else {
+      addOverviewSection();
+    }
+
+    doc.save(`${reportName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+
+    toast({
+      title: "Report Downloaded",
+      description: "Your PDF report has been generated from current source-backed Custom Integration values.",
+    });
+    setIsReportModalOpen(false);
+    return;
     
     // Handle different report types
     if (reportType === 'benchmarks') {
@@ -1996,86 +2202,87 @@ export default function CustomIntegrationAnalytics() {
     setIsReportModalOpen(false);
   };
 
-  const handleCreateReport = () => {
-    // Validate custom reports have configuration
-    if (reportForm.reportType === 'custom') {
-      const hasConfig = customReportConfig.coreMetrics.length > 0 || 
-                       customReportConfig.derivedMetrics.length > 0 || 
-                       customReportConfig.kpis.length > 0 || 
-                       customReportConfig.benchmarks.length > 0;
-      
-      if (!hasConfig) {
-        toast({
-          title: "Configuration Required",
-          description: "Please select at least one metric, KPI, or benchmark for your custom report.",
-          variant: "destructive",
-        });
-        return;
-      }
+  const customReportHasSelection = () => {
+    const config = parseCustomIntegrationReportConfiguration(customReportConfig);
+    return Object.values(config.sections || {}).some(Boolean)
+      || config.coreMetrics.length > 0
+      || config.derivedMetrics.length > 0
+      || config.kpis.length > 0
+      || config.benchmarks.length > 0;
+  };
+
+  const buildCustomIntegrationReportPayload = (overrides: any = {}) => {
+    const nextForm = { ...reportForm, ...overrides };
+    const configuration = {
+      ...parseCustomIntegrationReportConfiguration(nextForm.reportType === 'custom' ? customReportConfig : nextForm.configuration),
+      sourceScope: activeCustomIntegrationSourceScope,
+      sourceLabel: latestImportLabel,
+      valueSource: 'latest_validated_import',
+    };
+    const payload: any = {
+      ...nextForm,
+      platformType: 'custom-integration',
+      campaignId: campaignId,
+      configuration,
+      scheduleTime: to24HourHHMM(nextForm.scheduleTime),
+      scheduleTimeZone: userTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+      scheduleDayOfWeek: nextForm.scheduleFrequency === 'weekly' ? dayOfWeekToNumber(nextForm.scheduleDayOfWeek) : null,
+      scheduleDayOfMonth: nextForm.scheduleFrequency === 'monthly' || nextForm.scheduleFrequency === 'quarterly' ? dayOfMonthToNumber(nextForm.scheduleDayOfMonth) : null,
+      quarterTiming: nextForm.scheduleFrequency === 'quarterly' ? nextForm.quarterTiming || 'end' : null,
+      scheduleRecipients: nextForm.emailRecipients ? nextForm.emailRecipients.split(',').map((e: string) => e.trim()).filter(Boolean) : null,
+    };
+    delete payload.emailRecipients;
+    return payload;
+  };
+
+  const handleReportTypeSelect = (type: string) => {
+    const names: Record<string, string> = {
+      overview: 'Custom Integration Overview Report',
+      summary: 'Custom Integration Summary Report',
+      kpis: 'Custom Integration KPIs Report',
+      benchmarks: 'Custom Integration Benchmarks Report',
+      insights: 'Custom Integration Insights Report',
+      custom: 'Custom Integration Custom Report',
+    };
+    setReportForm({
+      ...reportForm,
+      reportType: type,
+      name: editingReportId ? (reportForm.name || names[type] || 'Custom Integration Report') : (names[type] || 'Custom Integration Report'),
+    });
+  };
+
+  const validateReportBeforeSave = () => {
+    if (reportForm.reportType === 'custom' && !customReportHasSelection()) {
+      toast({
+        title: "Configuration Required",
+        description: "Please select at least one section, metric, KPI, or benchmark for your custom report.",
+        variant: "destructive",
+      });
+      return false;
     }
-    
+    if (reportForm.scheduleEnabled && !reportForm.emailRecipients.trim()) {
+      toast({
+        title: "Email Recipients Required",
+        description: "Please add at least one recipient for scheduled reports.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const handleCreateReport = () => {
+    if (!validateReportBeforeSave()) return;
     if (!reportForm.scheduleEnabled) {
       handleGenerateReport();
       return;
     }
-    
-    const reportData: any = {
-      ...reportForm,
-      platformType: 'custom-integration',
-      campaignId: campaignId,
-      scheduleDayOfWeek: reportForm.scheduleFrequency === 'weekly' 
-        ? dayOfWeekToNumber(reportForm.scheduleDayOfWeek) 
-        : null,
-      scheduleRecipients: reportForm.emailRecipients ? reportForm.emailRecipients.split(',').map(e => e.trim()) : null,
-    };
-    
-    if (reportModalStep === 'custom') {
-      reportData.configuration = customReportConfig;
-    }
-    
-    createReportMutation.mutate(reportData);
+    createReportMutation.mutate(buildCustomIntegrationReportPayload());
   };
 
   const handleUpdateReport = () => {
-    if (!editingReportId) return;
-    
-    // Validate custom reports have configuration
-    if (reportForm.reportType === 'custom') {
-      const hasConfig = customReportConfig.coreMetrics.length > 0 || 
-                       customReportConfig.derivedMetrics.length > 0 || 
-                       customReportConfig.kpis.length > 0 || 
-                       customReportConfig.benchmarks.length > 0;
-      
-      if (!hasConfig) {
-        toast({
-          title: "Configuration Required",
-          description: "Please select at least one metric, KPI, or benchmark for your custom report.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-    
-    if (!reportForm.scheduleEnabled) {
-      handleGenerateReport();
-      return;
-    }
-    
-    const reportData: any = {
-      ...reportForm,
-      platformType: 'custom-integration',
-      campaignId: campaignId,
-      scheduleDayOfWeek: reportForm.scheduleFrequency === 'weekly' 
-        ? dayOfWeekToNumber(reportForm.scheduleDayOfWeek) 
-        : null,
-      scheduleRecipients: reportForm.emailRecipients ? reportForm.emailRecipients.split(',').map(e => e.trim()) : null,
-    };
-    
-    if (reportModalStep === 'custom') {
-      reportData.configuration = customReportConfig;
-    }
-    
-    updateReportMutation.mutate({ id: editingReportId, data: reportData });
+    if (!editingReportId || !validateReportBeforeSave()) return;
+    updateReportMutation.mutate({ id: editingReportId, data: buildCustomIntegrationReportPayload() });
   };
 
   const handleDownloadReport = async (report: any) => {
@@ -2111,42 +2318,32 @@ export default function CustomIntegrationAnalytics() {
 
   const handleEditReport = (report: any) => {
     setEditingReportId(report.id);
-    setReportForm({
+    const parsedConfig = parseCustomIntegrationReportConfiguration(report.configuration);
+    const nextStep = report.reportType === 'custom' ? 'custom' : 'standard';
+    const nextForm = {
       name: report.name,
       description: report.description || '',
       reportType: report.reportType,
       configuration: report.configuration,
-      scheduleEnabled: !!report.scheduleFrequency,
+      scheduleEnabled: !!report.scheduleEnabled,
       scheduleFrequency: report.scheduleFrequency || 'weekly',
       scheduleDayOfWeek: numberToDayOfWeek(report.scheduleDayOfWeek),
-      scheduleTime: report.scheduleTime || '9:00 AM',
+      scheduleDayOfMonth: numberToDayOfMonth(report.scheduleDayOfMonth),
+      quarterTiming: report.quarterTiming || 'end',
+      scheduleTime: to12HourDisplayTime(report.scheduleTime || '9:00 AM'),
       emailRecipients: Array.isArray(report.scheduleRecipients) ? report.scheduleRecipients.join(', ') : '',
       status: report.status || 'draft'
-    });
+    };
+    setReportForm(nextForm);
     
     if (report.reportType === 'custom') {
-      // Parse configuration if it's a JSON string
-      let config = report.configuration;
-      if (typeof config === 'string') {
-        try {
-          config = JSON.parse(config);
-        } catch (e) {
-          console.error('Failed to parse report configuration:', e);
-          config = null;
-        }
-      }
-      
-      // Ensure customReportConfig has default structure
-      setCustomReportConfig({
-        coreMetrics: config?.coreMetrics || [],
-        derivedMetrics: config?.derivedMetrics || [],
-        kpis: config?.kpis || [],
-        benchmarks: config?.benchmarks || []
-      });
+      setCustomReportConfig(parsedConfig);
       setReportModalStep('custom');
     } else {
+      setCustomReportConfig(createEmptyCustomIntegrationReportConfig());
       setReportModalStep('standard');
     }
+    setInitialReportState(serializeCustomIntegrationReportState(nextForm, report.reportType === 'custom' ? parsedConfig : createEmptyCustomIntegrationReportConfig(), nextStep));
     
     setIsReportModalOpen(true);
   };
@@ -2483,6 +2680,8 @@ export default function CustomIntegrationAnalytics() {
     const medium = allInsights.filter((insight) => insight.severity === 'medium').length;
     return { summary: { total: allInsights.length, high, medium }, performance, recommendations, quality };
   })();
+  const reportHasChanges = !editingReportId ||
+    serializeCustomIntegrationReportState(reportForm, customReportConfig, reportModalStep) !== initialReportState;
 
   const handleCustomIntegrationPdfUpload = async (file?: File | null) => {
     if (!file) return;
@@ -2843,18 +3042,8 @@ export default function CustomIntegrationAnalytics() {
                           variant="outline"
                           onClick={() => {
                             setEditingReportId(null);
-                            setReportForm({
-                              name: '',
-                              description: '',
-                              reportType: 'kpis',
-                              configuration: null,
-                              scheduleEnabled: false,
-                              scheduleFrequency: 'weekly',
-                              scheduleDayOfWeek: 'monday',
-                              scheduleTime: '9:00 AM',
-                              emailRecipients: '',
-                              status: 'draft'
-                            });
+                            setInitialReportState(null);
+                            setReportForm({ ...createEmptyCustomIntegrationReportForm(), reportType: 'kpis' });
                             setIsReportModalOpen(true);
                           }}
                           className="border-border"
@@ -3102,18 +3291,8 @@ export default function CustomIntegrationAnalytics() {
                           variant="outline"
                           onClick={() => {
                             setEditingReportId(null);
-                            setReportForm({
-                              name: '',
-                              description: '',
-                              reportType: 'kpis',
-                              configuration: null,
-                              scheduleEnabled: false,
-                              scheduleFrequency: 'weekly',
-                              scheduleDayOfWeek: 'monday',
-                              scheduleTime: '9:00 AM',
-                              emailRecipients: '',
-                              status: 'draft'
-                            });
+                            setInitialReportState(null);
+                            setReportForm({ ...createEmptyCustomIntegrationReportForm(), reportType: 'kpis' });
                             setIsReportModalOpen(true);
                           }}
                           className="border-border"
@@ -3176,18 +3355,8 @@ export default function CustomIntegrationAnalytics() {
                       variant="outline"
                       onClick={() => {
                         setEditingReportId(null);
-                        setReportForm({
-                          name: '',
-                          description: '',
-                          reportType: 'benchmarks',
-                          configuration: null,
-                          scheduleEnabled: false,
-                          scheduleFrequency: 'weekly',
-                          scheduleDayOfWeek: 'monday',
-                          scheduleTime: '9:00 AM',
-                          emailRecipients: '',
-                          status: 'draft'
-                        });
+                        setInitialReportState(null);
+                        setReportForm({ ...createEmptyCustomIntegrationReportForm(), reportType: 'benchmarks' });
                         setIsReportModalOpen(true);
                       }}
                       className="border-border"
@@ -3650,25 +3819,10 @@ export default function CustomIntegrationAnalytics() {
                     className="gap-2 bg-purple-600 hover:bg-purple-700"
                     onClick={() => {
                       setEditingReportId(null);
+                      setInitialReportState(null);
                       setReportModalStep('standard');
-                      setReportForm({
-                        name: '',
-                        description: '',
-                        reportType: '',
-                        configuration: null,
-                        scheduleEnabled: false,
-                        scheduleFrequency: 'weekly',
-                        scheduleDayOfWeek: 'monday',
-                        scheduleTime: '9:00 AM',
-                        emailRecipients: '',
-                        status: 'draft'
-                      });
-                      setCustomReportConfig({
-                        coreMetrics: [],
-                        derivedMetrics: [],
-                        kpis: [],
-                        benchmarks: []
-                      });
+                      setReportForm(createEmptyCustomIntegrationReportForm());
+                      setCustomReportConfig(createEmptyCustomIntegrationReportConfig());
                       setIsReportModalOpen(true);
                     }}
                   >
@@ -3710,6 +3864,9 @@ export default function CustomIntegrationAnalytics() {
                                 )}
                                 <span className="text-muted-foreground/70">
                                   Created {new Date(report.createdAt).toLocaleDateString()}
+                                </span>
+                                <span className="text-muted-foreground/70">
+                                  Source: {parseCustomIntegrationReportConfiguration(report.configuration).sourceLabel || latestImportLabel}
                                 </span>
                               </div>
                             </div>
@@ -3782,25 +3939,10 @@ export default function CustomIntegrationAnalytics() {
                       <Button 
                         onClick={() => {
                           setEditingReportId(null);
+                          setInitialReportState(null);
                           setReportModalStep('standard');
-                          setReportForm({
-                            name: '',
-                            description: '',
-                            reportType: '',
-                            configuration: null,
-                            scheduleEnabled: false,
-                            scheduleFrequency: 'weekly',
-                            scheduleDayOfWeek: 'monday',
-                            scheduleTime: '9:00 AM',
-                            emailRecipients: '',
-                            status: 'draft'
-                          });
-                          setCustomReportConfig({
-                            coreMetrics: [],
-                            derivedMetrics: [],
-                            kpis: [],
-                            benchmarks: []
-                          });
+                          setReportForm(createEmptyCustomIntegrationReportForm());
+                          setCustomReportConfig(createEmptyCustomIntegrationReportConfig());
                           setIsReportModalOpen(true);
                         }}
                         data-testid="button-create-first-report"
@@ -4415,30 +4557,75 @@ export default function CustomIntegrationAnalytics() {
       </Dialog>
 
       {/* Report Modal */}
-      <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
+      <Dialog open={isReportModalOpen} onOpenChange={(open) => {
+        setIsReportModalOpen(open);
+        if (!open) {
+          setReportModalStep('standard');
+          setEditingReportId(null);
+          setInitialReportState(null);
+          setReportForm(createEmptyCustomIntegrationReportForm());
+          setCustomReportConfig(createEmptyCustomIntegrationReportConfig());
+        }
+      }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-purple-600" />
-              {editingReportId ? 'Edit Report' : 'Create New Report'}
+              Report Type
             </DialogTitle>
             <DialogDescription>
               {reportModalStep === 'standard' 
-                ? 'Choose a report type and configure scheduling options for Custom Integration analytics'
-                : 'Select the metrics, KPIs, and benchmarks to include in your custom report'}
+                ? 'Choose a source-backed Custom Integration report template.'
+                : 'Select the Custom Integration sections, metrics, KPIs, and benchmarks to include.'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <Card
+                className={`cursor-pointer transition-all ${reportModalStep === 'standard' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
+                onClick={() => {
+                  setReportModalStep('standard');
+                  if (reportForm.reportType === 'custom') setReportForm({ ...reportForm, reportType: '', name: '' });
+                }}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    <FileText className="w-5 h-5 text-purple-600 mt-1" />
+                    <div>
+                      <h3 className="font-semibold">Standard Templates</h3>
+                      <p className="text-sm text-muted-foreground/70">Pre-built report templates</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card
+                className={`cursor-pointer transition-all ${reportModalStep === 'custom' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
+                onClick={() => {
+                  setReportModalStep('custom');
+                  handleReportTypeSelect('custom');
+                }}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    <Settings className="w-5 h-5 text-purple-600 mt-1" />
+                    <div>
+                      <h3 className="font-semibold">Custom Report</h3>
+                      <p className="text-sm text-muted-foreground/70">Choose specific sections and rows</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
             {reportModalStep === 'standard' && (
               <div className="space-y-6">
                 {/* Report Type Selection */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-foreground/80/60">Report Type</h3>
+                  <h3 className="text-sm font-semibold text-foreground/80/60">Choose Template</h3>
                   <div className="grid grid-cols-2 gap-3">
-                    <Card 
+                    <Card
                       className={`cursor-pointer transition-all ${reportForm.reportType === 'overview' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
-                      onClick={() => setReportForm({ ...reportForm, reportType: 'overview' })}
+                      onClick={() => handleReportTypeSelect('overview')}
                       data-testid="card-overview-report"
                     >
                       <CardContent className="pt-6">
@@ -4449,9 +4636,22 @@ export default function CustomIntegrationAnalytics() {
                       </CardContent>
                     </Card>
 
-                    <Card 
+                    <Card
+                      className={`cursor-pointer transition-all ${reportForm.reportType === 'summary' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
+                      onClick={() => handleReportTypeSelect('summary')}
+                      data-testid="card-summary-report"
+                    >
+                      <CardContent className="pt-6">
+                        <h4 className="font-semibold mb-2">Summary Report</h4>
+                        <p className="text-sm text-muted-foreground/70">
+                          Executive summary of source-backed Custom Integration data
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card
                       className={`cursor-pointer transition-all ${reportForm.reportType === 'kpis' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
-                      onClick={() => setReportForm({ ...reportForm, reportType: 'kpis' })}
+                      onClick={() => handleReportTypeSelect('kpis')}
                       data-testid="card-kpis-report"
                     >
                       <CardContent className="pt-6">
@@ -4462,9 +4662,9 @@ export default function CustomIntegrationAnalytics() {
                       </CardContent>
                     </Card>
 
-                    <Card 
+                    <Card
                       className={`cursor-pointer transition-all ${reportForm.reportType === 'benchmarks' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
-                      onClick={() => setReportForm({ ...reportForm, reportType: 'benchmarks' })}
+                      onClick={() => handleReportTypeSelect('benchmarks')}
                       data-testid="card-benchmarks-report"
                     >
                       <CardContent className="pt-6">
@@ -4476,17 +4676,14 @@ export default function CustomIntegrationAnalytics() {
                     </Card>
 
                     <Card 
-                      className={`cursor-pointer transition-all ${reportForm.reportType === 'custom' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
-                      onClick={() => {
-                        setReportModalStep('custom');
-                        setReportForm({ ...reportForm, reportType: 'custom' });
-                      }}
-                      data-testid="card-custom-report"
+                      className={`cursor-pointer transition-all ${reportForm.reportType === 'insights' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
+                      onClick={() => handleReportTypeSelect('insights')}
+                      data-testid="card-insights-report"
                     >
                       <CardContent className="pt-6">
-                        <h4 className="font-semibold mb-2">Custom Report</h4>
+                        <h4 className="font-semibold mb-2">Insights Report</h4>
                         <p className="text-sm text-muted-foreground/70">
-                          Build your own report with selected metrics
+                          Performance and What to do next from source-backed evidence
                         </p>
                       </CardContent>
                     </Card>
@@ -4534,7 +4731,7 @@ export default function CustomIntegrationAnalytics() {
                           data-testid="checkbox-schedule-reports"
                         />
                         <Label htmlFor="schedule-reports" className="text-base cursor-pointer font-semibold">
-                          Schedule Automatic Reports
+                          Schedule Automated Reports
                         </Label>
                       </div>
 
@@ -4578,6 +4775,43 @@ export default function CustomIntegrationAnalytics() {
                                   <SelectItem value="friday">Friday</SelectItem>
                                   <SelectItem value="saturday">Saturday</SelectItem>
                                   <SelectItem value="sunday">Sunday</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
+                          {(reportForm.scheduleFrequency === 'monthly' || reportForm.scheduleFrequency === 'quarterly') && (
+                            <div className="space-y-2">
+                              <Label htmlFor="schedule-day-month">Day of Month</Label>
+                              <Select
+                                value={reportForm.scheduleDayOfMonth}
+                                onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfMonth: value })}
+                              >
+                                <SelectTrigger id="schedule-day-month" data-testid="select-day-month">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="first">1st (First day of month)</SelectItem>
+                                  <SelectItem value="15">15th (Mid-month)</SelectItem>
+                                  <SelectItem value="last">Last day of month</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
+                          {reportForm.scheduleFrequency === 'quarterly' && (
+                            <div className="space-y-2">
+                              <Label htmlFor="schedule-quarter">Quarter Timing</Label>
+                              <Select
+                                value={reportForm.quarterTiming}
+                                onValueChange={(value) => setReportForm({ ...reportForm, quarterTiming: value })}
+                              >
+                                <SelectTrigger id="schedule-quarter" data-testid="select-quarter">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="end">End of Quarter</SelectItem>
+                                  <SelectItem value="start">Start of Quarter</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -4665,6 +4899,45 @@ export default function CustomIntegrationAnalytics() {
                       data-testid="input-custom-report-description"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t">
+                  <h3 className="text-lg font-semibold text-foreground">Sections</h3>
+                  <Accordion type="multiple" className="w-full">
+                    {[
+                      { key: 'overview', label: 'Overview', help: 'Source-backed overview metric groups.' },
+                      { key: 'summary', label: 'Summary', help: 'Executive source and availability summary.' },
+                      { key: 'kpis', label: 'KPIs', help: 'Saved Custom Integration KPI rows.' },
+                      { key: 'benchmarks', label: 'Benchmarks', help: 'Saved Custom Integration Benchmark rows.' },
+                      { key: 'insights', label: 'Insights', help: 'Performance and What to do next recommendations.' },
+                    ].map((section) => (
+                      <AccordionItem key={section.key} value={`section-${section.key}`}>
+                        <AccordionTrigger className="text-sm font-semibold text-foreground/80/60">
+                          {section.label}
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="flex items-start space-x-2 pt-2">
+                            <Checkbox
+                              id={`custom-report-section-${section.key}`}
+                              checked={Boolean((customReportConfig.sections as any)?.[section.key])}
+                              onCheckedChange={(checked) => setCustomReportConfig({
+                                ...customReportConfig,
+                                sections: {
+                                  ...customReportConfig.sections,
+                                  [section.key]: checked as boolean,
+                                },
+                              })}
+                              data-testid={`checkbox-custom-report-section-${section.key}`}
+                            />
+                            <Label htmlFor={`custom-report-section-${section.key}`} className="cursor-pointer">
+                              <span className="block text-sm font-medium">{section.label}</span>
+                              <span className="block text-sm text-muted-foreground/70">{section.help}</span>
+                            </Label>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
                 </div>
 
                 {/* Metrics Selection */}
@@ -4913,7 +5186,7 @@ export default function CustomIntegrationAnalytics() {
                       data-testid="checkbox-custom-schedule-reports"
                     />
                     <Label htmlFor="custom-schedule-reports" className="text-base cursor-pointer font-semibold">
-                      Schedule Automatic Reports
+                      Schedule Automated Reports
                     </Label>
                   </div>
 
@@ -4937,6 +5210,66 @@ export default function CustomIntegrationAnalytics() {
                           </SelectContent>
                         </Select>
                       </div>
+
+                      {reportForm.scheduleFrequency === 'weekly' && (
+                        <div className="space-y-2">
+                          <Label htmlFor="custom-schedule-day">Day of Week</Label>
+                          <Select
+                            value={reportForm.scheduleDayOfWeek}
+                            onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfWeek: value })}
+                          >
+                            <SelectTrigger id="custom-schedule-day" data-testid="select-custom-day">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="monday">Monday</SelectItem>
+                              <SelectItem value="tuesday">Tuesday</SelectItem>
+                              <SelectItem value="wednesday">Wednesday</SelectItem>
+                              <SelectItem value="thursday">Thursday</SelectItem>
+                              <SelectItem value="friday">Friday</SelectItem>
+                              <SelectItem value="saturday">Saturday</SelectItem>
+                              <SelectItem value="sunday">Sunday</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {(reportForm.scheduleFrequency === 'monthly' || reportForm.scheduleFrequency === 'quarterly') && (
+                        <div className="space-y-2">
+                          <Label htmlFor="custom-schedule-day-month">Day of Month</Label>
+                          <Select
+                            value={reportForm.scheduleDayOfMonth}
+                            onValueChange={(value) => setReportForm({ ...reportForm, scheduleDayOfMonth: value })}
+                          >
+                            <SelectTrigger id="custom-schedule-day-month" data-testid="select-custom-day-month">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="first">1st (First day of month)</SelectItem>
+                              <SelectItem value="15">15th (Mid-month)</SelectItem>
+                              <SelectItem value="last">Last day of month</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {reportForm.scheduleFrequency === 'quarterly' && (
+                        <div className="space-y-2">
+                          <Label htmlFor="custom-schedule-quarter">Quarter Timing</Label>
+                          <Select
+                            value={reportForm.quarterTiming}
+                            onValueChange={(value) => setReportForm({ ...reportForm, quarterTiming: value })}
+                          >
+                            <SelectTrigger id="custom-schedule-quarter" data-testid="select-custom-quarter">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="end">End of Quarter</SelectItem>
+                              <SelectItem value="start">Start of Quarter</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
 
                       {/* Time */}
                       <div className="space-y-2">
@@ -4996,18 +5329,9 @@ export default function CustomIntegrationAnalytics() {
                   setIsReportModalOpen(false);
                   setReportModalStep('standard');
                   setEditingReportId(null);
-                  setReportForm({
-                    name: '',
-                    description: '',
-                    reportType: '',
-                    configuration: null,
-                    scheduleEnabled: false,
-                    scheduleFrequency: 'weekly',
-                    scheduleDayOfWeek: 'monday',
-                    scheduleTime: '9:00 AM',
-                    emailRecipients: '',
-                    status: 'draft'
-                  });
+                  setInitialReportState(null);
+                  setReportForm(createEmptyCustomIntegrationReportForm());
+                  setCustomReportConfig(createEmptyCustomIntegrationReportConfig());
                 }}
                 data-testid="button-cancel-report"
               >
@@ -5031,7 +5355,7 @@ export default function CustomIntegrationAnalytics() {
                 {reportForm.reportType && reportForm.reportType !== 'custom' && (
                   <Button
                     onClick={editingReportId ? handleUpdateReport : handleCreateReport}
-                    disabled={!reportForm.name || createReportMutation.isPending || updateReportMutation.isPending}
+                    disabled={!reportForm.name || !reportForm.reportType || (reportForm.scheduleEnabled && !reportForm.emailRecipients.trim()) || (Boolean(editingReportId) && !reportHasChanges) || createReportMutation.isPending || updateReportMutation.isPending}
                     data-testid={editingReportId ? "button-update-report" : "button-create-report-submit"}
                     className="gap-2 bg-purple-600 hover:bg-purple-700"
                   >
@@ -5053,7 +5377,7 @@ export default function CustomIntegrationAnalytics() {
                 {reportModalStep === 'custom' && (
                   <Button
                     onClick={editingReportId ? handleUpdateReport : handleCreateReport}
-                    disabled={!reportForm.name || createReportMutation.isPending || updateReportMutation.isPending}
+                    disabled={!reportForm.name || !customReportHasSelection() || (reportForm.scheduleEnabled && !reportForm.emailRecipients.trim()) || (Boolean(editingReportId) && !reportHasChanges) || createReportMutation.isPending || updateReportMutation.isPending}
                     data-testid={editingReportId ? "button-update-custom-report" : "button-create-custom-report"}
                     className="gap-2 bg-purple-600 hover:bg-purple-700"
                   >

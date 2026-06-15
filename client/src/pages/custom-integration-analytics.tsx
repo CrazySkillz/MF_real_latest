@@ -4873,30 +4873,13 @@ export default function CustomIntegrationAnalytics() {
 
                 <div className="border rounded-lg p-4 border-border">
                   <div className="text-sm font-medium text-foreground/80/60 mb-3">Sections</div>
-                  <Accordion type="multiple" defaultValue={['custom-report-overview']} className="space-y-4">
+                  <Accordion type="multiple" className="space-y-4">
                     <AccordionItem value="custom-report-overview" className="rounded-md border border-border px-4">
                       <AccordionTrigger className="text-base font-semibold text-foreground hover:no-underline">
                         Overview
                       </AccordionTrigger>
                       <AccordionContent>
                         <div className="space-y-4 pt-1">
-                          <label className="flex items-start gap-2">
-                            <input
-                              type="checkbox"
-                              className="mt-1 h-4 w-4"
-                              checked={Boolean((customReportConfig.sections as any)?.overview)}
-                              onChange={(e) => setCustomReportConfig({
-                                ...customReportConfig,
-                                sections: { ...customReportConfig.sections, overview: e.target.checked },
-                              })}
-                              data-testid="checkbox-custom-report-section-overview"
-                            />
-                            <span>
-                              <span className="block text-sm font-medium">Overview</span>
-                              <span className="block text-sm text-muted-foreground/70">Source-backed overview metric groups.</span>
-                            </span>
-                          </label>
-
                           <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
                             <div className="space-y-2">
                               <div className="font-medium">Audience & Traffic Metrics</div>

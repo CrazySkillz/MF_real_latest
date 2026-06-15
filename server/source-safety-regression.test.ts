@@ -1656,7 +1656,7 @@ describe("source safety regression guards", () => {
     expect(source).toContain("chips: ['Metrics', 'Targets', 'Progress']");
     expect(source).toContain("chips: ['Performance', 'Actions', 'Evidence']");
     expect(source).toContain("Choose which Custom Integration sections to include in your PDF.");
-    expect(source).toContain("defaultValue={['custom-report-overview']}");
+    expect(source).not.toContain("defaultValue={['custom-report-overview']}");
     expect(source).toContain('value="custom-report-summary"');
     expect(source).toContain('value="custom-report-kpis"');
     expect(source).toContain('value="custom-report-benchmarks"');
@@ -1666,6 +1666,9 @@ describe("source safety regression guards", () => {
     expect(source).not.toContain('<h4 className="font-semibold mb-2">Overview Report</h4>');
     expect(source).not.toContain('<h4 className="font-semibold mb-2">KPIs Report</h4>');
     expect(source).not.toContain("<h3 className=\"text-lg font-semibold text-foreground\">Select Metrics</h3>");
+    expect(source).not.toContain("Include full Overview tab");
+    expect(source).not.toContain("Adds the metric cards from the Overview tab to the PDF.");
+    expect(source).not.toContain("Source-backed overview metric groups.");
     expect(source).toContain("createEmptyCustomIntegrationReportConfig");
     expect(source).toContain("parseCustomIntegrationReportConfiguration");
     expect(source).toContain("serializeCustomIntegrationReportState(reportForm, customReportConfig, reportModalStep)");

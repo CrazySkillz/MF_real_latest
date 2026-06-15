@@ -82,6 +82,44 @@ const CUSTOM_INTEGRATION_OVERVIEW_GROUPS = [
   { title: 'Email & Newsletter Performance', icon: Mail, metricKeys: ['emailsDelivered', 'openRate', 'clickThroughRate', 'clickToOpen', 'listGrowth'] },
 ];
 
+const CUSTOM_INTEGRATION_REPORT_TEMPLATES = [
+  {
+    key: 'overview',
+    title: 'Overview',
+    desc: 'Comprehensive overview of Custom Integration performance metrics',
+    Icon: BarChart3,
+    chips: ['Overview', 'Metrics', 'Insights'],
+  },
+  {
+    key: 'summary',
+    title: 'Summary',
+    desc: 'Executive summary of source-backed Custom Integration data',
+    Icon: FileText,
+    chips: ['Executive', 'Source', 'Availability'],
+  },
+  {
+    key: 'kpis',
+    title: 'KPIs',
+    desc: 'Key performance indicators and progress tracking',
+    Icon: Target,
+    chips: ['Metrics', 'Targets', 'Progress'],
+  },
+  {
+    key: 'benchmarks',
+    title: 'Benchmarks',
+    desc: 'Performance benchmarks and comparisons',
+    Icon: Trophy,
+    chips: ['Source', 'Benchmarks', 'Goals'],
+  },
+  {
+    key: 'insights',
+    title: 'Insights',
+    desc: 'Performance and What to do next from source-backed evidence',
+    Icon: Activity,
+    chips: ['Performance', 'Actions', 'Evidence'],
+  },
+] as const;
+
 const CUSTOM_INTEGRATION_KPI_NEAR_TARGET_BAND_PCT = 5;
 
 function createEmptyCustomIntegrationKpiForm() {
@@ -4567,126 +4605,76 @@ export default function CustomIntegrationAnalytics() {
           setCustomReportConfig(createEmptyCustomIntegrationReportConfig());
         }
       }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-purple-600" />
-              Report Type
-            </DialogTitle>
-            <DialogDescription>
-              {reportModalStep === 'standard' 
-                ? 'Choose a source-backed Custom Integration report template.'
-                : 'Select the Custom Integration sections, metrics, KPIs, and benchmarks to include.'}
-            </DialogDescription>
+            <DialogTitle className="text-xl font-bold">Report Type</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <Card
-                className={`cursor-pointer transition-all ${reportModalStep === 'standard' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
+          <div className="py-4">
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div
+                className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${reportModalStep === 'standard' ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30' : 'border-border hover:border-blue-500'}`}
                 onClick={() => {
                   setReportModalStep('standard');
                   if (reportForm.reportType === 'custom') setReportForm({ ...reportForm, reportType: '', name: '' });
                 }}
               >
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-3">
-                    <FileText className="w-5 h-5 text-purple-600 mt-1" />
-                    <div>
-                      <h3 className="font-semibold">Standard Templates</h3>
-                      <p className="text-sm text-muted-foreground/70">Pre-built report templates</p>
-                    </div>
+                <div className="flex items-start gap-3">
+                  <FileText className="w-6 h-6 text-blue-600 mt-1" />
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground">Standard Templates</h3>
+                    <p className="text-sm text-muted-foreground/70 mt-1">Pre-built professional report templates</p>
                   </div>
-                </CardContent>
-              </Card>
-              <Card
-                className={`cursor-pointer transition-all ${reportModalStep === 'custom' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
+                </div>
+              </div>
+              <div
+                className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${reportModalStep === 'custom' ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30' : 'border-border hover:border-blue-500'}`}
                 onClick={() => {
                   setReportModalStep('custom');
                   handleReportTypeSelect('custom');
                 }}
               >
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-3">
-                    <Settings className="w-5 h-5 text-purple-600 mt-1" />
-                    <div>
-                      <h3 className="font-semibold">Custom Report</h3>
-                      <p className="text-sm text-muted-foreground/70">Choose specific sections and rows</p>
-                    </div>
+                <div className="flex items-start gap-3">
+                  <Settings className="w-6 h-6 text-blue-600 mt-1" />
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground">Custom Report</h3>
+                    <p className="text-sm text-muted-foreground/70 mt-1">Build your own customized report</p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
             {reportModalStep === 'standard' && (
               <div className="space-y-6">
                 {/* Report Type Selection */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-foreground/80/60">Choose Template</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Card
-                      className={`cursor-pointer transition-all ${reportForm.reportType === 'overview' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
-                      onClick={() => handleReportTypeSelect('overview')}
-                      data-testid="card-overview-report"
-                    >
-                      <CardContent className="pt-6">
-                        <h4 className="font-semibold mb-2">Overview Report</h4>
-                        <p className="text-sm text-muted-foreground/70">
-                          Comprehensive snapshot of all Custom Integration metrics
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <Card
-                      className={`cursor-pointer transition-all ${reportForm.reportType === 'summary' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
-                      onClick={() => handleReportTypeSelect('summary')}
-                      data-testid="card-summary-report"
-                    >
-                      <CardContent className="pt-6">
-                        <h4 className="font-semibold mb-2">Summary Report</h4>
-                        <p className="text-sm text-muted-foreground/70">
-                          Executive summary of source-backed Custom Integration data
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <Card
-                      className={`cursor-pointer transition-all ${reportForm.reportType === 'kpis' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
-                      onClick={() => handleReportTypeSelect('kpis')}
-                      data-testid="card-kpis-report"
-                    >
-                      <CardContent className="pt-6">
-                        <h4 className="font-semibold mb-2">KPIs Report</h4>
-                        <p className="text-sm text-muted-foreground/70">
-                          Focus on key performance indicators and targets
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <Card
-                      className={`cursor-pointer transition-all ${reportForm.reportType === 'benchmarks' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
-                      onClick={() => handleReportTypeSelect('benchmarks')}
-                      data-testid="card-benchmarks-report"
-                    >
-                      <CardContent className="pt-6">
-                        <h4 className="font-semibold mb-2">Benchmarks Report</h4>
-                        <p className="text-sm text-muted-foreground/70">
-                          Compare performance against industry standards
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <Card 
-                      className={`cursor-pointer transition-all ${reportForm.reportType === 'insights' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'hover:border-purple-300'}`}
-                      onClick={() => handleReportTypeSelect('insights')}
-                      data-testid="card-insights-report"
-                    >
-                      <CardContent className="pt-6">
-                        <h4 className="font-semibold mb-2">Insights Report</h4>
-                        <p className="text-sm text-muted-foreground/70">
-                          Performance and What to do next from source-backed evidence
-                        </p>
-                      </CardContent>
-                    </Card>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground mb-4">Choose Template</h3>
+                  <div className="space-y-4">
+                    {CUSTOM_INTEGRATION_REPORT_TEMPLATES.map((template) => {
+                      const selected = reportForm.reportType === template.key;
+                      return (
+                        <div
+                          key={template.key}
+                          className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-blue-500 ${selected ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30' : 'border-border'}`}
+                          onClick={() => handleReportTypeSelect(template.key)}
+                          data-testid={`card-${template.key}-report`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <template.Icon className="w-5 h-5 text-foreground mt-0.5" />
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-foreground">{template.title}</h4>
+                              <p className="text-sm text-muted-foreground/70 mt-1">{template.desc}</p>
+                              <div className="flex gap-2 mt-3 flex-wrap">
+                                {template.chips.map((chip) => (
+                                  <span key={chip} className="text-xs px-2 py-1 bg-muted rounded">
+                                    {chip}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

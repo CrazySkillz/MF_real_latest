@@ -1643,8 +1643,17 @@ describe("source safety regression guards", () => {
     expect(source).toContain("Standard Templates");
     expect(source).toContain("Custom Report");
     expect(source).toContain("Choose Template");
+    expect(source).toContain("CUSTOM_INTEGRATION_REPORT_TEMPLATES");
+    expect(source).toContain("max-w-5xl max-h-[90vh] overflow-y-auto");
+    expect(source).toContain("Pre-built professional report templates");
+    expect(source).toContain("Build your own customized report");
+    expect(source).toContain("chips: ['Overview', 'Metrics', 'Insights']");
+    expect(source).toContain("chips: ['Metrics', 'Targets', 'Progress']");
+    expect(source).toContain("chips: ['Performance', 'Actions', 'Evidence']");
     expect(source).toContain("Summary Report");
     expect(source).toContain("Insights Report");
+    expect(source).not.toContain('<h4 className="font-semibold mb-2">Overview Report</h4>');
+    expect(source).not.toContain('<h4 className="font-semibold mb-2">KPIs Report</h4>');
     expect(source).toContain("createEmptyCustomIntegrationReportConfig");
     expect(source).toContain("parseCustomIntegrationReportConfiguration");
     expect(source).toContain("serializeCustomIntegrationReportState(reportForm, customReportConfig, reportModalStep)");

@@ -49,7 +49,7 @@ Required Google Sheets layout mapping:
 | KPI section | Same section layout and source-backed current-value behavior as Google Sheets. |
 | Benchmark section | Same section layout and source-backed current-value behavior as Google Sheets. |
 | Insights tab | Same evidence-first layout: summary cards, Performance, and What to do next. |
-| Reports tab | Same reports layout and saved-source behavior as Google Sheets. |
+| Reports tab | Same GA4-style report card, modal, custom-section picker, saved-source, and scheduled-report behavior used by connected-platform Reports. |
 
 Do not keep the current Custom Integration page as a separate purple/blue design pattern. The final implementation should visually and behaviorally match the Google Sheets analytics shell.
 
@@ -72,7 +72,7 @@ Primary root causes:
 - Source contract ambiguity: Custom Integration imports have file/email/webhook provenance, but the analytics UI does not expose a Google-Sheets-style selected source/status row that explains what data powers the page.
 - Metric adapter gap: Current values are read directly from `metricsData` in the page instead of through a source-backed metric adapter with units, formatting, availability, source labels, and unavailable reasons.
 - Silent zero risk: KPI and Benchmark metric selection uses `metricsData?.metric || 0`, which can turn missing metrics into `0`. Google Sheets now treats missing values as unavailable with reasons.
-- Saved object scope risk: Reports still need saved source-scope proof. KPIs and Benchmarks now re-resolve source-backed current values from saved Custom Integration source scope after Commits 6 and 7.
+- Saved object scope risk: KPIs, Benchmarks, and Reports must re-resolve source-backed current values from saved Custom Integration source scope. KPIs and Benchmarks were completed in Commits 6 and 7; Reports were completed in Commit 9.
 - Insights gap: There is no production-ready Custom Integration Insights tab using source-backed evidence and next-action rules.
 - Route reachability gap: `custom-integration-analytics.tsx` calls `/api/custom-integration-by-id/:id`, but no matching route was found in `server/routes-oauth.ts` during this review.
 - Duplicate route risk: `server/routes-oauth.ts` contains more than one `/api/custom-integration/:campaignId/upload-pdf` registration path, which must be audited before production-ready claims.
@@ -93,7 +93,7 @@ Frontend:
 - `client/src/pages/custom-integration-analytics.tsx`
   - Current Custom Integration analytics page.
   - Fetches connection, latest metrics, platform KPIs, platform Benchmarks, and platform Reports.
-  - Renders Overview, KPIs, Benchmarks, and Reports.
+  - Renders Overview, Summary, KPIs, Benchmarks, Insights, and Reports.
   - Includes PDF upload from the Overview empty state.
 - `client/src/pages/campaigns.tsx`
   - Exposes Custom Integration in Create Campaign.
@@ -466,7 +466,7 @@ Goal:
 
 Tasks:
 
-- Use the Google Sheets Reports section layout.
+- Use the GA4 Reports section layout and interaction pattern within the Custom Integration analytics shell.
 - Report templates include Overview, Summary, KPIs, Benchmarks, Insights, and Custom.
 - Downloaded reports use adapter-resolved values.
 - Scheduled reports snapshot the same source-backed values visible in the UI.
@@ -478,15 +478,22 @@ Validation:
 
 Status:
 
-- Completed locally for the Commit 9 Reports boundary.
+- Completed and user-validated for Commit 9.
 - Root cause: Custom Integration Reports used the generic platform report route, but the page-level PDF download still read raw/stored values and scheduled report payloads sent UI values such as `9:00 AM` without `scheduleTimeZone`, while the shared backend route requires `HH:MM`, IANA time zone, and normalized schedule fields.
 - Root cause: the report scheduler did not include `custom-integration` in scheduled platform selection and had no Custom Integration source-backed PDF builder, so scheduled/test/snapshot output could fall through generic stored-row behavior or skip the platform entirely.
-- Fixes: Custom Integration Report modal now exposes `Report Type`, `Standard Templates`, `Custom Report`, `Choose Template`, Overview, Summary, KPIs, Benchmarks, Insights, and collapsed custom section controls with no default custom selections.
+- Root cause: the Custom Integration Reports UI drifted from the GA4 Reports template by using two-column standard report tiles, a separate custom-report accordion layout, purple report cards, an extra `Back to Standard Reports` link, and a redundant Overview checkbox inside the custom section picker.
+- Root cause: saved scheduled Custom Integration reports could be missed by the Reports tab when existing rows used the alternate `custom_integration` platform id while the page queried `custom-integration`; new report forms also defaulted to `draft` instead of active report rows.
+- Fixes: Custom Integration Report modal now follows GA4: `Report Type`, `Standard Templates`, `Custom Report`, `Choose Template`, full-width template rows with chips, and a GA4-style Custom Report section picker for Overview, Summary, KPIs, Benchmarks, and Insights.
+- Fixes: Custom Report starts with all sections collapsed, has no default custom selections, removed the redundant Overview checkbox/helper copy, and removed the non-GA4 `Back to Standard Reports` link.
+- Fixes: Reports tab cards now follow the GA4 card pattern with title, optional description, report type pill, schedule metadata, last-sent date, created date, and Download/Edit/Delete actions for scheduled and unscheduled reports.
 - Fixes: downloaded Custom Integration reports now use the source-backed metric resolver, current KPI/Benchmark resolver, unavailable reasons, and source/provenance labels instead of raw metric fields or saved KPI/Benchmark current-value snapshots.
 - Fixes: scheduled report create/update now persists Custom Integration source scope in report `configuration`, sends normalized schedule fields, includes browser time zone, and disables edit-mode `Update Report` until something changes.
+- Fixes: Custom Integration reports now default to active rows, and platform report listing accepts both `custom-integration` and `custom_integration` ids so scheduled report cards appear in the Reports tab.
 - Fixes: scheduled/test/snapshot PDF generation now has a Custom Integration source-backed builder using the latest imported metric row plus current platform KPI/Benchmark rows; missing source-backed output fails closed instead of creating misleading snapshots.
-- Regression evidence: `server/source-safety-regression.test.ts` verifies the Custom Integration Reports modal anchors, no default custom selection, source-backed report values, saved source scope, schedule payload normalization, scheduler inclusion, source-backed builder, summary report allowance, and snapshot fail-closed guard.
+- Runtime commits included in Commit 9 scope: `a9bc030b`, `40ebe66a`, `f8ad6a4f`, `6f958e6e`, and `2a5f7362`.
+- Regression evidence: `server/source-safety-regression.test.ts` verifies the Custom Integration Reports modal anchors, GA4-style report cards, scheduled card visibility support, no extra modal back link, collapsed custom section picker, no redundant Overview selector, source-backed report values, saved source scope, schedule payload normalization, edit-prefill/update-disabled behavior, scheduler inclusion, source-backed builder, summary report allowance, and snapshot fail-closed guard.
 - Local validation: `npm test -- server/source-safety-regression.test.ts`, `npm run check`, and targeted `git diff --check` passed.
+- User validation passed for Commit 9 after deployed browser review.
 - Deferred by tracker scope: campaign aggregates, Campaign DeepDive, existing-data cleanup, email-forwarding live delivery, and full final production-readiness evidence remain in later commits.
 
 ### Commit 10: Campaign Aggregates And DeepDive

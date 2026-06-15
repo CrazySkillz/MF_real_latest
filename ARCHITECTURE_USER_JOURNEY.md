@@ -217,6 +217,18 @@ The required product architecture pattern is:
 
 Future development must fit into this pattern.
 
+### Connected-Platform Reports Pattern
+
+GA4 Reports is the required layout and interaction template for connected-platform Reports tabs unless a user explicitly approves a different design.
+
+Any connected-platform Reports implementation, including Custom Integration, must preserve this standard pattern:
+
+- report cards use the GA4 summary-card layout with title, optional description, report type pill, schedule/last-sent/created metadata, and Download/Edit/Delete actions
+- Custom Report creation uses the GA4 Custom Report section picker pattern, with clickable expandable sections for each analytics tab and selectable rows inside the relevant section
+- Edit must reopen the report dialog with saved values prefilled
+- Update Report must remain disabled until the user changes at least one saved value
+- Download and Delete actions must remain wired to the saved report row and must not depend on visible card-only metadata
+
 ## Platform-Level vs Campaign-Level Analytics
 
 This distinction is fundamental and must remain explicit in both product behavior and code structure.

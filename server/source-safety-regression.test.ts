@@ -1643,6 +1643,11 @@ describe("source safety regression guards", () => {
     expect(source).toContain("Standard Templates");
     expect(source).toContain("Custom Report");
     expect(source).toContain("Choose Template");
+    expect(source).toContain("Create and download exec-ready Custom Integration reports (PDF) from this campaign's source-backed data.");
+    expect(source).toContain("Last sent {new Date(report.lastSentAt).toLocaleDateString()}");
+    expect(source).toContain("onClick={() => handleDownloadReport(report)}");
+    expect(source).toContain("onClick={() => handleEditReport(report)}");
+    expect(source).toContain("onClick={() => deleteReportMutation.mutate(report.id)}");
     expect(source).toContain("CUSTOM_INTEGRATION_REPORT_TEMPLATES");
     expect(source).toContain("max-w-5xl max-h-[90vh] overflow-y-auto");
     expect(source).toContain("Pre-built professional report templates");
@@ -1650,15 +1655,23 @@ describe("source safety regression guards", () => {
     expect(source).toContain("chips: ['Overview', 'Metrics', 'Insights']");
     expect(source).toContain("chips: ['Metrics', 'Targets', 'Progress']");
     expect(source).toContain("chips: ['Performance', 'Actions', 'Evidence']");
+    expect(source).toContain("Choose which Custom Integration sections to include in your PDF.");
+    expect(source).toContain("defaultValue={['custom-report-overview']}");
+    expect(source).toContain('value="custom-report-summary"');
+    expect(source).toContain('value="custom-report-kpis"');
+    expect(source).toContain('value="custom-report-benchmarks"');
+    expect(source).toContain('value="custom-report-insights"');
     expect(source).toContain("Summary Report");
     expect(source).toContain("Insights Report");
     expect(source).not.toContain('<h4 className="font-semibold mb-2">Overview Report</h4>');
     expect(source).not.toContain('<h4 className="font-semibold mb-2">KPIs Report</h4>');
+    expect(source).not.toContain("<h3 className=\"text-lg font-semibold text-foreground\">Select Metrics</h3>");
     expect(source).toContain("createEmptyCustomIntegrationReportConfig");
     expect(source).toContain("parseCustomIntegrationReportConfiguration");
     expect(source).toContain("serializeCustomIntegrationReportState(reportForm, customReportConfig, reportModalStep)");
     expect(source).toContain("const reportHasChanges = !editingReportId");
     expect(source).toContain("Boolean(editingReportId) && !reportHasChanges");
+    expect(source).toContain("setInitialReportState(serializeCustomIntegrationReportState(nextForm, report.reportType === 'custom' ? parsedConfig : createEmptyCustomIntegrationReportConfig(), nextStep))");
     expect(source).toContain("sourceScope: activeCustomIntegrationSourceScope");
     expect(source).toContain("valueSource: 'latest_validated_import'");
     expect(source).toContain("scheduleTime: to24HourHHMM(nextForm.scheduleTime)");
@@ -1668,7 +1681,7 @@ describe("source safety regression guards", () => {
     expect(source).toContain("resolveCustomIntegrationCurrentValue(kpi)");
     expect(source).toContain("resolveCustomIntegrationCurrentValue(benchmark)");
     expect(source).toContain("customIntegrationInsights.recommendations.forEach");
-    expect(source).toContain("Source: {parseCustomIntegrationReportConfiguration(report.configuration).sourceLabel || latestImportLabel}");
+    expect(source).not.toContain("Source: {parseCustomIntegrationReportConfiguration(report.configuration).sourceLabel || latestImportLabel}");
     expect(source).not.toContain("handleGenerateReport();\n      return;\n    }\n    \n    const reportData: any = {\n      ...reportForm");
 
     expect(scheduler).toContain("'custom-integration'");

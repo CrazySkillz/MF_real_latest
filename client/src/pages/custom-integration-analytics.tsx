@@ -2828,40 +2828,6 @@ export default function CustomIntegrationAnalytics() {
               </div>
             </div>
 
-            <div className="mb-6 rounded-lg border border-border bg-card p-4" data-testid="custom-integration-data-status">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-start gap-3">
-                  <FileText className="mt-1 h-5 w-5 text-purple-600" />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Custom Data</p>
-                    <p className="text-sm text-muted-foreground">
-                      {latestImportLabel}
-                      {metricsData?.uploadedAt ? ` - Last updated ${new Date(metricsData.uploadedAt).toLocaleString()}` : ''}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Validation: {latestImportStatus}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    id="custom-integration-pdf-upload"
-                    className="hidden"
-                    onChange={(e) => handleCustomIntegrationPdfUpload(e.target.files?.[0])}
-                  />
-                  <Button
-                    variant="outline"
-                    onClick={() => document.getElementById('custom-integration-pdf-upload')?.click()}
-                    className="gap-2"
-                    data-testid="button-upload-custom-integration-pdf"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Upload PDF
-                  </Button>
-                </div>
-              </div>
-            </div>
-
             {/* Tabs */}
             <Tabs defaultValue="overview" className="space-y-6">
               <TabsList className="bg-card border border-border">
@@ -2990,15 +2956,35 @@ export default function CustomIntegrationAnalytics() {
                 {hasMetrics && (
                   <>
                     <Card data-testid="custom-integration-imported-data-card">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <FileText className="h-5 w-5 text-purple-600" />
-                          Imported Data
-                        </CardTitle>
-                        <CardDescription>
-                          {latestImportLabel}
-                          {metricsData?.uploadedAt ? ` - Last updated ${new Date(metricsData.uploadedAt).toLocaleString()}` : ''}
-                        </CardDescription>
+                      <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-purple-600" />
+                            Imported Data
+                          </CardTitle>
+                          <CardDescription>
+                            {latestImportLabel}
+                            {metricsData?.uploadedAt ? ` - Last updated ${new Date(metricsData.uploadedAt).toLocaleString()}` : ''}
+                          </CardDescription>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="file"
+                            accept=".pdf"
+                            id="custom-integration-pdf-upload"
+                            className="hidden"
+                            onChange={(e) => handleCustomIntegrationPdfUpload(e.target.files?.[0])}
+                          />
+                          <Button
+                            variant="outline"
+                            onClick={() => document.getElementById('custom-integration-pdf-upload')?.click()}
+                            className="gap-2"
+                            data-testid="button-upload-custom-integration-pdf"
+                          >
+                            <Upload className="h-4 w-4" />
+                            Upload PDF
+                          </Button>
+                        </div>
                       </CardHeader>
                       <CardContent className="grid gap-3 md:grid-cols-4">
                         <div>
@@ -3048,9 +3034,11 @@ export default function CustomIntegrationAnalytics() {
                                       ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type)
                                       : 'Unavailable'}
                                   </div>
-                                  <p className="mt-1 text-xs text-muted-foreground">
-                                    {resolved.available ? resolved.sourceLabel : resolved.reason}
-                                  </p>
+                                  {!resolved.available && (
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                      {resolved.reason}
+                                    </p>
+                                  )}
                                 </CardContent>
                               </Card>
                             ))}

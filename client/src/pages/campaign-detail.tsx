@@ -4568,6 +4568,7 @@ export default function CampaignDetail() {
   const [customIntegrationForwardingEmail, setCustomIntegrationForwardingEmail] = useState("");
   const customIntegrationEmail = String(customIntegration?.campaignEmail || customIntegration?.email || "").trim();
   const customIntegrationForwardingEmailDisplay = customIntegrationForwardingEmail || customIntegrationEmail;
+  const customIntegrationHasImportedData = Boolean(customIntegration?.metrics?.id || customIntegration?.metrics?.uploadedAt);
   const isCustomIntegrationConnected =
     platformStatusMap.get("custom-integration")?.connected === true ||
     Boolean(customIntegration?.id || customIntegrationForwardingEmailDisplay);
@@ -5642,7 +5643,7 @@ export default function CampaignDetail() {
                       <div>
                         <h3 className="font-semibold text-foreground">{platform.platform}</h3>
                         <p className="text-sm text-muted-foreground/70">
-                          {customIntegrationEmailReady ? "Connected - forwarding ready" : platform.needsSetup ? "Not connected" : platform.requiresImport ? "Connected - import required" : (platform.connected ? "Connected & syncing data" : "Not connected")}
+                          {platform.platform === "Custom Integration" && customIntegrationHasImportedData ? "Connected - data imported" : customIntegrationEmailReady ? "Connected - automatic imports ready" : platform.needsSetup ? "Not connected" : platform.requiresImport ? "Connected - import required" : (platform.connected ? "Connected & syncing data" : "Not connected")}
                         </p>
                       </div>
                     </div>

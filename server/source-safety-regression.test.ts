@@ -463,7 +463,9 @@ describe("source safety regression guards", () => {
     expect(source).toContain('!!customIntegrationForwardingEmailDisplay');
     expect(source).toContain('"Connected - data imported"');
     expect(source).toContain('"Connected - automatic imports ready"');
+    expect(source).toContain('const customIntegrationCanConfigure = platform.platform === "Custom Integration" && platform.connected;');
     expect(source).toContain("|| customIntegrationEmailReady ||");
+    expect(source).toContain("|| customIntegrationCanConfigure ||");
     expect(source).toContain('queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId] })');
     expect(emailSuccess).not.toContain("setExpandedPlatform(null)");
     expect(emailSuccess).not.toContain("window.location.reload();");

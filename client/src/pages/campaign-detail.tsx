@@ -5622,7 +5622,8 @@ export default function CampaignDetail() {
               {columnPlatforms.map((platform, index) => (
                 (() => {
                   const customIntegrationEmailReady = platform.platform === "Custom Integration" && !!customIntegrationForwardingEmailDisplay;
-                  const canExpandPlatform = !platform.connected || platform.needsSetup || platform.requiresImport || customIntegrationEmailReady;
+                  const customIntegrationCanConfigure = platform.platform === "Custom Integration" && platform.connected;
+                  const canExpandPlatform = !platform.connected || platform.needsSetup || platform.requiresImport || customIntegrationEmailReady || customIntegrationCanConfigure;
                   return (
                 <Card 
                   key={platform.platform} 
@@ -5820,7 +5821,7 @@ export default function CampaignDetail() {
                   {expandedPlatform === platform.platform && (
                     platform.platform === "Google Analytics"
                       ? true
-                      : (!platform.connected || platform.needsSetup || platform.requiresImport || customIntegrationEmailReady || (platform.platform === "Google Sheets" && canAddMoreSheets))
+                      : (!platform.connected || platform.needsSetup || platform.requiresImport || customIntegrationEmailReady || customIntegrationCanConfigure || (platform.platform === "Google Sheets" && canAddMoreSheets))
                   ) && (
                     <div className="border-t bg-muted/50 p-3 animate-in fade-in-0 slide-in-from-top-1 duration-200">
                       {platform.platform === "Google Analytics" ? (

@@ -441,6 +441,12 @@ describe("source safety regression guards", () => {
     expect(block).toContain("setCustomIntegrationForwardingEmail(forwardingEmail)");
     expect(block).toContain("Forward PDF reports to");
     expect(block).toContain("navigator.clipboard.writeText(customIntegrationForwardingEmail)");
+    expect(source).toContain("const isCustomIntegrationConnected =");
+    expect(source).toContain("Boolean(customIntegration?.id || customIntegrationEmail || customIntegrationForwardingEmail)");
+    expect(source).toContain('!!(customIntegrationForwardingEmail || customIntegrationEmail)');
+    expect(source).toContain('customIntegrationEmailReady ? "Connected - forwarding ready"');
+    expect(source).toContain("|| customIntegrationEmailReady ||");
+    expect(source).toContain('queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId] })');
     expect(emailSuccess).not.toContain("setExpandedPlatform(null)");
     expect(emailSuccess).not.toContain("window.location.reload();");
   });

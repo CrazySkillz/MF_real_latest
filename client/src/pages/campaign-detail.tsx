@@ -4565,6 +4565,17 @@ export default function CampaignDetail() {
       return response.json();
     },
   });
+  const [customIntegrationForwardingEmail, setCustomIntegrationForwardingEmail] = useState("");
+  const customIntegrationEmail = String(customIntegration?.campaignEmail || customIntegration?.email || "").trim();
+  const isCustomIntegrationConnected =
+    platformStatusMap.get("custom-integration")?.connected === true ||
+    Boolean(customIntegration?.id || customIntegrationEmail || customIntegrationForwardingEmail);
+
+  useEffect(() => {
+    if (customIntegrationEmail) {
+      setCustomIntegrationForwardingEmail(customIntegrationEmail);
+    }
+  }, [customIntegrationEmail]);
 
   // Fetch LinkedIn metrics for Performance Summary
   const { data: linkedinMetrics } = useQuery<any>({
@@ -4884,14 +4895,16 @@ export default function CampaignDetail() {
     },
     {
       platform: "Custom Integration",
-      connected: platformStatusMap.get("custom-integration")?.connected === true,
+      connected: isCustomIntegrationConnected,
       impressions: 0,
       clicks: 0,
       conversions: 0,
       spend: "0.00",
       ctr: "0.00%",
       cpc: "$0.00",
-      analyticsPath: platformStatusMap.get("custom-integration")?.analyticsPath || `/campaigns/${campaign?.id}/custom-integration-analytics`
+      analyticsPath: isCustomIntegrationConnected
+        ? (platformStatusMap.get("custom-integration")?.analyticsPath || `/campaigns/${campaign?.id}/custom-integration-analytics`)
+        : null
     }
   ];
 
@@ -4962,7 +4975,6 @@ export default function CampaignDetail() {
   const [tiktokAdvertiserName, setTikTokAdvertiserName] = useState("Test TikTok Advertiser");
   const [tiktokSelectedCampaignIds, setTikTokSelectedCampaignIds] = useState("");
   const [isTikTokConnecting, setIsTikTokConnecting] = useState(false);
-  const [customIntegrationForwardingEmail, setCustomIntegrationForwardingEmail] = useState("");
   const selectedInstagramCampaignIdList = instagramSelectedCampaignIds
     .split(",")
     .map((id) => id.trim())
@@ -5078,8 +5090,12 @@ export default function CampaignDetail() {
         throw new Error(err?.error || 'Failed to disconnect');
       }
       toastHook({ title: "Disconnected", description: `${disconnectConfirm.platformLabel} has been disconnected from this campaign.` });
+      if (p === 'Custom Integration') {
+        setCustomIntegrationForwardingEmail("");
+      }
       // Broad cache invalidation so all tabs update
       void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId] });
       void queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", campaignId] });
       void queryClient.invalidateQueries({ queryKey: ["/api/google-sheets/check-connection", campaignId] });
       void queryClient.invalidateQueries({ queryKey: ['/api/google-ads', campaignId, 'connection'] });
@@ -5603,7 +5619,8 @@ export default function CampaignDetail() {
                     <div key={columnIndex} className="space-y-4">
               {columnPlatforms.map((platform, index) => (
                 (() => {
-                  const canExpandPlatform = !platform.connected || platform.needsSetup || platform.requiresImport;
+                  const customIntegrationEmailReady = platform.platform === "Custom Integration" && !!(customIntegrationForwardingEmail || customIntegrationEmail);
+                  const canExpandPlatform = !platform.connected || platform.needsSetup || platform.requiresImport || customIntegrationEmailReady;
                   return (
                 <Card 
                   key={platform.platform} 
@@ -5624,7 +5641,7 @@ export default function CampaignDetail() {
                       <div>
                         <h3 className="font-semibold text-foreground">{platform.platform}</h3>
                         <p className="text-sm text-muted-foreground/70">
-                          {platform.needsSetup ? "Not connected" : platform.requiresImport ? "Connected — import required" : (platform.connected ? "Connected & syncing data" : "Not connected")}
+                          {customIntegrationEmailReady ? "Connected - forwarding ready" : platform.needsSetup ? "Not connected" : platform.requiresImport ? "Connected - import required" : (platform.connected ? "Connected & syncing data" : "Not connected")}
                         </p>
                       </div>
                     </div>
@@ -5801,7 +5818,7 @@ export default function CampaignDetail() {
                   {expandedPlatform === platform.platform && (
                     platform.platform === "Google Analytics"
                       ? true
-                      : (!platform.connected || platform.needsSetup || platform.requiresImport || (platform.platform === "Google Sheets" && canAddMoreSheets))
+                      : (!platform.connected || platform.needsSetup || platform.requiresImport || customIntegrationEmailReady || (platform.platform === "Google Sheets" && canAddMoreSheets))
                   ) && (
                     <div className="border-t bg-muted/50 p-3 animate-in fade-in-0 slide-in-from-top-1 duration-200">
                       {platform.platform === "Google Analytics" ? (
@@ -6110,6 +6127,7 @@ export default function CampaignDetail() {
                                     if (forwardingEmail) setCustomIntegrationForwardingEmail(forwardingEmail);
                                     toastHook({ title: "Connected", description: forwardingEmail ? `Forward PDF reports to ${forwardingEmail}.` : "Custom integration connected via email forwarding." });
                                     queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                                    queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId] });
                                   } else {
                                     const err = await response.json().catch(() => ({}));
                                     toastHook({ title: "Connection Failed", description: err?.error || "Failed to set up email forwarding", variant: "destructive" });

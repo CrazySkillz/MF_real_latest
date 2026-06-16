@@ -1,8 +1,8 @@
-# 🧪 Testing Custom Integration PDF Upload
+# Testing Custom Integration Report Upload
 
 ## Quick Test Guide
 
-### **Step 1: Create Test PDF**
+### **Step 1: Create Test Report**
 
 1. Open `test-sample-metrics.txt` (in this folder)
 2. Copy all the content
@@ -11,9 +11,12 @@
    - Or: Copy into Excel, then copy formatted tables to Word
 5. **Save as PDF** → Name it `test-metrics-report.pdf`
 
+   - For CSV validation, save a two-column `Metric,Value` file with the same metric labels.
+   - For Excel validation, save the same table as `.xlsx`.
+
 **Pro Tip:** The test file uses **table format** (like professional analytics reports) which is the most common format you'll encounter.
 
-**Alternative:** Use any existing PDF report you have with metrics in table format.
+**Alternative:** Use any existing PDF, CSV, or `.xlsx` report you have with supported metrics in table format.
 
 ---
 
@@ -25,7 +28,7 @@
 2. Navigate to **Campaign Management**
 3. Click **"+ New Campaign"**
 4. Fill in campaign details:
-   - Name: `Test PDF Upload Campaign`
+   - Name: `Test Report Upload Campaign`
    - Budget: `5000`
    - Currency: `USD`
    - (Other fields optional)
@@ -38,26 +41,21 @@
 3. Click **"Connect"**
 4. Modal opens with 2 options
 
-#### **2.3 Upload PDF**
+#### **2.3 Upload Report**
 
-1. Click **"① Manual Upload (Recommended)"**
+1. Click **"Upload Report"**
 2. File picker opens automatically
-3. Select your `test-metrics-report.pdf`
+3. Select your `test-metrics-report.pdf`, `.csv`, or `.xlsx` file
 4. Wait for upload (should take 5-10 seconds)
 
 **Expected Result:**
 ```
-✅ Toast notification appears:
-"PDF Uploaded Successfully!
-Metrics extracted with XX% confidence"
+Toast notification appears:
+"Custom Integration Ready
+Report metrics are ready for campaign creation."
 ```
 
-**If confidence < 95%:**
-```
-⚠️ Toast notification:
-"PDF Uploaded - Please Review
-Confidence: XX%"
-```
+If parser confidence is below the review threshold, verify the import review warning on the Custom Integration analytics page after campaign creation.
 
 #### **2.4 Create Campaign**
 

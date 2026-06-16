@@ -414,12 +414,13 @@ describe("source safety regression guards", () => {
     expect(blockStart).toBeGreaterThan(-1);
     expect(block).toContain("uploadCustomIntegrationPdf");
     expect(block).toContain("connectCustomIntegrationEmail");
-    expect(block).toContain("Upload PDF Report");
+    expect(block).toContain("Upload Report");
     expect(block).toContain("Set Up Automatic Imports");
     expect(block.slice(block.lastIndexOf("<Button", block.indexOf("Set Up Automatic Imports")), block.indexOf("Set Up Automatic Imports"))).toContain('variant="outline"');
-    expect(block).toContain("Upload a PDF report to import metrics now. Use automatic imports for future recurring reports.");
+    expect(block).toContain("Upload a PDF, CSV, or Excel (.xlsx) report to import metrics now. Use automatic imports for future recurring reports.");
+    expect(source).toContain("input.accept = '.pdf,.csv,.xlsx'");
     expect(block).toContain("!customIntegrationForwardingEmail");
-    expect(block).toContain("Forward future PDF reports to");
+    expect(block).toContain("Forward future reports to");
     expect(source).toContain("fetch(`/api/custom-integration/${draftCampaignId}/upload-pdf`");
     expect(source).toContain('apiRequest("POST", `/api/custom-integration/${draftCampaignId}/connect`');
     expect(source).toContain("const forwardingEmail = String(data?.campaignEmail || data?.integration?.email || \"\").trim();");
@@ -451,10 +452,11 @@ describe("source safety regression guards", () => {
     expect(emailSuccessStart).toBeGreaterThan(-1);
     expect(block).toContain("const forwardingEmail = String(data?.campaignEmail || data?.integration?.email || \"\").trim();");
     expect(block).toContain("setCustomIntegrationForwardingEmail(forwardingEmail)");
-    expect(block).toContain("Upload PDF Report");
+    expect(block).toContain("Upload Report");
     expect(block).toContain("Set Up Automatic Imports");
+    expect(block).toContain("input.accept = '.pdf,.csv,.xlsx'");
     expect(block).toContain("!customIntegrationForwardingEmailDisplay");
-    expect(block).toContain("Forward future PDF reports to");
+    expect(block).toContain("Forward future reports to");
     expect(block).toContain("navigator.clipboard.writeText(customIntegrationForwardingEmailDisplay)");
     expect(source).toContain("const isCustomIntegrationConnected =");
     expect(source).toContain("const customIntegrationForwardingEmailDisplay = customIntegrationForwardingEmail || customIntegrationEmail;");
@@ -1577,6 +1579,7 @@ describe("source safety regression guards", () => {
     const importedCardEnd = source.indexOf('<CardContent className="grid gap-3 md:grid-cols-4">', importedCardStart);
     const importedCardHeader = source.slice(importedCardStart, importedCardEnd);
     expect(importedCardHeader).toContain('data-testid="button-upload-custom-integration-pdf"');
+    expect(importedCardHeader).toContain('accept=".pdf,.csv,.xlsx"');
     expect(source).not.toContain('id="manual-pdf-upload"');
     expect(source).toContain("Marketing data for ${(campaign as any).name}");
     expect(source).not.toContain("Marketing data for this campaign");

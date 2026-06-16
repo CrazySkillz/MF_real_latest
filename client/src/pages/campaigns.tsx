@@ -130,7 +130,7 @@ const platforms = [
     name: "Custom Integration",
     icon: FileText,
     color: "text-blue-500",
-    description: "Import metrics from PDF reports or email forwarding",
+    description: "Import metrics from PDF, CSV, or Excel (.xlsx) reports",
     type: "credentials"
   },
   {
@@ -900,7 +900,7 @@ export default function Campaigns() {
     if (!draftCampaignId) return;
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.pdf';
+    input.accept = '.pdf,.csv,.xlsx';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
@@ -918,14 +918,14 @@ export default function Campaigns() {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || errorData.message || "Failed to upload PDF");
+          throw new Error(errorData.error || errorData.message || "Failed to upload report");
         }
 
         setCustomIntegrationForwardingEmail("");
         markCustomIntegrationReady();
-        toast({ title: "Custom Integration Ready", description: "PDF metrics are ready for campaign creation." });
+        toast({ title: "Custom Integration Ready", description: "Report metrics are ready for campaign creation." });
       } catch (error: any) {
-        toast({ title: "Upload Failed", description: error?.message || "Failed to upload PDF", variant: "destructive" });
+        toast({ title: "Upload Failed", description: error?.message || "Failed to upload report", variant: "destructive" });
       } finally {
         setIsCustomIntegrationConnecting(false);
       }
@@ -946,7 +946,7 @@ export default function Campaigns() {
       const forwardingEmail = String(data?.campaignEmail || data?.integration?.email || "").trim();
       if (forwardingEmail) setCustomIntegrationForwardingEmail(forwardingEmail);
       markCustomIntegrationReady();
-      toast({ title: "Custom Integration Ready", description: forwardingEmail ? `Forward future PDF reports to ${forwardingEmail}.` : "Automatic imports are ready for campaign creation." });
+      toast({ title: "Custom Integration Ready", description: forwardingEmail ? `Forward future reports to ${forwardingEmail}.` : "Automatic imports are ready for campaign creation." });
     } catch (error: any) {
       toast({ title: "Connection Failed", description: error?.message || "Failed to set up Custom Integration", variant: "destructive" });
     } finally {
@@ -1527,7 +1527,7 @@ export default function Campaigns() {
                         {selectedWizardPlatform === 'custom-integration' && (
                           <div className="space-y-3">
                             <p className="text-sm text-muted-foreground">
-                              Upload a PDF report to import metrics now. Use automatic imports for future recurring reports.
+                              Upload a PDF, CSV, or Excel (.xlsx) report to import metrics now. Use automatic imports for future recurring reports.
                             </p>
                             <Button
                               type="button"
@@ -1540,7 +1540,7 @@ export default function Campaigns() {
                               ) : (
                                 <FileText className="w-4 h-4 mr-2" />
                               )}
-                              Upload PDF Report
+                              Upload Report
                             </Button>
                             {!customIntegrationForwardingEmail && (
                               <Button
@@ -1560,7 +1560,7 @@ export default function Campaigns() {
                             )}
                             {customIntegrationForwardingEmail && (
                               <div className="rounded-md border bg-muted/30 p-3">
-                                <div className="text-xs text-muted-foreground">Forward future PDF reports to</div>
+                                <div className="text-xs text-muted-foreground">Forward future reports to</div>
                                 <div className="mt-1 flex flex-wrap items-center gap-2">
                                   <code className="rounded bg-background px-2 py-1 text-sm">{customIntegrationForwardingEmail}</code>
                                   <Button
@@ -1768,7 +1768,7 @@ export default function Campaigns() {
                           )}
                           {customIntegrationForwardingEmail && (
                             <div className="mt-3 rounded-md border bg-muted/30 p-3">
-                              <div className="text-xs text-muted-foreground">Forward future PDF reports to</div>
+                              <div className="text-xs text-muted-foreground">Forward future reports to</div>
                               <div className="mt-1 flex flex-wrap items-center gap-2">
                                 <code className="rounded bg-background px-2 py-1 text-sm">{customIntegrationForwardingEmail}</code>
                                 <Button

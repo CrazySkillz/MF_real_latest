@@ -10,7 +10,7 @@ import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import multer from "multer";
 import { parseCsvText } from "./utils/csv";
 import type { ParsedMetrics } from "./services/pdf-parser";
-import { parsePDFMetrics } from "./services/pdf-parser";
+import { isSupportedCustomIntegrationFile, parseCustomIntegrationFile, supportedCustomIntegrationFileDescription } from "./services/custom-integration-file-parser";
 import { nanoid } from "nanoid";
 import { randomBytes, createHash, createHmac, timingSafeEqual } from "crypto";
 import { snapshotScheduler } from "./scheduler";
@@ -439,17 +439,17 @@ function calculateConfidence(values: any[], detectedType: string): number {
   return 0.8; // Simple confidence score
 }
 
-// Configure multer for PDF file uploads
+// Configure multer for Custom Integration report uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
+    if (isSupportedCustomIntegrationFile(file.originalname, file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF files are allowed'));
+      cb(new Error(`Only ${supportedCustomIntegrationFileDescription()} files are allowed`));
     }
   },
 });
@@ -23263,7 +23263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload and parse PDF for custom integration
+  // Upload and parse Custom Integration report files
   app.post("/api/custom-integration/:campaignId/upload-pdf", requireCampaignAccessCampaignIdParam, upload.single('pdf'), async (req, res) => {
     try {
       const { campaignId } = req.params;
@@ -23271,7 +23271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.file) {
         return res.status(400).json({
           success: false,
-          error: "No PDF file provided"
+          error: `No ${supportedCustomIntegrationFileDescription()} file provided`
         });
       }
 
@@ -23285,11 +23285,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`[PDF Upload] Processing PDF for campaign ${campaignId}, file: ${req.file.originalname}, size: ${req.file.size} bytes`);
+      console.log(`[Custom Integration Upload] Processing report for campaign ${campaignId}, file: ${req.file.originalname}, size: ${req.file.size} bytes`);
 
-      // Parse the PDF to extract metrics
-      const parsedMetrics = await parsePDFMetrics(req.file.buffer);
-      console.log(`[PDF Upload] Parsed metrics:`, parsedMetrics);
+      // Parse the report file to extract metrics
+      const parsedMetrics = await parseCustomIntegrationFile(req.file.buffer, req.file.originalname, req.file.mimetype);
+      console.log(`[Custom Integration Upload] Parsed metrics:`, parsedMetrics);
 
       // Store the metrics in the database
       const metrics = await storage.createCustomIntegrationMetrics({
@@ -23301,7 +23301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         emailId: null,
       });
 
-      console.log(`[PDF Upload] Metrics stored successfully:`, metrics.id);
+      console.log(`[Custom Integration Upload] Metrics stored successfully:`, metrics.id);
 
       // Record current metrics so What's Changed can track deltas between syncs
       const { recordCampaignMetrics } = await import("./scheduler.js");
@@ -23309,20 +23309,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        message: "PDF processed successfully",
+        message: "Report processed successfully",
         metrics: parsedMetrics,
         uploadedAt: metrics.uploadedAt,
       });
     } catch (error) {
-      console.error("[PDF Upload] Error processing PDF:", error);
+      console.error("[Custom Integration Upload] Error processing report:", error);
       res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "Failed to process PDF"
+        error: error instanceof Error ? error.message : "Failed to process report"
       });
     }
   });
 
-  // Public webhook endpoint for receiving PDFs from external services (Zapier, IFTTT, etc.)
+  // Public webhook endpoint for receiving report files from external services (Zapier, IFTTT, etc.)
   app.post("/api/webhook/custom-integration/:token", upload.single('pdf'), async (req, res) => {
     try {
       const { token } = req.params;
@@ -23342,48 +23342,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      let pdfBuffer: Buffer;
+      let fileBuffer: Buffer;
       let fileName: string;
+      let fileMimeType: string | null = null;
 
-      // Check if PDF file was uploaded directly (Zapier/manual upload)
+      // Check if a report file was uploaded directly (Zapier/manual upload)
       if (req.file) {
-        pdfBuffer = req.file.buffer;
+        fileBuffer = req.file.buffer;
         fileName = req.file.originalname;
-        console.log(`[Webhook] Processing uploaded PDF for campaign ${integration.campaignId}, file: ${fileName}, size: ${req.file.size} bytes`);
+        fileMimeType = req.file.mimetype;
+        console.log(`[Webhook] Processing uploaded report for campaign ${integration.campaignId}, file: ${fileName}, size: ${req.file.size} bytes`);
       }
-      // Check if PDF URL was provided (IFTTT)
-      else if (req.body.pdfUrl || req.body.pdf_url || req.body.value1) {
-        const pdfUrl = req.body.pdfUrl || req.body.pdf_url || req.body.value1;
-        console.log(`[Webhook] Downloading PDF from URL: ${pdfUrl}`);
+      // Check if a report URL was provided (IFTTT)
+      else if (req.body.fileUrl || req.body.file_url || req.body.pdfUrl || req.body.pdf_url || req.body.value1) {
+        const fileUrl = req.body.fileUrl || req.body.file_url || req.body.pdfUrl || req.body.pdf_url || req.body.value1;
+        console.log(`[Webhook] Downloading report from URL: ${fileUrl}`);
 
         try {
-          const response = await fetch(pdfUrl);
+          const response = await fetch(fileUrl);
           if (!response.ok) {
-            throw new Error(`Failed to download PDF: ${response.statusText}`);
+            throw new Error(`Failed to download report: ${response.statusText}`);
           }
 
           const arrayBuffer = await response.arrayBuffer();
-          pdfBuffer = Buffer.from(arrayBuffer);
-          fileName = pdfUrl.split('/').pop()?.split('?')[0] || 'downloaded.pdf';
+          fileBuffer = Buffer.from(arrayBuffer);
+          fileName = fileUrl.split('/').pop()?.split('?')[0] || 'downloaded-report';
+          fileMimeType = response.headers.get("content-type");
 
-          console.log(`[Webhook] Downloaded PDF for campaign ${integration.campaignId}, size: ${pdfBuffer.length} bytes`);
+          console.log(`[Webhook] Downloaded report for campaign ${integration.campaignId}, size: ${fileBuffer.length} bytes`);
         } catch (downloadError) {
-          console.error('[Webhook] PDF download error:', downloadError);
+          console.error('[Webhook] Report download error:', downloadError);
           return res.status(400).json({
             success: false,
-            error: "Failed to download PDF from URL"
+            error: "Failed to download report from URL"
           });
         }
       }
       else {
         return res.status(400).json({
           success: false,
-          error: "No PDF file or PDF URL provided. Send either a file upload or provide 'pdfUrl' in the request body."
+          error: `No ${supportedCustomIntegrationFileDescription()} file or file URL provided. Send either a file upload or provide 'fileUrl' in the request body.`
         });
       }
 
-      // Parse the PDF to extract metrics with enterprise validation
-      const parsedMetrics = await parsePDFMetrics(pdfBuffer);
+      // Parse the report file to extract metrics with enterprise validation
+      const parsedMetrics = await parseCustomIntegrationFile(fileBuffer, fileName, fileMimeType);
       console.log(`[Webhook] Parsed metrics:`, parsedMetrics);
       console.log(`[Webhook] Confidence: ${parsedMetrics._confidence}%`);
       console.log(`[Webhook] Extracted fields: ${parsedMetrics._extractedFields}`);
@@ -23416,8 +23419,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response: any = {
         success: true,
         message: parsedMetrics._requiresReview
-          ? "PDF processed but requires manual review"
-          : "PDF processed successfully",
+          ? "Report processed but requires manual review"
+          : "Report processed successfully",
         campaignId: integration.campaignId,
         metricsId: metrics.id,
         metrics: parsedMetrics,
@@ -23437,10 +23440,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(response);
     } catch (error) {
-      console.error("[Webhook] Error processing PDF:", error);
+      console.error("[Webhook] Error processing report:", error);
       res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "Failed to process PDF"
+        error: error instanceof Error ? error.message : "Failed to process report"
       });
     }
   });
@@ -23482,7 +23485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[Email] Email sender validated: ${senderEmail}`);
       }
 
-      // Extract PDF attachment from CloudMailin format
+      // Extract supported report attachment from CloudMailin format
       const attachments = req.body.attachments;
       if (!attachments || attachments.length === 0) {
         return res.status(400).json({
@@ -23491,56 +23494,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Find the first PDF attachment
-      const pdfAttachment = attachments.find((att: any) =>
-        att.content_type === 'application/pdf' ||
-        att.file_name?.toLowerCase().endsWith('.pdf')
+      // Find the first supported report attachment
+      const reportAttachment = attachments.find((att: any) =>
+        isSupportedCustomIntegrationFile(att.file_name, att.content_type)
       );
 
-      if (!pdfAttachment) {
+      if (!reportAttachment) {
         return res.status(400).json({
           success: false,
-          error: "No PDF attachment found in email"
+          error: `No ${supportedCustomIntegrationFileDescription()} attachment found in email`
         });
       }
 
-      let pdfBuffer: Buffer;
-      const fileName = pdfAttachment.file_name || 'email-attachment.pdf';
+      let fileBuffer: Buffer;
+      const fileName = reportAttachment.file_name || 'email-attachment';
+      const fileMimeType = reportAttachment.content_type || null;
 
       // Check if attachment has base64 content (embedded)
-      if (pdfAttachment.content) {
-        console.log(`[Email] Decoding base64 PDF: ${fileName}`);
-        pdfBuffer = Buffer.from(pdfAttachment.content, 'base64');
+      if (reportAttachment.content) {
+        console.log(`[Email] Decoding base64 report: ${fileName}`);
+        fileBuffer = Buffer.from(reportAttachment.content, 'base64');
       }
       // Check if attachment has URL (cloud storage)
-      else if (pdfAttachment.url) {
-        console.log(`[Email] Downloading PDF from cloud storage: ${pdfAttachment.url}`);
+      else if (reportAttachment.url) {
+        console.log(`[Email] Downloading report from cloud storage: ${reportAttachment.url}`);
         try {
-          const response = await fetch(pdfAttachment.url);
+          const response = await fetch(reportAttachment.url);
           if (!response.ok) {
-            throw new Error(`Failed to download PDF: ${response.statusText}`);
+            throw new Error(`Failed to download report: ${response.statusText}`);
           }
           const arrayBuffer = await response.arrayBuffer();
-          pdfBuffer = Buffer.from(arrayBuffer);
+          fileBuffer = Buffer.from(arrayBuffer);
         } catch (downloadError) {
-          console.error('[Email] PDF download error:', downloadError);
+          console.error('[Email] Report download error:', downloadError);
           return res.status(400).json({
             success: false,
-            error: "Failed to download PDF from cloud storage"
+            error: "Failed to download report from cloud storage"
           });
         }
       }
       else {
         return res.status(400).json({
           success: false,
-          error: "PDF attachment has no content or URL"
+          error: "Report attachment has no content or URL"
         });
       }
 
-      console.log(`[Email] Processing PDF for campaign ${integration.campaignId}, size: ${pdfBuffer.length} bytes`);
+      console.log(`[Email] Processing report for campaign ${integration.campaignId}, size: ${fileBuffer.length} bytes`);
 
-      // Parse the PDF to extract metrics
-      const parsedMetrics = await parsePDFMetrics(pdfBuffer);
+      // Parse the report file to extract metrics
+      const parsedMetrics = await parseCustomIntegrationFile(fileBuffer, fileName, fileMimeType);
       console.log(`[Email] Parsed metrics:`, parsedMetrics);
 
       // Get existing metrics to save as "previous" for change tracking
@@ -23585,17 +23588,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        message: "Email PDF processed successfully",
+        message: "Email report processed successfully",
         campaignId: integration.campaignId,
         metricsId: metrics.id,
         metrics: parsedMetrics,
         uploadedAt: metrics.uploadedAt,
       });
     } catch (error) {
-      console.error("[Email] Error processing PDF:", error);
+      console.error("[Email] Error processing report:", error);
       res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : "Failed to process email PDF"
+        error: error instanceof Error ? error.message : "Failed to process email report"
       });
     }
   });
@@ -28315,7 +28318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   /**
    * SendGrid Inbound Parse Webhook
-   * Receives forwarded emails with PDF attachments
+   * Receives forwarded emails with supported report attachments
    * Email format: {campaign-slug}@import.mforensics.com
    */
   app.post("/api/sendgrid/inbound", async (req, res) => {
@@ -28374,9 +28377,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // 5. Extract PDF attachment (SendGrid format - JSON with base64)
-      let pdfBuffer: Buffer | null = null;
-      let pdfFileName: string | null = null;
+      // 5. Extract supported report attachment (SendGrid format - JSON with base64)
+      let reportBuffer: Buffer | null = null;
+      let reportFileName: string | null = null;
+      let reportMimeType: string | null = null;
 
       // SendGrid sends attachments as JSON string
       const attachmentsStr = req.body.attachments;
@@ -28385,37 +28389,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const attachments = JSON.parse(attachmentsStr);
           console.log(`[SendGrid] Found ${attachments.length} attachment(s)`);
 
-          // Find PDF attachment
-          const pdfAttachment = attachments.find((att: any) =>
-            att.type === 'application/pdf' || att.filename?.endsWith('.pdf')
+          // Find supported report attachment
+          const reportAttachment = attachments.find((att: any) =>
+            isSupportedCustomIntegrationFile(att.filename, att.type)
           );
 
-          if (pdfAttachment) {
-            console.log(`[SendGrid] Found PDF: ${pdfAttachment.filename}`);
-            pdfBuffer = Buffer.from(pdfAttachment.content, 'base64');
-            pdfFileName = pdfAttachment.filename || 'report.pdf';
+          if (reportAttachment) {
+            console.log(`[SendGrid] Found report: ${reportAttachment.filename}`);
+            reportBuffer = Buffer.from(reportAttachment.content, 'base64');
+            reportFileName = reportAttachment.filename || 'report';
+            reportMimeType = reportAttachment.type || null;
           }
         } catch (parseError) {
           console.error('[SendGrid] Failed to parse attachments JSON:', parseError);
         }
       }
 
-      if (!pdfBuffer) {
-        console.error(`[SendGrid] No PDF attachment found in email`);
-        return res.status(400).json({ error: 'No PDF attachment found' });
+      if (!reportBuffer) {
+        console.error(`[SendGrid] No supported report attachment found in email`);
+        return res.status(400).json({ error: `No ${supportedCustomIntegrationFileDescription()} attachment found` });
       }
 
-      console.log(`[SendGrid] Processing PDF: ${pdfFileName}, size: ${pdfBuffer.length} bytes`);
+      console.log(`[SendGrid] Processing report: ${reportFileName}, size: ${reportBuffer.length} bytes`);
 
-      // 6. Parse PDF
-      const { parsePDFMetrics } = await import('./services/pdf-parser');
-      const metrics = await parsePDFMetrics(pdfBuffer);
+      // 6. Parse report file
+      const metrics = await parseCustomIntegrationFile(reportBuffer, reportFileName, reportMimeType);
 
       // 7. Store metrics
       await storage.createCustomIntegrationMetrics({
         campaignId,
         ...normalizeCustomIntegrationMetrics(metrics),
-        pdfFileName,
+        pdfFileName: reportFileName,
         emailSubject: subject,
         emailId: req.body['message-id'] || `sendgrid-${Date.now()}`,
       });
@@ -28433,7 +28437,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        message: 'PDF processed successfully',
+        message: 'Report processed successfully',
         confidence: metrics._confidence,
         requiresReview: metrics._requiresReview,
         campaignId
@@ -28447,7 +28451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   /**
    * Mailgun Inbound Webhook
-   * Receives forwarded emails with PDF attachments
+   * Receives forwarded emails with supported report attachments
    * Email format: {campaign-slug}@sandbox....mailgun.org
    * Note: Uses multer middleware to parse multipart/form-data from Mailgun
    */
@@ -28509,47 +28513,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // 5. Extract PDF attachment (Mailgun format via multer)
-      let pdfBuffer: Buffer | null = null;
-      let pdfFileName: string | null = null;
+      // 5. Extract supported report attachment (Mailgun format via multer)
+      let reportBuffer: Buffer | null = null;
+      let reportFileName: string | null = null;
+      let reportMimeType: string | null = null;
 
       // Multer parses multipart/form-data and puts files in req.files
       const files = (req as any).files as Express.Multer.File[] | undefined;
       console.log(`[Mailgun] Found ${files?.length || 0} file(s)`);
 
       if (files && files.length > 0) {
-        // Find PDF file
-        const pdfFile = files.find(file =>
-          file.mimetype === 'application/pdf' ||
-          file.originalname?.endsWith('.pdf') ||
-          file.fieldname?.startsWith('attachment-')
+        // Find supported report file
+        const reportFile = files.find(file =>
+          isSupportedCustomIntegrationFile(file.originalname, file.mimetype)
         );
 
-        if (pdfFile) {
-          console.log(`[Mailgun] Found PDF: ${pdfFile.originalname}, size: ${pdfFile.size} bytes`);
-          pdfBuffer = pdfFile.buffer;
-          pdfFileName = pdfFile.originalname || 'report.pdf';
+        if (reportFile) {
+          console.log(`[Mailgun] Found report: ${reportFile.originalname}, size: ${reportFile.size} bytes`);
+          reportBuffer = reportFile.buffer;
+          reportFileName = reportFile.originalname || 'report';
+          reportMimeType = reportFile.mimetype || null;
         }
       }
 
-      if (!pdfBuffer) {
-        console.error(`[Mailgun] No PDF attachment found in email`);
+      if (!reportBuffer) {
+        console.error(`[Mailgun] No supported report attachment found in email`);
         console.log(`[Mailgun] Available body fields:`, Object.keys(req.body));
         console.log(`[Mailgun] Files:`, files?.map(f => ({ name: f.originalname, field: f.fieldname, type: f.mimetype })));
-        return res.status(400).json({ error: 'No PDF attachment found' });
+        return res.status(400).json({ error: `No ${supportedCustomIntegrationFileDescription()} attachment found` });
       }
 
-      console.log(`[Mailgun] Processing PDF: ${pdfFileName}, size: ${pdfBuffer.length} bytes`);
+      console.log(`[Mailgun] Processing report: ${reportFileName}, size: ${reportBuffer.length} bytes`);
 
-      // 6. Parse PDF
-      const { parsePDFMetrics } = await import('./services/pdf-parser');
-      const metrics = await parsePDFMetrics(pdfBuffer);
+      // 6. Parse report file
+      const metrics = await parseCustomIntegrationFile(reportBuffer, reportFileName, reportMimeType);
 
       // 7. Store metrics
       await storage.createCustomIntegrationMetrics({
         campaignId,
         ...normalizeCustomIntegrationMetrics(metrics),
-        pdfFileName,
+        pdfFileName: reportFileName,
         emailSubject: subject,
         emailId: req.body['message-id'] || req.body['Message-Id'] || `mailgun-${Date.now()}`,
       });
@@ -28563,7 +28566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        message: 'PDF processed successfully',
+        message: 'Report processed successfully',
         confidence: metrics._confidence,
         requiresReview: metrics._requiresReview,
         campaignId

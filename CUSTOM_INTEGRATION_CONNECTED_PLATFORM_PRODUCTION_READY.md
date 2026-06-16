@@ -42,8 +42,8 @@ Required Google Sheets layout mapping:
 | Google Sheets layout element | Custom Integration equivalent |
 | --- | --- |
 | `View Data From` selector | Import/source selector or status. Default should be latest validated Custom Integration import. |
-| `Sheet Data` status row | `Custom Data` status row showing import source, import timestamp, and validation state. |
-| `Spreadsheet Data` card | `Imported Data` card showing the normalized metrics and source/provenance fields from the selected import. |
+| `Sheet Data` status row | Folded into the `Imported Data` card for Custom Integration; do not add a separate `Custom Data` status card. |
+| `Spreadsheet Data` card | `Imported Data` card showing import source, import timestamp, validation state, parser metadata, source-backed metric count, and the `Upload Report` action for PDF, CSV, or XLSX files. |
 | Overview financial cards | Same card pattern, with unavailable reasons when revenue/spend/pipeline values are missing. |
 | Summary tab | Same summary layout using Custom Integration metric groups. |
 | KPI section | Same section layout and source-backed current-value behavior as Google Sheets. |
@@ -76,15 +76,16 @@ Primary root causes addressed by this tracker:
 - Route reachability, duplicate upload registration, and disconnect stale-data risks were resolved in Commit 2.
 - Aggregate/scheduler availability risk was resolved in Commit 10 through the shared aggregate contract.
 - Email-forwarding UI usability was resolved in Commit 12 by displaying the generated forwarding address after setup.
+- Active Mailgun PDF forwarding was user-validated after Mailgun Receiving routed the generated forwarding address to the deployed inbound endpoint.
 - Create Campaign wizard confusion was resolved by treating Custom Integration setup as draft `Ready` state until the final `Create Campaign` action completes, and by making Confirm Back return to the prior setup screen.
-- Remaining production evidence risk: deployed browser validation and live inbound email-provider delivery still need proof.
+- Remaining production evidence risk: full deployed browser validation, scheduled reports if exposed, SendGrid inbound if that provider is used, and production-data audit still need proof.
 
 Business impact:
 
 - KPI, Benchmark, Report, Insight, and aggregate values now fail closed when source evidence is missing.
 - Missing imported metrics are presented as unavailable instead of real `0` values.
 - Saved KPI/Benchmark/Report values are tied to saved Custom Integration source scope.
-- The remaining business-readiness work is deployed validation, especially manual PDF upload, scheduled reports if exposed, and live inbound email forwarding.
+- The remaining business-readiness work is deployed validation, especially manual PDF upload, scheduled reports if exposed, and production-data audit.
 
 ## Current Code/Path Inventory
 
@@ -94,7 +95,7 @@ Frontend:
   - Current Custom Integration analytics page.
   - Fetches connection, latest metrics, platform KPIs, platform Benchmarks, and platform Reports.
   - Renders Overview, Summary, KPIs, Benchmarks, Insights, and Reports.
-  - Includes PDF upload from the Overview empty state.
+  - Includes PDF upload from the `Imported Data` card after metrics exist; first-import upload remains available from the campaign connected-platform card.
 - `client/src/pages/campaigns.tsx`
   - Exposes Custom Integration in Create Campaign.
   - Uses the existing campaign-scoped PDF upload and email-forwarding setup routes during campaign creation.
@@ -161,12 +162,13 @@ Proven from local code review:
 - Commit 10 proves campaign aggregates, Campaign DeepDive consumers, and scheduler snapshots only advertise Custom Integration metrics when the imported field exists.
 - Commit 11 proves saved Custom Integration KPI, Benchmark, and Report rows fail closed when saved source scope is missing or disconnected.
 - Commit 12 proves the email-forwarding setup UI displays the generated forwarding address with a copy action after setup.
+- User validation proves active Mailgun PDF forwarding updates Custom Integration metrics through the deployed inbound path.
 - Create Campaign now keeps pre-final Custom Integration setup labeled as ready/selected instead of connected, and Confirm Back returns to the previous Custom Integration setup screen.
 
 Partially reviewed:
 
-- PDF upload, webhook upload, email inbound, and transfer flows exist; local regression covers route ownership, but deployed provider delivery still needs validation.
-- Email-forwarding setup creates the Custom Integration row and generated forwarding email, and the UI now displays the address after setup; live inbound delivery still needs deployed provider validation.
+- PDF upload, webhook upload, email inbound, and transfer flows exist; local regression covers route ownership, and active Mailgun PDF forwarding has deployed user validation.
+- Email-forwarding setup creates the Custom Integration row and generated forwarding email, the UI displays the address after setup, and active Mailgun inbound delivery has been user-validated.
 - KPI create/edit/delete paths now use source-backed current values after Commit 6. Benchmark create/edit/delete paths now use source-backed current values after Commit 7. Report create/edit/delete paths now use source-backed values and scheduler-safe payloads after Commit 9.
 - Campaign aggregate paths include Custom Integration with normalized source availability and unavailable reasons after Commit 10.
 
@@ -176,7 +178,7 @@ Unverified:
 - Deployed disconnect/reconnect browser validation.
 - End-to-end Mailgun/SendGrid scheduled delivery evidence for Custom Integration in the deployed environment.
 - Whether all import paths write identical normalized metric shapes and provenance.
-- End-to-end Mailgun/SendGrid inbound delivery for generated forwarding emails in the deployed environment.
+- SendGrid inbound delivery for generated forwarding emails, if SendGrid is used instead of the validated Mailgun route.
 - Production database audit for legacy Custom Integration imported metrics or damaged saved rows.
 
 ## Production-Ready Target Contract
@@ -192,7 +194,7 @@ Custom Integration is production-ready only when all of the following are true:
 - Saved KPIs, Benchmarks, and Reports persist enough source scope to resolve current values correctly after later imports.
 - Report downloads and scheduled reports use the same source-backed values visible in the UI.
 - Disconnect, transfer, upload, webhook, email inbound, scheduler, and report paths preserve campaign ownership and do not leak or reuse another campaign's data.
-- Email-forwarding setup shows the generated forwarding email address and copy action before users are expected to send PDF reports by email.
+- Email-forwarding setup shows the generated forwarding email address and copy action before users are expected to send report files by email.
 - In Create Campaign, Custom Integration source setup must not display as `Connected` until the final `Create Campaign` action succeeds; draft setup should be shown as `Ready` or `Selected`.
 - In Create Campaign, Back from Confirm must return to the immediately previous setup screen, not jump back to platform selection.
 - Custom Integration aggregate participation is explicit: it may provide web analytics, email/newsletter, paid-media-like, revenue, spend, or conversion values only when those exact fields exist in the selected validated import.
@@ -284,8 +286,8 @@ Tasks:
 - Add unit/type metadata and unavailable reasons.
 - Replace direct `metricsData?.metric || 0` current-value logic with adapter resolution.
 - Define confidence/provenance handling from parsed imports.
-- Add parser regression coverage for known Custom Integration PDF report text before trusting imported values downstream.
-- Preserve extracted-field presence after upload so missing PDF metrics stay unavailable after reload instead of becoming database-default `0`.
+- Add parser regression coverage for known Custom Integration PDF, CSV, and XLSX report shapes before trusting imported values downstream.
+- Preserve extracted-field presence after upload so missing imported metrics stay unavailable after reload instead of becoming database-default `0`.
 - Persist or return parser trust metadata (`confidence`, `warnings`, `requiresReview`, `extractedFields`) through the latest metrics path, not only the immediate upload/webhook response.
 - Apply the same missing-field and review-required behavior to manual upload, webhook upload, and inbound email parsing.
 - Keep revenue, ROI, and ROAS unavailable unless the selected import explicitly extracts the required revenue and spend inputs.
@@ -294,8 +296,8 @@ Validation:
 
 - Unit tests prove missing metrics return unavailable, not `0`.
 - Unit tests prove percent, count, currency, duration, and ratio formatting.
-- Parser regression tests cover at least one known report shape, one no-metrics PDF/text case, and one partial email/ad-only report shape.
-- Upload/reload regression proves absent PDF fields are still unavailable after storage and `/api/custom-integration/:campaignId/metrics` reload.
+- Parser regression tests cover at least one known PDF report shape, one no-metrics PDF/text case, one partial email/ad-only report shape, CSV import, and XLSX import.
+- Upload/reload regression proves absent imported fields are still unavailable after storage and `/api/custom-integration/:campaignId/metrics` reload.
 - Route parity regression proves manual upload, webhook, and inbound email preserve the same availability and trust metadata.
 
 Status:
@@ -305,8 +307,9 @@ Status:
 - Root cause fixed in follow-up pass: parsed PDF insert paths omitted missing fields, allowing nullable metric columns with database defaults to reload as `0`; the no-metrics parser fallback also fabricated legacy zeros. Manual upload, webhook upload, and inbound email now use the same normalizer and store missing parsed metrics as `null` while preserving real extracted zero values; no-metrics parses keep metric fields absent.
 - Root cause fixed in final Commit 3 pass: parser confidence/warning metadata was returned only in immediate upload/webhook responses and was lost after reload because `custom_integration_metrics` had no persisted parser trust field; plain `Users:` labels were also not matched by the parser.
 - Fixes completed: added a nullable `parser_metadata` JSON column and migration; persisted parser confidence, warnings, extracted field count, and review-required state through every parsed PDF ingest path; `/api/custom-integration/:campaignId/metrics` now returns that metadata with the latest metrics row; the Custom Integration Overview shows an import review warning after reload when parser metadata requires review; parser validation now applies website-required warnings only when website analytics fields are present; plain `Users:` labels are extracted.
-- Regression evidence: `server/source-safety-regression.test.ts` guards against reintroducing zero-filled Custom Integration KPI/Benchmark metric selection, verifies unavailable metrics are excluded from visible scoring, verifies parsed PDF imports use null-preserving storage across manual upload, webhook upload, and inbound email, verifies no-metrics parses do not assign fake legacy zeros, and verifies parser metadata schema/migration/UI coverage.
-- Parser evidence: `server/pdf-parser-regression.test.ts` covers a known mixed report, an email-only partial report, and a no-metrics report.
+- Follow-up format support: Custom Integration upload, webhook, Mailgun inbound, SendGrid inbound, and token email inbound now accept PDF, CSV, and XLSX reports through the same normalized parser contract. CSV/XLSX support is limited to supported metric fields already persisted by `custom_integration_metrics`; legacy binary `.xls` is intentionally not supported without a vetted parser dependency.
+- Regression evidence: `server/source-safety-regression.test.ts` guards against reintroducing zero-filled Custom Integration KPI/Benchmark metric selection, verifies unavailable metrics are excluded from visible scoring, verifies parsed report imports use null-preserving storage across manual upload, webhook upload, and inbound email, verifies no-metrics parses do not assign fake legacy zeros, and verifies parser metadata schema/migration/UI coverage.
+- Parser evidence: `server/pdf-parser-regression.test.ts` covers a known mixed PDF report, an email-only partial PDF report, a no-metrics report, CSV metric/value import, CSV multi-row sum behavior without invented weighted rates, and XLSX metric-table import.
 - Local validation completed for final Commit 3 pass: `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts` and `npm run check` passed.
 - User validation passed for Commit 3 after the Render database migration was applied.
 - Deferred by tracker scope: Reports, scheduled reports, Insights, Summary, and full Google Sheets layout parity remain in later commits.
@@ -322,9 +325,8 @@ Tasks:
 
 - Add the Google Sheets tab order: Overview, Summary, KPIs, Benchmarks, Insights, Reports.
 - Replace the current Custom Integration-only visual pattern with the Google Sheets page layout pattern.
-- Add the `Custom Data` status row equivalent to Google Sheets `Sheet Data`.
 - Add an `Imported Data` card equivalent to Google Sheets `Spreadsheet Data`.
-- Keep upload/connect actions in the source/status area, not as a separate competing analytics design.
+- Keep upload/connect actions in the import/status area, not as a separate competing analytics design.
 
 Validation:
 
@@ -334,8 +336,9 @@ Status:
 
 - Completed in Commit 4 implementation pass.
 - Root cause: Custom Integration still used the older four-tab analytics shell (`Overview`, `KPIs`, `Benchmarks`, `Reports`) and kept PDF upload inside the empty-state card, while the Google Sheets template uses the source/status area plus six tabs (`Overview`, `Summary`, `KPIs`, `Benchmarks`, `Insights`, `Reports`) and a data provenance card inside Overview.
-- Fixes: added the Google Sheets tab order, added a `Custom Data` status row with latest import label, validation state, and PDF upload action, moved upload out of the empty-state card, added an `Imported Data` provenance card, and added lightweight Summary and Insights shell content based on existing source availability and parser status.
-- Regression evidence: `server/source-safety-regression.test.ts` verifies the Custom Integration tab order, status row, imported-data card, Summary/Insights content targets, and upload button placement.
+- Fixes: added the Google Sheets tab order, added an `Imported Data` provenance card, and added lightweight Summary and Insights shell content based on existing source availability and parser status.
+- Follow-up cleanup: removed the redundant `Custom Data` card, moved `Upload Report` into the `Imported Data` card, and removed import filename labels from Overview metric tiles.
+- Regression evidence: `server/source-safety-regression.test.ts` verifies the Custom Integration tab order, absence of the redundant `Custom Data` card, imported-data card, Summary/Insights content targets, and upload button placement inside the imported-data card.
 - Local validation: `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts` and `npm run check` passed.
 - User validation passed for Commit 4 after deployed browser review.
 
@@ -572,12 +575,13 @@ Required evidence:
 
 Status:
 
-- Local Commit 12 implementation and regression pass completed; deployed browser validation is pending.
+- Local Commit 12 implementation and regression pass completed; active Mailgun PDF forwarding has user validation in the deployed environment.
 - Root cause: `/api/custom-integration/:campaignId/connect` returned `campaignEmail`, but Create Campaign and Campaign Detail ignored it. Create Campaign moved to confirmation without showing the address; Campaign Detail immediately reloaded after setup, so users had no usable forwarding address.
-- Fixes: Create Campaign now stores the returned forwarding email, shows `Forward PDF reports to` with a copy button on the confirmation step, and clears that state for manual PDF uploads/reset. Campaign Detail now stores and displays the returned forwarding email with a copy button and no longer reloads immediately after email-forwarding setup.
+- Fixes: Create Campaign now stores the returned forwarding email, shows `Forward reports to` with a copy button on the confirmation step, and clears that state for manual report uploads/reset. Campaign Detail now stores and displays the returned forwarding email with a copy button and no longer reloads immediately after email-forwarding setup.
 - Regression evidence: `server/source-safety-regression.test.ts` verifies Create Campaign and Campaign Detail both consume `campaignEmail`, display the forwarding address, expose copy actions, and keep the Campaign Detail email-forwarding success path on-page.
 - Local validation: `npm test -- server/source-safety-regression.test.ts`, `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts server/performance-summary-aggregate.test.ts server/performance-summary-scheduler-regression.test.ts server/executive-summary-regression.test.ts server/platform-comparison-regression.test.ts server/trend-analysis-aggregate.test.ts server/custom-report-regression.test.ts server/legacy-route-reachability-regression.test.ts`, `npm run check`, and targeted `git diff --check` passed.
-- Pending validation: deployed browser validation for the full Commit 12 matrix, manual PDF upload with a known PDF, scheduled report behavior if exposed, and live Mailgun/SendGrid inbound forwarding delivery.
+- User validation: PDF forwarding to the generated Mailgun forwarding address updates Custom Integration metrics.
+- Pending validation: deployed browser validation for the full Commit 12 matrix, manual PDF upload with a known PDF, scheduled report behavior if exposed, and SendGrid inbound delivery if that provider is used.
 
 ### Deferred Follow-Up: Email Forwarding Usability
 
@@ -592,12 +596,13 @@ Root cause:
 Safe timing:
 
 - UI usability was completed in Commit 12.
-- Live inbound provider validation must still be completed before email forwarding is called production-ready.
+- Active Mailgun inbound provider validation is complete for PDF forwarding.
 
 Smallest expected fix:
 
-- After email-forwarding setup, show `Forward PDF reports to: <campaignEmail>` with a copy button. Completed in Commit 12.
-- Validate deployed Mailgun/SendGrid inbound routing for that generated address before marking email forwarding production-ready.
+- After email-forwarding setup, show `Forward reports to: <campaignEmail>` with a copy button. Completed in Commit 12.
+- Validate deployed Mailgun inbound routing for the generated address before marking email forwarding production-ready. Completed by user validation.
+- Boundary: SendGrid inbound remains code-supported but not separately validated unless SendGrid is selected as the receiving provider.
 
 ## Validation Matrix
 
@@ -606,7 +611,7 @@ Before Custom Integration can be called production-ready, validate:
 - Create/connect Custom Integration from campaign setup and campaign detail.
 - Import metrics by manual PDF upload.
 - PDF parser fixture tests prove extracted fields, missing fields, and low-confidence imports are handled deterministically.
-- Import metrics by webhook and inbound email, if retained.
+- Import metrics by webhook and inbound email, if retained. Active Mailgun PDF forwarding has user validation.
 - Email-forwarding setup displays the generated forwarding address and copy action.
 - Open Custom Integration analytics from Connected Platforms.
 - Overview shows only source-backed metrics.

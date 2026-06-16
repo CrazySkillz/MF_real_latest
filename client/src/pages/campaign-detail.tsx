@@ -6067,14 +6067,14 @@ export default function CampaignDetail() {
                       ) : platform.platform === "Custom Integration" ? (
                         <div className="space-y-4">
                           <p className="text-sm text-muted-foreground/70">
-                            Upload a PDF report to import metrics now. Use automatic imports for future recurring reports.
+                            Upload a PDF, CSV, or Excel (.xlsx) report to import metrics now. Use automatic imports for future recurring reports.
                           </p>
                           <div className="space-y-3">
                             <button
                               onClick={async () => {
                                 const input = document.createElement('input');
                                 input.type = 'file';
-                                input.accept = '.pdf';
+                                input.accept = '.pdf,.csv,.xlsx';
                                 input.onchange = async (e) => {
                                   const file = (e.target as HTMLInputElement).files?.[0];
                                   if (!file) return;
@@ -6090,17 +6090,17 @@ export default function CampaignDetail() {
 
                                     if (response.ok) {
                                       setCustomIntegrationForwardingEmail("");
-                                      toastHook({ title: "PDF Uploaded", description: "Custom integration connected via PDF upload." });
+                                      toastHook({ title: "Report Uploaded", description: "Custom integration connected via report upload." });
                                       setExpandedPlatform(null);
                                       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
                                       window.location.reload();
                                     } else {
                                       const err = await response.json().catch(() => ({}));
-                                      toastHook({ title: "Upload Failed", description: err?.error || "Failed to upload PDF", variant: "destructive" });
+                                      toastHook({ title: "Upload Failed", description: err?.error || "Failed to upload report", variant: "destructive" });
                                     }
                                   } catch (error: any) {
-                                    console.error('PDF upload error:', error);
-                                    toastHook({ title: "Upload Failed", description: error?.message || "Failed to upload PDF", variant: "destructive" });
+                                    console.error('Custom Integration report upload error:', error);
+                                    toastHook({ title: "Upload Failed", description: error?.message || "Failed to upload report", variant: "destructive" });
                                   }
                                 };
                                 input.click();
@@ -6108,10 +6108,10 @@ export default function CampaignDetail() {
                               className="w-full bg-card rounded-lg p-3 border-2 border-border hover:border-blue-500 transition-colors text-left"
                             >
                               <div className="font-medium text-foreground mb-1">
-                                Upload PDF Report
+                                Upload Report
                               </div>
                               <div className="text-sm text-muted-foreground/70">
-                                Fastest setup: import metrics immediately from a PDF report.
+                                Fastest setup: import metrics immediately from a PDF, CSV, or Excel (.xlsx) report.
                               </div>
                             </button>
 
@@ -6129,7 +6129,7 @@ export default function CampaignDetail() {
                                       const data = await response.json().catch(() => ({}));
                                       const forwardingEmail = String(data?.campaignEmail || data?.integration?.email || "").trim();
                                       if (forwardingEmail) setCustomIntegrationForwardingEmail(forwardingEmail);
-                                      toastHook({ title: "Connected", description: forwardingEmail ? `Forward PDF reports to ${forwardingEmail}.` : "Custom integration connected via email forwarding." });
+                                      toastHook({ title: "Connected", description: forwardingEmail ? `Forward reports to ${forwardingEmail}.` : "Custom integration connected via email forwarding." });
                                       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
                                       queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId] });
                                     } else {
@@ -6147,13 +6147,13 @@ export default function CampaignDetail() {
                                   Set Up Automatic Imports
                                 </div>
                                 <div className="text-sm text-muted-foreground/70">
-                                  Get an email address for future PDF reports.
+                                  Get an email address for future recurring reports.
                                 </div>
                               </button>
                             )}
                             {customIntegrationForwardingEmailDisplay && (
                               <div className="rounded-md border bg-muted/30 p-3">
-                                <div className="text-xs text-muted-foreground">Forward future PDF reports to</div>
+                                <div className="text-xs text-muted-foreground">Forward future reports to</div>
                                 <div className="mt-1 flex flex-wrap items-center gap-2">
                                   <code className="rounded bg-background px-2 py-1 text-sm">{customIntegrationForwardingEmailDisplay}</code>
                                   <Button

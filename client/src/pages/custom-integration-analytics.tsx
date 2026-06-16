@@ -2768,7 +2768,7 @@ export default function CustomIntegrationAnalytics() {
 
       toast({
         title: "Success!",
-        description: "PDF uploaded and metrics extracted",
+        description: "Report uploaded and metrics extracted",
       });
 
       refetchMetrics();
@@ -2790,7 +2790,7 @@ export default function CustomIntegrationAnalytics() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to upload PDF",
+        description: "Failed to upload report",
         variant: "destructive",
       });
     }
@@ -2891,7 +2891,7 @@ export default function CustomIntegrationAnalytics() {
                         {/* Email Address */}
                         <div className="bg-card rounded-lg p-4 border border-blue-200 dark:border-blue-800">
                           <p className="text-sm font-medium text-foreground/80/60 mb-3">
-                            📧 Forward PDF reports to:
+                            Forward reports to:
                           </p>
                           <div className="flex items-center gap-2">
                             <code className="flex-1 bg-muted px-4 py-3 rounded border border-border text-blue-900 dark:text-blue-100 font-mono text-sm break-all">
@@ -2921,11 +2921,11 @@ export default function CustomIntegrationAnalytics() {
                           <ol className="space-y-2 text-sm text-muted-foreground/70">
                             <li className="flex items-start gap-2">
                               <span className="font-semibold text-blue-600 dark:text-blue-400 mt-0.5">1.</span>
-                              <span>Receive a PDF report via email from your data provider</span>
+                              <span>Receive a PDF, CSV, or Excel (.xlsx) report via email from your data provider</span>
                             </li>
                             <li className="flex items-start gap-2">
                               <span className="font-semibold text-blue-600 dark:text-blue-400 mt-0.5">2.</span>
-                              <span>Forward the email (with PDF attached) to the address above</span>
+                              <span>Forward the email with the report attached to the address above</span>
                             </li>
                             <li className="flex items-start gap-2">
                               <span className="font-semibold text-blue-600 dark:text-blue-400 mt-0.5">3.</span>
@@ -2970,7 +2970,7 @@ export default function CustomIntegrationAnalytics() {
                         <div className="flex items-center gap-3">
                           <input
                             type="file"
-                            accept=".pdf"
+                            accept=".pdf,.csv,.xlsx"
                             id="custom-integration-pdf-upload"
                             className="hidden"
                             onChange={(e) => handleCustomIntegrationPdfUpload(e.target.files?.[0])}
@@ -2982,7 +2982,7 @@ export default function CustomIntegrationAnalytics() {
                             data-testid="button-upload-custom-integration-pdf"
                           >
                             <Upload className="h-4 w-4" />
-                            Upload PDF
+                            Upload Report
                           </Button>
                         </div>
                       </CardHeader>

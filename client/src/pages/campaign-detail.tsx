@@ -4962,6 +4962,7 @@ export default function CampaignDetail() {
   const [tiktokAdvertiserName, setTikTokAdvertiserName] = useState("Test TikTok Advertiser");
   const [tiktokSelectedCampaignIds, setTikTokSelectedCampaignIds] = useState("");
   const [isTikTokConnecting, setIsTikTokConnecting] = useState(false);
+  const [customIntegrationForwardingEmail, setCustomIntegrationForwardingEmail] = useState("");
   const selectedInstagramCampaignIdList = instagramSelectedCampaignIds
     .split(",")
     .map((id) => id.trim())
@@ -6068,6 +6069,7 @@ export default function CampaignDetail() {
                                     });
 
                                     if (response.ok) {
+                                      setCustomIntegrationForwardingEmail("");
                                       toastHook({ title: "PDF Uploaded", description: "Custom integration connected via PDF upload." });
                                       setExpandedPlatform(null);
                                       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
@@ -6103,10 +6105,11 @@ export default function CampaignDetail() {
                                   });
 
                                   if (response.ok) {
-                                    toastHook({ title: "Connected", description: "Custom integration connected via email forwarding." });
-                                    setExpandedPlatform(null);
+                                    const data = await response.json().catch(() => ({}));
+                                    const forwardingEmail = String(data?.campaignEmail || data?.integration?.email || "").trim();
+                                    if (forwardingEmail) setCustomIntegrationForwardingEmail(forwardingEmail);
+                                    toastHook({ title: "Connected", description: forwardingEmail ? `Forward PDF reports to ${forwardingEmail}.` : "Custom integration connected via email forwarding." });
                                     queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                                    window.location.reload();
                                   } else {
                                     const err = await response.json().catch(() => ({}));
                                     toastHook({ title: "Connection Failed", description: err?.error || "Failed to set up email forwarding", variant: "destructive" });
@@ -6125,6 +6128,26 @@ export default function CampaignDetail() {
                                 Get a unique email address for automatic imports
                               </div>
                             </button>
+                            {customIntegrationForwardingEmail && (
+                              <div className="rounded-md border bg-muted/30 p-3">
+                                <div className="text-xs text-muted-foreground">Forward PDF reports to</div>
+                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                  <code className="rounded bg-background px-2 py-1 text-sm">{customIntegrationForwardingEmail}</code>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(customIntegrationForwardingEmail);
+                                      toastHook({ title: "Copied", description: "Forwarding email copied." });
+                                    }}
+                                  >
+                                    <Copy className="w-3.5 h-3.5 mr-1" />
+                                    Copy
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ) : (

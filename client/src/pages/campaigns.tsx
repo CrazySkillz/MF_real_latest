@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Edit, Trash2, ArrowLeft, CheckCircle, Loader2, FileText } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft, CheckCircle, Loader2, FileText, Copy } from "lucide-react";
 import { SiFacebook, SiGoogle, SiInstagram, SiLinkedin, SiTiktok, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -201,6 +201,7 @@ export default function Campaigns() {
   const [tiktokSelectedCampaignIds, setTikTokSelectedCampaignIds] = useState("");
   const [isTikTokConnecting, setIsTikTokConnecting] = useState(false);
   const [isCustomIntegrationConnecting, setIsCustomIntegrationConnecting] = useState(false);
+  const [customIntegrationForwardingEmail, setCustomIntegrationForwardingEmail] = useState("");
   const { toast } = useToast();
 
   const { data: campaigns = [], isLoading } = useQuery<Campaign[]>({
@@ -744,6 +745,7 @@ export default function Campaigns() {
     setTikTokSelectedCampaignIds("");
     setIsTikTokConnecting(false);
     setIsCustomIntegrationConnecting(false);
+    setCustomIntegrationForwardingEmail("");
     form.reset();
   };
 
@@ -909,6 +911,7 @@ export default function Campaigns() {
           throw new Error(errorData.error || errorData.message || "Failed to upload PDF");
         }
 
+        setCustomIntegrationForwardingEmail("");
         markCustomIntegrationConnected();
         toast({ title: "Custom Integration Connected", description: "PDF metrics were imported for this campaign." });
       } catch (error: any) {
@@ -925,12 +928,15 @@ export default function Campaigns() {
 
     setIsCustomIntegrationConnecting(true);
     try {
-      await apiRequest("POST", `/api/custom-integration/${draftCampaignId}/connect`, {
+      const response = await apiRequest("POST", `/api/custom-integration/${draftCampaignId}/connect`, {
         allowedEmailAddresses: [],
         campaignName: campaignData?.name || "Custom Integration Campaign",
       });
+      const data = await response.json().catch(() => ({}));
+      const forwardingEmail = String(data?.campaignEmail || data?.integration?.email || "").trim();
+      if (forwardingEmail) setCustomIntegrationForwardingEmail(forwardingEmail);
       markCustomIntegrationConnected();
-      toast({ title: "Custom Integration Connected", description: "Email forwarding was set up for this campaign." });
+      toast({ title: "Custom Integration Connected", description: forwardingEmail ? `Forward PDF reports to ${forwardingEmail}.` : "Email forwarding was set up for this campaign." });
     } catch (error: any) {
       toast({ title: "Connection Failed", description: error?.message || "Failed to set up Custom Integration", variant: "destructive" });
     } finally {
@@ -1724,6 +1730,26 @@ export default function Campaigns() {
                             </div>
                           ) : (
                             <p className="text-sm text-muted-foreground italic">No platforms connected yet. You can connect them later from the campaign detail page.</p>
+                          )}
+                          {customIntegrationForwardingEmail && (
+                            <div className="mt-3 rounded-md border bg-muted/30 p-3">
+                              <div className="text-xs text-muted-foreground">Forward PDF reports to</div>
+                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <code className="rounded bg-background px-2 py-1 text-sm">{customIntegrationForwardingEmail}</code>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(customIntegrationForwardingEmail);
+                                    toast({ title: "Copied", description: "Forwarding email copied." });
+                                  }}
+                                >
+                                  <Copy className="w-3.5 h-3.5 mr-1" />
+                                  Copy
+                                </Button>
+                              </div>
+                            </div>
                           )}
                         </div>
                       </div>

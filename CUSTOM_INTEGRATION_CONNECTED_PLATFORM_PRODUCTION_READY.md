@@ -66,25 +66,24 @@ Current code confirms:
 - `client/src/pages/custom-integration-analytics.tsx` renders the current Custom Integration analytics page.
 - Generic platform KPI, Benchmark, and Report routes already support `/api/platforms/:platformType/...`.
 
-Primary root causes:
+Primary root causes addressed by this tracker:
 
-- Layout drift: Custom Integration currently has `Overview`, `KPIs`, `Benchmarks`, and `Reports`; Google Sheets has `Overview`, `Summary`, `KPIs`, `Benchmarks`, `Insights`, and `Reports`.
-- Source contract ambiguity: Custom Integration imports have file/email/webhook provenance, but the analytics UI does not expose a Google-Sheets-style selected source/status row that explains what data powers the page.
-- Metric adapter gap: Current values are read directly from `metricsData` in the page instead of through a source-backed metric adapter with units, formatting, availability, source labels, and unavailable reasons.
-- Silent zero risk: KPI and Benchmark metric selection uses `metricsData?.metric || 0`, which can turn missing metrics into `0`. Google Sheets now treats missing values as unavailable with reasons.
-- Saved object scope risk: KPIs, Benchmarks, and Reports must re-resolve source-backed current values from saved Custom Integration source scope. KPIs and Benchmarks were completed in Commits 6 and 7; Reports were completed in Commit 9.
-- Insights gap: There is no production-ready Custom Integration Insights tab using source-backed evidence and next-action rules.
-- Route reachability gap: `custom-integration-analytics.tsx` calls `/api/custom-integration-by-id/:id`, but no matching route was found in `server/routes-oauth.ts` during this review.
-- Duplicate route risk: `server/routes-oauth.ts` contains more than one `/api/custom-integration/:campaignId/upload-pdf` registration path, which must be audited before production-ready claims.
-- Lifecycle gap: `deleteCustomIntegration(campaignId)` deletes the connection row, but this review did not prove that disconnect removes or disables associated `custom_integration_metrics` rows.
-- Aggregate/scheduler risk: `server/scheduler.ts` and aggregate routes consume latest Custom Integration metrics, but the end-to-end aggregate contract has not been revalidated against the planned source-backed adapter.
+- Layout drift was resolved by matching the Google Sheets tab structure.
+- Source contract ambiguity was resolved with source/status surfaces and source-backed metric resolution.
+- Silent zero risk was resolved by treating missing imported metrics as unavailable with reasons.
+- Saved object scope risk was resolved for KPIs, Benchmarks, Reports, and scheduled PDFs.
+- Insights were made evidence-backed using source-backed metrics and unavailable reasons.
+- Route reachability, duplicate upload registration, and disconnect stale-data risks were resolved in Commit 2.
+- Aggregate/scheduler availability risk was resolved in Commit 10 through the shared aggregate contract.
+- Email-forwarding UI usability was resolved in Commit 12 by displaying the generated forwarding address after setup.
+- Remaining production evidence risk: deployed browser validation and live inbound email-provider delivery still need proof.
 
 Business impact:
 
-- A marketing executive could see KPI, Benchmark, Report, or Insight values without a clear source label.
-- A missing imported metric could appear as `0`, which is materially different from unavailable.
-- A new import could make saved KPI/Benchmark/Report values stale or ambiguous unless saved source semantics are defined.
-- The Custom Integration page does not yet provide the same trust, explainability, or layout consistency as the Google Sheets section.
+- KPI, Benchmark, Report, Insight, and aggregate values now fail closed when source evidence is missing.
+- Missing imported metrics are presented as unavailable instead of real `0` values.
+- Saved KPI/Benchmark/Report values are tied to saved Custom Integration source scope.
+- The remaining business-readiness work is deployed validation, especially manual PDF upload, scheduled reports if exposed, and live inbound email forwarding.
 
 ## Current Code/Path Inventory
 
@@ -157,24 +156,26 @@ Proven from local code review:
 - Custom Integration has a metric table with imported metrics and provenance fields.
 - The campaign route to Custom Integration analytics exists.
 - Generic platform KPI, Benchmark, and Report routes are campaign-access guarded.
-- Latest Custom Integration metrics are used in scheduler and campaign aggregate paths.
+- Latest Custom Integration metrics are used in scheduler and campaign aggregate paths through the shared aggregate contract.
+- Commit 10 proves campaign aggregates, Campaign DeepDive consumers, and scheduler snapshots only advertise Custom Integration metrics when the imported field exists.
+- Commit 11 proves saved Custom Integration KPI, Benchmark, and Report rows fail closed when saved source scope is missing or disconnected.
+- Commit 12 proves the email-forwarding setup UI displays the generated forwarding address with a copy action after setup.
 
 Partially reviewed:
 
-- PDF upload, webhook upload, email inbound, and transfer flows exist, but duplicate route registration and lifecycle side effects need focused review.
-- Create Campaign email-forwarding setup creates the Custom Integration row and generated forwarding email, but the current wizard does not show the generated email address to the user after setup.
-- KPI create/edit/delete paths now use source-backed current values after Commit 6. Benchmark create/edit/delete paths now use source-backed current values after Commit 7. Report create/edit/delete paths exist through generic platform routes, but their source-backed behavior is not production-ready yet.
-- Campaign aggregate paths include Custom Integration, but source availability and unavailable reasons are not fully normalized.
+- PDF upload, webhook upload, email inbound, and transfer flows exist; local regression covers route ownership, but deployed provider delivery still needs validation.
+- Email-forwarding setup creates the Custom Integration row and generated forwarding email, and the UI now displays the address after setup; live inbound delivery still needs deployed provider validation.
+- KPI create/edit/delete paths now use source-backed current values after Commit 6. Benchmark create/edit/delete paths now use source-backed current values after Commit 7. Report create/edit/delete paths now use source-backed values and scheduler-safe payloads after Commit 9.
+- Campaign aggregate paths include Custom Integration with normalized source availability and unavailable reasons after Commit 10.
 
 Unverified:
 
 - Browser validation for the current Custom Integration page.
-- `/integrations/:id/analytics` route because the page calls a by-ID API route that was not found.
-- Full disconnect cleanup for existing imported metric rows.
-- Scheduled report output and snapshots for Custom Integration.
+- Deployed disconnect/reconnect browser validation.
+- End-to-end Mailgun/SendGrid scheduled delivery evidence for Custom Integration in the deployed environment.
 - Whether all import paths write identical normalized metric shapes and provenance.
 - End-to-end Mailgun/SendGrid inbound delivery for generated forwarding emails in the deployed environment.
-- Whether existing persisted Custom Integration KPI, Benchmark, or Report rows contain damaged/stale current values from prior silent-zero behavior.
+- Production database audit for legacy Custom Integration imported metrics or damaged saved rows.
 
 ## Production-Ready Target Contract
 
@@ -494,7 +495,7 @@ Status:
 - Regression evidence: `server/source-safety-regression.test.ts` verifies the Custom Integration Reports modal anchors, GA4-style report cards, scheduled card visibility support, no extra modal back link, collapsed custom section picker, no redundant Overview selector, source-backed report values, saved source scope, schedule payload normalization, edit-prefill/update-disabled behavior, scheduler inclusion, source-backed builder, summary report allowance, and snapshot fail-closed guard.
 - Local validation: `npm test -- server/source-safety-regression.test.ts`, `npm run check`, and targeted `git diff --check` passed.
 - User validation passed for Commit 9 after deployed browser review.
-- Deferred by tracker scope: campaign aggregates, Campaign DeepDive, existing-data cleanup, email-forwarding live delivery, and full final production-readiness evidence remain in later commits.
+- Deferred by tracker scope: existing-data cleanup, email-forwarding live delivery, and full final production-readiness evidence remain in later commits.
 
 ### Commit 10: Campaign Aggregates And DeepDive
 
@@ -512,6 +513,17 @@ Validation:
 
 - Regression tests for aggregate availability, source labels, scheduler snapshots, and no double counting.
 
+Status:
+
+- Completed and user-validated for Commit 10.
+- Root cause: campaign aggregate callers treated Custom Integration as a web analytics source whenever a metrics row existed, and the aggregate adapter advertised all Custom Integration fields as available even when the import did not contain those fields. That could make missing users, sessions, pageviews, impressions, conversions, spend, or revenue look like real `0` values in Campaign DeepDive, Executive Summary, Platform Comparison, Trend Analysis, and scheduler snapshots.
+- Fixes: Custom Integration aggregate availability is now field-aware, missing fields produce unavailable reasons, `/outcome-totals` and Executive Summary only use Custom Integration as `webAnalyticsProvider` when GA4 is not primary and the import contains users/sessions/pageviews, Custom Integration spend participates in campaign spend fallback when imported, and scheduler snapshots use the same Custom Integration aggregate field gating.
+- Runtime commit included in Commit 10 scope: `dc215900` campaign aggregate and scheduler gating.
+- Regression evidence: `server/performance-summary-aggregate.test.ts` verifies missing Custom Integration fields stay unavailable and Custom Integration web analytics requires an explicit web-provider caller; `server/performance-summary-scheduler-regression.test.ts` verifies scheduler web-provider gating; `server/source-safety-regression.test.ts` verifies `/outcome-totals` and Executive Summary route gating.
+- Local validation: `npm test -- server/performance-summary-aggregate.test.ts`, `npm test -- server/performance-summary-scheduler-regression.test.ts`, `npm test -- server/source-safety-regression.test.ts`, `npm test -- server/executive-summary-regression.test.ts`, `npm test -- server/platform-comparison-regression.test.ts`, `npm test -- server/trend-analysis-aggregate.test.ts`, `npm test -- server/custom-report-regression.test.ts`, `npm run check`, and targeted `git diff --check` passed.
+- User validation passed for Commit 10 after deployed browser review.
+- Deferred by tracker scope: existing-data cleanup, email-forwarding usability/live delivery, and final production-readiness evidence remain in later commits.
+
 ### Commit 11: Existing Data And Cleanup Boundary
 
 Goal:
@@ -528,6 +540,17 @@ Validation:
 
 - Regression tests prove legacy rows do not silently show stale or zero-filled values.
 
+Status:
+
+- Completed and user-validated for Commit 11.
+- Root cause: saved Custom Integration KPI, Benchmark, and Report rows could still resolve current values from the latest import when their saved source scope was missing or no longer matched the connected Custom Integration source. That could make old rows look valid while actually reading the wrong import.
+- Fixes: KPI and Benchmark cards now require saved Custom Integration source scope before resolving source-backed current values; saved report downloads fail closed when report source scope is missing or disconnected; scheduled Custom Integration PDF generation now requires valid report source scope and marks KPI/Benchmark rows unavailable when their saved source scope is missing or mismatched.
+- Runtime commit included in Commit 11 scope: `b2fdf8d3` saved source-scope guard.
+- Regression evidence: `server/source-safety-regression.test.ts` verifies missing saved source scope, disconnected source scope, saved report download fail-closed behavior, and scheduled report row fail-closed behavior.
+- Local validation: `npm test -- server/source-safety-regression.test.ts`, `npm run check`, and targeted `git diff --check` passed.
+- User validation passed for Commit 11 after deployed browser review.
+- Boundary: Commit 11 fixed forward safety for saved rows. It did not perform a production database cleanup or duplicate-import audit; that remains part of the final evidence pass unless a separate cleanup is explicitly requested.
+
 ### Commit 12: Final Evidence Pass
 
 Goal:
@@ -543,6 +566,15 @@ Required evidence:
 - Scheduled report validation if scheduling is exposed.
 - Documentation updated with final status, known boundaries, and validation results.
 
+Status:
+
+- Local Commit 12 implementation and regression pass completed; deployed browser validation is pending.
+- Root cause: `/api/custom-integration/:campaignId/connect` returned `campaignEmail`, but Create Campaign and Campaign Detail ignored it. Create Campaign moved to confirmation without showing the address; Campaign Detail immediately reloaded after setup, so users had no usable forwarding address.
+- Fixes: Create Campaign now stores the returned forwarding email, shows `Forward PDF reports to` with a copy button on the confirmation step, and clears that state for manual PDF uploads/reset. Campaign Detail now stores and displays the returned forwarding email with a copy button and no longer reloads immediately after email-forwarding setup.
+- Regression evidence: `server/source-safety-regression.test.ts` verifies Create Campaign and Campaign Detail both consume `campaignEmail`, display the forwarding address, expose copy actions, and keep the Campaign Detail email-forwarding success path on-page.
+- Local validation: `npm test -- server/source-safety-regression.test.ts`, `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts server/performance-summary-aggregate.test.ts server/performance-summary-scheduler-regression.test.ts server/executive-summary-regression.test.ts server/platform-comparison-regression.test.ts server/trend-analysis-aggregate.test.ts server/custom-report-regression.test.ts server/legacy-route-reachability-regression.test.ts`, `npm run check`, and targeted `git diff --check` passed.
+- Pending validation: deployed browser validation for the full Commit 12 matrix, manual PDF upload with a known PDF, scheduled report behavior if exposed, and live Mailgun/SendGrid inbound forwarding delivery.
+
 ### Deferred Follow-Up: Email Forwarding Usability
 
 Goal:
@@ -555,12 +587,12 @@ Root cause:
 
 Safe timing:
 
-- This can be deferred until after the remaining layout/analytics commits because Manual Upload already supports immediate data import and the email-forwarding connection row is created correctly.
-- It must be completed before Custom Integration is called production-ready.
+- UI usability was completed in Commit 12.
+- Live inbound provider validation must still be completed before email forwarding is called production-ready.
 
 Smallest expected fix:
 
-- After email-forwarding setup, show `Forward PDF reports to: <campaignEmail>` with a copy button.
+- After email-forwarding setup, show `Forward PDF reports to: <campaignEmail>` with a copy button. Completed in Commit 12.
 - Validate deployed Mailgun/SendGrid inbound routing for that generated address before marking email forwarding production-ready.
 
 ## Validation Matrix

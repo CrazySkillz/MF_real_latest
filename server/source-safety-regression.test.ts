@@ -418,8 +418,31 @@ describe("source safety regression guards", () => {
     expect(block.slice(block.lastIndexOf("<Button", block.indexOf("Set Up Email Forwarding")), block.indexOf("Set Up Email Forwarding"))).toContain('variant="outline"');
     expect(source).toContain("fetch(`/api/custom-integration/${draftCampaignId}/upload-pdf`");
     expect(source).toContain('apiRequest("POST", `/api/custom-integration/${draftCampaignId}/connect`');
+    expect(source).toContain("const forwardingEmail = String(data?.campaignEmail || data?.integration?.email || \"\").trim();");
+    expect(source).toContain("customIntegrationForwardingEmail");
+    expect(source).toContain("Forward PDF reports to");
+    expect(source).toContain("navigator.clipboard.writeText(customIntegrationForwardingEmail)");
     expect(source).toContain("setConnectedPlatformsInDialog(prev => prev.includes('custom-integration') ? prev : [...prev, 'custom-integration'])");
     expect(source).toContain("setWizardStep(5)");
+  });
+
+  it("Campaign Detail Custom Integration email forwarding displays the returned forwarding address", () => {
+    const source = readCampaignDetailSource();
+    const blockStart = source.indexOf('platform.platform === "Custom Integration" ? (');
+    const blockEnd = source.indexOf(') : (', blockStart);
+    const block = source.slice(blockStart, blockEnd);
+    const emailSuccessStart = block.indexOf("const forwardingEmail = String");
+    const emailSuccessEnd = block.indexOf("} else {", emailSuccessStart);
+    const emailSuccess = block.slice(emailSuccessStart, emailSuccessEnd);
+
+    expect(blockStart).toBeGreaterThan(-1);
+    expect(emailSuccessStart).toBeGreaterThan(-1);
+    expect(block).toContain("const forwardingEmail = String(data?.campaignEmail || data?.integration?.email || \"\").trim();");
+    expect(block).toContain("setCustomIntegrationForwardingEmail(forwardingEmail)");
+    expect(block).toContain("Forward PDF reports to");
+    expect(block).toContain("navigator.clipboard.writeText(customIntegrationForwardingEmail)");
+    expect(emailSuccess).not.toContain("setExpandedPlatform(null)");
+    expect(emailSuccess).not.toContain("window.location.reload();");
   });
 
   it("Connected Platforms Google Sheets setup persists campaign platform intent", () => {

@@ -39,6 +39,12 @@ When a future integration says "use the Meta revenue pattern," that means:
 - Use platform campaign mapping for paid-media attribution when imported source values may not equal provider campaign IDs.
 - Keep Pipeline Proxy separate from confirmed revenue and derived metrics.
 
+Create Campaign wizard rules:
+
+- `Back` must always return to the immediately previous screen/step for that exact wizard path.
+- Source setup completed while the campaign is still a draft must be labeled `Ready` or `Selected`, not `Connected`.
+- `Connected` is reserved for finalized campaigns after the final `Create Campaign` action succeeds.
+
 ## Root Cause This File Prevents
 
 The TikTok implementation required repeated follow-up prompts because the work treated GA4 as a loose reference instead of a required section contract.

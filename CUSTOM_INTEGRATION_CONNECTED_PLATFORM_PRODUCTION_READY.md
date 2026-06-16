@@ -76,6 +76,7 @@ Primary root causes addressed by this tracker:
 - Route reachability, duplicate upload registration, and disconnect stale-data risks were resolved in Commit 2.
 - Aggregate/scheduler availability risk was resolved in Commit 10 through the shared aggregate contract.
 - Email-forwarding UI usability was resolved in Commit 12 by displaying the generated forwarding address after setup.
+- Create Campaign wizard confusion was resolved by treating Custom Integration setup as draft `Ready` state until the final `Create Campaign` action completes, and by making Confirm Back return to the prior setup screen.
 - Remaining production evidence risk: deployed browser validation and live inbound email-provider delivery still need proof.
 
 Business impact:
@@ -160,6 +161,7 @@ Proven from local code review:
 - Commit 10 proves campaign aggregates, Campaign DeepDive consumers, and scheduler snapshots only advertise Custom Integration metrics when the imported field exists.
 - Commit 11 proves saved Custom Integration KPI, Benchmark, and Report rows fail closed when saved source scope is missing or disconnected.
 - Commit 12 proves the email-forwarding setup UI displays the generated forwarding address with a copy action after setup.
+- Create Campaign now keeps pre-final Custom Integration setup labeled as ready/selected instead of connected, and Confirm Back returns to the previous Custom Integration setup screen.
 
 Partially reviewed:
 
@@ -191,6 +193,8 @@ Custom Integration is production-ready only when all of the following are true:
 - Report downloads and scheduled reports use the same source-backed values visible in the UI.
 - Disconnect, transfer, upload, webhook, email inbound, scheduler, and report paths preserve campaign ownership and do not leak or reuse another campaign's data.
 - Email-forwarding setup shows the generated forwarding email address and copy action before users are expected to send PDF reports by email.
+- In Create Campaign, Custom Integration source setup must not display as `Connected` until the final `Create Campaign` action succeeds; draft setup should be shown as `Ready` or `Selected`.
+- In Create Campaign, Back from Confirm must return to the immediately previous setup screen, not jump back to platform selection.
 - Custom Integration aggregate participation is explicit: it may provide web analytics, email/newsletter, paid-media-like, revenue, spend, or conversion values only when those exact fields exist in the selected validated import.
 
 ## Custom Integration Metric Adapter Contract

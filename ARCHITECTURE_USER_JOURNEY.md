@@ -689,9 +689,11 @@ The intended campaign creation pattern is:
 4. User lands on the connectors flow
    If the user goes back to Step 1 and returns, already-connected wizard state should remain navigable instead of trapping the user on a connected platform tile.
    If the user returns from Confirm to Select Platform, `Continue` should resume the next correct step in that platform flow instead of skipping straight back to Confirm.
+   Every `Back` button must return to the immediately previous screen/step for that specific wizard path.
 5. User connects one or more sources
 6. User clicks the final `Create Campaign` action
    The confirm step should focus on review/finalization only and should not offer a separate `+ Add another platform` shortcut.
+   Before this final action completes, source setup should be labeled `Ready` or `Selected`, not `Connected`.
 7. The system finalizes the campaign and marks it active
 8. The user returns to Campaign Management and sees the new campaign in the list
 9. The user clicks the campaign and lands on the campaign-level Overview
@@ -708,6 +710,7 @@ The intended design is:
 Required interpretation for future development:
 
 - the final `Create Campaign` action should represent campaign finalization, not just record creation
+- source setup completed inside a draft campaign may be persisted as draft setup state, but it should not be presented to the user as `Connected` until final campaign creation succeeds
 - an `active` campaign should normally mean the campaign has at least one successfully configured data source or intentionally supported campaign data path
 - intentionally supported data paths can include manual or import-based campaign setup, not only OAuth-connected platforms
 - do not treat connector setup as optional if the campaign is expected to produce analytics immediately

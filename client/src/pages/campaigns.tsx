@@ -170,6 +170,7 @@ export default function Campaigns() {
   const [, setLocation] = useLocation();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [wizardConfirmBackStep, setWizardConfirmBackStep] = useState<3 | 4 | null>(null);
   const [selectedWizardPlatform, setSelectedWizardPlatform] = useState<string | null>(null);
   const [wizardPlatformConnected, setWizardPlatformConnected] = useState(false);
   const [campaignData, setCampaignData] = useState<CampaignFormData | null>(null);
@@ -590,10 +591,18 @@ export default function Campaigns() {
     setLinkedInImportComplete(false);
   };
 
+  const goToConfirmStep = (backStep: 3 | 4) => {
+    setWizardConfirmBackStep(backStep);
+    setWizardStep(5);
+  };
+
   const handleBackFromConfirm = () => {
-    setSelectedWizardPlatform(null);
-    setWizardPlatformConnected(false);
-    setWizardStep(2);
+    const backStep = wizardConfirmBackStep || (selectedWizardPlatform === 'google-analytics' ? 4 : selectedWizardPlatform ? 3 : 2);
+    if (backStep === 2) {
+      setSelectedWizardPlatform(null);
+      setWizardPlatformConnected(false);
+    }
+    setWizardStep(backStep);
   };
 
   const handleContinuePlatformSetup = () => {
@@ -721,6 +730,7 @@ export default function Campaigns() {
 
   const resetCreateModalState = () => {
     setWizardStep(1);
+    setWizardConfirmBackStep(null);
     setSelectedWizardPlatform(null);
     setWizardPlatformConnected(false);
     setLinkedInImportComplete(false);
@@ -776,8 +786,8 @@ export default function Campaigns() {
       } else if (data.connected && data.propertyId) {
         setConnectedPlatformsInDialog(prev => prev.includes('google-analytics') ? prev : [...prev, 'google-analytics']);
         setWizardPlatformConnected(true);
-        setWizardStep(5);
-        toast({ title: "GA4 Connected", description: "Your Google Analytics property is already linked." });
+        goToConfirmStep(3);
+        toast({ title: "GA4 Ready", description: "Your Google Analytics property is ready for campaign creation." });
       } else {
         toast({ title: "Connection Pending", description: "Could not fetch GA4 properties. Please try again.", variant: "destructive" });
       }
@@ -813,8 +823,8 @@ export default function Campaigns() {
       }
       setConnectedPlatformsInDialog(prev => prev.includes('instagram') ? prev : [...prev, 'instagram']);
       setWizardPlatformConnected(true);
-      toast({ title: "Instagram Ads Connected!", description: "Successfully connected test Instagram campaign scope." });
-      setWizardStep(5);
+      toast({ title: "Instagram Ads Ready", description: "Instagram campaign scope is ready for campaign creation." });
+      goToConfirmStep(3);
     } catch (error: any) {
       toast({ title: "Connection Failed", description: error?.message || "Failed to connect Instagram", variant: "destructive" });
     } finally {
@@ -859,8 +869,8 @@ export default function Campaigns() {
       }
       setConnectedPlatformsInDialog(prev => prev.includes('tiktok') ? prev : [...prev, 'tiktok']);
       setWizardPlatformConnected(true);
-      toast({ title: "TikTok Ads Connected!", description: "Successfully connected test TikTok campaign scope." });
-      setWizardStep(5);
+      toast({ title: "TikTok Ads Ready", description: "TikTok campaign scope is ready for campaign creation." });
+      goToConfirmStep(3);
     } catch (error: any) {
       toast({ title: "Connection Failed", description: error?.message || "Failed to connect TikTok", variant: "destructive" });
     } finally {
@@ -880,10 +890,10 @@ export default function Campaigns() {
     setTikTokSelectedCampaignIds(Array.from(selected).join(", "));
   };
 
-  const markCustomIntegrationConnected = () => {
+  const markCustomIntegrationReady = () => {
     setConnectedPlatformsInDialog(prev => prev.includes('custom-integration') ? prev : [...prev, 'custom-integration']);
     setWizardPlatformConnected(true);
-    setWizardStep(5);
+    goToConfirmStep(3);
   };
 
   const uploadCustomIntegrationPdf = () => {
@@ -912,8 +922,8 @@ export default function Campaigns() {
         }
 
         setCustomIntegrationForwardingEmail("");
-        markCustomIntegrationConnected();
-        toast({ title: "Custom Integration Connected", description: "PDF metrics were imported for this campaign." });
+        markCustomIntegrationReady();
+        toast({ title: "Custom Integration Ready", description: "PDF metrics are ready for campaign creation." });
       } catch (error: any) {
         toast({ title: "Upload Failed", description: error?.message || "Failed to upload PDF", variant: "destructive" });
       } finally {
@@ -935,8 +945,8 @@ export default function Campaigns() {
       const data = await response.json().catch(() => ({}));
       const forwardingEmail = String(data?.campaignEmail || data?.integration?.email || "").trim();
       if (forwardingEmail) setCustomIntegrationForwardingEmail(forwardingEmail);
-      markCustomIntegrationConnected();
-      toast({ title: "Custom Integration Connected", description: forwardingEmail ? `Forward PDF reports to ${forwardingEmail}.` : "Email forwarding was set up for this campaign." });
+      markCustomIntegrationReady();
+      toast({ title: "Custom Integration Ready", description: forwardingEmail ? `Forward future PDF reports to ${forwardingEmail}.` : "Automatic imports are ready for campaign creation." });
     } catch (error: any) {
       toast({ title: "Connection Failed", description: error?.message || "Failed to set up Custom Integration", variant: "destructive" });
     } finally {
@@ -958,7 +968,7 @@ export default function Campaigns() {
       if (response.ok && data.success) {
         setConnectedPlatformsInDialog(prev => prev.includes('google-analytics') ? prev : [...prev, 'google-analytics']);
         setWizardPlatformConnected(true);
-        toast({ title: "GA4 Property Connected!", description: "Now select which campaigns to track." });
+        toast({ title: "GA4 Property Selected", description: "Now select which campaigns to track." });
         // Load campaign values for campaign filter selection
         try {
           setIsGA4CampaignLoading(true);
@@ -1004,7 +1014,7 @@ export default function Campaigns() {
         ? `Tracking GA4 campaign "${values[0]}".`
         : `Tracking ${values.length} GA4 campaigns.`,
     });
-    setWizardStep(5);
+    goToConfirmStep(4);
   };
 
   return (
@@ -1248,7 +1258,7 @@ export default function Campaigns() {
                                   <div className="font-medium text-sm">{platform.name}</div>
                                   {isConnected && (
                                     <span className="text-xs text-green-600 flex items-center gap-1">
-                                      <CheckCircle className="w-3 h-3" /> Connected
+                                      <CheckCircle className="w-3 h-3" /> Ready
                                     </span>
                                   )}
                                   {isComingSoon && !isConnected && (
@@ -1336,8 +1346,8 @@ export default function Campaigns() {
                             onSuccess={() => {
                               setConnectedPlatformsInDialog(prev => prev.includes('google-sheets') ? prev : [...prev, 'google-sheets']);
                               setWizardPlatformConnected(true);
-                              toast({ title: "Google Sheets Connected!", description: "Successfully connected to your spreadsheet data." });
-                              setWizardStep(5);
+                              toast({ title: "Google Sheets Ready", description: "Spreadsheet data is ready for campaign creation." });
+                              goToConfirmStep(3);
                             }}
                             onError={(error) => {
                               toast({ title: "Connection Failed", description: error, variant: "destructive" });
@@ -1351,11 +1361,11 @@ export default function Campaigns() {
                             onConnectionSuccess={() => {
                               setConnectedPlatformsInDialog(prev => prev.includes('linkedin') ? prev : [...prev, 'linkedin']);
                               setWizardPlatformConnected(true);
-                              toast({ title: "LinkedIn Ads Connected!", description: "Successfully connected to your LinkedIn ad account." });
+                              toast({ title: "LinkedIn Ads Ready", description: "Finish importing selected LinkedIn campaigns before creation." });
                             }}
                             onImportComplete={() => {
                               setLinkedInImportComplete(true);
-                              setWizardStep(5);
+                              goToConfirmStep(3);
                             }}
                           />
                         )}
@@ -1365,7 +1375,7 @@ export default function Campaigns() {
                             onConnectionSuccess={() => {
                               setConnectedPlatformsInDialog(prev => prev.includes('google-ads') ? prev : [...prev, 'google-ads']);
                               setWizardPlatformConnected(true);
-                              setWizardStep(5);
+                              goToConfirmStep(3);
                             }}
                             onError={(error) => {
                               toast({ title: "Connection Failed", description: error, variant: "destructive" });
@@ -1378,8 +1388,8 @@ export default function Campaigns() {
                             onSuccess={() => {
                               setConnectedPlatformsInDialog(prev => prev.includes('facebook') ? prev : [...prev, 'facebook']);
                               setWizardPlatformConnected(true);
-                              toast({ title: "Meta/Facebook Ads Connected!", description: "Successfully connected to your Meta ad account." });
-                              setWizardStep(5);
+                              toast({ title: "Meta/Facebook Ads Ready", description: "Meta ad account is ready for campaign creation." });
+                              goToConfirmStep(3);
                             }}
                             onError={(error) => {
                               toast({ title: "Connection Failed", description: error, variant: "destructive" });
@@ -1532,20 +1542,42 @@ export default function Campaigns() {
                               )}
                               Upload PDF Report
                             </Button>
-                            <Button
-                              type="button"
-                              className="w-full justify-start"
-                              variant="outline"
-                              onClick={connectCustomIntegrationEmail}
-                              disabled={isCustomIntegrationConnecting}
-                            >
-                              {isCustomIntegrationConnecting ? (
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              ) : (
-                                <Send className="w-4 h-4 mr-2" />
-                              )}
-                              Set Up Automatic Imports
-                            </Button>
+                            {!customIntegrationForwardingEmail && (
+                              <Button
+                                type="button"
+                                className="w-full justify-start"
+                                variant="outline"
+                                onClick={connectCustomIntegrationEmail}
+                                disabled={isCustomIntegrationConnecting}
+                              >
+                                {isCustomIntegrationConnecting ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Send className="w-4 h-4 mr-2" />
+                                )}
+                                Set Up Automatic Imports
+                              </Button>
+                            )}
+                            {customIntegrationForwardingEmail && (
+                              <div className="rounded-md border bg-muted/30 p-3">
+                                <div className="text-xs text-muted-foreground">Forward future PDF reports to</div>
+                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                  <code className="rounded bg-background px-2 py-1 text-sm">{customIntegrationForwardingEmail}</code>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(customIntegrationForwardingEmail);
+                                      toast({ title: "Copied", description: "Forwarding email copied." });
+                                    }}
+                                  >
+                                    <Copy className="w-3.5 h-3.5 mr-1" />
+                                    Copy
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1715,7 +1747,7 @@ export default function Campaigns() {
                           </div>
                         )}
                         <div className="border-t pt-3">
-                          <div className="text-sm text-muted-foreground mb-2">Connected Platforms</div>
+                          <div className="text-sm text-muted-foreground mb-2">Selected Platforms</div>
                           {connectedPlatformsInDialog.length > 0 ? (
                             <div className="flex flex-wrap gap-2">
                               {connectedPlatformsInDialog.map(id => {
@@ -1732,7 +1764,7 @@ export default function Campaigns() {
                               })}
                             </div>
                           ) : (
-                            <p className="text-sm text-muted-foreground italic">No platforms connected yet. You can connect them later from the campaign detail page.</p>
+                            <p className="text-sm text-muted-foreground italic">No platforms selected yet. You can connect them later from the campaign detail page.</p>
                           )}
                           {customIntegrationForwardingEmail && (
                             <div className="mt-3 rounded-md border bg-muted/30 p-3">

@@ -401,7 +401,7 @@ describe("source safety regression guards", () => {
     expect(block).toContain('selectionMode="replace"');
     expect(block).toContain('purpose="general"');
     expect(block).toContain("setConnectedPlatformsInDialog");
-    expect(block).toContain("setWizardStep(5)");
+    expect(block).toContain("goToConfirmStep(3)");
   });
 
   it("Create Campaign exposes Custom Integration through existing campaign-scoped setup routes", () => {
@@ -418,13 +418,23 @@ describe("source safety regression guards", () => {
     expect(block).toContain("Set Up Automatic Imports");
     expect(block.slice(block.lastIndexOf("<Button", block.indexOf("Set Up Automatic Imports")), block.indexOf("Set Up Automatic Imports"))).toContain('variant="outline"');
     expect(block).toContain("Upload a PDF report to import metrics now. Use automatic imports for future recurring reports.");
+    expect(block).toContain("!customIntegrationForwardingEmail");
+    expect(block).toContain("Forward future PDF reports to");
     expect(source).toContain("fetch(`/api/custom-integration/${draftCampaignId}/upload-pdf`");
     expect(source).toContain('apiRequest("POST", `/api/custom-integration/${draftCampaignId}/connect`');
     expect(source).toContain("const forwardingEmail = String(data?.campaignEmail || data?.integration?.email || \"\").trim();");
     expect(source).toContain("customIntegrationForwardingEmail");
-    expect(source).toContain("Forward PDF reports to");
     expect(source).toContain("navigator.clipboard.writeText(customIntegrationForwardingEmail)");
     expect(source).toContain("setConnectedPlatformsInDialog(prev => prev.includes('custom-integration') ? prev : [...prev, 'custom-integration'])");
+    expect(source).toContain('toast({ title: "Custom Integration Ready"');
+    expect(source).toContain('<CheckCircle className="w-3 h-3" /> Ready');
+    expect(source).toContain("Selected Platforms");
+    expect(source).not.toContain('<CheckCircle className="w-3 h-3" /> Connected');
+    expect(source).not.toContain(">Connected Platforms<");
+    expect(source).toContain("const [wizardConfirmBackStep, setWizardConfirmBackStep]");
+    expect(source).toContain("const goToConfirmStep = (backStep: 3 | 4)");
+    expect(source).toContain("const backStep = wizardConfirmBackStep ||");
+    expect(source).toContain("setWizardStep(backStep)");
     expect(source).toContain("setWizardStep(5)");
   });
 

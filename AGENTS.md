@@ -198,6 +198,8 @@ Platform-scoping rule:
 - In source setup flows, especially Google Sheets revenue/spend flows, avoid intermediate messages such as `Loading...`, `Checking Google connection`, `Checking connection...`, or `Checking connected Google Sheets...` if they cause layout jumps.
 - Prefer silent background refresh, cached connection lists, disabled buttons, or stable empty/connect states over content-swapping placeholders.
 - If a loading state is necessary, it must not make the modal body jump or briefly show misleading content before the real source controls render.
+- Create-campaign wizard Back buttons must always return to the immediately previous screen/step in that wizard flow.
+- During draft campaign creation, source setup may be shown as `Ready` or `Selected`, but not `Connected`; a source should appear as `Connected` only after the final `Create Campaign` action completes.
 
 ## Sensitive Areas
 

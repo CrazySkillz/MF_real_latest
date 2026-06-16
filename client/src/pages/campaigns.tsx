@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Edit, Trash2, ArrowLeft, CheckCircle, Loader2, FileText, Copy } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft, CheckCircle, Loader2, FileText, Copy, Send } from "lucide-react";
 import { SiFacebook, SiGoogle, SiInstagram, SiLinkedin, SiTiktok, SiX } from "react-icons/si";
 import { Campaign, insertCampaignSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -1517,12 +1517,11 @@ export default function Campaigns() {
                         {selectedWizardPlatform === 'custom-integration' && (
                           <div className="space-y-3">
                             <p className="text-sm text-muted-foreground">
-                              Import metrics now from a PDF report, or set up email forwarding for later reports.
+                              Upload a PDF report to import metrics now. Use automatic imports for future recurring reports.
                             </p>
                             <Button
                               type="button"
                               className="w-full justify-start"
-                              variant="outline"
                               onClick={uploadCustomIntegrationPdf}
                               disabled={isCustomIntegrationConnecting}
                             >
@@ -1531,7 +1530,7 @@ export default function Campaigns() {
                               ) : (
                                 <FileText className="w-4 h-4 mr-2" />
                               )}
-                              Manual Upload
+                              Upload PDF Report
                             </Button>
                             <Button
                               type="button"
@@ -1540,8 +1539,12 @@ export default function Campaigns() {
                               onClick={connectCustomIntegrationEmail}
                               disabled={isCustomIntegrationConnecting}
                             >
-                              {isCustomIntegrationConnecting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                              Set Up Email Forwarding
+                              {isCustomIntegrationConnecting ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              ) : (
+                                <Send className="w-4 h-4 mr-2" />
+                              )}
+                              Set Up Automatic Imports
                             </Button>
                           </div>
                         )}
@@ -1733,7 +1736,7 @@ export default function Campaigns() {
                           )}
                           {customIntegrationForwardingEmail && (
                             <div className="mt-3 rounded-md border bg-muted/30 p-3">
-                              <div className="text-xs text-muted-foreground">Forward PDF reports to</div>
+                              <div className="text-xs text-muted-foreground">Forward future PDF reports to</div>
                               <div className="mt-1 flex flex-wrap items-center gap-2">
                                 <code className="rounded bg-background px-2 py-1 text-sm">{customIntegrationForwardingEmail}</code>
                                 <Button

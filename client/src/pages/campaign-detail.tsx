@@ -4567,9 +4567,10 @@ export default function CampaignDetail() {
   });
   const [customIntegrationForwardingEmail, setCustomIntegrationForwardingEmail] = useState("");
   const customIntegrationEmail = String(customIntegration?.campaignEmail || customIntegration?.email || "").trim();
+  const customIntegrationForwardingEmailDisplay = customIntegrationForwardingEmail || customIntegrationEmail;
   const isCustomIntegrationConnected =
     platformStatusMap.get("custom-integration")?.connected === true ||
-    Boolean(customIntegration?.id || customIntegrationEmail || customIntegrationForwardingEmail);
+    Boolean(customIntegration?.id || customIntegrationForwardingEmailDisplay);
 
   useEffect(() => {
     if (customIntegrationEmail) {
@@ -5619,7 +5620,7 @@ export default function CampaignDetail() {
                     <div key={columnIndex} className="space-y-4">
               {columnPlatforms.map((platform, index) => (
                 (() => {
-                  const customIntegrationEmailReady = platform.platform === "Custom Integration" && !!(customIntegrationForwardingEmail || customIntegrationEmail);
+                  const customIntegrationEmailReady = platform.platform === "Custom Integration" && !!customIntegrationForwardingEmailDisplay;
                   const canExpandPlatform = !platform.connected || platform.needsSetup || platform.requiresImport || customIntegrationEmailReady;
                   return (
                 <Card 
@@ -6064,7 +6065,7 @@ export default function CampaignDetail() {
                       ) : platform.platform === "Custom Integration" ? (
                         <div className="space-y-4">
                           <p className="text-sm text-muted-foreground/70">
-                            Import metrics from PDF reports via manual upload or email forwarding.
+                            Upload a PDF report to import metrics now. Use automatic imports for future recurring reports.
                           </p>
                           <div className="space-y-3">
                             <button
@@ -6105,58 +6106,60 @@ export default function CampaignDetail() {
                               className="w-full bg-card rounded-lg p-3 border-2 border-border hover:border-blue-500 transition-colors text-left"
                             >
                               <div className="font-medium text-foreground mb-1">
-                                Manual Upload
+                                Upload PDF Report
                               </div>
                               <div className="text-sm text-muted-foreground/70">
-                                Upload a PDF report to extract metrics
+                                Fastest setup: import metrics immediately from a PDF report.
                               </div>
                             </button>
 
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const response = await fetch(`/api/custom-integration/${campaign.id}/connect`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ allowedEmailAddresses: [], campaignName: campaign.name })
-                                  });
+                            {!customIntegrationForwardingEmailDisplay && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch(`/api/custom-integration/${campaign.id}/connect`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ allowedEmailAddresses: [], campaignName: campaign.name })
+                                    });
 
-                                  if (response.ok) {
-                                    const data = await response.json().catch(() => ({}));
-                                    const forwardingEmail = String(data?.campaignEmail || data?.integration?.email || "").trim();
-                                    if (forwardingEmail) setCustomIntegrationForwardingEmail(forwardingEmail);
-                                    toastHook({ title: "Connected", description: forwardingEmail ? `Forward PDF reports to ${forwardingEmail}.` : "Custom integration connected via email forwarding." });
-                                    queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
-                                    queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId] });
-                                  } else {
-                                    const err = await response.json().catch(() => ({}));
-                                    toastHook({ title: "Connection Failed", description: err?.error || "Failed to set up email forwarding", variant: "destructive" });
+                                    if (response.ok) {
+                                      const data = await response.json().catch(() => ({}));
+                                      const forwardingEmail = String(data?.campaignEmail || data?.integration?.email || "").trim();
+                                      if (forwardingEmail) setCustomIntegrationForwardingEmail(forwardingEmail);
+                                      toastHook({ title: "Connected", description: forwardingEmail ? `Forward PDF reports to ${forwardingEmail}.` : "Custom integration connected via email forwarding." });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"] });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId] });
+                                    } else {
+                                      const err = await response.json().catch(() => ({}));
+                                      toastHook({ title: "Connection Failed", description: err?.error || "Failed to set up email forwarding", variant: "destructive" });
+                                    }
+                                  } catch (error: any) {
+                                    console.error('Email forwarding setup error:', error);
+                                    toastHook({ title: "Connection Failed", description: error?.message || "Failed to set up email forwarding", variant: "destructive" });
                                   }
-                                } catch (error: any) {
-                                  console.error('Email forwarding setup error:', error);
-                                  toastHook({ title: "Connection Failed", description: error?.message || "Failed to set up email forwarding", variant: "destructive" });
-                                }
-                              }}
-                              className="w-full bg-card rounded-lg p-3 border-2 border-border hover:border-blue-500 transition-colors text-left"
-                            >
-                              <div className="font-medium text-foreground mb-1">
-                                Email Forwarding
-                              </div>
-                              <div className="text-sm text-muted-foreground/70">
-                                Get a unique email address for automatic imports
-                              </div>
-                            </button>
-                            {customIntegrationForwardingEmail && (
+                                }}
+                                className="w-full bg-card rounded-lg p-3 border-2 border-border hover:border-blue-500 transition-colors text-left"
+                              >
+                                <div className="font-medium text-foreground mb-1">
+                                  Set Up Automatic Imports
+                                </div>
+                                <div className="text-sm text-muted-foreground/70">
+                                  Get an email address for future PDF reports.
+                                </div>
+                              </button>
+                            )}
+                            {customIntegrationForwardingEmailDisplay && (
                               <div className="rounded-md border bg-muted/30 p-3">
-                                <div className="text-xs text-muted-foreground">Forward PDF reports to</div>
+                                <div className="text-xs text-muted-foreground">Forward future PDF reports to</div>
                                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                                  <code className="rounded bg-background px-2 py-1 text-sm">{customIntegrationForwardingEmail}</code>
+                                  <code className="rounded bg-background px-2 py-1 text-sm">{customIntegrationForwardingEmailDisplay}</code>
                                   <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
                                     onClick={() => {
-                                      navigator.clipboard.writeText(customIntegrationForwardingEmail);
+                                      navigator.clipboard.writeText(customIntegrationForwardingEmailDisplay);
                                       toastHook({ title: "Copied", description: "Forwarding email copied." });
                                     }}
                                   >

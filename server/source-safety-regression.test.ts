@@ -38,6 +38,14 @@ function readRevenueWizardSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "components", "AddRevenueWizardModal.tsx"), "utf8");
 }
 
+function readHubSpotRevenueWizardSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "client", "src", "components", "HubSpotRevenueWizard.tsx"), "utf8");
+}
+
+function readSalesforceRevenueWizardSource(): string {
+  return fs.readFileSync(path.join(process.cwd(), "client", "src", "components", "SalesforceRevenueWizard.tsx"), "utf8");
+}
+
 function readCampaignsPageSource(): string {
   return fs.readFileSync(path.join(process.cwd(), "client", "src", "pages", "campaigns.tsx"), "utf8");
 }
@@ -1724,6 +1732,46 @@ describe("source safety regression guards", () => {
     expect(source).toContain("<p className=\"text-xs text-muted-foreground/70\">Imported report</p>");
     expect(source).toContain("This removes only the selected Custom Integration revenue source. Total Revenue will be recalculated.");
     expect(source).toContain("This removes only the selected Custom Integration spend source. Total Spend, ROAS, and ROI will be recalculated.");
+  });
+
+  it("Custom Integration Pipeline Proxy uses CRM context and remains separate from totals", () => {
+    const source = readCustomIntegrationAnalyticsSource();
+    const routes = readRoutesSource();
+    const revenueModal = readRevenueWizardSource();
+    const hubspotWizard = readHubSpotRevenueWizardSource();
+    const salesforceWizard = readSalesforceRevenueWizardSource();
+    const financialStart = source.indexOf("const renderCustomIntegrationFinancialCards = () => (");
+    const financialEnd = source.indexOf("const handleCustomIntegrationPdfUpload", financialStart);
+    const financialBlock = source.slice(financialStart, financialEnd);
+    const salesforceRouteStart = routes.indexOf('app.get("/api/salesforce/:campaignId/pipeline-proxy"');
+    const salesforceRouteEnd = routes.indexOf('app.get("/api/hubspot/:campaignId/pipelines"', salesforceRouteStart);
+    const salesforceRoute = routes.slice(salesforceRouteStart, salesforceRouteEnd);
+    const hubspotRouteStart = routes.indexOf('app.get("/api/hubspot/:campaignId/pipeline-proxy"');
+    const hubspotRouteEnd = routes.indexOf('app.delete("/api/hubspot/:campaignId/pipeline-proxy"', hubspotRouteStart);
+    const hubspotRoute = routes.slice(hubspotRouteStart, hubspotRouteEnd);
+
+    expect(revenueModal).toContain("platformContext={platformContext}");
+    expect(hubspotWizard).toContain('platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok" | "google_sheets" | "custom_integration";');
+    expect(salesforceWizard).toContain('platformContext?: "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok" | "google_sheets" | "custom_integration";');
+    expect(hubspotWizard).toContain('return pipelineEnabled ? ("revenue_plus_pipeline" as const) : ("revenue_only" as const);');
+    expect(salesforceWizard).toContain('return pipelineEnabled ? ("revenue_plus_pipeline" as const) : ("revenue_only" as const);');
+    expect(source).toContain('fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=custom_integration`');
+    expect(source).toContain('fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=custom_integration`');
+    expect(source).toContain('queryKey: ["/api/hubspot", campaignId, "pipeline-proxy", "custom_integration"]');
+    expect(source).toContain('queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "custom_integration"]');
+    expect(financialBlock).toContain("Pipeline Proxy");
+    expect(financialBlock).toContain("Open CRM value only. Not counted in Total Revenue, ROI, or ROAS.");
+    expect(source).toContain("const customIntegrationPipelineProxyTotal = customIntegrationPipelineProxySourceEntries.reduce");
+    expect(source).not.toContain("customIntegrationTotalRevenue = customIntegrationExternalRevenue + (customIntegrationImportedRevenue ?? 0) + customIntegrationPipelineProxyTotal");
+    expect(source).not.toContain("customIntegrationRoas = hasCustomIntegrationDerivedFinancials ? (customIntegrationTotalRevenue + customIntegrationPipelineProxyTotal)");
+    expect(source).toContain("Pipeline Proxy Sources");
+    expect(source).toContain("Sources contributing to Custom Integration Pipeline Proxy.");
+    expect(salesforceRoute).toContain('"custom_integration"');
+    expect(salesforceRoute).toContain('if (requestedPlatformContext && requestedPlatformContext !== "ga4") return true;');
+    expect(salesforceRoute).toContain("const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[])");
+    expect(hubspotRoute).toContain('"custom_integration"');
+    expect(hubspotRoute).toContain('if (requestedPlatformContext && requestedPlatformContext !== "ga4") return true;');
+    expect(hubspotRoute).toContain("const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[])");
   });
 
   it("Custom Integration Insights use source-backed metrics and evidence-backed actions", () => {

@@ -15033,6 +15033,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const normalizeValue = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
       const scopedCampaignSet = new Set(scopedGa4CampaignValues.map(normalizeValue).filter(Boolean));
       const sourceMatchesGa4Scope = (sourceCfg: any) => {
+        if (requestedPlatformContext && requestedPlatformContext !== "ga4") return true;
         if (scopedCampaignSet.size === 0) return true;
         const selectedValues = Array.isArray(sourceCfg?.selectedValues) ? sourceCfg.selectedValues : [];
         const revenueTotals = Array.isArray(sourceCfg?.pipelineValueRevenueTotals) ? sourceCfg.pipelineValueRevenueTotals : [];
@@ -15439,6 +15440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const normalizeValue = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
       const scopedCampaignSet = new Set(scopedGa4CampaignValues.map(normalizeValue).filter(Boolean));
       const sourceMatchesGa4Scope = (sourceCfg: any) => {
+        if (requestedPlatformContext && requestedPlatformContext !== "ga4") return true;
         if (scopedCampaignSet.size === 0) return true;
         const selectedValues = Array.isArray(sourceCfg?.selectedValues) ? sourceCfg.selectedValues : [];
         const revenueTotals = Array.isArray(sourceCfg?.pipelineValueRevenueTotals) ? sourceCfg.pipelineValueRevenueTotals : [];

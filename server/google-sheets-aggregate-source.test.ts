@@ -162,8 +162,8 @@ describe("Google Sheets aggregate source adapter", () => {
       '// Spend-to-date (campaign lifetime)'
     );
 
-    expect(spendTotalsRoute).toContain('platformContext === "google_sheets"');
-    expect(spendTotalsRoute).toContain('String(source?.platformContext || "").trim().toLowerCase() === "google_sheets"');
+    expect(spendTotalsRoute).toContain('platformContext === "google_sheets" || platformContext === "custom_integration"');
+    expect(spendTotalsRoute).toContain('String(source?.platformContext || "").trim().toLowerCase() === platformContext');
     expect(spendTotalsRoute).toContain("eligibleSourceIds.has");
     expect(spendTotalsRoute).toContain("totalSpend: Number(totalSpend.toFixed(2))");
     expect(spendTotalsRoute).toContain("sourcesWithDetails");
@@ -188,7 +188,7 @@ describe("Google Sheets aggregate source adapter", () => {
     );
 
     expect(sheetsSpendRoute).toContain("requestedPlatformContext");
-    expect(sheetsSpendRoute).toContain('requestedPlatformContext !== "google_sheets"');
+    expect(sheetsSpendRoute).toContain("!isSupportedScopedSpendPlatformContext(requestedPlatformContext)");
     expect(sheetsSpendRoute).toContain("platformContext: platformContext || null");
     expect(sheetsSpendRoute).toContain('String((s as any).platformContext || "").trim().toLowerCase() !== platformContext');
 
@@ -198,7 +198,7 @@ describe("Google Sheets aggregate source adapter", () => {
       'app.post("/api/campaigns/:id/spend/sheets/preview"'
     );
     expect(csvSpendRoute).toContain("requestedPlatformContext");
-    expect(csvSpendRoute).toContain('requestedPlatformContext !== "google_sheets"');
+    expect(csvSpendRoute).toContain("!isSupportedScopedSpendPlatformContext(requestedPlatformContext)");
     expect(csvSpendRoute).toContain("platformContext: platformContext || null");
     expect(csvSpendRoute).toContain('String((existingSource as any)?.platformContext || "").trim().toLowerCase() !== platformContext');
 
@@ -208,7 +208,7 @@ describe("Google Sheets aggregate source adapter", () => {
       "// ============================================================================"
     );
     expect(linkedInSpendRoute).toContain("requestedPlatformContext");
-    expect(linkedInSpendRoute).toContain('requestedPlatformContext !== "google_sheets"');
+    expect(linkedInSpendRoute).toContain("!isSupportedScopedSpendPlatformContext(requestedPlatformContext)");
     expect(linkedInSpendRoute).toContain("platformContext: platformContext || null");
     expect(linkedInSpendRoute).toContain('String((s as any).platformContext || "").trim().toLowerCase() !== platformContext');
   });
@@ -247,9 +247,10 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(page).toContain("setRevenueWizardInitialSource(null);");
     expect(page).toContain("setSpendWizardInitialSource(null);");
     expect(revenueModal).toContain("if (open && initialSource) return;");
-    expect(revenueModal).toContain('const shouldAutoSelectExistingSheet = isEditing || (platformContext !== "google_sheets" && platformContext !== "tiktok");');
+    expect(revenueModal).toContain('const usesCreateModeSheetPicker = platformContext === "google_sheets" || platformContext === "custom_integration";');
+    expect(revenueModal).toContain('const shouldAutoSelectExistingSheet = isEditing || (!usesCreateModeSheetPicker && platformContext !== "tiktok");');
     expect(revenueModal).toContain("&& shouldAutoSelectExistingSheet");
-    expect(revenueModal).toContain('const shouldShowGoogleSheetsCreatePicker = !isEditing && platformContext === "google_sheets" && !sheetsConnectionId;');
+    expect(revenueModal).toContain('const shouldShowGoogleSheetsCreatePicker = !isEditing && (platformContext === "google_sheets" || platformContext === "custom_integration") && !sheetsConnectionId;');
     expect(revenueModal).toContain("sheetsConnections.length === 0 || shouldShowGoogleSheetsCreatePicker");
     expect(revenueModal).toContain("if (!initialSource) return;");
     expect(spendModal).toContain("if (props.open && props.initialSource) return;");

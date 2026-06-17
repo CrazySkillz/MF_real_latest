@@ -119,7 +119,7 @@ export const spendSources = pgTable("spend_sources", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: text("campaign_id").notNull(),
   sourceType: text("source_type").notNull(), // 'manual' | 'csv' | 'google_sheets' | 'ad_platforms' | 'custom'
-  platformContext: text("platform_context"), // 'ga4' | 'linkedin' | 'meta' | 'google-ads'
+  platformContext: text("platform_context"), // 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'custom_integration'
   displayName: text("display_name"),
   currency: text("currency"),
   mappingConfig: text("mapping_config"), // JSON string (mappings + filters)

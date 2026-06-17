@@ -1311,13 +1311,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dateRange = String(req.query.dateRange || "30days");
       const { startDate, endDate } = getDateRangeBounds(dateRange);
       const platformContext = String((req.query as any)?.platformContext || "").trim().toLowerCase();
-      if (platformContext === "google_sheets") {
+      if (platformContext === "google_sheets" || platformContext === "custom_integration") {
         const [sources, breakdown] = await Promise.all([
           storage.getSpendSources(campaignId),
           storage.getSpendBreakdownBySource(campaignId, startDate, endDate),
         ]);
         const eligibleSources = (Array.isArray(sources) ? sources : [])
-          .filter((source: any) => source && source.isActive !== false && String(source?.platformContext || "").trim().toLowerCase() === "google_sheets");
+          .filter((source: any) => source && source.isActive !== false && String(source?.platformContext || "").trim().toLowerCase() === platformContext);
         const eligibleSourceMap = new Map(eligibleSources.map((source: any) => [String(source.id || ""), source]));
         const eligibleSourceIds = new Set(Array.from(eligibleSourceMap.keys()).filter(Boolean));
         const scopedBreakdown = (Array.isArray(breakdown) ? breakdown : []).filter((row: any) =>
@@ -1330,8 +1330,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const source = eligibleSourceMap.get(sourceId) || {};
           return {
             sourceId,
-            displayName: (source as any)?.displayName || row?.displayName || "Google Sheets",
-            sourceType: (source as any)?.sourceType || row?.sourceType || "google_sheets",
+            displayName: (source as any)?.displayName || row?.displayName || (platformContext === "custom_integration" ? "Custom Integration" : "Google Sheets"),
+            sourceType: (source as any)?.sourceType || row?.sourceType || platformContext,
             spend: Number(Number(row?.spend || 0).toFixed(2)),
             currency: row?.currency || (source as any)?.currency || currency,
             mappingConfig: (source as any)?.mappingConfig || null,
@@ -1799,13 +1799,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Request validation helpers (enterprise-grade consistency)
-  const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);
-  const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);
-  const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);
-  const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);
-  const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);
-  const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);
-  const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);
+  const zPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
+  const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
+  const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
+  const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
+  const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
+  const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
+  const zRevenueReadPlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);
   type PlatformContext = z.infer<typeof zPlatformContext>;
   type CsvRevenuePlatformContext = z.infer<typeof zCsvRevenuePlatformContext>;
   type RevenueReadPlatformContext = z.infer<typeof zRevenueReadPlatformContext>;
@@ -1840,6 +1840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (ctx === "instagram") return "instagram_revenue";
     if (ctx === "tiktok") return "tiktok_revenue";
     if (ctx === "google_sheets") return "google_sheets_revenue";
+    if (ctx === "custom_integration") return "custom_integration_revenue";
     return "revenue";
   };
 
@@ -2455,7 +2456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteRevenueRecordsBySource(sourceId);
 
       if ((sourceType === 'hubspot' || sourceType === 'salesforce') && sourceCfg?.pipelineEnabled === true) {
-        const contexts: RevenueReadPlatformContext[] = ['ga4', 'linkedin', 'meta', 'google_ads', 'instagram', 'tiktok', 'google_sheets'];
+        const contexts: RevenueReadPlatformContext[] = ['ga4', 'linkedin', 'meta', 'google_ads', 'instagram', 'tiktok', 'google_sheets', 'custom_integration'];
         const candidates: Array<{ source: any; cfg: any }> = [];
         for (const context of contexts) {
           const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[]);
@@ -3909,6 +3910,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return requestedSourceType || "manual";
   };
 
+  const scopedSpendPlatformContexts = new Set(["google_sheets", "custom_integration"]);
+  const isSupportedScopedSpendPlatformContext = (value: string) => scopedSpendPlatformContexts.has(value);
+
   const recalcCampaignSpend = async (campaignId: string) => {
     const campaign = await storage.getCampaign(campaignId);
     const startDate = toISODateUTC((campaign as any)?.startDate) || "1900-01-01";
@@ -4172,7 +4176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currency = (req.body as any)?.currency ? String((req.body as any).currency) : undefined;
       const existingSourceId = String((req.body as any)?.sourceId || "").trim();
       const requestedPlatformContext = String((req.body as any)?.platformContext || "").trim().toLowerCase();
-      if (requestedPlatformContext && requestedPlatformContext !== "google_sheets") {
+      if (requestedPlatformContext && !isSupportedScopedSpendPlatformContext(requestedPlatformContext)) {
         return res.status(400).json({ success: false, error: "Unsupported spend platformContext" });
       }
       const platformContext = requestedPlatformContext || null;
@@ -4369,7 +4373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: "spendColumn is required" });
       }
       const requestedPlatformContext = String(mapping?.platformContext || "").trim().toLowerCase();
-      if (requestedPlatformContext && requestedPlatformContext !== "google_sheets") {
+      if (requestedPlatformContext && !isSupportedScopedSpendPlatformContext(requestedPlatformContext)) {
         return res.status(400).json({ success: false, error: "Unsupported spend platformContext" });
       }
       const platformContext = requestedPlatformContext || null;
@@ -4726,7 +4730,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: "spendColumn is required" });
       }
       const requestedPlatformContext = String((req.body as any)?.platformContext || mapping?.platformContext || "").trim().toLowerCase();
-      if (requestedPlatformContext && requestedPlatformContext !== "google_sheets") {
+      if (requestedPlatformContext && !isSupportedScopedSpendPlatformContext(requestedPlatformContext)) {
         return res.status(400).json({ success: false, error: "Unsupported spend platformContext" });
       }
       const platformContext = requestedPlatformContext || null;
@@ -7692,7 +7696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { campaignId, purpose } = req.body;
       const sheetsPurpose =
-        (purpose === "spend" || purpose === "revenue" || purpose === "general" || purpose === "linkedin_revenue" || purpose === "google_ads_revenue" || purpose === "instagram_revenue" || purpose === "tiktok_revenue" || purpose === "google_sheets_revenue")
+        (purpose === "spend" || purpose === "revenue" || purpose === "general" || purpose === "linkedin_revenue" || purpose === "google_ads_revenue" || purpose === "instagram_revenue" || purpose === "tiktok_revenue" || purpose === "google_sheets_revenue" || purpose === "custom_integration_revenue")
           ? purpose
           : undefined;
 
@@ -7936,7 +7940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ---- Google Sheets OAuth flow ----
       const [campaignId, sheetsPurpose] = rawState.includes(':') ? rawState.split(':') : [rawState, undefined];
       const purpose =
-        sheetsPurpose === 'spend' || sheetsPurpose === 'revenue' || sheetsPurpose === 'general' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue' || sheetsPurpose === 'instagram_revenue' || sheetsPurpose === 'tiktok_revenue' || sheetsPurpose === 'google_sheets_revenue'
+        sheetsPurpose === 'spend' || sheetsPurpose === 'revenue' || sheetsPurpose === 'general' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue' || sheetsPurpose === 'instagram_revenue' || sheetsPurpose === 'tiktok_revenue' || sheetsPurpose === 'google_sheets_revenue' || sheetsPurpose === 'custom_integration_revenue'
           ? sheetsPurpose
           : null;
       devLog(`[Google Sheets OAuth] Processing callback for campaign ${campaignId}`);
@@ -12708,7 +12712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId, spreadsheetId, sheetNames, selectionMode, purpose } = req.body;
       const mode: 'replace' | 'append' = (selectionMode === 'append' || selectionMode === 'replace') ? selectionMode : 'replace';
       const sheetsPurpose =
-        (purpose === 'spend' || purpose === 'revenue' || purpose === 'general' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue' || purpose === 'tiktok_revenue' || purpose === 'google_sheets_revenue')
+        (purpose === 'spend' || purpose === 'revenue' || purpose === 'general' || purpose === 'linkedin_revenue' || purpose === 'google_ads_revenue' || purpose === 'instagram_revenue' || purpose === 'tiktok_revenue' || purpose === 'google_sheets_revenue' || purpose === 'custom_integration_revenue')
           ? purpose
           : undefined;
 
@@ -12728,7 +12732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Enterprise-grade guardrail: revenue connectors must be single-tab to avoid ambiguity/double-counting.
-      if ((sheetsPurpose === 'revenue' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue' || sheetsPurpose === 'instagram_revenue' || sheetsPurpose === 'tiktok_revenue' || sheetsPurpose === 'google_sheets_revenue') && Array.isArray(sheetNames) && sheetNames.length > 1) {
+      if ((sheetsPurpose === 'revenue' || sheetsPurpose === 'linkedin_revenue' || sheetsPurpose === 'google_ads_revenue' || sheetsPurpose === 'instagram_revenue' || sheetsPurpose === 'tiktok_revenue' || sheetsPurpose === 'google_sheets_revenue' || sheetsPurpose === 'custom_integration_revenue') && Array.isArray(sheetNames) && sheetNames.length > 1) {
         return res.status(400).json({ error: 'Revenue connections support 1 tab only. Please select a single tab.' });
       }
 
@@ -14357,7 +14361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignDisplayName = String((body.data as any).campaignDisplayName || "").trim();
       const dateFieldChoice = body.data.dateField || "CloseDate";
       const platformContextRaw = String(platformContext || "ga4").trim().toLowerCase();
-      const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : platformContextRaw === "tiktok" ? "tiktok" : platformContextRaw === "google_sheets" ? "google_sheets" : "ga4";
+      const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : platformContextRaw === "tiktok" ? "tiktok" : platformContextRaw === "google_sheets" ? "google_sheets" : platformContextRaw === "custom_integration" ? "custom_integration" : "ga4";
       const activeGoogleAdsCampaignIds = platformCtx === "google_ads"
         ? await getActiveGoogleAdsCampaignIdSet(campaignId)
         : platformCtx === "meta"
@@ -15017,8 +15021,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfg = {};
       }
       const requestedPlatformContext = String((req.query as any)?.platformContext || "").trim().toLowerCase();
-      const requestedContexts = (["ga4", "linkedin", "meta", "google_ads", "instagram", "google_sheets"] as const).includes(requestedPlatformContext as any)
-        ? [requestedPlatformContext as "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "google_sheets"]
+      const requestedContexts = (["ga4", "linkedin", "meta", "google_ads", "instagram", "google_sheets", "custom_integration"] as const).includes(requestedPlatformContext as any)
+        ? [requestedPlatformContext as "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "google_sheets" | "custom_integration"]
         : ["ga4", "linkedin", "meta"] as const;
       if (requestedPlatformContext && String(cfg?.platformContext || cfg?.platform || "").trim().toLowerCase() !== requestedPlatformContext) {
         cfg = {};
@@ -15423,8 +15427,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cfg = {};
       }
       const requestedPlatformContext = String((req.query as any)?.platformContext || "").trim().toLowerCase();
-      const requestedContexts = (["ga4", "linkedin", "meta", "google_ads", "instagram", "google_sheets"] as const).includes(requestedPlatformContext as any)
-        ? [requestedPlatformContext as "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "google_sheets"]
+      const requestedContexts = (["ga4", "linkedin", "meta", "google_ads", "instagram", "google_sheets", "custom_integration"] as const).includes(requestedPlatformContext as any)
+        ? [requestedPlatformContext as "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "google_sheets" | "custom_integration"]
         : ["ga4", "linkedin", "meta"] as const;
       if (requestedPlatformContext && String(cfg?.platformContext || cfg?.platform || "").trim().toLowerCase() !== requestedPlatformContext) {
         cfg = {};
@@ -15801,7 +15805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignMappings = Array.isArray(body.data.campaignMappings) ? body.data.campaignMappings : [];
       const campaignDisplayName = String((body.data as any).campaignDisplayName || "").trim();
       const platformContextRaw = String(platformContext || "ga4").trim().toLowerCase();
-      const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : platformContextRaw === "tiktok" ? "tiktok" : platformContextRaw === "google_sheets" ? "google_sheets" : "ga4";
+      const platformCtx = platformContextRaw === "linkedin" ? "linkedin" : platformContextRaw === "meta" ? "meta" : platformContextRaw === "google_ads" ? "google_ads" : platformContextRaw === "instagram" ? "instagram" : platformContextRaw === "tiktok" ? "tiktok" : platformContextRaw === "google_sheets" ? "google_sheets" : platformContextRaw === "custom_integration" ? "custom_integration" : "ga4";
       const activeGoogleAdsCampaignIds = platformCtx === "google_ads"
         ? await getActiveGoogleAdsCampaignIdSet(campaignId)
         : platformCtx === "meta"

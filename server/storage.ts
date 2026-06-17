@@ -13,7 +13,7 @@ const devLog = (...args: any[]) => {
   }
 };
 
-export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets';
+export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';
 
 const deleteInstagramFinancialDataForCampaign = async (tx: any, campaignId: string): Promise<void> => {
   const instagramSpendSources = await tx

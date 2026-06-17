@@ -1240,16 +1240,17 @@ describe("source safety regression guards", () => {
     const storageSource = readStorageSource();
     const schemaSource = fs.readFileSync(path.join(process.cwd(), "shared", "schema.ts"), "utf-8");
 
-    expect(storageSource).toContain("export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets';");
+    expect(storageSource).toContain("export type RevenuePlatformContext = 'ga4' | 'linkedin' | 'meta' | 'google_ads' | 'instagram' | 'tiktok' | 'google_sheets' | 'custom_integration';");
     expect(schemaSource).toContain("export const insertRevenueSourceSchema");
     expect(schemaSource).toContain("platformContext: true,");
-    expect(routesSource).toContain('const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
-    expect(routesSource).toContain('const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
-    expect(routesSource).toContain('const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
-    expect(routesSource).toContain('const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
-    expect(routesSource).toContain('const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets"]);');
+    expect(routesSource).toContain('const zCsvRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
+    expect(routesSource).toContain('const zSheetsRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
+    expect(routesSource).toContain('const zHubSpotRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
+    expect(routesSource).toContain('const zSalesforceRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
+    expect(routesSource).toContain('const zShopifyRevenuePlatformContext = z.enum(["ga4", "linkedin", "meta", "google_ads", "instagram", "tiktok", "google_sheets", "custom_integration"]);');
     expect(routesSource).toContain("const revenuePurposeForPlatformContext = (platformContext: any): string => {");
     expect(routesSource).toContain('if (ctx === "tiktok") return "tiktok_revenue";');
+    expect(routesSource).toContain('if (ctx === "custom_integration") return "custom_integration_revenue";');
     expect(routesSource).toContain("const getActiveTikTokCampaignIdSet = async (campaignId: string): Promise<Set<string>> => {");
     expect(routesSource).toContain('platformContext !== "tiktok"');
     expect(routesSource).toContain("mapping?.tiktokCampaignId");
@@ -1526,6 +1527,24 @@ describe("source safety regression guards", () => {
     expect(queryBlock).toContain("refetchInterval: 10000");
     expect(queryBlock).not.toContain("setInterval");
     expect(source).not.toContain("[Auto-Refresh] No metrics yet");
+  });
+
+  it("Custom Integration external financial source scaffold is platform-scoped", () => {
+    const routesSource = readRoutesSource();
+    const storageSource = readStorageSource();
+    const revenueModal = readRevenueWizardSource();
+    const spendModal = fs.readFileSync(path.join(process.cwd(), "client", "src", "components", "AddSpendWizardModal.tsx"), "utf8");
+
+    expect(storageSource).toContain("'custom_integration'");
+    expect(routesSource).toContain('"custom_integration"');
+    expect(routesSource).toContain('if (ctx === "custom_integration") return "custom_integration_revenue";');
+    expect(routesSource).toContain('platformContext === "google_sheets" || platformContext === "custom_integration"');
+    expect(routesSource).toContain('String(source?.platformContext || "").trim().toLowerCase() === platformContext');
+    expect(routesSource).toContain('const scopedSpendPlatformContexts = new Set(["google_sheets", "custom_integration"]);');
+    expect(revenueModal).toContain("'custom_integration'");
+    expect(revenueModal).toContain("custom_integration_revenue");
+    expect(revenueModal).toContain("platformContext=custom_integration");
+    expect(spendModal).toContain('"custom_integration"');
   });
 
   it("Custom Integration KPI and Benchmark metric selection does not zero-fill missing imports", () => {

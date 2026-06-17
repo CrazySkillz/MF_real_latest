@@ -27,7 +27,7 @@ type Step =
   | "manual";
 
 type AdPlatform = "linkedin" | "meta" | "google_ads";
-type SpendPlatformContext = "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok" | "google_sheets";
+type SpendPlatformContext = "ga4" | "linkedin" | "meta" | "google_ads" | "instagram" | "tiktok" | "google_sheets" | "custom_integration";
 
 const ENABLE_AD_PLATFORM_TEST_MODE = String(import.meta.env.VITE_ENABLE_AD_PLATFORM_TEST_MODE || "").toLowerCase() === "true";
 

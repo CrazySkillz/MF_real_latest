@@ -406,7 +406,7 @@ describe("source safety regression guards", () => {
 
   it("Create Campaign exposes Custom Integration through existing campaign-scoped setup routes", () => {
     const source = readCampaignsPageSource();
-    const blockStart = source.indexOf("selectedWizardPlatform === 'custom-integration'");
+    const blockStart = source.indexOf("selectedWizardPlatform === 'custom-integration' && (");
     const block = source.slice(blockStart, blockStart + 2500);
 
     expect(source).toContain('id: "custom-integration"');
@@ -418,6 +418,10 @@ describe("source safety regression guards", () => {
     expect(block).toContain("Set Up Automatic Imports");
     expect(block.slice(block.lastIndexOf("<Button", block.indexOf("Upload Report")), block.indexOf("Upload Report"))).toContain('variant="outline"');
     expect(block.slice(block.lastIndexOf("<Button", block.indexOf("Set Up Automatic Imports")), block.indexOf("Set Up Automatic Imports"))).toContain('variant="outline"');
+    expect(source).toContain('useState<"upload" | "email" | null>(null)');
+    expect(block).toContain('customIntegrationConnectingAction === "upload"');
+    expect(block).toContain('customIntegrationConnectingAction === "email"');
+    expect(source).toContain("selectedWizardPlatform === 'custom-integration' ? \"Connect\" : \"Auth\"");
     expect(block).toContain("Upload a PDF, CSV, or Excel (.xlsx) report to import metrics now. Use automatic imports for future recurring reports.");
     expect(source).toContain("input.accept = '.pdf,.csv,.xlsx'");
     expect(block).toContain("!customIntegrationForwardingEmail");

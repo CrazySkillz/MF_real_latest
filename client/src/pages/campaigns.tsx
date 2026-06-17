@@ -201,7 +201,7 @@ export default function Campaigns() {
   const [tiktokAdvertiserName, setTikTokAdvertiserName] = useState("Test TikTok Advertiser");
   const [tiktokSelectedCampaignIds, setTikTokSelectedCampaignIds] = useState("");
   const [isTikTokConnecting, setIsTikTokConnecting] = useState(false);
-  const [isCustomIntegrationConnecting, setIsCustomIntegrationConnecting] = useState(false);
+  const [customIntegrationConnectingAction, setCustomIntegrationConnectingAction] = useState<"upload" | "email" | null>(null);
   const [customIntegrationForwardingEmail, setCustomIntegrationForwardingEmail] = useState("");
   const { toast } = useToast();
 
@@ -754,7 +754,7 @@ export default function Campaigns() {
     setTikTokAdvertiserName("Test TikTok Advertiser");
     setTikTokSelectedCampaignIds("");
     setIsTikTokConnecting(false);
-    setIsCustomIntegrationConnecting(false);
+    setCustomIntegrationConnectingAction(null);
     setCustomIntegrationForwardingEmail("");
     form.reset();
   };
@@ -905,7 +905,7 @@ export default function Campaigns() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
-      setIsCustomIntegrationConnecting(true);
+      setCustomIntegrationConnectingAction("upload");
       try {
         const formData = new FormData();
         formData.append('pdf', file);
@@ -927,7 +927,7 @@ export default function Campaigns() {
       } catch (error: any) {
         toast({ title: "Upload Failed", description: error?.message || "Failed to upload report", variant: "destructive" });
       } finally {
-        setIsCustomIntegrationConnecting(false);
+        setCustomIntegrationConnectingAction(null);
       }
     };
     input.click();
@@ -936,7 +936,7 @@ export default function Campaigns() {
   const connectCustomIntegrationEmail = async () => {
     if (!draftCampaignId) return;
 
-    setIsCustomIntegrationConnecting(true);
+    setCustomIntegrationConnectingAction("email");
     try {
       const response = await apiRequest("POST", `/api/custom-integration/${draftCampaignId}/connect`, {
         allowedEmailAddresses: [],
@@ -950,7 +950,7 @@ export default function Campaigns() {
     } catch (error: any) {
       toast({ title: "Connection Failed", description: error?.message || "Failed to set up Custom Integration", variant: "destructive" });
     } finally {
-      setIsCustomIntegrationConnecting(false);
+      setCustomIntegrationConnectingAction(null);
     }
   };
 
@@ -1063,7 +1063,7 @@ export default function Campaigns() {
                     {[
                       { step: 1 as const, label: "Details" },
                       { step: 2 as const, label: "Platform" },
-                      { step: 3 as const, label: "Auth" },
+                      { step: 3 as const, label: selectedWizardPlatform === 'custom-integration' ? "Connect" : "Auth" },
                       { step: 4 as const, label: "Configure" },
                       { step: 5 as const, label: "Confirm" },
                     ].map(({ step, label }, i) => {
@@ -1534,9 +1534,9 @@ export default function Campaigns() {
                               className="w-full justify-start"
                               variant="outline"
                               onClick={uploadCustomIntegrationPdf}
-                              disabled={isCustomIntegrationConnecting}
+                              disabled={customIntegrationConnectingAction !== null}
                             >
-                              {isCustomIntegrationConnecting ? (
+                              {customIntegrationConnectingAction === "upload" ? (
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                               ) : (
                                 <FileText className="w-4 h-4 mr-2" />
@@ -1549,9 +1549,9 @@ export default function Campaigns() {
                                 className="w-full justify-start"
                                 variant="outline"
                                 onClick={connectCustomIntegrationEmail}
-                                disabled={isCustomIntegrationConnecting}
+                                disabled={customIntegrationConnectingAction !== null}
                               >
-                                {isCustomIntegrationConnecting ? (
+                                {customIntegrationConnectingAction === "email" ? (
                                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                 ) : (
                                   <Send className="w-4 h-4 mr-2" />

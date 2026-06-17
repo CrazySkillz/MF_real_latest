@@ -849,7 +849,7 @@ export default function CustomIntegrationAnalytics() {
 
   const deleteCustomIntegrationRevenueSourceMutation = useMutation({
     mutationFn: async (sourceId: string) => {
-      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`, {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}?platformContext=custom_integration`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -876,7 +876,7 @@ export default function CustomIntegrationAnalytics() {
 
   const deleteCustomIntegrationSpendSourceMutation = useMutation({
     mutationFn: async (sourceId: string) => {
-      const response = await fetch(`/api/campaigns/${campaignId}/spend-sources/${encodeURIComponent(sourceId)}`, {
+      const response = await fetch(`/api/campaigns/${campaignId}/spend-sources/${encodeURIComponent(sourceId)}?platformContext=custom_integration`, {
         method: "DELETE",
         credentials: "include",
       });

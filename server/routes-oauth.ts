@@ -2445,10 +2445,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sourceId = req.params.sourceId;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
+      const requestedPlatformContextRaw = (req.query as any)?.platformContext;
+      const requestedPlatformContext = typeof requestedPlatformContextRaw === "undefined"
+        ? null
+        : parsePlatformContext(requestedPlatformContextRaw, "ga4", res);
+      if (typeof requestedPlatformContextRaw !== "undefined" && !requestedPlatformContext) return;
       // Verify the source belongs to this campaign
       const source = await storage.getRevenueSource(campaignId, sourceId);
       if (!source) return res.status(404).json({ success: false, error: "Revenue source not found" });
       const sourcePlatformContext = String((source as any).platformContext || 'ga4').trim();
+      if (requestedPlatformContext && sourcePlatformContext.toLowerCase() !== requestedPlatformContext) {
+        return res.status(404).json({ success: false, error: "Revenue source not found" });
+      }
       const sourceType = String((source as any)?.sourceType || "").toLowerCase();
       let sourceCfg: any = {};
       try { sourceCfg = (source as any)?.mappingConfig ? JSON.parse(String((source as any).mappingConfig)) : {}; } catch { sourceCfg = {}; }
@@ -2564,10 +2572,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sourceId = req.params.sourceId;
       const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!ok) return;
+      const requestedPlatformContextRaw = (req.query as any)?.platformContext;
+      const requestedPlatformContext = typeof requestedPlatformContextRaw === "undefined"
+        ? null
+        : parsePlatformContext(requestedPlatformContextRaw, "ga4", res);
+      if (typeof requestedPlatformContextRaw !== "undefined" && !requestedPlatformContext) return;
       const existingSpendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
       const deletingSource = (Array.isArray(existingSpendSources) ? existingSpendSources : [])
         .find((s: any) => String(s?.id || "") === String(sourceId));
       if (!deletingSource) return res.status(404).json({ success: false, error: "Spend source not found" });
+      if (requestedPlatformContext && String((deletingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== requestedPlatformContext) {
+        return res.status(404).json({ success: false, error: "Spend source not found" });
+      }
       let deletingSheetsConnectionId = "";
       if (String((deletingSource as any)?.sourceType || "") === "google_sheets") {
         try {

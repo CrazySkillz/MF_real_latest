@@ -184,6 +184,8 @@ describe("source safety regression guards", () => {
     const route = routesSource.slice(routeStart, routeEnd);
 
     expect(route).toContain("storage.getRevenueSource(campaignId, sourceId)");
+    expect(route).toContain("const requestedPlatformContextRaw = (req.query as any)?.platformContext;");
+    expect(route).toContain("sourcePlatformContext.toLowerCase() !== requestedPlatformContext");
     expect(route.indexOf("storage.deleteRevenueSource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getRevenueSource(campaignId, sourceId)"));
     expect(route.indexOf("storage.deleteRevenueRecordsBySource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getRevenueSource(campaignId, sourceId)"));
     expect(route).toContain("Revenue source not found");
@@ -204,6 +206,8 @@ describe("source safety regression guards", () => {
     const route = routesSource.slice(routeStart, routeEnd);
 
     expect(route).toContain("storage.getSpendSources(campaignId)");
+    expect(route).toContain("const requestedPlatformContextRaw = (req.query as any)?.platformContext;");
+    expect(route).toContain('String((deletingSource as any)?.platformContext || "ga4").trim().toLowerCase() !== requestedPlatformContext');
     expect(route.indexOf("storage.deleteSpendSource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getSpendSources(campaignId)"));
     expect(route.indexOf("storage.deleteSpendRecordsBySource(sourceId)")).toBeGreaterThan(route.indexOf("storage.getSpendSources(campaignId)"));
     expect(route).toContain("Spend source not found");
@@ -1722,8 +1726,8 @@ describe("source safety regression guards", () => {
     expect(source).toContain("setSpendWizardInitialSource({");
     expect(source).toContain("id: source.sourceId");
     expect(source).toContain("initialSource={spendWizardInitialSource || undefined}");
-    expect(source).toContain('fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`');
-    expect(source).toContain('fetch(`/api/campaigns/${campaignId}/spend-sources/${encodeURIComponent(sourceId)}`');
+    expect(source).toContain('fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}?platformContext=custom_integration`');
+    expect(source).toContain('fetch(`/api/campaigns/${campaignId}/spend-sources/${encodeURIComponent(sourceId)}?platformContext=custom_integration`');
     expect(source).toContain("setDeletingRevenueSourceId(String(source.id))");
     expect(source).toContain("setDeletingSpendSourceId(String(source.sourceId))");
     expect(source).toContain("deleteCustomIntegrationRevenueSourceMutation.mutate(deletingRevenueSourceId)");

@@ -825,8 +825,8 @@ Status:
   - Insights now use source-backed Overview financial availability and use source-backed wording instead of import-only wording.
   - Custom Report Overview section now uses the same Overview metric registry and resolver as the Overview tab, so report values align with the visible tab values.
   - KPI and Benchmark source-backed Current Value fields display two-decimal values where appropriate while keeping whole-number count metrics readable.
-- Latest local follow-up:
-  - Custom Integration Overview ROI now uses the same two-decimal Custom Integration percent formatter as KPI/Benchmark/report outputs; pending commit and push.
+- Commit:
+  - `b375db4f Align Custom Integration ROI display`
 - Validation evidence: user browser validation passed; `npm run check`, `npm test -- server/source-safety-regression.test.ts`, and `git diff --check -- client/src/pages/custom-integration-analytics.tsx server/report-scheduler.ts server/source-safety-regression.test.ts CUSTOM_INTEGRATION_CONNECTED_PLATFORM_PRODUCTION_READY.md` passed.
 
 ### Commit 18: Final Financial Source Evidence Pass
@@ -852,7 +852,25 @@ Validation:
 
 Status:
 
-- Planned.
+- Implemented locally; pending browser validation, commit, and push.
+
+RCA:
+
+- The visible Custom Integration source dialogs already listed only `platformContext=custom_integration` financial sources.
+- However, the delete actions called the shared revenue/spend delete endpoints without passing that platform context.
+- The shared delete endpoints proved campaign ownership, but did not enforce an optional platform-context boundary, so a malformed Custom Integration delete call could delete another active spend or revenue source from the same campaign if the wrong source ID was supplied.
+
+Fixes:
+
+- Custom Integration revenue and spend delete calls now pass `platformContext=custom_integration`.
+- Shared revenue and spend source delete routes now enforce the requested platform context when one is provided, while preserving existing callers that do not pass a context.
+- Regression coverage now verifies the scoped Custom Integration delete calls and the backend optional platform-context guard.
+
+Validation evidence:
+
+- Local source trace confirms imported report Revenue/Spend rows remain read-only source dialog rows and added external rows remain editable/deletable.
+- Local source trace confirms Total Revenue and Total Spend still aggregate imported report values plus scoped added sources, with ROAS/ROI derived from those totals.
+- Local source trace confirms Pipeline Proxy remains read-only and separate from Total Revenue, Total Spend, ROAS, ROI, KPIs, Benchmarks, Reports, and aggregate financial totals.
 
 ## Validation Matrix
 

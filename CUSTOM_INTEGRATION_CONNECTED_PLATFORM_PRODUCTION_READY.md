@@ -813,15 +813,21 @@ Validation:
 
 Status:
 
-- Implemented locally; pending browser validation, commit, and push.
+- Completed, committed, pushed, and user-validated.
+- Commits:
+  - `e77903dd Resolve Custom Integration financial metrics downstream`
+  - `3211f3dd Align Custom Integration report overview values`
 - Fixes:
   - Added explicit Custom Integration Overview financial metric keys: `overview.total_revenue`, `overview.total_spend`, `overview.roas`, and `overview.roi`.
   - KPI and Benchmark metric tiles now resolve financial metrics from the same Overview financial totals shown in the Financial Metrics cards.
   - Saved financial KPI and Benchmark rows store `overview_financial_totals` value source plus Custom Integration financial source provenance.
   - Downloaded and scheduled Custom Integration reports resolve financial metrics from imported report values plus added `platformContext=custom_integration` revenue/spend sources.
   - Insights now use source-backed Overview financial availability and use source-backed wording instead of import-only wording.
-  - Custom Report section picker now exposes Total Revenue, Total Spend, ROAS, and ROI.
-- Local validation evidence: `npm run check`, `npm test -- server/source-safety-regression.test.ts`, and `git diff --check -- client/src/pages/custom-integration-analytics.tsx server/report-scheduler.ts server/source-safety-regression.test.ts CUSTOM_INTEGRATION_CONNECTED_PLATFORM_PRODUCTION_READY.md` passed.
+  - Custom Report Overview section now uses the same Overview metric registry and resolver as the Overview tab, so report values align with the visible tab values.
+  - KPI and Benchmark source-backed Current Value fields display two-decimal values where appropriate while keeping whole-number count metrics readable.
+- Latest local follow-up:
+  - Custom Integration Overview ROI now uses the same two-decimal Custom Integration percent formatter as KPI/Benchmark/report outputs; pending commit and push.
+- Validation evidence: user browser validation passed; `npm run check`, `npm test -- server/source-safety-regression.test.ts`, and `git diff --check -- client/src/pages/custom-integration-analytics.tsx server/report-scheduler.ts server/source-safety-regression.test.ts CUSTOM_INTEGRATION_CONNECTED_PLATFORM_PRODUCTION_READY.md` passed.
 
 ### Commit 18: Final Financial Source Evidence Pass
 

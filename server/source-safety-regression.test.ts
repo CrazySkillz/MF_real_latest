@@ -1698,6 +1698,7 @@ describe("source safety regression guards", () => {
     expect(financialBlock).toContain("Pipeline Proxy");
     expect(financialBlock).toContain("ROAS");
     expect(financialBlock).toContain("ROI");
+    expect(financialBlock).toContain("formatCustomIntegrationMetricValue(customIntegrationRoi, '%', 'percent')");
     expect(financialBlock).toContain("Not connected");
     expect(financialBlock).toContain("Not configured");
     expect(financialBlock).toContain("Includes imported report value");
@@ -1786,6 +1787,7 @@ describe("source safety regression guards", () => {
     expect(source).toContain("currentValue: customIntegrationTotalSpend");
     expect(source).toContain("currentValue: customIntegrationRoas");
     expect(source).toContain("currentValue: customIntegrationRoi");
+    expect(source).toContain("if (type === 'percent' || unit === '%') return `${value.toFixed(2)}%`;");
     expect(source).toContain("return resolveCustomIntegrationOverviewMetric(metricKey);");
     expect(source).toContain("resolved: resolveCustomIntegrationOverviewMetric(option.key)");
     expect(source).toContain("const getInsightMetric = (metricKey: string) => customIntegrationKpiMetricOptions.find((metric) => metric.key === normalizeCustomIntegrationFinancialMetricKey(metricKey));");

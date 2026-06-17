@@ -376,7 +376,7 @@ function formatCustomIntegrationMetricValue(value: number | null, unit: string, 
   if (type === 'currency' || unit === '$') {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
   }
-  if (type === 'percent' || unit === '%') return `${value.toFixed(1)}%`;
+  if (type === 'percent' || unit === '%') return `${value.toFixed(2)}%`;
   if (type === 'ratio' || unit === 'x') return `${value.toFixed(2)}x`;
   return new Intl.NumberFormat('en-US').format(value);
 }
@@ -3199,7 +3199,7 @@ export default function CustomIntegrationAnalytics() {
             <Percent className="w-4 h-4 text-muted-foreground/70" />
           </div>
           <p className={`text-2xl font-bold ${customIntegrationRoi !== null && customIntegrationRoi < 0 ? "text-red-600" : "text-foreground"}`}>
-            {customIntegrationDerivedCardLoading ? renderCustomIntegrationCardValuePlaceholder() : customIntegrationRoi !== null ? formatPct(customIntegrationRoi) : "Unavailable"}
+            {customIntegrationDerivedCardLoading ? renderCustomIntegrationCardValuePlaceholder() : customIntegrationRoi !== null ? formatCustomIntegrationMetricValue(customIntegrationRoi, '%', 'percent') : "Unavailable"}
           </p>
           {customIntegrationDerivedCardLoading ? renderCustomIntegrationCardHelperPlaceholder() : (
             <p className="text-xs text-muted-foreground mt-1">

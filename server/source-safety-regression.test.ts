@@ -1683,6 +1683,8 @@ describe("source safety regression guards", () => {
     expect(source).toContain("const customIntegrationImportedSpend = parseCustomIntegrationMetricNumber(metricsData?.spend)");
     expect(source).toContain("const customIntegrationTotalRevenue = customIntegrationExternalRevenue + (customIntegrationImportedRevenue ?? 0)");
     expect(source).toContain("const customIntegrationTotalSpend = customIntegrationExternalSpend + (customIntegrationImportedSpend ?? 0)");
+    expect(source).toContain("const customIntegrationRevenueSourceCount = activeCustomIntegrationRevenueSources.length + (customIntegrationImportedRevenue !== null ? 1 : 0)");
+    expect(source).toContain("const customIntegrationSpendSourceCount = activeCustomIntegrationSpendSources.length + (customIntegrationImportedSpend !== null ? 1 : 0)");
     expect(financialBlock).toContain("Total Revenue");
     expect(financialBlock).toContain("Total Spend");
     expect(financialBlock).toContain("Pipeline Proxy");
@@ -1692,6 +1694,8 @@ describe("source safety regression guards", () => {
     expect(financialBlock).toContain("Not configured");
     expect(financialBlock).toContain("Includes imported report value");
     expect(financialBlock).toContain("Requires revenue and spend");
+    expect(financialBlock).toContain("Sources ({customIntegrationRevenueSourceCount})");
+    expect(financialBlock).toContain("Sources ({customIntegrationSpendSourceCount})");
     expect(financialBlock).not.toContain("resolveCustomIntegrationMetric");
   });
 
@@ -1715,6 +1719,9 @@ describe("source safety regression guards", () => {
     expect(source).toContain("setDeletingSpendSourceId(String(source.sourceId))");
     expect(source).toContain("deleteCustomIntegrationRevenueSourceMutation.mutate(deletingRevenueSourceId)");
     expect(source).toContain("deleteCustomIntegrationSpendSourceMutation.mutate(deletingSpendSourceId)");
+    expect(source).toContain("{customIntegrationImportedRevenue !== null && (");
+    expect(source).toContain("{customIntegrationImportedSpend !== null && (");
+    expect(source).toContain("<p className=\"text-xs text-muted-foreground/70\">Imported report</p>");
     expect(source).toContain("This removes only the selected Custom Integration revenue source. Total Revenue will be recalculated.");
     expect(source).toContain("This removes only the selected Custom Integration spend source. Total Spend, ROAS, and ROI will be recalculated.");
   });

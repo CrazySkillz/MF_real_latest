@@ -709,6 +709,8 @@ export default function CustomIntegrationAnalytics() {
   const customIntegrationTotalSpend = customIntegrationExternalSpend + (customIntegrationImportedSpend ?? 0);
   const customIntegrationSpendSourceIds = Array.isArray(customIntegrationSpendTotalsData?.sourceIds) ? customIntegrationSpendTotalsData.sourceIds : [];
   const activeCustomIntegrationSpendSources = Array.isArray(customIntegrationSpendTotalsData?.sources) ? customIntegrationSpendTotalsData.sources : [];
+  const customIntegrationRevenueSourceCount = activeCustomIntegrationRevenueSources.length + (customIntegrationImportedRevenue !== null ? 1 : 0);
+  const customIntegrationSpendSourceCount = activeCustomIntegrationSpendSources.length + (customIntegrationImportedSpend !== null ? 1 : 0);
   const hasCustomIntegrationConfirmedSpend = customIntegrationImportedSpend !== null || customIntegrationSpendSourceIds.length > 0;
   const hasCustomIntegrationDerivedFinancials = hasCustomIntegrationConfirmedRevenue && hasCustomIntegrationConfirmedSpend && customIntegrationTotalSpend > 0;
   const customIntegrationRoas = hasCustomIntegrationDerivedFinancials ? customIntegrationTotalRevenue / customIntegrationTotalSpend : null;
@@ -2995,13 +2997,13 @@ export default function CustomIntegrationAnalytics() {
           ) : customIntegrationImportedRevenue !== null ? (
             <p className="text-xs text-muted-foreground mt-1">Includes imported report value</p>
           ) : null}
-          {!customIntegrationRevenueCardLoading && activeCustomIntegrationRevenueSources.length > 0 && (
+          {!customIntegrationRevenueCardLoading && customIntegrationRevenueSourceCount > 0 && (
             <button
               type="button"
               onClick={() => setShowRevenueSourcesDialog(true)}
               className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
             >
-              Sources ({activeCustomIntegrationRevenueSources.length})
+              Sources ({customIntegrationRevenueSourceCount})
             </button>
           )}
         </CardContent>
@@ -3032,13 +3034,13 @@ export default function CustomIntegrationAnalytics() {
           ) : customIntegrationImportedSpend !== null ? (
             <p className="text-xs text-muted-foreground mt-1">Includes imported report value</p>
           ) : null}
-          {!customIntegrationSpendCardLoading && activeCustomIntegrationSpendSources.length > 0 && (
+          {!customIntegrationSpendCardLoading && customIntegrationSpendSourceCount > 0 && (
             <button
               type="button"
               onClick={() => setShowSpendSourcesDialog(true)}
               className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
             >
-              Sources ({activeCustomIntegrationSpendSources.length})
+              Sources ({customIntegrationSpendSourceCount})
             </button>
           )}
         </CardContent>
@@ -4422,6 +4424,19 @@ export default function CustomIntegrationAnalytics() {
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+            {customIntegrationImportedRevenue !== null && (
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground" title={latestImportLabel}>
+                    {latestImportLabel}
+                  </p>
+                  <p className="text-xs text-muted-foreground/70">Imported report</p>
+                </div>
+                <span className="font-medium tabular-nums text-foreground">
+                  {formatCustomIntegrationCurrency(customIntegrationImportedRevenue)}
+                </span>
+              </div>
+            )}
             {activeCustomIntegrationRevenueSources.length > 0 ? activeCustomIntegrationRevenueSources.map((source: any) => (
               <div key={source.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
                 <div className="min-w-0">
@@ -4461,9 +4476,9 @@ export default function CustomIntegrationAnalytics() {
                   </button>
                 </div>
               </div>
-            )) : (
+            )) : customIntegrationImportedRevenue === null ? (
               <p className="text-sm text-muted-foreground/70">No Custom Integration revenue sources connected.</p>
-            )}
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
@@ -4477,6 +4492,19 @@ export default function CustomIntegrationAnalytics() {
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+            {customIntegrationImportedSpend !== null && (
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground" title={latestImportLabel}>
+                    {latestImportLabel}
+                  </p>
+                  <p className="text-xs text-muted-foreground/70">Imported report</p>
+                </div>
+                <span className="font-medium tabular-nums text-foreground">
+                  {formatCustomIntegrationCurrency(customIntegrationImportedSpend)}
+                </span>
+              </div>
+            )}
             {activeCustomIntegrationSpendSources.length > 0 ? activeCustomIntegrationSpendSources.map((source: any) => (
               <div key={source.sourceId} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
                 <div className="min-w-0">
@@ -4521,9 +4549,9 @@ export default function CustomIntegrationAnalytics() {
                   </button>
                 </div>
               </div>
-            )) : (
+            )) : customIntegrationImportedSpend === null ? (
               <p className="text-sm text-muted-foreground/70">No Custom Integration spend sources connected.</p>
-            )}
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>

@@ -570,32 +570,8 @@ export default function CustomIntegrationAnalytics() {
     },
     enabled: !!campaignId,
     retry: false, // Don't retry on 404
+    refetchInterval: 10000,
   });
-
-  // Auto-refresh when awaiting data (poll every 10 seconds)
-  useEffect(() => {
-    const hasAnyMetrics = metricsData && (
-      metricsData.users != null ||
-      metricsData.sessions != null ||
-      metricsData.pageviews != null ||
-      metricsData.impressions != null ||
-      metricsData.clicks != null ||
-      metricsData.conversions != null
-    );
-
-    if (!hasAnyMetrics && !metricsLoading && campaignId) {
-      console.log('[Auto-Refresh] No metrics yet, starting polling...');
-      const interval = setInterval(() => {
-        console.log('[Auto-Refresh] Polling for new metrics...');
-        refetchMetrics();
-      }, 10000); // 10 seconds
-
-      return () => {
-        console.log('[Auto-Refresh] Stopping polling');
-        clearInterval(interval);
-      };
-    }
-  }, [metricsData, metricsLoading, campaignId, refetchMetrics]);
 
   // Fetch platform-level KPIs for custom integration filtered by campaignId
   const kpiQueryKey = campaignId ? `/api/platforms/custom-integration/kpis?campaignId=${campaignId}` : null;

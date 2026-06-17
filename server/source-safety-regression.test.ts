@@ -1512,6 +1512,18 @@ describe("source safety regression guards", () => {
     expect(uiSource).toContain("Import needs review");
   });
 
+  it("Custom Integration metrics query polls for inbound report updates", () => {
+    const source = readCustomIntegrationAnalyticsSource();
+    const queryStart = source.indexOf('queryKey: ["/api/custom-integration", campaignId, "metrics"]');
+    const queryEnd = source.indexOf("  // Fetch platform-level KPIs", queryStart);
+    const queryBlock = source.slice(queryStart, queryEnd);
+
+    expect(queryStart).toBeGreaterThan(-1);
+    expect(queryBlock).toContain("refetchInterval: 10000");
+    expect(queryBlock).not.toContain("setInterval");
+    expect(source).not.toContain("[Auto-Refresh] No metrics yet");
+  });
+
   it("Custom Integration KPI and Benchmark metric selection does not zero-fill missing imports", () => {
     const source = readCustomIntegrationAnalyticsSource();
 

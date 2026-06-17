@@ -440,6 +440,21 @@ describe("source safety regression guards", () => {
     expect(source).toContain("setWizardStep(5)");
   });
 
+  it("Mailgun inbound can parse attachment URL and email-body fallbacks before giving up", () => {
+    const source = readRoutesSource();
+    const routeStart = source.indexOf('app.post("/api/mailgun/inbound"');
+    const routeEnd = source.indexOf('app.post("/api/custom-integration/transfer"', routeStart);
+    const route = source.slice(routeStart, routeEnd);
+
+    expect(route).toContain('Object.entries(req.body || {}).find(([key, value]) =>');
+    expect(route).toContain('/^attachment-\\d+$/i.test(key)');
+    expect(route).toContain('await fetch(attachmentUrl)');
+    expect(route).toContain('req.body["body-plain"] || req.body["stripped-text"]');
+    expect(route).toContain('reportFileName = "email-body.csv"');
+    expect(route).toContain('Email body fallback did not contain supported report metrics');
+    expect(route.indexOf('const metrics = await parseCustomIntegrationFile')).toBeLessThan(route.indexOf('await storage.createCustomIntegrationMetrics'));
+  });
+
   it("Campaign Detail Custom Integration email forwarding displays the returned forwarding address", () => {
     const source = readCampaignDetailSource();
     const blockStart = source.indexOf('platform.platform === "Custom Integration" ? (');

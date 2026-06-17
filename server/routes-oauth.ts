@@ -28537,6 +28537,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!reportBuffer) {
+        const attachmentEntry = Object.entries(req.body || {}).find(([key, value]) =>
+          /^attachment-\d+$/i.test(key) && typeof value === "string" && /^https?:\/\//i.test(value)
+        );
+        if (attachmentEntry) {
+          const attachmentUrl = String(attachmentEntry[1]);
+          const fallbackName = attachmentUrl.split("/").pop()?.split("?")[0] || "mailgun-attachment";
+          console.log(`[Mailgun] Downloading report attachment from body field ${attachmentEntry[0]}: ${fallbackName}`);
+          const response = await fetch(attachmentUrl);
+          if (response.ok) {
+            reportBuffer = Buffer.from(await response.arrayBuffer());
+            reportFileName = fallbackName;
+            reportMimeType = response.headers.get("content-type");
+          } else {
+            console.error(`[Mailgun] Failed to download attachment URL: ${response.status} ${response.statusText}`);
+          }
+        }
+      }
+
+      if (!reportBuffer) {
+        const bodyText = String(req.body["body-plain"] || req.body["stripped-text"] || "").trim();
+        if (bodyText) {
+          console.log("[Mailgun] No attachment file found; attempting to parse email body as CSV report");
+          reportBuffer = Buffer.from(bodyText, "utf8");
+          reportFileName = "email-body.csv";
+          reportMimeType = "text/csv";
+        }
+      }
+
+      if (!reportBuffer) {
         console.error(`[Mailgun] No supported report attachment found in email`);
         console.log(`[Mailgun] Available body fields:`, Object.keys(req.body));
         console.log(`[Mailgun] Files:`, files?.map(f => ({ name: f.originalname, field: f.fieldname, type: f.mimetype })));
@@ -28547,6 +28576,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // 6. Parse report file
       const metrics = await parseCustomIntegrationFile(reportBuffer, reportFileName, reportMimeType);
+      if (reportFileName === "email-body.csv" && Number(metrics._extractedFields || 0) === 0) {
+        console.error("[Mailgun] Email body fallback did not contain supported report metrics");
+        return res.status(400).json({ error: `No ${supportedCustomIntegrationFileDescription()} attachment found` });
+      }
 
       // 7. Store metrics
       await storage.createCustomIntegrationMetrics({

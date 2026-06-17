@@ -700,13 +700,17 @@ export default function CustomIntegrationAnalytics() {
   const activeCustomIntegrationRevenueSources = Array.isArray(customIntegrationRevenueSourcesData?.sources)
     ? customIntegrationRevenueSourcesData.sources.filter((source: any) => source?.isActive !== false)
     : [];
-  const customIntegrationTotalRevenue = Number(customIntegrationRevenueTotalsData?.totalRevenue || 0);
-  const hasCustomIntegrationConfirmedRevenue = customIntegrationTotalRevenue > 0 && activeCustomIntegrationRevenueSources.length > 0;
-  const customIntegrationTotalSpend = Number(customIntegrationSpendTotalsData?.totalSpend || 0);
+  const customIntegrationImportedRevenue = parseCustomIntegrationMetricNumber(metricsData?.revenue);
+  const customIntegrationImportedSpend = parseCustomIntegrationMetricNumber(metricsData?.spend);
+  const customIntegrationExternalRevenue = Number(customIntegrationRevenueTotalsData?.totalRevenue || 0);
+  const customIntegrationTotalRevenue = customIntegrationExternalRevenue + (customIntegrationImportedRevenue ?? 0);
+  const hasCustomIntegrationConfirmedRevenue = customIntegrationImportedRevenue !== null || activeCustomIntegrationRevenueSources.length > 0;
+  const customIntegrationExternalSpend = Number(customIntegrationSpendTotalsData?.totalSpend || 0);
+  const customIntegrationTotalSpend = customIntegrationExternalSpend + (customIntegrationImportedSpend ?? 0);
   const customIntegrationSpendSourceIds = Array.isArray(customIntegrationSpendTotalsData?.sourceIds) ? customIntegrationSpendTotalsData.sourceIds : [];
   const activeCustomIntegrationSpendSources = Array.isArray(customIntegrationSpendTotalsData?.sources) ? customIntegrationSpendTotalsData.sources : [];
-  const hasCustomIntegrationConfirmedSpend = customIntegrationTotalSpend > 0 && customIntegrationSpendSourceIds.length > 0;
-  const hasCustomIntegrationDerivedFinancials = hasCustomIntegrationConfirmedRevenue && hasCustomIntegrationConfirmedSpend;
+  const hasCustomIntegrationConfirmedSpend = customIntegrationImportedSpend !== null || customIntegrationSpendSourceIds.length > 0;
+  const hasCustomIntegrationDerivedFinancials = hasCustomIntegrationConfirmedRevenue && hasCustomIntegrationConfirmedSpend && customIntegrationTotalSpend > 0;
   const customIntegrationRoas = hasCustomIntegrationDerivedFinancials ? customIntegrationTotalRevenue / customIntegrationTotalSpend : null;
   const customIntegrationRoi = hasCustomIntegrationDerivedFinancials ? ((customIntegrationTotalRevenue - customIntegrationTotalSpend) / customIntegrationTotalSpend) * 100 : null;
   const customIntegrationFinancialCurrency = customIntegrationRevenueTotalsData?.currency || customIntegrationSpendTotalsData?.currency || (campaign as any)?.currency || "USD";
@@ -717,6 +721,9 @@ export default function CustomIntegrationAnalytics() {
     (!customIntegrationRevenueSourcesData && customIntegrationRevenueSourcesLoading) ||
     (!customIntegrationRevenueTotalsData && customIntegrationRevenueTotalsLoading) ||
     (!customIntegrationSpendTotalsData && customIntegrationSpendTotalsLoading);
+  const customIntegrationRevenueCardLoading = customIntegrationFinancialCardsInitialLoading && customIntegrationImportedRevenue === null;
+  const customIntegrationSpendCardLoading = customIntegrationFinancialCardsInitialLoading && customIntegrationImportedSpend === null;
+  const customIntegrationDerivedCardLoading = customIntegrationFinancialCardsInitialLoading && customIntegrationImportedRevenue === null && customIntegrationImportedSpend === null;
   const customIntegrationPipelineProxyInitialLoading =
     customIntegrationFinancialCardsInitialLoading ||
     (!customIntegrationHubspotPipelineProxyData && customIntegrationHubspotPipelineProxyLoading) ||
@@ -2772,13 +2779,14 @@ export default function CustomIntegrationAnalytics() {
     ? customIntegrationBenchmarkTracker.progressTotal / customIntegrationBenchmarkTracker.progressCount
     : 0;
   const benchmarkFormUsesSourceBackedMetric = Boolean(benchmarkForm.metric && benchmarkForm.metric !== 'custom');
-  const resolvedOverviewGroups = CUSTOM_INTEGRATION_IMPORTED_OVERVIEW_GROUPS.map((group) => {
+  const allResolvedOverviewGroups = CUSTOM_INTEGRATION_OVERVIEW_GROUPS.map((group) => {
     const metrics = group.metricKeys
       .map((metricKey) => ({ metricKey, resolved: resolveCustomIntegrationMetric(metricsData, metricKey) }))
       .filter(({ resolved }) => resolved.available || group.showUnavailable);
     return { ...group, metrics };
   });
-  const sourceBackedMetricCount = resolvedOverviewGroups.reduce(
+  const resolvedOverviewGroups = allResolvedOverviewGroups.filter((group) => group.title !== 'Financial Metrics');
+  const sourceBackedMetricCount = allResolvedOverviewGroups.reduce(
     (count, group) => count + group.metrics.filter(({ resolved }) => resolved.available).length,
     0
   );
@@ -2980,12 +2988,14 @@ export default function CustomIntegrationAnalytics() {
             </button>
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardValuePlaceholder() : hasCustomIntegrationConfirmedRevenue ? formatCustomIntegrationCurrency(customIntegrationTotalRevenue) : "Not connected"}
+            {customIntegrationRevenueCardLoading ? renderCustomIntegrationCardValuePlaceholder() : hasCustomIntegrationConfirmedRevenue ? formatCustomIntegrationCurrency(customIntegrationTotalRevenue) : "Not connected"}
           </p>
-          {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardHelperPlaceholder() : !hasCustomIntegrationConfirmedRevenue && (
-            <p className="text-xs text-muted-foreground mt-1">Connect confirmed revenue</p>
-          )}
-          {!customIntegrationFinancialCardsInitialLoading && activeCustomIntegrationRevenueSources.length > 0 && (
+          {customIntegrationRevenueCardLoading ? renderCustomIntegrationCardHelperPlaceholder() : !hasCustomIntegrationConfirmedRevenue ? (
+            <p className="text-xs text-muted-foreground mt-1">Import or add revenue</p>
+          ) : customIntegrationImportedRevenue !== null ? (
+            <p className="text-xs text-muted-foreground mt-1">Includes imported report value</p>
+          ) : null}
+          {!customIntegrationRevenueCardLoading && activeCustomIntegrationRevenueSources.length > 0 && (
             <button
               type="button"
               onClick={() => setShowRevenueSourcesDialog(true)}
@@ -3015,12 +3025,14 @@ export default function CustomIntegrationAnalytics() {
             </button>
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardValuePlaceholder() : hasCustomIntegrationConfirmedSpend ? formatCustomIntegrationCurrency(customIntegrationTotalSpend) : "Not connected"}
+            {customIntegrationSpendCardLoading ? renderCustomIntegrationCardValuePlaceholder() : hasCustomIntegrationConfirmedSpend ? formatCustomIntegrationCurrency(customIntegrationTotalSpend) : "Not connected"}
           </p>
-          {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardHelperPlaceholder() : !hasCustomIntegrationConfirmedSpend && (
-            <p className="text-xs text-muted-foreground mt-1">Connect confirmed spend</p>
-          )}
-          {!customIntegrationFinancialCardsInitialLoading && activeCustomIntegrationSpendSources.length > 0 && (
+          {customIntegrationSpendCardLoading ? renderCustomIntegrationCardHelperPlaceholder() : !hasCustomIntegrationConfirmedSpend ? (
+            <p className="text-xs text-muted-foreground mt-1">Import or add spend</p>
+          ) : customIntegrationImportedSpend !== null ? (
+            <p className="text-xs text-muted-foreground mt-1">Includes imported report value</p>
+          ) : null}
+          {!customIntegrationSpendCardLoading && activeCustomIntegrationSpendSources.length > 0 && (
             <button
               type="button"
               onClick={() => setShowSpendSourcesDialog(true)}
@@ -3067,11 +3079,11 @@ export default function CustomIntegrationAnalytics() {
             <TrendingUp className="w-4 h-4 text-muted-foreground/70" />
           </div>
           <p className="text-2xl font-bold text-foreground">
-            {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardValuePlaceholder() : customIntegrationRoas !== null ? `${customIntegrationRoas.toFixed(2)}x` : "Unavailable"}
+            {customIntegrationDerivedCardLoading ? renderCustomIntegrationCardValuePlaceholder() : customIntegrationRoas !== null ? `${customIntegrationRoas.toFixed(2)}x` : "Unavailable"}
           </p>
-          {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardHelperPlaceholder() : (
+          {customIntegrationDerivedCardLoading ? renderCustomIntegrationCardHelperPlaceholder() : (
             <p className="text-xs text-muted-foreground mt-1">
-              {customIntegrationRoas !== null ? "Confirmed revenue / confirmed spend" : "Requires confirmed revenue and spend"}
+              {customIntegrationRoas !== null ? "Total revenue / total spend" : "Requires revenue and spend"}
             </p>
           )}
         </CardContent>
@@ -3084,11 +3096,11 @@ export default function CustomIntegrationAnalytics() {
             <Percent className="w-4 h-4 text-muted-foreground/70" />
           </div>
           <p className={`text-2xl font-bold ${customIntegrationRoi !== null && customIntegrationRoi < 0 ? "text-red-600" : "text-foreground"}`}>
-            {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardValuePlaceholder() : customIntegrationRoi !== null ? formatPct(customIntegrationRoi) : "Unavailable"}
+            {customIntegrationDerivedCardLoading ? renderCustomIntegrationCardValuePlaceholder() : customIntegrationRoi !== null ? formatPct(customIntegrationRoi) : "Unavailable"}
           </p>
-          {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardHelperPlaceholder() : (
+          {customIntegrationDerivedCardLoading ? renderCustomIntegrationCardHelperPlaceholder() : (
             <p className="text-xs text-muted-foreground mt-1">
-              {customIntegrationRoi !== null ? "Confirmed revenue ROI" : "Requires confirmed revenue and spend"}
+              {customIntegrationRoi !== null ? "Total revenue ROI" : "Requires revenue and spend"}
             </p>
           )}
         </CardContent>
@@ -3187,8 +3199,6 @@ export default function CustomIntegrationAnalytics() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
-                {renderCustomIntegrationFinancialCards()}
-
                 {/* Show loading state while fetching metrics */}
                 {metricsLoading && (
                   <div className="flex items-center justify-center py-12">
@@ -3353,6 +3363,8 @@ export default function CustomIntegrationAnalytics() {
                         </div>
                       </CardContent>
                     </Card>
+
+                    {renderCustomIntegrationFinancialCards()}
 
                     {resolvedOverviewGroups.map((group) => {
                       if (!group.metrics.length) return null;

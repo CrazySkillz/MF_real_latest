@@ -1645,7 +1645,9 @@ describe("source safety regression guards", () => {
     expect(source).toContain("showUnavailable: true");
     expect(source).toContain("const CUSTOM_INTEGRATION_IMPORTED_OVERVIEW_GROUPS = CUSTOM_INTEGRATION_OVERVIEW_GROUPS.filter(");
     expect(source).toContain("group.title !== 'Financial Metrics'");
-    expect(source).toContain("const resolvedOverviewGroups = CUSTOM_INTEGRATION_IMPORTED_OVERVIEW_GROUPS.map((group) => {");
+    expect(source).toContain("const allResolvedOverviewGroups = CUSTOM_INTEGRATION_OVERVIEW_GROUPS.map((group) => {");
+    expect(source).toContain("const resolvedOverviewGroups = allResolvedOverviewGroups.filter((group) => group.title !== 'Financial Metrics');");
+    expect(source).toContain("const sourceBackedMetricCount = allResolvedOverviewGroups.reduce(");
     expect(source).toContain("resolvedOverviewGroups");
     expect(source).toContain("resolveCustomIntegrationMetric(metricsData, metricKey)");
     expect(source).toContain("sourceBackedMetricCount");
@@ -1659,7 +1661,7 @@ describe("source safety regression guards", () => {
     expect(source).not.toContain("metricsData.revenue !== undefined && parseFloat(metricsData.revenue || '0') > 0");
   });
 
-  it("Custom Integration Overview financial cards use scoped confirmed external sources", () => {
+  it("Custom Integration Overview financial cards use imported values plus scoped external sources", () => {
     const source = readCustomIntegrationAnalyticsSource();
     const overviewStart = source.indexOf('<TabsContent value="overview"');
     const financialRenderCall = source.indexOf("{renderCustomIntegrationFinancialCards()}", overviewStart);
@@ -1668,8 +1670,8 @@ describe("source safety regression guards", () => {
     const financialEnd = source.indexOf("const handleCustomIntegrationPdfUpload", financialStart);
     const financialBlock = source.slice(financialStart, financialEnd);
 
-    expect(financialRenderCall).toBeGreaterThan(overviewStart);
-    expect(importedDataCard).toBeGreaterThan(financialRenderCall);
+    expect(importedDataCard).toBeGreaterThan(overviewStart);
+    expect(financialRenderCall).toBeGreaterThan(importedDataCard);
     expect(source).toContain('data-testid="custom-integration-financial-section"');
     expect(source).toContain('data-testid="custom-integration-financial-cards"');
     expect(source).toContain('platformContext=custom_integration&dateRange=all');
@@ -1677,8 +1679,10 @@ describe("source safety regression guards", () => {
     expect(source).toContain('spend-totals?platformContext=custom_integration&dateRange=all');
     expect(source).toContain('pipeline-proxy?platformContext=custom_integration');
     expect(source).toContain('platformContext="custom_integration"');
-    expect(source).toContain("hasCustomIntegrationConfirmedRevenue = customIntegrationTotalRevenue > 0 && activeCustomIntegrationRevenueSources.length > 0");
-    expect(source).toContain("hasCustomIntegrationConfirmedSpend = customIntegrationTotalSpend > 0 && customIntegrationSpendSourceIds.length > 0");
+    expect(source).toContain("const customIntegrationImportedRevenue = parseCustomIntegrationMetricNumber(metricsData?.revenue)");
+    expect(source).toContain("const customIntegrationImportedSpend = parseCustomIntegrationMetricNumber(metricsData?.spend)");
+    expect(source).toContain("const customIntegrationTotalRevenue = customIntegrationExternalRevenue + (customIntegrationImportedRevenue ?? 0)");
+    expect(source).toContain("const customIntegrationTotalSpend = customIntegrationExternalSpend + (customIntegrationImportedSpend ?? 0)");
     expect(financialBlock).toContain("Total Revenue");
     expect(financialBlock).toContain("Total Spend");
     expect(financialBlock).toContain("Pipeline Proxy");
@@ -1686,8 +1690,8 @@ describe("source safety regression guards", () => {
     expect(financialBlock).toContain("ROI");
     expect(financialBlock).toContain("Not connected");
     expect(financialBlock).toContain("Not configured");
-    expect(financialBlock).toContain("Requires confirmed revenue and spend");
-    expect(financialBlock).not.toContain("metricsData");
+    expect(financialBlock).toContain("Includes imported report value");
+    expect(financialBlock).toContain("Requires revenue and spend");
     expect(financialBlock).not.toContain("resolveCustomIntegrationMetric");
   });
 

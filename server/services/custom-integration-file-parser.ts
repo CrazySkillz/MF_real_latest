@@ -83,7 +83,7 @@ function parseDelimitedMetrics(text: string, sourceLabel: string): ParsedMetrics
   const parsed = parseCsvText(text, 5000);
   const metrics = metricsFromTable(parsed.headers, parsed.rows, sourceLabel);
   if (Number(metrics._extractedFields || 0) > 0) return metrics;
-  return parseDelimitedMetricsWithDetectedHeader(text, sourceLabel) || metrics;
+  return parseDelimitedMetricsWithDetectedHeader(text, sourceLabel) || parseDelimitedMetricPairs(text, sourceLabel) || metrics;
 }
 
 function metricsFromTable(headers: string[], rows: Array<Record<string, string>>, sourceLabel: string): ParsedMetrics {
@@ -108,6 +108,7 @@ function metricsFromTable(headers: string[], rows: Array<Record<string, string>>
 function extractMetricValueRows(headers: string[], rows: Array<Record<string, string>>, warnings: string[]): Map<keyof ParsedMetrics, string[]> | null {
   const metricHeader = headers.find(isMetricLabelHeader);
   const valueHeader = headers.find((header) => header !== metricHeader && isMetricValueHeader(header))
+    || (metricHeader ? bestNumericValueHeader(headers, rows, metricHeader) : undefined)
     || (metricHeader && headers.length === 2 ? headers.find((header) => header !== metricHeader) : undefined);
   if (!metricHeader || !valueHeader) return null;
 
@@ -145,6 +146,60 @@ function parseDelimitedMetricsWithDetectedHeader(text: string, sourceLabel: stri
   return Number(best?._extractedFields || 0) > 0 ? best : null;
 }
 
+function parseDelimitedMetricPairs(text: string, sourceLabel: string): ParsedMetrics | null {
+  const values = new Map<keyof ParsedMetrics, string[]>();
+  const lines = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+
+  for (const line of lines) {
+    const parsed = parseLooseMetricPair(line);
+    if (!parsed) continue;
+    const existing = values.get(parsed.key) || [];
+    existing.push(parsed.value);
+    values.set(parsed.key, existing);
+  }
+
+  if (values.size === 0) return null;
+  const warnings: string[] = [];
+  const metrics: ParsedMetrics = {};
+  applyMetricValues(values, metrics, warnings, sourceLabel);
+  const extractedFields = Object.entries(metrics).filter(([key, value]) => !key.startsWith("_") && value !== undefined).length;
+  if (extractedFields === 0) return null;
+  metrics._extractedFields = extractedFields;
+  metrics._confidence = warnings.length > 0 ? 90 : 100;
+  metrics._warnings = warnings;
+  metrics._requiresReview = metrics._confidence < 95;
+  return metrics;
+}
+
+function parseLooseMetricPair(line: string): { key: keyof ParsedMetrics; value: string } | null {
+  const trimmed = String(line || "").trim();
+  if (!trimmed) return null;
+  const colonIndex = trimmed.indexOf(":");
+  const candidates = colonIndex > 0
+    ? [[trimmed.slice(0, colonIndex), trimmed.slice(colonIndex + 1)]]
+    : [",", ";", "\t", "|"].map((delimiter) => {
+      const parts = trimmed.split(delimiter);
+      return parts.length >= 2 ? [parts[0], parts.slice(1).join(delimiter === "," ? "" : delimiter)] : null;
+    }).filter((parts): parts is string[] => Array.isArray(parts));
+
+  for (const [label, rawValue] of candidates) {
+    const key = resolveMetricKey(label);
+    if (!key || parseMetricNumber(rawValue) === null) continue;
+    return { key, value: rawValue };
+  }
+  return null;
+}
+
+function bestNumericValueHeader(headers: string[], rows: Array<Record<string, string>>, metricHeader: string): string | undefined {
+  let best: { header: string; count: number } | null = null;
+  for (const header of headers) {
+    if (header === metricHeader) continue;
+    const count = rows.reduce((sum, row) => sum + (parseMetricNumber(String(row[header] || "")) === null ? 0 : 1), 0);
+    if (count > 0 && (!best || count > best.count)) best = { header, count };
+  }
+  return best?.header;
+}
+
 function isMetricLabelHeader(header: string): boolean {
   const normalized = normalizeLabel(header);
   return ["metric", "metrics", "name", "label", "measure", "kpi", "field", "data point"].includes(normalized)
@@ -154,8 +209,9 @@ function isMetricLabelHeader(header: string): boolean {
 
 function isMetricValueHeader(header: string): boolean {
   const normalized = normalizeLabel(header);
-  return ["value", "current value", "total", "amount", "metric value"].includes(normalized)
-    || normalized.includes("value");
+  return ["value", "current value", "current", "latest", "actual", "result", "total", "amount", "metric value"].includes(normalized)
+    || normalized.includes("value")
+    || normalized.includes("current");
 }
 
 function applyHeaderRows(headers: string[], rows: Array<Record<string, string>>, metrics: ParsedMetrics, warnings: string[], sourceLabel: string) {
@@ -213,6 +269,7 @@ function parseMetricNumber(value: string): number | null {
   let cleaned = raw
     .replace(/[$,%\s]/g, "")
     .replace(/[\u20ac\u00a3\u00a5]/g, "")
+    .replace(/["']/g, "")
     .replace(/[()]/g, "")
     .trim();
   const suffix = cleaned.slice(-1).toLowerCase();

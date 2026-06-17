@@ -184,6 +184,38 @@ describe("Custom Integration PDF parser", () => {
     expect(metrics._confidence).toBe(100);
   });
 
+  it("extracts headerless CSV report lines", async () => {
+    const metrics = await parseCustomIntegrationFile(Buffer.from([
+      "William Reed Mock CSV",
+      "Unique Visitors,94,780",
+      "Visits,141,650",
+      "Page Views,287,340",
+      "Ad Spend,420",
+    ].join("\n")), "william_reed_mock_csv.csv", "text/csv");
+
+    expect(metrics.users).toBe(94780);
+    expect(metrics.sessions).toBe(141650);
+    expect(metrics.pageviews).toBe(287340);
+    expect(metrics.spend).toBe(420);
+    expect(metrics._confidence).toBe(100);
+  });
+
+  it("extracts CSV metric tables with a current column", async () => {
+    const metrics = await parseCustomIntegrationFile(Buffer.from([
+      "Section,Metric,Current",
+      "Traffic,Unique Visitors,94780",
+      "Traffic,Visits,141650",
+      "Traffic,Page Views,287340",
+      "Spend,Ad Spend,420",
+    ].join("\n")), "william_reed_mock_csv.csv", "text/csv");
+
+    expect(metrics.users).toBe(94780);
+    expect(metrics.sessions).toBe(141650);
+    expect(metrics.pageviews).toBe(287340);
+    expect(metrics.spend).toBe(420);
+    expect(metrics._confidence).toBe(100);
+  });
+
   it("sums CSV count fields but does not invent weighted rates across multiple rows", async () => {
     const metrics = await parseCustomIntegrationFile(Buffer.from([
       "Date,Impressions,Clicks,Spend,CTR",

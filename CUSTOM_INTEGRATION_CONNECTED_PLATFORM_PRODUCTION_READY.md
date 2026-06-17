@@ -71,21 +71,24 @@ Primary root causes addressed by this tracker:
 - Layout drift was resolved by matching the Google Sheets tab structure.
 - Source contract ambiguity was resolved with source/status surfaces and source-backed metric resolution.
 - Silent zero risk was resolved by treating missing imported metrics as unavailable with reasons.
-- Saved object scope risk was resolved for KPIs, Benchmarks, Reports, and scheduled PDFs.
+- Saved object scope risk was resolved for KPIs, Benchmarks, Reports, and scheduled reports.
 - Insights were made evidence-backed using source-backed metrics and unavailable reasons.
 - Route reachability, duplicate upload registration, and disconnect stale-data risks were resolved in Commit 2.
 - Aggregate/scheduler availability risk was resolved in Commit 10 through the shared aggregate contract.
-- Email-forwarding UI usability was resolved in Commit 12 by displaying the generated forwarding address after setup.
+- Email-forwarding UI usability was resolved and user-validated by displaying the generated forwarding address after setup, keeping the address available with a copy action, and updating metrics after inbound Mailgun processing.
 - Active Mailgun PDF forwarding was user-validated after Mailgun Receiving routed the generated forwarding address to the deployed inbound endpoint.
 - Create Campaign wizard confusion was resolved by treating Custom Integration setup as draft `Ready` state until the final `Create Campaign` action completes, and by making Confirm Back return to the prior setup screen.
-- Remaining production evidence risk: full deployed browser validation, scheduled reports if exposed, SendGrid inbound if that provider is used, and production-data audit still need proof.
+- Custom Integration financial-source context and Overview financial cards were added and validated in Commits 13 and 14.
+- Revenue/spend source edit-delete lifecycle, financial section placement, imported report financial totals, and imported-source provenance were validated in Commit 15.
+- Remaining production evidence risk: Pipeline Proxy setup/source dialog, financial metric use in KPIs/Benchmarks/Reports, scheduled reports if exposed, SendGrid inbound if that provider is used, and production-data audit still need proof.
 
 Business impact:
 
 - KPI, Benchmark, Report, Insight, and aggregate values now fail closed when source evidence is missing.
 - Missing imported metrics are presented as unavailable instead of real `0` values.
 - Saved KPI/Benchmark/Report values are tied to saved Custom Integration source scope.
-- The remaining business-readiness work is deployed validation, especially manual PDF upload, scheduled reports if exposed, and production-data audit.
+- Overview financial cards now aggregate source-backed imported report `Revenue`/`Spend` values plus added Custom-Integration-scoped financial sources, with source dialogs separating read-only imported rows from editable added source rows.
+- The remaining business-readiness work is Pipeline Proxy setup parity, financial metric use in KPIs/Benchmarks/Reports, scheduled reports if exposed, and production-data audit.
 
 ## Current Code/Path Inventory
 
@@ -95,10 +98,10 @@ Frontend:
   - Current Custom Integration analytics page.
   - Fetches connection, latest metrics, platform KPIs, platform Benchmarks, and platform Reports.
   - Renders Overview, Summary, KPIs, Benchmarks, Insights, and Reports.
-  - Includes PDF upload from the `Imported Data` card after metrics exist; first-import upload remains available from the campaign connected-platform card.
+  - Includes report upload from the `Imported Data` card after metrics exist; first-import upload remains available from the campaign connected-platform card.
 - `client/src/pages/campaigns.tsx`
   - Exposes Custom Integration in Create Campaign.
-  - Uses the existing campaign-scoped PDF upload and email-forwarding setup routes during campaign creation.
+  - Uses the existing campaign-scoped report upload and email-forwarding setup routes during campaign creation.
 - `client/src/App.tsx`
   - Routes `/campaigns/:id/custom-integration-analytics`.
   - Also routes `/integrations/:id/analytics`, which depends on the missing by-ID endpoint noted above.
@@ -161,14 +164,14 @@ Proven from local code review:
 - Latest Custom Integration metrics are used in scheduler and campaign aggregate paths through the shared aggregate contract.
 - Commit 10 proves campaign aggregates, Campaign DeepDive consumers, and scheduler snapshots only advertise Custom Integration metrics when the imported field exists.
 - Commit 11 proves saved Custom Integration KPI, Benchmark, and Report rows fail closed when saved source scope is missing or disconnected.
-- Commit 12 proves the email-forwarding setup UI displays the generated forwarding address with a copy action after setup.
+- Commit 12 plus deferred follow-up validation proves the email-forwarding setup UI displays the generated forwarding address with a copy action after setup.
 - User validation proves active Mailgun PDF forwarding updates Custom Integration metrics through the deployed inbound path.
-- Create Campaign now keeps pre-final Custom Integration setup labeled as ready/selected instead of connected, and Confirm Back returns to the previous Custom Integration setup screen.
+- Create Campaign now keeps pre-final Custom Integration setup labeled as ready/selected instead of connected, Confirm Back returns to the previous Custom Integration setup screen, and Custom Integration step 3 is labeled `Connect`.
 
 Partially reviewed:
 
-- PDF upload, webhook upload, email inbound, and transfer flows exist; local regression covers route ownership, and active Mailgun PDF forwarding has deployed user validation.
-- Email-forwarding setup creates the Custom Integration row and generated forwarding email, the UI displays the address after setup, and active Mailgun inbound delivery has been user-validated.
+- Report upload, webhook upload, email inbound, and transfer flows exist; local regression covers route ownership, and active Mailgun PDF forwarding has deployed user validation.
+- Email-forwarding setup creates the Custom Integration row and generated forwarding email, the UI displays the address after setup, only the clicked Custom Integration setup action shows a spinner, and active Mailgun inbound delivery has been user-validated.
 - KPI create/edit/delete paths now use source-backed current values after Commit 6. Benchmark create/edit/delete paths now use source-backed current values after Commit 7. Report create/edit/delete paths now use source-backed values and scheduler-safe payloads after Commit 9.
 - Campaign aggregate paths include Custom Integration with normalized source availability and unavailable reasons after Commit 10.
 
@@ -198,6 +201,7 @@ Custom Integration is production-ready only when all of the following are true:
 - In Create Campaign, Custom Integration source setup must not display as `Connected` until the final `Create Campaign` action succeeds; draft setup should be shown as `Ready` or `Selected`.
 - In Create Campaign, Back from Confirm must return to the immediately previous setup screen, not jump back to platform selection.
 - Custom Integration aggregate participation is explicit: it may provide web analytics, email/newsletter, paid-media-like, revenue, spend, or conversion values only when those exact fields exist in the selected validated import.
+- Custom Integration financial participation is explicit: Total Revenue and Total Spend aggregate source-backed imported report values with added `platformContext=custom_integration` financial sources; ROAS and ROI derive from those visible totals; Pipeline Proxy remains separate.
 
 ## Custom Integration Metric Adapter Contract
 
@@ -213,14 +217,20 @@ Before UI changes, implement or document a local adapter with these responsibili
 - `currentValueResolver`: resolves each metric key from the selected source scope
 - `metricAvailability`: available/unavailable state and reason for each metric
 - `formatMetricValue`: unit-aware formatting for counts, currency, percentages, durations, and ratios
-- `revenueAvailability`: true only when imported revenue exists and is source-backed
-- `spendAvailability`: true only when imported spend exists and is source-backed
+- `importedMetricRevenueAvailability`: true only when imported report revenue exists and is source-backed
+- `importedMetricSpendAvailability`: true only when imported report spend exists and is source-backed
+- `confirmedFinancialRevenueAvailability`: true only when Custom-Integration-scoped confirmed external revenue sources exist
+- `confirmedFinancialSpendAvailability`: true only when Custom-Integration-scoped confirmed external spend sources exist
+- `pipelineProxyAvailability`: true only when Custom-Integration-scoped CRM Pipeline Proxy is configured
 - `reportSections`: Overview, Summary, KPIs, Benchmarks, Insights, Reports
 - `queryKeys`: all queries invalidated by import, connect, disconnect, transfer, KPI/Benchmark/Report mutation, and scheduler refresh
 
 Rules:
 
 - Missing values must not become `0`.
+- Imported report revenue/spend and added external revenue/spend are separate source categories but contribute to the same visible Overview Total Revenue and Total Spend.
+- Overview financial cards, ROAS, ROI, and future financial-source KPIs/Benchmarks/Reports must use the same visible financial totals and preserve source provenance.
+- Pipeline Proxy must remain separate from confirmed revenue and derived ROI/ROAS.
 - Parsed PDF confidence warnings must not be hidden if they affect trust in metrics.
 - Saved objects must not depend on whichever import is accidentally latest unless the saved source mode explicitly means latest validated import.
 - Generated report snapshots must represent the values at generation time.
@@ -335,7 +345,7 @@ Validation:
 Status:
 
 - Completed in Commit 4 implementation pass.
-- Root cause: Custom Integration still used the older four-tab analytics shell (`Overview`, `KPIs`, `Benchmarks`, `Reports`) and kept PDF upload inside the empty-state card, while the Google Sheets template uses the source/status area plus six tabs (`Overview`, `Summary`, `KPIs`, `Benchmarks`, `Insights`, `Reports`) and a data provenance card inside Overview.
+- Root cause: Custom Integration still used the older four-tab analytics shell (`Overview`, `KPIs`, `Benchmarks`, `Reports`) and kept report upload inside the empty-state card, while the Google Sheets template uses the source/status area plus six tabs (`Overview`, `Summary`, `KPIs`, `Benchmarks`, `Insights`, `Reports`) and a data provenance card inside Overview.
 - Fixes: added the Google Sheets tab order, added an `Imported Data` provenance card, and added lightweight Summary and Insights shell content based on existing source availability and parser status.
 - Follow-up cleanup: removed the redundant `Custom Data` card, moved `Upload Report` into the `Imported Data` card, and removed import filename labels from Overview metric tiles.
 - Regression evidence: `server/source-safety-regression.test.ts` verifies the Custom Integration tab order, absence of the redundant `Custom Data` card, imported-data card, Summary/Insights content targets, and upload button placement inside the imported-data card.
@@ -568,7 +578,7 @@ Required evidence:
 
 - Local regression coverage.
 - Browser validation for connect, import, Overview, Summary, KPIs, Benchmarks, Insights, Reports, disconnect, and reconnect.
-- Manual upload validation with a known PDF.
+- Manual upload validation with known PDF, CSV, and XLSX report files where supported.
 - Webhook/email inbound validation if those paths remain supported.
 - Scheduled report validation if scheduling is exposed.
 - Documentation updated with final status, known boundaries, and validation results.
@@ -577,11 +587,13 @@ Status:
 
 - Local Commit 12 implementation and regression pass completed; active Mailgun PDF forwarding has user validation in the deployed environment.
 - Root cause: `/api/custom-integration/:campaignId/connect` returned `campaignEmail`, but Create Campaign and Campaign Detail ignored it. Create Campaign moved to confirmation without showing the address; Campaign Detail immediately reloaded after setup, so users had no usable forwarding address.
-- Fixes: Create Campaign now stores the returned forwarding email, shows `Forward reports to` with a copy button on the confirmation step, and clears that state for manual report uploads/reset. Campaign Detail now stores and displays the returned forwarding email with a copy button and no longer reloads immediately after email-forwarding setup.
-- Regression evidence: `server/source-safety-regression.test.ts` verifies Create Campaign and Campaign Detail both consume `campaignEmail`, display the forwarding address, expose copy actions, and keep the Campaign Detail email-forwarding success path on-page.
+- Follow-up root causes: Create Campaign temporarily showed Custom Integration as `Connected` before final campaign creation, Confirm Back could return to the wrong step, inbound Mailgun payload variants could be received without stored metrics, analytics did not reliably poll for newly received metrics, and both Custom Integration setup buttons showed spinners when only one action was running.
+- Fixes: Create Campaign now stores the returned forwarding email, shows `Forward reports to` with a copy button on the confirmation step, keeps pre-final setup as ready/selected instead of connected, returns Back to the prior setup step, labels the Custom Integration step as `Connect`, and clears forwarding state for manual report uploads/reset. Campaign Detail now stores and displays the returned forwarding email with a copy button and no longer reloads immediately after email-forwarding setup.
+- Follow-up fixes: Mailgun inbound handling accepts fallback attachment payloads, Custom Integration metrics polling refreshes the analytics page after inbound processing, and Upload Report / Set Up Automatic Imports have action-specific loading spinners.
+- Regression evidence: `server/source-safety-regression.test.ts` verifies Create Campaign and Campaign Detail both consume `campaignEmail`, display the forwarding address, expose copy actions, keep the Campaign Detail email-forwarding success path on-page, keep draft Custom Integration setup out of the `Connected` state, preserve prior-step Back behavior, label the step `Connect`, poll metrics for inbound updates, and keep setup action spinners action-specific.
 - Local validation: `npm test -- server/source-safety-regression.test.ts`, `npm test -- server/source-safety-regression.test.ts server/pdf-parser-regression.test.ts server/performance-summary-aggregate.test.ts server/performance-summary-scheduler-regression.test.ts server/executive-summary-regression.test.ts server/platform-comparison-regression.test.ts server/trend-analysis-aggregate.test.ts server/custom-report-regression.test.ts server/legacy-route-reachability-regression.test.ts`, `npm run check`, and targeted `git diff --check` passed.
-- User validation: PDF forwarding to the generated Mailgun forwarding address updates Custom Integration metrics.
-- Pending validation: deployed browser validation for the full Commit 12 matrix, manual PDF upload with a known PDF, scheduled report behavior if exposed, and SendGrid inbound delivery if that provider is used.
+- User validation: PDF forwarding to the generated Mailgun forwarding address updates Custom Integration metrics, and the email-forwarding usability follow-up is validated.
+- Pending validation: deployed browser validation outside the validated email-forwarding path for the full Commit 12 matrix, manual upload with known PDF/CSV/XLSX files where not already validated, scheduled report behavior if exposed, and SendGrid inbound delivery if that provider is used.
 
 ### Deferred Follow-Up: Email Forwarding Usability
 
@@ -589,32 +601,254 @@ Goal:
 
 - Make the existing `Set Up Email Forwarding` path usable for non-technical users.
 
+Status:
+
+- Completed and user-validated for the Mailgun PDF forwarding path.
+- Code and regression coverage also support PDF, CSV, and XLSX attachment parsing through the shared Custom Integration parser.
+
 Root cause:
 
-- The backend returns `campaignEmail` from `/api/custom-integration/:campaignId/connect`, but Create Campaign currently only shows a success toast and does not display the generated forwarding address.
+- The backend returned `campaignEmail` from `/api/custom-integration/:campaignId/connect`, but Create Campaign and Campaign Detail did not keep that address visible for the user.
+- Follow-up validation found surrounding workflow issues: draft setup looked connected before final campaign creation, Back could jump to the wrong screen, inbound metrics could require refresh or fail on Mailgun payload variants, and both setup buttons could show loading at the same time.
 
 Safe timing:
 
-- UI usability was completed in Commit 12.
+- UI usability was completed in Commit 12 and the deferred follow-up fixes are validated.
 - Active Mailgun inbound provider validation is complete for PDF forwarding.
+- Parser format support for PDF, CSV, and XLSX is code-covered; deployed user validation for this follow-up specifically proved active Mailgun PDF forwarding.
 
 Smallest expected fix:
 
 - After email-forwarding setup, show `Forward reports to: <campaignEmail>` with a copy button. Completed in Commit 12.
 - Validate deployed Mailgun inbound routing for the generated address before marking email forwarding production-ready. Completed by user validation.
+- Keep Create Campaign draft setup as ready/selected until final campaign creation. Completed and validated.
+- Keep Back behavior path-specific. Completed and validated.
+- Refresh Custom Integration analytics after inbound metrics arrive without requiring a manual page refresh. Completed and validated.
+- Show only the clicked setup action spinner. Completed and validated.
 - Boundary: SendGrid inbound remains code-supported but not separately validated unless SendGrid is selected as the receiving provider.
+
+### Commit 13: External Financial Source Context
+
+Goal:
+
+- Add the missing Custom Integration financial-source context without changing imported report parsing.
+- This is the scaffold required before the Overview can safely add external revenue, spend, ROAS, ROI, and Pipeline Proxy.
+
+Root cause:
+
+- Custom Integration currently resolves Overview financial values from parsed report fields only.
+- Google Sheets has a separate confirmed financial-source layer: `Total Revenue`, `Total Spend`, `ROAS`, `ROI`, and `Pipeline Proxy` are powered by platform-scoped external sources, not arbitrary sheet/report columns.
+- The shared revenue and spend source infrastructure does not currently include a `custom_integration` platform context, so adding UI cards first would either fail validation or risk reading unscoped financial rows.
+
+Required pattern:
+
+- Follow the Google Sheets Overview financial-source pattern exactly.
+- Add `custom_integration` as a platform-scoped financial context across the shared revenue/spend routes, storage reads, and frontend wizard types.
+- Imported report fields named `Revenue` or `Spend` remain imported Custom Integration metrics, but source-backed values from the selected validated import contribute to visible `Total Revenue`, `Total Spend`, `ROAS`, and `ROI` with imported-source provenance.
+
+Subcommits:
+
+- Commit 13A: Add `custom_integration` to frontend revenue/spend platform-context types and labels.
+- Commit 13B: Add `custom_integration` to backend platform-context validation for revenue reads, CSV revenue, Google Sheets revenue, HubSpot, Salesforce, Shopify, and spend imports.
+- Commit 13C: Add `custom_integration_revenue` purpose mapping for child Google Sheets revenue sources.
+- Commit 13D: Extend spend totals filtering so `/api/campaigns/:id/spend-totals?platformContext=custom_integration&dateRange=all` returns only active Custom-Integration-scoped spend sources.
+- Commit 13E: Extend revenue source delete cleanup candidates so pipeline-enabled Custom Integration CRM sources remain source-scoped after deletes.
+- Commit 13F: Add regression guards proving Custom Integration financial sources are scoped and do not read `ga4`, `google_sheets`, or unscoped rows.
+
+Validation:
+
+- `custom_integration` revenue sources can be listed and totaled without changing other platform totals.
+- `custom_integration` spend sources can be listed and totaled without changing other platform totals.
+- Existing GA4, Google Sheets, TikTok, Instagram, Meta, Google Ads, and LinkedIn source contexts still validate.
+
+Status:
+
+- Completed, committed, pushed, and locally validated.
+- Commit: `e0de9696 Add Custom Integration financial source context`.
+- Fixes: added `custom_integration` to frontend/backend revenue and spend platform-context contracts, added `custom_integration_revenue`, scoped spend totals to `platformContext=custom_integration`, extended CRM pipeline cleanup candidates, and added regression guards.
+- Validation evidence: `npm run check`, `npm test -- server/source-safety-regression.test.ts server/google-sheets-aggregate-source.test.ts`, and `git diff --check` passed.
+
+### Commit 14: Overview Financial Cards
+
+Goal:
+
+- Add Google-Sheets-style financial cards to the Custom Integration Overview tab.
+
+Required card order:
+
+1. `Total Revenue`
+2. `Total Spend`
+3. `Pipeline Proxy`
+4. `ROAS`
+5. `ROI`
+
+Subcommits:
+
+- Commit 14A: Add Custom Integration revenue/spend/pipeline queries using `platformContext=custom_integration` and `dateRange=all`.
+- Commit 14B: Add `Total Revenue` card with `+`, `Not connected`, formatted value, and `Sources (#)` behavior matching Google Sheets.
+- Commit 14C: Add `Total Spend` card with `+`, `Not connected`, formatted value, and `Sources (#)` behavior matching Google Sheets.
+- Commit 14D: Add `Pipeline Proxy`, `ROAS`, and `ROI` cards using the Google Sheets card copy and unavailable behavior.
+- Commit 14E: Add stable loading placeholders only for unresolved initial query state; resolved empty states must show `Not connected` or `Not configured`.
+- Commit 14F: Keep imported report metric cards below the financial cards and do not change report parser behavior.
+- Superseded by Commit 15 follow-up: imported report `Revenue` and `Spend` now contribute to the Overview financial cards and are shown as read-only imported source rows.
+
+Validation:
+
+- Cards render on Overview using the Google Sheets financial-card pattern.
+- `Total Revenue` and `Total Spend` stay `Not connected` until imported report values or added Custom-Integration-scoped sources exist.
+- `ROAS` and `ROI` stay unavailable until both revenue and spend exist.
+- Imported report `Revenue` and `Spend` fields contribute to the financial cards only when present in the selected validated import.
+
+Status:
+
+- Completed, committed, pushed, and user-validated.
+- Commit: `c37506bc Add Custom Integration overview financial cards`.
+- Fixes: added Custom Integration Overview cards for `Total Revenue`, `Total Spend`, `Pipeline Proxy`, `ROAS`, and `ROI`; added queries using `platformContext=custom_integration` and `dateRange=all`; added add-source entry points and read-only source lists.
+- Boundary resolved in Commit 15: source edit/delete lifecycle, imported report source provenance, and financial section placement.
+- Validation evidence: user browser validation passed; `npm run check`, `npm test -- server/source-safety-regression.test.ts`, and `git diff --check` passed.
+
+### Commit 15: Revenue And Spend Source Dialogs
+
+Goal:
+
+- Add the Google Sheets source-management behavior for Custom Integration financial sources.
+
+Subcommits:
+
+- Commit 15A: Add Custom Integration Revenue Sources dialog.
+- Commit 15B: Add Custom Integration Spend Sources dialog.
+- Commit 15C: Add edit source flow using shared revenue/spend modal edit-prefill behavior.
+- Commit 15D: Add delete confirmation for individual revenue sources and refetch dependent Custom Integration queries.
+- Commit 15E: Add delete confirmation for individual spend sources and refetch dependent Custom Integration queries.
+- Commit 15F: Add regression guards for dialog labels, scoped source rows, edit prefill, delete boundaries, and post-delete recompute/refetch.
+
+Validation:
+
+- `Sources (#)` opens the correct Custom Integration dialog.
+- Editing a source loads existing values and disables update until changes are made where the shared modal supports that behavior.
+- Deleting a Custom Integration source affects only that campaign and `custom_integration` platform context.
+
+Status:
+
+- Completed, committed, pushed, and user-validated.
+- Commits:
+  - `1e109438 Add Custom Integration financial source lifecycle`
+  - `72336723 Clarify Custom Integration financial metrics section`
+  - `8eb8517e Use imported values in Custom Integration financial cards`
+  - `7f1b6919 Show imported Custom Integration financial sources`
+- Fixes:
+  - Added Custom Integration Revenue Sources and Spend Sources dialogs.
+  - Added edit-source flow using shared revenue/spend wizard edit prefill.
+  - Added delete confirmation for individual revenue and spend sources and dependent query refresh.
+  - Moved `Imported Data` above `Financial Metrics`.
+  - Made `Financial Metrics` the canonical Overview financial section instead of rendering duplicate raw imported financial tiles.
+  - Total Revenue and Total Spend now aggregate imported report values plus added Custom-Integration-scoped financial sources.
+  - `Sources (#)` counts imported report contributions and added sources.
+  - Source dialogs show imported report values as read-only `Imported report` rows and added sources as editable/deletable rows.
+- Validation evidence: user browser validation passed; `npm run check`, `npm test -- server/source-safety-regression.test.ts`, and `git diff --check -- client/src/pages/custom-integration-analytics.tsx server/source-safety-regression.test.ts` passed for the final implementation.
+
+### Commit 16: Pipeline Proxy
+
+Goal:
+
+- Add Pipeline Proxy to Custom Integration using the same CRM behavior as Google Sheets.
+
+Required rules:
+
+- Pipeline Proxy is open CRM value only.
+- Pipeline Proxy is not confirmed revenue.
+- Pipeline Proxy must not be included in `Total Revenue`, `ROAS`, `ROI`, revenue-dependent KPIs, revenue-dependent Benchmarks, confirmed revenue reports, or campaign aggregate confirmed financial totals.
+
+Subcommits:
+
+- Commit 16A: Extend HubSpot revenue wizard context support to `custom_integration`.
+- Commit 16B: Extend Salesforce revenue wizard context support to `custom_integration`.
+- Commit 16C: Query HubSpot Pipeline Proxy using `platformContext=custom_integration`.
+- Commit 16D: Query Salesforce Pipeline Proxy using `platformContext=custom_integration`.
+- Commit 16E: Render Pipeline Proxy sources using the Google Sheets read-only source dialog pattern.
+- Commit 16F: Add regression guards proving Pipeline Proxy remains separate from Total Revenue, ROAS, and ROI.
+
+Validation:
+
+- Selecting `Total Revenue + Pipeline (Proxy)` in CRM revenue setup creates both confirmed revenue and a separate Pipeline Proxy source for Custom Integration.
+- Selecting `Total Revenue only (no Pipeline card)` creates no Pipeline Proxy source.
+- Pipeline Proxy can show `$0.00` only when configured and the selected stage total is exactly zero.
+
+Status:
+
+- Planned.
+
+### Commit 17: Downstream Financial Metric Resolution
+
+Goal:
+
+- Make Custom Integration KPIs, Benchmarks, Reports, Insights, and aggregate consumers use the same Overview financial totals where appropriate.
+
+Subcommits:
+
+- Commit 17A: Add Custom Integration Overview financial metric options: `overview.total_revenue`, `overview.total_spend`, `overview.roas`, and `overview.roi`.
+- Commit 17B: Allow KPI and Benchmark metric tiles to select those Overview financial metrics with saved source scope.
+- Commit 17C: Ensure Reports download and scheduled-report generation resolve those financial metrics from saved Custom Integration financial source scope.
+- Commit 17D: Update Insights so revenue/spend guidance uses Overview financial availability and preserves imported-versus-added source provenance.
+- Commit 17E: Update Campaign DeepDive aggregate participation only if the shared aggregate contract intentionally includes Custom Integration financial totals.
+- Commit 17F: Add regression coverage for missing source scope, disconnected source, unavailable revenue/spend, and source-backed report output.
+
+Validation:
+
+- KPI/Benchmark current values for financial metrics match the Overview financial cards.
+- Report downloads show the same financial values as the UI.
+- Saved rows do not switch sources when a new report import arrives.
+- Imported report revenue/spend contributes to financial totals only as visible source-backed imported report rows.
+
+Status:
+
+- Planned.
+
+### Commit 18: Final Financial Source Evidence Pass
+
+Goal:
+
+- Validate the full Custom Integration financial-source lifecycle, including imported report rows and added external source rows.
+
+Subcommits:
+
+- Commit 18A: Browser validate imported revenue row provenance plus added revenue source add/edit/delete.
+- Commit 18B: Browser validate imported spend row provenance plus added spend source add/edit/delete.
+- Commit 18C: Browser validate Pipeline Proxy setup and source dialog.
+- Commit 18D: Browser validate KPIs, Benchmarks, Reports, and Insights after financial sources are added.
+- Commit 18E: Validate scheduled report behavior if scheduling is exposed.
+- Commit 18F: Update this tracker with final evidence and remaining boundaries.
+
+Validation:
+
+- Add/create, edit/update, delete/deactivate, refresh/recompute, source modal display, totals, derived values, and report output are traced end to end.
+- Existing Custom Integration report import behavior remains unchanged.
+- No unrelated platform context reads or deletes are broadened.
+
+Status:
+
+- Planned.
 
 ## Validation Matrix
 
 Before Custom Integration can be called production-ready, validate:
 
 - Create/connect Custom Integration from campaign setup and campaign detail.
-- Import metrics by manual PDF upload.
-- PDF parser fixture tests prove extracted fields, missing fields, and low-confidence imports are handled deterministically.
+- Import metrics by manual report upload.
+- Parser fixture tests prove extracted fields, missing fields, and low-confidence imports are handled deterministically.
 - Import metrics by webhook and inbound email, if retained. Active Mailgun PDF forwarding has user validation.
 - Email-forwarding setup displays the generated forwarding address and copy action.
+- Create Campaign Custom Integration setup stays `Ready` or selected until the final `Create Campaign` action succeeds.
+- Create Campaign Back returns to the immediately previous Custom Integration setup step.
+- Custom Integration inbound metrics refresh in the analytics page after Mailgun processing without requiring a full browser reload.
+- Custom Integration setup buttons show a spinner only on the clicked action while keeping both actions protected from double-submit.
 - Open Custom Integration analytics from Connected Platforms.
 - Overview shows only source-backed metrics.
+- Overview financial cards follow the Google Sheets pattern: Total Revenue, Total Spend, Pipeline Proxy, ROAS, and ROI.
+- Total Revenue and Total Spend aggregate source-backed imported report values plus added `platformContext=custom_integration` financial sources.
+- Imported report `Revenue` and `Spend` values appear in source dialogs as read-only `Imported report` rows and are included in `Sources (#)`.
+- Pipeline Proxy is configured through CRM revenue setup and remains separate from Total Revenue, ROAS, ROI, KPIs, Benchmarks, Reports, and aggregate financial totals.
+- Custom Integration revenue/spend source dialogs support imported source provenance, add, edit, delete, scoped refetch, and fail-closed unavailable states.
 - Summary exists and uses the same source-backed metrics.
 - KPIs create, edit, delete, alert, and refresh correctly.
 - Benchmarks create, edit, delete, alert, and refresh correctly.

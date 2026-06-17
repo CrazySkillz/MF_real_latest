@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, FileText, TrendingUp, Users, Activity, FileSpreadsheet, Clock, BarChart3, Mail, TrendingDown, Zap, Link2, CheckCircle2, AlertCircle, AlertTriangle, Pencil, Trash2, Trophy, Download, Settings, Copy, Upload } from "lucide-react";
+import { ArrowLeft, Eye, MousePointerClick, DollarSign, Target, Plus, FileText, TrendingUp, Users, Activity, FileSpreadsheet, Clock, BarChart3, Mail, TrendingDown, Zap, Link2, CheckCircle2, AlertCircle, AlertTriangle, Pencil, Trash2, Trophy, Download, Settings, Copy, Upload, Percent } from "lucide-react";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -21,6 +21,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatTimeAgo } from "@/lib/utils";
 import { formatPct } from "@shared/metric-math";
 import { computeAttainmentFillPct, computeAttainmentPct, computeEffectiveDeltaPct, classifyKpiBand, isLowerIsBetterKpi } from "@shared/kpi-math";
+import { AddRevenueWizardModal } from "@/components/AddRevenueWizardModal";
+import { AddSpendWizardModal } from "@/components/AddSpendWizardModal";
 
 interface CustomIntegrationConnection {
   id?: string;
@@ -301,6 +303,10 @@ function getCustomIntegrationParserMetadata(metrics: any) {
   return raw;
 }
 
+function getCustomIntegrationFinancialSourceConfig(source: any) {
+  return parseCustomIntegrationSavedConfig(source?.mappingConfig) || {};
+}
+
 function resolveCustomIntegrationMetric(metrics: any, metricKey: any) {
   const option = getCustomIntegrationMetricOption(metricKey);
   const sourceLabel = getCustomIntegrationSourceLabel(metrics);
@@ -462,6 +468,11 @@ export default function CustomIntegrationAnalytics() {
   const [initialReportState, setInitialReportState] = useState<string | null>(null);
   const [reportForm, setReportForm] = useState(createEmptyCustomIntegrationReportForm);
   const [customReportConfig, setCustomReportConfig] = useState(createEmptyCustomIntegrationReportConfig);
+  const [isRevenueWizardOpen, setIsRevenueWizardOpen] = useState(false);
+  const [isSpendWizardOpen, setIsSpendWizardOpen] = useState(false);
+  const [showRevenueSourcesDialog, setShowRevenueSourcesDialog] = useState(false);
+  const [showSpendSourcesDialog, setShowSpendSourcesDialog] = useState(false);
+  const [showPipelineProxySourcesDialog, setShowPipelineProxySourcesDialog] = useState(false);
   
   // Detect user's time zone
   const [userTimeZone, setUserTimeZone] = useState('');
@@ -573,6 +584,82 @@ export default function CustomIntegrationAnalytics() {
     refetchInterval: 10000,
   });
 
+  const { data: customIntegrationRevenueSourcesData, isLoading: customIntegrationRevenueSourcesLoading } = useQuery<{ success: boolean; sources: any[] }>({
+    queryKey: ["/api/campaigns", campaignId, "revenue-sources", "custom_integration"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=custom_integration`, { credentials: "include" });
+      if (!response.ok) return { success: false, sources: [] };
+      const json = await response.json().catch(() => ({}));
+      return { success: !!json?.success, sources: Array.isArray(json?.sources) ? json.sources : [] };
+    },
+  });
+
+  const { data: customIntegrationRevenueTotalsData, isLoading: customIntegrationRevenueTotalsLoading } = useQuery<{ success: boolean; totalRevenue: number; currency?: string }>({
+    queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=custom_integration&dateRange=all`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-totals?platformContext=custom_integration&dateRange=all`, { credentials: "include" });
+      if (!response.ok) return { success: false, totalRevenue: 0 };
+      const json = await response.json().catch(() => ({}));
+      return { success: !!json?.success, totalRevenue: Number(json?.totalRevenue || 0), currency: json?.currency };
+    },
+  });
+
+  const { data: customIntegrationSpendTotalsData, isLoading: customIntegrationSpendTotalsLoading } = useQuery<{ success: boolean; totalSpend: number; currency?: string; sourceIds?: string[]; sources?: any[] }>({
+    queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=custom_integration&dateRange=all`],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns/${campaignId}/spend-totals?platformContext=custom_integration&dateRange=all`, { credentials: "include" });
+      if (!response.ok) return { success: false, totalSpend: 0, sourceIds: [], sources: [] };
+      const json = await response.json().catch(() => ({}));
+      return {
+        success: !!json?.success,
+        totalSpend: Number(json?.totalSpend || 0),
+        currency: json?.currency,
+        sourceIds: Array.isArray(json?.sourceIds) ? json.sourceIds.map(String).filter(Boolean) : [],
+        sources: Array.isArray(json?.sources) ? json.sources : [],
+      };
+    },
+  });
+
+  const { data: customIntegrationHubspotPipelineProxyData, isLoading: customIntegrationHubspotPipelineProxyLoading } = useQuery<any>({
+    queryKey: ["/api/hubspot", campaignId, "pipeline-proxy", "custom_integration"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    retry: false,
+    queryFn: async () => {
+      const response = await fetch(`/api/hubspot/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=custom_integration`, { credentials: "include" });
+      if (!response.ok) return null;
+      return response.json().catch(() => null);
+    },
+  });
+
+  const { data: customIntegrationSalesforcePipelineProxyData, isLoading: customIntegrationSalesforcePipelineProxyLoading } = useQuery<any>({
+    queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "custom_integration"],
+    enabled: !!campaignId,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    retry: false,
+    queryFn: async () => {
+      const response = await fetch(`/api/salesforce/${encodeURIComponent(String(campaignId))}/pipeline-proxy?platformContext=custom_integration`, { credentials: "include" });
+      if (!response.ok) return null;
+      return response.json().catch(() => null);
+    },
+  });
+
   // Fetch platform-level KPIs for custom integration filtered by campaignId
   const kpiQueryKey = campaignId ? `/api/platforms/custom-integration/kpis?campaignId=${campaignId}` : null;
   const { data: kpisData, isLoading: kpisLoading } = useQuery({
@@ -602,6 +689,85 @@ export default function CustomIntegrationAnalytics() {
 
   // Use real metrics if available, otherwise show placeholder
   const metrics = metricsData || {};
+  const activeCustomIntegrationRevenueSources = Array.isArray(customIntegrationRevenueSourcesData?.sources)
+    ? customIntegrationRevenueSourcesData.sources.filter((source: any) => source?.isActive !== false)
+    : [];
+  const customIntegrationTotalRevenue = Number(customIntegrationRevenueTotalsData?.totalRevenue || 0);
+  const hasCustomIntegrationConfirmedRevenue = customIntegrationTotalRevenue > 0 && activeCustomIntegrationRevenueSources.length > 0;
+  const customIntegrationTotalSpend = Number(customIntegrationSpendTotalsData?.totalSpend || 0);
+  const customIntegrationSpendSourceIds = Array.isArray(customIntegrationSpendTotalsData?.sourceIds) ? customIntegrationSpendTotalsData.sourceIds : [];
+  const activeCustomIntegrationSpendSources = Array.isArray(customIntegrationSpendTotalsData?.sources) ? customIntegrationSpendTotalsData.sources : [];
+  const hasCustomIntegrationConfirmedSpend = customIntegrationTotalSpend > 0 && customIntegrationSpendSourceIds.length > 0;
+  const hasCustomIntegrationDerivedFinancials = hasCustomIntegrationConfirmedRevenue && hasCustomIntegrationConfirmedSpend;
+  const customIntegrationRoas = hasCustomIntegrationDerivedFinancials ? customIntegrationTotalRevenue / customIntegrationTotalSpend : null;
+  const customIntegrationRoi = hasCustomIntegrationDerivedFinancials ? ((customIntegrationTotalRevenue - customIntegrationTotalSpend) / customIntegrationTotalSpend) * 100 : null;
+  const customIntegrationFinancialCurrency = customIntegrationRevenueTotalsData?.currency || customIntegrationSpendTotalsData?.currency || (campaign as any)?.currency || "USD";
+  const customIntegrationFinancialCurrencyCode = /^[A-Z]{3}$/.test(String(customIntegrationFinancialCurrency || "").toUpperCase())
+    ? String(customIntegrationFinancialCurrency).toUpperCase()
+    : "USD";
+  const customIntegrationFinancialCardsInitialLoading =
+    (!customIntegrationRevenueSourcesData && customIntegrationRevenueSourcesLoading) ||
+    (!customIntegrationRevenueTotalsData && customIntegrationRevenueTotalsLoading) ||
+    (!customIntegrationSpendTotalsData && customIntegrationSpendTotalsLoading);
+  const customIntegrationPipelineProxyInitialLoading =
+    customIntegrationFinancialCardsInitialLoading ||
+    (!customIntegrationHubspotPipelineProxyData && customIntegrationHubspotPipelineProxyLoading) ||
+    (!customIntegrationSalesforcePipelineProxyData && customIntegrationSalesforcePipelineProxyLoading);
+  const formatCustomIntegrationCurrency = (value: number) => new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: customIntegrationFinancialCurrencyCode,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(value) ? value : 0);
+  const renderCustomIntegrationCardValuePlaceholder = () => (
+    <span className="inline-block h-8 w-36 rounded bg-muted animate-pulse align-middle" aria-hidden="true" />
+  );
+  const renderCustomIntegrationCardHelperPlaceholder = () => (
+    <span className="mt-1 inline-block h-3 w-32 rounded bg-muted animate-pulse" aria-hidden="true" />
+  );
+  const customIntegrationRevenueSourceLabel = (source: any) => {
+    const cfg = getCustomIntegrationFinancialSourceConfig(source);
+    return String(source?.displayName || cfg?.sheetName || cfg?.spreadsheetName || source?.sourceType || "Revenue Source");
+  };
+  const customIntegrationSpendSourceLabel = (source: any) => {
+    const cfg = getCustomIntegrationFinancialSourceConfig(source);
+    return String(source?.displayName || cfg?.sheetName || cfg?.spreadsheetName || source?.sourceType || "Spend Source");
+  };
+  const customIntegrationPipelineProxySourceEntries = ["hubspot", "salesforce"].map((provider) => {
+    const endpointData = provider === "hubspot" ? customIntegrationHubspotPipelineProxyData : customIntegrationSalesforcePipelineProxyData;
+    const source = activeCustomIntegrationRevenueSources
+      .filter((item: any) => String(item?.sourceType || "").trim().toLowerCase() === provider)
+      .map((item: any) => ({ source: item, cfg: getCustomIntegrationFinancialSourceConfig(item) }))
+      .filter(({ cfg }: any) => cfg?.pipelineEnabled === true && !!(cfg?.pipelineStageId || cfg?.pipelineStageName || cfg?.pipelineStageLabel))
+      .sort((a: any, b: any) => new Date(b.source?.connectedAt || b.source?.createdAt || 0).getTime() - new Date(a.source?.connectedAt || a.source?.createdAt || 0).getTime())[0];
+    if (!source && !endpointData?.success) return null;
+    const cfg = source?.cfg || {};
+    const pipelineValueRevenueTotals = Array.isArray(endpointData?.pipelineValueRevenueTotals)
+      ? endpointData.pipelineValueRevenueTotals
+      : Array.isArray(cfg?.pipelineValueRevenueTotals) ? cfg.pipelineValueRevenueTotals : [];
+    return {
+      sourceId: String(source?.source?.id || provider),
+      providerLabel: provider === "salesforce" ? "Salesforce" : "HubSpot",
+      pipelineStageLabel: endpointData?.pipelineStageLabel || cfg?.pipelineStageLabel || cfg?.pipelineStageName || cfg?.pipelineStageId || "Selected stage",
+      totalToDate: Number(endpointData?.success ? endpointData?.totalToDate || 0 : cfg?.pipelineTotalToDate || 0),
+      campaignValues: pipelineValueRevenueTotals.map((item: any) => String(item?.campaignValue || "").trim()).filter(Boolean),
+    };
+  }).filter(Boolean) as any[];
+  const customIntegrationPipelineProxyTotal = customIntegrationPipelineProxySourceEntries.reduce((sum: number, entry: any) => sum + Number(entry?.totalToDate || 0), 0);
+  const refreshCustomIntegrationFinancialQueries = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "custom_integration"] });
+    await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=custom_integration&dateRange=all`], exact: false });
+    await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=custom_integration&dateRange=all`], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy", "custom_integration"], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy", "custom_integration"], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/custom-integration", campaignId, "metrics"], exact: false });
+    await queryClient.invalidateQueries({ queryKey: [`/api/platforms/custom-integration/kpis?campaignId=${campaignId}`], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/platforms/custom-integration/benchmarks", campaignId], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["/api/platforms/custom-integration/reports", campaignId], exact: false });
+    await queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "custom_integration"], exact: true });
+    await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=custom_integration&dateRange=all`], exact: true });
+    await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=custom_integration&dateRange=all`], exact: true });
+  };
 
   // Create KPI mutation
   const createKpiMutation = useMutation({
@@ -2727,6 +2893,136 @@ export default function CustomIntegrationAnalytics() {
   const reportHasChanges = !editingReportId ||
     serializeCustomIntegrationReportState(reportForm, customReportConfig, reportModalStep) !== initialReportState;
 
+  const renderCustomIntegrationFinancialCards = () => (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5" data-testid="custom-integration-financial-cards">
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between mb-1">
+            <p className="text-sm text-muted-foreground/70">Total Revenue</p>
+            <button
+              type="button"
+              onClick={() => setIsRevenueWizardOpen(true)}
+              className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
+              title="Add Custom Integration revenue source"
+              aria-label="Add Custom Integration revenue source"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardValuePlaceholder() : hasCustomIntegrationConfirmedRevenue ? formatCustomIntegrationCurrency(customIntegrationTotalRevenue) : "Not connected"}
+          </p>
+          {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardHelperPlaceholder() : !hasCustomIntegrationConfirmedRevenue && (
+            <p className="text-xs text-muted-foreground mt-1">Connect confirmed revenue</p>
+          )}
+          {!customIntegrationFinancialCardsInitialLoading && activeCustomIntegrationRevenueSources.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowRevenueSourcesDialog(true)}
+              className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+            >
+              Sources ({activeCustomIntegrationRevenueSources.length})
+            </button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between mb-1">
+            <p className="text-sm text-muted-foreground/70">Total Spend</p>
+            <button
+              type="button"
+              onClick={() => setIsSpendWizardOpen(true)}
+              className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
+              title="Add Custom Integration spend source"
+              aria-label="Add Custom Integration spend source"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardValuePlaceholder() : hasCustomIntegrationConfirmedSpend ? formatCustomIntegrationCurrency(customIntegrationTotalSpend) : "Not connected"}
+          </p>
+          {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardHelperPlaceholder() : !hasCustomIntegrationConfirmedSpend && (
+            <p className="text-xs text-muted-foreground mt-1">Connect confirmed spend</p>
+          )}
+          {!customIntegrationFinancialCardsInitialLoading && activeCustomIntegrationSpendSources.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowSpendSourcesDialog(true)}
+              className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+            >
+              Sources ({activeCustomIntegrationSpendSources.length})
+            </button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between mb-1">
+            <p className="text-sm text-muted-foreground/70">Pipeline Proxy</p>
+            <Target className="w-4 h-4 text-muted-foreground/70" />
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            {customIntegrationPipelineProxyInitialLoading ? renderCustomIntegrationCardValuePlaceholder() : customIntegrationPipelineProxySourceEntries.length > 0 ? formatCustomIntegrationCurrency(customIntegrationPipelineProxyTotal) : "Not configured"}
+          </p>
+          {customIntegrationPipelineProxyInitialLoading ? renderCustomIntegrationCardHelperPlaceholder() : (
+            <p className="text-xs text-muted-foreground mt-1">
+              {customIntegrationPipelineProxySourceEntries.length > 0
+                ? "Open CRM value only. Not counted in Total Revenue, ROI, or ROAS."
+                : "Select Total Revenue + Pipeline (Proxy) in the revenue wizard"}
+            </p>
+          )}
+          {!customIntegrationPipelineProxyInitialLoading && customIntegrationPipelineProxySourceEntries.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowPipelineProxySourcesDialog(true)}
+              className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground"
+            >
+              Sources ({customIntegrationPipelineProxySourceEntries.length})
+            </button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between mb-1">
+            <p className="text-sm text-muted-foreground/70">ROAS</p>
+            <TrendingUp className="w-4 h-4 text-muted-foreground/70" />
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardValuePlaceholder() : customIntegrationRoas !== null ? `${customIntegrationRoas.toFixed(2)}x` : "Unavailable"}
+          </p>
+          {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardHelperPlaceholder() : (
+            <p className="text-xs text-muted-foreground mt-1">
+              {customIntegrationRoas !== null ? "Confirmed revenue / confirmed spend" : "Requires confirmed revenue and spend"}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between mb-1">
+            <p className="text-sm text-muted-foreground/70">ROI</p>
+            <Percent className="w-4 h-4 text-muted-foreground/70" />
+          </div>
+          <p className={`text-2xl font-bold ${customIntegrationRoi !== null && customIntegrationRoi < 0 ? "text-red-600" : "text-foreground"}`}>
+            {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardValuePlaceholder() : customIntegrationRoi !== null ? formatPct(customIntegrationRoi) : "Unavailable"}
+          </p>
+          {customIntegrationFinancialCardsInitialLoading ? renderCustomIntegrationCardHelperPlaceholder() : (
+            <p className="text-xs text-muted-foreground mt-1">
+              {customIntegrationRoi !== null ? "Confirmed revenue ROI" : "Requires confirmed revenue and spend"}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   const handleCustomIntegrationPdfUpload = async (file?: File | null) => {
     if (!file) return;
 
@@ -2817,6 +3113,8 @@ export default function CustomIntegrationAnalytics() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
+                {renderCustomIntegrationFinancialCards()}
+
                 {/* Show loading state while fetching metrics */}
                 {metricsLoading && (
                   <div className="flex items-center justify-center py-12">
@@ -3992,6 +4290,122 @@ export default function CustomIntegrationAnalytics() {
           </div>
         </main>
       </div>
+
+      {campaignId && (
+        <AddRevenueWizardModal
+          open={isRevenueWizardOpen}
+          onOpenChange={setIsRevenueWizardOpen}
+          campaignId={campaignId}
+          currency={customIntegrationFinancialCurrencyCode}
+          dateRange="90days"
+          platformContext="custom_integration"
+          onSuccess={() => {
+            void refreshCustomIntegrationFinancialQueries();
+          }}
+        />
+      )}
+
+      {campaignId && (
+        <AddSpendWizardModal
+          campaignId={campaignId}
+          open={isSpendWizardOpen}
+          onOpenChange={setIsSpendWizardOpen}
+          currency={customIntegrationFinancialCurrencyCode}
+          dateRange="90days"
+          platformContext="custom_integration"
+          onProcessed={() => {
+            void refreshCustomIntegrationFinancialQueries();
+          }}
+        />
+      )}
+
+      <Dialog open={showRevenueSourcesDialog} onOpenChange={setShowRevenueSourcesDialog}>
+        <DialogContent className="bg-card border-border max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Custom Integration Revenue Sources</DialogTitle>
+            <DialogDescription className="text-muted-foreground/70">
+              Sources contributing to Custom Integration Total Revenue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+            {activeCustomIntegrationRevenueSources.length > 0 ? activeCustomIntegrationRevenueSources.map((source: any) => (
+              <div key={source.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground" title={customIntegrationRevenueSourceLabel(source)}>
+                    {customIntegrationRevenueSourceLabel(source)}
+                  </p>
+                  <p className="text-xs text-muted-foreground/70">{String(source?.sourceType || "Revenue Source").replace(/_/g, " ")}</p>
+                </div>
+                <span className="font-medium tabular-nums text-foreground">
+                  {formatCustomIntegrationCurrency(Number(source.lastTotalRevenue || 0))}
+                </span>
+              </div>
+            )) : (
+              <p className="text-sm text-muted-foreground/70">No Custom Integration revenue sources connected.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showSpendSourcesDialog} onOpenChange={setShowSpendSourcesDialog}>
+        <DialogContent className="bg-card border-border max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Custom Integration Spend Sources</DialogTitle>
+            <DialogDescription className="text-muted-foreground/70">
+              Sources contributing to Custom Integration Total Spend.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+            {activeCustomIntegrationSpendSources.length > 0 ? activeCustomIntegrationSpendSources.map((source: any) => (
+              <div key={source.sourceId} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground" title={customIntegrationSpendSourceLabel(source)}>
+                    {customIntegrationSpendSourceLabel(source)}
+                  </p>
+                  <p className="text-xs text-muted-foreground/70">{String(source?.sourceType || "Spend Source").replace(/_/g, " ")}</p>
+                </div>
+                <span className="font-medium tabular-nums text-foreground">
+                  {formatCustomIntegrationCurrency(Number(source.spend || 0))}
+                </span>
+              </div>
+            )) : (
+              <p className="text-sm text-muted-foreground/70">No Custom Integration spend sources connected.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPipelineProxySourcesDialog} onOpenChange={setShowPipelineProxySourcesDialog}>
+        <DialogContent className="bg-card border-border max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Pipeline Proxy Sources</DialogTitle>
+            <DialogDescription className="text-muted-foreground/70">
+              Sources contributing to Custom Integration Pipeline Proxy.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {customIntegrationPipelineProxySourceEntries.map((entry: any) => (
+              <div key={entry.sourceId} className="rounded-md border border-border p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium text-foreground">{entry.providerLabel}</p>
+                  <p className="font-medium tabular-nums text-foreground">{formatCustomIntegrationCurrency(Number(entry.totalToDate || 0))}</p>
+                </div>
+                <div className="mt-1 space-y-0.5 text-xs text-muted-foreground/70">
+                  {Array.isArray(entry.campaignValues) && entry.campaignValues.length > 0 ? (
+                    entry.campaignValues.map((value: any, index: number) => (
+                      <p key={`${entry.sourceId}-${index}`}>
+                        {[`Stage: ${entry.pipelineStageLabel}`, String(value || "").trim()].filter(Boolean).join(" | ")}
+                      </p>
+                    ))
+                  ) : (
+                    <p>{entry.pipelineStageLabel}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* KPI Modal */}
       <Dialog open={isKPIModalOpen} onOpenChange={(open) => {

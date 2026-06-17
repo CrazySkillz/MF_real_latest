@@ -1656,6 +1656,37 @@ describe("source safety regression guards", () => {
     expect(source).not.toContain("metricsData.revenue !== undefined && parseFloat(metricsData.revenue || '0') > 0");
   });
 
+  it("Custom Integration Overview financial cards use scoped confirmed external sources", () => {
+    const source = readCustomIntegrationAnalyticsSource();
+    const overviewStart = source.indexOf('<TabsContent value="overview"');
+    const financialRenderCall = source.indexOf("{renderCustomIntegrationFinancialCards()}", overviewStart);
+    const importedDataCard = source.indexOf('data-testid="custom-integration-imported-data-card"', overviewStart);
+    const financialStart = source.indexOf("const renderCustomIntegrationFinancialCards = () => (");
+    const financialEnd = source.indexOf("const handleCustomIntegrationPdfUpload", financialStart);
+    const financialBlock = source.slice(financialStart, financialEnd);
+
+    expect(financialRenderCall).toBeGreaterThan(overviewStart);
+    expect(importedDataCard).toBeGreaterThan(financialRenderCall);
+    expect(source).toContain('data-testid="custom-integration-financial-cards"');
+    expect(source).toContain('platformContext=custom_integration&dateRange=all');
+    expect(source).toContain('revenue-sources?platformContext=custom_integration');
+    expect(source).toContain('spend-totals?platformContext=custom_integration&dateRange=all');
+    expect(source).toContain('pipeline-proxy?platformContext=custom_integration');
+    expect(source).toContain('platformContext="custom_integration"');
+    expect(source).toContain("hasCustomIntegrationConfirmedRevenue = customIntegrationTotalRevenue > 0 && activeCustomIntegrationRevenueSources.length > 0");
+    expect(source).toContain("hasCustomIntegrationConfirmedSpend = customIntegrationTotalSpend > 0 && customIntegrationSpendSourceIds.length > 0");
+    expect(financialBlock).toContain("Total Revenue");
+    expect(financialBlock).toContain("Total Spend");
+    expect(financialBlock).toContain("Pipeline Proxy");
+    expect(financialBlock).toContain("ROAS");
+    expect(financialBlock).toContain("ROI");
+    expect(financialBlock).toContain("Not connected");
+    expect(financialBlock).toContain("Not configured");
+    expect(financialBlock).toContain("Requires confirmed revenue and spend");
+    expect(financialBlock).not.toContain("metricsData");
+    expect(financialBlock).not.toContain("resolveCustomIntegrationMetric");
+  });
+
   it("Custom Integration Insights use source-backed metrics and evidence-backed actions", () => {
     const source = readCustomIntegrationAnalyticsSource();
 

@@ -1793,7 +1793,8 @@ describe("source safety regression guards", () => {
     expect(source).toContain("valueSource: isCustomIntegrationOverviewFinancialMetric(benchmarkForm.metric) ? 'overview_financial_totals' : 'latest_validated_import'");
     expect(source).toContain("financialSourceScope: getActiveCustomIntegrationMetricSourceScope('overview.total_revenue')");
     expect(source).toContain("customIntegrationFinancialMetricRows.forEach");
-    expect(source).toContain("data-testid={`checkbox-financial-${metric.replace(/[^a-z0-9]+/gi, '-')}`}");
+    expect(source).toContain("CUSTOM_INTEGRATION_OVERVIEW_GROUPS.map((group) => {");
+    expect(source).toContain("data-testid={`checkbox-overview-${testId}`}");
     expect(source).not.toContain("customIntegrationTotalRevenue + customIntegrationPipelineProxyTotal");
 
     expect(scheduler).toContain('function normalizeCustomIntegrationFinancialReportMetricKey');
@@ -1840,6 +1841,8 @@ describe("source safety regression guards", () => {
     expect(source).toContain("unit === 'count' && /^0*$/.test(decimalValue)");
     expect(source).toContain("getCustomIntegrationUnitLabel(resolvedCurrent.unit, resolvedCurrent.option?.type)");
     expect(source).toContain("getCustomIntegrationUnitLabel(metric.resolved.unit, metric.resolved.option?.type)");
+    expect(source).toContain("function formatCustomIntegrationCurrentValueInput");
+    expect(source).toContain("formatCustomIntegrationCurrentValueInput(kpiForm.currentValue, kpiForm.unit, kpiFormMetricOption?.type)");
     expect(source).toContain("formatCustomIntegrationNumberInput(kpiForm.targetValue, kpiForm.unit)");
     expect(source).toContain("data-custom-integration-kpi-source-adapter=\"source-backed\"");
     expect(source).toContain("Select KPI Template");
@@ -1875,6 +1878,7 @@ describe("source safety regression guards", () => {
     expect(source).toContain("Select Benchmark Template");
     expect(source).toContain("data-testid={`button-benchmark-template-${metric.key}`}");
     expect(source).toContain('data-testid="button-benchmark-template-custom"');
+    expect(source).toContain("formatCustomIntegrationCurrentValueInput(benchmarkForm.currentValue, benchmarkForm.unit, benchmarkFormMetricOption?.type)");
     expect(source).toContain("Compare Custom Integration metrics against source-backed benchmark values.");
     expect(source).toContain("90% or more of benchmark");
     expect(source).toContain("70% to under 90% of benchmark");
@@ -1938,6 +1942,10 @@ describe("source safety regression guards", () => {
     expect(source).toContain("const reportHasChanges = !editingReportId");
     expect(source).toContain("Boolean(editingReportId) && !reportHasChanges");
     expect(source).toContain("setInitialReportState(serializeCustomIntegrationReportState(nextForm, report.reportType === 'custom' ? parsedConfig : createEmptyCustomIntegrationReportConfig(), nextStep))");
+    expect(source).toContain("const addSelectedOverviewMetricSection = () => {");
+    expect(source).toContain("allResolvedOverviewGroups.forEach((group) => {");
+    expect(source).toContain("CUSTOM_INTEGRATION_OVERVIEW_GROUPS.map((group) => {");
+    expect(source).toContain("const reportMetricBucket = group.title === 'Financial Metrics' || group.title === 'Audience & Traffic' ? 'coreMetrics' : 'derivedMetrics';");
     expect(source).toContain("sourceScope: activeCustomIntegrationSourceScope");
     expect(source).toContain("valueSource: 'latest_validated_import'");
     expect(source).toContain("scheduleTime: to24HourHHMM(nextForm.scheduleTime)");

@@ -260,6 +260,17 @@ function formatCustomIntegrationNumberInput(value: any, unit?: string): string {
   return `${negative ? '-' : ''}${groupedInteger}${decimal}`;
 }
 
+function formatCustomIntegrationCurrentValueInput(value: any, unit?: string, type?: CustomIntegrationMetricType): string {
+  const parsed = parseCustomIntegrationMetricNumber(cleanCustomIntegrationNumberInput(value));
+  if (parsed === null) return formatCustomIntegrationNumberInput(value, unit);
+  const normalizedUnit = String(unit || '').trim().toLowerCase();
+  const isWholeNumberCount = (type === 'count' || normalizedUnit === 'count') && Number.isInteger(parsed);
+  if (isWholeNumberCount) {
+    return parsed.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+  return parsed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function normalizeCustomIntegrationKpiFormValue(key: string, value: any): string {
   if (['targetValue', 'benchmarkValue', 'currentValue', 'alertThreshold'].includes(key)) {
     const parsed = parseCustomIntegrationMetricNumber(cleanCustomIntegrationNumberInput(value));
@@ -1671,18 +1682,27 @@ export default function CustomIntegrationAnalytics() {
       customIntegrationInsights.performance.forEach((insight: any) => addLine('Performance', `${insight.message} Evidence: ${(insight.evidence || []).join('; ')}`));
       customIntegrationInsights.recommendations.forEach((recommendation: any) => addLine('What to do next', `${recommendation.message} Next step: ${recommendation.action}`));
     };
-    const addSelectedMetricSection = () => {
-      const selected = Array.from(new Set([...(config.coreMetrics || []), ...(config.derivedMetrics || [])]));
-      if (selected.length === 0) return;
-      addSectionTitle('Selected Metrics');
-      selected.forEach((metricKey: any) => {
-        const resolved = resolveCustomIntegrationOverviewMetric(metricKey);
-        addLine(
-          resolved.option?.label || String(metricKey),
-          resolved.available
+    const addSelectedOverviewMetricSection = () => {
+      if (config.sections?.overview) return;
+      const selectedMetricKeys = new Set([...(config.coreMetrics || []), ...(config.derivedMetrics || [])].map(String));
+      if (selectedMetricKeys.size === 0) return;
+      addSectionTitle('Overview');
+      allResolvedOverviewGroups.forEach((group) => {
+        const rows = group.metrics.filter(({ metricKey }: any) => selectedMetricKeys.has(String(metricKey)));
+        if (rows.length === 0) return;
+        ensureSpace(10);
+        doc.setFont("helvetica", 'bold');
+        doc.setFontSize(11);
+        doc.text(group.title, 20, y);
+        y += 7;
+        rows.forEach(({ resolved }: any) => {
+          const label = resolved.option?.label || 'Metric';
+          const value = resolved.available
             ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type)
-            : `Unavailable - ${resolved.reason}`
-        );
+            : `Unavailable - ${resolved.reason}`;
+          addLine(label, value);
+        });
+        y += 2;
       });
     };
 
@@ -1695,7 +1715,7 @@ export default function CustomIntegrationAnalytics() {
     else if (reportType === 'custom') {
       if (config.sections?.overview) addOverviewSection();
       if (config.sections?.summary) addSummarySection();
-      addSelectedMetricSection();
+      addSelectedOverviewMetricSection();
       const selectedKpis = new Set<string>((config.kpis || []).map(String));
       const selectedBenchmarks = new Set<string>((config.benchmarks || []).map(String));
       if (config.sections?.kpis || selectedKpis.size > 0) addKpiSection(selectedKpis.size > 0 ? selectedKpis : undefined);
@@ -2837,6 +2857,7 @@ export default function CustomIntegrationAnalytics() {
     ? customIntegrationKpiTracker.progressTotal / customIntegrationKpiTracker.progressCount
     : 0;
   const kpiFormUsesSourceBackedMetric = Boolean(kpiForm.metric && kpiForm.metric !== 'custom');
+  const kpiFormMetricOption = kpiFormUsesSourceBackedMetric ? getCustomIntegrationMetricOption(kpiForm.metric) : undefined;
   const customIntegrationBenchmarks = Array.isArray(benchmarksData) ? benchmarksData : [];
   const customIntegrationBenchmarkTracker = customIntegrationBenchmarks.reduce((tracker: any, benchmark: any) => {
     const resolved = resolveCustomIntegrationCurrentValue(benchmark);
@@ -2859,6 +2880,7 @@ export default function CustomIntegrationAnalytics() {
     ? customIntegrationBenchmarkTracker.progressTotal / customIntegrationBenchmarkTracker.progressCount
     : 0;
   const benchmarkFormUsesSourceBackedMetric = Boolean(benchmarkForm.metric && benchmarkForm.metric !== 'custom');
+  const benchmarkFormMetricOption = benchmarkFormUsesSourceBackedMetric ? getCustomIntegrationMetricOption(benchmarkForm.metric) : undefined;
   const allResolvedOverviewGroups = CUSTOM_INTEGRATION_OVERVIEW_GROUPS.map((group) => {
     const metrics = group.metricKeys
       .map((metricKey) => ({ metricKey, resolved: resolveCustomIntegrationOverviewMetric(metricKey) }))
@@ -4836,7 +4858,9 @@ export default function CustomIntegrationAnalytics() {
                   id="kpi-current"
                   type="text"
                   placeholder="0"
-                  value={formatCustomIntegrationNumberInput(kpiForm.currentValue, kpiForm.unit)}
+                  value={kpiFormUsesSourceBackedMetric
+                    ? formatCustomIntegrationCurrentValueInput(kpiForm.currentValue, kpiForm.unit, kpiFormMetricOption?.type)
+                    : formatCustomIntegrationNumberInput(kpiForm.currentValue, kpiForm.unit)}
                   readOnly={kpiFormUsesSourceBackedMetric}
                   className={kpiFormUsesSourceBackedMetric ? 'bg-muted cursor-not-allowed' : undefined}
                   onChange={(e) => {
@@ -5151,7 +5175,9 @@ export default function CustomIntegrationAnalytics() {
                   id="benchmark-current"
                   type="text"
                   placeholder="0"
-                  value={formatCustomIntegrationNumberInput(benchmarkForm.currentValue, benchmarkForm.unit)}
+                  value={benchmarkFormUsesSourceBackedMetric
+                    ? formatCustomIntegrationCurrentValueInput(benchmarkForm.currentValue, benchmarkForm.unit, benchmarkFormMetricOption?.type)
+                    : formatCustomIntegrationNumberInput(benchmarkForm.currentValue, benchmarkForm.unit)}
                   readOnly={benchmarkFormUsesSourceBackedMetric}
                   className={benchmarkFormUsesSourceBackedMetric ? 'bg-muted cursor-not-allowed' : undefined}
                   onChange={(e) => {
@@ -5605,121 +5631,37 @@ export default function CustomIntegrationAnalytics() {
                       <AccordionContent>
                         <div className="space-y-4 pt-1">
                           <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-                            <div className="space-y-2">
-                              <div className="font-medium">Financial Metrics</div>
-                              {['overview.total_revenue', 'overview.total_spend', 'overview.roas', 'overview.roi'].map((metric) => {
-                                const labels: Record<string, string> = {
-                                  'overview.total_revenue': 'Total Revenue',
-                                  'overview.total_spend': 'Total Spend',
-                                  'overview.roas': 'ROAS',
-                                  'overview.roi': 'ROI'
-                                };
-                                return (
-                                  <label key={metric} className="flex items-center gap-2">
-                                    <input
-                                      type="checkbox"
-                                      checked={customReportConfig.coreMetrics.includes(metric)}
-                                      onChange={(e) => setCustomReportConfig({
-                                        ...customReportConfig,
-                                        coreMetrics: e.target.checked
-                                          ? Array.from(new Set([...customReportConfig.coreMetrics, metric]))
-                                          : customReportConfig.coreMetrics.filter(m => m !== metric)
-                                      })}
-                                      data-testid={`checkbox-financial-${metric.replace(/[^a-z0-9]+/gi, '-')}`}
-                                    />
-                                    {labels[metric]}
-                                  </label>
-                                );
-                              })}
-                            </div>
-                            <div className="space-y-2">
-                              <div className="font-medium">Audience & Traffic Metrics</div>
-                              {['users', 'sessions', 'pageviews', 'avgSessionDuration', 'pagesPerSession', 'bounceRate'].map((metric) => {
-                                const labels: Record<string, string> = {
-                                  users: 'Users',
-                                  sessions: 'Sessions',
-                                  pageviews: 'Pageviews',
-                                  avgSessionDuration: 'Avg. Session Duration',
-                                  pagesPerSession: 'Pages/Session',
-                                  bounceRate: 'Bounce Rate'
-                                };
-                                return (
-                                  <label key={metric} className="flex items-center gap-2">
-                                    <input
-                                      type="checkbox"
-                                      checked={customReportConfig.coreMetrics.includes(metric)}
-                                      onChange={(e) => setCustomReportConfig({
-                                        ...customReportConfig,
-                                        coreMetrics: e.target.checked
-                                          ? Array.from(new Set([...customReportConfig.coreMetrics, metric]))
-                                          : customReportConfig.coreMetrics.filter(m => m !== metric)
-                                      })}
-                                      data-testid={`checkbox-core-${metric}`}
-                                    />
-                                    {labels[metric]}
-                                  </label>
-                                );
-                              })}
-                            </div>
-                            <div className="space-y-2">
-                              <div className="font-medium">Traffic Sources</div>
-                              {['organicSearchShare', 'directBrandedShare', 'emailShare', 'referralShare', 'paidShare', 'socialShare'].map((metric) => {
-                                const labels: Record<string, string> = {
-                                  organicSearchShare: 'Organic Search',
-                                  directBrandedShare: 'Direct/Branded',
-                                  emailShare: 'Email',
-                                  referralShare: 'Referral/Partners',
-                                  paidShare: 'Paid',
-                                  socialShare: 'Social'
-                                };
-                                return (
-                                  <label key={metric} className="flex items-center gap-2">
-                                    <input
-                                      type="checkbox"
-                                      checked={customReportConfig.derivedMetrics.includes(metric)}
-                                      onChange={(e) => setCustomReportConfig({
-                                        ...customReportConfig,
-                                        derivedMetrics: e.target.checked
-                                          ? Array.from(new Set([...customReportConfig.derivedMetrics, metric]))
-                                          : customReportConfig.derivedMetrics.filter(m => m !== metric)
-                                      })}
-                                      data-testid={`checkbox-traffic-${metric}`}
-                                    />
-                                    {labels[metric]}
-                                  </label>
-                                );
-                              })}
-                            </div>
-                            <div className="space-y-2">
-                              <div className="font-medium">Email Performance Metrics</div>
-                              {['emailsDelivered', 'openRate', 'clickThroughRate', 'clickToOpen', 'hardBounces', 'spamComplaints', 'listGrowth'].map((metric) => {
-                                const labels: Record<string, string> = {
-                                  emailsDelivered: 'Emails Delivered',
-                                  openRate: 'Open Rate',
-                                  clickThroughRate: 'Click-Through Rate',
-                                  clickToOpen: 'Click-to-Open',
-                                  hardBounces: 'Hard Bounces',
-                                  spamComplaints: 'Spam Complaints',
-                                  listGrowth: 'List Growth'
-                                };
-                                return (
-                                  <label key={metric} className="flex items-center gap-2">
-                                    <input
-                                      type="checkbox"
-                                      checked={customReportConfig.derivedMetrics.includes(metric)}
-                                      onChange={(e) => setCustomReportConfig({
-                                        ...customReportConfig,
-                                        derivedMetrics: e.target.checked
-                                          ? Array.from(new Set([...customReportConfig.derivedMetrics, metric]))
-                                          : customReportConfig.derivedMetrics.filter(m => m !== metric)
-                                      })}
-                                      data-testid={`checkbox-email-${metric}`}
-                                    />
-                                    {labels[metric]}
-                                  </label>
-                                );
-                              })}
-                            </div>
+                            {CUSTOM_INTEGRATION_OVERVIEW_GROUPS.map((group) => {
+                              const reportMetricBucket = group.title === 'Financial Metrics' || group.title === 'Audience & Traffic' ? 'coreMetrics' : 'derivedMetrics';
+                              return (
+                                <div key={group.title} className="space-y-2">
+                                  <div className="font-medium">{group.title}</div>
+                                  {group.metricKeys.map((metric) => {
+                                    const option = getCustomIntegrationMetricOption(metric);
+                                    const selectedMetrics = customReportConfig[reportMetricBucket];
+                                    const checked = selectedMetrics.includes(metric);
+                                    const nextMetrics = (isChecked: boolean) => isChecked
+                                      ? Array.from(new Set([...selectedMetrics, metric]))
+                                      : selectedMetrics.filter(m => m !== metric);
+                                    const testId = metric.replace(/[^a-z0-9]+/gi, '-');
+                                    return (
+                                      <label key={metric} className="flex items-center gap-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={checked}
+                                          onChange={(e) => setCustomReportConfig({
+                                            ...customReportConfig,
+                                            [reportMetricBucket]: nextMetrics(e.target.checked)
+                                          })}
+                                          data-testid={`checkbox-overview-${testId}`}
+                                        />
+                                        {option?.label || metric}
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       </AccordionContent>

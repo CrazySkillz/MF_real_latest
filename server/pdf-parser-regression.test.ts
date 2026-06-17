@@ -165,6 +165,25 @@ describe("Custom Integration PDF parser", () => {
     expect(metrics._confidence).toBe(100);
   });
 
+  it("extracts report-style CSV files with metadata before the metric table", async () => {
+    const metrics = await parseCustomIntegrationFile(Buffer.from([
+      "William Reed Mock CSV",
+      "Generated,2026-06-17",
+      "",
+      "Metric Name,Current Value",
+      "Unique Visitors,94780",
+      "Visits,141650",
+      "Page Views,287340",
+      "Ad Spend,420",
+    ].join("\n")), "william_reed_mock_csv.csv", "text/csv");
+
+    expect(metrics.users).toBe(94780);
+    expect(metrics.sessions).toBe(141650);
+    expect(metrics.pageviews).toBe(287340);
+    expect(metrics.spend).toBe(420);
+    expect(metrics._confidence).toBe(100);
+  });
+
   it("sums CSV count fields but does not invent weighted rates across multiple rows", async () => {
     const metrics = await parseCustomIntegrationFile(Buffer.from([
       "Date,Impressions,Clicks,Spend,CTR",

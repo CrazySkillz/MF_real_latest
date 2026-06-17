@@ -416,6 +416,7 @@ describe("source safety regression guards", () => {
     expect(block).toContain("connectCustomIntegrationEmail");
     expect(block).toContain("Upload Report");
     expect(block).toContain("Set Up Automatic Imports");
+    expect(block.slice(block.lastIndexOf("<Button", block.indexOf("Upload Report")), block.indexOf("Upload Report"))).toContain('variant="outline"');
     expect(block.slice(block.lastIndexOf("<Button", block.indexOf("Set Up Automatic Imports")), block.indexOf("Set Up Automatic Imports"))).toContain('variant="outline"');
     expect(block).toContain("Upload a PDF, CSV, or Excel (.xlsx) report to import metrics now. Use automatic imports for future recurring reports.");
     expect(source).toContain("input.accept = '.pdf,.csv,.xlsx'");

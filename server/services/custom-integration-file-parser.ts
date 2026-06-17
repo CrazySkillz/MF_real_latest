@@ -81,7 +81,9 @@ export async function parseCustomIntegrationFile(buffer: Buffer, fileName?: stri
 
 function parseDelimitedMetrics(text: string, sourceLabel: string): ParsedMetrics {
   const parsed = parseCsvText(text, 5000);
-  return metricsFromTable(parsed.headers, parsed.rows, sourceLabel);
+  const metrics = metricsFromTable(parsed.headers, parsed.rows, sourceLabel);
+  if (Number(metrics._extractedFields || 0) > 0) return metrics;
+  return parseDelimitedMetricsWithDetectedHeader(text, sourceLabel) || metrics;
 }
 
 function metricsFromTable(headers: string[], rows: Array<Record<string, string>>, sourceLabel: string): ParsedMetrics {
@@ -104,8 +106,9 @@ function metricsFromTable(headers: string[], rows: Array<Record<string, string>>
 }
 
 function extractMetricValueRows(headers: string[], rows: Array<Record<string, string>>, warnings: string[]): Map<keyof ParsedMetrics, string[]> | null {
-  const metricHeader = headers.find((header) => ["metric", "metrics", "name", "label", "measure", "kpi"].includes(normalizeLabel(header)));
-  const valueHeader = headers.find((header) => ["value", "current value", "total", "amount", "metric value"].includes(normalizeLabel(header)));
+  const metricHeader = headers.find(isMetricLabelHeader);
+  const valueHeader = headers.find((header) => header !== metricHeader && isMetricValueHeader(header))
+    || (metricHeader && headers.length === 2 ? headers.find((header) => header !== metricHeader) : undefined);
   if (!metricHeader || !valueHeader) return null;
 
   const values = new Map<keyof ParsedMetrics, string[]>();
@@ -122,6 +125,37 @@ function extractMetricValueRows(headers: string[], rows: Array<Record<string, st
     warnings.push("Metric/value table found, but no supported metric labels were present.");
   }
   return values;
+}
+
+function parseDelimitedMetricsWithDetectedHeader(text: string, sourceLabel: string): ParsedMetrics | null {
+  const lines = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  let best: ParsedMetrics | null = null;
+  const limit = Math.min(lines.length, 50);
+
+  for (let index = 1; index < limit; index++) {
+    if (!lines[index]?.trim()) continue;
+    const candidate = parseCsvText(lines.slice(index).join("\n"), 5000);
+    if (candidate.headers.length < 2 || candidate.rows.length === 0) continue;
+    const metrics = metricsFromTable(candidate.headers, candidate.rows, sourceLabel);
+    if (Number(metrics._extractedFields || 0) > Number(best?._extractedFields || 0)) {
+      best = metrics;
+    }
+  }
+
+  return Number(best?._extractedFields || 0) > 0 ? best : null;
+}
+
+function isMetricLabelHeader(header: string): boolean {
+  const normalized = normalizeLabel(header);
+  return ["metric", "metrics", "name", "label", "measure", "kpi", "field", "data point"].includes(normalized)
+    || normalized.includes("metric")
+    || normalized.includes("measure");
+}
+
+function isMetricValueHeader(header: string): boolean {
+  const normalized = normalizeLabel(header);
+  return ["value", "current value", "total", "amount", "metric value"].includes(normalized)
+    || normalized.includes("value");
 }
 
 function applyHeaderRows(headers: string[], rows: Array<Record<string, string>>, metrics: ParsedMetrics, warnings: string[], sourceLabel: string) {

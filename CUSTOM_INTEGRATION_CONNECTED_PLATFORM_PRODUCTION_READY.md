@@ -80,7 +80,8 @@ Primary root causes addressed by this tracker:
 - Create Campaign wizard confusion was resolved by treating Custom Integration setup as draft `Ready` state until the final `Create Campaign` action completes, and by making Confirm Back return to the prior setup screen.
 - Custom Integration financial-source context and Overview financial cards were added and validated in Commits 13 and 14.
 - Revenue/spend source edit-delete lifecycle, financial section placement, imported report financial totals, and imported-source provenance were validated in Commit 15.
-- Remaining production evidence risk: Pipeline Proxy setup/source dialog, financial metric use in KPIs/Benchmarks/Reports, scheduled reports if exposed, SendGrid inbound if that provider is used, and production-data audit still need proof.
+- Pipeline Proxy setup, Custom-Integration-scoped CRM query behavior, read-only source dialog display, and separation from confirmed financial totals were validated in Commit 16.
+- Remaining production evidence risk: financial metric use in KPIs/Benchmarks/Reports, scheduled reports if exposed, SendGrid inbound if that provider is used, and production-data audit still need proof.
 
 Business impact:
 
@@ -88,7 +89,7 @@ Business impact:
 - Missing imported metrics are presented as unavailable instead of real `0` values.
 - Saved KPI/Benchmark/Report values are tied to saved Custom Integration source scope.
 - Overview financial cards now aggregate source-backed imported report `Revenue`/`Spend` values plus added Custom-Integration-scoped financial sources, with source dialogs separating read-only imported rows from editable added source rows.
-- The remaining business-readiness work is Pipeline Proxy setup parity, financial metric use in KPIs/Benchmarks/Reports, scheduled reports if exposed, and production-data audit.
+- The remaining business-readiness work is financial metric use in KPIs/Benchmarks/Reports, scheduled reports if exposed, and production-data audit.
 
 ## Current Code/Path Inventory
 
@@ -167,6 +168,7 @@ Proven from local code review:
 - Commit 12 plus deferred follow-up validation proves the email-forwarding setup UI displays the generated forwarding address with a copy action after setup.
 - User validation proves active Mailgun PDF forwarding updates Custom Integration metrics through the deployed inbound path.
 - Create Campaign now keeps pre-final Custom Integration setup labeled as ready/selected instead of connected, Confirm Back returns to the previous Custom Integration setup screen, and Custom Integration step 3 is labeled `Connect`.
+- Commit 16 proves Custom Integration Pipeline Proxy uses Custom-Integration-scoped CRM source context, renders a read-only source dialog, and stays separate from confirmed financial totals.
 
 Partially reviewed:
 
@@ -177,7 +179,7 @@ Partially reviewed:
 
 Unverified:
 
-- Browser validation for the current Custom Integration page.
+- Full production-readiness browser regression for the complete Custom Integration page.
 - Deployed disconnect/reconnect browser validation.
 - End-to-end Mailgun/SendGrid scheduled delivery evidence for Custom Integration in the deployed environment.
 - Whether all import paths write identical normalized metric shapes and provenance.
@@ -776,7 +778,16 @@ Validation:
 
 Status:
 
-- Planned.
+- Completed, committed, pushed, and user-validated.
+- Commit:
+  - `86beed25 Add Custom Integration pipeline proxy guards`
+- Fixes:
+  - Confirmed HubSpot and Salesforce revenue wizards support `platformContext=custom_integration`.
+  - Confirmed Custom Integration Overview queries HubSpot and Salesforce Pipeline Proxy with `platformContext=custom_integration`.
+  - Updated HubSpot and Salesforce Pipeline Proxy backend routes so non-GA4 contexts do not use GA4 campaign-scope prioritization.
+  - Confirmed the Pipeline Proxy Sources dialog follows the Google Sheets read-only source pattern with no edit/delete controls.
+  - Added regression coverage proving Pipeline Proxy remains separate from Total Revenue, ROAS, and ROI.
+- Validation evidence: user browser validation passed; `npm run check`, `npm test -- server/source-safety-regression.test.ts`, and `git diff --check -- server/routes-oauth.ts server/source-safety-regression.test.ts` passed.
 
 ### Commit 17: Downstream Financial Metric Resolution
 
@@ -802,7 +813,15 @@ Validation:
 
 Status:
 
-- Planned.
+- Implemented locally; pending browser validation, commit, and push.
+- Fixes:
+  - Added explicit Custom Integration Overview financial metric keys: `overview.total_revenue`, `overview.total_spend`, `overview.roas`, and `overview.roi`.
+  - KPI and Benchmark metric tiles now resolve financial metrics from the same Overview financial totals shown in the Financial Metrics cards.
+  - Saved financial KPI and Benchmark rows store `overview_financial_totals` value source plus Custom Integration financial source provenance.
+  - Downloaded and scheduled Custom Integration reports resolve financial metrics from imported report values plus added `platformContext=custom_integration` revenue/spend sources.
+  - Insights now use source-backed Overview financial availability and use source-backed wording instead of import-only wording.
+  - Custom Report section picker now exposes Total Revenue, Total Spend, ROAS, and ROI.
+- Local validation evidence: `npm run check`, `npm test -- server/source-safety-regression.test.ts`, and `git diff --check -- client/src/pages/custom-integration-analytics.tsx server/report-scheduler.ts server/source-safety-regression.test.ts CUSTOM_INTEGRATION_CONNECTED_PLATFORM_PRODUCTION_READY.md` passed.
 
 ### Commit 18: Final Financial Source Evidence Pass
 
@@ -814,7 +833,7 @@ Subcommits:
 
 - Commit 18A: Browser validate imported revenue row provenance plus added revenue source add/edit/delete.
 - Commit 18B: Browser validate imported spend row provenance plus added spend source add/edit/delete.
-- Commit 18C: Browser validate Pipeline Proxy setup and source dialog.
+- Commit 18C: Reconfirm Pipeline Proxy setup and source dialog after downstream financial consumers are complete.
 - Commit 18D: Browser validate KPIs, Benchmarks, Reports, and Insights after financial sources are added.
 - Commit 18E: Validate scheduled report behavior if scheduling is exposed.
 - Commit 18F: Update this tracker with final evidence and remaining boundaries.

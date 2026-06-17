@@ -39,6 +39,11 @@ type CustomIntegrationSourceScope = {
   campaignId: string;
   selectedImportId: string | null;
   sourceLabel: string;
+  financialMetric?: string;
+  includesImportedRevenue?: boolean;
+  includesImportedSpend?: boolean;
+  revenueSourceIds?: string[];
+  spendSourceIds?: string[];
 };
 
 interface CustomIntegrationMetricOption {
@@ -50,6 +55,10 @@ interface CustomIntegrationMetricOption {
 }
 
 const CUSTOM_INTEGRATION_METRIC_OPTIONS: CustomIntegrationMetricOption[] = [
+  { key: 'overview.total_revenue', label: 'Total Revenue', unit: '$', type: 'currency', fields: ['revenue'] },
+  { key: 'overview.total_spend', label: 'Total Spend', unit: '$', type: 'currency', fields: ['spend'] },
+  { key: 'overview.roas', label: 'ROAS', unit: 'x', type: 'ratio', fields: ['roas'] },
+  { key: 'overview.roi', label: 'ROI', unit: '%', type: 'percent', fields: ['roi'] },
   { key: 'users', label: 'Users', unit: '', type: 'count' },
   { key: 'sessions', label: 'Sessions', unit: '', type: 'count' },
   { key: 'pageviews', label: 'Pageviews', unit: '', type: 'count' },
@@ -70,14 +79,10 @@ const CUSTOM_INTEGRATION_METRIC_OPTIONS: CustomIntegrationMetricOption[] = [
   { key: 'clicks', label: 'Clicks', unit: '', type: 'count' },
   { key: 'conversions', label: 'Conversions', unit: '', type: 'count' },
   { key: 'leads', label: 'Leads', unit: '', type: 'count' },
-  { key: 'spend', label: 'Spend', unit: '$', type: 'currency' },
-  { key: 'revenue', label: 'Revenue', unit: '$', type: 'currency' },
-  { key: 'roi', label: 'ROI', unit: '%', type: 'percent' },
-  { key: 'roas', label: 'ROAS', unit: 'x', type: 'ratio' },
 ];
 
 const CUSTOM_INTEGRATION_OVERVIEW_GROUPS = [
-  { title: 'Financial Metrics', icon: DollarSign, metricKeys: ['revenue', 'spend', 'roas', 'roi'], showUnavailable: true },
+  { title: 'Financial Metrics', icon: DollarSign, metricKeys: ['overview.total_revenue', 'overview.total_spend', 'overview.roas', 'overview.roi'], showUnavailable: true },
   { title: 'Campaign Metrics', icon: Activity, metricKeys: ['impressions', 'clicks', 'conversions', 'leads'] },
   { title: 'Audience & Traffic', icon: Users, metricKeys: ['users', 'sessions', 'pageviews', 'pagesPerSession', 'bounceRate'] },
   { title: 'Traffic Sources', icon: BarChart3, metricKeys: ['organicSearchShare', 'directBrandedShare', 'emailShare', 'referralShare', 'paidShare', 'socialShare'] },
@@ -271,8 +276,23 @@ function parseCustomIntegrationMetricNumber(value: any): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function getCustomIntegrationMetricOption(metricKey: any): CustomIntegrationMetricOption | undefined {
+function normalizeCustomIntegrationFinancialMetricKey(metricKey: any): string {
   const key = String(metricKey || '').trim();
+  if (key === 'revenue') return 'overview.total_revenue';
+  if (key === 'spend') return 'overview.total_spend';
+  if (key === 'roas') return 'overview.roas';
+  if (key === 'roi') return 'overview.roi';
+  return key;
+}
+
+function isCustomIntegrationOverviewFinancialMetric(metricKey: any): boolean {
+  return ['overview.total_revenue', 'overview.total_spend', 'overview.roas', 'overview.roi'].includes(
+    normalizeCustomIntegrationFinancialMetricKey(metricKey)
+  );
+}
+
+function getCustomIntegrationMetricOption(metricKey: any): CustomIntegrationMetricOption | undefined {
+  const key = normalizeCustomIntegrationFinancialMetricKey(metricKey);
   return CUSTOM_INTEGRATION_METRIC_OPTIONS.find((option) =>
     option.key === key || (option.fields || []).includes(key)
   );
@@ -318,7 +338,8 @@ function resolveCustomIntegrationMetric(metrics: any, metricKey: any) {
     return { available: false, currentValue: null as number | null, unit: '', option: undefined, sourceLabel, reason: 'Metric is not supported by Custom Integration.' };
   }
 
-  if (option.key === 'roi' || option.key === 'roas') {
+  const financialKey = normalizeCustomIntegrationFinancialMetricKey(metricKey);
+  if (financialKey === 'overview.roi' || financialKey === 'overview.roas') {
     const revenue = parseCustomIntegrationMetricNumber(metrics?.revenue);
     const spend = parseCustomIntegrationMetricNumber(metrics?.spend);
     if (revenue === null) {
@@ -327,7 +348,7 @@ function resolveCustomIntegrationMetric(metrics: any, metricKey: any) {
     if (spend === null || spend <= 0) {
       return { available: false, currentValue: null as number | null, unit: option.unit, option, sourceLabel, reason: 'Spend is not available in the selected Custom Integration import.' };
     }
-    const currentValue = option.key === 'roi' ? ((revenue - spend) / spend) * 100 : revenue / spend;
+    const currentValue = financialKey === 'overview.roi' ? ((revenue - spend) / spend) * 100 : revenue / spend;
     return { available: true, currentValue, unit: option.unit, option, sourceLabel, reason: '' };
   }
 
@@ -771,6 +792,35 @@ export default function CustomIntegrationAnalytics() {
     };
   }).filter(Boolean) as any[];
   const customIntegrationPipelineProxyTotal = customIntegrationPipelineProxySourceEntries.reduce((sum: number, entry: any) => sum + Number(entry?.totalToDate || 0), 0);
+  const resolveCustomIntegrationOverviewMetric = (metricKey: any) => {
+    const option = getCustomIntegrationMetricOption(metricKey);
+    const sourceLabel = "Custom Integration Overview financial totals";
+    if (!option) {
+      return { available: false, currentValue: null as number | null, unit: '', option: undefined, sourceLabel, reason: 'Metric is not supported by Custom Integration.' };
+    }
+    const financialKey = normalizeCustomIntegrationFinancialMetricKey(metricKey);
+    if (financialKey === 'overview.total_revenue') {
+      return hasCustomIntegrationConfirmedRevenue
+        ? { available: true, currentValue: customIntegrationTotalRevenue, unit: option.unit, option, sourceLabel, reason: '' }
+        : { available: false, currentValue: null as number | null, unit: option.unit, option, sourceLabel, reason: 'Revenue is not available from the active Custom Integration import or added sources.' };
+    }
+    if (financialKey === 'overview.total_spend') {
+      return hasCustomIntegrationConfirmedSpend
+        ? { available: true, currentValue: customIntegrationTotalSpend, unit: option.unit, option, sourceLabel, reason: '' }
+        : { available: false, currentValue: null as number | null, unit: option.unit, option, sourceLabel, reason: 'Spend is not available from the active Custom Integration import or added sources.' };
+    }
+    if (financialKey === 'overview.roas') {
+      return customIntegrationRoas !== null
+        ? { available: true, currentValue: customIntegrationRoas, unit: option.unit, option, sourceLabel, reason: '' }
+        : { available: false, currentValue: null as number | null, unit: option.unit, option, sourceLabel, reason: 'ROAS requires source-backed revenue and spend.' };
+    }
+    if (financialKey === 'overview.roi') {
+      return customIntegrationRoi !== null
+        ? { available: true, currentValue: customIntegrationRoi, unit: option.unit, option, sourceLabel, reason: '' }
+        : { available: false, currentValue: null as number | null, unit: option.unit, sourceLabel, option, reason: 'ROI requires source-backed revenue and spend.' };
+    }
+    return resolveCustomIntegrationMetric(metricsData, metricKey);
+  };
   const refreshCustomIntegrationFinancialQueries = async () => {
     await queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "revenue-sources", "custom_integration"] });
     await queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=custom_integration&dateRange=all`], exact: false });
@@ -995,7 +1045,7 @@ export default function CustomIntegrationAnalytics() {
     }
 
     const isCustomKpi = kpiForm.metric === 'custom';
-    const metricOption = isCustomKpi ? null : resolveCustomIntegrationMetric(metricsData, kpiForm.metric);
+    const metricOption = isCustomKpi ? null : resolveCustomIntegrationOverviewMetric(kpiForm.metric);
     if (!isCustomKpi && (!metricOption?.available || metricOption.currentValue === null)) {
       toast({
         title: "Metric Unavailable",
@@ -1035,9 +1085,9 @@ export default function CustomIntegrationAnalytics() {
         }
         : {
           source: 'custom_integration',
-          valueSource: 'latest_validated_import',
+          valueSource: isCustomIntegrationOverviewFinancialMetric(kpiForm.metric) ? 'overview_financial_totals' : 'latest_validated_import',
           metric: kpiForm.metric,
-          sourceScope: activeCustomIntegrationSourceScope,
+          sourceScope: getActiveCustomIntegrationMetricSourceScope(kpiForm.metric),
           sourceLabel: metricOption?.sourceLabel || latestImportLabel,
         },
     };
@@ -1218,7 +1268,7 @@ export default function CustomIntegrationAnalytics() {
     }
 
     const isCustomBenchmark = benchmarkForm.metric === 'custom';
-    const metricOption = isCustomBenchmark ? null : resolveCustomIntegrationMetric(metricsData, benchmarkForm.metric);
+    const metricOption = isCustomBenchmark ? null : resolveCustomIntegrationOverviewMetric(benchmarkForm.metric);
     if (!isCustomBenchmark && (!metricOption?.available || metricOption.currentValue === null)) {
       toast({
         title: "Metric Unavailable",
@@ -1256,9 +1306,9 @@ export default function CustomIntegrationAnalytics() {
         }
         : {
           source: 'custom_integration',
-          valueSource: 'latest_validated_import',
+          valueSource: isCustomIntegrationOverviewFinancialMetric(benchmarkForm.metric) ? 'overview_financial_totals' : 'latest_validated_import',
           metric: benchmarkForm.metric,
-          sourceScope: activeCustomIntegrationSourceScope,
+          sourceScope: getActiveCustomIntegrationMetricSourceScope(benchmarkForm.metric),
           sourceLabel: metricOption?.sourceLabel || latestImportLabel,
         },
     };
@@ -1539,6 +1589,21 @@ export default function CustomIntegrationAnalytics() {
     };
     const addOverviewSection = () => {
       addSectionTitle('Overview');
+      if (customIntegrationFinancialMetricRows.length > 0) {
+        ensureSpace(10);
+        doc.setFont("helvetica", 'bold');
+        doc.setFontSize(11);
+        doc.text('Financial Metrics', 20, y);
+        y += 7;
+        customIntegrationFinancialMetricRows.forEach(({ resolved }: any) => {
+          const label = resolved.option?.label || 'Metric';
+          const value = resolved.available
+            ? formatCustomIntegrationMetricValue(resolved.currentValue, resolved.unit, resolved.option?.type)
+            : `Unavailable - ${resolved.reason}`;
+          addLine(label, value);
+        });
+        y += 2;
+      }
       resolvedOverviewGroups.forEach((group) => {
         const rows = group.metrics.filter(({ resolved }: any) => resolved.available || group.showUnavailable);
         if (rows.length === 0) return;
@@ -1611,7 +1676,7 @@ export default function CustomIntegrationAnalytics() {
       if (selected.length === 0) return;
       addSectionTitle('Selected Metrics');
       selected.forEach((metricKey: any) => {
-        const resolved = resolveCustomIntegrationMetric(metricsData, metricKey);
+        const resolved = resolveCustomIntegrationOverviewMetric(metricKey);
         addLine(
           resolved.option?.label || String(metricKey),
           resolved.available
@@ -2494,6 +2559,7 @@ export default function CustomIntegrationAnalytics() {
     const configuration = {
       ...parseCustomIntegrationReportConfiguration(nextForm.reportType === 'custom' ? customReportConfig : nextForm.configuration),
       sourceScope: activeCustomIntegrationSourceScope,
+      financialSourceScope: getActiveCustomIntegrationMetricSourceScope('overview.total_revenue'),
       sourceLabel: latestImportLabel,
       valueSource: 'latest_validated_import',
     };
@@ -2661,7 +2727,7 @@ export default function CustomIntegrationAnalytics() {
       if (!activeIntegrationId || savedScope.integrationId !== activeIntegrationId) {
         return { available: false, currentValue: null as number | null, unit: String(item?.unit || ''), option: undefined, sourceLabel: '', reason: 'Saved Custom Integration source is no longer connected.' };
       }
-      return resolveCustomIntegrationMetric(metricsData, metricKey);
+      return resolveCustomIntegrationOverviewMetric(metricKey);
     }
 
     const currentValue = parseCustomIntegrationMetricNumber(item?.currentValue);
@@ -2733,9 +2799,21 @@ export default function CustomIntegrationAnalytics() {
       sourceLabel: latestImportLabel,
     }
     : null;
+  const getActiveCustomIntegrationMetricSourceScope = (metricKey: any): CustomIntegrationSourceScope | null => {
+    if (!activeCustomIntegrationSourceScope) return null;
+    if (!isCustomIntegrationOverviewFinancialMetric(metricKey)) return activeCustomIntegrationSourceScope;
+    return {
+      ...activeCustomIntegrationSourceScope,
+      financialMetric: normalizeCustomIntegrationFinancialMetricKey(metricKey),
+      includesImportedRevenue: customIntegrationImportedRevenue !== null,
+      includesImportedSpend: customIntegrationImportedSpend !== null,
+      revenueSourceIds: activeCustomIntegrationRevenueSources.map((source: any) => String(source?.id || '')).filter(Boolean),
+      spendSourceIds: customIntegrationSpendSourceIds.map((sourceId: any) => String(sourceId || '')).filter(Boolean),
+    };
+  };
   const customIntegrationKpiMetricOptions = CUSTOM_INTEGRATION_METRIC_OPTIONS.map((option) => ({
     ...option,
-    resolved: resolveCustomIntegrationMetric(metricsData, option.key),
+    resolved: resolveCustomIntegrationOverviewMetric(option.key),
   }));
   const customIntegrationKpis = Array.isArray(kpisData) ? kpisData : [];
   const customIntegrationKpiTracker = customIntegrationKpis.reduce((tracker: any, kpi: any) => {
@@ -2783,10 +2861,11 @@ export default function CustomIntegrationAnalytics() {
   const benchmarkFormUsesSourceBackedMetric = Boolean(benchmarkForm.metric && benchmarkForm.metric !== 'custom');
   const allResolvedOverviewGroups = CUSTOM_INTEGRATION_OVERVIEW_GROUPS.map((group) => {
     const metrics = group.metricKeys
-      .map((metricKey) => ({ metricKey, resolved: resolveCustomIntegrationMetric(metricsData, metricKey) }))
+      .map((metricKey) => ({ metricKey, resolved: resolveCustomIntegrationOverviewMetric(metricKey) }))
       .filter(({ resolved }) => resolved.available || group.showUnavailable);
     return { ...group, metrics };
   });
+  const customIntegrationFinancialMetricRows = allResolvedOverviewGroups.find((group) => group.title === 'Financial Metrics')?.metrics || [];
   const resolvedOverviewGroups = allResolvedOverviewGroups.filter((group) => group.title !== 'Financial Metrics');
   const sourceBackedMetricCount = allResolvedOverviewGroups.reduce(
     (count, group) => count + group.metrics.filter(({ resolved }) => resolved.available).length,
@@ -2800,7 +2879,7 @@ export default function CustomIntegrationAnalytics() {
   const insightConfidence = parserRequiresReview
     ? 'low'
     : parserConfidencePct === null ? 'medium' : parserConfidencePct >= 95 ? 'high' : parserConfidencePct >= 80 ? 'medium' : 'low';
-  const getInsightMetric = (metricKey: string) => customIntegrationKpiMetricOptions.find((metric) => metric.key === metricKey);
+  const getInsightMetric = (metricKey: string) => customIntegrationKpiMetricOptions.find((metric) => metric.key === normalizeCustomIntegrationFinancialMetricKey(metricKey));
   const getInsightValue = (metricKey: string) => {
     const metric = getInsightMetric(metricKey);
     return metric?.resolved.available && metric.resolved.currentValue !== null ? metric.resolved.currentValue : null;
@@ -2872,18 +2951,18 @@ export default function CustomIntegrationAnalytics() {
     if (spend !== null && revenue === null) {
       addQuality({
         severity: 'high',
-        message: 'Spend is imported but Revenue is unavailable, so ROI and ROAS cannot be evaluated.',
+        message: 'Source-backed Spend is available but Revenue is unavailable, so ROI and ROAS cannot be evaluated.',
         recommendation: 'Add source-backed Revenue to evaluate financial return.',
-        action: 'Include a Revenue field in the next Custom Integration import or upload a report with revenue.',
+        action: 'Include a Revenue field in the next Custom Integration import or add a revenue source.',
         evidence: [`Spend: ${formatInsightMetric('spend', spend)}`, getInsightMetric('revenue')?.resolved.reason || 'Revenue unavailable.', ...sourceEvidence],
       });
     }
     if (revenue !== null && spend === null) {
       addQuality({
         severity: 'medium',
-        message: 'Revenue is imported but Spend is unavailable, so ROI and ROAS cannot be evaluated.',
+        message: 'Source-backed Revenue is available but Spend is unavailable, so ROI and ROAS cannot be evaluated.',
         recommendation: 'Add source-backed Spend to evaluate financial return.',
-        action: 'Include a Spend field in the next Custom Integration import or upload a report with spend.',
+        action: 'Include a Spend field in the next Custom Integration import or add a spend source.',
         evidence: [`Revenue: ${formatInsightMetric('revenue', revenue)}`, getInsightMetric('spend')?.resolved.reason || 'Spend unavailable.', ...sourceEvidence],
       });
     }
@@ -4697,7 +4776,9 @@ export default function CustomIntegrationAnalytics() {
                                 metric: metric.key,
                                 currentValue: metric.resolved.currentValue !== null ? String(metric.resolved.currentValue) : '',
                                 unit: getCustomIntegrationUnitLabel(metric.resolved.unit, metric.resolved.option?.type),
-                                description: kpiForm.description || `Track ${metric.label} from the active Custom Integration import.`,
+                                description: kpiForm.description || (isCustomIntegrationOverviewFinancialMetric(metric.key)
+                                  ? `Track ${metric.label} from Custom Integration Overview financial sources.`
+                                  : `Track ${metric.label} from the active Custom Integration import.`),
                               });
                             }}
                             data-testid={`button-kpi-template-${metric.key}`}
@@ -5018,7 +5099,9 @@ export default function CustomIntegrationAnalytics() {
                                 metric: metric.key,
                                 currentValue: metric.resolved.currentValue !== null ? String(metric.resolved.currentValue) : '',
                                 unit: getCustomIntegrationUnitLabel(metric.resolved.unit, metric.resolved.option?.type),
-                                description: benchmarkForm.description || `Benchmark ${metric.label} from the active Custom Integration import.`,
+                                description: benchmarkForm.description || (isCustomIntegrationOverviewFinancialMetric(metric.key)
+                                  ? `Benchmark ${metric.label} from Custom Integration Overview financial sources.`
+                                  : `Benchmark ${metric.label} from the active Custom Integration import.`),
                               });
                             }}
                             data-testid={`button-benchmark-template-${metric.key}`}
@@ -5522,6 +5605,33 @@ export default function CustomIntegrationAnalytics() {
                       <AccordionContent>
                         <div className="space-y-4 pt-1">
                           <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                            <div className="space-y-2">
+                              <div className="font-medium">Financial Metrics</div>
+                              {['overview.total_revenue', 'overview.total_spend', 'overview.roas', 'overview.roi'].map((metric) => {
+                                const labels: Record<string, string> = {
+                                  'overview.total_revenue': 'Total Revenue',
+                                  'overview.total_spend': 'Total Spend',
+                                  'overview.roas': 'ROAS',
+                                  'overview.roi': 'ROI'
+                                };
+                                return (
+                                  <label key={metric} className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={customReportConfig.coreMetrics.includes(metric)}
+                                      onChange={(e) => setCustomReportConfig({
+                                        ...customReportConfig,
+                                        coreMetrics: e.target.checked
+                                          ? Array.from(new Set([...customReportConfig.coreMetrics, metric]))
+                                          : customReportConfig.coreMetrics.filter(m => m !== metric)
+                                      })}
+                                      data-testid={`checkbox-financial-${metric.replace(/[^a-z0-9]+/gi, '-')}`}
+                                    />
+                                    {labels[metric]}
+                                  </label>
+                                );
+                              })}
+                            </div>
                             <div className="space-y-2">
                               <div className="font-medium">Audience & Traffic Metrics</div>
                               {['users', 'sessions', 'pageviews', 'avgSessionDuration', 'pagesPerSession', 'bounceRate'].map((metric) => {

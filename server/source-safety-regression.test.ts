@@ -1649,7 +1649,7 @@ describe("source safety regression guards", () => {
 
     expect(source).toContain("const CUSTOM_INTEGRATION_OVERVIEW_GROUPS");
     expect(source).toContain("{ title: 'Financial Metrics'");
-    expect(source).toContain("metricKeys: ['revenue', 'spend', 'roas', 'roi']");
+    expect(source).toContain("metricKeys: ['overview.total_revenue', 'overview.total_spend', 'overview.roas', 'overview.roi']");
     expect(source).toContain("showUnavailable: true");
     expect(source).toContain("const CUSTOM_INTEGRATION_IMPORTED_OVERVIEW_GROUPS = CUSTOM_INTEGRATION_OVERVIEW_GROUPS.filter(");
     expect(source).toContain("group.title !== 'Financial Metrics'");
@@ -1657,7 +1657,7 @@ describe("source safety regression guards", () => {
     expect(source).toContain("const resolvedOverviewGroups = allResolvedOverviewGroups.filter((group) => group.title !== 'Financial Metrics');");
     expect(source).toContain("const sourceBackedMetricCount = allResolvedOverviewGroups.reduce(");
     expect(source).toContain("resolvedOverviewGroups");
-    expect(source).toContain("resolveCustomIntegrationMetric(metricsData, metricKey)");
+    expect(source).toContain("resolveCustomIntegrationOverviewMetric(metricKey)");
     expect(source).toContain("sourceBackedMetricCount");
     expect(source).toContain("Source-backed metrics");
     expect(source).toContain("Required imported fields are unavailable");
@@ -1774,6 +1774,38 @@ describe("source safety regression guards", () => {
     expect(hubspotRoute).toContain("const sources = await storage.getRevenueSources(campaignId, context).catch(() => [] as any[])");
   });
 
+  it("Custom Integration downstream financial metrics resolve from Overview financial totals", () => {
+    const source = readCustomIntegrationAnalyticsSource();
+    const scheduler = fs.readFileSync(path.join(process.cwd(), "server", "report-scheduler.ts"), "utf8");
+
+    expect(source).toContain("{ key: 'overview.total_revenue', label: 'Total Revenue', unit: '$', type: 'currency', fields: ['revenue'] }");
+    expect(source).toContain("{ title: 'Financial Metrics', icon: DollarSign, metricKeys: ['overview.total_revenue', 'overview.total_spend', 'overview.roas', 'overview.roi'], showUnavailable: true }");
+    expect(source).toContain("function normalizeCustomIntegrationFinancialMetricKey");
+    expect(source).toContain("const resolveCustomIntegrationOverviewMetric = (metricKey: any) => {");
+    expect(source).toContain("currentValue: customIntegrationTotalRevenue");
+    expect(source).toContain("currentValue: customIntegrationTotalSpend");
+    expect(source).toContain("currentValue: customIntegrationRoas");
+    expect(source).toContain("currentValue: customIntegrationRoi");
+    expect(source).toContain("return resolveCustomIntegrationOverviewMetric(metricKey);");
+    expect(source).toContain("resolved: resolveCustomIntegrationOverviewMetric(option.key)");
+    expect(source).toContain("const getInsightMetric = (metricKey: string) => customIntegrationKpiMetricOptions.find((metric) => metric.key === normalizeCustomIntegrationFinancialMetricKey(metricKey));");
+    expect(source).toContain("valueSource: isCustomIntegrationOverviewFinancialMetric(kpiForm.metric) ? 'overview_financial_totals' : 'latest_validated_import'");
+    expect(source).toContain("valueSource: isCustomIntegrationOverviewFinancialMetric(benchmarkForm.metric) ? 'overview_financial_totals' : 'latest_validated_import'");
+    expect(source).toContain("financialSourceScope: getActiveCustomIntegrationMetricSourceScope('overview.total_revenue')");
+    expect(source).toContain("customIntegrationFinancialMetricRows.forEach");
+    expect(source).toContain("data-testid={`checkbox-financial-${metric.replace(/[^a-z0-9]+/gi, '-')}`}");
+    expect(source).not.toContain("customIntegrationTotalRevenue + customIntegrationPipelineProxyTotal");
+
+    expect(scheduler).toContain('function normalizeCustomIntegrationFinancialReportMetricKey');
+    expect(scheduler).toContain('async function buildCustomIntegrationFinancialReportMetrics');
+    expect(scheduler).toContain('storage.getRevenueTotalForRange(campaignId, startDate, endDate, "custom_integration")');
+    expect(scheduler).toContain('source?.isActive !== false && String(source?.platformContext || "").trim().toLowerCase() === "custom_integration"');
+    expect(scheduler).toContain('const totalRevenue = externalRevenue + (importedRevenue ?? 0)');
+    expect(scheduler).toContain('const totalSpend = externalSpend + (importedSpend ?? 0)');
+    expect(scheduler).toContain('resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey, customIntegrationFinancialReportMetrics)');
+    expect(scheduler).toContain('resolveCustomIntegrationReportMetric(metrics, metric.key, customIntegrationFinancialReportMetrics)');
+  });
+
   it("Custom Integration Insights use source-backed metrics and evidence-backed actions", () => {
     const source = readCustomIntegrationAnalyticsSource();
 
@@ -1784,9 +1816,9 @@ describe("source safety regression guards", () => {
     expect(source).toContain("parserRequiresReview");
     expect(source).toContain("Import requires review before these Insights are used for decisions.");
     expect(source).toContain("if (spend !== null && revenue === null)");
-    expect(source).toContain("Spend is imported but Revenue is unavailable, so ROI and ROAS cannot be evaluated.");
+    expect(source).toContain("Source-backed Spend is available but Revenue is unavailable, so ROI and ROAS cannot be evaluated.");
     expect(source).toContain("if (revenue !== null && spend === null)");
-    expect(source).toContain("Revenue is imported but Spend is unavailable, so ROI and ROAS cannot be evaluated.");
+    expect(source).toContain("Source-backed Revenue is available but Spend is unavailable, so ROI and ROAS cannot be evaluated.");
     expect(source).toContain("ROAS is below breakeven");
     expect(source).toContain("customIntegrationInsights.summary.high");
     expect(source).toContain('data-testid="custom-integration-insights-performance"');
@@ -1932,7 +1964,7 @@ describe("source safety regression guards", () => {
     expect(scheduler).toContain("const rowScope = getCustomIntegrationReportSourceScope(row?.calculationConfig);");
     expect(scheduler).toContain("Saved Custom Integration source scope is missing; Target");
     expect(scheduler).toContain("Saved Custom Integration source scope is missing; Benchmark");
-    expect(scheduler).toContain("resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey)");
+    expect(scheduler).toContain("resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey, customIntegrationFinancialReportMetrics)");
     expect(scheduler).toContain('storage.getPlatformKPIs("custom-integration", campaignId)');
     expect(scheduler).toContain('storage.getPlatformBenchmarks("custom-integration", campaignId)');
     expect(scheduler).toContain("return buildCustomIntegrationScheduledPdfAttachment({ report, windowStart, windowEnd, campaignName });");

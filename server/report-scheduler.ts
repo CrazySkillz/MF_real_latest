@@ -210,10 +210,10 @@ function sourceBackedReportOutputUnavailableMessage(platformType: any): string {
 }
 
 const CUSTOM_INTEGRATION_REPORT_METRICS = [
-  { key: "revenue", label: "Revenue", unit: "$", type: "currency" },
-  { key: "spend", label: "Spend", unit: "$", type: "currency" },
-  { key: "roas", label: "ROAS", unit: "x", type: "ratio" },
-  { key: "roi", label: "ROI", unit: "%", type: "percent" },
+  { key: "overview.total_revenue", label: "Total Revenue", unit: "$", type: "currency", fields: ["revenue"] },
+  { key: "overview.total_spend", label: "Total Spend", unit: "$", type: "currency", fields: ["spend"] },
+  { key: "overview.roas", label: "ROAS", unit: "x", type: "ratio", fields: ["roas"] },
+  { key: "overview.roi", label: "ROI", unit: "%", type: "percent", fields: ["roi"] },
   { key: "impressions", label: "Impressions", unit: "", type: "count" },
   { key: "clicks", label: "Clicks", unit: "", type: "count" },
   { key: "conversions", label: "Conversions", unit: "", type: "count" },
@@ -251,18 +251,77 @@ function parseCustomIntegrationMetricNumber(value: any): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function resolveCustomIntegrationReportMetric(metrics: any, metricKey: any): { available: boolean; value: number | null; label: string; unit: string; type: string; reason: string } {
+function normalizeCustomIntegrationFinancialReportMetricKey(metricKey: any): string {
   const key = String(metricKey || "").trim();
+  if (key === "revenue") return "overview.total_revenue";
+  if (key === "spend") return "overview.total_spend";
+  if (key === "roas") return "overview.roas";
+  if (key === "roi") return "overview.roi";
+  return key;
+}
+
+function isCustomIntegrationFinancialReportMetric(metricKey: any): boolean {
+  return ["overview.total_revenue", "overview.total_spend", "overview.roas", "overview.roi"].includes(
+    normalizeCustomIntegrationFinancialReportMetricKey(metricKey)
+  );
+}
+
+async function buildCustomIntegrationFinancialReportMetrics(campaignId: string, metrics: any) {
+  const startDate = "1900-01-01";
+  const endDate = "2999-12-31";
+  const importedRevenue = parseCustomIntegrationMetricNumber(metrics?.revenue);
+  const importedSpend = parseCustomIntegrationMetricNumber(metrics?.spend);
+  const [revenueSources, revenueTotal, spendSources, spendBreakdown] = await Promise.all([
+    storage.getRevenueSources(campaignId, "custom_integration").catch(() => [] as any[]),
+    storage.getRevenueTotalForRange(campaignId, startDate, endDate, "custom_integration").catch(() => ({ totalRevenue: 0 })),
+    storage.getSpendSources(campaignId).catch(() => [] as any[]),
+    storage.getSpendBreakdownBySource(campaignId, startDate, endDate).catch(() => [] as any[]),
+  ]);
+  const activeRevenueSources = (Array.isArray(revenueSources) ? revenueSources : []).filter((source: any) => source?.isActive !== false);
+  const eligibleSpendIds = new Set((Array.isArray(spendSources) ? spendSources : [])
+    .filter((source: any) => source?.isActive !== false && String(source?.platformContext || "").trim().toLowerCase() === "custom_integration")
+    .map((source: any) => String(source?.id || ""))
+    .filter(Boolean));
+  const externalRevenue = Number((revenueTotal as any)?.totalRevenue || 0);
+  const externalSpend = (Array.isArray(spendBreakdown) ? spendBreakdown : [])
+    .filter((row: any) => eligibleSpendIds.has(String(row?.sourceId || "")))
+    .reduce((sum: number, row: any) => sum + Number(row?.spend || 0), 0);
+  const totalRevenue = externalRevenue + (importedRevenue ?? 0);
+  const totalSpend = externalSpend + (importedSpend ?? 0);
+  const hasRevenue = importedRevenue !== null || activeRevenueSources.length > 0;
+  const hasSpend = importedSpend !== null || eligibleSpendIds.size > 0;
+  const hasDerived = hasRevenue && hasSpend && totalSpend > 0;
+  const values = new Map<string, { available: boolean; value: number | null; label: string; unit: string; type: string; reason: string }>();
+  values.set("overview.total_revenue", hasRevenue
+    ? { available: true, value: totalRevenue, label: "Total Revenue", unit: "$", type: "currency", reason: "" }
+    : { available: false, value: null, label: "Total Revenue", unit: "$", type: "currency", reason: "Revenue is not available from the active Custom Integration import or added sources." });
+  values.set("overview.total_spend", hasSpend
+    ? { available: true, value: totalSpend, label: "Total Spend", unit: "$", type: "currency", reason: "" }
+    : { available: false, value: null, label: "Total Spend", unit: "$", type: "currency", reason: "Spend is not available from the active Custom Integration import or added sources." });
+  values.set("overview.roas", hasDerived
+    ? { available: true, value: totalRevenue / totalSpend, label: "ROAS", unit: "x", type: "ratio", reason: "" }
+    : { available: false, value: null, label: "ROAS", unit: "x", type: "ratio", reason: "ROAS requires source-backed revenue and spend." });
+  values.set("overview.roi", hasDerived
+    ? { available: true, value: ((totalRevenue - totalSpend) / totalSpend) * 100, label: "ROI", unit: "%", type: "percent", reason: "" }
+    : { available: false, value: null, label: "ROI", unit: "%", type: "percent", reason: "ROI requires source-backed revenue and spend." });
+  return values;
+}
+
+function resolveCustomIntegrationReportMetric(metrics: any, metricKey: any, financialMetrics?: Map<string, { available: boolean; value: number | null; label: string; unit: string; type: string; reason: string }>): { available: boolean; value: number | null; label: string; unit: string; type: string; reason: string } {
+  const key = normalizeCustomIntegrationFinancialReportMetricKey(metricKey);
   const option = CUSTOM_INTEGRATION_REPORT_METRICS.find((metric: any) => metric.key === key || (metric.fields || []).includes(key)) as any;
   if (!option) return { available: false, value: null, label: key || "Metric", unit: "", type: "count", reason: "Metric is not supported by Custom Integration." };
-  if (option.key === "roi" || option.key === "roas") {
+  if (isCustomIntegrationFinancialReportMetric(metricKey) && financialMetrics?.has(key)) {
+    return financialMetrics.get(key)!;
+  }
+  if (key === "overview.roi" || key === "overview.roas") {
     const revenue = parseCustomIntegrationMetricNumber(metrics?.revenue);
     const spend = parseCustomIntegrationMetricNumber(metrics?.spend);
     if (revenue === null) return { available: false, value: null, label: option.label, unit: option.unit, type: option.type, reason: "Revenue is not available in the selected Custom Integration import." };
     if (spend === null || spend <= 0) return { available: false, value: null, label: option.label, unit: option.unit, type: option.type, reason: "Spend is not available in the selected Custom Integration import." };
     return {
       available: true,
-      value: option.key === "roi" ? ((revenue - spend) / spend) * 100 : revenue / spend,
+      value: key === "overview.roi" ? ((revenue - spend) / spend) * 100 : revenue / spend,
       label: option.label,
       unit: option.unit,
       type: option.type,
@@ -303,6 +362,7 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
   }
   const metrics = await storage.getLatestCustomIntegrationMetrics(campaignId).catch(() => null as any);
   if (!metrics) return null;
+  const customIntegrationFinancialReportMetrics = await buildCustomIntegrationFinancialReportMetrics(campaignId, metrics);
 
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF();
@@ -326,7 +386,7 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
     });
   };
   const addMetric = (metricKey: any) => {
-    const resolved = resolveCustomIntegrationReportMetric(metrics, metricKey);
+    const resolved = resolveCustomIntegrationReportMetric(metrics, metricKey, customIntegrationFinancialReportMetrics);
     const value = resolved.available
       ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type)
       : `Unavailable - ${resolved.reason}`;
@@ -355,7 +415,7 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
         addText(`- ${name}: Current Unavailable - Saved Custom Integration source is no longer connected; Target ${formatSavedCustomIntegrationGoal(row?.targetValue, row?.unit)}`, { indent: 4 });
         return;
       }
-      const resolved = resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey);
+      const resolved = resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey, customIntegrationFinancialReportMetrics);
       const current = resolved.available ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type) : `Unavailable - ${resolved.reason}`;
       const target = formatCustomIntegrationReportMetric(parseCustomIntegrationMetricNumber(row?.targetValue), resolved.unit || row?.unit || "", resolved.type);
       addText(`- ${name}: Current ${current}; Target ${target}`, { indent: 4 });
@@ -379,20 +439,20 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
         addText(`- ${name}: Current Unavailable - Saved Custom Integration source is no longer connected; Benchmark ${formatSavedCustomIntegrationGoal(row?.benchmarkValue, row?.unit)}`, { indent: 4 });
         return;
       }
-      const resolved = resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey);
+      const resolved = resolveCustomIntegrationReportMetric(metrics, row?.metric || row?.metricKey, customIntegrationFinancialReportMetrics);
       const current = resolved.available ? formatCustomIntegrationReportMetric(resolved.value, resolved.unit, resolved.type) : `Unavailable - ${resolved.reason}`;
       const benchmark = formatCustomIntegrationReportMetric(parseCustomIntegrationMetricNumber(row?.benchmarkValue), resolved.unit || row?.unit || "", resolved.type);
       addText(`- ${name}: Current ${current}; Benchmark ${benchmark}`, { indent: 4 });
     });
   };
   const addInsightRows = () => {
-    const revenue = resolveCustomIntegrationReportMetric(metrics, "revenue");
-    const spend = resolveCustomIntegrationReportMetric(metrics, "spend");
-    const clicks = resolveCustomIntegrationReportMetric(metrics, "clicks");
-    const impressions = resolveCustomIntegrationReportMetric(metrics, "impressions");
-    const conversions = resolveCustomIntegrationReportMetric(metrics, "conversions");
-    if (!revenue.available && spend.available) addText("- Spend is imported but Revenue is unavailable, so ROI and ROAS cannot be evaluated.", { indent: 4 });
-    if (revenue.available && !spend.available) addText("- Revenue is imported but Spend is unavailable, so ROI and ROAS cannot be evaluated.", { indent: 4 });
+    const revenue = resolveCustomIntegrationReportMetric(metrics, "revenue", customIntegrationFinancialReportMetrics);
+    const spend = resolveCustomIntegrationReportMetric(metrics, "spend", customIntegrationFinancialReportMetrics);
+    const clicks = resolveCustomIntegrationReportMetric(metrics, "clicks", customIntegrationFinancialReportMetrics);
+    const impressions = resolveCustomIntegrationReportMetric(metrics, "impressions", customIntegrationFinancialReportMetrics);
+    const conversions = resolveCustomIntegrationReportMetric(metrics, "conversions", customIntegrationFinancialReportMetrics);
+    if (!revenue.available && spend.available) addText("- Source-backed Spend is available but Revenue is unavailable, so ROI and ROAS cannot be evaluated.", { indent: 4 });
+    if (revenue.available && !spend.available) addText("- Source-backed Revenue is available but Spend is unavailable, so ROI and ROAS cannot be evaluated.", { indent: 4 });
     if (clicks.available && impressions.available && impressions.value && impressions.value > 0) {
       addText(`- Click-through rate from imported clicks and impressions is ${formatNumberLike((Number(clicks.value) / Number(impressions.value)) * 100)}%.`, { indent: 4 });
     }
@@ -430,7 +490,7 @@ async function buildCustomIntegrationScheduledPdfAttachment(args: {
     if (configuration.sections?.summary) {
       addText("Summary", { size: 14, bold: true });
       addText(`- Source: ${getCustomIntegrationSourceLabel(metrics)}`, { indent: 4 });
-      addText(`- Source-backed metrics: ${CUSTOM_INTEGRATION_REPORT_METRICS.filter((metric: any) => resolveCustomIntegrationReportMetric(metrics, metric.key).available).length}`, { indent: 4 });
+      addText(`- Source-backed metrics: ${CUSTOM_INTEGRATION_REPORT_METRICS.filter((metric: any) => resolveCustomIntegrationReportMetric(metrics, metric.key, customIntegrationFinancialReportMetrics).available).length}`, { indent: 4 });
     }
     if (configuration.sections?.kpis || (configuration.kpis || []).length > 0) {
       addText("KPIs", { size: 14, bold: true });

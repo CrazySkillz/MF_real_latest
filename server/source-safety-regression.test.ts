@@ -1687,6 +1687,30 @@ describe("source safety regression guards", () => {
     expect(financialBlock).not.toContain("resolveCustomIntegrationMetric");
   });
 
+  it("Custom Integration financial source dialogs support scoped edit and delete lifecycle", () => {
+    const source = readCustomIntegrationAnalyticsSource();
+
+    expect(source).toContain("const [revenueWizardInitialSource, setRevenueWizardInitialSource] = useState<any>(null)");
+    expect(source).toContain("const [spendWizardInitialSource, setSpendWizardInitialSource] = useState<any>(null)");
+    expect(source).toContain("const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState<string | null>(null)");
+    expect(source).toContain("const [deletingSpendSourceId, setDeletingSpendSourceId] = useState<string | null>(null)");
+    expect(source).toContain('fetch(`/api/campaigns/${campaignId}/revenue-sources?platformContext=custom_integration`');
+    expect(source).toContain('fetch(`/api/campaigns/${campaignId}/spend-totals?platformContext=custom_integration&dateRange=all`');
+    expect(source).toContain("setRevenueWizardInitialSource(source)");
+    expect(source).toContain("initialSource={revenueWizardInitialSource || undefined}");
+    expect(source).toContain("setSpendWizardInitialSource({");
+    expect(source).toContain("id: source.sourceId");
+    expect(source).toContain("initialSource={spendWizardInitialSource || undefined}");
+    expect(source).toContain('fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`');
+    expect(source).toContain('fetch(`/api/campaigns/${campaignId}/spend-sources/${encodeURIComponent(sourceId)}`');
+    expect(source).toContain("setDeletingRevenueSourceId(String(source.id))");
+    expect(source).toContain("setDeletingSpendSourceId(String(source.sourceId))");
+    expect(source).toContain("deleteCustomIntegrationRevenueSourceMutation.mutate(deletingRevenueSourceId)");
+    expect(source).toContain("deleteCustomIntegrationSpendSourceMutation.mutate(deletingSpendSourceId)");
+    expect(source).toContain("This removes only the selected Custom Integration revenue source. Total Revenue will be recalculated.");
+    expect(source).toContain("This removes only the selected Custom Integration spend source. Total Spend, ROAS, and ROI will be recalculated.");
+  });
+
   it("Custom Integration Insights use source-backed metrics and evidence-backed actions", () => {
     const source = readCustomIntegrationAnalyticsSource();
 

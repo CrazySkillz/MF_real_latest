@@ -473,6 +473,10 @@ export default function CustomIntegrationAnalytics() {
   const [showRevenueSourcesDialog, setShowRevenueSourcesDialog] = useState(false);
   const [showSpendSourcesDialog, setShowSpendSourcesDialog] = useState(false);
   const [showPipelineProxySourcesDialog, setShowPipelineProxySourcesDialog] = useState(false);
+  const [revenueWizardInitialSource, setRevenueWizardInitialSource] = useState<any>(null);
+  const [spendWizardInitialSource, setSpendWizardInitialSource] = useState<any>(null);
+  const [deletingRevenueSourceId, setDeletingRevenueSourceId] = useState<string | null>(null);
+  const [deletingSpendSourceId, setDeletingSpendSourceId] = useState<string | null>(null);
   
   // Detect user's time zone
   const [userTimeZone, setUserTimeZone] = useState('');
@@ -768,6 +772,60 @@ export default function CustomIntegrationAnalytics() {
     await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-totals?platformContext=custom_integration&dateRange=all`], exact: true });
     await queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/spend-totals?platformContext=custom_integration&dateRange=all`], exact: true });
   };
+
+  const deleteCustomIntegrationRevenueSourceMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const response = await fetch(`/api/campaigns/${campaignId}/revenue-sources/${encodeURIComponent(sourceId)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json?.success === false) {
+        throw new Error(json?.error || "Failed to remove revenue source");
+      }
+      return json;
+    },
+    onSuccess: async () => {
+      setDeletingRevenueSourceId(null);
+      toast({ title: "Revenue source removed", description: "Custom Integration Total Revenue has been recalculated." });
+      await refreshCustomIntegrationFinancialQueries();
+    },
+    onError: (error: any) => {
+      setDeletingRevenueSourceId(null);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to remove revenue source",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCustomIntegrationSpendSourceMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const response = await fetch(`/api/campaigns/${campaignId}/spend-sources/${encodeURIComponent(sourceId)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || json?.success === false) {
+        throw new Error(json?.error || "Failed to remove spend source");
+      }
+      return json;
+    },
+    onSuccess: async () => {
+      setDeletingSpendSourceId(null);
+      toast({ title: "Spend source removed", description: "Custom Integration Total Spend has been recalculated." });
+      await refreshCustomIntegrationFinancialQueries();
+    },
+    onError: (error: any) => {
+      setDeletingSpendSourceId(null);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to remove spend source",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Create KPI mutation
   const createKpiMutation = useMutation({
@@ -2901,7 +2959,10 @@ export default function CustomIntegrationAnalytics() {
             <p className="text-sm text-muted-foreground/70">Total Revenue</p>
             <button
               type="button"
-              onClick={() => setIsRevenueWizardOpen(true)}
+              onClick={() => {
+                setRevenueWizardInitialSource(null);
+                setIsRevenueWizardOpen(true);
+              }}
               className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
               title="Add Custom Integration revenue source"
               aria-label="Add Custom Integration revenue source"
@@ -2933,7 +2994,10 @@ export default function CustomIntegrationAnalytics() {
             <p className="text-sm text-muted-foreground/70">Total Spend</p>
             <button
               type="button"
-              onClick={() => setIsSpendWizardOpen(true)}
+              onClick={() => {
+                setSpendWizardInitialSource(null);
+                setIsSpendWizardOpen(true);
+              }}
               className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
               title="Add Custom Integration spend source"
               aria-label="Add Custom Integration spend source"
@@ -4294,11 +4358,15 @@ export default function CustomIntegrationAnalytics() {
       {campaignId && (
         <AddRevenueWizardModal
           open={isRevenueWizardOpen}
-          onOpenChange={setIsRevenueWizardOpen}
+          onOpenChange={(open) => {
+            setIsRevenueWizardOpen(open);
+            if (!open) setRevenueWizardInitialSource(null);
+          }}
           campaignId={campaignId}
           currency={customIntegrationFinancialCurrencyCode}
           dateRange="90days"
           platformContext="custom_integration"
+          initialSource={revenueWizardInitialSource || undefined}
           onSuccess={() => {
             void refreshCustomIntegrationFinancialQueries();
           }}
@@ -4309,10 +4377,14 @@ export default function CustomIntegrationAnalytics() {
         <AddSpendWizardModal
           campaignId={campaignId}
           open={isSpendWizardOpen}
-          onOpenChange={setIsSpendWizardOpen}
+          onOpenChange={(open) => {
+            setIsSpendWizardOpen(open);
+            if (!open) setSpendWizardInitialSource(null);
+          }}
           currency={customIntegrationFinancialCurrencyCode}
           dateRange="90days"
           platformContext="custom_integration"
+          initialSource={spendWizardInitialSource || undefined}
           onProcessed={() => {
             void refreshCustomIntegrationFinancialQueries();
           }}
@@ -4336,9 +4408,36 @@ export default function CustomIntegrationAnalytics() {
                   </p>
                   <p className="text-xs text-muted-foreground/70">{String(source?.sourceType || "Revenue Source").replace(/_/g, " ")}</p>
                 </div>
-                <span className="font-medium tabular-nums text-foreground">
-                  {formatCustomIntegrationCurrency(Number(source.lastTotalRevenue || 0))}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium tabular-nums text-foreground">
+                    {formatCustomIntegrationCurrency(Number(source.lastTotalRevenue || 0))}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRevenueSourcesDialog(false);
+                      setRevenueWizardInitialSource(source);
+                      setIsRevenueWizardOpen(true);
+                    }}
+                    className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                    title="Edit revenue source"
+                    aria-label="Edit revenue source"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRevenueSourcesDialog(false);
+                      setDeletingRevenueSourceId(String(source.id));
+                    }}
+                    className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
+                    title="Remove revenue source"
+                    aria-label="Remove revenue source"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             )) : (
               <p className="text-sm text-muted-foreground/70">No Custom Integration revenue sources connected.</p>
@@ -4364,9 +4463,41 @@ export default function CustomIntegrationAnalytics() {
                   </p>
                   <p className="text-xs text-muted-foreground/70">{String(source?.sourceType || "Spend Source").replace(/_/g, " ")}</p>
                 </div>
-                <span className="font-medium tabular-nums text-foreground">
-                  {formatCustomIntegrationCurrency(Number(source.spend || 0))}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium tabular-nums text-foreground">
+                    {formatCustomIntegrationCurrency(Number(source.spend || 0))}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSpendSourcesDialog(false);
+                      setSpendWizardInitialSource({
+                        id: source.sourceId,
+                        sourceType: source.sourceType,
+                        displayName: source.displayName,
+                        mappingConfig: source.mappingConfig,
+                      });
+                      setIsSpendWizardOpen(true);
+                    }}
+                    className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground"
+                    title="Edit spend source"
+                    aria-label="Edit spend source"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSpendSourcesDialog(false);
+                      setDeletingSpendSourceId(String(source.sourceId));
+                    }}
+                    className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground/70 hover:text-red-600"
+                    title="Remove spend source"
+                    aria-label="Remove spend source"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             )) : (
               <p className="text-sm text-muted-foreground/70">No Custom Integration spend sources connected.</p>
@@ -4406,6 +4537,58 @@ export default function CustomIntegrationAnalytics() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deletingRevenueSourceId} onOpenChange={(open) => {
+        if (!open) setDeletingRevenueSourceId(null);
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove revenue source?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes only the selected Custom Integration revenue source. Total Revenue will be recalculated.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => {
+                if (deletingRevenueSourceId) {
+                  deleteCustomIntegrationRevenueSourceMutation.mutate(deletingRevenueSourceId);
+                }
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deletingSpendSourceId} onOpenChange={(open) => {
+        if (!open) setDeletingSpendSourceId(null);
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove spend source?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes only the selected Custom Integration spend source. Total Spend, ROAS, and ROI will be recalculated.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => {
+                if (deletingSpendSourceId) {
+                  deleteCustomIntegrationSpendSourceMutation.mutate(deletingSpendSourceId);
+                }
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* KPI Modal */}
       <Dialog open={isKPIModalOpen} onOpenChange={(open) => {

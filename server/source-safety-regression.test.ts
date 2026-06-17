@@ -1643,6 +1643,9 @@ describe("source safety regression guards", () => {
     expect(source).toContain("{ title: 'Financial Metrics'");
     expect(source).toContain("metricKeys: ['revenue', 'spend', 'roas', 'roi']");
     expect(source).toContain("showUnavailable: true");
+    expect(source).toContain("const CUSTOM_INTEGRATION_IMPORTED_OVERVIEW_GROUPS = CUSTOM_INTEGRATION_OVERVIEW_GROUPS.filter(");
+    expect(source).toContain("group.title !== 'Financial Metrics'");
+    expect(source).toContain("const resolvedOverviewGroups = CUSTOM_INTEGRATION_IMPORTED_OVERVIEW_GROUPS.map((group) => {");
     expect(source).toContain("resolvedOverviewGroups");
     expect(source).toContain("resolveCustomIntegrationMetric(metricsData, metricKey)");
     expect(source).toContain("sourceBackedMetricCount");
@@ -1667,6 +1670,7 @@ describe("source safety regression guards", () => {
 
     expect(financialRenderCall).toBeGreaterThan(overviewStart);
     expect(importedDataCard).toBeGreaterThan(financialRenderCall);
+    expect(source).toContain('data-testid="custom-integration-financial-section"');
     expect(source).toContain('data-testid="custom-integration-financial-cards"');
     expect(source).toContain('platformContext=custom_integration&dateRange=all');
     expect(source).toContain('revenue-sources?platformContext=custom_integration');

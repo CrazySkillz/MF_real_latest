@@ -84,6 +84,10 @@ const CUSTOM_INTEGRATION_OVERVIEW_GROUPS = [
   { title: 'Email & Newsletter Performance', icon: Mail, metricKeys: ['emailsDelivered', 'openRate', 'clickThroughRate', 'clickToOpen', 'listGrowth'] },
 ];
 
+const CUSTOM_INTEGRATION_IMPORTED_OVERVIEW_GROUPS = CUSTOM_INTEGRATION_OVERVIEW_GROUPS.filter(
+  (group) => group.title !== 'Financial Metrics'
+);
+
 const CUSTOM_INTEGRATION_REPORT_TEMPLATES = [
   {
     key: 'overview',
@@ -2768,7 +2772,7 @@ export default function CustomIntegrationAnalytics() {
     ? customIntegrationBenchmarkTracker.progressTotal / customIntegrationBenchmarkTracker.progressCount
     : 0;
   const benchmarkFormUsesSourceBackedMetric = Boolean(benchmarkForm.metric && benchmarkForm.metric !== 'custom');
-  const resolvedOverviewGroups = CUSTOM_INTEGRATION_OVERVIEW_GROUPS.map((group) => {
+  const resolvedOverviewGroups = CUSTOM_INTEGRATION_IMPORTED_OVERVIEW_GROUPS.map((group) => {
     const metrics = group.metricKeys
       .map((metricKey) => ({ metricKey, resolved: resolveCustomIntegrationMetric(metricsData, metricKey) }))
       .filter(({ resolved }) => resolved.available || group.showUnavailable);
@@ -2952,7 +2956,12 @@ export default function CustomIntegrationAnalytics() {
     serializeCustomIntegrationReportState(reportForm, customReportConfig, reportModalStep) !== initialReportState;
 
   const renderCustomIntegrationFinancialCards = () => (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5" data-testid="custom-integration-financial-cards">
+    <div className="space-y-4" data-testid="custom-integration-financial-section">
+      <div className="flex items-center gap-2">
+        <DollarSign className="h-5 w-5 text-purple-600" />
+        <h3 className="text-lg font-semibold text-foreground">Financial Metrics</h3>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5" data-testid="custom-integration-financial-cards">
       <Card>
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-1">
@@ -3084,6 +3093,7 @@ export default function CustomIntegrationAnalytics() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 

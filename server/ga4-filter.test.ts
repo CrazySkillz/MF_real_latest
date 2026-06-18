@@ -64,6 +64,51 @@ describe("GA4 campaign value picker", () => {
     const result = await ga4Service.getCampaignValues("campaign-1", storage, "90daysAgo", "123", 200);
 
     expect(result.campaigns).toEqual([{ name: "yesop_brand_search", users: 12 }]);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("merges pageLocation UTM campaigns when GA4 campaign dimensions are partial", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const dimension = body?.dimensions?.[0]?.name;
+      const rows = dimension === "sessionCampaignName"
+        ? [
+            { dimensionValues: [{ value: "yesop_brand_search" }], metricValues: [{ value: "4" }] },
+            { dimensionValues: [{ value: "yesop_retargeting" }], metricValues: [{ value: "3" }] },
+            { dimensionValues: [{ value: "yesop_prospecting" }], metricValues: [{ value: "2" }] },
+          ]
+        : dimension === "pageLocation" ? [
+            { dimensionValues: [{ value: "https://mock.test/?utm_campaign=yesop_brand_search" }], metricValues: [{ value: "80" }] },
+            { dimensionValues: [{ value: "https://mock.test/?utm_campaign=yesop_prospecting" }], metricValues: [{ value: "55" }] },
+            { dimensionValues: [{ value: "https://mock.test/?utm_campaign=yesop_paid_social" }], metricValues: [{ value: "45" }] },
+            { dimensionValues: [{ value: "https://mock.test/?utm_campaign=yesop_retargeting" }], metricValues: [{ value: "35" }] },
+            { dimensionValues: [{ value: "https://mock.test/?utm_campaign=yesop_email_nurture" }], metricValues: [{ value: "30" }] },
+          ] : [];
+
+      return {
+        ok: true,
+        json: async () => ({ rows }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const storage = {
+      getGA4Connection: vi.fn(async () => ({
+        id: "conn-1",
+        propertyId: "properties/123",
+        accessToken: "token",
+      })),
+    };
+
+    const result = await ga4Service.getCampaignValues("campaign-1", storage, "90daysAgo", "123", 200);
+
+    expect(result.campaigns.map(c => c.name)).toEqual([
+      "yesop_brand_search",
+      "yesop_prospecting",
+      "yesop_paid_social",
+      "yesop_retargeting",
+      "yesop_email_nurture",
+    ]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -170,6 +215,50 @@ describe("GA4 campaign value picker", () => {
 
     expect(result.totals).toEqual({ sessions: 85, sessionsRaw: 85, users: 85, conversions: 3, revenue: 531.35 });
     expect(result.rows[0]).toMatchObject({ date: "2026-06-18", source: "google", medium: "cpc", campaign: "summer_sale" });
+  });
+
+  it("derives landing page source and medium from UTM URLs when GA4 attribution dimensions are empty", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
+      const isPageLocationFallback = dimensions.includes("pageLocation") && JSON.stringify(body?.dimensionFilter || {}).includes("pageLocation");
+
+      return {
+        ok: true,
+        json: async () => ({
+          rows: isPageLocationFallback
+            ? [{
+                dimensionValues: [
+                  { value: "https://example.com/?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale" },
+                ],
+                metricValues: [{ value: "233" }, { value: "236" }, { value: "5" }, { value: "879.834852" }],
+              }]
+            : [],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const storage = {
+      getGA4Connection: vi.fn(async () => ({
+        id: "conn-1",
+        propertyId: "properties/123",
+        accessToken: "token",
+        method: "access_token",
+      })),
+    };
+
+    const result = await ga4Service.getLandingPagesReport("campaign-1", storage, "90daysAgo", "123", 200, "summer_sale");
+
+    expect(result.rows[0]).toMatchObject({
+      landingPage: "/",
+      source: "google",
+      medium: "cpc",
+      sessions: 233,
+      users: 236,
+      conversions: 5,
+      revenue: 879.83,
+    });
   });
 });
 

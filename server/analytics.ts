@@ -132,6 +132,17 @@ export class GoogleAnalytics4Service {
     }
   }
 
+  private extractUrlPath(value: string) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    try {
+      const url = raw.startsWith('/') ? new URL(raw, 'https://example.invalid') : new URL(raw);
+      return url.pathname || '/';
+    } catch {
+      return raw.split('?')[0] || raw;
+    }
+  }
+
   async getLandingPagesReport(
     campaignId: string,
     storage: any,
@@ -158,14 +169,20 @@ export class GoogleAnalytics4Service {
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
     const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
     const dims = [{ name: 'landingPagePlusQueryString' }, { name: 'sessionSource' }, { name: 'sessionMedium' }];
+    const pageLocationDims = [{ name: 'pageLocation' }];
 
-    const run = async (accessToken: string, revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any = campaignDimensionFilter) => {
+    const run = async (
+      accessToken: string,
+      revenueMetric: 'totalRevenue' | 'purchaseRevenue',
+      scopeFilter: any = campaignDimensionFilter,
+      dimensions: Array<{ name: string }> = dims
+    ) => {
       const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           dateRanges: [{ startDate: dateRange, endDate: 'today' }],
-          dimensions: dims,
+          dimensions,
           ...(scopeFilter ? scopeFilter : {}),
           metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }, { name: revenueMetric }],
           orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
@@ -180,7 +197,7 @@ export class GoogleAnalytics4Service {
       return json;
     };
 
-    const parseRows = (json: any, revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+    const parseRows = (json: any, revenueMetric: 'totalRevenue' | 'purchaseRevenue', parseUtmFromPageLocation = false) => {
       const rows: any[] = Array.isArray(json?.rows) ? json.rows : [];
       const out: Array<{ landingPage: string; source: string; medium: string; sessions: number; users: number; conversions: number; revenue: number }> = [];
       let totalSessions = 0;
@@ -189,9 +206,16 @@ export class GoogleAnalytics4Service {
       let totalRevenue = 0;
 
       for (const r of rows) {
-        const landingPage = String(r?.dimensionValues?.[0]?.value || '').trim() || '(not set)';
-        const source = String(r?.dimensionValues?.[1]?.value || '').trim() || '(not set)';
-        const medium = String(r?.dimensionValues?.[2]?.value || '').trim() || '(not set)';
+        const firstDim = String(r?.dimensionValues?.[0]?.value || '').trim();
+        const landingPage = parseUtmFromPageLocation
+          ? (this.extractUrlPath(firstDim) || '(not set)')
+          : (firstDim || '(not set)');
+        const source = parseUtmFromPageLocation
+          ? (this.extractUrlSearchParam(firstDim, 'utm_source') || '(not set)')
+          : (String(r?.dimensionValues?.[1]?.value || '').trim() || '(not set)');
+        const medium = parseUtmFromPageLocation
+          ? (this.extractUrlSearchParam(firstDim, 'utm_medium') || '(not set)')
+          : (String(r?.dimensionValues?.[2]?.value || '').trim() || '(not set)');
         const sessions = parseInt(String(r?.metricValues?.[0]?.value || '0'), 10) || 0;
         const users = parseInt(String(r?.metricValues?.[1]?.value || '0'), 10) || 0;
         const conversions = parseInt(String(r?.metricValues?.[2]?.value || '0'), 10) || 0;
@@ -220,16 +244,16 @@ export class GoogleAnalytics4Service {
       return t.includes('"code": 401') || t.includes('unauthenticated') || t.includes('invalid authentication credentials') || t.includes('invalid_grant');
     };
 
-    const fetchRows = async (accessToken: string, scopeFilter: any) => {
+    const fetchRows = async (accessToken: string, scopeFilter: any, parseUtmFromPageLocation = false) => {
       try {
-        const json = await run(accessToken, 'totalRevenue', scopeFilter);
-        return parseRows(json, 'totalRevenue');
+        const json = await run(accessToken, 'totalRevenue', scopeFilter, parseUtmFromPageLocation ? pageLocationDims : dims);
+        return parseRows(json, 'totalRevenue', parseUtmFromPageLocation);
       } catch (e: any) {
         const msg = String(e?.message || e || '');
         // Some properties don't allow totalRevenue; try purchaseRevenue.
         if (msg.toLowerCase().includes('totalrevenue') || msg.toLowerCase().includes('metric') || msg.toLowerCase().includes('invalid')) {
-          const json2 = await run(accessToken, 'purchaseRevenue', scopeFilter);
-          return parseRows(json2, 'purchaseRevenue');
+          const json2 = await run(accessToken, 'purchaseRevenue', scopeFilter, parseUtmFromPageLocation ? pageLocationDims : dims);
+          return parseRows(json2, 'purchaseRevenue', parseUtmFromPageLocation);
         }
         throw e;
       }
@@ -241,7 +265,7 @@ export class GoogleAnalytics4Service {
     const tryFetch = async (accessToken: string) => {
       const res = await fetchRows(accessToken, campaignDimensionFilter);
       if (!isEmptyResult(res) || !pageLocationCampaignFilter) return res;
-      const utmRes = await fetchRows(accessToken, pageLocationCampaignFilter).catch(() => null);
+      const utmRes = await fetchRows(accessToken, pageLocationCampaignFilter, true).catch(() => null);
       return utmRes && !isEmptyResult(utmRes) ? utmRes : res;
     };
 
@@ -1391,7 +1415,6 @@ export class GoogleAnalytics4Service {
         if (!isMostlyEmpty(campaigns)) break;
       }
       const campaigns = merge(lists);
-      if (!isMostlyEmpty(campaigns)) return campaigns;
       const pageLocationCampaigns = await runPageLocationCampaigns(accessToken).catch(errorHandler);
       return merge([...lists, pageLocationCampaigns]);
     };

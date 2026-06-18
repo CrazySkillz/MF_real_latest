@@ -188,6 +188,37 @@ Validation:
 - focused regression subset from this tracker passed: 65 tests
 - `npm run check` passed
 
+### Commit 4: Clean up orphan GA4 synthetic revenue records
+
+Fix scope:
+
+Delete only the three proven orphan imported-revenue rows with `revenue_source_id = 'ga4_daily_metrics'`.
+
+Status: completed and pushed in `690b3962`; cleanup applied and verified.
+
+Evidence:
+
+- read-only inventory found 3 orphan rows across 1 campaign: `247d8ebf-9554-45b9-8a50-482ec25da5a7` (`ga4_brand`)
+- matching `revenue_sources.id = 'ga4_daily_metrics'`: 0
+- affected row IDs:
+  - `5cc4657b-f4df-4709-8d10-5d9b7639633c`
+  - `ec2552dc-cbcf-4d3b-b987-c61aa691bf82`
+  - `6b6111cc-4d53-4e88-a41e-5386acbabe7a`
+
+Implementation completed:
+
+- added exact-ID guarded cleanup migration: `migrations/0009_delete_ga4_daily_metrics_orphan_revenue_records.sql`
+- added regression guard: `server/ga4-orphan-revenue-cleanup-regression.test.ts`
+- applied the cleanup migration after commit
+
+Validation:
+
+- focused regression subset from this tracker plus cleanup guard passed: 66 tests
+- `npm run check` passed
+- rollback validation proved the migration would delete exactly 3 rows before it was applied
+- applied cleanup deleted 3 rows
+- read-only verification after cleanup confirmed 0 remaining `revenue_records` rows with `revenue_source_id = 'ga4_daily_metrics'`
+
 ## Next Step
 
 Before new GA4 production-readiness fixes, perform the remaining evidence-gathering step that cannot be proven from local code alone:

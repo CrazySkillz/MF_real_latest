@@ -101,6 +101,76 @@ describe("GA4 campaign value picker", () => {
     expect(result.campaigns).toEqual([{ name: "yesop_brand_search", users: 5 }]);
     expect(fetchMock).toHaveBeenCalledTimes(7);
   });
+
+  it("uses pageLocation UTM fallback for to-date totals when campaign dimensions are empty", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const scope = JSON.stringify(body?.dimensionFilter || {});
+      const isPageLocationScope = scope.includes("pageLocation");
+
+      return {
+        ok: true,
+        json: async () => ({
+          rows: isPageLocationScope
+            ? [{ metricValues: [{ value: "85" }, { value: "85" }, { value: "3" }, { value: "108" }, { value: "531.349929" }] }]
+            : [{ metricValues: [{ value: "0" }, { value: "0" }, { value: "0" }, { value: "0" }, { value: "0" }] }],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await ga4Service.getTotalsWithRevenue(
+      "properties/123",
+      "token",
+      "2026-06-01",
+      "2026-06-17",
+      "summer_sale",
+    );
+
+    expect(result.totals).toEqual({ sessions: 85, users: 85, conversions: 3, pageviews: 108, revenue: 531.35 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const fallbackBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
+    expect(JSON.stringify(fallbackBody.dimensionFilter)).toContain("pageLocation");
+    expect(fallbackBody.dateRanges[0].endDate).toBe("today");
+  });
+
+  it("uses pageLocation UTM fallback for acquisition rows when campaign dimensions are empty", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
+      const isPageLocationFallback = dimensions.includes("pageLocation") && JSON.stringify(body?.dimensionFilter || {}).includes("pageLocation");
+
+      return {
+        ok: true,
+        json: async () => ({
+          rows: isPageLocationFallback
+            ? [{
+                dimensionValues: [
+                  { value: "20260618" },
+                  { value: "https://example.com/?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale" },
+                ],
+                metricValues: [{ value: "85" }, { value: "85" }, { value: "3" }, { value: "531.349929" }],
+              }]
+            : [],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const storage = {
+      getGA4Connection: vi.fn(async () => ({
+        id: "conn-1",
+        propertyId: "properties/123",
+        accessToken: "token",
+        method: "access_token",
+      })),
+    };
+
+    const result = await ga4Service.getAcquisitionBreakdown("campaign-1", storage, "90daysAgo", "123", 200, "summer_sale");
+
+    expect(result.totals).toEqual({ sessions: 85, sessionsRaw: 85, users: 85, conversions: 3, revenue: 531.35 });
+    expect(result.rows[0]).toMatchObject({ date: "2026-06-18", source: "google", medium: "cpc", campaign: "summer_sale" });
+  });
 });
 
 

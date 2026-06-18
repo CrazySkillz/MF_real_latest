@@ -40,11 +40,15 @@ This status does not close the newer findings below. Later shared report/source 
 - [x] Commit 2 `cedd01cb` - removed the orphan `/api/campaigns/:id/ga4-daily` synthetic imported-revenue write while preserving native `ga4_daily_metrics` backfill.
 - [x] Commit 3 `5b5f147d` - aligned `/api/campaigns/:id/outcome-totals.performanceSummary` GA4 financial inputs with GA4 Overview to-date native GA4 totals while preserving the top-level date-range GA4 response.
 - [x] Commit 4 `690b3962` - cleaned up the three proven orphan `ga4_daily_metrics` synthetic revenue records with an exact-ID guarded migration.
+- [x] Commit 5 `3c7d7955` - fixed the real-property GA4 campaign picker so it checks GA4 manual UTM campaign dimensions when generic GA4 campaign dimensions return only placeholders such as `(direct)`.
+- [x] Commit 6 `c2ffc62e` - fixed the real-property GA4 campaign picker fallback so it extracts `utm_campaign` from GA4 `pageLocation` rows when GA4 attribution dimensions have not populated yet.
+- [x] Commit 7 - fixed the live real-property GA4 Overview zero-metrics path by reusing the selected UTM campaign scope from `pageLocation` when GA4 campaign attribution dimensions and complete-day rows are empty.
 
 Validation completed for each fix:
 
 - focused GA4/report regression subset passed after each commit
 - `npm run check` passed after each commit
+- focused GA4 campaign-picker and UTM-scope regressions passed for Commits 5, 6, and 7
 
 Not locally verified:
 
@@ -79,6 +83,33 @@ Root cause:
 - legacy migration `migrations/0006_add_daily_spend_revenue_granularity.sql` backfilled GA4 native daily revenue into imported `revenue_records` with the synthetic source ID `ga4_daily_metrics`
 - the now-fixed `/api/campaigns/:id/ga4-daily` on-demand backfill path also had the same synthetic imported-revenue write pattern before Commit 2
 - imported revenue readers require a real active `revenue_sources` row, so rows with `revenue_source_id = 'ga4_daily_metrics'` have no valid imported-revenue provenance
+
+Production/live validation result for Commits 5 and 6:
+
+- validation date: 2026-06-18
+- live GA4 property: `542225351` (`MM-test-data`)
+- connected app campaign: `GA4-1`
+- selected GA4 campaign value: `summer_sale`
+- result: the live GA4 campaign creation path can proceed past property selection and show/select the discovered UTM campaign value
+- root cause: the setup picker was treating GA4 generic campaign dimensions as the only campaign discovery source even though the product asks for UTM campaign values; live Measurement Protocol / fresh tagged traffic can expose the campaign in manual UTM dimensions or URL query parameters before GA4 campaign attribution dimensions populate
+- implementation: preserve the existing `/api/campaigns/:id/ga4-campaign-values` response shape while adding fallback discovery from `sessionManualCampaignName`, `firstUserManualCampaignName`, `manualCampaignName`, and finally `pageLocation` `utm_campaign`
+- validation: `npm test -- server/ga4-filter.test.ts`, `npm test -- server/ga4-ui-regression.test.ts server/ga4-filter.test.ts`, and `npm run check` passed during the fix sequence
+
+Production/live root-cause proof for Commit 7:
+
+- validation date: 2026-06-18
+- live GA4 property: `542225351` (`MM-test-data`)
+- connected app campaign: `GA4-1`
+- selected GA4 campaign value: `summer_sale`
+- proven live GA4 rows:
+  - unfiltered 90-day property totals returned sessions `182`, users `182`, conversions `5`, event count `331`, revenue `977.822724`
+  - `sessionCampaignName = summer_sale` returned 0 rows
+  - `sessionManualCampaignName = summer_sale` returned 0 rows
+  - `pageLocation` containing `utm_campaign=summer_sale` returned sessions `85`, users `85`, conversions `3`, event count `108`, revenue `531.349929`
+  - the same `pageLocation` filter returned 0 rows through yesterday and rows only when `today` was included
+- root cause: the Overview metrics/table paths were still scoped through GA4 campaign attribution dimensions and, for to-date/breakdown paths, complete-day windows ending yesterday; live Measurement Protocol test data was visible in today's `pageLocation` UTM rows, not in GA4 campaign attribution dimensions
+- implementation: keep the existing campaign-dimension and complete-day queries as the primary path, then fall back to `pageLocation` `utm_campaign` scope and a today-inclusive window only when the primary scoped result is empty
+- validation: `npm test -- server/ga4-filter.test.ts`, `npm test -- server/ga4-ui-regression.test.ts server/ga4-filter.test.ts`, and `npm run check` passed
 
 ## Current Fix Plan
 

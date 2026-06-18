@@ -96,6 +96,42 @@ export class GoogleAnalytics4Service {
     };
   }
 
+  private buildUtmCampaignPageLocationFilter(filter: CampaignFilter) {
+    const values = this.normalizeCampaignFilter(filter);
+    if (values.length === 0) return null;
+
+    const expressions = values.flatMap((value) => {
+      const encoded = encodeURIComponent(value);
+      const plusEncoded = encoded.replace(/%20/g, '+');
+      return Array.from(new Set([value, encoded, plusEncoded])).map((v) => ({
+        filter: {
+          fieldName: 'pageLocation',
+          stringFilter: {
+            matchType: 'CONTAINS',
+            value: `utm_campaign=${v}`,
+            caseSensitive: false,
+          }
+        }
+      }));
+    });
+
+    if (expressions.length === 1) {
+      return { dimensionFilter: expressions[0] };
+    }
+    return { dimensionFilter: { orGroup: { expressions } } };
+  }
+
+  private extractUrlSearchParam(value: string, param: string) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    try {
+      const url = raw.startsWith('/') ? new URL(raw, 'https://example.invalid') : new URL(raw);
+      return String(url.searchParams.get(param) || '').trim();
+    } catch {
+      return '';
+    }
+  }
+
   async getLandingPagesReport(
     campaignId: string,
     storage: any,
@@ -120,16 +156,17 @@ export class GoogleAnalytics4Service {
 
     const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
+    const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
     const dims = [{ name: 'landingPagePlusQueryString' }, { name: 'sessionSource' }, { name: 'sessionMedium' }];
 
-    const run = async (accessToken: string, revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+    const run = async (accessToken: string, revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any = campaignDimensionFilter) => {
       const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           dateRanges: [{ startDate: dateRange, endDate: 'today' }],
           dimensions: dims,
-          ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
+          ...(scopeFilter ? scopeFilter : {}),
           metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }, { name: revenueMetric }],
           orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
           limit: Math.min(Math.max(limit, 1), 10000),
@@ -183,19 +220,29 @@ export class GoogleAnalytics4Service {
       return t.includes('"code": 401') || t.includes('unauthenticated') || t.includes('invalid authentication credentials') || t.includes('invalid_grant');
     };
 
-    const tryFetch = async (accessToken: string) => {
+    const fetchRows = async (accessToken: string, scopeFilter: any) => {
       try {
-        const json = await run(accessToken, 'totalRevenue');
+        const json = await run(accessToken, 'totalRevenue', scopeFilter);
         return parseRows(json, 'totalRevenue');
       } catch (e: any) {
         const msg = String(e?.message || e || '');
         // Some properties don't allow totalRevenue; try purchaseRevenue.
         if (msg.toLowerCase().includes('totalrevenue') || msg.toLowerCase().includes('metric') || msg.toLowerCase().includes('invalid')) {
-          const json2 = await run(accessToken, 'purchaseRevenue');
+          const json2 = await run(accessToken, 'purchaseRevenue', scopeFilter);
           return parseRows(json2, 'purchaseRevenue');
         }
         throw e;
       }
+    };
+    const isEmptyResult = (res: any) =>
+      !Array.isArray(res?.rows) || res.rows.length === 0 ||
+      ((Number(res?.totals?.sessions || 0) + Number(res?.totals?.users || 0) + Number(res?.totals?.conversions || 0) + Number(res?.totals?.revenue || 0)) <= 0);
+
+    const tryFetch = async (accessToken: string) => {
+      const res = await fetchRows(accessToken, campaignDimensionFilter);
+      if (!isEmptyResult(res) || !pageLocationCampaignFilter) return res;
+      const utmRes = await fetchRows(accessToken, pageLocationCampaignFilter).catch(() => null);
+      return utmRes && !isEmptyResult(utmRes) ? utmRes : res;
     };
 
     try {
@@ -244,15 +291,16 @@ export class GoogleAnalytics4Service {
 
     const normalizedPropertyId = this.normalizeGA4PropertyId(connection.propertyId);
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
+    const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
 
-    const run = async (accessToken: string, revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+    const run = async (accessToken: string, revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any = campaignDimensionFilter) => {
       const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           dateRanges: [{ startDate: dateRange, endDate: 'today' }],
           dimensions: [{ name: 'eventName' }],
-          ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
+          ...(scopeFilter ? scopeFilter : {}),
           metrics: [{ name: 'conversions' }, { name: 'eventCount' }, { name: 'totalUsers' }, { name: revenueMetric }],
           orderBys: [{ metric: { metricName: 'conversions' }, desc: true }],
           limit: Math.min(Math.max(limit, 1), 10000),
@@ -298,18 +346,28 @@ export class GoogleAnalytics4Service {
       return t.includes('"code": 401') || t.includes('unauthenticated') || t.includes('invalid authentication credentials') || t.includes('invalid_grant');
     };
 
-    const tryFetch = async (accessToken: string) => {
+    const fetchRows = async (accessToken: string, scopeFilter: any) => {
       try {
-        const json = await run(accessToken, 'totalRevenue');
+        const json = await run(accessToken, 'totalRevenue', scopeFilter);
         return parseRows(json, 'totalRevenue');
       } catch (e: any) {
         const msg = String(e?.message || e || '');
         if (msg.toLowerCase().includes('totalrevenue') || msg.toLowerCase().includes('metric') || msg.toLowerCase().includes('invalid')) {
-          const json2 = await run(accessToken, 'purchaseRevenue');
+          const json2 = await run(accessToken, 'purchaseRevenue', scopeFilter);
           return parseRows(json2, 'purchaseRevenue');
         }
         throw e;
       }
+    };
+    const isEmptyResult = (res: any) =>
+      !Array.isArray(res?.rows) || res.rows.length === 0 ||
+      ((Number(res?.totals?.conversions || 0) + Number(res?.totals?.eventCount || 0) + Number(res?.totals?.users || 0) + Number(res?.totals?.revenue || 0)) <= 0);
+
+    const tryFetch = async (accessToken: string) => {
+      const res = await fetchRows(accessToken, campaignDimensionFilter);
+      if (!isEmptyResult(res) || !pageLocationCampaignFilter) return res;
+      const utmRes = await fetchRows(accessToken, pageLocationCampaignFilter).catch(() => null);
+      return utmRes && !isEmptyResult(utmRes) ? utmRes : res;
     };
 
     try {
@@ -690,8 +748,9 @@ export class GoogleAnalytics4Service {
   ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; totals: { sessions: number; users: number; conversions: number; pageviews: number; revenue: number } }> {
     const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
+    const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
 
-    const run = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+    const run = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any = campaignDimensionFilter, endDateOverride: string = endDate) => {
       const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
@@ -699,8 +758,8 @@ export class GoogleAnalytics4Service {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          dateRanges: [{ startDate, endDate }],
-          ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
+          dateRanges: [{ startDate, endDate: endDateOverride }],
+          ...(scopeFilter ? scopeFilter : {}),
           metrics: [
             { name: 'sessions' },
             { name: 'totalUsers' },
@@ -725,14 +784,30 @@ export class GoogleAnalytics4Service {
       return { revenueMetric, totals: { sessions, users, conversions, pageviews, revenue: Number(revenue.toFixed(2)) } };
     };
 
-    try {
-      return await run('totalRevenue');
-    } catch (e: any) {
-      const msg = String(e?.message || '').toLowerCase();
-      // Some properties don't allow totalRevenue; try purchaseRevenue.
-      if (msg.includes('totalrevenue') || msg.includes('metric') || msg.includes('invalid')) {
-        return await run('purchaseRevenue');
+    const runWithRevenueFallback = async (scopeFilter: any, endDateOverride: string = endDate) => {
+      try {
+        return await run('totalRevenue', scopeFilter, endDateOverride);
+      } catch (e: any) {
+        const msg = String(e?.message || '').toLowerCase();
+        // Some properties don't allow totalRevenue; try purchaseRevenue.
+        if (msg.includes('totalrevenue') || msg.includes('metric') || msg.includes('invalid')) {
+          return await run('purchaseRevenue', scopeFilter, endDateOverride);
+        }
+        throw e;
       }
+    };
+
+    const isEmptyTotals = (result: Awaited<ReturnType<typeof run>>) => {
+      const totals = result?.totals || {};
+      return (Number(totals.sessions || 0) + Number(totals.users || 0) + Number(totals.conversions || 0) + Number(totals.pageviews || 0) + Number(totals.revenue || 0)) <= 0;
+    };
+
+    try {
+      const result = await runWithRevenueFallback(campaignDimensionFilter);
+      if (!isEmptyTotals(result) || !pageLocationCampaignFilter) return result;
+      const utmResult = await runWithRevenueFallback(pageLocationCampaignFilter, 'today').catch(() => null);
+      return utmResult && !isEmptyTotals(utmResult) ? utmResult : result;
+    } catch (e: any) {
       throw e;
     }
   }
@@ -805,7 +880,9 @@ export class GoogleAnalytics4Service {
     const fetchReport = async (
       metricName: 'totalRevenue' | 'purchaseRevenue',
       dimensions: Array<{ name: string }>,
-      preferredCampaignDim?: 'sessionCampaignName' | 'campaignName' | 'firstUserCampaignName'
+      preferredCampaignDim?: 'sessionCampaignName' | 'campaignName' | 'firstUserCampaignName',
+      scopeFilter?: any,
+      endDateOverride: string = 'yesterday'
     ) => {
       const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
@@ -814,9 +891,9 @@ export class GoogleAnalytics4Service {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          dateRanges: [{ startDate: dateRange, endDate: 'yesterday' }],
+          dateRanges: [{ startDate: dateRange, endDate: endDateOverride }],
           dimensions,
-          ...((this.buildCampaignDimensionFilter(campaignFilter, preferredCampaignDim || 'sessionCampaignName')) || {}),
+          ...(scopeFilter || this.buildCampaignDimensionFilter(campaignFilter, preferredCampaignDim || 'sessionCampaignName') || {}),
           metrics: [
             { name: 'sessions' },
             // Use totalUsers as a compatible "base" metric for acquisition dimensions.
@@ -855,9 +932,9 @@ export class GoogleAnalytics4Service {
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  dateRanges: [{ startDate: dateRange, endDate: 'yesterday' }],
+                  dateRanges: [{ startDate: dateRange, endDate: endDateOverride }],
                   dimensions,
-                  ...((this.buildCampaignDimensionFilter(campaignFilter, preferredCampaignDim || 'sessionCampaignName')) || {}),
+                  ...(scopeFilter || this.buildCampaignDimensionFilter(campaignFilter, preferredCampaignDim || 'sessionCampaignName') || {}),
                   metrics: [
                     { name: 'sessions' },
                     { name: 'totalUsers' },
@@ -964,6 +1041,11 @@ export class GoogleAnalytics4Service {
       { name: 'firstUserSource' },
       { name: 'firstUserMedium' },
     ];
+    const pageLocationCore = [
+      { name: 'date' },
+      { name: 'pageLocation' },
+    ];
+    const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
 
     const chooseCampaignFilterDim = (dims: Array<{ name: string }>) => {
       const names = dims.map((d) => String(d?.name || ''));
@@ -972,15 +1054,15 @@ export class GoogleAnalytics4Service {
       return 'campaignName' as const;
     };
 
-    const fetchWithRevenueFallback = async (dimensions: Array<{ name: string }>) => {
+    const fetchWithRevenueFallback = async (dimensions: Array<{ name: string }>, scopeFilter?: any, endDateOverride: string = 'yesterday') => {
       const preferredCampaignDim = chooseCampaignFilterDim(dimensions);
       try {
-        return { data: await fetchReport('totalRevenue', dimensions, preferredCampaignDim), revenueMetric: 'totalRevenue' as const };
+        return { data: await fetchReport('totalRevenue', dimensions, preferredCampaignDim, scopeFilter, endDateOverride), revenueMetric: 'totalRevenue' as const };
       } catch (e: any) {
         const msg = String(e?.message || '');
         // Some properties may not support totalRevenue; retry with purchaseRevenue.
         if (msg.toLowerCase().includes('totalrevenue')) {
-          return { data: await fetchReport('purchaseRevenue', dimensions, preferredCampaignDim), revenueMetric: 'purchaseRevenue' as const };
+          return { data: await fetchReport('purchaseRevenue', dimensions, preferredCampaignDim, scopeFilter, endDateOverride), revenueMetric: 'purchaseRevenue' as const };
         }
         throw e;
       }
@@ -1072,6 +1154,23 @@ export class GoogleAnalytics4Service {
       throw lastError;
     }
 
+    if (pageLocationCampaignFilter) {
+      const currentRows = Array.isArray(data?.rows) ? data.rows : [];
+      if (currentRows.length === 0) {
+        try {
+          const result = await fetchWithRevenueFallback(pageLocationCore, pageLocationCampaignFilter, 'today');
+          const rowsArr = Array.isArray(result.data?.rows) ? result.data.rows : [];
+          if (rowsArr.length > 0) {
+            data = result.data;
+            chosenDims = pageLocationCore;
+            chosenRevenueMetric = result.revenueMetric;
+          }
+        } catch {
+          // Keep the original empty result if the URL fallback is not compatible for this property.
+        }
+      }
+    }
+
     const rows: any[] = [];
     let totalSessionsRaw = 0;
     let totalUsers = 0;
@@ -1092,18 +1191,20 @@ export class GoogleAnalytics4Service {
     const idxCampaign = indexOfAny(chosenDimNames, ['sessionCampaignName', 'campaignName', 'firstUserCampaignName']);
     const idxDevice = indexOfAny(chosenDimNames, ['deviceCategory']);
     const idxCountry = indexOfAny(chosenDimNames, ['country']);
+    const idxPageLocation = indexOfAny(chosenDimNames, ['pageLocation']);
 
     for (const row of Array.isArray(data?.rows) ? data.rows : []) {
       const dims = Array.isArray(row?.dimensionValues) ? row.dimensionValues : [];
       const mets = Array.isArray(row?.metricValues) ? row.metricValues : [];
       const sessionsRaw = Number.parseInt(mets[0]?.value || '0', 10) || 0;
+      const pageLocation = getDim(dims, idxPageLocation);
 
       const d = {
         date: fmtDate(getDim(dims, idxDate)),
         channel: getDim(dims, idxChannel),
-        source: getDim(dims, idxSource),
-        medium: getDim(dims, idxMedium),
-        campaign: getDim(dims, idxCampaign),
+        source: getDim(dims, idxSource) || this.extractUrlSearchParam(pageLocation, 'utm_source'),
+        medium: getDim(dims, idxMedium) || this.extractUrlSearchParam(pageLocation, 'utm_medium'),
+        campaign: getDim(dims, idxCampaign) || this.extractUrlSearchParam(pageLocation, 'utm_campaign'),
         device: getDim(dims, idxDevice),
         country: getDim(dims, idxCountry),
         sessions: sessionsRaw,
@@ -1832,41 +1933,53 @@ export class GoogleAnalytics4Service {
 
       // Then get historical data for context
       const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
-      const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          dateRanges: [
-            {
-              startDate: dateRange, // Use the requested date range
-              endDate: 'today', // Include today for most current data
-            },
-          ],
-          ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
-          metrics: [
-            { name: 'sessions' },
-            { name: 'screenPageViews' },
-            { name: 'bounceRate' },
-            { name: 'averageSessionDuration' },
-            { name: 'conversions' },
-            { name: 'totalUsers' },
-            { name: 'newUsers' },
-            { name: 'engagedSessions' },
-            { name: 'engagementRate' },
-            { name: 'eventCount' }
-          ],
-        }),
-      });
+      const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
+      const runHistorical = async (scopeFilter: any) => fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            dateRanges: [
+              {
+                startDate: dateRange, // Use the requested date range
+                endDate: 'today', // Include today for most current data
+              },
+            ],
+            ...(scopeFilter ? scopeFilter : {}),
+            metrics: [
+              { name: 'sessions' },
+              { name: 'screenPageViews' },
+              { name: 'bounceRate' },
+              { name: 'averageSessionDuration' },
+              { name: 'conversions' },
+              { name: 'totalUsers' },
+              { name: 'newUsers' },
+              { name: 'engagedSessions' },
+              { name: 'engagementRate' },
+              { name: 'eventCount' }
+            ],
+          }),
+        });
+      let response = await runHistorical(campaignDimensionFilter);
 
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`GA4 API Error: ${errorText}`);
       }
 
-      const data = await response.json();
+      let data = await response.json();
+      const hasHistoricalMetricData = (json: any) => Array.isArray(json?.rows) && json.rows.some((row: any) =>
+        (Array.isArray(row?.metricValues) ? row.metricValues : []).some((metric: any) => Number(metric?.value || 0) > 0)
+      );
+      if (!hasHistoricalMetricData(data) && pageLocationCampaignFilter) {
+        const utmResponse = await runHistorical(pageLocationCampaignFilter).catch(() => null);
+        if (utmResponse?.ok) {
+          const utmData = await utmResponse.json().catch(() => null);
+          if (hasHistoricalMetricData(utmData)) data = utmData;
+        }
+      }
       
       console.log('GA4 API Response for property', normalizedPropertyId, ':', {
         totalRows: data.rows?.length || 0,

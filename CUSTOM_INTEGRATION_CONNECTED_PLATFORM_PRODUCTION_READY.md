@@ -81,7 +81,8 @@ Primary root causes addressed by this tracker:
 - Custom Integration financial-source context and Overview financial cards were added and validated in Commits 13 and 14.
 - Revenue/spend source edit-delete lifecycle, financial section placement, imported report financial totals, and imported-source provenance were validated in Commit 15.
 - Pipeline Proxy setup, Custom-Integration-scoped CRM query behavior, read-only source dialog display, and separation from confirmed financial totals were validated in Commit 16.
-- Remaining production evidence risk: financial metric use in KPIs/Benchmarks/Reports, scheduled reports if exposed, SendGrid inbound if that provider is used, and production-data audit still need proof.
+- Downstream financial metric use in KPIs, Benchmarks, Reports, scheduled report output, and source dialogs was validated in Commits 17 and 18.
+- Remaining external boundary: SendGrid inbound is code-supported but not separately user-validated because the active deployed forwarding path is Mailgun; production database historical-row audit also requires direct production DB access.
 
 Business impact:
 
@@ -89,7 +90,7 @@ Business impact:
 - Missing imported metrics are presented as unavailable instead of real `0` values.
 - Saved KPI/Benchmark/Report values are tied to saved Custom Integration source scope.
 - Overview financial cards now aggregate source-backed imported report `Revenue`/`Spend` values plus added Custom-Integration-scoped financial sources, with source dialogs separating read-only imported rows from editable added source rows.
-- The remaining business-readiness work is financial metric use in KPIs/Benchmarks/Reports, scheduled reports if exposed, and production-data audit.
+- Custom Integration is production-ready for the validated manual upload plus Mailgun inbound workflow. Optional SendGrid inbound and historical production-data cleanup remain external validation boundaries.
 
 ## Current Code/Path Inventory
 
@@ -156,35 +157,44 @@ Existing docs/tests:
 
 ## Evidence Status
 
-Proven from local code review:
+Proven from local code review and regression coverage:
 
-- Custom Integration has a campaign-scoped connection table.
-- Custom Integration has a metric table with imported metrics and provenance fields.
-- The campaign route to Custom Integration analytics exists.
-- Generic platform KPI, Benchmark, and Report routes are campaign-access guarded.
-- Latest Custom Integration metrics are used in scheduler and campaign aggregate paths through the shared aggregate contract.
-- Commit 10 proves campaign aggregates, Campaign DeepDive consumers, and scheduler snapshots only advertise Custom Integration metrics when the imported field exists.
-- Commit 11 proves saved Custom Integration KPI, Benchmark, and Report rows fail closed when saved source scope is missing or disconnected.
-- Commit 12 plus deferred follow-up validation proves the email-forwarding setup UI displays the generated forwarding address with a copy action after setup.
-- User validation proves active Mailgun PDF forwarding updates Custom Integration metrics through the deployed inbound path.
-- Create Campaign now keeps pre-final Custom Integration setup labeled as ready/selected instead of connected, Confirm Back returns to the previous Custom Integration setup screen, and Custom Integration step 3 is labeled `Connect`.
-- Commit 16 proves Custom Integration Pipeline Proxy uses Custom-Integration-scoped CRM source context, renders a read-only source dialog, and stays separate from confirmed financial totals.
+- Custom Integration has campaign-scoped connection and metric tables with imported metric provenance.
+- The campaign analytics route exists and follows the Google Sheets tab order: Overview, Summary, KPIs, Benchmarks, Insights, Reports.
+- Create Campaign uses a real draft campaign, keeps Custom Integration setup as `Ready` before final activation, and cleans up unfinished drafts.
+- Manual upload, token webhook, token email inbound, Mailgun inbound, SendGrid inbound, transfer, and disconnect routes are present; UI read/write routes are campaign-access guarded.
+- Manual upload, webhook upload, Mailgun inbound, and SendGrid inbound use the same PDF/CSV/XLSX parser contract and normalized metric storage path.
+- CSV and XLSX parser fixture tests cover metric/value tables, report-style metadata, headerless CSV lines, multi-row summed count fields, rate-safety warnings, and XLSX tables.
+- Missing imported metrics remain unavailable with reasons instead of silently becoming `0`.
+- Overview financial cards aggregate imported report `Revenue`/`Spend` plus added `platformContext=custom_integration` financial sources; ROAS and ROI derive from those visible totals.
+- Revenue and spend source dialogs show read-only imported rows, editable/deletable added rows, and scoped delete calls using `platformContext=custom_integration`.
+- Pipeline Proxy uses Custom-Integration-scoped HubSpot/Salesforce context, remains read-only in its source dialog, and stays separate from confirmed revenue/spend/ROI/ROAS.
+- KPI and Benchmark create/edit/card/report paths use saved Custom Integration source scope and re-resolve current values from the active source.
+- Report create/edit/delete/download paths follow the GA4 card/modal pattern, save Custom Integration source scope, and disable unchanged edit updates.
+- Scheduled Custom Integration reports are included in scheduler selection, use source-backed PDF generation, deduplicate by report ID, fail closed when source scope is missing, and only snapshot successful sends.
+- Campaign aggregate and Campaign DeepDive participation is field-gated through the shared aggregate contract.
+- Disconnect deletes imported Custom Integration metrics with the connection; transfer is campaign-access guarded and avoids copying stale temp setup metrics.
 
-Partially reviewed:
+User-validated deployed behavior:
 
-- Report upload, webhook upload, email inbound, and transfer flows exist; local regression covers route ownership, and active Mailgun PDF forwarding has deployed user validation.
-- Email-forwarding setup creates the Custom Integration row and generated forwarding email, the UI displays the address after setup, only the clicked Custom Integration setup action shows a spinner, and active Mailgun inbound delivery has been user-validated.
-- KPI create/edit/delete paths now use source-backed current values after Commit 6. Benchmark create/edit/delete paths now use source-backed current values after Commit 7. Report create/edit/delete paths now use source-backed values and scheduler-safe payloads after Commit 9.
-- Campaign aggregate paths include Custom Integration with normalized source availability and unavailable reasons after Commit 10.
+- Commit 3 parser/import work passed validation.
+- Commit 4 layout passed validation.
+- Commit 5 Overview/Summary passed validation.
+- Commit 6 KPIs passed validation.
+- Commit 7 Benchmarks passed validation.
+- Commit 8 Insights passed validation.
+- Commit 9 Reports passed validation.
+- Commit 10 campaign aggregate participation passed validation.
+- Commit 11 saved-source fail-closed behavior passed validation.
+- Commit 12 email-forwarding usability and active Mailgun PDF forwarding passed validation.
+- Commit 13-18 financial-source, Pipeline Proxy, downstream financial consumers, and source lifecycle work passed validation.
 
-Unverified:
+Not locally verifiable from code alone:
 
-- Full production-readiness browser regression for the complete Custom Integration page.
-- Deployed disconnect/reconnect browser validation.
-- End-to-end Mailgun/SendGrid scheduled delivery evidence for Custom Integration in the deployed environment.
-- Whether all import paths write identical normalized metric shapes and provenance.
-- SendGrid inbound delivery for generated forwarding emails, if SendGrid is used instead of the validated Mailgun route.
-- Production database audit for legacy Custom Integration imported metrics or damaged saved rows.
+- SendGrid inbound delivery for generated forwarding emails if production switches from the validated Mailgun receiving path to SendGrid.
+- Actual provider inbox delivery for scheduled report emails unless the deployed email provider confirms delivery or the recipient verifies receipt.
+- Production database historical audit for old Custom Integration rows or damaged saved KPI/Benchmark/Report records created before these fixes.
+- Third-party CRM Pipeline Proxy values beyond route/scoping correctness, because live HubSpot/Salesforce data depends on connected external accounts.
 
 ## Production-Ready Target Contract
 
@@ -874,9 +884,46 @@ Validation evidence:
 - Local source trace confirms Total Revenue and Total Spend still aggregate imported report values plus scoped added sources, with ROAS/ROI derived from those totals.
 - Local source trace confirms Pipeline Proxy remains read-only and separate from Total Revenue, Total Spend, ROAS, ROI, KPIs, Benchmarks, Reports, and aggregate financial totals.
 
+## Final Production-Readiness Audit
+
+Audit date: 2026-06-18.
+
+Audit decision:
+
+- Custom Integration is production-ready for the validated connected-platform workflow: create/connect, manual report upload, Mailgun automatic imports, PDF/CSV/XLSX parsing, Overview, Summary, KPIs, Benchmarks, Insights, Reports, scheduled source-backed PDF generation, campaign aggregates, financial sources, Pipeline Proxy, transfer, and disconnect.
+- No runtime code change was required by this final audit. The only correction was documentation accuracy: older tracker text still listed risks that were resolved by Commits 17 and 18.
+
+Root cause of remaining confusion:
+
+- Custom Integration started as an import/parser feature, then was progressively aligned to the Google Sheets connected-platform layout. The runtime implementation now follows that pattern, but the tracker still mixed pre-Commit-17 risk language with post-validation status.
+
+Paths traced in this audit:
+
+- Create Campaign: `client/src/pages/campaigns.tsx` creates a draft campaign, Custom Integration setup marks the source `Ready`, final activation promotes the draft, and unfinished drafts are cleaned up.
+- Connection and metrics: `server/routes-oauth.ts` exposes campaign-guarded Custom Integration read/upload/connect/delete paths and token/provider inbound paths.
+- Parser: `server/services/custom-integration-file-parser.ts` routes PDF, CSV, and XLSX through one normalized parser contract; `server/pdf-parser-regression.test.ts` covers supported file shapes and missing-field behavior.
+- Storage: `server/storage.ts` keeps Custom Integration connections, metrics, and platform reports campaign-scoped; disconnect deletes imported metric rows.
+- Analytics UI: `client/src/pages/custom-integration-analytics.tsx` resolves visible metrics, KPIs, Benchmarks, Insights, Reports, and financial cards from source-backed values and unavailable reasons.
+- Scheduler/report output: `server/report-scheduler.ts` includes Custom Integration, requires saved source scope, resolves financial totals from imported plus scoped external sources, and fails closed when source-backed output is unavailable.
+- Campaign aggregates: `server/scheduler.ts` and route-level aggregate code gate Custom Integration participation by imported field availability.
+
+Remaining external boundaries:
+
+- Active inbound automation is production-validated for Mailgun. SendGrid inbound remains code-supported but unverified unless SendGrid becomes the active receiving provider.
+- Production database historical cleanup cannot be proven from local code. If legacy damaged rows exist, run a separate production DB audit before claiming historical data is clean.
+- CRM Pipeline Proxy values depend on live HubSpot/Salesforce account data; this audit proves scoping and separation, not external CRM data completeness.
+
+## Remaining External Boundaries
+
+These are not blockers for the validated Mailgun-based Custom Integration production path, but they must remain documented:
+
+- SendGrid inbound is code-supported but not user-validated because Mailgun is the active validated path.
+- Production DB historical cleanup cannot be proven locally.
+- CRM Pipeline Proxy data depends on live HubSpot/Salesforce accounts.
+
 ## Validation Matrix
 
-Before Custom Integration can be called production-ready, validate:
+Production-readiness validation coverage:
 
 - Create/connect Custom Integration from campaign setup and campaign detail.
 - Import metrics by manual report upload.
@@ -915,3 +962,5 @@ Custom Integration is production-ready when:
 - KPIs, Benchmarks, Reports, Insights, scheduler snapshots, and campaign aggregates use the same adapter-resolved values.
 - All add, edit, delete, import, transfer, disconnect, scheduler, and report lifecycle paths have been traced and validated.
 - Existing damaged/stale records are either safely resolved from exact source data or fail closed as unavailable.
+
+Final audit result: criteria are met for the validated manual upload plus Mailgun inbound workflow. SendGrid inbound and production historical-row cleanup remain external validation boundaries, not blockers for the active Mailgun production path.

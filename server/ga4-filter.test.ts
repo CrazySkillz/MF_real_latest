@@ -34,7 +34,7 @@ describe("GA4 campaign filter builder", () => {
 });
 
 describe("GA4 campaign value picker", () => {
-  it("ignores direct traffic placeholders and falls back to real campaign dimensions", async () => {
+  it("ignores direct traffic placeholders and falls back to manual UTM campaign dimensions", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       const dimension = body?.dimensions?.[0]?.name;
@@ -42,9 +42,9 @@ describe("GA4 campaign value picker", () => {
         ? [
             { dimensionValues: [{ value: "(direct)" }], metricValues: [{ value: "2" }] },
           ]
-        : [
+        : dimension === "sessionManualCampaignName" ? [
             { dimensionValues: [{ value: "yesop_brand_search" }], metricValues: [{ value: "12" }] },
-          ];
+          ] : [];
 
       return {
         ok: true,

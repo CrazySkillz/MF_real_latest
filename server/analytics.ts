@@ -1170,7 +1170,24 @@ export class GoogleAnalytics4Service {
       return !normalized || ['(not set)', '(direct)', '(none)', '(not provided)', 'not set', 'direct', 'none', 'unassigned'].includes(normalized);
     };
 
-    const run = async (accessToken: string, dimensionName: 'campaignName' | 'sessionCampaignName' | 'firstUserCampaignName') => {
+    type CampaignDimensionName =
+      | 'campaignName'
+      | 'sessionCampaignName'
+      | 'firstUserCampaignName'
+      | 'sessionManualCampaignName'
+      | 'firstUserManualCampaignName'
+      | 'manualCampaignName';
+
+    const campaignDimensions: CampaignDimensionName[] = [
+      'sessionCampaignName',
+      'sessionManualCampaignName',
+      'campaignName',
+      'firstUserCampaignName',
+      'firstUserManualCampaignName',
+      'manualCampaignName',
+    ];
+
+    const run = async (accessToken: string, dimensionName: CampaignDimensionName) => {
       const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
         headers: {
@@ -1220,6 +1237,19 @@ export class GoogleAnalytics4Service {
     const isMostlyEmpty = (list: Array<{ name: string; users: number }>) =>
       !list?.length || list.every((c) => isCampaignPlaceholder(c?.name) || (c.users || 0) <= 0);
 
+    const collectCampaignValues = async (
+      accessToken: string,
+      errorHandler: (err: any) => Array<{ name: string; users: number }>
+    ) => {
+      const lists: Array<Array<{ name: string; users: number }>> = [];
+      for (const dimension of campaignDimensions) {
+        const campaigns = await run(accessToken, dimension).catch(errorHandler);
+        lists.push(campaigns);
+        if (!isMostlyEmpty(campaigns)) break;
+      }
+      return merge(lists);
+    };
+
     // Helper: catch non-auth errors only; let auth errors propagate for token refresh
     const catchNonAuth = (err: any) => {
       const msg = String(err?.message || '').toLowerCase();
@@ -1233,14 +1263,12 @@ export class GoogleAnalytics4Service {
     };
 
     try {
-      // Try multiple campaign dimensions and merge:
+      // Try multiple campaign dimensions:
       // - sessionCampaignName: most common expectation for "campaign" in acquisition reports
+      // - sessionManualCampaignName/manual variants: UTM campaign values from tagged traffic
       // - campaignName: legacy/general
       // - firstUserCampaignName: sometimes available earlier for new users
-      const a = await run(connection.accessToken, 'sessionCampaignName').catch(catchNonAuth);
-      const b = isMostlyEmpty(a) ? await run(connection.accessToken, 'campaignName').catch(catchNonAuth) : [];
-      const c = (isMostlyEmpty(a) && isMostlyEmpty(b)) ? await run(connection.accessToken, 'firstUserCampaignName').catch(catchNonAuth) : [];
-      const campaigns = merge([a, b, c]);
+      const campaigns = await collectCampaignValues(connection.accessToken, catchNonAuth);
       return { propertyId: normalizedPropertyId, campaigns };
     } catch (e: any) {
       const msg = String(e?.message || '');
@@ -1261,10 +1289,7 @@ export class GoogleAnalytics4Service {
           refreshToken: connection.refreshToken,
           expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
         });
-        const a = await run(refresh.access_token, 'sessionCampaignName').catch(() => []);
-        const b = isMostlyEmpty(a) ? await run(refresh.access_token, 'campaignName').catch(() => []) : [];
-        const c = (isMostlyEmpty(a) && isMostlyEmpty(b)) ? await run(refresh.access_token, 'firstUserCampaignName').catch(() => []) : [];
-        const campaigns = merge([a, b, c]);
+        const campaigns = await collectCampaignValues(refresh.access_token, () => []);
         return { propertyId: normalizedPropertyId, campaigns };
       }
       throw e;

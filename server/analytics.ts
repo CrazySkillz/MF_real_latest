@@ -1218,6 +1218,48 @@ export class GoogleAnalytics4Service {
       return campaigns;
     };
 
+    const extractUtmCampaign = (value: string) => {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      try {
+        const url = raw.startsWith('/') ? new URL(raw, 'https://example.invalid') : new URL(raw);
+        return String(url.searchParams.get('utm_campaign') || '').trim();
+      } catch {
+        return '';
+      }
+    };
+
+    const runPageLocationCampaigns = async (accessToken: string) => {
+      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+          dimensions: [{ name: 'pageLocation' }],
+          metrics: [{ name: 'totalUsers' }],
+          orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }],
+          limit: Math.min(Math.max(limit, 1), 200),
+        }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`GA4 API Error: ${txt}`);
+      }
+      const json = await resp.json().catch(() => ({} as any));
+      const rows: any[] = Array.isArray(json?.rows) ? json.rows : [];
+      const map = new Map<string, number>();
+      for (const r of rows) {
+        const name = extractUtmCampaign(String(r?.dimensionValues?.[0]?.value || ''));
+        const users = parseInt(String(r?.metricValues?.[0]?.value || '0'), 10) || 0;
+        if (isCampaignPlaceholder(name)) continue;
+        map.set(name, (map.get(name) || 0) + users);
+      }
+      return Array.from(map.entries()).map(([name, users]) => ({ name, users }));
+    };
+
     const merge = (lists: Array<Array<{ name: string; users: number }>>) => {
       const map = new Map<string, number>();
       for (const list of lists) {
@@ -1247,7 +1289,10 @@ export class GoogleAnalytics4Service {
         lists.push(campaigns);
         if (!isMostlyEmpty(campaigns)) break;
       }
-      return merge(lists);
+      const campaigns = merge(lists);
+      if (!isMostlyEmpty(campaigns)) return campaigns;
+      const pageLocationCampaigns = await runPageLocationCampaigns(accessToken).catch(errorHandler);
+      return merge([...lists, pageLocationCampaigns]);
     };
 
     // Helper: catch non-auth errors only; let auth errors propagate for token refresh
@@ -1268,6 +1313,7 @@ export class GoogleAnalytics4Service {
       // - sessionManualCampaignName/manual variants: UTM campaign values from tagged traffic
       // - campaignName: legacy/general
       // - firstUserCampaignName: sometimes available earlier for new users
+      // - pageLocation fallback: parse utm_campaign from landing URLs if attribution dims are not populated yet
       const campaigns = await collectCampaignValues(connection.accessToken, catchNonAuth);
       return { propertyId: normalizedPropertyId, campaigns };
     } catch (e: any) {

@@ -66,6 +66,41 @@ describe("GA4 campaign value picker", () => {
     expect(result.campaigns).toEqual([{ name: "yesop_brand_search", users: 12 }]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("falls back to utm_campaign values from page locations when GA4 attribution dimensions are empty", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const dimension = body?.dimensions?.[0]?.name;
+      const rows = dimension === "sessionCampaignName"
+        ? [
+            { dimensionValues: [{ value: "(direct)" }], metricValues: [{ value: "8" }] },
+          ]
+        : dimension === "pageLocation" ? [
+            { dimensionValues: [{ value: "https://mock.test/landing?utm_source=google&utm_medium=cpc&utm_campaign=yesop_brand_search" }], metricValues: [{ value: "3" }] },
+            { dimensionValues: [{ value: "https://mock.test/pricing?utm_campaign=yesop_brand_search" }], metricValues: [{ value: "2" }] },
+            { dimensionValues: [{ value: "https://mock.test/direct" }], metricValues: [{ value: "4" }] },
+          ] : [];
+
+      return {
+        ok: true,
+        json: async () => ({ rows }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const storage = {
+      getGA4Connection: vi.fn(async () => ({
+        id: "conn-1",
+        propertyId: "properties/123",
+        accessToken: "token",
+      })),
+    };
+
+    const result = await ga4Service.getCampaignValues("campaign-1", storage, "90daysAgo", "123", 200);
+
+    expect(result.campaigns).toEqual([{ name: "yesop_brand_search", users: 5 }]);
+    expect(fetchMock).toHaveBeenCalledTimes(7);
+  });
 });
 
 

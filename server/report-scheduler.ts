@@ -1990,6 +1990,14 @@ export async function checkScheduledReports(): Promise<void> {
       console.log('[Report Scheduler] No Google Sheets platform reports found');
     }
 
+    try {
+      const customIntegrationReports = await storage.getPlatformReports('custom-integration');
+      allReports = allReports.concat(customIntegrationReports);
+      console.log(`[Report Scheduler] Found ${customIntegrationReports.length} Custom Integration platform reports`);
+    } catch (error) {
+      console.log('[Report Scheduler] No Custom Integration platform reports found');
+    }
+
     if (allReports.length === 0) {
       console.log('[Report Scheduler] No reports found in either storage');
       return;

@@ -39,7 +39,7 @@ This status does not close the newer findings below. Later shared report/source 
 - [x] Commit 1 `eb50b64f` - refreshed stale source-backed report regression guards and fixed the confirmed scheduler discovery gap for `custom-integration` platform reports.
 - [x] Commit 2 `cedd01cb` - removed the orphan `/api/campaigns/:id/ga4-daily` synthetic imported-revenue write while preserving native `ga4_daily_metrics` backfill.
 - [x] Commit 3 `5b5f147d` - aligned `/api/campaigns/:id/outcome-totals.performanceSummary` GA4 financial inputs with GA4 Overview to-date native GA4 totals while preserving the top-level date-range GA4 response.
-- [ ] Commit 4 - clean up the three proven orphan `ga4_daily_metrics` synthetic revenue records with an exact-ID guarded migration.
+- [x] Commit 4 `690b3962` - cleaned up the three proven orphan `ga4_daily_metrics` synthetic revenue records with an exact-ID guarded migration.
 
 Validation completed for each fix:
 
@@ -62,6 +62,9 @@ Production/staging inventory result for Commit 4:
   - `5cc4657b-f4df-4709-8d10-5d9b7639633c` for `2025-11-10`, revenue `116.57`; matches a native `ga4_daily_metrics` row and should remain native GA4 fact data only
   - `ec2552dc-cbcf-4d3b-b987-c61aa691bf82` for `2026-01-02`, revenue `9999999999.99`; no matching native `ga4_daily_metrics` row was found
   - `6b6111cc-4d53-4e88-a41e-5386acbabe7a` for `2026-01-03`, revenue `9999999999.99`; no matching native `ga4_daily_metrics` row was found
+- cleanup applied: `migrations/0009_delete_ga4_daily_metrics_orphan_revenue_records.sql`
+- cleanup result: 3 rows deleted
+- read-only verification after cleanup: 0 remaining `revenue_records` rows with `revenue_source_id = 'ga4_daily_metrics'`
 
 Root cause:
 
@@ -187,12 +190,11 @@ Validation:
 
 ## Next Step
 
-Before new GA4 production-readiness fixes, perform the two remaining evidence-gathering steps that cannot be proven from local code alone:
+Before new GA4 production-readiness fixes, perform the remaining evidence-gathering step that cannot be proven from local code alone:
 
-1. Run a read-only production/staging inventory for `revenue_records.revenue_source_id = 'ga4_daily_metrics'`.
-2. Run one real or production-like GA4 campaign parity check comparing GA4 Overview financial cards with `/api/campaigns/:id/outcome-totals.performanceSummary.totals`.
+1. Run one real or production-like GA4 campaign parity check comparing GA4 Overview financial cards with `/api/campaigns/:id/outcome-totals.performanceSummary.totals`.
 
-Only after those checks should a cleanup or parity follow-up commit be created.
+Only after that check should a parity follow-up commit be created.
 
 ## Current Unverified Areas
 

@@ -39,6 +39,7 @@ This status does not close the newer findings below. Later shared report/source 
 - [x] Commit 1 `eb50b64f` - refreshed stale source-backed report regression guards and fixed the confirmed scheduler discovery gap for `custom-integration` platform reports.
 - [x] Commit 2 `cedd01cb` - removed the orphan `/api/campaigns/:id/ga4-daily` synthetic imported-revenue write while preserving native `ga4_daily_metrics` backfill.
 - [x] Commit 3 `5b5f147d` - aligned `/api/campaigns/:id/outcome-totals.performanceSummary` GA4 financial inputs with GA4 Overview to-date native GA4 totals while preserving the top-level date-range GA4 response.
+- [ ] Commit 4 - clean up the three proven orphan `ga4_daily_metrics` synthetic revenue records with an exact-ID guarded migration.
 
 Validation completed for each fix:
 
@@ -47,9 +48,26 @@ Validation completed for each fix:
 
 Not locally verified:
 
-- production inventory for existing `revenue_records.revenue_source_id = 'ga4_daily_metrics'`
 - live GA4 numeric parity on a production or staging campaign after Commit 3
 - deployed scheduled email receipt/provider delivery evidence
+
+Production/staging inventory result for Commit 4:
+
+- read-only inventory date: 2026-06-18
+- query target: `revenue_records.revenue_source_id = 'ga4_daily_metrics'`
+- result: 3 orphan rows across 1 campaign
+- matching `revenue_sources.id = 'ga4_daily_metrics'`: 0
+- affected campaign: `247d8ebf-9554-45b9-8a50-482ec25da5a7` (`ga4_brand`)
+- affected row IDs:
+  - `5cc4657b-f4df-4709-8d10-5d9b7639633c` for `2025-11-10`, revenue `116.57`; matches a native `ga4_daily_metrics` row and should remain native GA4 fact data only
+  - `ec2552dc-cbcf-4d3b-b987-c61aa691bf82` for `2026-01-02`, revenue `9999999999.99`; no matching native `ga4_daily_metrics` row was found
+  - `6b6111cc-4d53-4e88-a41e-5386acbabe7a` for `2026-01-03`, revenue `9999999999.99`; no matching native `ga4_daily_metrics` row was found
+
+Root cause:
+
+- legacy migration `migrations/0006_add_daily_spend_revenue_granularity.sql` backfilled GA4 native daily revenue into imported `revenue_records` with the synthetic source ID `ga4_daily_metrics`
+- the now-fixed `/api/campaigns/:id/ga4-daily` on-demand backfill path also had the same synthetic imported-revenue write pattern before Commit 2
+- imported revenue readers require a real active `revenue_sources` row, so rows with `revenue_source_id = 'ga4_daily_metrics'` have no valid imported-revenue provenance
 
 ## Current Fix Plan
 

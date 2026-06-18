@@ -74,6 +74,7 @@ Important clarification:
 - imported `Total Revenue` is a to-date total and includes source-backed revenue records through the current UTC day; `Latest Day Revenue` remains previous-complete-day only
 - imported `Total Revenue`, `Revenue Breakdown`, and the `Revenue Sources` modal must use the same active source-backed revenue record window so the card total and source provenance cannot drift
 - native GA4 daily backfill rows belong in `ga4_daily_metrics`; they must not be mirrored into imported `revenue_records` with a synthetic source ID such as `ga4_daily_metrics`
+- if old synthetic `revenue_records` rows with `revenue_source_id = 'ga4_daily_metrics'` are found, cleanup must target only the proven orphan row IDs and must not delete active imported CRM, ecommerce, CSV, Google Sheets, manual, or other source-backed revenue rows
 - Budget & Financial Analysis pacing metadata, including campaign start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Revenue`, `Revenue Breakdown`, or the `Revenue Sources` modal. Those platform-level revenue values are source-backed and must include all active revenue-source records to date.
 - the `GA4 Revenue` source entry in the `Total Revenue` source modal should show that full aggregated GA4 amount, not a partial or single-day figure
 - for GA4 `Ad Comparison`, external revenue may be added into campaign rows only when the source saves real campaign-identifying values that match GA4 campaign rows exactly

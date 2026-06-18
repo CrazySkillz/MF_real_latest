@@ -13,6 +13,11 @@ The current GA4 `Reports` tab contains:
 - schedule metadata when scheduling is enabled
 - `Download`, `Edit`, and `Delete` actions
 
+Shared report infrastructure note:
+
+- source-backed report regression guards must track the current supported platform set, including `custom-integration`
+- scheduled report discovery must fetch each supported platform report family before filtering due reports, so a supported source-backed platform is not skipped by the scheduler scan
+
 ## Report Library Behavior
 
 The current list shows:
@@ -109,6 +114,7 @@ Important meaning:
 - custom reports store report configuration, not frozen analytics values
 - actual report values should come from refreshed GA4 tab inputs when the report is generated or sent
 - Campaign DeepDive Custom Report opens the Reports builder with campaign context and should read current campaign aggregate values from `/outcome-totals`
+- Campaign DeepDive report output should read current financial values from `/outcome-totals.performanceSummary`; for GA4, those current financial values should align with GA4 Overview to-date native revenue plus imported revenue/spend provenance
 - campaign-scoped Reports pages should show `Back to main Campaign Overview` and link to `/campaigns/<campaignId>`
 - campaign-scoped Reports pages should show only reports whose saved `campaignId` matches the active campaign across Standard Reports, Scheduled Reports, All Reports, report type filters, and result counts; campaign-scoped pages should not seed global/demo reports
 - for GA4-only Campaign DeepDive Custom Reports, selectable metrics should be limited to available GA4/web outcome metrics; paid-media metrics stay hidden until a connected main paid-media source supplies them

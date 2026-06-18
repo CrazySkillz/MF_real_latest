@@ -62,6 +62,7 @@ This scheduler now runs the GA4 daily refresh pipeline:
 Important meaning:
 
 - it keeps persisted GA4 daily facts current
+- GA4 native daily revenue remains native GA4 fact data in `ga4_daily_metrics`; this pipeline must not create synthetic imported `revenue_records` for `ga4_daily_metrics`
 - it is campaign-scoped and property-scoped
 - this is only one part of `Overview` freshness; `Overview` also depends on refreshed external revenue and spend source state where applicable
 - it does not replace the external value auto-refresh scheduler or the report delivery scheduler

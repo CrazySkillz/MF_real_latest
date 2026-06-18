@@ -48,6 +48,7 @@ Campaign DeepDive financial provenance rule:
 - detailed financial input rows must come from explicit GA4 financial provenance, not from the high-level `performanceSummary.sources` list
 - `/api/campaigns/:id/outcome-totals.financialInputs.revenue` should include native GA4 revenue plus active GA4-context revenue breakdown rows
 - `/api/campaigns/:id/outcome-totals.financialInputs.spend` should include active spend breakdown rows
+- current `/api/campaigns/:id/outcome-totals.performanceSummary` financial values should use the same GA4 native to-date revenue/conversion source as the GA4 Overview financial cards, while the top-level `/outcome-totals.ga4` response may still represent the requested date-range GA4 view
 - this keeps Campaign DeepDive aligned with the GA4 `Total Revenue -> Sources` and `Total Spend -> Sources` modal provenance while still avoiding duplicate setup or showing child inputs as main Connected Platforms
 - imported spend labels inside GA4, such as Google Sheets or LinkedIn spend imports, are not connected ad platforms; they can feed total spend, ROI, and ROAS, but Budget Allocation should only show allocation sources after a spend-capable ad platform is connected in `Connected Platforms`
 - Budget & Financial Insights should use aggregate financial metrics for ROAS, ROI, CPA, spend, budget utilization, CTR, CVR, CPC, and CPM; source-performance and reallocation insights should use only spend-capable main connected sources, not GA4 child spend labels
@@ -72,6 +73,7 @@ Important clarification:
 - when GA4 native revenue exists, refresh should update the GA4-native aggregated revenue amount for the campaign's selected GA4 scope
 - imported `Total Revenue` is a to-date total and includes source-backed revenue records through the current UTC day; `Latest Day Revenue` remains previous-complete-day only
 - imported `Total Revenue`, `Revenue Breakdown`, and the `Revenue Sources` modal must use the same active source-backed revenue record window so the card total and source provenance cannot drift
+- native GA4 daily backfill rows belong in `ga4_daily_metrics`; they must not be mirrored into imported `revenue_records` with a synthetic source ID such as `ga4_daily_metrics`
 - Budget & Financial Analysis pacing metadata, including campaign start and end dates entered from the Budget Pacing & Burn Rate card, must not filter GA4 `Total Revenue`, `Revenue Breakdown`, or the `Revenue Sources` modal. Those platform-level revenue values are source-backed and must include all active revenue-source records to date.
 - the `GA4 Revenue` source entry in the `Total Revenue` source modal should show that full aggregated GA4 amount, not a partial or single-day figure
 - for GA4 `Ad Comparison`, external revenue may be added into campaign rows only when the source saves real campaign-identifying values that match GA4 campaign rows exactly

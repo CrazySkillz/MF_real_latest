@@ -1165,6 +1165,11 @@ export class GoogleAnalytics4Service {
       throw tokenExpiredError;
     }
 
+    const isCampaignPlaceholder = (value: string) => {
+      const normalized = String(value || '').trim().toLowerCase();
+      return !normalized || ['(not set)', '(direct)', '(none)', '(not provided)', 'not set', 'direct', 'none', 'unassigned'].includes(normalized);
+    };
+
     const run = async (accessToken: string, dimensionName: 'campaignName' | 'sessionCampaignName' | 'firstUserCampaignName') => {
       const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
         method: 'POST',
@@ -1190,8 +1195,7 @@ export class GoogleAnalytics4Service {
       for (const r of rows) {
         const name = String(r?.dimensionValues?.[0]?.value || '').trim();
         const users = parseInt(String(r?.metricValues?.[0]?.value || '0'), 10) || 0;
-        if (!name) continue;
-        if (name === '(not set)') continue;
+        if (isCampaignPlaceholder(name)) continue;
         campaigns.push({ name, users });
       }
       return campaigns;
@@ -1214,7 +1218,7 @@ export class GoogleAnalytics4Service {
     };
 
     const isMostlyEmpty = (list: Array<{ name: string; users: number }>) =>
-      !list?.length || list.every((c) => !c?.name || c.name === '(not set)' || (c.users || 0) <= 0);
+      !list?.length || list.every((c) => isCampaignPlaceholder(c?.name) || (c.users || 0) <= 0);
 
     // Helper: catch non-auth errors only; let auth errors propagate for token refresh
     const catchNonAuth = (err: any) => {

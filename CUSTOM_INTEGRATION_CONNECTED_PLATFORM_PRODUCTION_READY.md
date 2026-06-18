@@ -852,7 +852,7 @@ Validation:
 
 Status:
 
-- Implemented locally; pending browser validation, commit, and push.
+- Validated and pushed.
 
 RCA:
 
@@ -868,6 +868,8 @@ Fixes:
 
 Validation evidence:
 
+- User browser validation passed for Commit 18.
+- Commit: `dc097b3e Harden Custom Integration financial source lifecycle`.
 - Local source trace confirms imported report Revenue/Spend rows remain read-only source dialog rows and added external rows remain editable/deletable.
 - Local source trace confirms Total Revenue and Total Spend still aggregate imported report values plus scoped added sources, with ROAS/ROI derived from those totals.
 - Local source trace confirms Pipeline Proxy remains read-only and separate from Total Revenue, Total Spend, ROAS, ROI, KPIs, Benchmarks, Reports, and aggregate financial totals.

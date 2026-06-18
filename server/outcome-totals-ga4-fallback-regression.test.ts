@@ -64,4 +64,16 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).toContain("ga4Service.getMetricsWithAutoRefresh");
     expect(route).toContain("isSimulated: simulated");
   });
+
+  it("keeps ga4-daily backfill revenue in native GA4 daily metrics instead of synthetic imported revenue records", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-daily"');
+    const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-to-date"', routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(route).toContain("await storage.upsertGA4DailyMetrics(upserts as any);");
+    expect(route).not.toContain("storage.createRevenueRecords");
+    expect(route).not.toContain("revenueSourceId: 'ga4_daily_metrics'");
+    expect(route).not.toContain('revenueSourceId: "ga4_daily_metrics"');
+  });
 });

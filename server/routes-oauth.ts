@@ -6996,22 +6996,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (upserts.length > 0) {
           await storage.upsertGA4DailyMetrics(upserts as any);
-
-          // Populate revenue_records from GA4 daily metrics
-          const revenueRecordsToInsert = upserts
-            .filter((m: any) => parseFloat(String(m?.revenue || 0)) > 0)
-            .map((m: any) => ({
-              campaignId,
-              revenueSourceId: 'ga4_daily_metrics',
-              date: String(m.date),
-              revenue: String(parseFloat(String(m.revenue || 0)).toFixed(2)),
-              currency: 'USD',
-              sourceType: 'ga4'
-            }));
-
-          if (revenueRecordsToInsert.length > 0) {
-            await storage.createRevenueRecords(revenueRecordsToInsert as any);
-          }
         }
         stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
       }

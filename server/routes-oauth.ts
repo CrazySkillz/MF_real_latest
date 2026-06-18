@@ -9889,6 +9889,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case '30days':
           ga4DateRange = '30daysAgo';
           break;
+        case '60days':
+          ga4DateRange = '60daysAgo';
+          break;
         case '90days':
           ga4DateRange = '90daysAgo';
           break;

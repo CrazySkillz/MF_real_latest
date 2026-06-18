@@ -972,8 +972,9 @@ export default function Campaigns() {
         // Load campaign values for campaign filter selection
         try {
           setIsGA4CampaignLoading(true);
+          const campaignDateRange = `${wizardLookbackDays}days`;
           const valsResp = await fetch(
-            `/api/campaigns/${encodeURIComponent(draftCampaignId)}/ga4-campaign-values?dateRange=30days&limit=200&propertyId=${encodeURIComponent(selectedGA4Property)}`,
+            `/api/campaigns/${encodeURIComponent(draftCampaignId)}/ga4-campaign-values?dateRange=${campaignDateRange}&limit=200&propertyId=${encodeURIComponent(selectedGA4Property)}`,
             { credentials: 'include' }
           );
           const valsJson = await valsResp.json().catch(() => null);

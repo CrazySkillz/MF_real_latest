@@ -60,6 +60,15 @@ describe("GA4 UI regression guard", () => {
     expect(spendModal).toContain("Import spend from a CSV. Requires manual re-upload to update.");
   });
 
+  it("uses the selected GA4 lookback window when loading campaign values", () => {
+    const campaignsPage = readClient("pages/campaigns.tsx");
+    const ga4ConnectionFlow = readClient("components/GA4ConnectionFlow.tsx");
+
+    expect(campaignsPage).toContain("const campaignDateRange = `${wizardLookbackDays}days`;");
+    expect(campaignsPage).toContain("ga4-campaign-values?dateRange=${campaignDateRange}");
+    expect(ga4ConnectionFlow).toContain("new URLSearchParams({ dateRange: `${lookbackDays}days`, limit: '200' })");
+  });
+
   it("keeps Google Sheets spend chooser stable without visible loading text during back/dropdown transitions", () => {
     const spendModal = readClient("components/AddSpendWizardModal.tsx");
     const chooseStart = spendModal.indexOf('{step === "sheets_choose" && (');

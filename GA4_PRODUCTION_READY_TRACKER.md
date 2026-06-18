@@ -252,3 +252,117 @@ Template rules for future integrations:
 - preserve shared report PDF generation for scheduled, test-send, download, and direct snapshot output
 - preserve transactional/plain report email delivery with the generated PDF as the report artifact
 - add targeted regression coverage before calling a copied integration path production-ready
+
+## Outstanding Validation Gates And How To Validate
+
+These are validation gates, not confirmed open bugs. Add a new fix item only if one of these checks proves a specific code or data defect.
+
+### 1. Real GA4 connection validation
+
+Validation steps:
+
+1. Use a deployed or production-like environment with real GA4 OAuth credentials.
+2. Create or reuse a disposable test campaign.
+3. Connect Google Analytics through the normal campaign creation or Connected Platforms flow.
+4. Select a real GA4 property and known GA4 campaign values.
+5. Open `Campaign -> Connected Platforms -> Google Analytics -> View Detailed Analytics`.
+6. Check Overview cards: Sessions, Users, Conversions, Revenue, Spend, ROAS, ROI, and CPA.
+7. Check Overview tables: Campaign Breakdown, Landing Pages, and Conversion Events.
+8. Compare the app values against GA4 for the same property, date range, and campaign filter.
+9. Run or wait for the GA4 daily refresh.
+10. Verify `ga4_daily_metrics` receives the expected campaign/property daily row.
+11. Verify no new `revenue_records` row is created with `revenue_source_id = 'ga4_daily_metrics'`.
+
+Pass criteria:
+
+- real GA4 OAuth works
+- the selected property and saved campaign scope are honored
+- Overview cards and tables populate from the selected GA4 scope
+- scheduler refresh writes native GA4 facts into `ga4_daily_metrics`
+- no synthetic imported revenue rows are created for native GA4 revenue
+
+### 2. Real financial-source lifecycle validation
+
+Validate each source family separately.
+
+Revenue source families:
+
+- Shopify
+- HubSpot
+- Salesforce
+- Google Sheets
+- CSV
+- existing legacy Manual revenue, if present
+
+Spend source families:
+
+- LinkedIn Ads
+- Meta Ads
+- Google Ads
+- Google Sheets
+- CSV
+- existing legacy Manual spend, if present
+
+Validation steps for each source family:
+
+1. Add or import the source with known test data.
+2. Confirm it appears in `Total Revenue -> Sources` or `Total Spend -> Sources`.
+3. Confirm the total card equals the sum of active source rows plus native GA4 revenue where applicable.
+4. Confirm downstream values update: Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Insights, and Reports generated after the change.
+5. Edit the source.
+6. Confirm the old amount is replaced, not duplicated.
+7. Confirm the source count stays correct.
+8. Delete the source.
+9. Confirm only that source contribution is removed.
+10. Confirm unrelated source rows and totals remain unchanged.
+11. For refreshable sources, run or wait for scheduler refresh.
+12. Confirm refresh updates the same source ID instead of creating a duplicate.
+
+Pass criteria:
+
+- add, edit, delete, source modal display, totals, and downstream recompute work for the source family
+- source modal provenance reconciles to the relevant total card
+- edit and scheduler paths preserve stable source identity
+- delete affects only the verified source ID
+- refreshable sources update in place and do not append duplicates
+
+### 3. Deployed scheduled email delivery evidence
+
+Validation steps:
+
+1. Use a deployed environment with real email provider configuration.
+2. Create a GA4 scheduled report with at least one real recipient.
+3. Confirm the scheduled report saves successfully.
+4. Trigger a platform report test-send.
+5. Confirm the email arrives in the recipient inbox with the generated PDF attached.
+6. Open the PDF and compare values against the current GA4 tab values.
+7. Let one scheduled send run naturally, or trigger the scheduler safely if that is supported in the environment.
+8. Confirm the scheduled email arrives with the generated PDF attached.
+9. Check report send-event/audit status.
+10. If provider events are available, confirm final delivery is `delivered`, not only API accepted.
+
+Pass criteria:
+
+- test-send delivers a GA4 report email with PDF attachment
+- scheduled send delivers a GA4 report email with PDF attachment
+- PDF values match current GA4/report state at send time
+- provider/audit status does not report successful delivery from API acceptance alone when later delivery failure evidence exists
+
+### 4. Existing-data inventory beyond proven GA4 orphan rows
+
+Validation must be read-only until a precise damaged-data boundary is proven.
+
+Validation steps:
+
+1. Query for `revenue_records` rows whose `revenue_source_id` has no matching active `revenue_sources.id`.
+2. Query for `spend_records` rows whose `spend_source_id` has no matching active `spend_sources.id`.
+3. Group results by campaign, source type, platform context, and source ID.
+4. Check for duplicate active source definitions with identical campaign/source/platform/mapping signatures.
+5. For suspicious rows, inspect exact IDs and source metadata before deciding whether they are valid legacy data or damaged data.
+6. Do not delete or rewrite anything during inventory.
+
+Pass criteria:
+
+- either no orphan or duplicate source records are found, or exact affected IDs are documented
+- any cleanup plan has a proven source/campaign/record boundary before a migration is written
+- CRM, ecommerce, CSV, Google Sheets, Manual, and ad-platform rows are not touched unless individually proven damaged

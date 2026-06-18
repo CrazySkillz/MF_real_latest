@@ -69,6 +69,17 @@ describe("GA4 UI regression guard", () => {
     expect(ga4ConnectionFlow).toContain("new URLSearchParams({ dateRange: `${lookbackDays}days`, limit: '200' })");
   });
 
+  it("keeps live GA4 breakdown totals from being scaled down to zero when to-date/daily totals are empty", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+
+    expect(ga4Metrics).toContain("const ga4BreakdownTotals = useMemo(() => {");
+    expect(ga4Metrics).toContain("dailySummedTotals.sessions, ga4BreakdownTotals.sessions");
+    expect(ga4Metrics).toContain("dailySummedTotals.conversions, ga4BreakdownTotals.conversions");
+    expect(ga4Metrics).toContain("dailySummedTotals.revenue, ga4BreakdownTotals.revenue");
+    expect(ga4Metrics).toContain("dailySummedTotals.users || ga4BreakdownTotals.users");
+    expect(ga4Metrics).toContain("const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue, ga4BreakdownTotals.revenue);");
+  });
+
   it("keeps Google Sheets spend chooser stable without visible loading text during back/dropdown transitions", () => {
     const spendModal = readClient("components/AddSpendWizardModal.tsx");
     const chooseStart = spendModal.indexOf('{step === "sheets_choose" && (');

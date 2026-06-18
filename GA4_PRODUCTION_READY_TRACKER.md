@@ -48,8 +48,16 @@ Validation completed for each fix:
 
 Not locally verified:
 
-- live GA4 numeric parity on a production or staging campaign after Commit 3
 - deployed scheduled email receipt/provider delivery evidence
+
+Production-like parity validation result for Commit 3:
+
+- validation date: 2026-06-18
+- campaign: `5317190c-d536-45d4-85c0-9d941cfba9f4` (`myGA4`)
+- property: `yesop`
+- date range: `90days`
+- result: GA4 Overview financial values matched `/api/campaigns/:id/outcome-totals.performanceSummary.totals` with zero drift
+- matched metrics: Total Revenue `329245.42`, Total Spend `498.75`, ROAS `660.14`, ROI `65914.12`, CPA `0.17`
 
 Production/staging inventory result for Commit 4:
 
@@ -150,7 +158,7 @@ Fix scope:
 
 Prove whether GA4 Overview current financial totals drift from `/api/campaigns/:id/outcome-totals.performanceSummary`, then fix only the confirmed boundary if drift exists.
 
-Status: completed and pushed in `5b5f147d`; live numeric parity still needs production-like validation.
+Status: completed and pushed in `5b5f147d`; production-like numeric parity passed on 2026-06-18.
 
 Evidence:
 
@@ -187,6 +195,7 @@ Validation:
 
 - focused regression subset from this tracker passed: 65 tests
 - `npm run check` passed
+- production-like parity check passed for campaign `5317190c-d536-45d4-85c0-9d941cfba9f4` (`myGA4`): GA4 Overview and `/outcome-totals.performanceSummary.totals` matched for Total Revenue, Total Spend, ROAS, ROI, and CPA
 
 ### Commit 4: Clean up orphan GA4 synthetic revenue records
 
@@ -221,11 +230,7 @@ Validation:
 
 ## Next Step
 
-Before new GA4 production-readiness fixes, perform the remaining evidence-gathering step that cannot be proven from local code alone:
-
-1. Run one real or production-like GA4 campaign parity check comparing GA4 Overview financial cards with `/api/campaigns/:id/outcome-totals.performanceSummary.totals`.
-
-Only after that check should a parity follow-up commit be created.
+No parity follow-up commit is currently needed. Future GA4 production-readiness work should be selected from the unverified areas below only after a separate trace or deployed validation proves a specific issue.
 
 ## Current Unverified Areas
 

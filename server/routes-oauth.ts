@@ -11778,6 +11778,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? parseNum(custom?.users)
               : 0,
       };
+      const financialGa4Totals = { ...ga4Totals };
+      const financialWebAnalytics = { ...webAnalytics };
+      if (webAnalyticsProvider === "ga4" && activeGA4 && persistedPropertyId && !isYesopMockProperty(persistedPropertyId)) {
+        try {
+          const primaryGA4 = persistedPrimaryGA4;
+          if (primaryGA4?.method === "access_token" && primaryGA4?.accessToken) {
+            const rawStart = (campaign as any)?.startDate || (campaign as any)?.createdAt || null;
+            const startDateUsed = rawStart && !Number.isNaN(new Date(rawStart).getTime())
+              ? new Date(rawStart).toISOString().slice(0, 10)
+              : "2000-01-01";
+            const now = new Date();
+            const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+            const endDateUsed = formatISODateUTC(new Date(todayUtc.getTime() - 24 * 60 * 60 * 1000));
+            const toDate = await ga4Service.getTotalsWithRevenue(
+              String(primaryGA4.propertyId),
+              String(primaryGA4.accessToken),
+              startDateUsed,
+              endDateUsed,
+              parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter)
+            );
+            const totals = (toDate as any)?.totals || {};
+            financialGa4Totals.revenue = parseNum(totals.revenue);
+            financialGa4Totals.conversions = parseNum(totals.conversions);
+            financialGa4Totals.sessions = parseNum(totals.sessions);
+            financialGa4Totals.users = parseNum(totals.users) || parseNum(financialGa4Totals.users);
+            financialGa4Totals.toDateSource = "ga4_to_date";
+            financialWebAnalytics.revenue = parseNum(financialGa4Totals.revenue);
+            financialWebAnalytics.conversions = parseNum(financialGa4Totals.conversions);
+            financialWebAnalytics.sessions = parseNum(financialGa4Totals.sessions);
+            financialWebAnalytics.users = parseNum(financialGa4Totals.users);
+          }
+        } catch {
+          // Keep the date-range GA4 result if to-date financial alignment is unavailable.
+        }
+      }
 
       // Unified spend rule:
       // - If the user imported spend (persistedSpend > 0), use that as campaign marketing spend.
@@ -11833,11 +11868,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // ignore
       }
 
-      const onsiteRevenue = parseNum(webAnalytics.revenue);
+      const onsiteRevenue = parseNum(financialWebAnalytics.revenue);
       const totalRevenueUnified = parseFloat((onsiteRevenue + offsiteRevenueTotal).toFixed(2));
       const financialInputs = {
         revenue: [
-          ...(webAnalyticsProvider === "ga4" && onsiteRevenue > 0
+          ...(financialWebAnalytics.provider === "ga4" && onsiteRevenue > 0
             ? [{
                 id: "ga4_native_revenue",
                 label: "GA4 Revenue",
@@ -11853,8 +11888,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const performanceSummary = buildCampaignPerformanceSummaryAggregate({
         campaignId,
         dateRange,
-        ga4: ga4Totals,
-        webAnalytics,
+        ga4: financialGa4Totals,
+        webAnalytics: financialWebAnalytics,
         spend: {
           persistedSpend: performanceSummarySpend,
           unifiedSpend: performanceSummarySpend > 0 ? performanceSummarySpend : unifiedSpend,

@@ -76,4 +76,20 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).not.toContain("revenueSourceId: 'ga4_daily_metrics'");
     expect(route).not.toContain('revenueSourceId: "ga4_daily_metrics"');
   });
+
+  it("aligns outcome-totals performanceSummary financial GA4 values with GA4 Overview to-date totals", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');
+    const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-connections"', routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(route).toContain("const financialGa4Totals = { ...ga4Totals };");
+    expect(route).toContain("const financialWebAnalytics = { ...webAnalytics };");
+    expect(route).toContain("ga4Service.getTotalsWithRevenue(");
+    expect(route).toContain('financialGa4Totals.toDateSource = "ga4_to_date";');
+    expect(route).toContain("const onsiteRevenue = parseNum(financialWebAnalytics.revenue);");
+    expect(route).toContain("ga4: financialGa4Totals,");
+    expect(route).toContain("webAnalytics: financialWebAnalytics,");
+    expect(route).toContain("ga4: ga4Totals,");
+  });
 });

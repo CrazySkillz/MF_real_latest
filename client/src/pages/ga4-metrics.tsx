@@ -7178,10 +7178,19 @@ export default function GA4Metrics() {
                         {/* Trends line chart */}
                         {(() => {
                           const dailyRows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || ""))) : [];
-                          if (dailyRows.length < 2) {
+                          const availableMonths = new Set(
+                            dailyRows
+                              .map((r: any) => String(r?.date || "").slice(0, 7))
+                              .filter((ym: string) => /^\d{4}-\d{2}$/.test(ym))
+                          ).size;
+                          const minRequiredDays = insightsTrendMode === "daily" ? 2 : insightsTrendMode === "7d" ? 14 : insightsTrendMode === "30d" ? 60 : 0;
+                          const hasRequiredHistory = insightsTrendMode === "monthly" ? availableMonths >= 2 : dailyRows.length >= minRequiredDays;
+                          if (!hasRequiredHistory) {
+                            const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} days`;
+                            const availableHistory = insightsTrendMode === "monthly" ? `${availableMonths} calendar month${availableMonths === 1 ? "" : "s"}` : `${dailyRows.length} days`;
                             return (
                               <div className="text-sm text-muted-foreground/70 py-4">
-                                Need at least 2 days of GA4 daily history. Available: {dailyRows.length}.
+                                Need at least {requiredHistory} of GA4 daily history for {insightsTrendMode === "daily" ? "daily trend comparisons" : insightsTrendMode === "7d" ? "7-day rolling trends" : insightsTrendMode === "30d" ? "30-day rolling trends" : "monthly trends"}. Available: {availableHistory}.
                               </div>
                             );
                           }

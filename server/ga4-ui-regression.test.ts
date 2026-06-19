@@ -80,6 +80,16 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue, ga4BreakdownTotals.revenue);");
   });
 
+  it("keeps GA4 Insights trend history requirements aligned to selected mode", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+
+    expect(ga4Metrics).toContain("const availableMonths = new Set(");
+    expect(ga4Metrics).toContain('const minRequiredDays = insightsTrendMode === "daily" ? 2 : insightsTrendMode === "7d" ? 14 : insightsTrendMode === "30d" ? 60 : 0;');
+    expect(ga4Metrics).toContain('const hasRequiredHistory = insightsTrendMode === "monthly" ? availableMonths >= 2 : dailyRows.length >= minRequiredDays;');
+    expect(ga4Metrics).toContain('const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} days`;');
+    expect(ga4Metrics).not.toContain("Need at least 2 days of GA4 daily history. Available: {dailyRows.length}.");
+  });
+
   it("keeps Google Sheets spend chooser stable without visible loading text during back/dropdown transitions", () => {
     const spendModal = readClient("components/AddSpendWizardModal.tsx");
     const chooseStart = spendModal.indexOf('{step === "sheets_choose" && (');

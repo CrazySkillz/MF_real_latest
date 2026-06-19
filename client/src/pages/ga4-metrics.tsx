@@ -5187,10 +5187,10 @@ export default function GA4Metrics() {
                         <p className="text-sm text-muted-foreground/70">Financial performance and return on investment</p>
                       </div>
                       {/* Revenue & Spend cards — always show when any financial data exists */}
-                      <div className="space-y-5">
+                      <div className="grid gap-5 lg:grid-cols-2">
                         <div>
                           <h4 className="text-sm font-semibold text-foreground mb-2">Revenue</h4>
-                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                          <div className="grid gap-4">
                         {/* Total Revenue */}
                         <Card>
                           <CardContent className="p-5">
@@ -5244,7 +5244,7 @@ export default function GA4Metrics() {
                         </div>
                         <div>
                           <h4 className="text-sm font-semibold text-foreground mb-2">Spend</h4>
-                          <div className="grid gap-4 md:grid-cols-2">
+                          <div className="grid gap-4">
                         {/* Total Spend */}
                         <Card>
                           <CardContent className="p-5">

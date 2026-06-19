@@ -135,6 +135,7 @@ Visible layout:
 - `Revenue` contains `Total Revenue` and optional `Pipeline Proxy`
 - `Spend` contains `Total Spend`
 - `Performance` contains `Profit`, `ROAS`, `ROI`, and `CPA`
+- `Revenue` and `Spend` render side by side on desktop-width Overview screens and stack on narrower screens
 
 High-level rule:
 

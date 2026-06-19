@@ -17,11 +17,9 @@ The platform-level GA4 `Overview` tab contains:
 - Revenue & Financial section
   - `Revenue`
     - `Total Revenue`
-    - `Latest Day Revenue`
     - `Pipeline Proxy` when configured
   - `Spend`
     - `Total Spend`
-    - `Latest Day Spend`
   - `Performance`
     - `Profit`
     - `ROAS`
@@ -97,23 +95,8 @@ These cards are derived from fetched or recomputed inputs:
 - `ROI = (Revenue - Spend) / Spend`
 - `CPA = Spend / Conversions`
 
-`Latest Day Revenue` and `Latest Day Spend` are also computed from daily values rather than being fixed setup-time values.
-
-Intended behavior:
-
-- `Latest Day Revenue` should show the previous day's imported daily revenue for the campaign across all applicable external revenue sources
-- `Latest Day Spend` should show the previous day's total spend for the campaign across all applicable spend sources
-
-Current implementation:
-
-- both cards use the previous complete UTC day selected by the server-side daily endpoints
-- `Latest Day Revenue` uses imported revenue from all active external sources that have real daily revenue records for that same day
-- GA4-native revenue remains available in GA4 metrics and `Total Revenue`, but is not added into this latest-day imported-revenue card
-- snapshot-style imported revenue may still increase `Total Revenue`, but it must not appear in `Latest Day Revenue` unless that source truly provides dated daily revenue rows
-- `Latest Day Spend` sums all active sources that have real daily spend records for that same day
-- `Latest Day Spend` excludes ad-platform demo/test-mode sources marked with `testMode: true`
-- real CSV, Google Sheets, or connector spend remains eligible when it has a saved daily record for that day
-- these cards must not invent daily values for sources that do not have records on that date
+Previous-day revenue and spend cards are intentionally not rendered in this app version.
+Daily records and endpoints may still exist for source validation, refresh, and possible future versions, but the GA4 Overview UI exposes only to-date financial totals plus derived performance metrics.
 
 ### Summary Cards
 
@@ -149,8 +132,8 @@ Financial-card detail lives in `GA4/FINANCIAL_SOURCES.md`.
 
 Visible layout:
 
-- `Revenue` contains `Total Revenue`, `Latest Day Revenue`, and optional `Pipeline Proxy`
-- `Spend` contains `Total Spend` and `Latest Day Spend`
+- `Revenue` contains `Total Revenue` and optional `Pipeline Proxy`
+- `Spend` contains `Total Spend`
 - `Performance` contains `Profit`, `ROAS`, `ROI`, and `CPA`
 
 High-level rule:

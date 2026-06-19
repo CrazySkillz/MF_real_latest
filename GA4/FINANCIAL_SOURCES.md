@@ -29,11 +29,9 @@ Visible Overview layout:
 
 - `Revenue` subsection:
   - `Total Revenue`
-  - `Latest Day Revenue`
   - `Pipeline Proxy` when configured
 - `Spend` subsection:
   - `Total Spend`
-  - `Latest Day Spend`
 - `Performance` subsection:
   - `Profit`
   - `ROAS`
@@ -71,7 +69,7 @@ Important clarification:
 - in those cases, users may rely entirely on imported external revenue sources
 - the GA4 revenue metric is optional to the overall campaign revenue model; external revenue import is a valid primary path
 - when GA4 native revenue exists, refresh should update the GA4-native aggregated revenue amount for the campaign's selected GA4 scope
-- imported `Total Revenue` is a to-date total and includes source-backed revenue records through the current UTC day; `Latest Day Revenue` remains previous-complete-day only
+- imported `Total Revenue` is a to-date total and includes source-backed revenue records through the current UTC day; no separate previous-day revenue card is rendered in the current GA4 Overview UI
 - imported `Total Revenue`, `Revenue Breakdown`, and the `Revenue Sources` modal must use the same active source-backed revenue record window so the card total and source provenance cannot drift
 - native GA4 daily backfill rows belong in `ga4_daily_metrics`; they must not be mirrored into imported `revenue_records` with a synthetic source ID such as `ga4_daily_metrics`
 - if old synthetic `revenue_records` rows with `revenue_source_id = 'ga4_daily_metrics'` are found, cleanup must target only the proven orphan row IDs and must not delete active imported CRM, ecommerce, CSV, Google Sheets, manual, or other source-backed revenue rows
@@ -84,24 +82,25 @@ Important clarification:
 - in the GA4 `Ad Comparison` Revenue Breakdown table, a source may show an indented per-campaign subsection from its saved exact `campaignValueRevenueTotals`
 - that subsection should use the stored source values directly and should not be duplicated by a separate standalone unallocated row when the same amount is already represented there
 
-### Latest Day Revenue
+### Previous-Day Revenue Records
 
-Intended behavior:
+Current UI behavior:
 
-- `Latest Day Revenue` should show the previous day's imported daily revenue for the campaign across all applicable external revenue sources
+- the GA4 Overview does not render a separate previous-day revenue card in this app version
+- previous-day revenue records may still exist for validation, refresh, and possible future versions
 
-Current implementation:
+Internal endpoint behavior:
 
 - use the previous complete UTC day selected by the server-side daily endpoint
 - include every active revenue source that has real daily revenue records for that day
-- do not add GA4-native daily revenue into this card; GA4-native revenue remains visible in GA4 metrics and `Total Revenue`
+- do not add GA4-native daily revenue into this endpoint; GA4-native revenue remains visible in GA4 metrics and `Total Revenue`
 - do not invent daily values for snapshot-only sources that have no record on that date
 
 Important clarification:
 
 - snapshot-style imported revenue must still contribute to `Total Revenue`
-- but it must not populate `Latest Day Revenue` just because the source materialized a cumulative or revenue-to-date record on `yesterday (UTC)`
-- only true daily-history sources should populate `Latest Day Revenue`
+- but it must not populate previous-day revenue just because the source materialized a cumulative or revenue-to-date record on `yesterday (UTC)`
+- only true daily-history sources should populate previous-day revenue records
 - practical examples of snapshot-style revenue for this rule include:
   - existing stored `Manual` revenue snapshots
   - CRM-style cumulative revenue imports that were saved without true dated daily rows
@@ -123,20 +122,21 @@ Google Sheets spend add mode is additive. Creating a new Google Sheets spend sou
 
 Google Sheets revenue and spend setup must keep the modal visually stable. Do not show transient placeholder text such as `Checking Google connection`, `Checking connection...`, `Checking connected Google Sheets...`, or `Loading...` while switching into the Google Sheets chooser, going Back, or changing sheet selections.
 
-### Latest Day Spend
+### Previous-Day Spend Records
 
-Intended behavior:
+Current UI behavior:
 
-- `Latest Day Spend` should show the previous day's total spend for the campaign across all applicable spend sources
+- the GA4 Overview does not render a separate previous-day spend card in this app version
+- previous-day spend records may still exist for validation, refresh, and possible future versions
 
-`Latest Day Spend` is driven by materialized spend records for the relevant day.
+Previous-day spend is driven by materialized spend records for the relevant day.
 
 This includes:
 
 - daily imported spend rows
 - snapshot-style records where a source does not provide daily history
 
-Current implementation:
+Internal endpoint behavior:
 
 - use the previous complete UTC day selected by the server-side daily endpoint
 - include every active spend source that has real daily spend records for that day
@@ -302,7 +302,7 @@ Important meaning:
 - HubSpot date fields must be normalized before daily materialization because HubSpot may return date properties as either ISO/date strings or epoch-millisecond strings
 - HubSpot confirmed-revenue refresh should resolve legacy `closedwon`-only mappings to the current HubSpot pipeline Closed Won stage IDs before materializing daily rows, so custom pipelines do not silently drop won deals during scheduled refresh
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
-- if the user chooses `Total Revenue + Pipeline (Proxy)`, the confirmed/won HubSpot revenue portion still remains eligible for `Latest Day Revenue` when it has true daily rows; only the open Pipeline Proxy amount is excluded
+- if the user chooses `Total Revenue + Pipeline (Proxy)`, the confirmed/won HubSpot revenue portion still remains eligible for previous-day revenue records when it has true daily rows; only the open Pipeline Proxy amount is excluded
 - the Pipeline Proxy stage filters the already selected HubSpot campaign values; it does not create a separate campaign-selection path
 - HubSpot edit-mode `Review Settings` should show the saved Pipeline Proxy amount immediately while saved settings are unchanged; it should not flash an empty placeholder before live preview returns
 - the final `Review Settings` step should show Pipeline Proxy stage and amount; the import action should be labeled `Import revenue`
@@ -348,9 +348,9 @@ Important meaning:
 - in edit mode, Salesforce revenue must preserve the existing revenue `sourceId` all the way through the save request so the system updates the existing source instead of creating an additive duplicate
 - Salesforce review-step `Total Revenue (to date)` should prefer fresh preview data from the current edit session over stored `lastTotalRevenue` values from the previous save
 - Salesforce review-step `Total Revenue (to date)` must use the preview endpoint's full matched total, not the limited sample rows shown in the preview table
-- Salesforce edit mode must default missing legacy `dateField` values back to `CloseDate` so external Close Date changes materialize onto the expected Latest Day Revenue date
+- Salesforce edit mode must default missing legacy `dateField` values back to `CloseDate` so external Close Date changes materialize onto the expected previous-day revenue date
 - Salesforce edit mode may enable `Update revenue` after a successful live preview only when the current Salesforce preview total differs from the saved source total, because external Salesforce value/date changes still need a safe manual re-materialization path
-- Salesforce confirmed revenue uses the saved attribution values plus the selected date field and treats opportunities as won when Salesforce returns `IsWon = true` or the stage name starts with `Closed Won`, so Review Settings, save/materialization, scheduler refresh, and Latest Day Revenue stay aligned for orgs with custom Closed Won stage labels
+- Salesforce confirmed revenue uses the saved attribution values plus the selected date field and treats opportunities as won when Salesforce returns `IsWon = true` or the stage name starts with `Closed Won`, so Review Settings, save/materialization, scheduler refresh, and previous-day revenue records stay aligned for orgs with custom Closed Won stage labels
 - the first Salesforce `Source` step should show `Total Revenue + Pipeline (Proxy)` above `Total Revenue only (no Pipeline card)` and default to the pipeline option in new connect mode
 - if the user chooses `Total Revenue + Pipeline (Proxy)`, Pipeline Proxy should appear separately in Overview as an early-stage signal with its selected stage label and must not be added into Total Revenue
 - the Pipeline Proxy stage filters the already selected Salesforce campaign/opportunity values; it does not create a separate campaign-selection path

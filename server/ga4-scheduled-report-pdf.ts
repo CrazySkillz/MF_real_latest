@@ -519,8 +519,6 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     : { overview: reportType === "overview", kpis: reportType === "kpis", benchmarks: reportType === "benchmarks", ads: reportType === "ads", insights: reportType === "insights" };
   const selectedCustomKpiIds = new Set(cfg.selectedKpiIds || []);
   const selectedCustomBenchmarkIds = new Set(cfg.selectedBenchmarkIds || []);
-  const latestImportedRevenue = Number((await storage.getRevenueBreakdownBySource(String(report.campaignId), windowEnd, windowEnd, "ga4").catch(() => [] as any[])).reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0).toFixed(2));
-  const latestSpend = Number((await storage.getSpendBreakdownBySource(String(report.campaignId), windowEnd, windowEnd).catch(() => [] as any[])).reduce((sum: number, row: any) => sum + Number(row?.spend || 0), 0).toFixed(2));
   const PW = 210, MX = 16, CW = PW - MX * 2;
   let y = 18;
 
@@ -707,11 +705,9 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     if (includeRevenue || includeSpend || includePerformance) subheading("Revenue & Financial", 10);
     if (includeRevenue) {
       subheading("Revenue");
-      const latestGa4DayRevenue = Number([...payload.dailyRows].sort((a: any, b: any) => String(a.date || "").localeCompare(String(b.date || ""))).slice(-1)[0]?.revenue || 0);
       const pipelineTotal = payload.pipelineEntries.reduce((sum: number, entry: any) => sum + Number(entry?.totalToDate || 0), 0);
       const revenueCards: [string, string][] = [
         ["Total Revenue", formatMoney(payload.financialRevenue)],
-        ["Latest Day Revenue", formatMoney(latestGa4DayRevenue + latestImportedRevenue)],
       ];
       if (pipelineTotal > 0) revenueCards.push(["Pipeline Proxy", formatMoney(pipelineTotal)]);
       metricCards(revenueCards, Math.min(revenueCards.length, 3));
@@ -730,8 +726,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       subheading("Spend");
       metricCards([
         ["Total Spend", formatMoney(payload.financialSpend)],
-        ["Latest Day Spend", formatMoney(latestSpend)],
-      ], 2);
+      ], 1);
     }
     if (includePerformance) {
       subheading("Performance");

@@ -3,20 +3,15 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 describe("Latest Day Revenue regression guard", () => {
-  it("GA4 Overview uses the previous day for latest-day revenue", () => {
+  it("GA4 Overview does not render the removed previous-day revenue card", () => {
     const clientFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
       "utf-8"
     );
 
-    expect(clientFile).toContain('queryKey: [`/api/campaigns/${campaignId}/revenue-daily`, "latest"]');
-    expect(clientFile).toContain('fetch(`/api/campaigns/${campaignId}/revenue-daily`, { credentials: "include" })');
-    expect(clientFile).toContain('throw new Error("Failed to fetch latest-day revenue")');
-    expect(clientFile).toContain("Latest Day Revenue uses imported daily revenue records for the server-selected previous complete UTC day.");
-    expect(clientFile).toContain("const latestDayRevenue = Number(revenueDailyResp?.totalRevenue || 0);");
-    expect(clientFile).toContain("formatMoney(Number(revenueDailyResp?.totalRevenue || 0))");
-    expect(clientFile).toContain('queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });');
-    expect(clientFile).toContain('queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });');
+    expect(clientFile).not.toContain("Latest Day Revenue");
+    expect(clientFile).not.toContain("const latestDayRevenue = Number(revenueDailyResp?.totalRevenue || 0);");
+    expect(clientFile).not.toContain("formatMoney(Number(revenueDailyResp?.totalRevenue || 0))");
     expect(clientFile).not.toContain("ga4LatestDayRevenue");
     expect(clientFile).not.toContain("const revenueDailyDate = ga4ReportDate || spendDailyYesterday;");
     expect(clientFile).not.toContain("const revenueDailyDate = spendDailyYesterday;");

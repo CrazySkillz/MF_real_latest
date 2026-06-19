@@ -1976,7 +1976,7 @@ export default function GA4Metrics() {
       return resp.json().catch(() => ({ success: false, totalRevenue: 0 }));
     },
   });
-  // Latest Day Revenue uses imported daily revenue records for the server-selected previous complete UTC day.
+  // Daily revenue endpoint remains available; the MVP Overview renders only to-date revenue.
 
   const spendSourceLabels = useMemo(() => {
     const persistedSpend = Number(spendToDateResp?.spendToDate || 0);
@@ -2266,7 +2266,7 @@ export default function GA4Metrics() {
   const ga4RevenueFromToDate = Number((ga4ToDateResp as any)?.totals?.revenue || 0);
   const ga4RevenueMetricName = String((ga4ToDateResp as any)?.revenueMetric || "").trim();
   const ga4HasRevenueMetric = !!ga4RevenueMetricName || dailySummedTotals.revenue > 0 || ga4BreakdownTotals.revenue > 0;
-  // Use the higher of (to-date total, summed daily rows) so Total Revenue is never less than Latest Day Revenue.
+  // Use the higher of (to-date total, summed daily rows) so Total Revenue is never less than populated daily GA4 revenue.
   const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue, ga4BreakdownTotals.revenue);
   // GA4 page: Total Revenue = GA4 native revenue + any imported revenue (manual, CSV, Sheets, CRM).
   // This matches what executives expect: the full revenue picture for this campaign.
@@ -2711,10 +2711,8 @@ export default function GA4Metrics() {
       if (includeOverviewRevenue || includeOverviewSpend || includeOverviewPerformance) subheading("Revenue & Financial", 10);
       if (includeOverviewRevenue) {
         subheading("Revenue");
-      const latestDayRevenue = Number(revenueDailyResp?.totalRevenue || 0);
       const revenueCards: [string, string][] = [
         ["Total Revenue", fC(rev)],
-        ["Latest Day Revenue", fC(latestDayRevenue)],
       ];
       if (pipelineProxyData?.success) revenueCards.push(["Pipeline Proxy", fC(Number(pipelineProxyData.totalToDate || 0))]);
       metricCards(revenueCards, Math.min(revenueCards.length, 3));
@@ -2733,11 +2731,9 @@ export default function GA4Metrics() {
 
       if (includeOverviewSpend) {
       subheading("Spend");
-      const latestDaySpend = Number(spendDailyResp?.totalSpend || 0);
       metricCards([
         ["Total Spend", fC(spend)],
-        ["Latest Day Spend", fC(latestDaySpend)],
-      ], 2);
+      ], 1);
       sourceRows("Spend", spendDisplaySources.map((s: any) => [
         String(s.displayName || spendSourceTypeLabel(s.sourceType)),
         fC(Number(s.spend != null ? s.spend : spend)),
@@ -5222,17 +5218,6 @@ export default function GA4Metrics() {
                             )}
                           </CardContent>
                         </Card>
-                        {/* Latest Day Revenue — imported sources for most recent complete day */}
-                        <Card>
-                          <CardContent className="p-5">
-                            <p className="text-sm font-medium text-muted-foreground/70">Latest Day Revenue</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">
-                              {revenueDailyError
-                                ? "Unavailable"
-                                : formatMoney(Number(revenueDailyResp?.totalRevenue || 0))}
-                            </p>
-                          </CardContent>
-                        </Card>
                         {pipelineProxyData?.success && (
                           <Card>
                             <CardContent className="p-5">
@@ -5285,15 +5270,6 @@ export default function GA4Metrics() {
                                 Sources ({spendSourcesCount})
                               </button>
                             )}
-                          </CardContent>
-                        </Card>
-                        {/* Latest Day Spend — server-selected previous complete day */}
-                        <Card>
-                          <CardContent className="p-5">
-                            <p className="text-sm font-medium text-muted-foreground/70">Latest Day Spend</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">
-                              {spendDailyError ? "Unavailable" : formatMoney(Number(spendDailyResp?.totalSpend || 0))}
-                            </p>
                           </CardContent>
                         </Card>
                           </div>

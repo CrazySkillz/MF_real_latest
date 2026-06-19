@@ -3,17 +3,14 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 describe("Latest Day Spend regression guard", () => {
-  it("GA4 Overview lets the server choose the previous complete day for latest-day spend", () => {
+  it("GA4 Overview does not render the removed previous-day spend card", () => {
     const clientFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
       "utf-8"
     );
 
+    expect(clientFile).not.toContain("Latest Day Spend");
     expect(clientFile.includes("spendDailyToday")).toBe(false);
-    expect(clientFile).toContain('queryKey: [`/api/campaigns/${campaignId}/spend-daily`, "latest"]');
-    expect(clientFile).toContain("fetch(`/api/campaigns/${campaignId}/spend-daily`)");
-    expect(clientFile).toContain('throw new Error("Failed to fetch latest-day spend")');
-    expect(clientFile).toContain("Latest-day endpoints default to the server's previous complete UTC day.");
     expect(clientFile).not.toContain("spendDailyYesterday");
     expect(clientFile).not.toContain("const spendDailyResp = spendDailyYesterdayResp;");
   });

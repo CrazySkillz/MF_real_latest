@@ -598,9 +598,9 @@ export function AddRevenueWizardModal(props: {
   useEffect(() => {
     if (!open) return;
     const campaignPlatform = step === 'manual' ? manualPlatform : platformContext;
-    const needsCampaignMapping = (platformContext === 'google_ads' || platformContext === 'meta' || platformContext === 'instagram' || platformContext === 'tiktok') && (step === 'csv_map' || step === 'sheets_map');
+    const needsCampaignMapping = (platformContext === 'ga4' || platformContext === 'google_ads' || platformContext === 'meta' || platformContext === 'instagram' || platformContext === 'tiktok') && (step === 'csv_map' || step === 'sheets_map');
     if (step !== 'manual' && !needsCampaignMapping) return;
-    if (campaignPlatform === 'ga4') {
+    if (campaignPlatform === 'ga4' && step === 'manual') {
       setPlatformCampaigns([]);
       return;
     }
@@ -610,7 +610,15 @@ export function AddRevenueWizardModal(props: {
       setPlatformCampaigns([]);
       if (step === 'manual') setManualSubCampaign("");
       try {
-        if (campaignPlatform === 'linkedin') {
+        if (campaignPlatform === 'ga4') {
+          const resp = await fetch(`/api/campaigns/${campaignId}/ga4-campaign-values?dateRange=30days&limit=200`, { credentials: "include" });
+          const json = await resp.json().catch(() => ({}));
+          if (!cancelled && Array.isArray(json?.campaigns)) {
+            setPlatformCampaigns(json.campaigns
+              .map((c: any) => ({ id: String(c?.name || c?.id || ""), name: String(c?.name || c?.id || "Unknown") }))
+              .filter((c: any) => !!c.id));
+          }
+        } else if (campaignPlatform === 'linkedin') {
           const resp = await fetch(`/api/campaigns/${campaignId}/linkedin-campaigns`, { credentials: "include" });
           const json = await resp.json().catch(() => ({}));
           if (!cancelled && Array.isArray(json?.campaigns)) {
@@ -928,7 +936,7 @@ export function AddRevenueWizardModal(props: {
   }, [platformCampaigns, revenueCampaignMappings]);
 
   const mappedRevenueCampaignsForValues = (values: string[]) => {
-    if (platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "tiktok") return [];
+    if (platformContext !== "ga4" && platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "tiktok") return [];
     const valueSet = new Set(values.map((v) => String(v ?? "").trim()).filter(Boolean));
     return revenueCampaignMappings.filter((mapping) => (
       valueSet.has(String(mapping.crmValue || "").trim()) &&
@@ -956,8 +964,8 @@ export function AddRevenueWizardModal(props: {
 
   const renderPlatformCampaignMapping = (values: string[]) => {
     const selectedValues = values.map((v) => String(v ?? "").trim()).filter(Boolean);
-    if ((platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram" && platformContext !== "tiktok") || selectedValues.length === 0) return null;
-    const platformLabel = platformContext === "tiktok" ? "TikTok" : platformContext === "instagram" ? "Instagram" : platformContext === "meta" ? "Meta" : "Google Ads";
+    if ((platformContext !== "ga4" && platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram" && platformContext !== "tiktok") || selectedValues.length === 0) return null;
+    const platformLabel = platformContext === "ga4" ? "GA4" : platformContext === "tiktok" ? "TikTok" : platformContext === "instagram" ? "Instagram" : platformContext === "meta" ? "Meta" : "Google Ads";
     return (
       <div className="pt-2 border-t space-y-3">
         <Label className="font-normal">{platformLabel} campaign mapping</Label>

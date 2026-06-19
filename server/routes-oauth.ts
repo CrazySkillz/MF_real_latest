@@ -2741,6 +2741,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   ): string | null => {
     const exact = exactGoogleAdsCampaignIdOrNull(platformContext, sourceValue, activeGoogleAdsCampaignIds);
     if (exact) return exact;
+    if (platformContext === "ga4") {
+      const value = String(sourceValue || "").trim();
+      if (!value || !Array.isArray(campaignMappings)) return null;
+      const mapping = campaignMappings.find((m: any) => String(m?.crmValue || "").trim() === value);
+      return String(mapping?.linkedinCampaignUrn || "").trim() || null;
+    }
     if (platformContext !== "google_ads" && platformContext !== "meta" && platformContext !== "instagram" && platformContext !== "tiktok") return null;
     const value = String(sourceValue || "").trim();
     if (!value || !Array.isArray(campaignMappings)) return null;
@@ -3293,7 +3299,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 currency,
               } as any)) as any[];
             for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
-              const [date, subCampaignUrn] = key.split(":");
+              const [date, ...urnParts] = key.split(":");
+              const subCampaignUrn = urnParts.join(":");
               if (date && subCampaignUrn && rev > 0) {
                 revenueRecordsToInsert.push({
                   campaignId,
@@ -3319,7 +3326,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               } as any,
             ];
             for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
-              const [date, subCampaignUrn] = key.split(":");
+              const [date, ...urnParts] = key.split(":");
+              const subCampaignUrn = urnParts.join(":");
               if (date && subCampaignUrn && rev > 0) {
                 revenueRecordsToInsert.push({
                   campaignId,
@@ -3833,7 +3841,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             currency,
           } as any)) as any[];
         for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
-          const [date, subCampaignUrn] = key.split(":");
+          const [date, ...urnParts] = key.split(":");
+          const subCampaignUrn = urnParts.join(":");
           if (date && subCampaignUrn && rev > 0) {
             revenueRecordsToInsert.push({
               campaignId,
@@ -3859,7 +3868,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } as any,
         ];
         for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
-          const [date, subCampaignUrn] = key.split(":");
+          const [date, ...urnParts] = key.split(":");
+          const subCampaignUrn = urnParts.join(":");
           if (date && subCampaignUrn && rev > 0) {
             revenueRecordsToInsert.push({
               campaignId,
@@ -15897,6 +15907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const revenueByCloseDate = new Map<string, number>();
       // Per-platform-campaign revenue tracking when exact campaign identity is available.
       const revenueByLinkedinCampaign = new Map<string, number>();
+      const revenueByDateAndCampaign = new Map<string, number>();
       const campaignValueRevenueTotals = new Map<string, number>();
 
       let after: string | undefined;
@@ -15952,6 +15963,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const googleAdsCampaignId = googleAdsCampaignIdFromValueOrMapping(platformCtx, campaignValue, campaignMappings, activeGoogleAdsCampaignIds);
           if (googleAdsCampaignId) {
             revenueByLinkedinCampaign.set(googleAdsCampaignId, (revenueByLinkedinCampaign.get(googleAdsCampaignId) || 0) + r);
+            if (revenueDate) {
+              const key = `${revenueDate}:${googleAdsCampaignId}`;
+              revenueByDateAndCampaign.set(key, (revenueByDateAndCampaign.get(key) || 0) + r);
+            }
           } else if (platformCtx === "linkedin" && campaignMappings.length > 0) {
             const mapping = campaignMappings.find(m => m.crmValue === campaignValue);
             if (mapping) {
@@ -16249,7 +16264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // GA4 HubSpot uses each matched deal's selected date field as real daily revenue history.
         // Other platform contexts keep the existing to-date snapshot behavior for compatibility.
         if (platformCtx === "ga4" && revenueByCloseDate.size > 0) {
-          const records = Array.from(revenueByCloseDate.entries())
+          const records: any[] = Array.from(revenueByCloseDate.entries())
             .sort((a, b) => a[0].localeCompare(b[0]))
             .map(([date, revenue]) => ({
               campaignId,
@@ -16259,6 +16274,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               currency: cur,
               sourceType: 'hubspot',
             } as any));
+          for (const [key, rev] of Array.from(revenueByDateAndCampaign.entries())) {
+            const [date, ...urnParts] = key.split(":");
+            const urn = urnParts.join(":");
+            if (date && urn && rev > 0) {
+              records.push({
+                campaignId,
+                revenueSourceId: String((source as any).id),
+                date,
+                revenue: Number(rev.toFixed(2)).toFixed(2) as any,
+                currency: cur,
+                sourceType: 'hubspot',
+                subCampaignUrn: urn,
+              } as any);
+            }
+          }
           await storage.createRevenueRecords(records);
         } else {
         const recordDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);

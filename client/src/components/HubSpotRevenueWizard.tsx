@@ -61,6 +61,7 @@ export function HubSpotRevenueWizard(props: {
   const { campaignId, sourceId, mode = "connect", initialMappingConfig = null, onBack, onSuccess, onClose, externalBackNonce, platformContext = "ga4" } =
     props;
   const { toast } = useToast();
+  const isGA4 = platformContext === "ga4";
   const isLinkedIn = platformContext === "linkedin";
   const isGoogleAds = platformContext === "google_ads";
   const isMeta = platformContext === "meta";
@@ -186,9 +187,9 @@ export function HubSpotRevenueWizard(props: {
   }, [campaignId, mode, initialMappingConfig, isLinkedIn]);
 
   useEffect(() => {
-    if ((!isGoogleAds && !isMeta && !isInstagram && !isTikTok) || !campaignId) return;
+    if ((!isGA4 && !isGoogleAds && !isMeta && !isInstagram && !isTikTok) || !campaignId) return;
     let cancelled = false;
-    const url = isTikTok ? `/api/tiktok/${campaignId}/campaigns` : isInstagram ? `/api/instagram/${campaignId}/campaigns` : isMeta ? `/api/meta/${campaignId}/campaigns` : `/api/google-ads/${campaignId}/campaigns`;
+    const url = isGA4 ? `/api/campaigns/${campaignId}/ga4-campaign-values?dateRange=30days&limit=200` : isTikTok ? `/api/tiktok/${campaignId}/campaigns` : isInstagram ? `/api/instagram/${campaignId}/campaigns` : isMeta ? `/api/meta/${campaignId}/campaigns` : `/api/google-ads/${campaignId}/campaigns`;
     fetch(url, { credentials: "include" })
       .then((r) => r.ok ? r.json() : { campaigns: [] })
       .then((data) => {
@@ -196,7 +197,7 @@ export function HubSpotRevenueWizard(props: {
         const campaigns = Array.isArray(data?.campaigns) ? data.campaigns : [];
         const selectedIds = new Set(Array.isArray(data?.selectedCampaignIds) ? data.selectedCampaignIds.map((id: any) => String(id)) : []);
         setPlatformCampaigns(campaigns
-          .filter((campaign: any) => isMeta || isInstagram || isTikTok ? (selectedIds.size > 0 ? selectedIds.has(String(campaign?.id || "")) : campaign?.selected !== false) : campaign?.selected !== false)
+          .filter((campaign: any) => isGA4 ? true : isMeta || isInstagram || isTikTok ? (selectedIds.size > 0 ? selectedIds.has(String(campaign?.id || "")) : campaign?.selected !== false) : campaign?.selected !== false)
           .map((campaign: any) => ({ id: String(campaign?.id || campaign?.name || ""), name: String(campaign?.name || campaign?.id || "Unknown") }))
           .filter((campaign: any) => !!campaign.id));
       })
@@ -204,7 +205,7 @@ export function HubSpotRevenueWizard(props: {
         if (!cancelled) setPlatformCampaigns([]);
       });
     return () => { cancelled = true; };
-  }, [isGoogleAds, isInstagram, isMeta, isTikTok, campaignId]);
+  }, [isGA4, isGoogleAds, isInstagram, isMeta, isTikTok, campaignId]);
 
   const platformCampaignOptions = useMemo(() => {
     const options = new Map<string, { id: string; name: string }>();
@@ -219,13 +220,13 @@ export function HubSpotRevenueWizard(props: {
   }, [campaignMappings, platformCampaigns]);
 
   const selectedCampaignMappings = useMemo(() => {
-    if (!isGoogleAds && !isMeta && !isInstagram && !isTikTok) return [];
+    if (!isGA4 && !isGoogleAds && !isMeta && !isInstagram && !isTikTok) return [];
     const selectedSet = new Set(selectedValues.map((value) => String(value || "").trim()).filter(Boolean));
     return campaignMappings.filter((mapping) => (
       selectedSet.has(String(mapping.crmValue || "").trim()) &&
       platformCampaignOptions.some((campaign) => campaign.id === mapping.linkedinCampaignUrn)
     ));
-  }, [campaignMappings, isGoogleAds, isInstagram, isMeta, isTikTok, platformCampaignOptions, selectedValues]);
+  }, [campaignMappings, isGA4, isGoogleAds, isInstagram, isMeta, isTikTok, platformCampaignOptions, selectedValues]);
 
   const updateCampaignMapping = (crmValue: string, campaignIdValue: string) => {
     const value = String(crmValue || "").trim();
@@ -239,8 +240,8 @@ export function HubSpotRevenueWizard(props: {
   };
 
   const renderAdPlatformCampaignMappings = () => {
-    if ((!isGoogleAds && !isMeta && !isInstagram && !isTikTok) || selectedValues.length === 0) return null;
-    const platformLabel = isTikTok ? "TikTok" : isInstagram ? "Instagram" : isMeta ? "Meta" : "Google Ads";
+    if ((!isGA4 && !isGoogleAds && !isMeta && !isInstagram && !isTikTok) || selectedValues.length === 0) return null;
+    const platformLabel = isGA4 ? "GA4" : isTikTok ? "TikTok" : isInstagram ? "Instagram" : isMeta ? "Meta" : "Google Ads";
     return (
       <div className="rounded border p-3 space-y-3">
         <Label>{platformLabel} campaign mapping</Label>

@@ -2284,9 +2284,10 @@ export default function GA4Metrics() {
   const financialSpend = Number(totalSpendForFinancials || 0);
   const revenueSourcesCount = revenueDisplaySources.length + (ga4RevenueForFinancials > 0 ? 1 : 0);
   const spendSourcesCount = spendDisplaySources.length;
+  const hasPipelineProxy = !!pipelineProxyData?.success;
   const pipelineProxySourceEntries = (Array.isArray(pipelineProxyData?.providerEntries) && pipelineProxyData.providerEntries.length > 0
     ? pipelineProxyData.providerEntries
-    : pipelineProxyData?.success ? [pipelineProxyData] : []
+    : hasPipelineProxy ? [pipelineProxyData] : []
   ).filter((entry: any) => Number(entry?.totalToDate || 0) > 0);
   const pipelineProxySourcesCount = pipelineProxySourceEntries.length;
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
@@ -5218,7 +5219,6 @@ export default function GA4Metrics() {
                             )}
                           </CardContent>
                         </Card>
-                        {pipelineProxyData?.success && (
                           <Card>
                             <CardContent className="p-5">
                               <div className="flex items-start justify-between">
@@ -5226,7 +5226,7 @@ export default function GA4Metrics() {
                                 <Target className="h-4 w-4 text-muted-foreground/70" />
                               </div>
                               <p className="text-2xl font-bold text-foreground mt-1">
-                                {formatMoney(Number(pipelineProxyData.totalToDate || 0))}
+                                {hasPipelineProxy ? formatMoney(Number(pipelineProxyData.totalToDate || 0)) : "Not configured"}
                               </p>
                               {pipelineProxySourcesCount > 0 && (
                                 <button
@@ -5239,7 +5239,6 @@ export default function GA4Metrics() {
                               )}
                             </CardContent>
                           </Card>
-                        )}
                           </div>
                         </div>
                         <div>

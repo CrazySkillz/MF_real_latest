@@ -132,7 +132,7 @@ Financial-card detail lives in `GA4/FINANCIAL_SOURCES.md`.
 
 Visible layout:
 
-- `Revenue` contains `Total Revenue` and optional `Pipeline Proxy`
+- `Revenue` contains `Total Revenue` and `Pipeline Proxy`
 - `Spend` contains `Total Spend`
 - `Performance` contains `ROAS`, `ROI`, and `CPA` cards; `Profit` appears when both revenue and spend are available
 - unavailable performance values render as `—` instead of hiding the card
@@ -149,7 +149,7 @@ High-level rule:
 
 Pipeline Proxy rule:
 
-- Pipeline Proxy may appear in the Revenue & Financial area when a HubSpot or Salesforce revenue source was saved with `Total Revenue + Pipeline (Proxy)`
+- Pipeline Proxy appears in the Revenue & Financial area; before a HubSpot or Salesforce `Total Revenue + Pipeline (Proxy)` source is configured, the card shows `Not configured`
 - the render condition is the active CRM revenue source configuration, not only the separate pipeline proxy endpoint response
 - when the endpoint returns a fresh value, the card should use that value; if the endpoint path is stale or unavailable, the card may still render from the active source's saved Pipeline Proxy config
 - if both Salesforce and HubSpot have active Pipeline Proxy configuration for the same GA4 campaign, the card should aggregate their exact proxy totals into one card total

@@ -9890,6 +9890,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
+      const campaign = await storage.getCampaign(campaignId).catch(() => null as any);
+      const savedCampaignScope = propertyId ? [] : getGA4CampaignFilterValues((campaign as any)?.ga4CampaignFilter).slice(0, limit);
+      const applySavedCampaignScope = (campaigns: any[]) => {
+        if (savedCampaignScope.length === 0) return campaigns;
+        const normalize = (value: any) => String(value || "").trim().toLowerCase();
+        const campaignsByName = new Map((Array.isArray(campaigns) ? campaigns : []).map((campaign: any) => [normalize(campaign?.name), campaign]));
+        return savedCampaignScope.map((name) => {
+          const existing = campaignsByName.get(normalize(name));
+          return existing ? { ...existing, name: String(existing.name || name) } : { name, users: 0 };
+        });
+      };
 
       let ga4DateRange = '30daysAgo';
       switch (dateRange) {
@@ -9931,13 +9942,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         // Use 30-day base users (10,800) × scale to produce consistent user counts
         const baseUsers30d = 10800;
-        const campaigns = base
+        const campaigns = applySavedCampaignScope(base
           .slice(0, Math.min(base.length, limit))
           .map((name) => ({
             name,
             users: Math.round(baseUsers30d * (utmScaleMap[name] || 1.0)),
           }))
-          .sort((a, b) => (b.users || 0) - (a.users || 0));
+          .sort((a, b) => (b.users || 0) - (a.users || 0)));
 
         return res.json({
           success: true,
@@ -9952,7 +9963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const result = await ga4Service.getCampaignValues(campaignId, storage, ga4DateRange, propertyId, limit);
       console.log(`[GA4 Campaign Values] campaignId=${campaignId} propertyId=${propertyId || '(auto)'} returned ${result.campaigns?.length || 0} campaigns`);
-      res.json({ success: true, dateRange, ...result });
+      res.json({ success: true, dateRange, ...result, campaigns: applySavedCampaignScope(result.campaigns || []) });
     } catch (error: any) {
       console.error('[GA4 Campaign Values] Error:', error);
       if (error instanceof Error && error.message === 'NO_GA4_CONNECTION') {

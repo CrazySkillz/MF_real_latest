@@ -4,6 +4,8 @@ import { join } from "path";
 
 const readClient = (relativePath: string) =>
   readFileSync(join(process.cwd(), "client", "src", ...relativePath.split("/")), "utf-8");
+const readServer = (relativePath: string) =>
+  readFileSync(join(process.cwd(), "server", ...relativePath.split("/")), "utf-8");
 
 describe("GA4 UI regression guard", () => {
   it("keeps the GA4 analytics header provenance compact and explicit", () => {
@@ -67,6 +69,19 @@ describe("GA4 UI regression guard", () => {
     expect(campaignsPage).toContain("const campaignDateRange = `${wizardLookbackDays}days`;");
     expect(campaignsPage).toContain("ga4-campaign-values?dateRange=${campaignDateRange}");
     expect(ga4ConnectionFlow).toContain("new URLSearchParams({ dateRange: `${lookbackDays}days`, limit: '200' })");
+  });
+
+  it("keeps campaign-scoped GA4 mapping options limited to imported campaign values", () => {
+    const routes = readServer("routes-oauth.ts");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-campaign-values"');
+    const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-landing-pages"', routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(routeStart).toBeGreaterThan(-1);
+    expect(routeEnd).toBeGreaterThan(routeStart);
+    expect(route).toContain("const savedCampaignScope = propertyId ? [] : getGA4CampaignFilterValues");
+    expect(route).toContain("const applySavedCampaignScope = (campaigns: any[]) => {");
+    expect(route).toContain("campaigns: applySavedCampaignScope(result.campaigns || [])");
   });
 
   it("keeps live GA4 breakdown totals from being scaled down to zero when to-date/daily totals are empty", () => {

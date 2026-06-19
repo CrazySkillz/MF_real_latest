@@ -7187,10 +7187,11 @@ export default function GA4Metrics() {
                           const hasRequiredHistory = insightsTrendMode === "monthly" ? availableMonths >= 2 : dailyRows.length >= minRequiredDays;
                           if (!hasRequiredHistory) {
                             const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} days`;
-                            const availableHistory = insightsTrendMode === "monthly" ? `${availableMonths} calendar month${availableMonths === 1 ? "" : "s"}` : `${dailyRows.length} days`;
+                            const availableHistory = insightsTrendMode === "monthly" ? `${availableMonths} calendar month${availableMonths === 1 ? "" : "s"}` : `${dailyRows.length} complete day${dailyRows.length === 1 ? "" : "s"}`;
+                            const intradayHistoryNote = insightsTrendMode === "monthly" ? "" : " Today's intraday GA4 data is excluded until it becomes a completed GA4 day.";
                             return (
                               <div className="text-sm text-muted-foreground/70 py-4">
-                                Need at least {requiredHistory} of GA4 daily history for {insightsTrendMode === "daily" ? "daily trend comparisons" : insightsTrendMode === "7d" ? "7-day rolling trends" : insightsTrendMode === "30d" ? "30-day rolling trends" : "monthly trends"}. Available: {availableHistory}.
+                                Need at least {requiredHistory} of GA4 daily history for {insightsTrendMode === "daily" ? "daily trend comparisons" : insightsTrendMode === "7d" ? "7-day rolling trends" : insightsTrendMode === "30d" ? "30-day rolling trends" : "monthly trends"}. Available: {availableHistory}.{intradayHistoryNote}
                               </div>
                             );
                           }

@@ -42,17 +42,21 @@ This status does not close the newer findings below. Later shared report/source 
 - [x] Commit 4 `690b3962` - cleaned up the three proven orphan `ga4_daily_metrics` synthetic revenue records with an exact-ID guarded migration.
 - [x] Commit 5 `3c7d7955` - fixed the real-property GA4 campaign picker so it checks GA4 manual UTM campaign dimensions when generic GA4 campaign dimensions return only placeholders such as `(direct)`.
 - [x] Commit 6 `c2ffc62e` - fixed the real-property GA4 campaign picker fallback so it extracts `utm_campaign` from GA4 `pageLocation` rows when GA4 attribution dimensions have not populated yet.
-- [x] Commit 7 - fixed the live real-property GA4 Overview zero-metrics path by reusing the selected UTM campaign scope from `pageLocation` when GA4 campaign attribution dimensions and complete-day rows are empty.
+- [x] Commit 7 `2b31ed29` / `bdfa50f7` / `57267c01` - fixed the live real-property GA4 Overview and table zero-metrics path by reusing the selected UTM campaign scope from `pageLocation` when GA4 campaign attribution dimensions and complete-day rows are empty, then carrying those live breakdown totals into the visible Overview cards.
+- [x] Commit 8 `b4c845af` - fixed GA4 Insights Trends history gating so `Daily`, `7d`, `30d`, and `Monthly` show mode-specific history requirements instead of the old shared 2-day message.
 
-Validation completed for each fix:
+Validation completed:
 
-- focused GA4/report regression subset passed after each commit
-- `npm run check` passed after each commit
+- focused GA4/report regression subset passed after Commits 1 through 7
+- `npm run check` passed after Commits 1 through 7
 - focused GA4 campaign-picker and UTM-scope regressions passed for Commits 5, 6, and 7
+- focused GA4 UI regression coverage was added for Commit 8; full local check was not rerun for Commit 8 after the unrelated working-tree rewrite
 
 Not locally verified:
 
 - deployed scheduled email receipt/provider delivery evidence
+- live GA4 delayed-processing timing, because GA4 Measurement Protocol and Data API freshness are controlled by Google, not the local app
+- full clean-tree `npm run check` for Commit 8 after the unrelated folder update
 
 Production-like parity validation result for Commit 3:
 
@@ -108,8 +112,30 @@ Production/live root-cause proof for Commit 7:
   - `pageLocation` containing `utm_campaign=summer_sale` returned sessions `85`, users `85`, conversions `3`, event count `108`, revenue `531.349929`
   - the same `pageLocation` filter returned 0 rows through yesterday and rows only when `today` was included
 - root cause: the Overview metrics/table paths were still scoped through GA4 campaign attribution dimensions and, for to-date/breakdown paths, complete-day windows ending yesterday; live Measurement Protocol test data was visible in today's `pageLocation` UTM rows, not in GA4 campaign attribution dimensions
-- implementation: keep the existing campaign-dimension and complete-day queries as the primary path, then fall back to `pageLocation` `utm_campaign` scope and a today-inclusive window only when the primary scoped result is empty
+- implementation: keep the existing campaign-dimension and complete-day queries as the primary path, then fall back to `pageLocation` `utm_campaign` scope and a today-inclusive window only when the primary scoped result is empty; the visible Overview cards then include live breakdown totals so current live values do not stay at zero while GA4 to-date or persisted daily rows are still empty
 - validation: `npm test -- server/ga4-filter.test.ts`, `npm test -- server/ga4-ui-regression.test.ts server/ga4-filter.test.ts`, and `npm run check` passed
+
+Production-readiness root-cause proof for Commit 8:
+
+- validation date: 2026-06-19
+- affected surface: GA4 `Insights -> Trends`
+- root cause: the Trends render path checked `dailyRows.length < 2` before applying the selected trend mode, so the same 2-day requirement was shown for `Daily`, `7d`, `30d`, and `Monthly` even though those modes require different history windows
+- implementation: keep the existing Trends data source and response shape, but make the empty-state gate mode-specific:
+  - `Daily`: at least 2 days
+  - `7d`: at least 14 days
+  - `30d`: at least 60 days
+  - `Monthly`: at least 2 calendar months
+- validation: focused UI regression guard added in `server/ga4-ui-regression.test.ts`; pushed as `b4c845af`
+
+Mock-live GA4 seed-data support note:
+
+- purpose: support live GA4 validation against a real GA4 property with controlled UTM campaign values
+- expected seeded GA4-native metrics: sessions, users, page views, engagement-rate inputs, purchase events, purchase revenue, source/medium, and `utm_campaign`
+- conversions in the app are GA4-native conversions from the GA4 Data API and therefore depend on the GA4 property's key-event configuration
+- root cause of confusing metric increases without rerunning the script: GA4 Measurement Protocol events can be processed asynchronously, and the app can refetch updated GA4 Data API values after Google finishes processing already-sent events
+- seed-script hygiene fix: the local mock-live script should send engagement parameters on `page_view` events, but should not send an additional standalone `user_engagement` event because some GA4 test properties mark that event as a key event and inflate native GA4 conversions
+- validation completed locally: `python -m py_compile scripts/seed_ga4_mock_campaigns.py`
+- production app boundary: this is validation tooling only; it does not change app response shapes, GA4 architecture, or stored production campaign data
 
 ## Current Fix Plan
 
@@ -269,7 +295,7 @@ Do not mark GA4 fully production-ready until these are separately traced or vali
 
 - full add/edit/delete/scheduler/display/totals/cleanup lifecycle for each GA4 revenue source family: Shopify, HubSpot, Salesforce, Google Sheets, CSV, and legacy Manual
 - full add/edit/delete/scheduler/display/totals/cleanup lifecycle for each GA4 spend source family: Google Sheets, CSV, LinkedIn Ads, Meta, Google Ads, and legacy Manual
-- real GA4 property validation for Overview tables, Insights trends, Ad Comparison, reports, and OAuth/token refresh
+- real GA4 property validation for Ad Comparison, reports, OAuth/token refresh, and longer Insights trend windows after enough live daily history exists
 - deployed scheduled email receipt and provider-event delivery status
 - existing damaged-data cleanup boundaries for duplicate or orphan financial source records
 

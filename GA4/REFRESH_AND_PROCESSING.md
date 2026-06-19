@@ -13,6 +13,8 @@ User expectation:
 - users should not need to reopen setup flows each day just to keep GA4 analytics current
 - the system should refresh eligible GA4 and source-backed financial data in the background
 - the next page load or query refetch should show updated values derived from the latest stored facts and source records
+- users should not need to reselect or manually type GA4 campaign values after property selection when the selected property exposes real UTM campaign values through GA4 dimensions or tagged page URLs
+- GA4 Data API values can change after Google finishes processing already-sent events, so a later refetch can show higher values even when no new seed script run occurred
 
 ## Cross-Tab Refresh Dependency Order
 
@@ -66,6 +68,29 @@ Important meaning:
 - it is campaign-scoped and property-scoped
 - this is only one part of `Overview` freshness; `Overview` also depends on refreshed external revenue and spend source state where applicable
 - it does not replace the external value auto-refresh scheduler or the report delivery scheduler
+
+## Live GA4 UTM And Measurement Protocol Behavior
+
+Live GA4 properties can expose fresh UTM-tagged traffic in phases:
+
+1. tagged URLs appear in `pageLocation`
+2. manual UTM campaign dimensions may populate
+3. generic GA4 campaign attribution dimensions may populate later or remain placeholder-heavy for fresh Measurement Protocol traffic
+
+Required app behavior:
+
+- campaign setup should discover selectable UTM campaign values from all three levels, preserving the existing campaign-values response shape
+- Overview should query the saved GA4 campaign scope through campaign dimensions first, then use `pageLocation` `utm_campaign` fallback only when primary scoped results are empty
+- fallback behavior must stay scoped to the selected campaign values and must not broaden to unrelated property traffic
+- live breakdown totals may be used as a visible-card fallback when to-date or persisted daily totals are still empty
+
+Mock-live seed scripts used for validation should send standard GA4 events:
+
+- `page_view` for sessions, users, page views, source/medium, campaign, and engagement parameters
+- `purchase` for purchase revenue
+- engagement inputs such as `session_engaged` and `engagement_time_msec` on the `page_view`
+
+They should not send a separate standalone `user_engagement` event unless the test explicitly validates that event. Some GA4 test properties can mark `user_engagement` as a key event, which inflates native GA4 `Conversions` after delayed processing.
 
 ## On-Demand GA4 Refresh
 
@@ -219,6 +244,15 @@ The current `Insights` tab is downstream of:
 - refreshed spend and revenue values
 - refreshed KPI context
 - refreshed benchmark context
+
+Trend history gates:
+
+- `Daily` requires at least 2 daily rows
+- `7d` requires at least 14 daily rows
+- `30d` requires at least 60 daily rows
+- `Monthly` requires at least 2 calendar months
+
+These requirements are history requirements, not event-count requirements. Running a seed script repeatedly on the same UTC day can increase current metrics, but it does not create multiple daily-history rows for trend comparisons.
 
 ## Reports Refresh
 

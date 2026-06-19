@@ -281,6 +281,14 @@ Important caveat:
 - seeded/demo campaigns do not replace testing real setup/import/edit/delete workflows
 - deployed production validation must use real GA4 data, scheduler runs, and normal refetch behavior
 
+Mock-live GA4 seed-script caveat:
+
+- a script that sends Measurement Protocol events to a real GA4 property is useful for live campaign picker, Overview, table, and current-metric validation
+- GA4 processes Measurement Protocol events asynchronously, so app values can increase later without rerunning the script
+- repeat same-day script runs add more current events, but they do not create multiple persisted daily-history rows for Trends
+- to validate Insights Trends, run controlled data on separate UTC days or use a confirmed daily-backfill path; expected minimums are 2 days for `Daily`, 14 days for `7d`, 60 days for `30d`, and 2 calendar months for `Monthly`
+- seed scripts should send standard GA4 `page_view` and `purchase` events with UTM campaign/source/medium values; avoid standalone `user_engagement` events unless explicitly testing GA4 key-event configuration
+
 ## Practical Fix Cycle
 
 For each new GA4 issue, follow this loop:

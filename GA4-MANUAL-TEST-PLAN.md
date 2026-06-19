@@ -478,7 +478,9 @@ Checkpoint after Journey 5:
 - [ ] Click the **Insights** tab → scroll to **Trends** section
 - [ ] **Daily** chart: data points visible (simulation + Run Refresh days)
 - [ ] **Daily** table: rows with day-over-day deltas
-- [ ] **Monthly**: 1 bar for current month
+- [ ] **7d**: if fewer than 14 days exist, the message says 14 days are required
+- [ ] **30d**: if fewer than 60 days exist, the message says 60 days are required
+- [ ] **Monthly**: if fewer than 2 calendar months exist, the message says 2 calendar months are required
 
 ---
 
@@ -572,8 +574,9 @@ Checkpoint after Journey 5B:
 
 ### Step 4: Trends modes
 - [ ] Daily: chart + table with deltas
-- [ ] 7d/30d: "Need at least X days" if insufficient data
-- [ ] Monthly: bar chart with partial month marker
+- [ ] 7d: "Need at least 14 days" if insufficient data
+- [ ] 30d: "Need at least 60 days" if insufficient data
+- [ ] Monthly: "Need at least 2 calendar months" if insufficient data, otherwise bar chart with partial month marker
 - [ ] Users HIDDEN in 7d/30d/Monthly dropdown
 
 ---
@@ -1029,7 +1032,10 @@ Required reconciliation checks:
 - [ ] Same KPI, same day → deduped
 
 ### Insights edge cases
-- [ ] <2 days data → "Need 2 days" in Trends
+- [ ] Daily with <2 days data → "Need 2 days" in Trends
+- [ ] 7d with <14 days data → "Need at least 14 days" in Trends
+- [ ] 30d with <60 days data → "Need at least 60 days" in Trends
+- [ ] Monthly with <2 calendar months → "Need at least 2 calendar months" in Trends
 - [ ] 6-13 days → 3d vs 3d anomaly detection
 - [ ] 14+ days → full 7d WoW detection
 - [ ] All KPIs on track → only informational insights
@@ -1182,7 +1188,12 @@ Required reconciliation checks:
 
 ### GA4 (real connection)
 - [ ] Connect a real GA4 property (not yesop mock)
+- [ ] After selecting the property, verify real UTM campaign values appear in the Configure step without manually retyping `campaignName`
+- [ ] Verify placeholder values such as `(direct)` are not the only choices when tagged URLs contain real `utm_campaign` values
+- [ ] Select a real UTM campaign value and finish campaign creation
 - [ ] Verify sessions/users/conversions/revenue populate from real GA4 data
+- [ ] Verify Campaign Breakdown, Landing Pages, and Conversion Events populate for the selected UTM campaign scope
+- [ ] If fresh Measurement Protocol traffic was used, expect values to update after GA4 processing; a later refetch can increase metrics without another script run
 - [ ] Wait 24 hours → verify `ga4-daily` has a new row with yesterday's data
 - [ ] Verify Overview cards updated with latest values
 

@@ -32,6 +32,7 @@ Important meaning:
 - the GA4 page is the platform-specific analytics layer for that campaign
 - the GA4 page is not the campaign-wide rollup page
 - the GA4 property and GA4 campaign values are selected during setup; the GA4 analytics page displays the saved scope and does not provide a post-setup campaign picker
+- the setup picker must discover real UTM campaign values from GA4 campaign dimensions where available, GA4 manual UTM campaign dimensions where available, and `pageLocation` `utm_campaign` fallback when fresh tagged traffic has not yet populated GA4 attribution dimensions
 - revenue and spend sources configured inside GA4, such as Salesforce, HubSpot, Shopify, CSV, or Google Sheets imports, are GA4/campaign financial child inputs; users do not connect them from the campaign `Connected Platforms` section, and they feed financial totals only through the GA4/campaign financial path
 - Campaign DeepDive `Performance Summary` must consume GA4 and every other implemented main Connected Platform through the shared connected-source aggregate contract, not by special-casing GA4-only UI logic
 - Campaign DeepDive must not require duplicate setup for GA4 child revenue/spend systems; those child inputs should affect only the relevant financial totals and should not appear as separate main Connected Platforms
@@ -101,6 +102,21 @@ This means future integrations should copy the validated GA4 patterns for:
 Do not copy old legacy shortcuts or create parallel paths. If a new integration needs different provider-specific behavior, keep that behavior inside the existing platform-specific layer while preserving the same campaign-scoped architecture.
 
 For future main Connected Platforms, the integration is not complete until it also participates in the Campaign DeepDive aggregate contract through the generic source contract: source identity, capabilities, included/excluded metric reasons, freshness, current totals, scheduler snapshot inputs, and regression coverage. Future standalone platforms such as Google Ads, TikTok, Instagram, and other sources should plug into the same aggregate contract instead of adding Performance Summary tab-specific logic.
+
+## Recent Live GA4 Production-Readiness Fixes
+
+These are now part of the GA4 template contract:
+
+- live GA4 campaign setup should show selectable UTM campaign values after property selection, not require the user to retype `campaignName` when real campaign values can be discovered
+- placeholder values such as `(direct)` must not be treated as the only available campaign choice when manual UTM dimensions or `pageLocation` URLs contain real `utm_campaign` values
+- live Overview cards and tables should use the selected UTM campaign scope from GA4 attribution dimensions first, with a `pageLocation` `utm_campaign` fallback for fresh Measurement Protocol or tagged traffic that is visible in URLs before attribution dimensions populate
+- live breakdown totals can feed the visible Overview cards when GA4 to-date totals or persisted daily rows are still empty, so a live property with current UTM traffic does not render zero top-line metrics while populated tables exist
+- GA4 Insights Trends history gating is mode-specific: `Daily` needs 2 days, `7d` needs 14 days, `30d` needs 60 days, and `Monthly` needs 2 calendar months
+
+Live GA4 processing caveat:
+
+- GA4 Measurement Protocol and GA4 reporting are asynchronous. Values can increase after a script run or live traffic event without rerunning the script because Google may finish processing already-sent events later and the app may refetch updated GA4 Data API values.
+- Native GA4 `Conversions` depend on the property's configured key events. Validation scripts should avoid sending standalone events that the property may classify as key events unless the test is explicitly about conversion configuration.
 
 Performance Summary GA4 validation should use the live/mock GA4 test-property setup documented in `CAMPAIGN_DEEPDIVE_PERFORMANCE_SUMMARY_PRODUCTION_READY.md`. That setup validates GA4 data changes over time, app refresh, updated Performance Summary current values, compatible snapshot creation, `What's Changed`, and `Metric Trends`. It requires at least two compatible snapshots for trends, two comparable periods for `What's Changed`, seven or more days for `Last 7 Days`, and thirty or more days for `Last 30 Days`.
 

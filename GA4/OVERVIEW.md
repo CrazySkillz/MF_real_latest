@@ -43,6 +43,7 @@ Important clarification:
 - campaign creation does not permanently populate these cards with one-time imported values
 - during campaign setup, the system stores the GA4 property and campaign selection/filter for this app campaign
 - after that, the Overview tab fetches current GA4 data for that saved scope and computes the cards from those query results
+- for live GA4 properties, current tagged traffic may appear in `pageLocation` URLs before GA4 campaign attribution dimensions populate; the Overview query path may therefore use `pageLocation` `utm_campaign` as a fallback only when the primary campaign-dimension scoped result is empty
 
 ## Source-Of-Truth Hierarchy
 
@@ -58,6 +59,7 @@ Important meaning:
 - setup stores scope, not frozen metric values
 - queries and normalized records are the real inputs
 - the cards are the presentation layer for those recomputed results
+- GA4 Data API values can change after already-sent events are processed by Google; the app should display the latest refetched values rather than treating the first observed value as final
 
 ## Fetched Vs Derived Values
 
@@ -131,6 +133,7 @@ Important meaning:
 - these are GA4-native campaign metrics
 - they are scoped to the GA4 property and GA4 campaign filter selected for this app campaign
 - they are not populated from imported revenue or spend sources
+- when live `pageLocation` UTM fallback is needed, visible card totals may also use populated GA4 breakdown totals so the top cards do not remain zero while scoped live table rows already exist
 
 Important `Users` rule:
 
@@ -221,6 +224,8 @@ Current production behavior:
 - the GA4 analytics page shows the saved client, campaign, GA4 property ID, and selected campaign values for provenance
 - the GA4 analytics provenance card does not show `Last updated`; refresh freshness belongs in logs, scheduler state, or explicit status surfaces rather than this compact header card
 - the GA4 analytics page does not expose a post-setup campaign picker
+- the setup picker should discover selectable UTM campaign values after property selection from GA4 campaign dimensions, manual UTM dimensions, and finally `pageLocation` URLs containing `utm_campaign`
+- placeholder values such as `(direct)`, `(not set)`, or empty values are not sufficient proof that no UTM campaigns exist when manual UTM dimensions or `pageLocation` contain real campaign values
 
 Reason:
 
@@ -304,6 +309,7 @@ Current code-path meaning:
 - in test mode, these tables can render from simulated GA4 responses
 - in production mode, they are intended to render from real GA4-backed query paths for the selected GA4 property and the campaign's saved GA4 campaign scope
 - production table population uses the real GA4 query path, not a mock-refresh design
+- when attribution dimensions are empty for fresh live traffic, table queries may fall back to `pageLocation` `utm_campaign`; landing page source and medium can then be derived from the same tagged URL
 
 Important meaning:
 

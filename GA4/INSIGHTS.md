@@ -106,6 +106,11 @@ Important meaning:
 - trends depend on enough daily history being available
 - some trend modes need more history than others
 - `Users` is currently only available in `Daily` mode in the present implementation
+- history gating is mode-specific:
+  - `Daily` requires at least 2 daily rows
+  - `7d` requires at least 14 daily rows
+  - `30d` requires at least 60 daily rows
+  - `Monthly` requires at least 2 calendar months
 
 ## Trends Current-State Observation
 
@@ -123,6 +128,7 @@ Important meaning:
 - this should populate accurately in production if the GA4 connection is valid and daily facts are being ingested/persisted correctly
 - this is not a mock-only design
 - the main production risk is operational freshness and history availability, not that the Trends UI is hardwired to simulated data
+- a same-day live GA4 seed run can populate current Overview metrics before it creates enough persisted daily history for Trends; 7d, 30d, and Monthly views require repeated daily history, not only more events on the same day
 
 ## GA4 Insights Trends Production-Readiness Checklist
 
@@ -157,7 +163,11 @@ Refresh/freshness:
 Error handling:
 
 - confirm expired or invalid GA4 tokens surface a reconnect/reauthorization path
-- confirm missing-history states show clear UI guidance rather than misleading zeroes
+- confirm missing-history states show mode-specific guidance rather than misleading zeroes:
+  - `Daily`: `2 days`
+  - `7d`: `14 days`
+  - `30d`: `60 days`
+  - `Monthly`: `2 calendar months`
 
 Cross-tab consistency:
 
@@ -247,3 +257,4 @@ Its inputs include:
 Important meaning:
 
 - if Overview-driving values become fresher, Insights should become fresher on refetch or rerender
+- GA4 reporting can finish processing already-sent Measurement Protocol events after the script or live traffic event occurred, so Insights values may increase on a later refetch even when the script was not rerun

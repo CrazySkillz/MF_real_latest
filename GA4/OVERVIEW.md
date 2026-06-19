@@ -134,7 +134,8 @@ Visible layout:
 
 - `Revenue` contains `Total Revenue` and optional `Pipeline Proxy`
 - `Spend` contains `Total Spend`
-- `Performance` contains `Profit`, `ROAS`, `ROI`, and `CPA`
+- `Performance` contains `ROAS`, `ROI`, and `CPA` cards; `Profit` appears when both revenue and spend are available
+- unavailable performance values render as `—` instead of hiding the card
 - `Revenue` and `Spend` render side by side on desktop-width Overview screens and stack on narrower screens
 
 High-level rule:

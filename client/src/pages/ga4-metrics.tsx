@@ -5277,9 +5277,8 @@ export default function GA4Metrics() {
                       </div>
                       <div className="mt-5">
                         <h4 className="text-sm font-semibold text-foreground mb-2">Performance</h4>
-                      {/* Profit/ROAS/ROI/CPA — only when both revenue and spend exist */}
-                      {financialSpend > 0 && financialRevenue > 0 ? (
-                        <div className="grid gap-4 md:grid-cols-4">
+                      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
+                        {financialSpend > 0 && financialRevenue > 0 && (
                           <Card>
                             <CardContent className="p-5">
                               <p className="text-sm font-medium text-muted-foreground/70">Profit</p>
@@ -5289,38 +5288,43 @@ export default function GA4Metrics() {
                               <p className="text-xs text-muted-foreground/70 mt-1">Revenue − Spend</p>
                             </CardContent>
                           </Card>
-                          <Card>
-                            <CardContent className="p-5">
-                              <p className="text-sm font-medium text-muted-foreground/70">ROAS</p>
-                              <p className="text-2xl font-bold text-foreground mt-1">
-                                {financialROAS.toFixed(2)}x
-                              </p>
-                              <p className="text-xs text-muted-foreground/70 mt-1">Revenue ÷ Spend</p>
-                            </CardContent>
-                          </Card>
-                          <Card>
-                            <CardContent className="p-5">
-                              <p className="text-sm font-medium text-muted-foreground/70">ROI</p>
-                              <p className="text-2xl font-bold text-foreground mt-1">
-                                {formatPercentage(financialROI)}
-                              </p>
-                              <p className="text-xs text-muted-foreground/70 mt-1">(Revenue − Spend) ÷ Spend</p>
-                            </CardContent>
-                          </Card>
-                          <Card>
-                            <CardContent className="p-5">
-                              <p className="text-sm font-medium text-muted-foreground/70">CPA</p>
-                              <p className="text-2xl font-bold text-foreground mt-1">
-                                {Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"}
-                              </p>
-                              <p className="text-xs text-muted-foreground/70 mt-1">
-                                Spend ÷ Conversions{Number(financialConversions || 0) <= 0 ? " (needs conversions > 0)" : ""}
-                              </p>
-                            </CardContent>
-                          </Card>
-                        </div>
-                      ) : financialSpend <= 0 ? (
-                        <div className="rounded-lg border border-border bg-muted/40 p-4">
+                        )}
+                        <Card>
+                          <CardContent className="p-5">
+                            <p className="text-sm font-medium text-muted-foreground/70">ROAS</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">
+                              {financialSpend > 0 && financialRevenue > 0 ? `${financialROAS.toFixed(2)}x` : "—"}
+                            </p>
+                            <p className="text-xs text-muted-foreground/70 mt-1">
+                              Revenue ÷ Spend{financialSpend <= 0 ? " (needs spend)" : financialRevenue <= 0 ? " (needs revenue)" : ""}
+                            </p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <p className="text-sm font-medium text-muted-foreground/70">ROI</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">
+                              {financialSpend > 0 && financialRevenue > 0 ? formatPercentage(financialROI) : "—"}
+                            </p>
+                            <p className="text-xs text-muted-foreground/70 mt-1">
+                              (Revenue − Spend) ÷ Spend{financialSpend <= 0 ? " (needs spend)" : financialRevenue <= 0 ? " (needs revenue)" : ""}
+                            </p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-5">
+                            <p className="text-sm font-medium text-muted-foreground/70">CPA</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">
+                              {financialSpend > 0 && Number(financialConversions || 0) > 0 ? formatMoney(Number(financialCPA || 0)) : "—"}
+                            </p>
+                            <p className="text-xs text-muted-foreground/70 mt-1">
+                              Spend ÷ Conversions{financialSpend <= 0 ? " (needs spend)" : Number(financialConversions || 0) <= 0 ? " (needs conversions > 0)" : ""}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                      {financialSpend <= 0 && (
+                        <div className="mt-4 rounded-lg border border-border bg-muted/40 p-4">
                           <p className="text-sm font-medium text-foreground">Add spend to unlock ROAS / ROI / CPA</p>
                           <p className="text-sm text-muted-foreground/70 mt-1">
                             To calculate ROAS/ROI/CPA, add spend from any source (ad platform, spreadsheet, or CSV import).
@@ -5332,7 +5336,7 @@ export default function GA4Metrics() {
                             </Button>
                           </div>
                         </div>
-                      ) : null}
+                      )}
                       </div>
                     </div>
 

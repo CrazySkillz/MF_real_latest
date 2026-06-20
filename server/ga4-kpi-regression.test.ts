@@ -183,6 +183,30 @@ describe("GA4 KPI regression guard", () => {
     expect(footerSection).toContain('disabled={isKpiSubmitDisabled}');
   });
 
+  it("disables the GA4 edit Benchmark submit button until the form changes", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+    const editStart = ga4MetricsFile.indexOf("const editValues = {");
+    const editEnd = ga4MetricsFile.indexOf("setBenchmarkEditInitialValues(editValues);", editStart);
+    const editSection = ga4MetricsFile.slice(editStart, editEnd);
+    const dialogStart = ga4MetricsFile.indexOf("{/* Header with Create Button */}");
+    const footerStart = ga4MetricsFile.indexOf("<DialogFooter>", dialogStart);
+    const footerEnd = ga4MetricsFile.indexOf("</DialogFooter>", footerStart);
+    const footerSection = ga4MetricsFile.slice(footerStart, footerEnd);
+
+    expect(ga4MetricsFile).toContain("const [benchmarkEditInitialValues, setBenchmarkEditInitialValues] = useState<typeof newBenchmark | null>(null);");
+    expect(ga4MetricsFile).toContain("const areBenchmarkFormValuesEqual = (current: Record<string, unknown>, initial: Record<string, unknown>) =>");
+    expect(ga4MetricsFile).toContain("const isBenchmarkEditUnchanged = Boolean(editingBenchmark) && (!benchmarkEditInitialValues || areBenchmarkFormValuesEqual(newBenchmark, benchmarkEditInitialValues));");
+    expect(ga4MetricsFile).toContain("const isBenchmarkSubmitDisabled = createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending || isBenchmarkEditUnchanged;");
+    expect(editStart).toBeGreaterThan(-1);
+    expect(editEnd).toBeGreaterThan(editStart);
+    expect(editSection).toContain("const editValues = {");
+    expect(ga4MetricsFile).toContain("setBenchmarkEditInitialValues(editValues);");
+    expect(footerSection).toContain("disabled={isBenchmarkSubmitDisabled}");
+  });
+
   it("keeps GA4 KPI percentage card values precise enough to explain progress math", () => {
     const ga4MetricsFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),

@@ -96,6 +96,14 @@ const normalizeKpiFormCompareValue = (value: unknown) => String(value ?? "").tri
 const areKpiFormValuesEqual = (current: Partial<KPIFormData>, initial: Partial<KPIFormData>) =>
   KPI_FORM_COMPARE_FIELDS.every((field) => normalizeKpiFormCompareValue(current[field]) === normalizeKpiFormCompareValue(initial[field]));
 
+const BENCHMARK_FORM_COMPARE_FIELDS = [
+  "name", "category", "benchmarkType", "unit", "benchmarkValue", "currentValue", "metric", "industry", "geoLocation",
+  "description", "source", "alertsEnabled", "alertThreshold", "alertCondition", "alertFrequency", "emailNotifications", "emailRecipients",
+] as const;
+
+const areBenchmarkFormValuesEqual = (current: Record<string, unknown>, initial: Record<string, unknown>) =>
+  BENCHMARK_FORM_COMPARE_FIELDS.every((field) => normalizeKpiFormCompareValue(current[field]) === normalizeKpiFormCompareValue(initial[field]));
+
 interface Benchmark {
   id: string;
   campaignId?: string;
@@ -349,6 +357,7 @@ export default function GA4Metrics() {
     emailNotifications: false,
     emailRecipients: "",
   });
+  const [benchmarkEditInitialValues, setBenchmarkEditInitialValues] = useState<typeof newBenchmark | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -856,6 +865,7 @@ export default function GA4Metrics() {
       queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] });
       setShowCreateBenchmark(false);
       setSelectedBenchmarkTemplate(null);
+      setBenchmarkEditInitialValues(null);
       setEditingBenchmark(null);
       setNewBenchmark({
         name: "",
@@ -904,6 +914,7 @@ export default function GA4Metrics() {
       queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] });
       setShowCreateBenchmark(false);
       setSelectedBenchmarkTemplate(null);
+      setBenchmarkEditInitialValues(null);
       setEditingBenchmark(null);
       setNewBenchmark({
         name: "",
@@ -1023,7 +1034,7 @@ export default function GA4Metrics() {
         : String(benchmark.currentValue ?? "");
     const normalizedType = "custom";
     setSelectedBenchmarkTemplate(metric ? { metric } : null);
-    setNewBenchmark({
+    const editValues = {
       name: benchmark.name || "",
       category: benchmark.category || "",
       benchmarkType: normalizedType,
@@ -1043,7 +1054,9 @@ export default function GA4Metrics() {
       alertFrequency: String((benchmark as any).alertFrequency || "immediate").toLowerCase(),
       emailNotifications: (benchmark as any).emailNotifications || false,
       emailRecipients: (benchmark as any).emailRecipients || "",
-    });
+    };
+    setNewBenchmark(editValues);
+    setBenchmarkEditInitialValues(editValues);
   };
 
   const handleDeleteBenchmark = (benchmarkId: string) => {
@@ -4908,6 +4921,8 @@ export default function GA4Metrics() {
   const watchedKpiFormValues = kpiForm.watch();
   const isKpiEditUnchanged = Boolean(editingKPI) && (!kpiEditInitialValues || areKpiFormValuesEqual(watchedKpiFormValues, kpiEditInitialValues));
   const isKpiSubmitDisabled = createKPIMutation.isPending || updateKPIMutation.isPending || isKpiEditUnchanged;
+  const isBenchmarkEditUnchanged = Boolean(editingBenchmark) && (!benchmarkEditInitialValues || areBenchmarkFormValuesEqual(newBenchmark, benchmarkEditInitialValues));
+  const isBenchmarkSubmitDisabled = createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending || isBenchmarkEditUnchanged;
 
   if (campaignLoading) {
     return (
@@ -6279,6 +6294,7 @@ export default function GA4Metrics() {
                           setShowCreateBenchmark(open);
                           if (!open) {
                             setSelectedBenchmarkTemplate(null);
+                            setBenchmarkEditInitialValues(null);
                             setEditingBenchmark(null);
                             setNewBenchmark({
                               name: "",
@@ -6307,6 +6323,7 @@ export default function GA4Metrics() {
                             className="bg-primary hover:bg-primary/90 text-primary-foreground"
                             onClick={() => {
                               setEditingBenchmark(null);
+                              setBenchmarkEditInitialValues(null);
                             }}
                           >
                             <Plus className="w-4 h-4 mr-2" />
@@ -6645,7 +6662,7 @@ export default function GA4Metrics() {
                               <Button type="button" variant="outline" onClick={() => setShowCreateBenchmark(false)}>
                                 Cancel
                               </Button>
-                              <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                              <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isBenchmarkSubmitDisabled}>
                                 {editingBenchmark ? "Update Benchmark" : "Create Benchmark"}
                               </Button>
                             </DialogFooter>

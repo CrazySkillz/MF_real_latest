@@ -4842,6 +4842,15 @@ export default function GA4Metrics() {
       !!selectedGA4PropertyId &&
       !ga4ToDateResp &&
       (ga4ToDateLoading || (!ga4Metrics && (ga4Loading || breakdownLoading))));
+  const ga4SummaryTotalsInitializing =
+    !!campaignId &&
+    !!ga4Connection?.connected &&
+    !!selectedGA4PropertyId &&
+    !ga4Breakdown &&
+    breakdownLoading;
+  const renderSummaryValue = (value: string) => ga4SummaryTotalsInitializing
+    ? <span className="block h-8 w-16 bg-muted rounded animate-pulse" />
+    : value;
   const formatConnectionTimestamp = (value: any) => {
     if (!value) return "Not available yet";
     const d = new Date(value);
@@ -5205,7 +5214,7 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Sessions</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0)}
+                              {renderSummaryValue(formatNumber(breakdownTotals.sessions || ga4Metrics?.sessions || 0))}
                             </p>
                           </CardContent>
                         </Card>
@@ -5225,7 +5234,7 @@ export default function GA4Metrics() {
                               </UITooltip>
                             </div>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {formatNumber(breakdownTotals.users || ga4Metrics?.users || 0)}
+                              {renderSummaryValue(formatNumber(breakdownTotals.users || ga4Metrics?.users || 0))}
                             </p>
                           </CardContent>
                         </Card>
@@ -5233,7 +5242,7 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Conversions</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {formatNumber(financialConversions || 0)}
+                              {renderSummaryValue(formatNumber(financialConversions || 0))}
                             </p>
                           </CardContent>
                         </Card>
@@ -5241,7 +5250,7 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Engagement Rate</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {formatPercentage(rateToPercent(overviewEngagementRate))}
+                              {renderSummaryValue(formatPercentage(rateToPercent(overviewEngagementRate)))}
                             </p>
                           </CardContent>
                         </Card>
@@ -5249,9 +5258,9 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Conv. Rate</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {formatPct((breakdownTotals.sessions || 0) > 0
+                              {renderSummaryValue(formatPct((breakdownTotals.sessions || 0) > 0
                                 ? ((breakdownTotals.conversions || 0) / (breakdownTotals.sessions || 1)) * 100
-                                : 0)}
+                                : 0))}
                             </p>
                           </CardContent>
                         </Card>

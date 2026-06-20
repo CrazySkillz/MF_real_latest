@@ -107,6 +107,22 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue, ga4BreakdownTotals.revenue);");
   });
 
+  it("waits for GA4 breakdown totals before rendering Overview Summary numbers", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const summaryStart = ga4Metrics.indexOf("{/* Summary Cards */}");
+    const revenueStart = ga4Metrics.indexOf("{/* Revenue & Financial */}", summaryStart);
+    const summarySection = ga4Metrics.slice(summaryStart, revenueStart);
+
+    expect(summaryStart).toBeGreaterThan(-1);
+    expect(revenueStart).toBeGreaterThan(summaryStart);
+    expect(ga4Metrics).toContain("const ga4SummaryTotalsInitializing =");
+    expect(ga4Metrics).toContain("!ga4Breakdown &&");
+    expect(ga4Metrics).toContain("breakdownLoading;");
+    expect(ga4Metrics).toContain("const renderSummaryValue = (value: string) => ga4SummaryTotalsInitializing");
+    expect(summarySection).toContain("formatNumber(financialConversions || 0)");
+    expect(summarySection).toContain("renderSummaryValue(formatNumber(financialConversions || 0))");
+  });
+
   it("lets mapped GA4 revenue sources create campaign breakdown rows when GA4 rows are missing", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const pdf = readServer("ga4-scheduled-report-pdf.ts");

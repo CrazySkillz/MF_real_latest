@@ -1775,7 +1775,7 @@ export default function GA4Metrics() {
     },
   });
 
-  const { data: ga4ToDateResp, error: ga4ToDateError } = useQuery<any>({
+  const { data: ga4ToDateResp, error: ga4ToDateError, isLoading: ga4ToDateLoading } = useQuery<any>({
     queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, dateRange],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
@@ -4789,6 +4789,16 @@ export default function GA4Metrics() {
     availableGA4Properties.find((p) => p?.isPrimary) ||
     availableGA4Properties[0] ||
     null;
+  const ga4ContentInitializing =
+    (!!ga4Connection?.connected &&
+      (Number((ga4Connection as any)?.totalConnections || 0) > 0 || availableGA4Properties.length > 0) &&
+      !selectedGA4PropertyId) ||
+    (!!campaignId &&
+      !!ga4Connection?.connected &&
+      !!selectedGA4PropertyId &&
+      !ga4Metrics &&
+      !ga4ToDateResp &&
+      (ga4Loading || ga4ToDateLoading || breakdownLoading));
   const formatConnectionTimestamp = (value: any) => {
     if (!value) return "Not available yet";
     const d = new Date(value);
@@ -5112,7 +5122,7 @@ export default function GA4Metrics() {
 
           {/* Diagnostics dialog removed from main GA4 page UI */}
 
-          {ga4Loading && !ga4Metrics ? (
+          {ga4ContentInitializing ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="h-32 bg-muted rounded animate-pulse"></div>

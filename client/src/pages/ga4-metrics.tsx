@@ -86,6 +86,16 @@ const kpiFormSchema = z.object({
 
 type KPIFormData = z.infer<typeof kpiFormSchema>;
 
+const KPI_FORM_COMPARE_FIELDS: Array<keyof KPIFormData> = [
+  "name", "metric", "description", "unit", "currentValue", "targetValue", "priority", "targetDate",
+  "alertsEnabled", "alertThreshold", "alertCondition", "alertFrequency", "emailNotifications", "emailRecipients",
+];
+
+const normalizeKpiFormCompareValue = (value: unknown) => String(value ?? "").trim();
+
+const areKpiFormValuesEqual = (current: Partial<KPIFormData>, initial: Partial<KPIFormData>) =>
+  KPI_FORM_COMPARE_FIELDS.every((field) => normalizeKpiFormCompareValue(current[field]) === normalizeKpiFormCompareValue(initial[field]));
+
 interface Benchmark {
   id: string;
   campaignId?: string;
@@ -200,6 +210,7 @@ export default function GA4Metrics() {
   const [showKPIDialog, setShowKPIDialog] = useState(false);
   const [selectedKPITemplate, setSelectedKPITemplate] = useState<any>(null);
   const [editingKPI, setEditingKPI] = useState<any>(null);
+  const [kpiEditInitialValues, setKpiEditInitialValues] = useState<KPIFormData | null>(null);
   const [deleteKPIId, setDeleteKPIId] = useState<string | null>(null);
   const [showSpendDialog, setShowSpendDialog] = useState(false);
   // showDeleteSpendDialog removed — dead code, was never triggered
@@ -473,6 +484,7 @@ export default function GA4Metrics() {
 
   const openCreateKPI = () => {
     setEditingKPI(null);
+    setKpiEditInitialValues(null);
     setSelectedKPITemplate(null);
     kpiForm.reset(getEmptyKpiFormValues());
     setShowKPIDialog(true);
@@ -635,6 +647,7 @@ export default function GA4Metrics() {
       queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] });
       setShowKPIDialog(false);
       setEditingKPI(null);
+      setKpiEditInitialValues(null);
       kpiForm.reset();
       toast({ title: "KPI updated successfully" });
     },
@@ -4892,6 +4905,9 @@ export default function GA4Metrics() {
     const s = String(w || "");
     return !s.startsWith("Total Conversions match Total Users.");
   });
+  const watchedKpiFormValues = kpiForm.watch();
+  const isKpiEditUnchanged = Boolean(editingKPI) && (!kpiEditInitialValues || areKpiFormValuesEqual(watchedKpiFormValues, kpiEditInitialValues));
+  const isKpiSubmitDisabled = createKPIMutation.isPending || updateKPIMutation.isPending || isKpiEditUnchanged;
 
   if (campaignLoading) {
     return (
@@ -6122,9 +6138,7 @@ export default function GA4Metrics() {
                                               variant="ghost"
                                               size="icon"
                                               onClick={() => {
-                                                setEditingKPI(kpi);
-                                                setSelectedKPITemplate(getKpiTemplateForEdit(kpi));
-                                                kpiForm.reset({
+                                                const editValues: KPIFormData = {
                                                   ...kpiForm.getValues(),
                                                   name: String(kpi?.name || ""),
                                                   metric: String(kpi?.metric || kpi?.name || ""),
@@ -6139,7 +6153,11 @@ export default function GA4Metrics() {
                                                   alertFrequency: (kpi?.alertFrequency || "daily") as any,
                                                   emailNotifications: Boolean(kpi?.emailNotifications ?? false),
                                                   emailRecipients: String(kpi?.emailRecipients || ""),
-                                                });
+                                                };
+                                                setEditingKPI(kpi);
+                                                setSelectedKPITemplate(getKpiTemplateForEdit(kpi));
+                                                kpiForm.reset(editValues);
+                                                setKpiEditInitialValues(editValues);
                                                 setShowKPIDialog(true);
                                               }}
                                               title="Edit KPI"
@@ -7923,6 +7941,7 @@ export default function GA4Metrics() {
           setShowKPIDialog(open);
           if (!open) {
             setEditingKPI(null);
+            setKpiEditInitialValues(null);
             setSelectedKPITemplate(null);
             kpiForm.reset(getEmptyKpiFormValues());
           }
@@ -8289,7 +8308,7 @@ export default function GA4Metrics() {
                 <Button variant="outline" onClick={() => setShowKPIDialog(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createKPIMutation.isPending || updateKPIMutation.isPending}>
+                <Button type="submit" disabled={isKpiSubmitDisabled}>
                   {editingKPI
                     ? (updateKPIMutation.isPending ? "Updating..." : "Update KPI")
                     : (createKPIMutation.isPending ? "Creating..." : "Create KPI")}

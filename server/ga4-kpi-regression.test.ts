@@ -101,6 +101,32 @@ describe("GA4 KPI regression guard", () => {
     expect(formatSection.indexOf("normalizedUnit === SELECT_UNIT")).toBeLessThan(formatSection.indexOf('normalizedUnit === "count"'));
   });
 
+  it("disables the GA4 edit KPI submit button until the form changes", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+    const editStart = ga4MetricsFile.indexOf("const editValues: KPIFormData = {");
+    const editEnd = ga4MetricsFile.indexOf("setShowKPIDialog(true);", editStart);
+    const editSection = ga4MetricsFile.slice(editStart, editEnd);
+    const dialogStart = ga4MetricsFile.indexOf("{/* Create KPI Dialog */}");
+    const footerStart = ga4MetricsFile.indexOf("<DialogFooter>", dialogStart);
+    const footerEnd = ga4MetricsFile.indexOf("</DialogFooter>", footerStart);
+    const footerSection = ga4MetricsFile.slice(footerStart, footerEnd);
+
+    expect(ga4MetricsFile).toContain("const [kpiEditInitialValues, setKpiEditInitialValues] = useState<KPIFormData | null>(null);");
+    expect(ga4MetricsFile).toContain("const areKpiFormValuesEqual = (current: Partial<KPIFormData>, initial: Partial<KPIFormData>) =>");
+    expect(ga4MetricsFile).toContain("const watchedKpiFormValues = kpiForm.watch();");
+    expect(ga4MetricsFile).toContain("const isKpiEditUnchanged = Boolean(editingKPI) && (!kpiEditInitialValues || areKpiFormValuesEqual(watchedKpiFormValues, kpiEditInitialValues));");
+    expect(ga4MetricsFile).toContain("const isKpiSubmitDisabled = createKPIMutation.isPending || updateKPIMutation.isPending || isKpiEditUnchanged;");
+    expect(editStart).toBeGreaterThan(-1);
+    expect(editEnd).toBeGreaterThan(editStart);
+    expect(editSection).toContain("const editValues: KPIFormData = {");
+    expect(editSection).toContain("kpiForm.reset(editValues);");
+    expect(editSection).toContain("setKpiEditInitialValues(editValues);");
+    expect(footerSection).toContain('disabled={isKpiSubmitDisabled}');
+  });
+
   it("keeps GA4 KPI percentage card values precise enough to explain progress math", () => {
     const ga4MetricsFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),

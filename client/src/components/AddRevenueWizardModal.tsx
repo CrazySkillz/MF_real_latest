@@ -2076,18 +2076,6 @@ export function AddRevenueWizardModal(props: {
                           </div>
                         </div>
 
-                        {csvCampaignValues.length > 0 && (
-                          <div className="space-y-1">
-                            <Label className="font-normal">Selected Campaigns label</Label>
-                            <Input
-                              value={csvCampaignDisplayName}
-                              onChange={(e) => setCsvCampaignDisplayName(e.target.value)}
-                              placeholder={csvCampaignValues[0] || "Campaign label"}
-                              maxLength={80}
-                            />
-                          </div>
-                        )}
-
                         {renderPlatformCampaignMapping(csvCampaignValues)}
 
                         <div className="rounded-md border overflow-hidden p-3">
@@ -2372,18 +2360,6 @@ export function AddRevenueWizardModal(props: {
                         </div>
 
                         {renderPlatformCampaignMapping(sheetsCampaignValues)}
-
-                        {sheetsCampaignValues.length > 0 && (
-                          <div className="space-y-1">
-                            <Label className="font-normal">Selected Campaigns label</Label>
-                            <Input
-                              value={sheetsCampaignDisplayName}
-                              onChange={(e) => setSheetsCampaignDisplayName(e.target.value)}
-                              placeholder={sheetsCampaignValues[0] || "Campaign label"}
-                              maxLength={80}
-                            />
-                          </div>
-                        )}
 
                         {/* Preview table */}
                         <div className="rounded-md border overflow-hidden">

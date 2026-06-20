@@ -234,9 +234,11 @@ describe("Google Sheets aggregate source adapter", () => {
     expect(salesforceWizard).toContain("campaignDisplayName: selectedValues.length > 0 ? (campaignDisplayName.trim() || null) : null");
     expect(shopifyWizard).toContain("campaignDisplayName: selectedValues.length > 0 ? (campaignDisplayName.trim() || null) : null");
     expect((routes.match(/\.\.\.\(campaignDisplayName \? \{ campaignDisplayName \} : \{\}\)/g) || []).length).toBeGreaterThanOrEqual(8);
-    expect(revenueModal).toContain("Selected Campaigns label");
-    expect(spendModal).toContain("Selected Campaigns label");
-    expect(spendModal).toContain('(step === "csv_map" || step === "sheets_map") && campaignKeyValues.length > 0');
+    expect(revenueModal).not.toContain("Selected Campaigns label");
+    expect(spendModal).not.toContain("Selected Campaigns label");
+    expect(hubspotWizard).not.toContain("Selected Campaigns label");
+    expect(salesforceWizard).not.toContain("Selected Campaigns label");
+    expect(shopifyWizard).not.toContain("Selected Campaigns label");
   });
 
   it("opens Google Sheets add-source modals without prefilled create data", () => {

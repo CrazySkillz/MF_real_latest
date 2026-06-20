@@ -976,6 +976,13 @@ For each add/edit/delete action above, validate all related revenue surfaces:
 - [ ] Insights Executive Financials revenue matches Overview `Total Revenue`
 - [ ] Reports generated after the change use the updated revenue values from the current tab state
 
+Latest mapped-revenue validation evidence:
+
+- [x] 2026-06-20: latest commits `44c68a2a`, `2713efd7`, and `8c4103fd` passed targeted validation for exact campaign-matched imported revenue propagation
+- [x] 2026-06-20: confirmed mapped imported revenue updates Overview `Campaign Breakdown` rows without allocating unmatched revenue
+- [x] 2026-06-20: confirmed mapped imported revenue updates GA4 `Ad Comparison` and report output where exact campaign-value mappings exist
+- [x] 2026-06-20: confirmed `Total Revenue` remains additive: GA4 native revenue plus active imported revenue sources
+
 Required reconciliation checks:
 
 - [ ] `Overview Total Revenue = GA4 Revenue + sum(active imported revenue source amounts)`

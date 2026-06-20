@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -995,18 +994,6 @@ export function HubSpotRevenueWizard(props: {
                     Selected: <strong>{selectedValues.length}</strong>
                   </div>
                 </div>
-
-                {selectedValues.length > 0 && (
-                  <div className="space-y-1">
-                    <Label className="font-normal">Selected Campaigns label</Label>
-                    <Input
-                      value={campaignDisplayName}
-                      onChange={(e) => setCampaignDisplayName(e.target.value)}
-                      placeholder={selectedValues[0] || "Campaign label"}
-                      maxLength={80}
-                    />
-                  </div>
-                )}
 
                 <div className="border rounded p-3 flex-1 min-h-0 overflow-y-auto">
                   {valuesLoading ? (

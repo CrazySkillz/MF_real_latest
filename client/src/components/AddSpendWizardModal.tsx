@@ -2447,18 +2447,6 @@ export function AddSpendWizardModal(props: {
                           </div>
                         </div>
 
-                        {(step === "csv_map" || step === "sheets_map") && campaignKeyValues.length > 0 && (
-                          <div className="space-y-1">
-                            <Label className="font-normal">Selected Campaigns label</Label>
-                            <Input
-                              value={campaignDisplayName}
-                              onChange={(e) => setCampaignDisplayName(e.target.value)}
-                              placeholder={campaignKeyValues[0] || "Campaign label"}
-                              maxLength={80}
-                            />
-                          </div>
-                        )}
-
                     {previewRows.length > 0 && (
                       <div className="rounded-md border overflow-hidden p-3">
                         <div className="text-sm font-medium mb-3">Preview</div>

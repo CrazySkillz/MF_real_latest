@@ -111,6 +111,7 @@ These are now part of the GA4 template contract:
 - placeholder values such as `(direct)` must not be treated as the only available campaign choice when manual UTM dimensions or `pageLocation` URLs contain real `utm_campaign` values
 - live Overview cards and tables should use the selected UTM campaign scope from GA4 attribution dimensions first, with a `pageLocation` `utm_campaign` fallback for fresh Measurement Protocol or tagged traffic that is visible in URLs before attribution dimensions populate
 - live breakdown totals can feed the visible Overview cards when GA4 to-date totals or persisted daily rows are still empty, so a live property with current UTM traffic does not render zero top-line metrics while populated tables exist
+- exact campaign-matched imported revenue now propagates into GA4 Overview `Campaign Breakdown`, GA4 `Ad Comparison`, and report output while `Total Revenue` remains GA4 native revenue plus all active imported revenue sources; targeted validation passed for commits `44c68a2a`, `2713efd7`, and `8c4103fd`
 - GA4 Insights Trends history gating is mode-specific: `Daily` needs 2 days, `7d` needs 14 days, `30d` needs 60 days, and `Monthly` needs 2 calendar months
 
 Live GA4 processing caveat:

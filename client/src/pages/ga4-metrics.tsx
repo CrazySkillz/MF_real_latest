@@ -422,8 +422,12 @@ export default function GA4Metrics() {
     if (!cleaned) return "";
     const n = Number(cleaned);
     if (!Number.isFinite(n)) return raw;
-    if (unit === "count") return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-    if (unit === "%" || unit === "ratio") {
+    const normalizedUnit = String(unit || "").trim();
+    if (!normalizedUnit || normalizedUnit === SELECT_UNIT) {
+      return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+    if (normalizedUnit === "count") return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    if (normalizedUnit === "%" || normalizedUnit === "ratio") {
       // Smart formatting: whole numbers when possible, 1 decimal when needed
       const rounded = Math.round(n * 10) / 10;
       if (rounded === Math.floor(rounded)) return Math.round(rounded).toLocaleString();
@@ -554,7 +558,7 @@ export default function GA4Metrics() {
       // Store an initial snapshot currentValue (optional), but ensure it matches the GA4 Overview logic:
       // GA4 Breakdown totals + Spend totals (+ LinkedIn spend fallback).
       let calculatedValue = "0.00";
-      if (selectedKPITemplate) {
+      if (selectedKPITemplate && !(selectedKPITemplate as any)?._isCustom) {
         try {
           calculatedValue = calculateKPIValueFromSources(selectedKPITemplate.name, {
             // Use the same daily sources as the GA4 Overview:
@@ -8022,14 +8026,14 @@ export default function GA4Metrics() {
                       <div
                         key={template.name}
                         className={`p-3 border-2 rounded-lg transition-all ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-                          } ${!isCustom && selectedKPITemplate?.name === template.name
+                          } ${selectedKPITemplate?.name === template.name
                             ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                             : "border-border hover:border-blue-300"
                           }`}
                         onClick={() => {
                           if (disabled) return;
                           if (isCustom) {
-                            setSelectedKPITemplate(null);
+                            setSelectedKPITemplate(template);
                             kpiForm.reset({
                               ...getEmptyKpiFormValues(),
                               unit: SELECT_UNIT as any,

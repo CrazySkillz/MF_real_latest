@@ -67,6 +67,40 @@ describe("GA4 KPI regression guard", () => {
     expect(unitSection).not.toContain("<Input");
   });
 
+  it("highlights the custom KPI tile when selected", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+    const templateStart = ga4MetricsFile.indexOf('name: "Create Custom KPI"');
+    const templateEnd = ga4MetricsFile.indexOf('Choose name + unit, then set values', templateStart);
+    const templateSection = ga4MetricsFile.slice(templateStart, templateEnd);
+
+    expect(templateStart).toBeGreaterThan(-1);
+    expect(templateEnd).toBeGreaterThan(templateStart);
+    expect(templateSection).toContain("selectedKPITemplate?.name === template.name");
+    expect(templateSection).toContain("setSelectedKPITemplate(template);");
+    expect(templateSection).not.toContain("!isCustom && selectedKPITemplate?.name === template.name");
+    expect(ga4MetricsFile).toContain("if (selectedKPITemplate && !(selectedKPITemplate as any)?._isCustom)");
+  });
+
+  it("keeps custom KPI values as generic numbers until a unit is selected", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+    const formatStart = ga4MetricsFile.indexOf("const formatNumberByUnit = (raw: string, unit: string) => {");
+    const formatEnd = ga4MetricsFile.indexOf("// UX-friendly formatting", formatStart);
+    const formatSection = ga4MetricsFile.slice(formatStart, formatEnd);
+
+    expect(formatStart).toBeGreaterThan(-1);
+    expect(formatEnd).toBeGreaterThan(formatStart);
+    expect(formatSection).toContain('const normalizedUnit = String(unit || "").trim();');
+    expect(formatSection).toContain("if (!normalizedUnit || normalizedUnit === SELECT_UNIT) {");
+    expect(formatSection).toContain("minimumFractionDigits: 0, maximumFractionDigits: 2");
+    expect(formatSection.indexOf("normalizedUnit === SELECT_UNIT")).toBeLessThan(formatSection.indexOf('normalizedUnit === "count"'));
+  });
+
   it("keeps GA4 KPI percentage card values precise enough to explain progress math", () => {
     const ga4MetricsFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),

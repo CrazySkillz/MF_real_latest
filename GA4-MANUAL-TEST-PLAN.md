@@ -84,8 +84,10 @@ If a step fails:
 After any GA4 bug fix, run this short regression sweep before moving on:
 
 - Overview: core cards still populate correctly
+- Overview: on browser refresh, Summary cards do not briefly show stale fallback totals before the current campaign breakdown totals load
 - Overview: financial cards still recompute correctly
 - KPIs: current values and Executive snapshot still match
+- KPIs: edit-mode `Update KPI` is disabled until a form value changes
 - Benchmarks: current values and Executive snapshot still match
 - Ad Comparison: selected metric and ranking still update
 - Insights: Executive Financials, Data Summary, and findings still reflect current values
@@ -94,6 +96,7 @@ After any GA4 bug fix, run this short regression sweep before moving on:
 - Reports: custom-report PDF major section order is `Overview -> KPIs -> Benchmarks -> Ad Comparison -> Insights`
 - Reports: custom-report subsection selection is respected and unchecked subsections are excluded
 - Connected source rows: edit/delete still recompute totals correctly
+- Add revenue source chooser: Google Sheets shows `Connected` after an active Google Sheets revenue source exists, and Upload CSV shows `Uploaded` after an active CSV revenue source exists
 - Source import security: CSV/Sheets preview and process routes only work for campaigns the signed-in user can access
 - Notifications: `View KPI` and `View Benchmark` open the correct GA4 tab and exact card, including when already on the same campaign page
 - Bell: clicking a KPI or Benchmark alert opens the correct GA4 tab and exact card, including when already on the same campaign page
@@ -258,6 +261,7 @@ Checkpoint after Journey 1:
 | Revenue | ≈ $87,489 | ≈ $174,979 | ≈ $240,352 |
 
 - [ ] **If you chose 90 days**: Sessions ≈ 65,600, Users ≈ 50,880, Conversions ≈ 2,592, Revenue ≈ $240,352
+- [ ] Refresh the browser and confirm Summary cards do not briefly show older fallback values before the current GA4 Campaign Breakdown totals load
 - [ ] Overview `Users` card tooltip says: `Unique GA4 users for the selected campaign scope.`
 - [ ] **Spend = $0.00** — "Add Spend" button visible (GA4 does NOT track spend)
 - [ ] **"+" icon** visible on both Spend and Revenue cards
@@ -274,6 +278,8 @@ Checkpoint after Journey 1:
   - **ENABLED** (full color, clickable): Sessions, Users, Conversions, Engagement Rate, CR, Revenue
   - **DISABLED** (grayed out, opacity-50, NOT clickable): ROAS, ROI, CPA
 - [ ] Try clicking a disabled template → nothing happens
+- [ ] Select **Create Custom KPI** and confirm the tile is highlighted like other selected KPI tiles
+- [ ] Confirm the **Unit** field is a dropdown with `Select unit`, percentage, campaign currency, count, and ratio choices
 - [ ] Close the dialog (click Cancel or X)
 
 ### Step 10: Verify Benchmark template gates
@@ -498,14 +504,18 @@ Checkpoint after Journey 5B:
 - [ ] Click the **KPIs** tab
 - [ ] Find the **Sessions** KPI card → click the **Edit** (pencil) icon
 - [ ] The edit modal opens with all fields pre-filled (name, description, current, target, unit, priority, alert settings)
+- [ ] Confirm **Update KPI** is disabled before any field changes
 - [ ] Change Target from **100,000** to **80,000**
+- [ ] Confirm **Update KPI** becomes enabled after the target changes
 - [ ] Click **Update KPI**
 - [ ] Card updates: progress % increases (closer to the lower target)
 - [ ] Summary card counts may change (e.g., if progress crosses a band threshold)
 
 ### Step 2: Edit a KPI — change alert threshold
 - [ ] Find the **Sessions** KPI card → click **Edit**
+- [ ] Confirm **Update KPI** is disabled before any field changes
 - [ ] Change alert threshold from **50,000** to **60,000**
+- [ ] Confirm **Update KPI** becomes enabled after the alert threshold changes
 - [ ] Click **Update KPI**
 - [ ] If current > 60,000: yellow alert icon, NO red pulsing dot
 - [ ] If current < 60,000: red pulsing dot appears → notification created
@@ -703,6 +713,7 @@ Checkpoint after Journey 8:
 - [ ] Import $10,000 → Save
 - [ ] Total Revenue source modal shows the imported source and $10,000.00
 - [ ] **Total Revenue increased** by $10,000
+- [ ] Reopen the Add revenue source chooser and confirm the source family just imported shows its saved-source badge (`Uploaded` for CSV, `Connected` for Google Sheets, or the relevant CRM/ecommerce status)
 
 ### Step 3: Verify propagation after imported revenue
 - [ ] **Overview tab**: ROAS increased (higher revenue ÷ same spend), ROI increased, Profit increased
@@ -714,11 +725,12 @@ Checkpoint after Journey 8:
 
 ### Step 4: Add CSV Revenue
 - [ ] "+" → CSV → upload → map Revenue + Campaign columns
-- [ ] Confirm there is no Date column selector in the Revenue CSV mapping screen
+- [ ] Confirm the Revenue CSV mapping screen shows `Revenue`, optional `Date column`, optional campaign identifier/value controls, preview table, and action buttons
 - [ ] Leave campaign values unselected after choosing a campaign column
 - [ ] Confirm `Import revenue` is blocked/disabled until at least one campaign value is selected
 - [ ] Select one or more campaign values → Import
 - [ ] Micro copy shows CSV source with amount
+- [ ] Reopen the Add revenue source chooser and confirm Upload CSV shows `Uploaded`
 - [ ] **Total Revenue = GA4 native + imported revenue sources**
 - [ ] Click edit (pencil) on the CSV revenue source
 - [ ] Confirm it opens directly into the mapping screen with preview loaded
@@ -744,6 +756,7 @@ Checkpoint after Journey 8:
 - [ ] Confirm `Import revenue` is blocked/disabled until at least one campaign value is selected
 - [ ] Select one or more campaign values → Import
 - [ ] Micro copy: "Google Sheets — $X,XXX"
+- [ ] Reopen the Add revenue source chooser and confirm Google Sheets shows `Connected`
 - [ ] Click edit (pencil) on the Google Sheets revenue source
 - [ ] Confirm `Update revenue` is **disabled** immediately on open before any changes are made
 - [ ] Click `Back`, select a different Google Sheet/tab, click `Next`, and confirm mapping/preview values come from the newly selected tab
@@ -766,9 +779,11 @@ Checkpoint after Journey 8:
 - [ ] If `Total Revenue + Pipeline (Proxy)` is selected, choose campaign values such as `yesop_brand_search` and `yesop_prospecting`, then choose a pipeline/deal stage such as `Proposal/Price Quote`
 - [ ] Confirm the campaign identifier helper tip uses generic campaign/UTM wording rather than LinkedIn-specific wording
 - [ ] Confirm the crosswalk step explains that the selected `Deal Name` value(s) do not need to match the MimoSaaS campaign name exactly
+- [ ] Confirm the Crosswalk step does not show a redundant `Selected Campaigns label` field or disabled text input
 - [ ] Confirm Proxy mode makes both confirmed/won values and eligible open-stage values selectable; a campaign value that exists only in the selected open stage must not be hidden from Crosswalk
 - [ ] Confirm the Pipeline step copy explains that the stage filters the already selected campaign values
 - [ ] Confirm the final review step shows the selected Pipeline Proxy stage label, current Pipeline Proxy amount, and a note that it is not included in Total Revenue
+- [ ] Confirm the final review step lists selected deal values with the amount being imported for each selected deal/value
 - [ ] Disconnect HubSpot temporarily and reopen edit mode: confirm the review step still shows the saved Pipeline Proxy stage and saved proxy amount fallback if live preview is unavailable
 - [ ] Micro copy: "HubSpot — $X,XXX"
 - [ ] Non-default date field: "HubSpot · Modified Date"
@@ -792,11 +807,13 @@ Checkpoint after Journey 8:
 - [ ] Move from `Pipeline` to `Revenue`
 - [ ] Confirm the `Pipeline` step icon turns green/completed once you move past it
 - [ ] Confirm the Crosswalk step does not show a redundant `Refresh values` action
+- [ ] Confirm the Crosswalk step does not show a redundant `Selected Campaigns label` field or disabled text input
 - [ ] If `Total Revenue + Pipeline (Proxy)` is selected, choose campaign/opportunity values such as `yesop_brand_search` and `yesop_prospecting`, then choose an Opportunity stage such as `Proposal/Price Quote`
 - [ ] Confirm Proxy mode makes both confirmed/won values and eligible open-stage values selectable; a campaign value that exists only in the selected open Opportunity stage must not be hidden from Crosswalk
 - [ ] Confirm the Pipeline step copy explains that the stage filters the already selected campaign/opportunity values
 - [ ] Confirm changing the selected Crosswalk values changes both the Total Revenue preview and Pipeline Proxy preview where matching CRM records exist
 - [ ] Confirm the final review step shows the selected Pipeline Proxy stage label, current Pipeline Proxy amount, and a note that it is not included in Total Revenue
+- [ ] Confirm the final review step lists selected opportunity values with the amount being imported for each selected opportunity/value
 - [ ] Disconnect Salesforce temporarily and reopen edit mode: confirm the review step still shows the saved Pipeline Proxy stage and saved proxy amount fallback if live preview is unavailable
 - [ ] After save, confirm Overview shows a separate `Pipeline Proxy` card with provider, selected stage label, amount, and selected/contributing campaign values where available
 - [ ] Confirm the Overview `Pipeline Proxy` card is display-only and that source management stays under `Total Revenue`
@@ -817,6 +834,7 @@ Checkpoint after Journey 8:
 
 ### Step 8: Shopify Revenue (if Shopify connected)
 - [ ] "+" → Shopify → domain + token → campaign field → revenue metric → Save
+- [ ] Confirm Shopify `Review Settings` revenue breakdown rows show campaign/value label and amount without order-count text such as `(1 order)`
 
 ### Step 9: Verify all revenue sources active
 - [ ] All shown in the Total Revenue source modal with individual amounts
@@ -1162,7 +1180,8 @@ Required reconciliation checks:
 - [ ] Complete the wizard: campaign field → crosswalk → revenue property → date field
 - [ ] In `Total Revenue only` mode, verify Crosswalk shows only values backed by confirmed/Closed Won deals
 - [ ] In `Total Revenue only` mode, verify won revenue materializes into true daily rows by deal `Close Date`, not as one synthetic snapshot row
-- [ ] Confirm the final HubSpot review step is titled `Review Settings`, says `Review the settings below, then import revenue`, and the primary button says `Import revenue`
+- [ ] Confirm the final HubSpot review step is titled `Review Settings`, says `Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign.`, and the primary button says `Import revenue`
+- [ ] Confirm the final HubSpot review step lists selected deal values with the amount being imported for each selected deal/value
 - [ ] Confirm the final HubSpot review summary does not show a repeated account row or `Account name unavailable`
 - [ ] Verify deal count + revenue total match what you see in HubSpot
 - [ ] If Pipeline Proxy is enabled, select a real open deal stage and verify the review step and Overview `Pipeline Proxy` card show the same stage label and amount
@@ -1175,7 +1194,8 @@ Required reconciliation checks:
 ### Salesforce (real connection)
 - [ ] Connect real Salesforce account via OAuth
 - [ ] Complete wizard: campaign field → revenue field → date field
-- [ ] Confirm the final Salesforce review step is titled `Review Settings`, says `Review the settings below, then import revenue`, and the primary button says `Import revenue`
+- [ ] Confirm the final Salesforce review step is titled `Review Settings`, says `Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign.`, and the primary button says `Import revenue`
+- [ ] Confirm the final Salesforce review step lists selected opportunity values with the amount being imported for each selected opportunity/value
 - [ ] Verify opportunity count + revenue match Salesforce
 - [ ] If the saved Salesforce source exists but auth is down, the revenue-source chooser shows `Reconnect required` rather than `Not connected`
 - [ ] If the stored Salesforce access token is missing but the refresh token is still valid, the chooser/status path recovers the connection and does not incorrectly stay in `Reconnect required`

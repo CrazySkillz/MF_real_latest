@@ -202,6 +202,13 @@ Visible source-picker helper text:
 - `Google Sheets`: `Import revenue from a connected Google Sheets tab`
 - `Upload CSV`: `Import revenue from a CSV. Requires manual re-upload to update.`
 
+Visible source-picker status badges:
+
+- Shopify, HubSpot, and Salesforce should show `Connected` only when the relevant live connection and/or active source state proves the source is usable for the current campaign/platform context; Salesforce may show `Reconnect required` when an active saved source exists but live OAuth is not currently durable
+- Google Sheets should show `Connected` when an active Google Sheets revenue source exists for the current campaign and platform context
+- Upload CSV should show `Uploaded` when an active CSV revenue source exists for the current campaign and platform context
+- these badges describe saved/imported source state for the current campaign/platform context, not merely a provider-level OAuth token
+
 When the user clicks `+` on the `Total Revenue` card:
 
 1. the revenue-source modal opens
@@ -220,6 +227,7 @@ Important meaning:
 
 - `Shopify`, `HubSpot`, and `Salesforce` are connection + attribution/mapping workflows, not simple value entry
 - `Google Sheets` and `CSV` are preview + mapping + import workflows
+- Crosswalk/value-selection stages should not render a redundant `Selected Campaigns label` field or disabled text input; selected count, selected rows, and review-step summaries are the supported selection indicators
 - disconnecting HubSpot, Salesforce, or Shopify must only deactivate the connection that belongs to the current campaign; a supplied connection ID from another campaign must fail closed and must not affect that other campaign
 - deleting a revenue source from `Total Revenue -> Sources` must first verify that the source belongs to the current campaign; normalized revenue records may be deleted only for that verified source ID
 - deleting a spend source from `Total Spend -> Sources` must first verify that the source belongs to the current campaign; normalized spend records may be deleted only for that verified source ID
@@ -258,6 +266,7 @@ Important meaning:
 - the user is not entering a single total; they are defining how Shopify order revenue should belong to this campaign
 - Shopify attribution keys include `UTM Campaign`, `UTM Source`, `UTM Medium`, `Discount code`, and `Tags`; tags are matched as exact individual Shopify order tags and are useful for no-card admin validation because Shopify order tags can be edited directly in Shopify Admin
 - Shopify revenue edit mode should open on the saved `Review Settings` screen with the saved attribution key, selected Shopify values, revenue metric, and any saved campaign mappings populated
+- Shopify `Review Settings` should show revenue breakdown rows as campaign/value label plus amount only; do not append order-count text such as `(1 order)` to those amount rows
 - Shopify revenue edit mode should preserve the saved Shopify connection method on the first screen; token/Admin API connections should not fall back to showing OAuth when navigating back
 - if an older Shopify Admin API token connection is missing persisted connection-method metadata, Shopify status should recover the method from the stored token behavior so edit mode still reopens with `Admin API token` selected
 - the Admin API token field should be masked in the UI; tokens are credentials and should not be displayed as plain text while typing or pasting
@@ -310,7 +319,7 @@ Important meaning:
 - the `Review Settings` subtitle should say `Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign.`
 - the `Review Settings` details card should not repeat a second heading such as `Review HubSpot revenue settings`
 - the `Review Settings` details card should keep `Selected deal(s)` directly under `Total Revenue (to date)` so the confirmed revenue and selected deals read as one continuous summary
-- `Selected deal(s)` should list each selected HubSpot value on its own line
+- `Selected deal(s)` should list each selected HubSpot value on its own line with the amount that will be imported for that selected deal/value when preview data provides it
 - the first HubSpot `Source` step should show `Connected to: <account>` above the main double-counting warning, with `Reconnect` as the related action
 - HubSpot account display should prefer the friendly HubSpot account name and must not show raw `Portal <id>` or generic `HubSpot account` text in the wizard
 - the HubSpot `Review Settings` summary should not repeat the account row; account context belongs on the first `Source` step
@@ -359,7 +368,7 @@ Important meaning:
 - the `Review Settings` subtitle should say `Confirm these details before saving. Revenue will be treated as revenue-to-date for this campaign.`
 - the `Review Settings` details card should not repeat a second heading such as `Review Salesforce revenue settings`
 - the Salesforce review step should label selected CRM records as `Selected opportunity(ies)`, not generic selected values
-- `Selected opportunity(ies)` should list each selected Salesforce value on its own line
+- `Selected opportunity(ies)` should list each selected Salesforce value on its own line with the amount that will be imported for that selected opportunity/value when preview data provides it
 - the Salesforce Crosswalk step should not show a manual `Refresh values` button; values load as part of the existing wizard progression
 - the main double-counting warning should appear on the first `Source` step so users see it before proceeding through the wizard
 - if Salesforce is disconnected in edit mode, the review step should still show the saved Pipeline Proxy stage and saved proxy amount until live preview becomes available again

@@ -117,6 +117,7 @@ Important meaning:
 - they are scoped to the GA4 property and GA4 campaign filter selected for this app campaign
 - they are not populated from imported revenue or spend sources
 - when live `pageLocation` UTM fallback is needed, visible card totals may also use populated GA4 breakdown totals so the top cards do not remain zero while scoped live table rows already exist
+- on initial page load or browser refresh, Summary card values should not briefly render stale fallback totals while the selected GA4 property's campaign breakdown query is still loading; show a stable skeleton for the card values until the breakdown-backed totals are ready
 
 Important `Users` rule:
 

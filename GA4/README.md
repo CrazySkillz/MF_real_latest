@@ -111,7 +111,13 @@ These are now part of the GA4 template contract:
 - placeholder values such as `(direct)` must not be treated as the only available campaign choice when manual UTM dimensions or `pageLocation` URLs contain real `utm_campaign` values
 - live Overview cards and tables should use the selected UTM campaign scope from GA4 attribution dimensions first, with a `pageLocation` `utm_campaign` fallback for fresh Measurement Protocol or tagged traffic that is visible in URLs before attribution dimensions populate
 - live breakdown totals can feed the visible Overview cards when GA4 to-date totals or persisted daily rows are still empty, so a live property with current UTM traffic does not render zero top-line metrics while populated tables exist
+- Overview Summary cards should not flash stale fallback totals while the selected GA4 property's campaign breakdown is still loading. During that initial breakdown load, card values render a stable skeleton so values such as `Conversions` load directly into the current total instead of briefly showing an older lower value.
 - exact campaign-matched imported revenue now propagates into GA4 Overview `Campaign Breakdown`, GA4 `Ad Comparison`, and report output while `Total Revenue` remains GA4 native revenue plus all active imported revenue sources; targeted validation passed for commits `44c68a2a`, `2713efd7`, and `8c4103fd`
+- the `Add revenue source` chooser shows saved-source status for every revenue source family: CRM/ecommerce sources show connection/import status where applicable, Google Sheets shows `Connected` when an active Google Sheets revenue source exists for the current platform context, and CSV shows `Uploaded` when an active CSV revenue source exists
+- CRM/ecommerce Crosswalk screens should not render a redundant `Selected Campaigns label` field; selected counts and selected value rows are the visible selection summary
+- HubSpot and Salesforce `Review Settings` show the selected deal/opportunity labels together with the amount that will be imported for each selected record, while the confirmed `Total Revenue (to date)` remains the sum of those included confirmed records
+- Shopify `Review Settings` revenue breakdown rows show campaign/value revenue amounts without appending order-count text such as `(1 order)`
+- GA4 KPI creation uses a constrained unit dropdown, highlights `Create Custom KPI` when selected, keeps custom KPI current/target values in generic numeric format until a real unit is selected, and disables `Update KPI` in edit mode until at least one form value changes
 - GA4 Insights Trends history gating is mode-specific: `Daily` needs 2 days, `7d` needs 14 days, `30d` needs 60 days, and `Monthly` needs 2 calendar months
 
 Live GA4 processing caveat:

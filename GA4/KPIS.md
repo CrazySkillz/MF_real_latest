@@ -52,6 +52,9 @@ Important meaning:
 - they are not benchmark reference values
 - they are not percentages of the current value unless the user explicitly enters a percentage-based target metric
 - the target should represent what "good" looks like for this campaign
+- the KPI template tile grid is the metric selector; selecting `Create Custom KPI` should highlight that tile with the same selected styling used by predefined KPI tiles
+- the `Unit` field is a constrained dropdown, not free text. Supported visible choices are `Select unit`, `Percentage (%)`, campaign currency, `Count`, and `Ratio (x)`, with the current campaign currency used for currency-style KPIs.
+- for a custom KPI before the user selects a real unit, `Current Value` and `Target Value` should be formatted as generic numbers. Whole numbers such as `700` should remain `700`, while currency-style two-decimal formatting should apply only after a currency unit is selected.
 
 ## KPI Grid Behavior
 
@@ -77,6 +80,7 @@ When editing an existing KPI:
 - custom KPIs should not force-highlight a predefined tile
 - opening edit mode should not auto-select or visually highlight the KPI name input text
 - the KPI name field remains editable, but template selection should be visually represented by the tile grid
+- `Update KPI` should remain disabled immediately after opening edit mode and should become enabled only after at least one form value differs from the loaded edit values
 
 ## KPI Value Sources
 

@@ -67,6 +67,44 @@ describe("GA4 KPI regression guard", () => {
     expect(unitSection).not.toContain("<Input");
   });
 
+  it("renders the GA4 Benchmark unit field as a constrained dropdown", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+    const currentValueStart = ga4MetricsFile.indexOf("{/* Current Value + Benchmark Value + Unit */}");
+    const unitStart = ga4MetricsFile.indexOf('<div className="text-sm font-medium text-foreground/80/60">Unit</div>', currentValueStart);
+    const unitEnd = ga4MetricsFile.indexOf("</Select>", unitStart);
+    const unitSection = ga4MetricsFile.slice(unitStart, unitEnd);
+
+    expect(currentValueStart).toBeGreaterThan(-1);
+    expect(unitStart).toBeGreaterThan(currentValueStart);
+    expect(unitEnd).toBeGreaterThan(unitStart);
+    expect(unitSection).toContain('<Select value={String(newBenchmark.unit || SELECT_UNIT)}');
+    expect(unitSection).toContain('<SelectTrigger id="benchmark-unit">');
+    expect(unitSection).toContain('<SelectItem value={SELECT_UNIT} disabled>Select unit</SelectItem>');
+    expect(unitSection).toContain('getKpiUnitOptions(String(newBenchmark.unit || "")).map');
+    expect(ga4MetricsFile).not.toContain('placeholder="%, $, count, etc."');
+  });
+
+  it("keeps custom Benchmark values as generic numbers until a unit is selected", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+    const valuesStart = ga4MetricsFile.indexOf("{/* Current Value + Benchmark Value + Unit */}");
+    const valuesEnd = ga4MetricsFile.indexOf("{/* Alert Settings */}", valuesStart);
+    const valuesSection = ga4MetricsFile.slice(valuesStart, valuesEnd);
+
+    expect(valuesStart).toBeGreaterThan(-1);
+    expect(valuesEnd).toBeGreaterThan(valuesStart);
+    expect(valuesSection).toContain("currentValue: formatNumberByUnit(e.target.value, String(prev.unit || SELECT_UNIT))");
+    expect(valuesSection).toContain("benchmarkValue: formatNumberWhileTyping(e.target.value, String(newBenchmark.unit || SELECT_UNIT))");
+    expect(valuesSection).toContain("benchmarkValue: formatNumberByUnit(e.target.value, String(prev.unit || SELECT_UNIT))");
+    expect(valuesSection).not.toContain('String(prev.unit || "%")');
+    expect(valuesSection).not.toContain('String(newBenchmark.unit || "%")');
+  });
+
   it("highlights the custom KPI tile when selected", () => {
     const ga4MetricsFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
@@ -82,6 +120,24 @@ describe("GA4 KPI regression guard", () => {
     expect(templateSection).toContain("setSelectedKPITemplate(template);");
     expect(templateSection).not.toContain("!isCustom && selectedKPITemplate?.name === template.name");
     expect(ga4MetricsFile).toContain("if (selectedKPITemplate && !(selectedKPITemplate as any)?._isCustom)");
+  });
+
+  it("renders and highlights the custom benchmark tile", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+    const benchmarkStart = ga4MetricsFile.indexOf("Select Benchmark Template");
+    const benchmarkEnd = ga4MetricsFile.indexOf("{/* Benchmark Name */}", benchmarkStart);
+    const benchmarkSection = ga4MetricsFile.slice(benchmarkStart, benchmarkEnd);
+
+    expect(benchmarkStart).toBeGreaterThan(-1);
+    expect(benchmarkEnd).toBeGreaterThan(benchmarkStart);
+    expect(benchmarkSection).toContain('name: "Create Custom Benchmark"');
+    expect(benchmarkSection).toContain("Choose name + unit, then set values");
+    expect(benchmarkSection).toContain("selectedBenchmarkTemplate?.metric === template.metric");
+    expect(benchmarkSection).toContain("setSelectedBenchmarkTemplate(template);");
+    expect(benchmarkSection).not.toContain("!isCustom && selectedBenchmarkTemplate?.metric === template.metric");
   });
 
   it("keeps custom KPI values as generic numbers until a unit is selected", () => {

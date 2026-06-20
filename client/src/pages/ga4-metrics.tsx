@@ -6369,14 +6369,14 @@ export default function GA4Metrics() {
                                     <div
                                       key={template.metric}
                                       className={`p-3 border-2 rounded-lg transition-all ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-                                        } ${!isCustom && selectedBenchmarkTemplate?.metric === template.metric
+                                        } ${selectedBenchmarkTemplate?.metric === template.metric
                                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                                           : "border-border hover:border-blue-300"
                                         }`}
                                       onClick={() => {
                                         if (disabled) return;
                                         if (isCustom) {
-                                          setSelectedBenchmarkTemplate(null);
+                                          setSelectedBenchmarkTemplate(template);
                                           setNewBenchmark((prev) => ({
                                             ...prev,
                                             benchmarkType: "custom",
@@ -6444,15 +6444,19 @@ export default function GA4Metrics() {
                                       <div className="font-medium text-sm text-foreground">
                                         {template.name}
                                       </div>
-                                      {disabled ? (
+                                      {isCustom ? (
+                                        <div className="mt-1 text-xs text-muted-foreground/70">
+                                          Choose name + unit, then set values
+                                        </div>
+                                      ) : disabled ? (
                                         <div className="mt-1 text-xs text-muted-foreground/70">
                                           {requiresSpend && !spendMetricAvailable && requiresRevenue && !revenueMetricAvailable
                                             ? "Spend + Revenue required (add both to unlock)"
                                             : requiresSpend && !spendMetricAvailable
                                               ? "Spend required (add spend to unlock)"
-                                              : requiresRevenue && !revenueMetricAvailable
-                                                ? "Revenue required (add GA4 revenue metric or import revenue)"
-                                                : "Unavailable"}
+                                            : requiresRevenue && !revenueMetricAvailable
+                                              ? "Revenue required (add GA4 revenue metric or import revenue)"
+                                              : "Unavailable"}
                                         </div>
                                       ) : null}
                                     </div>
@@ -6499,7 +6503,7 @@ export default function GA4Metrics() {
                                   onBlur={(e) =>
                                     setNewBenchmark((prev) => ({
                                       ...prev,
-                                      currentValue: formatNumberByUnit(e.target.value, String(prev.unit || "%")),
+                                      currentValue: formatNumberByUnit(e.target.value, String(prev.unit || SELECT_UNIT)),
                                     }))
                                   }
                                   placeholder="Auto-filled from GA4"
@@ -6514,13 +6518,13 @@ export default function GA4Metrics() {
                                   onChange={(e) => {
                                     setNewBenchmark({
                                       ...newBenchmark,
-                                      benchmarkValue: formatNumberWhileTyping(e.target.value, String(newBenchmark.unit || "%")),
+                                      benchmarkValue: formatNumberWhileTyping(e.target.value, String(newBenchmark.unit || SELECT_UNIT)),
                                     });
                                   }}
                                   onBlur={(e) =>
                                     setNewBenchmark((prev) => ({
                                       ...prev,
-                                      benchmarkValue: formatNumberByUnit(e.target.value, String(prev.unit || "%")),
+                                      benchmarkValue: formatNumberByUnit(e.target.value, String(prev.unit || SELECT_UNIT)),
                                     }))
                                   }
                                   placeholder="Enter benchmark value"
@@ -6529,11 +6533,17 @@ export default function GA4Metrics() {
                               </div>
                               <div className="space-y-2">
                                 <div className="text-sm font-medium text-foreground/80/60">Unit</div>
-                                <Input
-                                  value={newBenchmark.unit === SELECT_UNIT ? "" : newBenchmark.unit}
-                                  onChange={(e) => setNewBenchmark({ ...newBenchmark, unit: e.target.value })}
-                                  placeholder="%, $, count, etc."
-                                />
+                                <Select value={String(newBenchmark.unit || SELECT_UNIT)} onValueChange={(value) => setNewBenchmark({ ...newBenchmark, unit: value })}>
+                                  <SelectTrigger id="benchmark-unit">
+                                    <SelectValue placeholder="Select unit" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value={SELECT_UNIT} disabled>Select unit</SelectItem>
+                                    {getKpiUnitOptions(String(newBenchmark.unit || "")).map((option) => (
+                                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
                             </div>
 

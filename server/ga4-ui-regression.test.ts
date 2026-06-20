@@ -151,6 +151,27 @@ describe("GA4 UI regression guard", () => {
     expect(pdfAgg).toContain("filteredCampaignRowsByKey.set(key, row);");
   });
 
+  it("keeps GA4 Ad Comparison leader cards on mapped revenue-adjusted rows", () => {
+    const adComparison = readClient("pages/ga4-ad-comparison.tsx");
+    const allocationStart = adComparison.indexOf("const allocationSummary = useMemo(() => {");
+    const comparisonStart = adComparison.indexOf("const comparisonRows = useMemo(() => {", allocationStart);
+    const allocationSection = adComparison.slice(allocationStart, comparisonStart);
+    const cardsStart = adComparison.indexOf("const bestPerforming = useMemo(() => {", comparisonStart);
+    const formatStart = adComparison.indexOf("const fmtMetricValue = (metric: string, value: number) => {", cardsStart);
+    const cardsSection = adComparison.slice(cardsStart, formatStart);
+
+    expect(allocationStart).toBeGreaterThan(-1);
+    expect(comparisonStart).toBeGreaterThan(allocationStart);
+    expect(cardsStart).toBeGreaterThan(comparisonStart);
+    expect(formatStart).toBeGreaterThan(cardsStart);
+    expect(allocationSection).toContain("const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];");
+    expect(allocationSection).toContain("const mappedCampaignByValue = new Map<string, string>();");
+    expect(allocationSection).toContain("const key = normalizeCampaignKey(mappedCampaignByValue.get(valueKey) || campaignValue);");
+    expect(cardsSection).toContain("return [...comparisonRows].filter(c => c.sessions > 0)");
+    expect(cardsSection).toContain("const rowsWithSessions = [...comparisonRows].filter(c => c.sessions > 0);");
+    expect(cardsSection).not.toContain("[...campaignBreakdownAgg]");
+  });
+
   it("keeps GA4 Insights trend history requirements aligned to selected mode", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 

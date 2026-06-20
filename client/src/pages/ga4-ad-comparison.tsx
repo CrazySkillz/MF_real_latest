@@ -83,10 +83,18 @@ export default function GA4AdComparison({
         ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })()
         : rawCfg;
       const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
+      const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
+      const mappedCampaignByValue = new Map<string, string>();
+      for (const mapping of mappings) {
+        const valueKey = normalizeCampaignKey(mapping?.crmValue || "");
+        const mappedName = String(mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "").trim();
+        if (valueKey && mappedName) mappedCampaignByValue.set(valueKey, mappedName);
+      }
       for (const item of totals) {
         const campaignValue = String(item?.campaignValue || "").trim();
         const revenue = Number(item?.revenue || 0);
-        const key = normalizeCampaignKey(campaignValue);
+        const valueKey = normalizeCampaignKey(campaignValue);
+        const key = normalizeCampaignKey(mappedCampaignByValue.get(valueKey) || campaignValue);
         if (!key || !(revenue > 0) || rowCounts.get(key) !== 1) continue;
         const rowName = rowNameByKey.get(key);
         if (!rowName) continue;
@@ -181,11 +189,11 @@ export default function GA4AdComparison({
   }, [comparisonRows, selectedMetric]);
 
   const mostEfficient = useMemo(() => {
-    return [...campaignBreakdownAgg].filter(c => c.sessions > 0).sort((a, b) => b.conversionRate - a.conversionRate)[0];
-  }, [campaignBreakdownAgg]);
+    return [...comparisonRows].filter(c => c.sessions > 0).sort((a, b) => b.conversionRate - a.conversionRate)[0];
+  }, [comparisonRows]);
 
   const needsAttention = useMemo(() => {
-    const rowsWithSessions = [...campaignBreakdownAgg].filter(c => c.sessions > 0);
+    const rowsWithSessions = [...comparisonRows].filter(c => c.sessions > 0);
     const meaningfulSessionFloor = Math.max(25, Math.ceil(Math.max(...rowsWithSessions.map(c => c.sessions), 0) * 0.1));
     const pool = rowsWithSessions.some(c => c.sessions >= meaningfulSessionFloor)
       ? rowsWithSessions.filter(c => c.sessions >= meaningfulSessionFloor)
@@ -195,7 +203,7 @@ export default function GA4AdComparison({
     const candidate = sorted[0];
     if (candidate && candidate.name === bestPerforming?.name && sorted.length > 1) return sorted[1];
     return candidate;
-  }, [campaignBreakdownAgg, bestPerforming]);
+  }, [comparisonRows, bestPerforming]);
 
   const fmtMetricValue = (metric: string, value: number) => {
     if (metric === "revenue") return formatMoney(value);

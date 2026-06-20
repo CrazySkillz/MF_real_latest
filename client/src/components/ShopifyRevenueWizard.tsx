@@ -801,17 +801,6 @@ export function ShopifyRevenueWizard(props: {
                   {valuesLoading ? "Refreshing…" : "Refresh values"}
                 </Button>
               </div>
-              {selectedValues.length > 0 && (
-                <div className="space-y-1">
-                  <Label className="font-normal">Selected Campaigns label</Label>
-                  <Input
-                    value={campaignDisplayName}
-                    onChange={(e) => setCampaignDisplayName(e.target.value)}
-                    placeholder={selectedValues[0] || "Campaign label"}
-                    maxLength={80}
-                  />
-                </div>
-              )}
               <div className="border rounded p-3 max-h-[280px] overflow-y-auto">
                 {valuesLoading ? (
                   <div className="text-sm text-muted-foreground">Loading values…</div>

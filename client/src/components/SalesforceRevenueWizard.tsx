@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, CheckCircle2, DollarSign, Target, Link2, ClipboardCheck } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -21,6 +20,7 @@ type UniqueValue = {
 };
 
 type PlatformCampaignMapping = { crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string };
+type ReviewOpportunityBreakdownRow = { id?: string; name: string; campaignValue?: string; amount: number };
 
 export function SalesforceRevenueWizard(props: {
   campaignId: string;
@@ -760,6 +760,33 @@ export function SalesforceRevenueWizard(props: {
     return null;
   }, [lastSaveResult, previewKey, reviewPreviewKey, previewTotalRevenue, initialMappingConfig, previewRows, previewHeaders, revenueField]);
 
+  const formatReviewCurrency = (value: number) =>
+    `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const reviewOpportunityBreakdown = useMemo<ReviewOpportunityBreakdownRow[]>(() => {
+    if (previewKey !== reviewPreviewKey || previewHeaders.length === 0) return [];
+    const findHeader = (target: string) => previewHeaders.findIndex((h) => h.toLowerCase() === target.toLowerCase());
+    const amountIdx = previewHeaders.findIndex((h) => h.toLowerCase() === String(revenueField || "").toLowerCase() || h.toLowerCase() === "amount");
+    if (amountIdx < 0) return [];
+    const idIdx = findHeader("Id");
+    const nameIdx = findHeader("Name");
+    const campaignIdx = previewHeaders.findIndex((h) => h.toLowerCase() === String(campaignField || "").toLowerCase());
+    const rows: ReviewOpportunityBreakdownRow[] = [];
+    previewRows.forEach((row, index) => {
+      const rawAmount = String(row[amountIdx] || "").replace(/[^0-9.\-]/g, "");
+      const amount = Number(rawAmount);
+      if (!Number.isFinite(amount)) return;
+      const name = String((nameIdx >= 0 ? row[nameIdx] : "") || (campaignIdx >= 0 ? row[campaignIdx] : "") || `Opportunity ${index + 1}`);
+      rows.push({
+        id: idIdx >= 0 ? String(row[idIdx] || "") : undefined,
+        name,
+        campaignValue: campaignIdx >= 0 ? String(row[campaignIdx] || "") : undefined,
+        amount,
+      });
+    });
+    return rows;
+  }, [campaignField, previewHeaders, previewKey, previewRows, revenueField, reviewPreviewKey]);
+
   const reviewPipelineProxyAmount = useMemo(() => {
     if (!pipelineEnabled) return null;
     if (pipelinePreviewHeaders.length > 0) {
@@ -807,7 +834,7 @@ export function SalesforceRevenueWizard(props: {
           revenueField,
           days,
           dateField,
-          limit: 25,
+          limit: 200,
           pipelineEnabled,
           pipelineStageName: pipelineEnabled ? pipelineStageName : null,
         }),
@@ -1514,6 +1541,30 @@ export function SalesforceRevenueWizard(props: {
                     </div>
                   </div>
                 </div>
+
+                {reviewOpportunityBreakdown.length > 0 && (
+                  <div className="mt-4 border-t border-border pt-4">
+                    <div className="text-xs text-muted-foreground/70">Opportunity amount breakdown</div>
+                    <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-border bg-card">
+                      {reviewOpportunityBreakdown.map((opportunity, index) => {
+                        const campaignValue = String(opportunity.campaignValue || "");
+                        return (
+                          <div key={`${opportunity.id || opportunity.name}-${index}`} className="flex items-start justify-between gap-3 border-b border-border px-3 py-2 last:border-b-0">
+                            <div className="min-w-0">
+                              <div className="truncate font-medium text-foreground">{opportunity.name}</div>
+                              {campaignValue && campaignValue !== opportunity.name && (
+                                <div className="truncate text-xs text-muted-foreground/70">{campaignValue}</div>
+                              )}
+                            </div>
+                            <div className="shrink-0 font-medium text-green-700 dark:text-green-400">
+                              {formatReviewCurrency(Number(opportunity.amount || 0))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {previewCampaignCurrency && effectiveCurrencyMismatch && (

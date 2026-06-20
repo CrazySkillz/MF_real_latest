@@ -133,6 +133,7 @@ describe("Shopify revenue regression guard", () => {
     expect(routes).toContain("orderCount: campaignValueOrderCounts.get(campaignValue) || 0");
     expect(wizard).toContain("preview?.campaignValueRevenueTotals");
     expect(wizard).toContain("Revenue breakdown");
+    expect(wizard).not.toContain('order${Number(row.orderCount) === 1 ? "" : "s"}');
   });
 
   it("uses exact mapped revenue in the LinkedIn campaign breakdown", () => {

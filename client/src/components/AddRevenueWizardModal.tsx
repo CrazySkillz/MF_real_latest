@@ -338,6 +338,7 @@ export function AddRevenueWizardModal(props: {
   const [crmOAuth, setCrmOAuth] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
   const [crmStatus, setCrmStatus] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
   const [crmHasSource, setCrmHasSource] = useState<{ hubspot: boolean; salesforce: boolean; shopify: boolean }>({ hubspot: false, salesforce: false, shopify: false });
+  const [importSourceStatus, setImportSourceStatus] = useState<{ google_sheets: boolean; csv: boolean }>({ google_sheets: false, csv: false });
   const [crmConnecting, setCrmConnecting] = useState<string | null>(null);
   const matchesRevenuePlatformContext = (source: any, sourceType?: string) => {
     const sourceContext = String(source?.platformContext || 'ga4').trim().toLowerCase();
@@ -346,20 +347,28 @@ export function AddRevenueWizardModal(props: {
     return matchesType && sourceContext === currentContext && source?.isActive !== false;
   };
   useEffect(() => {
-    if (!open || hideCrmSources) return;
+    if (!open) return;
     let cancelled = false;
     (async () => {
-      const [hubspotOAuth, salesforceOAuth, shopifyOAuth, dsResp] = await Promise.all([
-        fetch(`/api/hubspot/${campaignId}/status`, { cache: "no-store" }).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
-        fetch(`/api/salesforce/${campaignId}/status`, { cache: "no-store" }).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
-        fetch(`/api/shopify/${campaignId}/status`, { cache: "no-store" }).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
-        fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include", cache: "no-store" }).then(r => r.json()).catch(() => ({})),
-      ]);
+      const dataSourcesReq = fetch(`/api/campaigns/${campaignId}/all-data-sources`, { credentials: "include", cache: "no-store" }).then(r => r.json()).catch(() => ({}));
+      const [hubspotOAuth, salesforceOAuth, shopifyOAuth, dsResp] = hideCrmSources
+        ? [false, false, false, await dataSourcesReq]
+        : await Promise.all([
+          fetch(`/api/hubspot/${campaignId}/status`, { cache: "no-store" }).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
+          fetch(`/api/salesforce/${campaignId}/status`, { cache: "no-store" }).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
+          fetch(`/api/shopify/${campaignId}/status`, { cache: "no-store" }).then(r => r.json()).then(j => !!j?.connected).catch(() => false),
+          dataSourcesReq,
+        ]);
       if (cancelled) return;
-      setCrmOAuth({ hubspot: hubspotOAuth, salesforce: salesforceOAuth, shopify: shopifyOAuth });
       // "Connected" badge only when an active revenue source exists for this platform
       const revSources: any[] = Array.isArray(dsResp?.revenueSources) ? dsResp.revenueSources : [];
       const hasSource = (type: string) => revSources.some((s: any) => matchesRevenuePlatformContext(s, type));
+      setImportSourceStatus({
+        google_sheets: hasSource("google_sheets"),
+        csv: hasSource("csv"),
+      });
+      if (hideCrmSources) return;
+      setCrmOAuth({ hubspot: hubspotOAuth, salesforce: salesforceOAuth, shopify: shopifyOAuth });
       setCrmHasSource({
         hubspot: hasSource("hubspot"),
         salesforce: hasSource("salesforce"),
@@ -1723,6 +1732,9 @@ export function AddRevenueWizardModal(props: {
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FileSpreadsheet className="w-4 h-4" />
                       Google Sheets
+                      {importSourceStatus.google_sheets && (
+                        <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Connected</span>
+                      )}
                     </CardTitle>
                     <CardDescription>Import revenue from a connected Google Sheets tab</CardDescription>
                   </CardHeader>
@@ -1733,6 +1745,9 @@ export function AddRevenueWizardModal(props: {
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Upload className="w-4 h-4" />
                       Upload CSV
+                      {importSourceStatus.csv && (
+                        <span className="ml-auto text-xs font-normal text-green-600 dark:text-green-400">Uploaded</span>
+                      )}
                     </CardTitle>
                     <CardDescription>
                       <div className="flex items-start gap-2">

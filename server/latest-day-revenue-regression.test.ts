@@ -102,7 +102,7 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).not.toContain("Map each Salesforce value to a LinkedIn campaign");
     expect(clientFile).not.toContain("/linkedin-campaigns");
     expect(clientFile).toContain('const isGoogleAds = platformContext === "google_ads";');
-    expect(clientFile).toContain('if ((!isGoogleAds && !isMeta && !isInstagram && !isTikTok) || selectedValues.length === 0) return null;');
+    expect(clientFile).toContain('if ((!isGA4 && !isGoogleAds && !isMeta && !isInstagram && !isTikTok) || selectedValues.length === 0) return null;');
   });
 
   it("Salesforce review total preview key is stable when moving from Revenue to Save", () => {
@@ -119,6 +119,9 @@ describe("Latest Day Revenue regression guard", () => {
     expect(keyBlock).toContain("selectedValues: [...selectedValues].sort(),");
     expect(keyBlock).not.toContain("step,");
     expect(clientFile).toContain("setPreviewKey(reviewPreviewKey);");
+    expect(clientFile).toContain("limit: 200,");
+    expect(clientFile).toContain("const reviewOpportunityBreakdown = useMemo<ReviewOpportunityBreakdownRow[]>");
+    expect(clientFile).toContain("Opportunity amount breakdown");
   });
 
   it("LinkedIn disconnect clears stale campaign-scoped analytics before removing the connection", () => {
@@ -177,6 +180,22 @@ describe("Latest Day Revenue regression guard", () => {
     expect(clientFile).toContain("const reviewPipelineProxyDisplayAmount = useMemo(() => {");
     expect(clientFile).toContain("if (mode === \"edit\" && !hasEditChanges && Number.isFinite(stored) && stored >= 0) return stored;");
     expect(clientFile).toContain("reviewPipelineProxyDisplayAmount != null");
+    expect(clientFile).toContain("const [reviewDealBreakdown, setReviewDealBreakdown] = useState<ReviewDealBreakdownRow[]>([]);");
+    expect(clientFile).toContain("Deal amount breakdown");
+  });
+
+  it("HubSpot preview returns bounded deal amount breakdown for review only", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    expect(routesFile).toContain("const MAX_CRM_REVIEW_BREAKDOWN_ROWS = 200;");
+    expect(routesFile).toContain("const dealBreakdown: Array<{ id: string; name: string; campaignValue: string; amount: number; date: string | null }> = [];");
+    expect(routesFile).toContain("let importedDealCount = 0;");
+    expect(routesFile).toContain("if (previewOnly && dealBreakdown.length < MAX_CRM_REVIEW_BREAKDOWN_ROWS)");
+    expect(routesFile).toContain("dealBreakdown,");
+    expect(routesFile).toContain("dealBreakdownTruncated: importedDealCount > dealBreakdown.length,");
   });
 
   it("Shopify revenue supports order tags as an attribution key", () => {

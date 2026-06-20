@@ -21,6 +21,7 @@ type UniqueValue = {
 };
 
 type PlatformCampaignMapping = { crmValue: string; linkedinCampaignUrn: string; linkedinCampaignName: string };
+type ReviewDealBreakdownRow = { id?: string; name?: string; campaignValue?: string; amount: number; date?: string | null };
 
 export function HubSpotRevenueWizard(props: {
   campaignId: string;
@@ -110,6 +111,8 @@ export function HubSpotRevenueWizard(props: {
   const [lastSaveResult, setLastSaveResult] = useState<any>(null);
   const [reviewPreviewRevenue, setReviewPreviewRevenue] = useState<number | null>(null);
   const [reviewPipelineProxyAmount, setReviewPipelineProxyAmount] = useState<number | null>(null);
+  const [reviewDealBreakdown, setReviewDealBreakdown] = useState<ReviewDealBreakdownRow[]>([]);
+  const [reviewDealBreakdownTotal, setReviewDealBreakdownTotal] = useState<number | null>(null);
 
   // Revenue amount for the review step: prefer saved result, then live preview, then stored config
   const reviewRevenue = useMemo(() => {
@@ -119,6 +122,9 @@ export function HubSpotRevenueWizard(props: {
     if (Number.isFinite(stored) && stored >= 0) return stored;
     return null;
   }, [lastSaveResult, reviewPreviewRevenue, initialMappingConfig]);
+
+  const formatReviewCurrency = (value: number) =>
+    `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const hasEditChanges = useMemo(() => {
     if (mode !== "edit" || !initialMappingConfig) return true;
@@ -535,6 +541,8 @@ export function HubSpotRevenueWizard(props: {
     reviewPreviewFiredRef.current = false;
     setReviewPreviewRevenue(null);
     setReviewPipelineProxyAmount(null);
+    setReviewDealBreakdown([]);
+    setReviewDealBreakdownTotal(null);
   }, [campaignMappings, campaignProperty, selectedValues, revenueProperty, revenueClassification, days, dateField, pipelineEnabled, pipelineStageId, pipelineStageLabel, platformContext, isLinkedIn]);
 
   useEffect(() => {
@@ -569,6 +577,20 @@ export function HubSpotRevenueWizard(props: {
         if (!resp.ok) throw new Error(json?.error || "Failed to preview HubSpot revenue");
         setReviewPreviewRevenue(Number(json?.totalRevenue || 0));
         setReviewPipelineProxyAmount(json?.pipelinePreviewTotal == null ? null : Number(json.pipelinePreviewTotal || 0));
+        setReviewDealBreakdown(
+          Array.isArray(json?.dealBreakdown)
+            ? json.dealBreakdown
+                .map((row: any) => ({
+                  id: row?.id ? String(row.id) : undefined,
+                  name: row?.name ? String(row.name) : undefined,
+                  campaignValue: row?.campaignValue ? String(row.campaignValue) : undefined,
+                  amount: Number(row?.amount || 0),
+                  date: row?.date ? String(row.date) : null,
+                }))
+                .filter((row: ReviewDealBreakdownRow) => Number.isFinite(Number(row.amount)))
+            : []
+        );
+        setReviewDealBreakdownTotal(Number.isFinite(Number(json?.dealBreakdownTotal)) ? Number(json.dealBreakdownTotal) : null);
       } catch {
         // Keep the review usable even if preview fails.
       }
@@ -1224,6 +1246,35 @@ export function HubSpotRevenueWizard(props: {
                     </div>
                   </div>
 
+                  {reviewDealBreakdown.length > 0 && (
+                    <div className="mt-4 border-t border-border pt-4">
+                      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground/70">
+                        <span>Deal amount breakdown</span>
+                        {reviewDealBreakdownTotal != null && reviewDealBreakdownTotal > reviewDealBreakdown.length && (
+                          <span>{reviewDealBreakdown.length} of {reviewDealBreakdownTotal}</span>
+                        )}
+                      </div>
+                      <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-border bg-card">
+                        {reviewDealBreakdown.map((deal, index) => {
+                          const name = String(deal.name || deal.campaignValue || `Deal ${index + 1}`);
+                          const campaignValue = String(deal.campaignValue || "");
+                          return (
+                            <div key={`${deal.id || name}-${index}`} className="flex items-start justify-between gap-3 border-b border-border px-3 py-2 last:border-b-0">
+                              <div className="min-w-0">
+                                <div className="truncate font-medium text-foreground">{name}</div>
+                                {campaignValue && campaignValue !== name && (
+                                  <div className="truncate text-xs text-muted-foreground/70">{campaignValue}</div>
+                                )}
+                              </div>
+                              <div className="shrink-0 font-medium text-green-700 dark:text-green-400">
+                                {formatReviewCurrency(Number(deal.amount || 0))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

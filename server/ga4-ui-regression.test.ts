@@ -41,6 +41,18 @@ describe("GA4 UI regression guard", () => {
     expect(revenueModal).not.toContain("This is a one-time import and does not auto-sync");
   });
 
+  it("shows active Google Sheets and CSV revenue status in the Add Revenue picker", () => {
+    const revenueModal = readClient("components/AddRevenueWizardModal.tsx");
+
+    expect(revenueModal).toContain("setImportSourceStatus({");
+    expect(revenueModal).toContain('google_sheets: hasSource("google_sheets"),');
+    expect(revenueModal).toContain('csv: hasSource("csv"),');
+    expect(revenueModal).toContain("importSourceStatus.google_sheets");
+    expect(revenueModal).toContain("importSourceStatus.csv");
+    expect(revenueModal).toContain(">Uploaded</span>");
+    expect(revenueModal).not.toContain("if (!open || hideCrmSources) return;");
+  });
+
   it("keeps Google Sheets revenue chooser stable without visible connection-check text", () => {
     const revenueModal = readClient("components/AddRevenueWizardModal.tsx");
     const googleSheetsAuth = readClient("components/SimpleGoogleSheetsAuth.tsx");

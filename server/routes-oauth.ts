@@ -1769,6 +1769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const MAX_HUBSPOT_RESULTS = 5_000;
   const MAX_SALESFORCE_RESULTS = 5_000;
   const MAX_SELECTED_VALUES = 200; // caps IN filters (prevents runaway queries)
+  const MAX_CRM_REVIEW_BREAKDOWN_ROWS = 200;
   const MAX_HUBSPOT_PAGES = 25; // 25 * 100 = 2,500 deals max per request (hard stop)
   const MAX_SALESFORCE_PAGES = 10; // paging guardrail for large orgs
 
@@ -15928,10 +15929,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const revenueByLinkedinCampaign = new Map<string, number>();
       const revenueByDateAndCampaign = new Map<string, number>();
       const campaignValueRevenueTotals = new Map<string, number>();
+      const dealBreakdown: Array<{ id: string; name: string; campaignValue: string; amount: number; date: string | null }> = [];
 
       let after: string | undefined;
       let pages = 0;
       let seen = 0;
+      let importedDealCount = 0;
       while (pages < MAX_HUBSPOT_PAGES) {
         const body: any = {
           filterGroups: [
@@ -15973,11 +15976,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const rRaw = props[revenueProp];
           const r = rRaw === undefined || rRaw === null ? NaN : Number(String(rRaw).replace(/[^0-9.\-]/g, ''));
           if (!Number.isFinite(r)) continue;
+          importedDealCount += 1;
           totalRevenue += r;
           const revenueDate = normalizeDate(props?.[dateFieldChoice]);
           if (revenueDate) revenueByCloseDate.set(revenueDate, (revenueByCloseDate.get(revenueDate) || 0) + r);
           const campaignValue = String(props[campaignProp] || "").trim();
           if (campaignValue) campaignValueRevenueTotals.set(campaignValue, (campaignValueRevenueTotals.get(campaignValue) || 0) + r);
+          if (previewOnly && dealBreakdown.length < MAX_CRM_REVIEW_BREAKDOWN_ROWS) {
+            dealBreakdown.push({
+              id: String(d?.id || ""),
+              name: String(props?.dealname || campaignValue || d?.id || "Deal"),
+              campaignValue,
+              amount: Number(r.toFixed(2)),
+              date: revenueDate,
+            });
+          }
 
           const googleAdsCampaignId = googleAdsCampaignIdFromValueOrMapping(platformCtx, campaignValue, campaignMappings, activeGoogleAdsCampaignIds);
           if (googleAdsCampaignId) {
@@ -16056,6 +16069,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           previewOnly: true,
           totalRevenue: Number(totalRevenue.toFixed(2)),
           pipelinePreviewTotal,
+          dealBreakdown,
+          dealBreakdownTotal: importedDealCount,
+          dealBreakdownTruncated: importedDealCount > dealBreakdown.length,
         });
       }
 

@@ -932,7 +932,6 @@ export function ShopifyRevenueWizard(props: {
                                   <span className="truncate text-foreground/80">{String(row?.campaignValue || "Unmapped")}</span>
                                   <span className="shrink-0 font-medium text-foreground">
                                     {formatAmount(Number(row?.revenue || 0))}
-                                    {Number(row?.orderCount || 0) > 0 ? ` (${Number(row.orderCount)} order${Number(row.orderCount) === 1 ? "" : "s"})` : ""}
                                   </span>
                                 </div>
                               ))}

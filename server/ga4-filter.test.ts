@@ -172,11 +172,72 @@ describe("GA4 campaign value picker", () => {
       "summer_sale",
     );
 
-    expect(result.totals).toEqual({ sessions: 85, users: 85, conversions: 3, pageviews: 108, revenue: 531.35 });
+    expect(result.totals).toEqual({
+      sessions: 85,
+      users: 85,
+      conversions: 3,
+      pageviews: 108,
+      revenue: 531.35,
+      engagedSessions: 0,
+      engagementRate: 0,
+    });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const fallbackBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
     expect(JSON.stringify(fallbackBody.dimensionFilter)).toContain("pageLocation");
     expect(fallbackBody.dateRanges[0].endDate).toBe("today");
+  });
+
+  it("uses pageLocation UTM fallback for daily time series when campaign dimensions are empty", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const scope = JSON.stringify(body?.dimensionFilter || {});
+      const isPageLocationScope = scope.includes("pageLocation");
+
+      return {
+        ok: true,
+        json: async () => ({
+          rows: isPageLocationScope
+            ? [{
+                dimensionValues: [{ value: "20260618" }],
+                metricValues: [
+                  { value: "85" },
+                  { value: "108" },
+                  { value: "3" },
+                  { value: "85" },
+                  { value: "531.349929" },
+                  { value: "0.64" },
+                ],
+              }]
+            : [],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await ga4Service.getTimeSeriesWithToken(
+      "properties/123",
+      "token",
+      "2026-06-01",
+      "summer_sale",
+    );
+
+    expect(result).toEqual([{
+      date: "2026-06-18",
+      dateLabel: "06/18",
+      sessions: 85,
+      pageviews: 108,
+      conversions: 3,
+      users: 85,
+      revenue: 531.35,
+      revenueMetric: "totalRevenue",
+      engagementRate: 0.64,
+    }]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const primaryBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body || "{}"));
+    const fallbackBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
+    expect(JSON.stringify(primaryBody.dimensionFilter)).toContain("sessionCampaignName");
+    expect(JSON.stringify(fallbackBody.dimensionFilter)).toContain("pageLocation");
+    expect(fallbackBody.dimensions).toEqual([{ name: "date" }]);
   });
 
   it("uses pageLocation UTM fallback for acquisition rows when campaign dimensions are empty", async () => {

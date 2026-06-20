@@ -1713,9 +1713,10 @@ export class GoogleAnalytics4Service {
     try {
       const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
       const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
+      const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
 
       // Some properties don't allow totalRevenue; fall back to purchaseRevenue.
-      const run = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue') => {
+      const run = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any = campaignDimensionFilter) => {
         const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
           method: 'POST',
           headers: {
@@ -1730,7 +1731,7 @@ export class GoogleAnalytics4Service {
               },
             ],
             dimensions: [{ name: 'date' }],
-            ...(campaignDimensionFilter ? campaignDimensionFilter : {}),
+            ...(scopeFilter ? scopeFilter : {}),
             metrics: [
               { name: 'sessions' },
               { name: 'screenPageViews' },
@@ -1761,18 +1762,26 @@ export class GoogleAnalytics4Service {
 
       let data: any;
       let revenueMetric: 'totalRevenue' | 'purchaseRevenue' = 'totalRevenue';
-      try {
-        const res = await run('totalRevenue');
-        data = res.data;
-        revenueMetric = res.revenueMetric;
-      } catch (e: any) {
-        const msg = String(e?.message || e || '').toLowerCase();
-        if (msg.includes('totalrevenue') || msg.includes('metric') || msg.includes('invalid')) {
-          const res2 = await run('purchaseRevenue');
-          data = res2.data;
-          revenueMetric = res2.revenueMetric;
-        } else {
+      const runWithRevenueFallback = async (scopeFilter: any = campaignDimensionFilter) => {
+        try {
+          return await run('totalRevenue', scopeFilter);
+        } catch (e: any) {
+          const msg = String(e?.message || e || '').toLowerCase();
+          if (msg.includes('totalrevenue') || msg.includes('metric') || msg.includes('invalid')) {
+            return await run('purchaseRevenue', scopeFilter);
+          }
           throw e;
+        }
+      };
+
+      const res = await runWithRevenueFallback(campaignDimensionFilter);
+      data = res.data;
+      revenueMetric = res.revenueMetric;
+      if ((!Array.isArray(data?.rows) || data.rows.length === 0) && pageLocationCampaignFilter) {
+        const utmRes = await runWithRevenueFallback(pageLocationCampaignFilter).catch(() => null);
+        if (utmRes && Array.isArray(utmRes.data?.rows) && utmRes.data.rows.length > 0) {
+          data = utmRes.data;
+          revenueMetric = utmRes.revenueMetric;
         }
       }
       

@@ -6894,6 +6894,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       start.setUTCDate(start.getUTCDate() - (days - 1));
       const startDate = formatISODateUTC(start);
       const endDate = formatISODateUTC(yesterdayUtc);
+      const addDerivedEngagedSessions = (row: any) => {
+        const sessions = Number(row?.sessions || 0) || 0;
+        const existing = Number(row?.engagedSessions || 0) || 0;
+        if (existing > 0 || sessions <= 0) return { ...row, engagedSessions: existing };
+        const rawRate = Number(row?.engagementRate || 0) || 0;
+        const rate = rawRate > 1 ? rawRate / 100 : rawRate;
+        return { ...row, engagedSessions: Math.max(0, Math.round(sessions * rate)) };
+      };
 
       if (shouldSimulate) {
         const pid = requestedPropertyId || "yesop";
@@ -6903,7 +6911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const simData = Array.isArray(sim?.timeSeries) ? sim.timeSeries : [];
 
         // Merge: simulation is the baseline, DB rows overlay on matching dates or append
-        const storedRows = await storage.getGA4DailyMetrics(campaignId, pid, startDate, endDate).catch(() => [] as any[]);
+        const storedRows = (await storage.getGA4DailyMetrics(campaignId, pid, startDate, endDate).catch(() => [] as any[])).map(addDerivedEngagedSessions);
         const dbByDate = new Map<string, any>();
         for (const r of (storedRows || [])) {
           if (r?.date) dbByDate.set(String(r.date), r);
@@ -7027,7 +7035,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startDate,
         endDate,
         days,
-        data: stored,
+        data: stored.map(addDerivedEngagedSessions),
         lastUpdated: lastUpdated || new Date().toISOString(),
       });
     } catch (error: any) {

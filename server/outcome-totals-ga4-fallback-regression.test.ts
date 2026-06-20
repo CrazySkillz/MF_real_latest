@@ -77,6 +77,18 @@ describe("outcome-totals GA4 persisted fallback regression guard", () => {
     expect(route).not.toContain('revenueSourceId: "ga4_daily_metrics"');
   });
 
+  it("derives engagedSessions in the ga4-daily response from stored sessions and engagementRate", () => {
+    const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const routeStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-daily"');
+    const routeEnd = routes.indexOf('app.get("/api/campaigns/:id/ga4-to-date"', routeStart);
+    const route = routes.slice(routeStart, routeEnd);
+
+    expect(route).toContain("const addDerivedEngagedSessions = (row: any) =>");
+    expect(route).toContain("const rate = rawRate > 1 ? rawRate / 100 : rawRate;");
+    expect(route).toContain("Math.round(sessions * rate)");
+    expect(route).toContain("data: stored.map(addDerivedEngagedSessions)");
+  });
+
   it("aligns outcome-totals performanceSummary financial GA4 values with GA4 Overview to-date totals", () => {
     const routes = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/outcome-totals"');

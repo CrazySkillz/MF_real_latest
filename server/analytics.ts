@@ -769,7 +769,7 @@ export class GoogleAnalytics4Service {
     startDate: string,
     endDate: string,
     campaignFilter?: CampaignFilter
-  ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; totals: { sessions: number; users: number; conversions: number; pageviews: number; revenue: number } }> {
+  ): Promise<{ revenueMetric: 'totalRevenue' | 'purchaseRevenue'; totals: { sessions: number; users: number; conversions: number; pageviews: number; revenue: number; engagedSessions: number; engagementRate: number } }> {
     const normalizedPropertyId = this.normalizeGA4PropertyId(propertyId);
     const campaignDimensionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'sessionCampaignName');
     const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
@@ -790,6 +790,8 @@ export class GoogleAnalytics4Service {
             { name: 'conversions' },
             { name: 'screenPageViews' },
             { name: revenueMetric },
+            { name: 'engagedSessions' },
+            { name: 'engagementRate' },
           ],
         }),
       });
@@ -805,7 +807,10 @@ export class GoogleAnalytics4Service {
       const conversions = parseInt(String(mv?.[2]?.value || '0'), 10) || 0;
       const pageviews = parseInt(String(mv?.[3]?.value || '0'), 10) || 0;
       const revenue = Number.parseFloat(String(mv?.[4]?.value || '0')) || 0;
-      return { revenueMetric, totals: { sessions, users, conversions, pageviews, revenue: Number(revenue.toFixed(2)) } };
+      const engagedSessions = parseInt(String(mv?.[5]?.value || '0'), 10) || 0;
+      const rawEngagementRate = Number.parseFloat(String(mv?.[6]?.value || '0')) || 0;
+      const engagementRate = rawEngagementRate || (sessions > 0 ? engagedSessions / sessions : 0);
+      return { revenueMetric, totals: { sessions, users, conversions, pageviews, revenue: Number(revenue.toFixed(2)), engagedSessions, engagementRate } };
     };
 
     const runWithRevenueFallback = async (scopeFilter: any, endDateOverride: string = endDate) => {

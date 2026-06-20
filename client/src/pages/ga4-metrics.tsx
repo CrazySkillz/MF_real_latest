@@ -565,7 +565,7 @@ export default function GA4Metrics() {
             conversions: Number(financialConversions || 0),
             sessions: Number(breakdownTotals.sessions || 0),
             users: Number(breakdownTotals.users || 0),
-            engagementRate: dailySummedTotals.engagementRate || Number((ga4Metrics as any)?.engagementRate || 0),
+            engagementRate: overviewEngagementRate,
             spend: Number(financialSpend || 0),
           });
         } catch (error) {
@@ -1569,7 +1569,7 @@ export default function GA4Metrics() {
       case "conversionRate":
         return sessions > 0 ? (conversions / sessions) * 100 : 0;
       case "engagementRate": {
-        const er = dailySummedTotals.engagementRate || Number((ga4Metrics as any)?.engagementRate || 0);
+        const er = overviewEngagementRate;
         return Number.isFinite(er) && er > 0 ? normalizeRateToPercent(er) : 0;
       }
       default:
@@ -2293,6 +2293,19 @@ export default function GA4Metrics() {
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);
   const financialCPA = computeCpa(financialSpend, financialConversions);
+  const toRateRatio = (value: any) => {
+    const n = Number(value || 0);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return n > 1 ? n / 100 : n;
+  };
+  const overviewEngagementRate = (() => {
+    const toDateRate = toRateRatio((ga4ToDateResp as any)?.totals?.engagementRate);
+    if (toDateRate > 0) return toDateRate;
+    const engagedSessions = Number((ga4ToDateResp as any)?.totals?.engagedSessions || 0);
+    const sessions = Number((ga4ToDateResp as any)?.totals?.sessions || 0);
+    if (engagedSessions > 0 && sessions > 0) return engagedSessions / sessions;
+    return toRateRatio((ga4Metrics as any)?.engagementRate);
+  })();
 
   // GA4 KPIs are evaluated on cumulative values — target is the absolute goal.
   const getKpiEffectiveTarget = (kpi: any) => {
@@ -2314,7 +2327,7 @@ export default function GA4Metrics() {
       return computeConversionRatePercent(c, s).toFixed(2);
     }
     if (name === "Engagement Rate") {
-      const er = dailySummedTotals.engagementRate || Number((ga4Metrics as any)?.engagementRate || 0);
+      const er = overviewEngagementRate;
       return normalizeRateToPercent(er).toFixed(2);
     }
     if (name === "Total Users") return String(Math.round(Number(breakdownTotals.users || ga4Metrics?.users || 0)));
@@ -2645,7 +2658,7 @@ export default function GA4Metrics() {
       const sess = Number(breakdownTotals?.sessions || 0);
       const users = Number(breakdownTotals?.users || 0);
       const conv = Number(breakdownTotals?.conversions || 0);
-      const engRate = normalizeRateToPercent(dailySummedTotals.engagementRate || Number(ga4m?.metrics?.engagementRate ?? 0));
+      const engRate = normalizeRateToPercent(overviewEngagementRate || Number(ga4m?.metrics?.engagementRate ?? 0));
       const roas = spend > 0 ? (rev / spend) * 100 : 0;
       const roi = spend > 0 ? ((rev - spend) / spend) * 100 : 0;
       const cpa = convTot > 0 ? spend / convTot : 0;
@@ -5175,7 +5188,7 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Engagement Rate</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {formatPercentage(rateToPercent(dailySummedTotals.engagementRate || ga4Metrics?.engagementRate || 0))}
+                              {formatPercentage(rateToPercent(overviewEngagementRate))}
                             </p>
                           </CardContent>
                         </Card>
@@ -7968,7 +7981,7 @@ export default function GA4Metrics() {
                               : Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0),
                             sessions: Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0),
                             users: Number(breakdownTotals.users || ga4Metrics?.users || 0),
-                            engagementRate: dailySummedTotals.engagementRate || Number((ga4Metrics as any)?.engagementRate || 0),
+                            engagementRate: overviewEngagementRate,
                             spend: Number(financialSpend || 0),
                           });
                           kpiForm.setValue("currentValue", formatNumberByUnit(liveCurrent, resolvedUnit));

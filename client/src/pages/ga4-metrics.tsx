@@ -4771,6 +4771,16 @@ export default function GA4Metrics() {
     (ga4Connection as any)?.connections?.find((c: any) => c?.isPrimary)?.propertyId ||
     (ga4Connection as any)?.connections?.[0]?.propertyId ||
     "";
+  const selectedGA4Connection =
+    availableGA4Properties.find((p) => String(p?.propertyId || "") === String(selectedGA4PropertyId || "")) ||
+    availableGA4Properties.find((p) => p?.isPrimary) ||
+    availableGA4Properties[0] ||
+    null;
+  const formatConnectionTimestamp = (value: any) => {
+    if (!value) return "Not available yet";
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString();
+  };
   const headerClientName = clients.find((client) => client.id === (campaign as any)?.clientId)?.name || "—";
   const headerPropertyCampaigns = selectedGa4CampaignFilterList.length > 0 ? selectedGa4CampaignFilterList.join(", ") : "All campaigns";
   const headerLastUpdated = provenanceLastUpdated
@@ -5099,13 +5109,14 @@ export default function GA4Metrics() {
             <>
               {/* Charts and Detailed Analytics */}
               <Tabs value={activeTab} onValueChange={handleActiveTabChange} className="space-y-6">
-                <TabsList className="grid w-full grid-cols-6">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-7">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="kpis">KPIs</TabsTrigger>
                   <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
                   <TabsTrigger value="campaigns">Ad Comparison</TabsTrigger>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="reports">Reports</TabsTrigger>
+                  <TabsTrigger value="connection-details">Connection details</TabsTrigger>
                 </TabsList>
 
                 {ga4Error && (
@@ -7704,6 +7715,104 @@ export default function GA4Metrics() {
                             })}
                           </div>
                         )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="connection-details" className="fade-in">
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">Connection details</h3>
+                      <p className="text-sm text-muted-foreground/70 mt-1">
+                        GA4 property, campaign scope, and freshness details for this campaign.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Card className="border-border">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-lg">
+                            <Globe className="w-5 h-5 text-blue-600" />
+                            GA4 property
+                          </CardTitle>
+                          <CardDescription>Selected property used by this GA4 section.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3 text-sm">
+                          <div className="flex items-start justify-between gap-4">
+                            <span className="text-muted-foreground/70">Status</span>
+                            <span className="font-medium text-foreground">{ga4Connection?.connected ? "Connected" : "Not connected"}</span>
+                          </div>
+                          <div className="flex items-start justify-between gap-4">
+                            <span className="text-muted-foreground/70">Property</span>
+                            <span className="font-medium text-right text-foreground">
+                              {String(selectedGA4Connection?.displayName || selectedGA4Connection?.propertyName || provenanceProperty || "GA4")}
+                            </span>
+                          </div>
+                          <div className="flex items-start justify-between gap-4">
+                            <span className="text-muted-foreground/70">Property ID</span>
+                            <span className="font-medium text-right text-foreground">
+                              {String(selectedGA4Connection?.propertyId || provenancePropertyId || selectedGA4PropertyId || "Not available")}
+                            </span>
+                          </div>
+                          <div className="flex items-start justify-between gap-4">
+                            <span className="text-muted-foreground/70">Connected properties</span>
+                            <span className="font-medium text-foreground">{connectedPropertyCount}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="border-border">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-lg">
+                            <Clock className="w-5 h-5 text-orange-600" />
+                            Data freshness
+                          </CardTitle>
+                          <CardDescription>Latest visible refresh metadata from the GA4 page inputs.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3 text-sm">
+                          <div className="flex items-start justify-between gap-4">
+                            <span className="text-muted-foreground/70">Last updated</span>
+                            <span className="font-medium text-right text-foreground">{formatConnectionTimestamp(provenanceLastUpdated)}</span>
+                          </div>
+                          <div className="flex items-start justify-between gap-4">
+                            <span className="text-muted-foreground/70">Report date</span>
+                            <span className="font-medium text-foreground">{ga4ReportDate || "Not available yet"}</span>
+                          </div>
+                          <div className="flex items-start justify-between gap-4">
+                            <span className="text-muted-foreground/70">Daily facts range</span>
+                            <span className="font-medium text-right text-foreground">
+                              {(ga4DailyResp as any)?.startDate && (ga4DailyResp as any)?.endDate
+                                ? `${String((ga4DailyResp as any).startDate)} to ${String((ga4DailyResp as any).endDate)}`
+                                : "Not available yet"}
+                            </span>
+                          </div>
+                          <div className="flex items-start justify-between gap-4">
+                            <span className="text-muted-foreground/70">Daily rows available</span>
+                            <span className="font-medium text-foreground">{ga4DailyRows.length}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <Card className="border-border">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <BadgeCheck className="w-5 h-5 text-emerald-600" />
+                          Campaign scope
+                        </CardTitle>
+                        <CardDescription>Saved GA4 UTM campaign values used to scope this page.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3 text-sm">
+                        <div>
+                          <div className="text-muted-foreground/70 mb-1">Imported GA4 campaigns</div>
+                          <div className="font-medium text-foreground">
+                            {selectedGa4CampaignFilterList.length > 0 ? selectedGa4CampaignFilterList.join(", ") : "All campaigns"}
+                          </div>
+                        </div>
+                        <div className="rounded-lg border border-border bg-muted/30 p-4 text-foreground/80">
+                          GA4 metrics refresh in the background. Trends and report-date logic use completed GA4 daily rows, so today's intraday GA4 data is excluded until it becomes a completed day.
+                        </div>
                       </CardContent>
                     </Card>
                   </div>

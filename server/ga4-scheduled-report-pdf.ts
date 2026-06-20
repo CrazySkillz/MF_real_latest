@@ -408,8 +408,36 @@ async function buildGA4ReportPayload(report: any) {
     byCampaign.set(name, current);
   }
   const revenueScale = rawTotalRevenue > 0 ? breakdownTotals.revenue / rawTotalRevenue : 1;
-  const campaignBreakdownAgg = Array.from(byCampaign.values())
-    .filter((row) => importedCampaignNames.size === 0 || importedCampaignNames.has(normalizeCampaignKey(row.name)))
+  const filteredCampaignRows = Array.from(byCampaign.values())
+    .filter((row) => importedCampaignNames.size === 0 || importedCampaignNames.has(normalizeCampaignKey(row.name)));
+  const filteredCampaignRowsByKey = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
+  for (const row of filteredCampaignRows) {
+    const key = normalizeCampaignKey(row.name);
+    if (key) filteredCampaignRowsByKey.set(key, row);
+  }
+  for (const source of revenueDisplaySources) {
+    const cfg = parseMappingConfig((source as any)?.mappingConfig);
+    const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
+    const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
+    const mappedCampaignByValue = new Map<string, string>();
+    for (const mapping of mappings) {
+      const valueKey = normalizeCampaignKey(mapping?.crmValue);
+      const mappedName = String(mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "").trim();
+      if (valueKey && mappedName) mappedCampaignByValue.set(valueKey, mappedName);
+    }
+    for (const item of totals) {
+      if (!(Number(item?.revenue || 0) > 0)) continue;
+      const valueKey = normalizeCampaignKey(item?.campaignValue);
+      const name = String(mappedCampaignByValue.get(valueKey) || item?.campaignValue || "").trim();
+      const key = normalizeCampaignKey(name);
+      if (!key || filteredCampaignRowsByKey.has(key)) continue;
+      if (importedCampaignNames.size > 0 && !importedCampaignNames.has(key)) continue;
+      const row = { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+      filteredCampaignRows.push(row);
+      filteredCampaignRowsByKey.set(key, row);
+    }
+  }
+  const campaignBreakdownAgg = filteredCampaignRows
     .map((row) => {
       const revenue = Number((row.revenue * revenueScale).toFixed(2));
       const sessions = Number(row.sessions || 0);
@@ -432,8 +460,16 @@ async function buildGA4ReportPayload(report: any) {
   for (const source of revenueDisplaySources) {
     const cfg = parseMappingConfig((source as any)?.mappingConfig);
     const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
+    const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
+    const mappedCampaignByValue = new Map<string, string>();
+    for (const mapping of mappings) {
+      const valueKey = normalizeCampaignKey(mapping?.crmValue);
+      const mappedName = String(mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "").trim();
+      if (valueKey && mappedName) mappedCampaignByValue.set(valueKey, mappedName);
+    }
     for (const item of totals) {
-      const key = normalizeCampaignKey(item?.campaignValue);
+      const valueKey = normalizeCampaignKey(item?.campaignValue);
+      const key = normalizeCampaignKey(mappedCampaignByValue.get(valueKey) || item?.campaignValue);
       const revenue = Number(item?.revenue || 0);
       const rowName = rowNameByKey.get(key);
       if (rowName && revenue > 0) campaignBreakdownMatchedExternalRevenue.set(rowName, (campaignBreakdownMatchedExternalRevenue.get(rowName) || 0) + revenue);

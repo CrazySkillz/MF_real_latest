@@ -95,6 +95,34 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue, ga4BreakdownTotals.revenue);");
   });
 
+  it("lets mapped GA4 revenue sources create campaign breakdown rows when GA4 rows are missing", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const pdf = readServer("ga4-scheduled-report-pdf.ts");
+    const aggStart = ga4Metrics.indexOf("const campaignBreakdownAgg = useMemo");
+    const matchStart = ga4Metrics.indexOf("const campaignBreakdownMatchedExternalRevenue", aggStart);
+    const clientAgg = ga4Metrics.slice(aggStart, matchStart);
+    const pdfStart = pdf.indexOf("const filteredCampaignRows = Array.from(byCampaign.values())");
+    const pdfMatchStart = pdf.indexOf("const rowNameByKey = new Map<string, string>();", pdfStart);
+    const pdfAgg = pdf.slice(pdfStart, pdfMatchStart);
+
+    expect(aggStart).toBeGreaterThan(-1);
+    expect(matchStart).toBeGreaterThan(aggStart);
+    expect(clientAgg).toContain("for (const source of revenueDisplaySources)");
+    expect(clientAgg).toContain("const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];");
+    expect(clientAgg).toContain('const name = String(mappedCampaignByValue.get(valueKey) || item?.campaignValue || "").trim();');
+    expect(clientAgg).toContain("filteredRows.push(row);");
+    expect(clientAgg).toContain("filteredRowsByKey.set(key, row);");
+    expect(ga4Metrics).toContain("[ga4Breakdown, importedGA4CampaignNames, breakdownTotals, revenueDisplaySources]");
+
+    expect(pdfStart).toBeGreaterThan(-1);
+    expect(pdfMatchStart).toBeGreaterThan(pdfStart);
+    expect(pdfAgg).toContain("for (const source of revenueDisplaySources)");
+    expect(pdfAgg).toContain("const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];");
+    expect(pdfAgg).toContain('const name = String(mappedCampaignByValue.get(valueKey) || item?.campaignValue || "").trim();');
+    expect(pdfAgg).toContain("filteredCampaignRows.push(row);");
+    expect(pdfAgg).toContain("filteredCampaignRowsByKey.set(key, row);");
+  });
+
   it("keeps GA4 Insights trend history requirements aligned to selected mode", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 

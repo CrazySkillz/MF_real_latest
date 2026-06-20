@@ -4711,6 +4711,34 @@ export default function GA4Metrics() {
 
     const filteredRows = Array.from(byName.values())
       .filter(c => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(normalizeCampaignKey(c.name)));
+    const filteredRowsByKey = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
+    for (const row of filteredRows) {
+      const key = normalizeCampaignKey(row.name);
+      if (key) filteredRowsByKey.set(key, row);
+    }
+    for (const source of revenueDisplaySources) {
+      const rawCfg = (source as any)?.mappingConfig;
+      const cfg = typeof rawCfg === "string" ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })() : rawCfg;
+      const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
+      const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
+      const mappedCampaignByValue = new Map<string, string>();
+      for (const mapping of mappings) {
+        const valueKey = normalizeCampaignKey(mapping?.crmValue);
+        const mappedName = String(mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "").trim();
+        if (valueKey && mappedName) mappedCampaignByValue.set(valueKey, mappedName);
+      }
+      for (const item of totals) {
+        if (!(Number(item?.revenue || 0) > 0)) continue;
+        const valueKey = normalizeCampaignKey(item?.campaignValue);
+        const name = String(mappedCampaignByValue.get(valueKey) || item?.campaignValue || "").trim();
+        const key = normalizeCampaignKey(name);
+        if (!key || filteredRowsByKey.has(key)) continue;
+        if (importedGA4CampaignNames.size > 0 && !importedGA4CampaignNames.has(key)) continue;
+        const row = { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
+        filteredRows.push(row);
+        filteredRowsByKey.set(key, row);
+      }
+    }
 
     const scaledSessions = scaleIntsExactly(filteredRows.map(c => ({ value: c.sessions })), breakdownTotals.sessions);
     const scaledUsers = scaleIntsExactly(filteredRows.map(c => ({ value: c.users })), breakdownTotals.users);
@@ -4734,7 +4762,7 @@ export default function GA4Metrics() {
         };
       })
       .sort((a, b) => b.sessions - a.sessions);
-  }, [ga4Breakdown, importedGA4CampaignNames, breakdownTotals]);
+  }, [ga4Breakdown, importedGA4CampaignNames, breakdownTotals, revenueDisplaySources]);
 
   const campaignBreakdownMatchedExternalRevenue = useMemo(() => {
     const rowNameByKey = new Map<string, string>();

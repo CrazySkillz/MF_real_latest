@@ -149,6 +149,9 @@ export function AddRevenueWizardModal(props: {
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
     void queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
+    if (platformContext === 'ga4') {
+      void queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-breakdown"], exact: false });
+    }
     void queryClient.invalidateQueries({ queryKey: ["/api/hubspot", campaignId, "pipeline-proxy"], exact: false });
     void queryClient.invalidateQueries({ queryKey: ["/api/salesforce", campaignId, "pipeline-proxy"], exact: false });
     void queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/kpis"], exact: false });
@@ -158,6 +161,9 @@ export function AddRevenueWizardModal(props: {
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-sources`], exact: false });
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-breakdown`], exact: false });
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/revenue-daily`], exact: false });
+    if (platformContext === 'ga4') {
+      void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-breakdown"], exact: false });
+    }
     void queryClient.refetchQueries({ queryKey: [`/api/campaigns/${campaignId}/outcome-totals`], exact: false });
     void queryClient.refetchQueries({ queryKey: ["/api/campaigns", campaignId, "connected-platforms"], exact: false });
 

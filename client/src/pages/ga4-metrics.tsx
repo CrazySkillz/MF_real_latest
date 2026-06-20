@@ -1208,6 +1208,19 @@ export default function GA4Metrics() {
       return `$${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
   };
+  const getKpiUnitOptions = (selectedUnit?: string) => {
+    const baseOptions = [
+      { value: "%", label: "Percentage (%)" },
+      { value: campaignCurrency, label: `Currency (${campaignCurrency})` },
+      { value: "count", label: "Count" },
+      { value: "ratio", label: "Ratio (x)" },
+    ];
+    const current = String(selectedUnit || "").trim();
+    if (current && current !== SELECT_UNIT && !baseOptions.some((option) => option.value === current)) {
+      baseOptions.push({ value: current, label: current === "$" ? "Currency ($ legacy)" : `Current unit (${current})` });
+    }
+    return baseOptions;
+  };
 
   const formatValue = (value: string, unit: string) => {
     const numValue = parseFloat(value);
@@ -8135,12 +8148,17 @@ export default function GA4Metrics() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="kpi-unit">Unit</Label>
-                  <Input
-                    id="kpi-unit"
-                    placeholder="%, $, etc."
-                    value={kpiForm.watch("unit")}
-                    onChange={(e) => kpiForm.setValue("unit", e.target.value)}
-                  />
+                  <Select value={String(kpiForm.watch("unit") || SELECT_UNIT)} onValueChange={(value) => kpiForm.setValue("unit", value)}>
+                    <SelectTrigger id="kpi-unit">
+                      <SelectValue placeholder="Select unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={SELECT_UNIT} disabled>Select unit</SelectItem>
+                      {getKpiUnitOptions(String(kpiForm.watch("unit") || "")).map((option) => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

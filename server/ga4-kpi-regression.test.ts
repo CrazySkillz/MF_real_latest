@@ -45,6 +45,28 @@ describe("GA4 KPI regression guard", () => {
     expect(ga4MetricsFile).not.toContain('kpiForm.reset({ ...kpiForm.getValues(), name: "", metric: "", description: "", unit: "%", currentValue: "", targetValue: "", priority: "medium" });');
   });
 
+  it("renders the GA4 KPI unit field as a constrained dropdown", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+    const unitStart = ga4MetricsFile.indexOf('<Label htmlFor="kpi-unit">Unit</Label>');
+    const unitEnd = ga4MetricsFile.indexOf('{/* Priority', unitStart);
+    const unitSection = ga4MetricsFile.slice(unitStart, unitEnd);
+
+    expect(unitStart).toBeGreaterThan(-1);
+    expect(unitEnd).toBeGreaterThan(unitStart);
+    expect(ga4MetricsFile).toContain("const getKpiUnitOptions = (selectedUnit?: string) => {");
+    expect(unitSection).toContain('<Select value={String(kpiForm.watch("unit") || SELECT_UNIT)}');
+    expect(unitSection).toContain('<SelectTrigger id="kpi-unit">');
+    expect(unitSection).toContain('<SelectItem value={SELECT_UNIT} disabled>Select unit</SelectItem>');
+    expect(ga4MetricsFile).toContain('{ value: "%", label: "Percentage (%)" }');
+    expect(ga4MetricsFile).toContain('{ value: campaignCurrency, label: `Currency (${campaignCurrency})` }');
+    expect(ga4MetricsFile).toContain('{ value: "count", label: "Count" }');
+    expect(ga4MetricsFile).toContain('{ value: "ratio", label: "Ratio (x)" }');
+    expect(unitSection).not.toContain("<Input");
+  });
+
   it("keeps GA4 KPI percentage card values precise enough to explain progress math", () => {
     const ga4MetricsFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),

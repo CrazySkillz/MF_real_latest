@@ -2846,10 +2846,18 @@ export default function GA4Metrics() {
         const rawCfg = source?.mappingConfig;
         const cfg = typeof rawCfg === "string" ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })() : rawCfg;
         const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
+        const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
+        const mappedCampaignByValue = new Map<string, string>();
+        mappings.forEach((mapping: any) => {
+          const valueKey = normalizeCampaignKey(mapping?.crmValue || "");
+          const mappedName = String(mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "").trim();
+          if (valueKey && mappedName) mappedCampaignByValue.set(valueKey, mappedName);
+        });
         totals.forEach((item: any) => {
           const campaignValue = String(item?.campaignValue || "").trim();
           const revenue = Number(item?.revenue || 0);
-          const key = normalizeCampaignKey(campaignValue);
+          const valueKey = normalizeCampaignKey(campaignValue);
+          const key = normalizeCampaignKey(mappedCampaignByValue.get(valueKey) || campaignValue);
           if (!key || !(revenue > 0) || rowCounts.get(key) !== 1) return;
           const rowName = rowNameByKey.get(key);
           if (!rowName) return;
@@ -4739,8 +4747,16 @@ export default function GA4Metrics() {
       const rawCfg = (source as any)?.mappingConfig;
       const cfg = typeof rawCfg === "string" ? (() => { try { return JSON.parse(rawCfg); } catch { return null; } })() : rawCfg;
       const totals = Array.isArray(cfg?.campaignValueRevenueTotals) ? cfg.campaignValueRevenueTotals : [];
+      const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];
+      const mappedCampaignByValue = new Map<string, string>();
+      for (const mapping of mappings) {
+        const valueKey = normalizeCampaignKey(mapping?.crmValue);
+        const mappedName = String(mapping?.linkedinCampaignName || mapping?.linkedinCampaignUrn || "").trim();
+        if (valueKey && mappedName) mappedCampaignByValue.set(valueKey, mappedName);
+      }
       for (const item of totals) {
-        const key = normalizeCampaignKey(item?.campaignValue);
+        const valueKey = normalizeCampaignKey(item?.campaignValue);
+        const key = normalizeCampaignKey(mappedCampaignByValue.get(valueKey) || item?.campaignValue);
         const revenue = Number(item?.revenue || 0);
         const rowName = rowNameByKey.get(key);
         if (rowName && revenue > 0) matched.set(rowName, (matched.get(rowName) || 0) + revenue);
@@ -4796,9 +4812,8 @@ export default function GA4Metrics() {
     (!!campaignId &&
       !!ga4Connection?.connected &&
       !!selectedGA4PropertyId &&
-      !ga4Metrics &&
       !ga4ToDateResp &&
-      (ga4Loading || ga4ToDateLoading || breakdownLoading));
+      (ga4ToDateLoading || (!ga4Metrics && (ga4Loading || breakdownLoading))));
   const formatConnectionTimestamp = (value: any) => {
     if (!value) return "Not available yet";
     const d = new Date(value);

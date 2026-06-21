@@ -9,6 +9,7 @@ describe("GA4 reporting timezone contract", () => {
     const schema = read("shared", "schema.ts");
     const index = read("server", "index.ts");
     const routes = read("server", "routes-oauth.ts");
+    const timezoneUtil = read("server", "utils", "reporting-timezone.ts");
     const campaigns = read("client", "src", "pages", "campaigns.tsx");
 
     expect(schema).toContain('reportingTimeZone: text("reporting_time_zone").notNull().default("UTC"),');
@@ -16,12 +17,13 @@ describe("GA4 reporting timezone contract", () => {
     expect(schema).toContain("reportingTimeZone: true,");
     expect(index).toContain("ADD COLUMN IF NOT EXISTS reporting_time_zone TEXT NOT NULL DEFAULT 'UTC';");
 
-    expect(routes).toContain('const DEFAULT_REPORTING_TIME_ZONE = "UTC";');
-    expect(routes).toContain("function normalizeReportingTimeZone(value: any): string");
-    expect(routes).toContain("new Intl.DateTimeFormat(\"en-US\", { timeZone: tz }).format(new Date(0));");
+    expect(timezoneUtil).toContain('export const DEFAULT_REPORTING_TIME_ZONE = "UTC";');
+    expect(timezoneUtil).toContain("export function normalizeReportingTimeZone(value: any): string");
+    expect(timezoneUtil).toContain("new Intl.DateTimeFormat(\"en-US\", { timeZone: tz }).format(new Date(0));");
+    expect(routes).toContain('import { getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";');
     expect(routes).toContain("sanitizedData.reportingTimeZone = normalizeReportingTimeZone(sanitizedData.reportingTimeZone);");
     expect(routes).toContain('Object.prototype.hasOwnProperty.call(sanitizedData, "reportingTimeZone")');
-    expect(routes).toContain("reportingTimeZone: normalizeReportingTimeZone((campaign as any)?.reportingTimeZone),");
+    expect(routes).toContain("reportingTimeZone: normalizeReportingTimeZone(campaign?.reportingTimeZone),");
 
     expect(campaigns).toContain("const getBrowserReportingTimeZone = () =>");
     expect(campaigns).toContain("Intl.DateTimeFormat().resolvedOptions().timeZone || \"UTC\"");

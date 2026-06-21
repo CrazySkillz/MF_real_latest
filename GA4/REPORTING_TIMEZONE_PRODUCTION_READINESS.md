@@ -13,7 +13,7 @@ The current implementation does not have one explicit reporting timezone contrac
 Proven from code:
 
 - GA4 daily facts are stored as `YYYY-MM-DD` UTC-oriented date strings in `ga4_daily_metrics`.
-- `/api/campaigns/:id/ga4-daily` computes the visible Trends window through yesterday UTC.
+- before Commit 3, `/api/campaigns/:id/ga4-daily` computed the visible Trends window through yesterday UTC.
 - the GA4 daily scheduler runs on startup and then every `GA4_DAILY_REFRESH_INTERVAL_HOURS`.
 - the external revenue/spend scheduler uses server-local `AUTO_REFRESH_DAILY_HOUR` and `AUTO_REFRESH_DAILY_MINUTE`.
 - the GA4 UI detects browser timezone for report scheduling helpers, but Insights Trends does not use that as a reporting cutoff.
@@ -78,7 +78,7 @@ Validation:
 
 ### Commit 2: Add Reporting Timezone Contract
 
-Status: Implemented locally; pending deployed validation
+Status: Validation passed for commit `fab69b16`.
 
 Scope:
 
@@ -101,6 +101,7 @@ Local validation:
 - `npm test -- --run server/ga4-reporting-timezone-regression.test.ts server/ga4-ui-regression.test.ts`
 - `npm run check`
 - `git diff --check`
+- deployed/user validation confirmed after commit `fab69b16`
 
 Validation:
 
@@ -112,7 +113,7 @@ Validation:
 
 ### Commit 3: Centralize Reporting-Day Cutoff Helper
 
-Status: Not started
+Status: Implemented locally; pending deployed validation
 
 Scope:
 
@@ -120,6 +121,17 @@ Scope:
 - use it in `/api/campaigns/:id/ga4-daily` to report the cutoff metadata
 - initially keep the stored GA4 daily row dates unchanged
 - return explicit metadata such as `dataThroughDate`, `reportingTimeZone`, and `lastUpdated`
+
+Implementation note:
+
+- `/api/campaigns/:id/ga4-daily` now computes `startDate`, `endDate`, and `dataThroughDate` from the campaign `reportingTimeZone`
+- stored `ga4_daily_metrics.date` values remain unchanged `YYYY-MM-DD` daily fact keys
+- the Trends UI filters daily rows through `dataThroughDate` and displays `Last refreshed` in the response reporting timezone
+
+Local validation:
+
+- `npm test -- --run server/ga4-reporting-day-cutoff-regression.test.ts server/ga4-reporting-timezone-regression.test.ts server/ga4-ui-regression.test.ts`
+- `npm run check`
 
 Validation:
 
@@ -242,6 +254,6 @@ Use this checklist during implementation and deployment validation:
 
 ## Current Status
 
-Current production behavior remains UTC-based for Trends cutoff and server/interval-based for scheduler timing.
+Current production behavior uses the campaign reporting timezone for Trends cutoff while scheduler timing remains server/interval-based.
 
 This is acceptable for testing only when users understand the timing model. It is not yet the final executive-ready local reporting-time behavior.

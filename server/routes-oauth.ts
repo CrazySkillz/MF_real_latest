@@ -31,19 +31,7 @@ import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
-
-const DEFAULT_REPORTING_TIME_ZONE = "UTC";
-
-function normalizeReportingTimeZone(value: any): string {
-  const tz = String(value || "").trim();
-  if (!tz) return DEFAULT_REPORTING_TIME_ZONE;
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: tz }).format(new Date(0));
-    return tz;
-  } catch {
-    return DEFAULT_REPORTING_TIME_ZONE;
-  }
-}
+import { getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 
 function withReportingTimeZone<T extends Record<string, any>>(campaign: T): T {
   return {
@@ -6912,14 +6900,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestedPropertyId = propertyId ? String(propertyId) : "";
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
 
-      // Compute UTC start/end window for stored rows — use yesterday to exclude partial intraday data
-      const now = new Date();
-      const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-      const yesterdayUtc = new Date(todayUtc.getTime() - 24 * 60 * 60 * 1000);
-      const start = new Date(yesterdayUtc);
-      start.setUTCDate(start.getUTCDate() - (days - 1));
-      const startDate = formatISODateUTC(start);
-      const endDate = formatISODateUTC(yesterdayUtc);
+      // Use the campaign reporting timezone to decide which daily row is complete.
+      const reportingWindow = getReportingDateWindow(days, (campaign as any)?.reportingTimeZone);
+      const { startDate, endDate, dataThroughDate, reportingTimeZone } = reportingWindow;
       const addDerivedEngagedSessions = (row: any) => {
         const sessions = Number(row?.sessions || 0) || 0;
         const existing = Number(row?.engagedSessions || 0) || 0;
@@ -6972,7 +6955,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           propertyId: pid,
           startDate,
           endDate,
+          dataThroughDate,
           days,
+          reportingTimeZone,
           data: merged,
           lastUpdated: new Date().toISOString(),
         });
@@ -7060,8 +7045,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         displayName: selectedConnection.displayName,
         startDate,
         endDate,
+        dataThroughDate,
         days,
-        reportingTimeZone: normalizeReportingTimeZone((campaign as any)?.reportingTimeZone),
+        reportingTimeZone,
         data: stored.map(addDerivedEngagedSessions),
         lastUpdated: lastUpdated || new Date().toISOString(),
       });

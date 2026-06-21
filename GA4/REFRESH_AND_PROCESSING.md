@@ -8,6 +8,8 @@ This file defines the daily auto-refresh and auto-process model for GA4.
 
 This platform has a required no-click freshness pattern for GA4 campaigns.
 
+Executive-ready local reporting-time behavior is tracked in `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md`. GA4 Trends uses the campaign reporting timezone for completed-day cutoff, while the GA4 daily scheduler remains startup/interval based and the external value scheduler uses server-local configured time.
+
 User expectation:
 
 - users should not need to reopen setup flows each day just to keep GA4 analytics current

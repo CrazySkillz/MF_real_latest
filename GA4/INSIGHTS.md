@@ -122,6 +122,7 @@ Current code-path meaning:
 - in production mode, the tab is intended to render from persisted GA4 daily facts for the selected GA4 property and the campaign's selected GA4 campaign scope
 - if persisted daily rows are missing, the current backend attempts an on-demand backfill from the real GA4 Data API and then persists those rows
 - the chart and comparison tables are then built from those persisted daily rows
+- visible Trends daily rows are completed-day history rows through the campaign reporting timezone's latest completed day; today's intraday GA4 data is excluded from Trends history until it becomes a completed reporting day
 
 Important meaning:
 
@@ -133,6 +134,8 @@ Important meaning:
 ## GA4 Insights Trends Production-Readiness Checklist
 
 Use this checklist after the full GA4 manual-user-journey pass is complete.
+
+Reporting timezone readiness is tracked separately in `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md`. Trends daily rows use the campaign reporting timezone for the completed-day cutoff; scheduler timing, stale-state warnings, and report-output timezone metadata remain tracked in that plan.
 
 Data availability:
 

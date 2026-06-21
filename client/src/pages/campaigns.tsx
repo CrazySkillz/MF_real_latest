@@ -67,6 +67,14 @@ const campaignFormSchema = insertCampaignSchema.extend({
 
 type CampaignFormData = z.infer<typeof campaignFormSchema>;
 
+const getBrowserReportingTimeZone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+};
+
 const platforms = [
   {
     id: "google-analytics",
@@ -272,7 +280,7 @@ export default function Campaigns() {
   });
 
   const createCampaignMutation = useMutation({
-    mutationFn: async (data: CampaignFormData & { platform?: string; status?: string; type?: string; impressions?: number; clicks?: number; spend?: string; ga4CampaignFilter?: string }) => {
+    mutationFn: async (data: CampaignFormData & { platform?: string; status?: string; type?: string; impressions?: number; clicks?: number; spend?: string; ga4CampaignFilter?: string; reportingTimeZone?: string }) => {
       console.log('🚀 [Frontend] Creating campaign with data:', data);
       console.log('🔍 [Frontend] selectedClientId:', selectedClientId);
       const payload = {
@@ -284,6 +292,7 @@ export default function Campaigns() {
         currency: data.currency || "USD",
         conversionValue: data.conversionValue ? parseFloat(data.conversionValue as any) : null,
         ga4CampaignFilter: (data as any).ga4CampaignFilter || null,
+        reportingTimeZone: data.reportingTimeZone || getBrowserReportingTimeZone(),
         industry: data.industry || null, // ✅ INCLUDE INDUSTRY FOR BENCHMARK GENERATION
         type: data.type || "campaign",
         platform: data.platform || "manual",

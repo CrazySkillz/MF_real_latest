@@ -33,6 +33,7 @@ export const campaigns = pgTable("campaigns", {
   conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }), // Average revenue per conversion for ROI calculations
   // GA4 attribution filter so each MetricMind campaign maps to a single GA4 campaign/UTM campaign
   ga4CampaignFilter: text("ga4_campaign_filter"),
+  reportingTimeZone: text("reporting_time_zone").notNull().default("UTC"),
   type: text("type"),
   platform: text("platform"),
   impressions: integer("impressions").notNull().default(0),
@@ -1123,6 +1124,7 @@ export const kpiReports = pgTable("kpi_reports", {
 export const insertCampaignSchema = createInsertSchema(campaigns)
   .extend({
     currency: z.string().default("USD"),
+    reportingTimeZone: z.string().trim().min(1).default("UTC"),
   })
   .pick({
     ownerId: true,
@@ -1134,6 +1136,7 @@ export const insertCampaignSchema = createInsertSchema(campaigns)
     currency: true,
     conversionValue: true,
     ga4CampaignFilter: true,
+    reportingTimeZone: true,
     type: true,
     platform: true,
     impressions: true,

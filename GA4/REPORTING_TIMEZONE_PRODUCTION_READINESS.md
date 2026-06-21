@@ -51,7 +51,7 @@ Example target copy:
 
 ### Commit 1: Clarify Current UTC Behavior
 
-Status: Implemented locally; pending deployed UI validation
+Status: Validation passed for commit `d49fa064`.
 
 Scope:
 
@@ -66,6 +66,7 @@ Local validation:
 - `npm test -- --run server/ga4-ui-regression.test.ts`
 - `npm run check`
 - `git diff --check`
+- deployed/user validation confirmed after commit `d49fa064`
 
 Validation:
 
@@ -77,7 +78,7 @@ Validation:
 
 ### Commit 2: Add Reporting Timezone Contract
 
-Status: Not started
+Status: Implemented locally; pending deployed validation
 
 Scope:
 
@@ -86,6 +87,20 @@ Scope:
 - use `UTC` as the server-safe fallback
 - expose the selected reporting timezone in campaign/GA4 responses without breaking existing response shapes
 - document ownership: campaign setting first, client default later if needed
+
+Implementation note:
+
+- ownership starts at campaign level through `campaigns.reporting_time_zone`
+- existing campaigns and invalid/missing inputs fall back to `UTC`
+- new campaign creation sends the browser IANA timezone when available
+- `/api/campaigns` and `/api/campaigns/:id` expose `reportingTimeZone`
+- `/api/campaigns/:id/ga4-daily` exposes `reportingTimeZone`, but the Trends cutoff remains UTC until Commit 3 centralizes the reporting-day cutoff helper
+
+Local validation:
+
+- `npm test -- --run server/ga4-reporting-timezone-regression.test.ts server/ga4-ui-regression.test.ts`
+- `npm run check`
+- `git diff --check`
 
 Validation:
 
@@ -220,7 +235,7 @@ Use this checklist during implementation and deployment validation:
 
 ## Open Decisions
 
-- whether reporting timezone belongs on `campaigns` first or `clients` first
+- client-level defaults may be added later; campaign-level `reportingTimeZone` is the current source of truth
 - whether GA4 daily refresh should become scheduled by timezone or remain interval-based with clearer freshness metadata
 - whether external revenue/spend refresh should use per-campaign timezone or one deployment-level operations timezone
 - whether existing campaigns should be backfilled to `UTC` only or inferred from owner/browser/client context

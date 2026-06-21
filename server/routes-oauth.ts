@@ -32,6 +32,26 @@ import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-ag
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
 
+const DEFAULT_REPORTING_TIME_ZONE = "UTC";
+
+function normalizeReportingTimeZone(value: any): string {
+  const tz = String(value || "").trim();
+  if (!tz) return DEFAULT_REPORTING_TIME_ZONE;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz }).format(new Date(0));
+    return tz;
+  } catch {
+    return DEFAULT_REPORTING_TIME_ZONE;
+  }
+}
+
+function withReportingTimeZone<T extends Record<string, any>>(campaign: T): T {
+  return {
+    ...campaign,
+    reportingTimeZone: normalizeReportingTimeZone(campaign?.reportingTimeZone),
+  };
+}
+
 // Helper functions for column type detection
 function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency' | 'percentage' | 'boolean' | 'unknown' {
   if (values.length === 0) return 'unknown';
@@ -6699,7 +6719,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Return with ownerId populated for consistency + calculated fields for dashboard table
       res.json(
-        visible.map((c: any) => ({
+        visible.map((c: any) => withReportingTimeZone({
           ...c,
           ownerId: String(c?.ownerId || "").trim() ? c.ownerId : actorId,
           // TODO: Calculate real values from platform connections and KPIs
@@ -6735,6 +6755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sanitizedData.spend = sanitizedData.spend.toString();
         console.log('[Campaign Creation] Converted spend from number to string:', sanitizedData.spend);
       }
+      sanitizedData.reportingTimeZone = normalizeReportingTimeZone(sanitizedData.reportingTimeZone);
 
       const validatedData = insertCampaignSchema.parse({ ...sanitizedData, ownerId: actorId });
       // Ensure ownerId is always set (even if schema strips it for some reason)
@@ -6793,7 +6814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('[Benchmarks] No industry specified, skipping benchmark generation');
       }
 
-      res.status(201).json(campaign);
+      res.status(201).json(withReportingTimeZone(campaign as any));
     } catch (error) {
       console.error('[Campaign Creation] Error:', error);
       if (error instanceof z.ZodError) {
@@ -6812,7 +6833,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingCampaign = await ensureCampaignAccess(req as any, res as any, campaignId);
       if (!existingCampaign) return;
 
-      const validatedData = insertCampaignSchema.partial().parse(req.body);
+      const sanitizedData = { ...(req.body || {}) };
+      if (Object.prototype.hasOwnProperty.call(sanitizedData, "reportingTimeZone")) {
+        sanitizedData.reportingTimeZone = normalizeReportingTimeZone(sanitizedData.reportingTimeZone);
+      }
+      const validatedData = insertCampaignSchema.partial().parse(sanitizedData);
       // Never allow ownership to be modified by the client.
       delete (validatedData as any).ownerId;
       const isDraftActivation =
@@ -6832,7 +6857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-      res.json(campaign);
+      res.json(withReportingTimeZone(campaign as any));
     } catch (error) {
       console.error('Campaign update error:', error);
       if (error instanceof z.ZodError) {
@@ -6850,7 +6875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!campaign) return;
 
-      res.json(campaign);
+      res.json(withReportingTimeZone(campaign as any));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch campaign" });
     }
@@ -7036,6 +7061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startDate,
         endDate,
         days,
+        reportingTimeZone: normalizeReportingTimeZone((campaign as any)?.reportingTimeZone),
         data: stored.map(addDerivedEngagedSessions),
         lastUpdated: lastUpdated || new Date().toISOString(),
       });

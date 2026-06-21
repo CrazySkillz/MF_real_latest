@@ -328,6 +328,10 @@ process.on('uncaughtException', (error: Error) => {
             ALTER TABLE campaigns
             ADD COLUMN IF NOT EXISTS ga4_campaign_filter TEXT;
           `);
+          await db.execute(sql`
+            ALTER TABLE campaigns
+            ADD COLUMN IF NOT EXISTS reporting_time_zone TEXT NOT NULL DEFAULT 'UTC';
+          `);
 
           // GA4 daily metrics (persisted daily facts powering "daily values" GA4 UI)
           await db.execute(sql`

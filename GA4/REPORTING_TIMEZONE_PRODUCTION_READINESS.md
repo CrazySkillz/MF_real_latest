@@ -1,0 +1,232 @@
+# GA4 Reporting Timezone Production Readiness
+
+## Purpose
+
+This file tracks the production-readiness work needed to make GA4 daily history, Insights Trends, freshness labels, and scheduled refresh timing reliable for marketing executives who expect data availability at specific local business times.
+
+This is a timing-contract task, not a metric-calculation rewrite.
+
+## Root Cause
+
+The current implementation does not have one explicit reporting timezone contract.
+
+Proven from code:
+
+- GA4 daily facts are stored as `YYYY-MM-DD` UTC-oriented date strings in `ga4_daily_metrics`.
+- `/api/campaigns/:id/ga4-daily` computes the visible Trends window through yesterday UTC.
+- the GA4 daily scheduler runs on startup and then every `GA4_DAILY_REFRESH_INTERVAL_HOURS`.
+- the external revenue/spend scheduler uses server-local `AUTO_REFRESH_DAILY_HOUR` and `AUTO_REFRESH_DAILY_MINUTE`.
+- the GA4 UI detects browser timezone for report scheduling helpers, but Insights Trends does not use that as a reporting cutoff.
+
+Impact:
+
+- data can be technically correct but unclear to an executive user
+- "complete day" can mean UTC day while the user expects a local business day
+- scheduler logs can be hard to reconcile with the UI
+- stale or not-yet-refreshed history is not clearly distinguished from complete history
+
+## Production-Ready Goal
+
+GA4 executive surfaces should answer these questions without interpretation:
+
+- which timezone defines a completed reporting day
+- which date the current Trends data is complete through
+- when the daily facts were last refreshed
+- whether the expected refresh has completed
+- whether the visible values are current, pending, or stale
+
+Example target copy:
+
+`Data through Jun 20, 2026 (Europe/Amsterdam). Last refreshed Jun 21, 2026 07:19 Europe/Amsterdam.`
+
+## Non-Goals
+
+- do not change metric formulas as part of timezone labeling
+- do not rewrite GA4 daily storage
+- do not broaden GA4 campaign scope
+- do not change imported revenue/spend aggregation unless a separate revenue/spend bug is proven
+- do not make scheduler behavior depend on browser timezone alone
+
+## Commit Plan
+
+### Commit 1: Clarify Current UTC Behavior
+
+Status: Implemented locally; pending deployed UI validation
+
+Scope:
+
+- show `Data through` in Insights Trends
+- show timezone used for the current cutoff, initially `UTC`
+- show `Last refreshed` from the existing `/ga4-daily.lastUpdated`
+- update empty-history copy from `complete days` to `complete UTC days`
+- keep calculations and API response shapes unchanged
+
+Local validation:
+
+- `npm test -- --run server/ga4-ui-regression.test.ts`
+- `npm run check`
+- `git diff --check`
+
+Validation:
+
+- Trends values remain unchanged
+- Daily mode with two rows still renders chart and table
+- missing-history message names `complete UTC days`
+- `npm run check`
+- focused GA4 UI regression guard for the new labels
+
+### Commit 2: Add Reporting Timezone Contract
+
+Status: Not started
+
+Scope:
+
+- add a campaign-level or client-level `reportingTimeZone` field
+- default new campaigns from browser timezone when available
+- use `UTC` as the server-safe fallback
+- expose the selected reporting timezone in campaign/GA4 responses without breaking existing response shapes
+- document ownership: campaign setting first, client default later if needed
+
+Validation:
+
+- existing campaigns without a timezone continue to work with `UTC`
+- new campaign creation persists a valid IANA timezone
+- invalid timezone input fails closed or falls back explicitly
+- schema/migration checks
+- `npm run check`
+
+### Commit 3: Centralize Reporting-Day Cutoff Helper
+
+Status: Not started
+
+Scope:
+
+- add a shared server helper for latest complete reporting day by IANA timezone
+- use it in `/api/campaigns/:id/ga4-daily` to report the cutoff metadata
+- initially keep the stored GA4 daily row dates unchanged
+- return explicit metadata such as `dataThroughDate`, `reportingTimeZone`, and `lastUpdated`
+
+Validation:
+
+- UTC campaign returns the same date window as current behavior
+- `Europe/Amsterdam` boundary tests pass around local midnight and DST
+- response additions do not break existing consumers
+- focused route regression tests
+- `npm run check`
+
+### Commit 4: Align GA4 Daily Refresh Scheduling
+
+Status: Not started
+
+Scope:
+
+- decide whether GA4 daily refresh remains interval-based or moves to a timezone-aware scheduled daily run
+- if scheduled, use the configured reporting timezone to calculate the expected refresh window
+- keep startup refresh as best-effort if it remains useful for testing
+- expose enough log context to correlate refresh runs with the reporting timezone
+
+Validation:
+
+- scheduler logs include expected reporting timezone and next run
+- startup run behavior remains controlled and explicit
+- no overlapping GA4 daily refresh runs
+- focused scheduler tests
+- `npm run check`
+
+### Commit 5: Align External Revenue/Spend Refresh Timing
+
+Status: Not started
+
+Scope:
+
+- move external value auto-refresh away from ambiguous server-local timing
+- compute next run from the same reporting timezone contract or a documented deployment-level default
+- preserve stable source IDs and existing provider refresh boundaries
+- keep `AUTO_REFRESH_RUN_ON_STARTUP` as a test-only override
+
+Validation:
+
+- HubSpot/Salesforce/Shopify/Sheets refresh still uses stable source IDs
+- scheduler logs show reporting timezone and next run
+- no duplicate revenue/spend records on repeated runs
+- focused CRM/ecommerce/Sheets scheduler tests
+- `npm run check`
+
+### Commit 6: Add Freshness And Staleness UX
+
+Status: Not started
+
+Scope:
+
+- show expected refresh time and last completed refresh time where executives rely on daily history
+- show stale-data warning when expected refresh passed but daily facts have not updated
+- keep warning factual and non-alarming
+- apply first to GA4 Insights Trends, then expand to Reports/KPI/Benchmark freshness only after path tracing
+
+Validation:
+
+- fresh state shows data-through and last-refreshed copy
+- stale state shows a warning without changing metrics
+- no warning appears before the expected refresh window
+- UI regression tests
+- `npm run check`
+
+### Commit 7: Reports And Export Consistency
+
+Status: Not started
+
+Scope:
+
+- include reporting timezone, data-through date, and last-refreshed timestamp in GA4 Insights report output
+- ensure scheduled reports use the same reporting timezone metadata
+- keep report metric values sourced from the existing refreshed inputs
+
+Validation:
+
+- generated PDF includes the same data-through metadata as the UI
+- scheduled report output does not imply current-day completeness when Trends excludes intraday data
+- focused report regression tests
+- `npm run check`
+
+### Commit 8: Documentation And Operational Runbook
+
+Status: Not started
+
+Scope:
+
+- update `GA4/INSIGHTS.md`
+- update `GA4/REFRESH_AND_PROCESSING.md`
+- update manual validation notes for Render logs and local timezone checks
+- document how to test startup refresh separately from scheduled refresh
+
+Validation:
+
+- docs explain UTC fallback, configured reporting timezone, expected refresh, and stale warning behavior
+- `git diff --check`
+
+## Monitoring Checklist
+
+Use this checklist during implementation and deployment validation:
+
+- [ ] Trends shows data-through date
+- [ ] Trends shows reporting timezone
+- [ ] Trends shows last refreshed timestamp
+- [ ] missing-history copy names the timezone basis
+- [ ] Render logs show next scheduled refresh time and timezone
+- [ ] GA4 daily rows update after the expected refresh
+- [ ] external revenue/spend sources update after their expected refresh
+- [ ] stale warning appears only when refresh is late
+- [ ] generated reports include the same freshness metadata
+
+## Open Decisions
+
+- whether reporting timezone belongs on `campaigns` first or `clients` first
+- whether GA4 daily refresh should become scheduled by timezone or remain interval-based with clearer freshness metadata
+- whether external revenue/spend refresh should use per-campaign timezone or one deployment-level operations timezone
+- whether existing campaigns should be backfilled to `UTC` only or inferred from owner/browser/client context
+
+## Current Status
+
+Current production behavior remains UTC-based for Trends cutoff and server/interval-based for scheduler timing.
+
+This is acceptable for testing only when users understand the timing model. It is not yet the final executive-ready local reporting-time behavior.

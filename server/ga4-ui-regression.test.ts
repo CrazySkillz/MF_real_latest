@@ -180,8 +180,12 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain('const hasRequiredHistory = insightsTrendMode === "monthly" ? availableMonths >= 2 : dailyRows.length >= minRequiredDays;');
     expect(ga4Metrics).toContain('const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} days`;');
     expect(ga4Metrics).not.toContain("Need at least 2 days of GA4 daily history. Available: {dailyRows.length}.");
-    expect(ga4Metrics).toContain('`${dailyRows.length} complete day${dailyRows.length === 1 ? "" : "s"}`');
-    expect(ga4Metrics).toContain("Today's intraday GA4 data is excluded until it becomes a completed GA4 day.");
+    expect(ga4Metrics).toContain('const GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";');
+    expect(ga4Metrics).toContain("Data through <span");
+    expect(ga4Metrics).toContain("Reporting timezone");
+    expect(ga4Metrics).toContain("Last refreshed <span");
+    expect(ga4Metrics).toContain('`${dailyRows.length} complete UTC day${dailyRows.length === 1 ? "" : "s"}`');
+    expect(ga4Metrics).toContain("Today's intraday GA4 data is excluded until it becomes a completed UTC GA4 day.");
   });
 
   it("keeps Google Sheets spend chooser stable without visible loading text during back/dropdown transitions", () => {

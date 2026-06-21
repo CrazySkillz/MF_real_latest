@@ -56,6 +56,7 @@ describe("Latest Day Revenue regression guard", () => {
     );
 
     expect(schedulerFile).toContain("dateField: mappingConfig.dateField,");
+    expect(schedulerFile).not.toContain("stageIds: mappingConfig.stageIds,");
     expect(routesFile).toContain("if ((!accessToken || shouldRefresh) && conn.refreshToken) {");
     expect(routesFile).toContain("accessToken = await refreshHubspotToken(conn);");
     expect(routesFile).toContain("HubSpot access token missing and no refresh token available. Please reconnect HubSpot.");

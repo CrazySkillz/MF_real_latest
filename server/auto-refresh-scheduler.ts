@@ -91,7 +91,6 @@ async function reprocessHubSpot(campaignId: string, mappingConfig: AnyRecord, so
     conversionValueProperty: mappingConfig.conversionValueProperty,
     valueSource: mappingConfig.valueSource,
     days: mappingConfig.days,
-    stageIds: mappingConfig.stageIds,
     pipelineEnabled: mappingConfig.pipelineEnabled,
     pipelineStageId: mappingConfig.pipelineStageId,
     pipelineStageLabel: mappingConfig.pipelineStageLabel,

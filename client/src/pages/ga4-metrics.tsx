@@ -1774,7 +1774,13 @@ export default function GA4Metrics() {
   const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4DailyResp as any)?.reportingTimeZone);
   const trendsDataThroughDate = String(ga4DailyDataThroughDate || ga4ReportDate || "").trim();
   const trendsDataThroughLabel = formatReportingDateLabel(trendsDataThroughDate);
-  const trendsLastRefreshedLabel = formatReportingTimestampLabel((ga4DailyResp as any)?.lastUpdated, trendsReportingTimeZone);
+  const trendsRefreshScheduleTimeZone = normalizeClientReportingTimeZone((ga4DailyResp as any)?.refreshScheduleTimeZone || trendsReportingTimeZone);
+  const trendsLastRefreshValue = Object.prototype.hasOwnProperty.call((ga4DailyResp as any) || {}, "lastCompletedRefreshAt")
+    ? (ga4DailyResp as any)?.lastCompletedRefreshAt
+    : (ga4DailyResp as any)?.lastUpdated;
+  const trendsLastRefreshedLabel = formatReportingTimestampLabel(trendsLastRefreshValue, trendsReportingTimeZone);
+  const trendsExpectedRefreshLabel = formatReportingTimestampLabel((ga4DailyResp as any)?.expectedRefreshAt, trendsRefreshScheduleTimeZone);
+  const trendsRefreshIsStale = Boolean((ga4DailyResp as any)?.refreshIsStale);
 
   const { data: ga4Breakdown, isLoading: breakdownLoading } = useQuery({
     queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange, selectedGA4PropertyId],
@@ -7354,7 +7360,14 @@ export default function GA4Metrics() {
                           <span>Data through <span className="font-medium text-foreground">{trendsDataThroughLabel}</span></span>
                           <span>Reporting timezone <span className="font-medium text-foreground">{trendsReportingTimeZone}</span></span>
                           <span>Last refreshed <span className="font-medium text-foreground">{trendsLastRefreshedLabel}</span></span>
+                          <span>Expected refresh <span className="font-medium text-foreground">{trendsExpectedRefreshLabel}</span></span>
                         </div>
+                        {trendsRefreshIsStale && (
+                          <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                            <span>Daily history has not refreshed since the expected {trendsExpectedRefreshLabel} run. Values remain unchanged until the next GA4 daily refresh completes.</span>
+                          </div>
+                        )}
                         {/* Trends line chart */}
                         {(() => {
                           const dailyRows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || ""))) : [];

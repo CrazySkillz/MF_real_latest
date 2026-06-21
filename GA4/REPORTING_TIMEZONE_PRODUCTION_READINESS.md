@@ -177,7 +177,7 @@ Validation:
 
 ### Commit 5: Align External Revenue/Spend Refresh Timing
 
-Status: Implemented locally; pending deployed validation
+Status: Validation passed for commit `8d4a99bc`.
 
 Scope:
 
@@ -198,6 +198,7 @@ Local validation:
 
 - `npm test -- --run server/ga4-auto-refresh-regression.test.ts server/ga4-daily-scheduler-regression.test.ts`
 - `npm run check`
+- deployed/user validation confirmed after commit `8d4a99bc`
 
 Validation:
 
@@ -209,7 +210,7 @@ Validation:
 
 ### Commit 6: Add Freshness And Staleness UX
 
-Status: Not started
+Status: Implemented locally; pending deployed validation
 
 Scope:
 
@@ -217,6 +218,19 @@ Scope:
 - show stale-data warning when expected refresh passed but daily facts have not updated
 - keep warning factual and non-alarming
 - apply first to GA4 Insights Trends, then expand to Reports/KPI/Benchmark freshness only after path tracing
+
+Implementation note:
+
+- `/api/campaigns/:id/ga4-daily` now returns `expectedRefreshAt`, `refreshScheduleTimeZone`, `lastCompletedRefreshAt`, and `refreshIsStale`
+- expected refresh is computed from `dataThroughDate` plus the configured GA4 daily scheduler time and timezone
+- `refreshIsStale` is true only after the expected refresh time has passed and the latest completed daily refresh timestamp is missing or older than that expected refresh
+- GA4 Insights Trends shows `Expected refresh` beside the existing data-through/timezone/last-refreshed metadata
+- GA4 Insights Trends shows a factual warning when `refreshIsStale` is true; metric values and history gating are unchanged
+
+Local validation:
+
+- `npm test -- --run server/ga4-daily-scheduler-regression.test.ts server/ga4-reporting-day-cutoff-regression.test.ts server/ga4-ui-regression.test.ts`
+- `npm run check`
 
 Validation:
 

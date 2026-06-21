@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { getExpectedDailyRefreshAt, getLatestCompleteReportingDate, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 
 const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), "utf-8");
 
@@ -33,6 +33,10 @@ describe("GA4 reporting-day cutoff", () => {
     });
   });
 
+  it("calculates the expected refresh time for a completed reporting day", () => {
+    expect(getExpectedDailyRefreshAt("2026-06-20", "Europe/Amsterdam", 3, 0)?.toISOString()).toBe("2026-06-21T01:00:00.000Z");
+  });
+
   it("wires the timezone cutoff through the GA4 daily route and Trends UI", () => {
     const routes = read("server", "routes-oauth.ts");
     const page = read("client", "src", "pages", "ga4-metrics.tsx");
@@ -40,6 +44,9 @@ describe("GA4 reporting-day cutoff", () => {
     expect(routes).toContain("const reportingWindow = getReportingDateWindow(days, (campaign as any)?.reportingTimeZone);");
     expect(routes).toContain("const { startDate, endDate, dataThroughDate, reportingTimeZone } = reportingWindow;");
     expect(routes).toContain("dataThroughDate,");
+    expect(routes).toContain("expectedRefreshAt: expectedRefreshAtISO,");
+    expect(routes).toContain("lastCompletedRefreshAt,");
+    expect(routes).toContain("refreshIsStale:");
 
     expect(page).toContain("const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4DailyResp as any)?.reportingTimeZone);");
     expect(page).toContain("const trendsDataThroughDate = String(ga4DailyDataThroughDate || ga4ReportDate || \"\").trim();");

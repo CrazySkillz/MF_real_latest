@@ -27,11 +27,12 @@ import { eq, sql } from "drizzle-orm";
 import { refreshInstagramBenchmarksForCampaign, refreshInstagramKPIsForCampaign, refreshKPIsForCampaign, refreshTikTokBenchmarksForCampaign, refreshTikTokKPIsForCampaign } from "./utils/kpi-refresh";
 import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { refreshGoogleSheetsDataForCampaign } from "./auto-refresh-scheduler";
+import { getGA4DailySchedulerConfig } from "./ga4-daily-scheduler";
 import { isInternalAutoRefreshRequest } from "./internal-request-auth";
 import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-aggregate";
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
-import { getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 
 function withReportingTimeZone<T extends Record<string, any>>(campaign: T): T {
   return {
@@ -6903,6 +6904,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use the campaign reporting timezone to decide which daily row is complete.
       const reportingWindow = getReportingDateWindow(days, (campaign as any)?.reportingTimeZone);
       const { startDate, endDate, dataThroughDate, reportingTimeZone } = reportingWindow;
+      const schedulerConfig = getGA4DailySchedulerConfig();
+      const expectedRefreshAt = getExpectedDailyRefreshAt(dataThroughDate, schedulerConfig.reportingTimeZone, schedulerConfig.hour, schedulerConfig.minute);
+      const expectedRefreshAtISO = expectedRefreshAt ? expectedRefreshAt.toISOString() : null;
+      const buildFreshness = (lastCompletedRefreshAt: string | null, now = new Date()) => {
+        const refreshedAt = lastCompletedRefreshAt ? new Date(lastCompletedRefreshAt).getTime() : NaN;
+        const expectedAt = expectedRefreshAt ? expectedRefreshAt.getTime() : NaN;
+        return {
+          expectedRefreshAt: expectedRefreshAtISO,
+          refreshScheduleTimeZone: schedulerConfig.reportingTimeZone,
+          lastCompletedRefreshAt,
+          refreshIsStale: Number.isFinite(expectedAt) && expectedAt <= now.getTime() && (!Number.isFinite(refreshedAt) || refreshedAt < expectedAt),
+        };
+      };
       const addDerivedEngagedSessions = (row: any) => {
         const sessions = Number(row?.sessions || 0) || 0;
         const existing = Number(row?.engagedSessions || 0) || 0;
@@ -6950,6 +6964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Sort by date
         merged.sort((a: any, b: any) => String(a.date || "").localeCompare(String(b.date || "")));
 
+        const lastCompletedRefreshAt = new Date().toISOString();
         return res.json({
           success: true,
           propertyId: pid,
@@ -6959,7 +6974,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           days,
           reportingTimeZone,
           data: merged,
-          lastUpdated: new Date().toISOString(),
+          ...buildFreshness(lastCompletedRefreshAt),
+          lastUpdated: lastCompletedRefreshAt,
         });
       }
 
@@ -7049,6 +7065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         days,
         reportingTimeZone,
         data: stored.map(addDerivedEngagedSessions),
+        ...buildFreshness(lastUpdated),
         lastUpdated: lastUpdated || new Date().toISOString(),
       });
     } catch (error: any) {

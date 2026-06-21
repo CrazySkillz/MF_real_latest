@@ -97,3 +97,14 @@ export function getNextDailyRunAt(now: Date, reportingTimeZone: any, hour: numbe
   }
   return target;
 }
+
+export function getExpectedDailyRefreshAt(dataThroughDate: any, reportingTimeZone: any, hour: number, minute: number): Date | null {
+  const dateOnly = String(dataThroughDate || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return null;
+  const base = new Date(`${dateOnly}T00:00:00.000Z`);
+  if (Number.isNaN(base.getTime())) return null;
+  const refreshDay = addCalendarDaysFromParts(base.getUTCFullYear(), base.getUTCMonth() + 1, base.getUTCDate(), 1);
+  const safeHour = Math.min(Math.max(Math.floor(Number(hour) || 0), 0), 23);
+  const safeMinute = Math.min(Math.max(Math.floor(Number(minute) || 0), 0), 59);
+  return zonedDateTimeToUTC(normalizeReportingTimeZone(reportingTimeZone), refreshDay.year, refreshDay.month, refreshDay.day, safeHour, safeMinute);
+}

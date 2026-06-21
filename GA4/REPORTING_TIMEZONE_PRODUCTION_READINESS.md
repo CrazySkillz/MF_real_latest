@@ -244,7 +244,7 @@ Validation:
 
 ### Commit 7: Reports And Export Consistency
 
-Status: Implemented locally; local validation passed; pending deployed validation and commit.
+Status: Validation passed for commit `b7a629d0` for generated/ad hoc report output. Scheduled-report validation is deferred until the Reports scheduler refinement work.
 
 Scope:
 
@@ -265,16 +265,21 @@ Local validation:
 - `npm run check`
 - `git diff --check`
 
+Deployed/user validation:
+
+- generated/downloaded GA4 Insights report output was validated for the freshness metadata path
+- scheduled GA4 report output was not validated because the Reports scheduler still needs refinement before scheduled delivery can be treated as a reliable validation path
+
 Validation:
 
 - generated PDF includes the same data-through metadata as the UI
-- scheduled report output does not imply current-day completeness when Trends excludes intraday data
+- scheduled report output does not imply current-day completeness when Trends excludes intraday data; deployed validation pending Reports scheduler refinement
 - focused report regression tests
 - `npm run check`
 
 ### Commit 8: Documentation And Operational Runbook
 
-Status: Not started
+Status: Implemented locally; local validation passed; pending commit.
 
 Scope:
 
@@ -282,6 +287,16 @@ Scope:
 - update `GA4/REFRESH_AND_PROCESSING.md`
 - update manual validation notes for Render logs and local timezone checks
 - document how to test startup refresh separately from scheduled refresh
+
+Implementation note:
+
+- `GA4/INSIGHTS.md` now documents Trends freshness labels, UTC fallback, expected refresh, and stale-warning behavior
+- `GA4/REFRESH_AND_PROCESSING.md` now documents GA4 daily and external value scheduler environment variables, Render/log timezone interpretation, and separate startup-versus-scheduled validation paths
+- no metric formulas, scheduler code, response shapes, or source-refresh behavior changed
+
+Local validation:
+
+- `git diff --check`
 
 Validation:
 
@@ -300,7 +315,8 @@ Use this checklist during implementation and deployment validation:
 - [ ] GA4 daily rows update after the expected refresh
 - [ ] external revenue/spend sources update after their expected refresh
 - [ ] stale warning appears only when refresh is late
-- [ ] generated reports include the same freshness metadata
+- [x] generated reports include the same freshness metadata
+- [ ] scheduled reports include the same freshness metadata after Reports scheduler refinement
 
 ## Open Decisions
 

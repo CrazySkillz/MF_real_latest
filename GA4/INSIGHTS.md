@@ -120,7 +120,8 @@ Current code-path meaning:
 
 - in test mode, the tab can render from simulated GA4 daily data
 - in production mode, the tab is intended to render from persisted GA4 daily facts for the selected GA4 property and the campaign's selected GA4 campaign scope
-- if persisted daily rows are missing, the current backend attempts an on-demand backfill from the real GA4 Data API and then persists those rows
+- if persisted daily rows are missing for the requested campaign/property window, the current backend attempts an on-demand backfill from the real GA4 Data API and then persists those rows
+- daily backfill queries `sessionCampaignName` first, then falls back to `pageLocation` `utm_campaign` only when the primary campaign-dimension daily result returns no rows
 - the chart and comparison tables are then built from those persisted daily rows
 - visible Trends daily rows are completed-day history rows through the campaign reporting timezone's latest completed day; today's intraday GA4 data is excluded from Trends history until it becomes a completed reporting day
 
@@ -130,6 +131,29 @@ Important meaning:
 - this is not a mock-only design
 - the main production risk is operational freshness and history availability, not that the Trends UI is hardwired to simulated data
 - a same-day live GA4 seed run can populate current Overview metrics before it creates enough persisted daily history for Trends; 7d, 30d, and Monthly views require repeated daily history, not only more events on the same day
+- one completed daily row should show as one available day, but the Daily trend chart still requires two completed daily rows for comparison
+
+## Trends Freshness Labels
+
+The Trends section should make daily-history freshness explicit.
+
+Visible labels:
+
+- `Data through`
+  The latest completed reporting day included in Trends.
+- `Reporting timezone`
+  The campaign reporting timezone used to decide which GA4 day is complete. Missing or invalid values fall back to `UTC`.
+- `Last refreshed`
+  The latest stored GA4 daily-row refresh timestamp returned by `/api/campaigns/:id/ga4-daily`.
+- `Expected refresh`
+  The scheduled GA4 daily refresh time for the current `Data through` day.
+
+Stale warning rule:
+
+- show a factual stale warning only when the expected refresh time has passed and the latest completed refresh is missing or older than that expected refresh
+- do not change metric values when showing the warning
+- do not treat today's intraday GA4 activity as a completed Trends day
+- generated GA4 Insights reports should include the same data-through, reporting-timezone, and last-refreshed context as the live Trends section
 
 ## GA4 Insights Trends Production-Readiness Checklist
 
@@ -161,6 +185,7 @@ Refresh/freshness:
 
 - confirm the GA4 daily scheduler is running in the deployed environment
 - confirm an empty daily-facts table can be backfilled on demand from the real GA4 Data API
+- confirm live UTM-only daily history can backfill through `pageLocation` `utm_campaign` when GA4 campaign attribution dimensions return no daily rows
 - confirm normal refetch paths do not leave Trends stale relative to refreshed GA4 daily rows
 
 Error handling:

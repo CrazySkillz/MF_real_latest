@@ -307,13 +307,14 @@ Aligned:
 - platform report test-send verifies Mailgun delivery status when the provider exposes events and returns failure when the provider later rejects the accepted message
 - scheduled send events keep one audit/idempotency row per `reportId + scheduledKey`; successful rows must not display stale errors from earlier failed email audit rows
 - a stale failed scheduled send with no `sentAt` can retry once after the underlying provider issue is fixed; if that retry fails, it is marked as a retry failure and does not loop every scheduler tick
-- final GA4 report template validation passed across targeted report regression tests, TypeScript check, production build, GA4 report test-send/PDF delivery, direct snapshot PDF output, and scheduled-report log-cycle behavior
+- GA4 report template validation passed across targeted report regression tests, TypeScript check, production build, GA4 report test-send/PDF delivery, and direct snapshot PDF output; scheduled-report validation is pending the planned Reports scheduler refinement
 
 Important caveats:
 
 - saved report configurations do not have their own recompute job
 - the current `Ad Comparison` report output reflects the current GA4 comparison implementation, which is campaign-row comparison rather than true ad/creative-level reporting
 - the shared scheduler and report-link helper still contain legacy LinkedIn-oriented infrastructure details
+- scheduled GA4 report output should not be used as deployed validation evidence until the Reports scheduler refinement is complete
 - email delivery timing/provider behavior still depends on scheduler execution and runtime email infrastructure, but the GA4 attachment path is no longer intentionally header-only for standard templates or `Custom`
 - provider acceptance alone must not be shown to users as successful delivery when the provider subsequently reports a failed delivery event
 

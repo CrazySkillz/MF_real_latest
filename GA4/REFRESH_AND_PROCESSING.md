@@ -8,7 +8,7 @@ This file defines the daily auto-refresh and auto-process model for GA4.
 
 This platform has a required no-click freshness pattern for GA4 campaigns.
 
-Executive-ready local reporting-time behavior is tracked in `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md`. GA4 Trends uses the campaign reporting timezone for completed-day cutoff, the GA4 daily scheduler uses a configured local reporting-time schedule, and the external value scheduler still uses server-local configured time.
+Executive-ready local reporting-time behavior is tracked in `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md`. GA4 Trends uses the campaign reporting timezone for completed-day cutoff, the GA4 daily scheduler uses a configured local reporting-time schedule, and the external value scheduler uses a configured operations timezone.
 
 User expectation:
 
@@ -93,6 +93,7 @@ Required app behavior:
 
 - campaign setup should discover selectable UTM campaign values from all three levels, preserving the existing campaign-values response shape
 - Overview should query the saved GA4 campaign scope through campaign dimensions first, then use `pageLocation` `utm_campaign` fallback only when primary scoped results are empty
+- GA4 daily time-series/backfill should follow the same rule: query `sessionCampaignName` first, then use `pageLocation` `utm_campaign` fallback only when the primary daily result returns no rows
 - fallback behavior must stay scoped to the selected campaign values and must not broaden to unrelated property traffic
 - live breakdown totals may be used as a visible-card fallback when to-date or persisted daily totals are still empty
 
@@ -119,6 +120,20 @@ Important meaning:
 - system-generated GA4 test properties such as `yesop` use the deterministic GA4 simulator during on-demand refresh and must not require a live OAuth token
 - Render validation passed for the `yesop` on-demand refresh path: the endpoint returned `success: true` with refreshed metric values instead of `TOKEN_EXPIRED`
 
+## GA4 Page Query Refetch Timing
+
+The GA4 analytics page has live query refetches in addition to the background scheduler:
+
+- `/api/campaigns/:id/ga4-daily` refetches on page load, browser focus/reconnect, and every 5 minutes while the page is open
+- `/api/campaigns/:id/ga4-to-date` and `/api/campaigns/:id/ga4-breakdown` refetch on page load, browser focus/reconnect, and every 10 minutes while the page is open
+- `/ga4-daily` reads persisted daily rows first; if the selected campaign/property has no stored rows for the requested window, it attempts an on-demand Data API backfill, persists the rows, and returns the stored result
+
+Important timing:
+
+- Overview values can update as soon as GA4 has processed the events and the relevant page query refetches
+- Overview does not need to wait for the next completed reporting day when it is reading live to-date or breakdown data
+- Trends uses persisted completed-day rows through the campaign reporting timezone's latest completed day, so same-day script events generally do not become a new Trends day until the following reporting day and a scheduler/on-demand backfill reads them
+
 ## Scheduler 2: External Value Auto-Refresh And Auto-Process
 
 This scheduler reprocesses eligible source-backed revenue and spend values.
@@ -142,6 +157,52 @@ Runtime cadence:
 - `AUTO_REFRESH_RUN_ON_STARTUP` remains a test-only override and defaults to `false`
 - scheduler logs include the next UTC run time, local reporting-time label, timezone, and expected complete day
 - the existing in-process overlap guard skips a second run if one is already in progress
+
+## Operational Runbook: Scheduled Vs Startup Refresh
+
+Use scheduler logs as the source of truth for refresh timing. Hosting log timestamps may be shown in UTC or another console display timezone; compare the ISO timestamp ending in `Z` and the explicit `timezone=...` label inside the application log message.
+
+Local/server time checks:
+
+- local development: compare `Get-Date` with `Get-Date -AsUTC` in PowerShell
+- deployed logs: trust application log lines that include both UTC and configured timezone, such as `Next scheduled run at ... timezone=UTC`
+- a log timestamp shown by the hosting console is not proof that the app timezone is wrong unless it conflicts with the app's own `timezone=...` field
+
+GA4 daily scheduled-refresh validation:
+
+1. Set `GA4_DAILY_REFRESH_TIME_ZONE`, `GA4_DAILY_REFRESH_HOUR`, and `GA4_DAILY_REFRESH_MINUTE` to the intended schedule.
+2. Set `GA4_DAILY_REFRESH_RUN_ON_STARTUP=false` when validating the scheduled path.
+3. Redeploy or restart and confirm:
+   - `[GA4 Daily] Scheduler started`
+   - `[GA4 Daily] Next scheduled run at ... timezone=... dataThroughDate=...`
+4. After the scheduled time, confirm:
+   - `[GA4 Daily] Pipeline starting (trigger=scheduled)`
+   - `[GA4 Daily] Pipeline done (trigger=scheduled, elapsedSeconds=...)`
+5. In Insights Trends, confirm `Last refreshed` is at or after `Expected refresh` and no stale warning appears.
+
+GA4 daily startup-refresh validation:
+
+- set `GA4_DAILY_REFRESH_RUN_ON_STARTUP=true`
+- restart the server
+- confirm `[GA4 Daily] Pipeline starting (trigger=startup)` and `[GA4 Daily] Pipeline done (trigger=startup, ...)`
+- this proves the startup path only; it does not prove the daily scheduled path fired
+
+External revenue/spend scheduled-refresh validation:
+
+1. Set `AUTO_REFRESH_TIME_ZONE`, `AUTO_REFRESH_DAILY_HOUR`, and `AUTO_REFRESH_DAILY_MINUTE` to the intended schedule.
+2. Set `AUTO_REFRESH_RUN_ON_STARTUP=false` when validating the scheduled path.
+3. Redeploy or restart and confirm `[Auto Refresh] Next scheduled run at ... timezone=... expectedCompleteDay=...`.
+4. After the scheduled time, confirm:
+   - `=== DAILY AUTO-REFRESH + AUTO-PROCESS RUNNING ===`
+   - provider-specific success or failure logs for the sources under test
+   - `=== AUTO-REFRESH COMPLETE (...s) ===`
+
+External revenue/spend startup-refresh validation:
+
+- set `AUTO_REFRESH_RUN_ON_STARTUP=true`
+- restart the server
+- confirm `[Auto Refresh] Running once on startup (AUTO_REFRESH_RUN_ON_STARTUP=true)...` and `=== AUTO-REFRESH COMPLETE (...s) ===`
+- this is useful for quick provider-refresh testing, but it does not prove the configured daily scheduled time fired
 
 Ad-platform spend auto-refresh rule:
 

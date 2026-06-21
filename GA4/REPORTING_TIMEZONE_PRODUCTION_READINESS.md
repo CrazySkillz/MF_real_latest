@@ -14,7 +14,7 @@ Proven from code:
 
 - GA4 daily facts are stored as `YYYY-MM-DD` UTC-oriented date strings in `ga4_daily_metrics`.
 - before Commit 3, `/api/campaigns/:id/ga4-daily` computed the visible Trends window through yesterday UTC.
-- the GA4 daily scheduler runs on startup and then every `GA4_DAILY_REFRESH_INTERVAL_HOURS`.
+- before Commit 4, the GA4 daily scheduler ran on startup and then every `GA4_DAILY_REFRESH_INTERVAL_HOURS`.
 - the external revenue/spend scheduler uses server-local `AUTO_REFRESH_DAILY_HOUR` and `AUTO_REFRESH_DAILY_MINUTE`.
 - the GA4 UI detects browser timezone for report scheduling helpers, but Insights Trends does not use that as a reporting cutoff.
 
@@ -113,7 +113,7 @@ Validation:
 
 ### Commit 3: Centralize Reporting-Day Cutoff Helper
 
-Status: Implemented locally; pending deployed validation
+Status: Validation passed for commit `34cc4fc2`.
 
 Scope:
 
@@ -132,6 +132,7 @@ Local validation:
 
 - `npm test -- --run server/ga4-reporting-day-cutoff-regression.test.ts server/ga4-reporting-timezone-regression.test.ts server/ga4-ui-regression.test.ts`
 - `npm run check`
+- deployed/user validation confirmed after commit `34cc4fc2`
 
 Validation:
 
@@ -143,7 +144,7 @@ Validation:
 
 ### Commit 4: Align GA4 Daily Refresh Scheduling
 
-Status: Not started
+Status: Implemented locally; pending deployed validation
 
 Scope:
 
@@ -151,6 +152,19 @@ Scope:
 - if scheduled, use the configured reporting timezone to calculate the expected refresh window
 - keep startup refresh as best-effort if it remains useful for testing
 - expose enough log context to correlate refresh runs with the reporting timezone
+
+Implementation note:
+
+- GA4 daily refresh now schedules one daily run at `GA4_DAILY_REFRESH_HOUR:GA4_DAILY_REFRESH_MINUTE` in `GA4_DAILY_REFRESH_TIME_ZONE`
+- defaults are `03:00` and `UTC`
+- `GA4_DAILY_REFRESH_RUN_ON_STARTUP` controls the best-effort startup run and defaults to `true` to preserve current test behavior
+- scheduler logs include the next run UTC time, local reporting-time label, timezone, and expected `dataThroughDate`
+- an in-process overlap guard skips a second GA4 daily pipeline if one is already running
+
+Local validation:
+
+- `npm test -- --run server/ga4-daily-scheduler-regression.test.ts server/ga4-reporting-day-cutoff-regression.test.ts`
+- `npm run check`
 
 Validation:
 
@@ -248,12 +262,12 @@ Use this checklist during implementation and deployment validation:
 ## Open Decisions
 
 - client-level defaults may be added later; campaign-level `reportingTimeZone` is the current source of truth
-- whether GA4 daily refresh should become scheduled by timezone or remain interval-based with clearer freshness metadata
+- GA4 daily refresh now uses a deployment-level configured reporting timezone; per-campaign scheduler fan-out remains out of scope
 - whether external revenue/spend refresh should use per-campaign timezone or one deployment-level operations timezone
 - whether existing campaigns should be backfilled to `UTC` only or inferred from owner/browser/client context
 
 ## Current Status
 
-Current production behavior uses the campaign reporting timezone for Trends cutoff while scheduler timing remains server/interval-based.
+Current production behavior uses the campaign reporting timezone for Trends cutoff, and GA4 daily refresh uses a deployment-level configured reporting timezone and local scheduled time.
 
 This is acceptable for testing only when users understand the timing model. It is not yet the final executive-ready local reporting-time behavior.

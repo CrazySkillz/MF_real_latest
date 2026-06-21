@@ -8,7 +8,7 @@ This file defines the daily auto-refresh and auto-process model for GA4.
 
 This platform has a required no-click freshness pattern for GA4 campaigns.
 
-Executive-ready local reporting-time behavior is tracked in `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md`. GA4 Trends uses the campaign reporting timezone for completed-day cutoff, while the GA4 daily scheduler remains startup/interval based and the external value scheduler uses server-local configured time.
+Executive-ready local reporting-time behavior is tracked in `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md`. GA4 Trends uses the campaign reporting timezone for completed-day cutoff, the GA4 daily scheduler uses a configured local reporting-time schedule, and the external value scheduler still uses server-local configured time.
 
 User expectation:
 
@@ -70,6 +70,16 @@ Important meaning:
 - it is campaign-scoped and property-scoped
 - this is only one part of `Overview` freshness; `Overview` also depends on refreshed external revenue and spend source state where applicable
 - it does not replace the external value auto-refresh scheduler or the report delivery scheduler
+
+Runtime cadence:
+
+- the scheduler starts from the server startup background-scheduler block, about 5 seconds after the server begins listening
+- it schedules one daily run at `GA4_DAILY_REFRESH_HOUR:GA4_DAILY_REFRESH_MINUTE` in `GA4_DAILY_REFRESH_TIME_ZONE`, defaulting to `03:00 UTC`
+- `GA4_DAILY_REFRESH_RUN_ON_STARTUP` controls the best-effort startup run and defaults to `true`
+- scheduler logs include the next UTC run time, local reporting-time label, timezone, and expected `dataThroughDate`
+- an in-process overlap guard skips a second GA4 daily pipeline if one is already running
+- it fetches a lookback window controlled by `GA4_DAILY_LOOKBACK_DAYS`, defaulting to `90` days and bounded between `7` and `365`
+- daily facts are persisted by date; the Trends endpoint returns only completed daily rows through the campaign reporting timezone's latest completed day, so current-day intraday data is not a visible Trends history row
 
 ## Live GA4 UTM And Measurement Protocol Behavior
 
@@ -139,8 +149,8 @@ Ad-platform spend auto-refresh rule:
 Google Sheets spend auto-refresh rule:
 
 - creating a new Google Sheets spend source is additive and must not reuse an existing source just because the same Google Sheets connection or tab is selected
-- Google Sheets spend is refreshed by the external value auto-refresh scheduler, not by `GA4_DAILY_REFRESH_INTERVAL_HOURS`
-- `GA4_DAILY_REFRESH_INTERVAL_HOURS` controls the GA4 daily metrics pipeline and is not a valid fast test for Google Sheets spend
+- Google Sheets spend is refreshed by the external value auto-refresh scheduler, not by the GA4 daily refresh scheduler
+- GA4 daily refresh env vars such as `GA4_DAILY_REFRESH_HOUR`, `GA4_DAILY_REFRESH_MINUTE`, and `GA4_DAILY_REFRESH_RUN_ON_STARTUP` are not valid fast tests for Google Sheets spend
 - to validate Google Sheets spend auto-refresh quickly in a deployed environment, temporarily set `AUTO_REFRESH_RUN_ON_STARTUP=true`, redeploy/restart, wait for the auto-refresh run to complete, then remove that flag after the test
 - production should not keep `AUTO_REFRESH_RUN_ON_STARTUP=true`; the normal scheduler runs on its daily schedule
 - on refresh, the saved Google Sheets spend source is reprocessed from the current sheet rows and replaces the previous stored amount for that source

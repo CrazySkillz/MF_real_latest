@@ -210,7 +210,7 @@ Validation:
 
 ### Commit 6: Add Freshness And Staleness UX
 
-Status: Implemented locally; pending deployed validation
+Status: Validation passed for commit `82f8784d`.
 
 Scope:
 
@@ -231,6 +231,8 @@ Local validation:
 
 - `npm test -- --run server/ga4-daily-scheduler-regression.test.ts server/ga4-reporting-day-cutoff-regression.test.ts server/ga4-ui-regression.test.ts`
 - `npm run check`
+- deployed/user validation confirmed the fresh-state path after commit `82f8784d`: Trends showed `Expected refresh`, `Last refreshed` was later than expected refresh, and no stale warning appeared
+- stale-warning path remains unforced in deployed validation because the observed refresh was current, not late
 
 Validation:
 
@@ -242,13 +244,26 @@ Validation:
 
 ### Commit 7: Reports And Export Consistency
 
-Status: Not started
+Status: Implemented locally; local validation passed; pending deployed validation and commit.
 
 Scope:
 
 - include reporting timezone, data-through date, and last-refreshed timestamp in GA4 Insights report output
 - ensure scheduled reports use the same reporting timezone metadata
 - keep report metric values sourced from the existing refreshed inputs
+
+Implementation note:
+
+- ad hoc GA4 Insights PDF output now includes `Data through`, `Reporting timezone`, and `Last refreshed` metadata from the same Trends response values used by the live Insights UI
+- scheduled/test-send GA4 Insights PDFs now derive `Data through` and `Reporting timezone` from the campaign reporting timezone helper and `Last refreshed` from the latest persisted GA4 daily-row `updatedAt`
+- report metric rows, financial totals, trend rollups, and source inputs are unchanged
+
+Local validation:
+
+- `npm test -- --run server/ga4-ui-regression.test.ts server/ga4-daily-scheduler-regression.test.ts server/ga4-reporting-day-cutoff-regression.test.ts`
+- `npm test -- --run server/report-email-regression.test.ts`
+- `npm run check`
+- `git diff --check`
 
 Validation:
 

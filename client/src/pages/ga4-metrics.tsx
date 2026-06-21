@@ -3233,6 +3233,16 @@ export default function GA4Metrics() {
       const trendDeltaPct = (curVal: number, prevVal: number) => prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : curVal > 0 ? 100 : 0;
       const trendDailyRows = Array.isArray(ga4TimeSeries) ? (ga4TimeSeries as any[]).filter((r: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(r?.date || ""))) : [];
       const trendSorted = [...trendDailyRows].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+      const renderInsightsFreshness = () => {
+        checkPage(14);
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...C.textSec);
+        doc.text(`Data through: ${trendsDataThroughLabel}`, MX + 2, y + 4);
+        doc.text(`Reporting timezone: ${trendsReportingTimeZone}`, MX + 68, y + 4);
+        doc.text(`Last refreshed: ${trendsLastRefreshedLabel}`, MX + 2, y + 10);
+        y += 14;
+      };
       const insightSummaryCards: [string, string][] = [
         ["Spend", fC(Number(financialSpend || 0))],
         ["Revenue", fC(Number(financialRevenue || 0))],
@@ -3240,6 +3250,7 @@ export default function GA4Metrics() {
         ["ROAS", `${Number(financialROAS || 0).toFixed(2)}x`],
         ["ROI", fP(Number(financialROI || 0))],
       ];
+      renderInsightsFreshness();
       if (includeInsightsSummaryCards) {
         sectionTitle("Executive Financials", C.insights);
         checkPage(24);

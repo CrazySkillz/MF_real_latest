@@ -191,6 +191,24 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("Today's intraday GA4 data is excluded until it becomes a completed ${trendsReportingTimeZone} GA4 day.");
   });
 
+  it("keeps GA4 Insights report exports aligned with Trends freshness metadata", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const pdf = readServer("ga4-scheduled-report-pdf.ts");
+
+    expect(ga4Metrics).toContain("const renderInsightsFreshness = () => {");
+    expect(ga4Metrics).toContain("Data through: ${trendsDataThroughLabel}");
+    expect(ga4Metrics).toContain("Reporting timezone: ${trendsReportingTimeZone}");
+    expect(ga4Metrics).toContain("Last refreshed: ${trendsLastRefreshedLabel}");
+
+    expect(pdf).toContain('import { getReportingDateWindow } from "./utils/reporting-timezone";');
+    expect(pdf).toContain("const reportingWindow = getReportingDateWindow(90, (campaign as any)?.reportingTimeZone);");
+    expect(pdf).toContain("insightsFreshness: {");
+    expect(pdf).toContain("lastRefreshedAt: lastDailyRefreshAt");
+    expect(pdf).toContain("Data through: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}");
+    expect(pdf).toContain("Reporting timezone: ${payload.insightsFreshness.reportingTimeZone}");
+    expect(pdf).toContain("Last refreshed: ${formatReportingTimestampLabel(payload.insightsFreshness.lastRefreshedAt, payload.insightsFreshness.reportingTimeZone)}");
+  });
+
   it("keeps Google Sheets spend chooser stable without visible loading text during back/dropdown transitions", () => {
     const spendModal = readClient("components/AddSpendWizardModal.tsx");
     const chooseStart = spendModal.indexOf('{step === "sheets_choose" && (');

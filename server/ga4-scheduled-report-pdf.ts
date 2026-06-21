@@ -1,5 +1,6 @@
 import { ga4Service } from "./analytics";
 import { storage } from "./storage";
+import { getReportingDateWindow } from "./utils/reporting-timezone";
 import { computeCpa, computeRoiPercent, normalizeRateToPercent } from "../shared/metric-math";
 
 type CampaignFilter = string | string[] | undefined;
@@ -96,6 +97,31 @@ const parseMappingConfig = (value: any) => {
 };
 
 const formatPct = (value: number) => `${Number(value || 0).toFixed(1)}%`;
+
+const formatReportingDateLabel = (value: any) => {
+  const s = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return "Not available yet";
+  const d = new Date(`${s}T00:00:00Z`);
+  return Number.isNaN(d.getTime())
+    ? s
+    : new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(d);
+};
+
+const formatReportingTimestampLabel = (value: any, reportingTimeZone: string) => {
+  if (!value) return "Not available yet";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? String(value)
+    : new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: reportingTimeZone,
+      timeZoneName: "short",
+    }).format(d);
+};
 
 const coercePdfBufferFromDoc = (doc: any): Buffer | null => {
   try {
@@ -271,6 +297,7 @@ async function buildGA4ReportPayload(report: any) {
   const connection = await choosePrimaryConnection(campaignId);
   const propertyId = String(connection.propertyId);
   const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
+  const reportingWindow = getReportingDateWindow(90, (campaign as any)?.reportingTimeZone);
   const startDate = toISODateUTC((campaign as any)?.startDate) || toISODateUTC((campaign as any)?.createdAt) || "2020-01-01";
   const endDate = yesterdayUTC();
   const dailyStart = (() => {
@@ -320,6 +347,13 @@ async function buildGA4ReportPayload(report: any) {
       engagementRate: Number(row?.engagementRate || 0),
     }));
   }
+  const lastDailyRefreshAt = dailyRows.length > 0
+    ? dailyRows.reduce((latest: string | null, row: any) => {
+        const ts = row?.updatedAt ? new Date(row.updatedAt).toISOString() : null;
+        if (!ts) return latest;
+        return !latest || ts > latest ? ts : latest;
+      }, null)
+    : null;
 
   const dailySummedTotals = dailyRows.reduce((acc: any, row: any) => {
     acc.sessions += Number(row?.sessions || 0);
@@ -527,6 +561,11 @@ async function buildGA4ReportPayload(report: any) {
     campaignBreakdownMatchedExternalRevenue,
     pipelineEntries,
     insightsRollups,
+    insightsFreshness: {
+      dataThroughDate: reportingWindow.dataThroughDate,
+      reportingTimeZone: reportingWindow.reportingTimeZone,
+      lastRefreshedAt: lastDailyRefreshAt,
+    },
     formatMoney,
     formatNumber,
   };
@@ -888,6 +927,14 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     const includeActions = reportType !== "custom" || s.actions === true;
     const onlyActions = reportType === "custom" && includeActions && !includeSummaryCards && !includeTrends && !includeDataSummary;
     sectionTitle(onlyActions ? "What to investigate next" : "Insights", COLORS.insights, 24);
+    checkPage(14);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...COLORS.textSec);
+    doc.text(`Data through: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}`, MX, y + 4);
+    doc.text(`Reporting timezone: ${payload.insightsFreshness.reportingTimeZone}`, MX + 66, y + 4);
+    doc.text(`Last refreshed: ${formatReportingTimestampLabel(payload.insightsFreshness.lastRefreshedAt, payload.insightsFreshness.reportingTimeZone)}`, MX, y + 10);
+    y += 14;
     if (includeSummaryCards) {
       metricCards([
         ["Revenue", formatMoney(payload.financialRevenue)],

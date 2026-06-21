@@ -74,6 +74,7 @@ Current standard-template output rule:
 - `Benchmarks` should follow the live Benchmark order
 - `Ad Comparison` should follow the live Ad Comparison order
 - `Insights` should follow the live Insights order
+- `Insights` report output should include the same daily-history freshness context as the live Trends section: `Data through`, reporting timezone, and last refreshed timestamp
 
 ## Custom Report
 

@@ -4112,12 +4112,50 @@ export default function GA4Metrics() {
     };
   }, [ga4Breakdown]);
 
+  const INSIGHT_CATEGORY_GROUPS = [
+    { key: "setup", label: "Data setup issues" },
+    { key: "targets", label: "Targets off track" },
+    { key: "trends", label: "Trend signals" },
+    { key: "finance", label: "Revenue and spend checks" },
+    { key: "context", label: "Informational context" },
+  ] as const;
+  type InsightCategory = typeof INSIGHT_CATEGORY_GROUPS[number]["key"];
+
   type InsightItem = {
     id: string;
+    category?: InsightCategory;
     severity: "high" | "medium" | "low";
     title: string;
     description: string;
     recommendation?: string;
+  };
+
+  const getInsightCategory = (item: Pick<InsightItem, "id">): InsightCategory => {
+    const id = String(item.id || "");
+    if (
+      id.startsWith("integrity:") ||
+      id === "financial:ga4_to_date_unavailable" ||
+      id === "financial:revenue_missing" ||
+      id === "financial:spend_missing" ||
+      id === "info:scheduler_no_history"
+    ) return "setup";
+    if (id.startsWith("kpi:") || id.startsWith("bench:")) return "targets";
+    if (
+      id.startsWith("anomaly:") ||
+      id === "info:short_window" ||
+      id === "info:avg_sessions" ||
+      id === "info:engagement_rate" ||
+      id.startsWith("positive:sessions:") ||
+      id.startsWith("positive:revenue:") ||
+      id.startsWith("positive:conversions:")
+    ) return "trends";
+    if (
+      id.startsWith("financial:") ||
+      id === "info:ga4_revenue_and_imported_revenue_included" ||
+      id === "positive:roas:lifetime" ||
+      id === "info:revenue_summary"
+    ) return "finance";
+    return "context";
   };
 
   const insights = useMemo<InsightItem[]>(() => {
@@ -4750,7 +4788,7 @@ export default function GA4Metrics() {
     // Stable ordering: high -> medium -> low
     const order = { high: 0, medium: 1, low: 2 } as const;
     out.sort((a, b) => order[a.severity] - order[b.severity]);
-    return out;
+    return out.map((item) => ({ ...item, category: getInsightCategory(item) }));
   }, [
     platformKPIs,
     benchmarks,
@@ -7900,41 +7938,60 @@ export default function GA4Metrics() {
                             No issues detected for the selected range. Create KPIs and Benchmarks to unlock performance tracking insights.
                           </div>
                         ) : (
-                          <div className="space-y-3">
-                            {insights.slice(0, 12).map((i) => {
-                              const isPositive = i.id.startsWith("positive:");
-                              const isInfo = i.id.startsWith("info:");
-                              const badgeClass =
-                                i.severity === "high"
-                                  ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
-                                  : i.severity === "medium"
-                                    ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
-                                    : isPositive
-                                      ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-900"
-                                      : isInfo
-                                        ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-900"
-                                        : "bg-muted text-foreground border-border dark:text-slate-200";
-                              const badgeText = i.severity === "high" ? "High" : i.severity === "medium" ? "Medium" : isPositive ? "Positive" : isInfo ? "Info" : "Low";
-                              return (
-                                <div key={i.id} className="rounded-lg border border-border p-4">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <div className="font-semibold text-foreground">{i.title}</div>
-                                        <Badge className={`text-xs border ${badgeClass}`}>{badgeText}</Badge>
+                          (() => {
+                            const visibleInsights = insights.slice(0, 12);
+                            return (
+                              <div className="space-y-5">
+                                {INSIGHT_CATEGORY_GROUPS.map((group) => {
+                                  const groupInsights = visibleInsights.filter((i) => i.category === group.key);
+                                  if (groupInsights.length === 0) return null;
+                                  return (
+                                    <div key={group.key} className="space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <h4 className="text-sm font-semibold text-foreground">{group.label}</h4>
+                                        <Badge variant="outline" className="text-xs">{groupInsights.length}</Badge>
                                       </div>
-                                      <div className="text-sm text-muted-foreground/70 mt-1">{i.description}</div>
-                                      {i.recommendation ? (
-                                        <div className="text-sm text-foreground/80/60 mt-2">
-                                          <span className="font-medium">Recommended check:</span> {i.recommendation}
-                                        </div>
-                                      ) : null}
+                                      <div className="space-y-3">
+                                        {groupInsights.map((i) => {
+                                          const isPositive = i.id.startsWith("positive:");
+                                          const isInfo = i.id.startsWith("info:");
+                                          const badgeClass =
+                                            i.severity === "high"
+                                              ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900"
+                                              : i.severity === "medium"
+                                                ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900"
+                                                : isPositive
+                                                  ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-900"
+                                                  : isInfo
+                                                    ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-900"
+                                                    : "bg-muted text-foreground border-border dark:text-slate-200";
+                                          const badgeText = i.severity === "high" ? "High" : i.severity === "medium" ? "Medium" : isPositive ? "Positive" : isInfo ? "Info" : "Low";
+                                          return (
+                                            <div key={i.id} className="rounded-lg border border-border p-4">
+                                              <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                  <div className="flex items-center gap-2 flex-wrap">
+                                                    <div className="font-semibold text-foreground">{i.title}</div>
+                                                    <Badge className={`text-xs border ${badgeClass}`}>{badgeText}</Badge>
+                                                  </div>
+                                                  <div className="text-sm text-muted-foreground/70 mt-1">{i.description}</div>
+                                                  {i.recommendation ? (
+                                                    <div className="text-sm text-foreground/80/60 mt-2">
+                                                      <span className="font-medium">Recommended check:</span> {i.recommendation}
+                                                    </div>
+                                                  ) : null}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
                                     </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()
                         )}
                       </CardContent>
                     </Card>

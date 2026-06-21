@@ -204,6 +204,8 @@ Cross-tab consistency:
 
 ## What To Investigate Next
 
+Production-readiness hardening for this section is tracked in `GA4/INSIGHTS_WHAT_TO_INVESTIGATE_NEXT_PRODUCTION_READINESS.md`.
+
 Each current finding includes:
 
 - severity or priority

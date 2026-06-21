@@ -85,4 +85,27 @@ describe("GA4 Insights regression guard", () => {
     expect(labelsSection).toContain("revenueDisplaySources");
     expect(labelsSection).toContain("!labels.includes(label)");
   });
+
+  it("groups What to investigate next findings by type without changing the flat insight source", () => {
+    const content = ga4MetricsFile();
+    const categoryStart = content.indexOf("const INSIGHT_CATEGORY_GROUPS = [");
+    const categoryEnd = content.indexOf("const insights = useMemo<InsightItem[]>(() => {", categoryStart);
+    const categorySection = content.slice(categoryStart, categoryEnd);
+    const renderStart = content.indexOf('<CardTitle className="text-lg">What to investigate next</CardTitle>');
+    const renderEnd = content.indexOf("</CardContent>", renderStart);
+    const renderSection = content.slice(renderStart, renderEnd);
+
+    expect(categoryStart).toBeGreaterThan(-1);
+    expect(categoryEnd).toBeGreaterThan(categoryStart);
+    expect(categorySection).toContain('{ key: "setup", label: "Data setup issues" }');
+    expect(categorySection).toContain('{ key: "targets", label: "Targets off track" }');
+    expect(categorySection).toContain('{ key: "trends", label: "Trend signals" }');
+    expect(categorySection).toContain('{ key: "finance", label: "Revenue and spend checks" }');
+    expect(categorySection).toContain('{ key: "context", label: "Informational context" }');
+    expect(content).toContain("return out.map((item) => ({ ...item, category: getInsightCategory(item) }));");
+    expect(renderSection).toContain("const visibleInsights = insights.slice(0, 12);");
+    expect(renderSection).toContain("INSIGHT_CATEGORY_GROUPS.map((group) =>");
+    expect(renderSection).toContain("visibleInsights.filter((i) => i.category === group.key)");
+    expect(renderSection).toContain("groupInsights.map((i) =>");
+  });
 });

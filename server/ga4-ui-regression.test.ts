@@ -182,13 +182,16 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).not.toContain("Need at least 2 days of GA4 daily history. Available: {dailyRows.length}.");
     expect(ga4Metrics).toContain('const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";');
     expect(ga4Metrics).toContain("const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4DailyResp as any)?.reportingTimeZone);");
+    expect(ga4Metrics).toContain("const trendsReportingTimeZoneLabel = formatReportingTimeZoneLabel(trendsReportingTimeZone);");
+    expect(ga4Metrics).not.toContain("const trendsRefreshScheduleTimeZone =");
+    expect(ga4Metrics).toContain("const trendsExpectedRefreshLabel = formatReportingTimestampLabel((ga4DailyResp as any)?.expectedRefreshAt, trendsReportingTimeZone);");
     expect(ga4Metrics).toContain("Data through <span");
     expect(ga4Metrics).toContain("Reporting timezone");
     expect(ga4Metrics).toContain("Last refreshed <span");
     expect(ga4Metrics).toContain("Expected refresh <span");
     expect(ga4Metrics).toContain("Daily history has not refreshed since the expected {trendsExpectedRefreshLabel} run.");
-    expect(ga4Metrics).toContain('`${dailyRows.length} complete ${trendsReportingTimeZone} day${dailyRows.length === 1 ? "" : "s"}`');
-    expect(ga4Metrics).toContain("Today's intraday GA4 data is excluded until it becomes a completed ${trendsReportingTimeZone} GA4 day.");
+    expect(ga4Metrics).toContain('`${dailyRows.length} complete ${trendsReportingTimeZoneLabel} day${dailyRows.length === 1 ? "" : "s"}`');
+    expect(ga4Metrics).toContain("Today's intraday GA4 data is excluded until it becomes a completed ${trendsReportingTimeZoneLabel} GA4 day.");
   });
 
   it("keeps GA4 Insights report exports aligned with Trends freshness metadata", () => {
@@ -197,7 +200,7 @@ describe("GA4 UI regression guard", () => {
 
     expect(ga4Metrics).toContain("const renderInsightsFreshness = () => {");
     expect(ga4Metrics).toContain("Data through: ${trendsDataThroughLabel}");
-    expect(ga4Metrics).toContain("Reporting timezone: ${trendsReportingTimeZone}");
+    expect(ga4Metrics).toContain("Reporting timezone: ${trendsReportingTimeZoneLabel}");
     expect(ga4Metrics).toContain("Last refreshed: ${trendsLastRefreshedLabel}");
 
     expect(pdf).toContain('import { getReportingDateWindow } from "./utils/reporting-timezone";');
@@ -205,7 +208,7 @@ describe("GA4 UI regression guard", () => {
     expect(pdf).toContain("insightsFreshness: {");
     expect(pdf).toContain("lastRefreshedAt: lastDailyRefreshAt");
     expect(pdf).toContain("Data through: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}");
-    expect(pdf).toContain("Reporting timezone: ${payload.insightsFreshness.reportingTimeZone}");
+    expect(pdf).toContain("Reporting timezone: ${formatReportingTimeZoneLabel(payload.insightsFreshness.reportingTimeZone)}");
     expect(pdf).toContain("Last refreshed: ${formatReportingTimestampLabel(payload.insightsFreshness.lastRefreshedAt, payload.insightsFreshness.reportingTimeZone)}");
   });
 

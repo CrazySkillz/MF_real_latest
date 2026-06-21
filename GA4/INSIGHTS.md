@@ -142,11 +142,11 @@ Visible labels:
 - `Data through`
   The latest completed reporting day included in Trends.
 - `Reporting timezone`
-  The campaign reporting timezone used to decide which GA4 day is complete. Missing or invalid values fall back to `UTC`.
+  The campaign reporting timezone used to decide which GA4 day is complete. Missing or invalid values fall back to `UTC`. Location labels should be readable, such as `New York`, not underscored values such as `New_York`.
 - `Last refreshed`
   The latest stored GA4 daily-row refresh timestamp returned by `/api/campaigns/:id/ga4-daily`.
 - `Expected refresh`
-  The scheduled GA4 daily refresh time for the current `Data through` day.
+  The scheduled GA4 daily refresh time for the current `Data through` day, displayed in the campaign reporting timezone.
 
 Stale warning rule:
 

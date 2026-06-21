@@ -79,6 +79,13 @@ const normalizeClientReportingTimeZone = (value: any) => {
   }
 };
 
+const formatReportingTimeZoneLabel = (value: any) => {
+  const tz = normalizeClientReportingTimeZone(value);
+  if (tz === "UTC") return "UTC";
+  const location = tz.split("/").filter(Boolean).pop() || tz;
+  return location.replace(/_/g, " ");
+};
+
 const formatReportingDateLabel = (value: any) => {
   const s = String(value || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return "Not available yet";
@@ -1772,14 +1779,14 @@ export default function GA4Metrics() {
   const ga4TimeSeries: any[] = ga4DailyRows;
   const timeSeriesLoading = ga4Loading;
   const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4DailyResp as any)?.reportingTimeZone);
+  const trendsReportingTimeZoneLabel = formatReportingTimeZoneLabel(trendsReportingTimeZone);
   const trendsDataThroughDate = String(ga4DailyDataThroughDate || ga4ReportDate || "").trim();
   const trendsDataThroughLabel = formatReportingDateLabel(trendsDataThroughDate);
-  const trendsRefreshScheduleTimeZone = normalizeClientReportingTimeZone((ga4DailyResp as any)?.refreshScheduleTimeZone || trendsReportingTimeZone);
   const trendsLastRefreshValue = Object.prototype.hasOwnProperty.call((ga4DailyResp as any) || {}, "lastCompletedRefreshAt")
     ? (ga4DailyResp as any)?.lastCompletedRefreshAt
     : (ga4DailyResp as any)?.lastUpdated;
   const trendsLastRefreshedLabel = formatReportingTimestampLabel(trendsLastRefreshValue, trendsReportingTimeZone);
-  const trendsExpectedRefreshLabel = formatReportingTimestampLabel((ga4DailyResp as any)?.expectedRefreshAt, trendsRefreshScheduleTimeZone);
+  const trendsExpectedRefreshLabel = formatReportingTimestampLabel((ga4DailyResp as any)?.expectedRefreshAt, trendsReportingTimeZone);
   const trendsRefreshIsStale = Boolean((ga4DailyResp as any)?.refreshIsStale);
 
   const { data: ga4Breakdown, isLoading: breakdownLoading } = useQuery({
@@ -3239,7 +3246,7 @@ export default function GA4Metrics() {
         doc.setFont("helvetica", "normal");
         doc.setTextColor(...C.textSec);
         doc.text(`Data through: ${trendsDataThroughLabel}`, MX + 2, y + 4);
-        doc.text(`Reporting timezone: ${trendsReportingTimeZone}`, MX + 68, y + 4);
+        doc.text(`Reporting timezone: ${trendsReportingTimeZoneLabel}`, MX + 68, y + 4);
         doc.text(`Last refreshed: ${trendsLastRefreshedLabel}`, MX + 2, y + 10);
         y += 14;
       };
@@ -7369,7 +7376,7 @@ export default function GA4Metrics() {
                       <CardContent className="space-y-4">
                         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground/80">
                           <span>Data through <span className="font-medium text-foreground">{trendsDataThroughLabel}</span></span>
-                          <span>Reporting timezone <span className="font-medium text-foreground">{trendsReportingTimeZone}</span></span>
+                          <span>Reporting timezone <span className="font-medium text-foreground">{trendsReportingTimeZoneLabel}</span></span>
                           <span>Last refreshed <span className="font-medium text-foreground">{trendsLastRefreshedLabel}</span></span>
                           <span>Expected refresh <span className="font-medium text-foreground">{trendsExpectedRefreshLabel}</span></span>
                         </div>
@@ -7391,8 +7398,8 @@ export default function GA4Metrics() {
                           const hasRequiredHistory = insightsTrendMode === "monthly" ? availableMonths >= 2 : dailyRows.length >= minRequiredDays;
                           if (!hasRequiredHistory) {
                             const requiredHistory = insightsTrendMode === "monthly" ? "2 calendar months" : `${minRequiredDays} days`;
-                            const availableHistory = insightsTrendMode === "monthly" ? `${availableMonths} calendar month${availableMonths === 1 ? "" : "s"}` : `${dailyRows.length} complete ${trendsReportingTimeZone} day${dailyRows.length === 1 ? "" : "s"}`;
-                            const intradayHistoryNote = insightsTrendMode === "monthly" ? "" : ` Today's intraday GA4 data is excluded until it becomes a completed ${trendsReportingTimeZone} GA4 day.`;
+                            const availableHistory = insightsTrendMode === "monthly" ? `${availableMonths} calendar month${availableMonths === 1 ? "" : "s"}` : `${dailyRows.length} complete ${trendsReportingTimeZoneLabel} day${dailyRows.length === 1 ? "" : "s"}`;
+                            const intradayHistoryNote = insightsTrendMode === "monthly" ? "" : ` Today's intraday GA4 data is excluded until it becomes a completed ${trendsReportingTimeZoneLabel} GA4 day.`;
                             return (
                               <div className="text-sm text-muted-foreground/70 py-4">
                                 Need at least {requiredHistory} of GA4 daily history for {insightsTrendMode === "daily" ? "daily trend comparisons" : insightsTrendMode === "7d" ? "7-day rolling trends" : insightsTrendMode === "30d" ? "30-day rolling trends" : "monthly trends"}. Available: {availableHistory}.{intradayHistoryNote}
@@ -8025,7 +8032,7 @@ export default function GA4Metrics() {
                           </div>
                         </div>
                         <div className="rounded-lg border border-border bg-muted/30 p-4 text-foreground/80">
-                          GA4 metrics refresh in the background. Trends and report-date logic use completed {trendsReportingTimeZone} GA4 daily rows, so today's intraday GA4 data is excluded until it becomes a completed {trendsReportingTimeZone} day.
+                          GA4 metrics refresh in the background. Trends and report-date logic use completed {trendsReportingTimeZoneLabel} GA4 daily rows, so today's intraday GA4 data is excluded until it becomes a completed {trendsReportingTimeZoneLabel} day.
                         </div>
                       </CardContent>
                     </Card>

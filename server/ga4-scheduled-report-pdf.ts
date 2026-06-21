@@ -98,6 +98,13 @@ const parseMappingConfig = (value: any) => {
 
 const formatPct = (value: number) => `${Number(value || 0).toFixed(1)}%`;
 
+const formatReportingTimeZoneLabel = (value: any) => {
+  const tz = String(value || "UTC").trim() || "UTC";
+  if (tz === "UTC") return "UTC";
+  const location = tz.split("/").filter(Boolean).pop() || tz;
+  return location.replace(/_/g, " ");
+};
+
 const formatReportingDateLabel = (value: any) => {
   const s = String(value || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return "Not available yet";
@@ -932,7 +939,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.textSec);
     doc.text(`Data through: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}`, MX, y + 4);
-    doc.text(`Reporting timezone: ${payload.insightsFreshness.reportingTimeZone}`, MX + 66, y + 4);
+    doc.text(`Reporting timezone: ${formatReportingTimeZoneLabel(payload.insightsFreshness.reportingTimeZone)}`, MX + 66, y + 4);
     doc.text(`Last refreshed: ${formatReportingTimestampLabel(payload.insightsFreshness.lastRefreshedAt, payload.insightsFreshness.reportingTimeZone)}`, MX, y + 10);
     y += 14;
     if (includeSummaryCards) {

@@ -134,6 +134,15 @@ Current eligible sources include:
 - Meta spend through `ad_platforms`
 - Google Ads spend through `ad_platforms`
 
+Runtime cadence:
+
+- the scheduler starts from the server startup background-scheduler block, about 5 seconds after the server begins listening
+- it schedules one daily run at `AUTO_REFRESH_DAILY_HOUR:AUTO_REFRESH_DAILY_MINUTE` in `AUTO_REFRESH_TIME_ZONE`
+- if `AUTO_REFRESH_TIME_ZONE` is unset, it falls back to `GA4_DAILY_REFRESH_TIME_ZONE`, then `UTC`
+- `AUTO_REFRESH_RUN_ON_STARTUP` remains a test-only override and defaults to `false`
+- scheduler logs include the next UTC run time, local reporting-time label, timezone, and expected complete day
+- the existing in-process overlap guard skips a second run if one is already in progress
+
 Ad-platform spend auto-refresh rule:
 
 - Meta and Google Ads spend refresh must reuse the campaign IDs saved in the Spend source mapping

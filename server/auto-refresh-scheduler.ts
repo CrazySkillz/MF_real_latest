@@ -19,10 +19,48 @@ import { checkPerformanceAlerts } from "./kpi-scheduler";
 import { checkBenchmarkPerformanceAlerts } from "./benchmark-notifications";
 import { getInternalAutoRefreshToken } from "./internal-request-auth";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
+import { getLatestCompleteReportingDate, getNextDailyRunAt, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 
 type AnyRecord = Record<string, any>;
+type AutoRefreshSchedulerConfig = {
+  enabled: boolean;
+  reportingTimeZone: string;
+  hour: number;
+  minute: number;
+  runOnStartup: boolean;
+};
 const refreshableRevenueContexts = ["ga4", "linkedin", "meta", "google_ads", "google_sheets"] as const;
 const crmRevenueContexts = ["ga4", "meta", "google_ads", "google_sheets"] as const;
+
+const parseBoundedInt = (value: any, fallback: number, min: number, max: number) => {
+  const parsed = parseInt(String(value ?? ""), 10);
+  const n = Number.isFinite(parsed) ? parsed : fallback;
+  return Math.min(Math.max(n, min), max);
+};
+
+export function getAutoRefreshSchedulerConfig(env: NodeJS.ProcessEnv = process.env): AutoRefreshSchedulerConfig {
+  const enabled = String(env.AUTO_REFRESH_ENABLED ?? "true").toLowerCase() !== "false";
+  const reportingTimeZone = normalizeReportingTimeZone(env.AUTO_REFRESH_TIME_ZONE || env.GA4_DAILY_REFRESH_TIME_ZONE || "UTC");
+  const hour = parseBoundedInt(env.AUTO_REFRESH_DAILY_HOUR, 3, 0, 23);
+  const minute = parseBoundedInt(env.AUTO_REFRESH_DAILY_MINUTE, 0, 0, 59);
+  const runOnStartup = String(env.AUTO_REFRESH_RUN_ON_STARTUP || "false").toLowerCase() === "true";
+  return { enabled, reportingTimeZone, hour, minute, runOnStartup };
+}
+
+export function getNextAutoRefreshRunAt(now = new Date(), config: AutoRefreshSchedulerConfig = getAutoRefreshSchedulerConfig()): Date {
+  return getNextDailyRunAt(now, config.reportingTimeZone, config.hour, config.minute);
+}
+
+const formatSchedulerLocalTime = (date: Date, reportingTimeZone: string) =>
+  new Intl.DateTimeFormat("en-US", {
+    timeZone: reportingTimeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(date);
 
 function getServerBaseUrl(): string {
   // Internal auto-refresh auth is intentionally loopback-only.
@@ -741,50 +779,42 @@ export async function runDailyAutoRefreshOnce(): Promise<void> {
  *
  * Defaults:
  * - Enabled by default (AUTO_REFRESH_ENABLED=true unless explicitly set to "false")
- * - Runs daily at 3:00 AM local server time (AUTO_REFRESH_DAILY_HOUR, AUTO_REFRESH_DAILY_MINUTE)
+ * - Runs daily at 3:00 AM in AUTO_REFRESH_TIME_ZONE or GA4_DAILY_REFRESH_TIME_ZONE, default UTC
  * - Optional: run once on startup if AUTO_REFRESH_RUN_ON_STARTUP=true
  */
 export function startDailyAutoRefreshScheduler(): void {
-  const enabled = String(process.env.AUTO_REFRESH_ENABLED ?? "true").toLowerCase() !== "false";
-  if (!enabled) {
+  const config = getAutoRefreshSchedulerConfig();
+  if (!config.enabled) {
     console.log("[Auto Refresh] Scheduler disabled via AUTO_REFRESH_ENABLED=false");
     return;
   }
 
-  if ((global as any).__autoRefreshSchedulerInterval) {
+  if ((global as any).__autoRefreshSchedulerTimer || (global as any).__autoRefreshSchedulerInterval) {
     console.log("[Auto Refresh] Scheduler is already running");
     return;
   }
 
-  const hour = Math.min(Math.max(parseInt(String(process.env.AUTO_REFRESH_DAILY_HOUR || "3"), 10) || 3, 0), 23);
-  const minute = Math.min(Math.max(parseInt(String(process.env.AUTO_REFRESH_DAILY_MINUTE || "0"), 10) || 0, 0), 59);
-  const intervalMs = 24 * 60 * 60 * 1000;
-
   console.log("\n🔁 Daily Auto-Refresh + Auto-Process Scheduler Started");
-  console.log(`   Enabled: ${enabled}`);
-  console.log(`   Scheduled time: ${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")} (server local time)`);
+  console.log(`   Enabled: ${config.enabled}`);
+  console.log(`   Scheduled time: ${config.hour.toString().padStart(2, "0")}:${config.minute.toString().padStart(2, "0")} (${config.reportingTimeZone})`);
 
-  const runOnStartup = String(process.env.AUTO_REFRESH_RUN_ON_STARTUP || "false").toLowerCase() === "true";
-  if (runOnStartup) {
+  const scheduleNextRun = () => {
+    const nextRun = getNextAutoRefreshRunAt(new Date(), config);
+    const msUntilNextRun = Math.max(1000, nextRun.getTime() - Date.now());
+    console.log(`[Auto Refresh] Next scheduled run at ${nextRun.toISOString()} (${formatSchedulerLocalTime(nextRun, config.reportingTimeZone)}, timezone=${config.reportingTimeZone}, expectedCompleteDay=${getLatestCompleteReportingDate(config.reportingTimeZone, nextRun)})`);
+    (global as any).__autoRefreshSchedulerTimer = setTimeout(() => {
+      runDailyAutoRefreshOnce()
+        .catch((e: any) => console.error("[Auto Refresh] Scheduled run failed:", e?.message || e))
+        .finally(scheduleNextRun);
+    }, msUntilNextRun);
+  };
+
+  if (config.runOnStartup) {
     console.log("[Auto Refresh] Running once on startup (AUTO_REFRESH_RUN_ON_STARTUP=true)...");
     runDailyAutoRefreshOnce();
   }
 
-  const now = new Date();
-  const nextRun = new Date(now);
-  nextRun.setHours(hour, minute, 0, 0);
-  if (nextRun.getTime() <= now.getTime()) nextRun.setDate(nextRun.getDate() + 1);
-  const msUntilNextRun = nextRun.getTime() - now.getTime();
-
-  console.log(`   First scheduled run: ${nextRun.toLocaleString()}`);
-
-  setTimeout(() => {
-    runDailyAutoRefreshOnce();
-    (global as any).__autoRefreshSchedulerInterval = setInterval(() => {
-      runDailyAutoRefreshOnce();
-    }, intervalMs);
-    console.log("[Auto Refresh] Scheduled daily runs are active");
-  }, msUntilNextRun);
+  scheduleNextRun();
 }
 
 

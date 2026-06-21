@@ -144,7 +144,7 @@ Validation:
 
 ### Commit 4: Align GA4 Daily Refresh Scheduling
 
-Status: Implemented locally; pending deployed validation
+Status: Validation passed for commit `e740b5f0`.
 
 Scope:
 
@@ -165,6 +165,7 @@ Local validation:
 
 - `npm test -- --run server/ga4-daily-scheduler-regression.test.ts server/ga4-reporting-day-cutoff-regression.test.ts`
 - `npm run check`
+- deployed scheduler setup validation confirmed after commit `e740b5f0`; scheduled execution evidence remains pending the next configured run
 
 Validation:
 
@@ -176,7 +177,7 @@ Validation:
 
 ### Commit 5: Align External Revenue/Spend Refresh Timing
 
-Status: Not started
+Status: Implemented locally; pending deployed validation
 
 Scope:
 
@@ -184,6 +185,19 @@ Scope:
 - compute next run from the same reporting timezone contract or a documented deployment-level default
 - preserve stable source IDs and existing provider refresh boundaries
 - keep `AUTO_REFRESH_RUN_ON_STARTUP` as a test-only override
+
+Implementation note:
+
+- external value auto-refresh now schedules one daily run at `AUTO_REFRESH_DAILY_HOUR:AUTO_REFRESH_DAILY_MINUTE` in `AUTO_REFRESH_TIME_ZONE`
+- if `AUTO_REFRESH_TIME_ZONE` is unset, it falls back to `GA4_DAILY_REFRESH_TIME_ZONE`, then `UTC`
+- `AUTO_REFRESH_RUN_ON_STARTUP` remains optional and defaults to `false`
+- scheduler logs include the next run UTC time, local reporting-time label, timezone, and expected complete day
+- provider reprocess payloads and stable `sourceId` behavior are unchanged
+
+Local validation:
+
+- `npm test -- --run server/ga4-auto-refresh-regression.test.ts server/ga4-daily-scheduler-regression.test.ts`
+- `npm run check`
 
 Validation:
 
@@ -263,11 +277,11 @@ Use this checklist during implementation and deployment validation:
 
 - client-level defaults may be added later; campaign-level `reportingTimeZone` is the current source of truth
 - GA4 daily refresh now uses a deployment-level configured reporting timezone; per-campaign scheduler fan-out remains out of scope
-- whether external revenue/spend refresh should use per-campaign timezone or one deployment-level operations timezone
+- external revenue/spend refresh now uses a deployment-level operations timezone; per-campaign refresh fan-out remains out of scope
 - whether existing campaigns should be backfilled to `UTC` only or inferred from owner/browser/client context
 
 ## Current Status
 
-Current production behavior uses the campaign reporting timezone for Trends cutoff, and GA4 daily refresh uses a deployment-level configured reporting timezone and local scheduled time.
+Current production behavior uses the campaign reporting timezone for Trends cutoff; GA4 daily refresh and external revenue/spend refresh use deployment-level configured reporting timezones and local scheduled times.
 
 This is acceptable for testing only when users understand the timing model. It is not yet the final executive-ready local reporting-time behavior.

@@ -1,11 +1,38 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { getAutoRefreshSchedulerConfig, getNextAutoRefreshRunAt } from "./auto-refresh-scheduler";
 
 const schedulerFile = () =>
   readFileSync(join(process.cwd(), "server", "auto-refresh-scheduler.ts"), "utf-8");
 
 describe("GA4 external value auto-refresh regression guard", () => {
+  it("schedules external refresh by configured reporting timezone instead of server local time", () => {
+    const content = schedulerFile();
+    const config = getAutoRefreshSchedulerConfig({
+      AUTO_REFRESH_TIME_ZONE: "Europe/Amsterdam",
+      AUTO_REFRESH_DAILY_HOUR: "3",
+      AUTO_REFRESH_DAILY_MINUTE: "0",
+      AUTO_REFRESH_RUN_ON_STARTUP: "true",
+    } as any);
+
+    expect(config).toEqual({
+      enabled: true,
+      reportingTimeZone: "Europe/Amsterdam",
+      hour: 3,
+      minute: 0,
+      runOnStartup: true,
+    });
+    expect(getNextAutoRefreshRunAt(new Date("2026-06-20T22:30:00.000Z"), config).toISOString()).toBe("2026-06-21T01:00:00.000Z");
+    expect(content).toContain("AUTO_REFRESH_TIME_ZONE || env.GA4_DAILY_REFRESH_TIME_ZONE || \"UTC\"");
+    expect(content).toContain("Next scheduled run at");
+    expect(content).toContain("expectedCompleteDay=${getLatestCompleteReportingDate(config.reportingTimeZone, nextRun)}");
+    expect(content).toContain("__autoRefreshSchedulerTimer");
+    expect(content).not.toContain("server local time");
+    expect(content).not.toContain("setHours(hour, minute, 0, 0)");
+    expect(content).not.toContain("setInterval(() =>");
+  });
+
   it("uses saved CRM and Shopify revenue source mappings with stable source IDs", () => {
     const content = schedulerFile();
 

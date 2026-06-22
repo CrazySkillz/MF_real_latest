@@ -4403,7 +4403,7 @@ export default function GA4Metrics() {
           severity: "medium",
           title: "ROAS is below 1.0x to date",
           description: `ROAS is ${roas.toFixed(2)}x (${toDateRangeLabel}).`,
-          recommendation: "Audit the conversion funnel (landing page → conversion event) and traffic mix; verify the revenue source and campaign filter are correct.",
+          recommendation: "Check the conversion funnel, traffic mix, revenue source, and campaign filter before treating ROAS as a performance diagnosis.",
         });
       }
     }
@@ -4484,19 +4484,19 @@ export default function GA4Metrics() {
           if (isConversion) {
             const base = "Check landing page changes, funnel breaks, and traffic mix shifts.";
             return ch?.lowestCRChannel
-              ? `${base} "${ch.lowestCRChannel.label}" has the lowest conversion rate (${formatPct(ch.lowestCRChannel.cr)}) among significant channels — audit targeting and landing pages for this source.`
+              ? `${base} "${ch.lowestCRChannel.label}" has the lowest conversion rate (${formatPct(ch.lowestCRChannel.cr)}) among significant channels; check targeting and landing pages for this source first.`
               : base;
           }
           if (isRevenue) {
             const base = "Check top channels for traffic or conversion drops; validate revenue tracking.";
             return ch?.topRevenueChannel
-              ? `${base} "${ch.topRevenueChannel.label}" drives ${ch.topRevenueShare.toFixed(0)}% of revenue — prioritize investigation there.`
+              ? `${base} "${ch.topRevenueChannel.label}" accounts for ${ch.topRevenueShare.toFixed(0)}% of revenue; check that channel first.`
               : base;
           }
           if (isTraffic) {
             const base = "Review traffic sources and campaign spend allocation.";
             return ch?.topSessionChannel
-              ? `${base} "${ch.topSessionChannel.label}" drives ${ch.topSessionShare.toFixed(0)}% of sessions — check if this source declined.`
+              ? `${base} "${ch.topSessionChannel.label}" accounts for ${ch.topSessionShare.toFixed(0)}% of sessions; check whether its volume or quality changed.`
               : base;
           }
           if (isCpa) {
@@ -4543,7 +4543,7 @@ export default function GA4Metrics() {
           if (isConversion) {
             const base = "Focus on landing page UX and traffic quality; validate conversion tagging.";
             return ch?.lowestCRChannel
-              ? `${base} "${ch.lowestCRChannel.label}" has the lowest conversion rate (${formatPct(ch.lowestCRChannel.cr)}) — start there.`
+              ? `${base} "${ch.lowestCRChannel.label}" has the lowest conversion rate (${formatPct(ch.lowestCRChannel.cr)}); check this source first.`
               : base;
           }
           if (isEngagement) {
@@ -4552,7 +4552,7 @@ export default function GA4Metrics() {
           if (isRevenue) {
             const base = "Review which channels may be underperforming before iterating targeting/creative.";
             return ch?.topRevenueChannel
-              ? `${base} "${ch.topRevenueChannel.label}" drives ${ch.topRevenueShare.toFixed(0)}% of revenue — investigate changes there first.`
+              ? `${base} "${ch.topRevenueChannel.label}" accounts for ${ch.topRevenueShare.toFixed(0)}% of revenue; check changes there first.`
               : base;
           }
           const base = "Review which channels/campaigns may be underperforming before iterating targeting/creative/landing page.";
@@ -4577,7 +4577,7 @@ export default function GA4Metrics() {
         severity: "low",
         title: `${missing.join(" and ")} trend tracking will activate after the daily analytics job runs`,
         description: `Streak and trend data for ${missing.join("/")} insights require at least one daily analytics snapshot. This data is recorded automatically by the background scheduler.`,
-        recommendation: "No action needed — trend data will appear within 24 hours of KPI/Benchmark creation.",
+        recommendation: "No setup action needed; check again after the next daily KPI/Benchmark analytics job.",
       });
     }
 
@@ -4642,7 +4642,7 @@ export default function GA4Metrics() {
           severity: "medium",
           title: `Engagement depth decreased ${Math.abs(pvpsDelta).toFixed(1)}% week-over-week`,
           description: `Pageviews/session last 7d ${pvpsA.toFixed(2)} vs prior 7d ${pvpsB.toFixed(2)}.`,
-          recommendation: "Review landing page relevance, page speed, and mobile UX; check if traffic sources shifted toward lower-intent audiences.",
+          recommendation: "Review landing page relevance, page speed, and mobile UX; check whether the traffic-source mix changed.",
         });
       }
 
@@ -4674,7 +4674,7 @@ export default function GA4Metrics() {
           severity: "high",
           title: `Revenue dropped ${Math.abs(revenueDelta7).toFixed(1)}% week-over-week`,
           description: `Last 7d: ${formatMoney(insightsRollups.last7.revenue)} vs prior 7d: ${formatMoney(insightsRollups.prior7.revenue)}.${channelNote}`,
-          recommendation: "Investigate conversion rate changes, AOV shifts, and whether high-value campaigns were paused.",
+          recommendation: "Check conversion rate, AOV, and high-value campaign changes first.",
         });
       }
 
@@ -4695,7 +4695,7 @@ export default function GA4Metrics() {
           severity: "low",
           title: `Sessions up ${sessionsDelta7.toFixed(1)}% week-over-week`,
           description: `Last 7d: ${formatNumber(insightsRollups.last7.sessions)} sessions vs prior 7d: ${formatNumber(insightsRollups.prior7.sessions)}.`,
-          recommendation: "Momentum is positive. Check top-performing channels before considering budget increases.",
+          recommendation: "Check top-performing channels before considering budget increases.",
         });
       }
 
@@ -4705,7 +4705,7 @@ export default function GA4Metrics() {
           severity: "low",
           title: `Revenue up ${revenueDelta7.toFixed(1)}% week-over-week`,
           description: `Last 7d: ${formatMoney(insightsRollups.last7.revenue)} vs prior 7d: ${formatMoney(insightsRollups.prior7.revenue)}.`,
-          recommendation: "Revenue momentum is strong. Check which channels contributed to the increase before scaling.",
+          recommendation: "Check which channels contributed to the increase before considering scaling.",
         });
       }
 
@@ -4766,7 +4766,7 @@ export default function GA4Metrics() {
           severity: "medium",
           title: `Revenue dropped ${Math.abs(revenueDelta3).toFixed(1)}% (3-day comparison)`,
           description: `Last 3d: ${formatMoney(insightsRollups.last3.revenue)} vs prior 3d: ${formatMoney(insightsRollups.prior3.revenue)}. Short window — monitor for confirmation.`,
-          recommendation: "Investigate conversion rate and AOV changes.",
+          recommendation: "Check conversion rate and AOV changes.",
         });
       }
 
@@ -4812,7 +4812,7 @@ export default function GA4Metrics() {
         severity: "low",
         title: `ROAS is strong at ${Number(financialROAS).toFixed(2)}x`,
         description: `Campaign ROAS is ${Number(financialROAS).toFixed(2)}x to date, well above the 1.0x breakeven point.`,
-        recommendation: "Performance is strong. Review high-ROAS channels before considering spend increases or new audience tests.",
+        recommendation: "Review high-ROAS channels before considering spend increases or new audience tests.",
       });
     }
 
@@ -4836,7 +4836,7 @@ export default function GA4Metrics() {
             const tgtFmt = `${prefix}${formatNumberByUnit(String((getKpiEffectiveTarget(k) as any)?.effectiveTarget ?? (k as any)?.targetValue ?? ""), unit)}${suffix}`;
             return `Current ${curFmt} vs target ${tgtFmt}.`;
           })(),
-          recommendation: "This KPI is performing well. Review whether the target should be raised or whether budget should be reallocated.",
+          recommendation: "Review whether the target should be raised before changing budget allocation.",
         });
       }
     }
@@ -4881,7 +4881,7 @@ export default function GA4Metrics() {
           title: `Top channel: ${ch.label} (${share.toFixed(0)}% of sessions)`,
           description: `Your leading traffic source is ${ch.label} with ${formatNumber(ch.sessions)} sessions across ${channelAnalysis.channelCount} channels. ${share > 70 ? "High concentration — consider diversifying traffic sources." : "Healthy channel mix."}`,
           recommendation: channelAnalysis.lowestCRChannel
-            ? `Lowest-converting channel: ${channelAnalysis.lowestCRChannel.label} at ${formatPct(channelAnalysis.lowestCRChannel.cr)} CR. Investigate landing page alignment.`
+            ? `Lowest-converting channel: ${channelAnalysis.lowestCRChannel.label} at ${formatPct(channelAnalysis.lowestCRChannel.cr)} CR. Check landing page alignment for this source.`
             : undefined,
         });
       }
@@ -4896,7 +4896,7 @@ export default function GA4Metrics() {
         title: `Revenue: ${formatMoney(Number(financialRevenue))} to date`,
         description: `Averaging ~${formatMoney(avgDailyRev)}/day over ${availDays} days.${Number(financialSpend) > 0 ? ` ROAS: ${Number(financialROAS).toFixed(2)}x.` : ""}`,
         recommendation: Number(financialSpend) > 0 && Number(financialROAS) < 1
-          ? "ROAS is below break-even. Review spend allocation and conversion paths."
+          ? "Review spend allocation and conversion paths before acting on ROAS."
           : !Number(financialSpend) ? "Add spend data to calculate ROAS and ROI." : undefined,
       });
     }

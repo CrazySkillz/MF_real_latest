@@ -266,7 +266,7 @@ const buildInsightsItems = (payload: any) => {
       severity: "medium",
       title: "Traffic drop detected",
       description: `Last 7d sessions ${payload.formatNumber(rollups.last7.sessions)} vs prior 7d ${payload.formatNumber(rollups.prior7.sessions)}.`,
-      recommendation: "Review source and medium mix to identify which acquisition channels dropped first.",
+      recommendation: "Review source and medium mix for the largest acquisition-channel changes.",
     });
   }
   if (rollups.prior7.conversions > 0 && rollups.deltas.conversions7 <= -20) {

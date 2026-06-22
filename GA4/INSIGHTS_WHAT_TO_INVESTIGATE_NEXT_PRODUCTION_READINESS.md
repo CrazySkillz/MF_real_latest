@@ -122,7 +122,7 @@ Validation:
 
 ### Commit 4: Make Trend Copy History-Aware
 
-Status: Implemented locally, pending validation
+Status: Implemented, locally validated, and user validated
 
 Goal:
 
@@ -145,10 +145,11 @@ Validation:
 - with 2 completed days, the intro does not lead with 7-day comparison
 - with 6 completed days, short-window copy appears
 - with 14 completed days, 7-day comparison copy appears
+- user validation passed after commit `58d46f6b`
 
 ### Commit 5: Make Recommendations Explicitly Non-Causal
 
-Status: Not started
+Status: Implemented and locally validated
 
 Goal:
 
@@ -162,6 +163,11 @@ Smallest safe implementation:
 
 Validation:
 
+- local regression guard added for non-causal recommendation wording in live Insights and scheduled-report PDF fallback
+- passed `npm test -- --run server/ga4-insights-regression.test.ts`
+- passed `npm test -- --run server/ga4-ui-regression.test.ts`
+- passed `npm run check`
+- passed `git diff --check` for touched Commit 5 files
 - recommendations say what to check first
 - recommendations do not claim a root cause unless the rule directly proves it
 - report output uses the same wording

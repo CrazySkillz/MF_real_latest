@@ -4,6 +4,8 @@ import { join } from "path";
 
 const ga4MetricsFile = () =>
   readFileSync(join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"), "utf-8");
+const ga4ScheduledReportPdfFile = () =>
+  readFileSync(join(process.cwd(), "server", "ga4-scheduled-report-pdf.ts"), "utf-8");
 
 function computeExecutiveFinancials(input: {
   ga4Revenue: number;
@@ -177,5 +179,30 @@ describe("GA4 Insights regression guard", () => {
     expect(copySection).toContain("We compare the last 7 days vs the previous 7 days");
     expect(renderSection).toContain("<CardDescription>{insightsActionDescription}</CardDescription>");
     expect(renderSection).not.toContain("when enough daily history exists");
+  });
+
+  it("keeps What to investigate next recommendations worded as checks rather than causal conclusions", () => {
+    const content = ga4MetricsFile();
+    const pdfContent = ga4ScheduledReportPdfFile();
+    const insightsStart = content.indexOf("const insights = useMemo<InsightItem[]>(() => {");
+    const insightsEnd = content.indexOf("// Collect GA4 campaign names from all imported campaigns", insightsStart);
+    const insightsSection = content.slice(insightsStart, insightsEnd);
+
+    expect(insightsStart).toBeGreaterThan(-1);
+    expect(insightsEnd).toBeGreaterThan(insightsStart);
+    expect(insightsSection).toContain('accounts for ${ch.topRevenueShare.toFixed(0)}% of revenue; check that channel first.');
+    expect(insightsSection).toContain('accounts for ${ch.topSessionShare.toFixed(0)}% of sessions; check whether its volume or quality changed.');
+    expect(insightsSection).toContain("Check top-performing channels before considering budget increases.");
+    expect(insightsSection).toContain("Check which channels contributed to the increase before considering scaling.");
+    expect(insightsSection).toContain("Review high-ROAS channels before considering spend increases or new audience tests.");
+    expect(insightsSection).toContain("Review whether the target should be raised before changing budget allocation.");
+    expect(insightsSection).not.toContain("drives ${ch.topRevenueShare.toFixed(0)}% of revenue");
+    expect(insightsSection).not.toContain("drives ${ch.topSessionShare.toFixed(0)}% of sessions");
+    expect(insightsSection).not.toContain("Momentum is positive.");
+    expect(insightsSection).not.toContain("Revenue momentum is strong.");
+    expect(insightsSection).not.toContain("Performance is strong.");
+    expect(insightsSection).not.toContain("This KPI is performing well.");
+    expect(pdfContent).toContain("Review source and medium mix for the largest acquisition-channel changes.");
+    expect(pdfContent).not.toContain("dropped first");
   });
 });

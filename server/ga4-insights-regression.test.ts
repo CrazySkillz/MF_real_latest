@@ -157,4 +157,25 @@ describe("GA4 Insights regression guard", () => {
     expect(renderSection).toContain("Basis: {i.dataBasis}");
     expect(renderSection).toContain("Confidence: {i.confidence}");
   });
+
+  it("makes What to investigate next intro copy reflect available daily history", () => {
+    const content = ga4MetricsFile();
+    const copyStart = content.indexOf("const insightsActionDescription = useMemo(() => {");
+    const copyEnd = content.indexOf("// Collect GA4 campaign names from all imported campaigns", copyStart);
+    const copySection = content.slice(copyStart, copyEnd);
+    const renderStart = content.indexOf('<CardTitle className="text-lg">What to investigate next</CardTitle>');
+    const renderEnd = content.indexOf("</CardHeader>", renderStart);
+    const renderSection = content.slice(renderStart, renderEnd);
+
+    expect(copyStart).toBeGreaterThan(-1);
+    expect(copyEnd).toBeGreaterThan(copyStart);
+    expect(copySection).toContain("availableDays < INSIGHTS_SHORT_WINDOW_DAYS");
+    expect(copySection).toContain("Trend and anomaly checks need at least ${INSIGHTS_SHORT_WINDOW_DAYS} days");
+    expect(copySection).toContain("availableDays < INSIGHTS_MIN_HISTORY_DAYS");
+    expect(copySection).toContain("Short-window trend checks are active");
+    expect(copySection).toContain("full 7-day vs prior 7-day analysis starts after ${INSIGHTS_MIN_HISTORY_DAYS} days");
+    expect(copySection).toContain("We compare the last 7 days vs the previous 7 days");
+    expect(renderSection).toContain("<CardDescription>{insightsActionDescription}</CardDescription>");
+    expect(renderSection).not.toContain("when enough daily history exists");
+  });
 });

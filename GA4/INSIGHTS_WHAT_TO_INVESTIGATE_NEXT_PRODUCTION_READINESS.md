@@ -95,7 +95,7 @@ Validation:
 
 ### Commit 3: Add Data Basis And Confidence Labels
 
-Status: Implemented and locally validated
+Status: Implemented, locally validated, and user validated
 
 Goal:
 
@@ -118,10 +118,11 @@ Validation:
 - trend/anomaly cards show confidence based on available history
 - KPI/Benchmark cards identify saved target inputs
 - recommendations remain readable on desktop and mobile
+- user validation passed after commit `a3c7a909`
 
 ### Commit 4: Make Trend Copy History-Aware
 
-Status: Not started
+Status: Implemented locally, pending validation
 
 Goal:
 
@@ -137,6 +138,10 @@ Smallest safe implementation:
 
 Validation:
 
+- local regression guard added for history-aware intro copy
+- passed `npm test -- --run server/ga4-insights-regression.test.ts`
+- passed `npm test -- --run server/ga4-ui-regression.test.ts`
+- passed `npm run check`
 - with 2 completed days, the intro does not lead with 7-day comparison
 - with 6 completed days, short-window copy appears
 - with 14 completed days, 7-day comparison copy appears

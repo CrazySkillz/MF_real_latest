@@ -4930,6 +4930,18 @@ export default function GA4Metrics() {
     channelAnalysis,
   ]);
 
+  const insightsActionDescription = useMemo(() => {
+    const availableDays = Number(insightsRollups?.availableDays || 0);
+    const dayLabel = `${availableDays} completed GA4 day${availableDays === 1 ? "" : "s"}`;
+    if (availableDays < INSIGHTS_SHORT_WINDOW_DAYS) {
+      return `Only ${dayLabel} available. Trend and anomaly checks need at least ${INSIGHTS_SHORT_WINDOW_DAYS} days; setup and KPI/Benchmark checks still run.`;
+    }
+    if (availableDays < INSIGHTS_MIN_HISTORY_DAYS) {
+      return `${dayLabel} available. Short-window trend checks are active; full 7-day vs prior 7-day analysis starts after ${INSIGHTS_MIN_HISTORY_DAYS} days.`;
+    }
+    return `${dayLabel} available. We compare the last 7 days vs the previous 7 days and cross-check KPI/Benchmark performance.`;
+  }, [insightsRollups?.availableDays]);
+
   // Collect GA4 campaign names from all imported campaigns (for filtering Ad Comparison)
   const normalizeCampaignKey = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
 
@@ -8049,9 +8061,7 @@ export default function GA4Metrics() {
                     <Card className="border-border">
                       <CardHeader>
                         <CardTitle className="text-lg">What to investigate next</CardTitle>
-                        <CardDescription>
-                          We compare the last 7 days vs the previous 7 days (when enough daily history exists) and cross-check KPI/Benchmark performance.
-                        </CardDescription>
+                        <CardDescription>{insightsActionDescription}</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {insights.length === 0 ? (

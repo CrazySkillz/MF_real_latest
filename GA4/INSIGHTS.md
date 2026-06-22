@@ -221,6 +221,7 @@ Important meaning:
 - live UI findings are grouped by investigation type so setup problems, off-track targets, trend signals, revenue/spend checks, and informational context are easier to scan
 - invalid saved KPI or Benchmark targets should appear as configuration findings before performance conclusions; invalid items must not also create normal behind-target or behind-benchmark guidance
 - live UI findings should show display-only data-basis and confidence metadata so executives can see whether a card is based on saved KPI/Benchmark configuration, GA4 completed daily history, GA4 to-date values, imported revenue, or revenue/spend totals
+- the `What to investigate next` intro should be history-aware: fewer than 6 completed daily rows should explain that trend/anomaly checks need more history, 6 to 13 rows should explain that short-window checks are active, and 14 or more rows may describe the full 7-day vs prior 7-day comparison
 
 ## Current Limits Of Recommendations
 

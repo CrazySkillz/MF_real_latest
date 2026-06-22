@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { benchmarks, linkedinDailyMetrics, notifications } from "../shared/schema";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { InsertNotification } from "../shared/schema";
 import { storage } from "./storage";
 import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";
@@ -89,7 +89,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
   const items = await db
     .select()
     .from(benchmarks)
-    .where(and(eq(benchmarks.status, "active"), eq(benchmarks.alertsEnabled, true)));
+    .where(eq(benchmarks.status, "active"));
 
   // Pull all performance-alert notifications once and do metadata matching in-memory (cheap at current scale).
   const existingAlerts = await db
@@ -105,7 +105,12 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
     const b = await resolveCampaignCurrentValueForAlert(rawBenchmark, campaignMetricCache);
     const thresholdRaw = b.alertThreshold;
     const currentRaw = b.currentValue;
-    if (thresholdRaw === null || typeof thresholdRaw === "undefined") continue;
+    const platformType = String((b?.platformType || "")).trim().toLowerCase();
+    const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
+    if (!b.alertsEnabled || thresholdRaw === null || typeof thresholdRaw === "undefined") {
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      continue;
+    }
 
     const evaluation = evaluateAlertThreshold({
       currentValue: currentRaw,
@@ -113,12 +118,19 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
       condition: b.alertCondition,
     });
     const { currentValue, thresholdValue } = evaluation;
-    if (!Number.isFinite(thresholdValue)) continue;
-    if (!Number.isFinite(currentValue)) continue;
+    if (!Number.isFinite(thresholdValue)) {
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      continue;
+    }
+    if (!Number.isFinite(currentValue)) {
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      continue;
+    }
 
-    const platformType = String((b?.platformType || "")).trim().toLowerCase();
-    const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
-    if (!evaluation.triggered) continue;
+    if (!evaluation.triggered) {
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      continue;
+    }
 
     // For LinkedIn test-mode, dedupe per simulated day instead of per real day.
     let windowKey: string | null = null;
@@ -151,6 +163,17 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
       // ignore
     }
 
+    const campaignId = String(b.campaignId || "").trim();
+    if (!campaignId) {
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      continue;
+    }
+    const campaign = await storage.getCampaign(campaignId).catch(() => undefined);
+    if (!campaign) {
+      if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");
+      continue;
+    }
+
     // Duplicate prevention: benchmarkId + createdAt >= today
     const hasRecent = (existingAlerts || []).some((n: any) => {
       if (!n?.metadata) return false;
@@ -169,12 +192,37 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
         return false;
       }
     });
+    if (usesSingleActiveAlert) {
+      const sameBenchmarkAlerts = (existingAlerts || []).filter((n: any) => {
+        if (!n?.metadata) return false;
+        try {
+          const meta = typeof n.metadata === "string" ? JSON.parse(n.metadata) : n.metadata;
+          return String(meta?.benchmarkId || "") === String(b.id) && !meta?.resolved && !meta?.dismissedAt;
+        } catch {
+          return false;
+        }
+      });
+      const preservedAlertId = sameBenchmarkAlerts
+        .sort((a: any, b: any) => new Date(String(b.createdAt)).getTime() - new Date(String(a.createdAt)).getTime())[0]?.id;
+      for (const alert of sameBenchmarkAlerts) {
+        if (preservedAlertId && String(alert.id) === String(preservedAlertId)) continue;
+        try {
+          const meta = typeof alert.metadata === "string" ? JSON.parse(alert.metadata) : (alert.metadata || {});
+          await storage.updateNotification(String(alert.id), {
+            read: true,
+            metadata: JSON.stringify({
+              ...meta,
+              resolved: true,
+              resolvedAt: new Date().toISOString(),
+              resolvedReason: "superseded",
+            }),
+          } as any);
+        } catch {
+          // ignore malformed legacy metadata
+        }
+      }
+    }
     if (hasRecent) continue;
-
-    const campaignId = String(b.campaignId || "").trim();
-    if (!campaignId) continue;
-    const campaign = await storage.getCampaign(campaignId).catch(() => undefined);
-    if (!campaign) continue;
 
     const actionUrl = buildBenchmarkActionUrl(b);
     const metadata = JSON.stringify({
@@ -202,4 +250,29 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
   return created;
 }
 
-
+export async function resolveBenchmarkAlerts(benchmarkId: string, reason: "cleared" | "superseded" = "cleared"): Promise<void> {
+  const id = String(benchmarkId || "").trim();
+  if (!id) return;
+  const existingAlerts = await db
+    .select()
+    .from(notifications)
+    .where(eq(notifications.type, "performance-alert"));
+  for (const alert of existingAlerts) {
+    if (!alert.metadata) continue;
+    try {
+      const meta = typeof alert.metadata === "string" ? JSON.parse(alert.metadata) : alert.metadata;
+      if (String(meta?.benchmarkId || "") !== id || meta?.resolved) continue;
+      await storage.updateNotification(String(alert.id), {
+        read: true,
+        metadata: JSON.stringify({
+          ...meta,
+          resolved: true,
+          resolvedAt: new Date().toISOString(),
+          resolvedReason: reason,
+        }),
+      } as any);
+    } catch {
+      // ignore malformed legacy metadata
+    }
+  }
+}

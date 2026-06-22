@@ -237,14 +237,12 @@ export async function checkPerformanceAlerts(): Promise<void> {
 
   try {
     const activeKPIsRaw = await db.select()
-      .from(kpis)
-      .where(and(
-        eq(kpis.alertsEnabled, true)
-      ));
+      .from(kpis);
 
     const latestGa4ByCampaignMetric = new Map<string, any>();
     for (const kpi of activeKPIsRaw) {
       if (String((kpi as any)?.platformType || '') !== 'google_analytics') continue;
+      if (!(kpi as any)?.alertsEnabled) continue;
       const key = `${String((kpi as any)?.campaignId || '')}::${String((kpi as any)?.metric || (kpi as any)?.name || '').trim().toLowerCase()}`;
       const prev = latestGa4ByCampaignMetric.get(key);
       const nextUpdatedAt = new Date((kpi as any)?.updatedAt || 0).getTime();
@@ -255,6 +253,10 @@ export async function checkPerformanceAlerts(): Promise<void> {
     const activeKPIs = [];
     for (const kpi of activeKPIsRaw) {
       if (String((kpi as any)?.platformType || '') !== 'google_analytics') {
+        activeKPIs.push(kpi);
+        continue;
+      }
+      if (!(kpi as any)?.alertsEnabled) {
         activeKPIs.push(kpi);
         continue;
       }
@@ -272,6 +274,12 @@ export async function checkPerformanceAlerts(): Promise<void> {
     const campaignMetricCache = new Map<string, Promise<any>>();
     for (const rawKpi of activeKPIs) {
       const kpi = await resolveCampaignCurrentValueForAlert(rawKpi, campaignMetricCache);
+      const platformType = String((kpi as any)?.platformType || "").trim().toLowerCase();
+      const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
+      if (!kpi.alertsEnabled || kpi.alertThreshold === null || typeof kpi.alertThreshold === "undefined") {
+        if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');
+        continue;
+      }
       // NOTE: KPI numeric values may be stored as formatted strings (e.g. "370,000").
       // Use shouldTriggerAlert/createKPIAlert for truth; these logs are best-effort.
       const currentValue = parseFloat(String(kpi.currentValue || "").replace(/,/g, ""));

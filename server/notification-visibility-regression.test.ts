@@ -68,11 +68,13 @@ describe("notification visibility regression guard", () => {
     expect(kpiNotificationsFile).toContain("await resolveKPIAlerts(String(kpi.id), 'cleared');");
     expect(kpiNotificationsFile).toContain('const campaignId = String(kpi.campaignId || "").trim();');
     expect(kpiNotificationsFile).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => undefined);");
-    expect(kpiNotificationsFile).toContain("if (!campaign) return;");
+    expect(kpiNotificationsFile).toContain("if (!campaign) {");
+    expect(kpiNotificationsFile).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');");
     expect(kpiNotificationsFile).toContain('const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";');
     expect(benchmarkNotificationsFile).toContain('const campaignId = String(b.campaignId || "").trim();');
     expect(benchmarkNotificationsFile).toContain("const campaign = await storage.getCampaign(campaignId).catch(() => undefined);");
-    expect(benchmarkNotificationsFile).toContain("if (!campaign) continue;");
+    expect(benchmarkNotificationsFile).toContain("if (!campaign) {");
+    expect(benchmarkNotificationsFile).toContain('if (usesSingleActiveAlert) await resolveBenchmarkAlerts(String(b.id), "cleared");');
     expect(benchmarkNotificationsFile).toContain('const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";');
   });
 

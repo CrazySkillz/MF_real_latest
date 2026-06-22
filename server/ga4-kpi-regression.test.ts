@@ -16,18 +16,16 @@ describe("GA4 KPI regression guard", () => {
     expect(notificationsFile).toContain("const actionUrl = buildKPIActionUrl(kpi);");
   });
 
-  it("allows breached alert-enabled GA4 KPIs to be considered by the alert checker", () => {
+  it("allows GA4 KPI alert reconciliation to consider enabled breaches and disabled stale alerts", () => {
     const schedulerFile = readFileSync(
       join(process.cwd(), "server", "kpi-scheduler.ts"),
       "utf-8"
     );
-    const activeKpisQueryMatch = schedulerFile.match(
-      /const activeKPIsRaw = await db\.select\(\)\s*\.from\(kpis\)\s*\.where\(and\(([\s\S]*?)\)\);/
-    );
-    const activeKpisQuery = activeKpisQueryMatch?.[0] || "";
 
-    expect(activeKpisQuery).toContain("eq(kpis.alertsEnabled, true)");
-    expect(activeKpisQuery).not.toContain("eq(kpis.status, 'active')");
+    expect(schedulerFile).toContain("const activeKPIsRaw = await db.select()");
+    expect(schedulerFile).toContain(".from(kpis);");
+    expect(schedulerFile).toContain("if (!kpi.alertsEnabled || kpi.alertThreshold === null || typeof kpi.alertThreshold === \"undefined\") {");
+    expect(schedulerFile).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');");
     expect(schedulerFile).toContain("if (shouldTriggerAlert(kpi)) {");
     expect(schedulerFile).toContain("await createKPIAlert(kpi);");
   });

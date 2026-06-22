@@ -98,8 +98,11 @@ Validation completed:
 
 - `npm test -- server/alert-evaluation.test.ts server/campaign-alert-current-value-regression.test.ts server/notification-visibility-regression.test.ts server/alert-email-regression.test.ts`
 - `npm run check`
+- User-requested validation rerun passed on 2026-06-22: 4 focused test files / 13 tests passed, and `tsc` passed.
 
 ### Commit 3: Deterministic In-App Alert Lifecycle
+
+Status: complete.
 
 Fix scope:
 
@@ -115,6 +118,19 @@ Required tests:
 - Benchmark missing threshold resolves active alert
 - dismissed still-breached Benchmark can recreate one active alert
 - duplicate active GA4 KPI/Benchmark alerts collapse to one visible row
+
+Root cause fixed:
+
+- KPI alert reconciliation only queried rows with `alertsEnabled = true`, so disabled GA4/campaign KPI alerts could not be observed and soft-resolved by the scheduler.
+- KPI alert creation returned on missing campaign context even for still-breached GA4/campaign KPI rows, which could leave an existing active alert unresolved.
+- Benchmark in-app alert reconciliation only queried active rows with `alertsEnabled = true`, so disabled Benchmark alerts could not be observed and resolved.
+- Benchmark reconciliation skipped non-breaches, missing thresholds, invalid values, and missing campaign context instead of resolving existing active GA4/campaign-style in-app alerts.
+- Benchmark duplicate prevention avoided creating a new duplicate, but it did not collapse existing duplicate unresolved Benchmark alert rows.
+
+Validation completed:
+
+- `npm test -- server/benchmark-alert-lifecycle-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/notification-visibility-regression.test.ts server/alert-evaluation.test.ts server/ga4-kpi-regression.test.ts`
+- `npm run check`
 
 ### Commit 4: Email Alert Parity
 
@@ -246,11 +262,13 @@ Proven locally:
 - the required documentation set for this Commit 1 review was read before finalizing this file
 - Commit 2 added a shared internal alert evaluation helper, moved KPI in-app alert checks, Benchmark in-app alert checks, and email alert condition checks onto the shared parser/evaluator, and removed the Benchmark missing-current-value fallback to `0`
 - Commit 2 focused tests prove formatted alert numbers parse, invalid current values and thresholds fail closed, `below`/`above`/`equals` condition math is shared, and GA4 campaign KPI/Benchmark alert checks still resolve connected-platform current values before threshold evaluation
+- Commit 2 user-requested validation rerun passed on 2026-06-22 with 4 focused alert test files / 13 tests and `npm run check`
+- Commit 3 added KPI and Benchmark soft-resolution for GA4/campaign-style in-app alerts, including non-breach, disabled alerts, missing/invalid thresholds, missing/invalid current values, missing campaign context, dismissed still-breached recreation, and duplicate active Benchmark alert collapse
 
 Partially reviewed:
 
-- existing code traces identified remaining gaps in Benchmark resolution lifecycle behavior, email/current-value parity, notification raw-row visibility checks, async route reconciliation, UI notification refresh, and bell deep-link rewriting
-- the lifecycle matrix above defines the paths that must be proven by Commits 3 through 8 before GA4 readiness can be claimed
+- existing code traces identified remaining gaps in email/current-value parity, notification raw-row visibility checks, async route reconciliation, UI notification refresh, and bell deep-link rewriting
+- the lifecycle matrix above defines the paths that must be proven by Commits 4 through 8 before GA4 readiness can be claimed
 
 Not locally verifiable yet:
 
@@ -261,7 +279,7 @@ Not locally verifiable yet:
 
 Not production-ready yet:
 
-- GA4 KPI/Benchmark alerts and notifications must complete Commits 3 through 8 and the required validation pass before this document can mark them production-ready
+- GA4 KPI/Benchmark alerts and notifications must complete Commits 4 through 8 and the required validation pass before this document can mark them production-ready
 - Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration must each pass this same lifecycle with source-specific evidence before their KPI/Benchmark alert and notification behavior can be marked production-ready
 
 ## Cross-Platform Template Rules

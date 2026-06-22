@@ -121,18 +121,24 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     await resolveKPIAlerts(String(kpi.id), 'cleared');
     return;
   }
+  const platformType = String((kpi as any)?.platformType || "").trim().toLowerCase();
+  const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
   const campaignId = String(kpi.campaignId || "").trim();
-  if (!campaignId) return;
+  if (!campaignId) {
+    if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');
+    return;
+  }
   const campaign = await storage.getCampaign(campaignId).catch(() => undefined);
-  if (!campaign) return;
+  if (!campaign) {
+    if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');
+    return;
+  }
 
   // Dedupe:
   // - default: prevent duplicates within the same real-world day
   // - LinkedIn test-mode: prevent duplicates per simulated day (windowKey == latest daily metrics date)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const platformType = String((kpi as any)?.platformType || "").trim().toLowerCase();
-  const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
   let windowKey: string | null = null;
   try {
     if (kpi.campaignId) {

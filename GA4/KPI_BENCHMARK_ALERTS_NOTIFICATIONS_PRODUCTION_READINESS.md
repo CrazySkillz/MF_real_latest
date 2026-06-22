@@ -163,7 +163,14 @@ Validation completed:
 - `npm test -- server/alert-email-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-evaluation.test.ts server/notification-visibility-regression.test.ts`
 - `npm run check`
 
+Manual validation requirement:
+
+- manual validation is not required for Commit 4 acceptance because the changed behavior is backend email alert current-value selection and threshold evaluation, which is covered by the focused regression tests above
+- deployed provider delivery, provider delivery events, and actual inbox receipt remain not locally verifiable and belong to the final deployed evidence pass, not Commit 4 local acceptance
+
 ### Commit 5: GA4 Route And UI Synchronization
+
+Status: complete.
 
 Fix scope:
 
@@ -177,6 +184,17 @@ Required tests:
 - route regression guards prove awaited reconciliation is present
 - GA4 frontend mutation guards prove `/api/notifications` is refreshed after create/update/delete
 - existing GA4 KPI/Benchmark tests still pass
+
+Root cause fixed:
+
+- GA4 platform KPI create/update routes ran GA4 recompute before returning, but then started `checkPerformanceAlerts()` with fire-and-forget `.catch(...)`, so the response could reach the frontend before in-app alert rows were created, resolved, or hidden
+- GA4 Benchmark create/update UI uses the generic `/api/benchmarks` routes, which already awaited `checkBenchmarkPerformanceAlerts()`; Commit 5 adds a regression guard so that ordering is preserved
+- GA4 KPI and Benchmark create/update/delete frontend mutations invalidated only their KPI/Benchmark list queries, so the bell and Notifications cache could remain stale until another notification query refetch happened
+
+Validation completed:
+
+- `npm test -- server/notification-visibility-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-benchmark-regression.test.ts server/alert-email-regression.test.ts`
+- `npm run check`
 
 ### Commit 6: Deep-Link Template Safety
 
@@ -280,11 +298,13 @@ Proven locally:
 - Commit 3 added KPI and Benchmark soft-resolution for GA4/campaign-style in-app alerts, including non-breach, disabled alerts, missing/invalid thresholds, missing/invalid current values, missing campaign context, dismissed still-breached recreation, and duplicate active Benchmark alert collapse
 - Commit 3 validation was confirmed passed on 2026-06-23 before Commit 4 work began
 - Commit 4 moved immediate and scheduled KPI/Benchmark email alert checks onto the same campaign current-value resolver used by in-app alert checks, preserved email throttling before send attempts, kept invalid values fail-closed, and kept immediate email hooks on the current GA4 KPI/Benchmark create/update routes
+- Commit 4 does not require manual validation for local acceptance; actual provider delivery and inbox receipt remain final deployed-evidence items
+- Commit 5 makes GA4 KPI create/update routes await in-app alert reconciliation before responding, proves GA4 Benchmark create/update routes preserve awaited reconciliation, and refreshes `/api/notifications` after GA4 KPI/Benchmark create, update, and delete mutations
 
 Partially reviewed:
 
-- existing code traces identified remaining gaps in notification raw-row visibility checks, async route reconciliation, UI notification refresh, and bell deep-link rewriting
-- the lifecycle matrix above defines the paths that must be proven by Commits 5 through 8 before GA4 readiness can be claimed
+- existing code traces identified remaining gaps in notification raw-row visibility checks, bell deep-link rewriting, numeric capacity, final build validation, and deployed/manual evidence
+- the lifecycle matrix above defines the paths that must be proven by Commits 6 through 8 before GA4 readiness can be claimed
 
 Not locally verifiable yet:
 
@@ -295,7 +315,7 @@ Not locally verifiable yet:
 
 Not production-ready yet:
 
-- GA4 KPI/Benchmark alerts and notifications must complete Commits 5 through 8 and the required validation pass before this document can mark them production-ready
+- GA4 KPI/Benchmark alerts and notifications must complete Commits 6 through 8 and the required validation pass before this document can mark them production-ready
 - Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration must each pass this same lifecycle with source-specific evidence before their KPI/Benchmark alert and notification behavior can be marked production-ready
 
 ## Cross-Platform Template Rules

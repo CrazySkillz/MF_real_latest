@@ -24051,7 +24051,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.warn("[KPI Create] GA4 KPI refresh failed:", (e as any)?.message || e);
         }
       }
-      checkPerformanceAlerts().catch((e) => console.warn("[KPI Create] Alert check failed:", (e as any)?.message || e));
+      if (String(platformType || '').toLowerCase() === 'google_analytics') {
+        try {
+          await checkPerformanceAlerts();
+        } catch (e: any) {
+          console.warn("[KPI Create] Alert check failed:", (e as any)?.message || e);
+        }
+      } else {
+        checkPerformanceAlerts().catch((e) => console.warn("[KPI Create] Alert check failed:", (e as any)?.message || e));
+      }
       import("./services/alert-monitoring.js")
         .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateKPIAlertIfNeeded(String((kpi as any)?.id || "")))
         .catch((e) => console.warn("[KPI Create] Immediate email alert check failed:", (e as any)?.message || e));
@@ -24130,7 +24138,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.warn("[KPI Update] GA4 KPI refresh failed:", (e as any)?.message || e);
         }
       }
-      checkPerformanceAlerts().catch((e) => console.warn("[KPI Update] Alert check failed:", (e as any)?.message || e));
+      if (String((okKpi as any)?.platformType || '').toLowerCase() === 'google_analytics') {
+        try {
+          await checkPerformanceAlerts();
+        } catch (e: any) {
+          console.warn("[KPI Update] Alert check failed:", (e as any)?.message || e);
+        }
+      } else {
+        checkPerformanceAlerts().catch((e) => console.warn("[KPI Update] Alert check failed:", (e as any)?.message || e));
+      }
       import("./services/alert-monitoring.js")
         .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateKPIAlertIfNeeded(String(kpiId)))
         .catch((e) => console.warn("[KPI Update] Immediate email alert check failed:", (e as any)?.message || e));

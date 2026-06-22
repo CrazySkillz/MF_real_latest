@@ -406,6 +406,10 @@ export default function GA4Metrics() {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const refreshNotificationQueries = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });
+  }, [queryClient]);
 
   const [selectedGA4PropertyId, setSelectedGA4PropertyId] = useState<string>("");
 
@@ -664,8 +668,9 @@ export default function GA4Metrics() {
 
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] });
+      await refreshNotificationQueries();
       setShowKPIDialog(false);
       kpiForm.reset();
       toast({ title: "KPI created successfully" });
@@ -697,8 +702,9 @@ export default function GA4Metrics() {
       if (!resp.ok) throw new Error(json?.message || json?.error || "Failed to update KPI");
       return json;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] });
+      await refreshNotificationQueries();
       setShowKPIDialog(false);
       setEditingKPI(null);
       setKpiEditInitialValues(null);
@@ -745,8 +751,9 @@ export default function GA4Metrics() {
         return { message: "KPI deleted successfully" };
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/kpis`, campaignId] });
+      await refreshNotificationQueries();
       toast({ title: "KPI deleted successfully" });
     },
     onError: (error) => {
@@ -906,8 +913,9 @@ export default function GA4Metrics() {
       if (!response.ok) throw new Error("Failed to create benchmark");
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] });
+      await refreshNotificationQueries();
       setShowCreateBenchmark(false);
       setSelectedBenchmarkTemplate(null);
       setBenchmarkEditInitialValues(null);
@@ -955,8 +963,9 @@ export default function GA4Metrics() {
       if (!response.ok) throw new Error("Failed to update benchmark");
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] });
+      await refreshNotificationQueries();
       setShowCreateBenchmark(false);
       setSelectedBenchmarkTemplate(null);
       setBenchmarkEditInitialValues(null);
@@ -996,8 +1005,9 @@ export default function GA4Metrics() {
       if (!response.ok) throw new Error("Failed to delete benchmark");
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [`/api/platforms/google_analytics/benchmarks`, String(campaignId || "")] });
+      await refreshNotificationQueries();
       toast({ title: "Benchmark deleted successfully" });
     },
     onError: (error) => {

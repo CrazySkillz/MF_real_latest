@@ -34,7 +34,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct } from "@shared/metric-math";
-import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult } from "@shared/kpi-math";
+import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
 
 interface Campaign {
   id: string;
@@ -2494,6 +2494,15 @@ export default function GA4Metrics() {
     });
   };
 
+  const getBenchmarkDataSufficiency = (benchmark: any) =>
+    resolveBenchmarkDataSufficiency({
+      metric: String((benchmark as any)?.metric || ""),
+      name: (benchmark as any)?.name,
+      sessions: Number(getLiveBenchmarkCurrentValue("sessions") || 0),
+      conversions: Number(financialConversions || 0),
+      spend: Number(financialSpend || 0),
+    });
+
   const computeKpiProgress = (kpi: any) => {
     const current = parseFloat(String(getLiveKpiValue(kpi) || "0"));
     const safeCurrent = Number.isFinite(current) ? current : 0;
@@ -3840,6 +3849,19 @@ export default function GA4Metrics() {
             y += 20;
             continue;
           }
+          const sufficiency = getBenchmarkDataSufficiency(b);
+          if (!sufficiency.sufficient) {
+            checkPage(20);
+            doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
+            doc.roundedRect(MX, y, CW, 16, 3, 3, "FD");
+            doc.setFillColor(...C.warning); doc.roundedRect(MX, y, 3, 16, 1, 1, "F");
+            doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+            doc.text(String((b as any)?.name || ""), MX + 8, y + 6);
+            doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.warning);
+            doc.text(`Insufficient data - ${sufficiency.reason || "Needs more data before this Benchmark can be scored."}`, MX + 8, y + 12);
+            y += 20;
+            continue;
+          }
 
           const bH = 42;
           checkPage(bH + 5);
@@ -3999,6 +4021,7 @@ export default function GA4Metrics() {
     let needsAttention = 0;
     let behind = 0;
     let blocked = 0;
+    let insufficient = 0;
     let sumPct = 0;
 
     for (const b of items) {
@@ -4007,6 +4030,11 @@ export default function GA4Metrics() {
       if (deps.missing.length > 0) {
         blocked += 1;
         continue; // do NOT score blocked benchmarks (missing inputs ≠ poor performance)
+      }
+      const sufficiency = getBenchmarkDataSufficiency(b);
+      if (!sufficiency.sufficient) {
+        insufficient += 1;
+        continue; // do NOT score thin-data Benchmarks as strong or weak performance
       }
       const bench = parseFloat(stripNumberFormatting(String((b as any)?.benchmarkValue || "0")));
       if (!Number.isFinite(bench) || bench <= 0) continue;
@@ -4019,7 +4047,7 @@ export default function GA4Metrics() {
     }
 
     const avgPct = scored > 0 ? sumPct / scored : 0;
-    return { total: items.length, scored, onTrack, needsAttention, behind, blocked, avgPct };
+    return { total: items.length, scored, onTrack, needsAttention, behind, blocked, insufficient, avgPct };
     // benchmark progress depends on the same live inputs used by the individual benchmark cards.
   }, [
     benchmarks,
@@ -4027,6 +4055,8 @@ export default function GA4Metrics() {
     ga4Metrics,
     dailySummedTotals,
     financialRevenue,
+    financialSpend,
+    financialConversions,
     financialROAS,
     financialROI,
     financialCPA,
@@ -4550,6 +4580,7 @@ export default function GA4Metrics() {
     for (const b of Array.isArray(benchmarks) ? benchmarks : []) {
       const deps = getMissingDependenciesForMetric(String((b as any)?.metric || ""));
       if (deps.missing.length > 0) continue; // blocked benchmarks are handled in integrity checks above
+      if (!getBenchmarkDataSufficiency(b).sufficient) continue; // insufficient benchmarks are handled on the Benchmark card
       if (getInvalidBenchmarkConfigReason(b)) continue; // invalid benchmarks are handled in integrity checks above
       const p = computeBenchmarkProgress(b);
       const status = String(p?.status || "");
@@ -7066,11 +7097,26 @@ export default function GA4Metrics() {
                             </div>
                           ) : null}
 
+                          {benchmarkTracker.insufficient > 0 ? (
+                            <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-4">
+                              <div className="min-w-0">
+                                <div className="font-semibold text-foreground">Some Benchmarks Need More Data</div>
+                                <div className="text-sm text-foreground/80/60 mt-1">
+                                  {benchmarkTracker.insufficient} benchmark{benchmarkTracker.insufficient === 1 ? "" : "s"} can’t be scored because the required denominator data is not available yet.
+                                  These benchmarks are excluded from performance scoring to avoid misleading executives.
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+
                           {benchmarks && benchmarks.length > 0 ? (
                             <div className="grid gap-4 md:grid-cols-2">
                               {benchmarks.map((benchmark) => {
                                 const deps = getMissingDependenciesForMetric(String((benchmark as any)?.metric || ""));
                                 const isBlocked = deps.missing.length > 0;
+                                const sufficiency = getBenchmarkDataSufficiency(benchmark);
+                                const isInsufficient = !sufficiency.sufficient;
+                                const isUnavailable = isBlocked || isInsufficient;
                                 return (
                                 <Card
                                   key={benchmark.id}
@@ -7099,7 +7145,7 @@ export default function GA4Metrics() {
                                               </TooltipContent>
                                             </UITooltip>
                                           )}
-                                          {(benchmark as any).alertsEnabled && !isBlocked && (() => {
+                                          {(benchmark as any).alertsEnabled && !isUnavailable && (() => {
                                             const currentVal = parseFloat(String(getBenchmarkDisplayCurrentValue(benchmark) || "0").replace(/,/g, ""));
                                             const alertThresh = (benchmark as any).alertThreshold
                                               ? parseFloat(String((benchmark as any).alertThreshold).replace(/,/g, ""))
@@ -7189,7 +7235,7 @@ export default function GA4Metrics() {
                                       <div className="p-3 bg-muted rounded-lg">
                                         <div className="text-sm font-medium text-muted-foreground/70 mb-1">Current Value</div>
                                         <div className="text-lg font-bold text-foreground">
-                                          {isBlocked ? "—" : formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)}
+                                          {isUnavailable ? "—" : formatBenchmarkValue(getBenchmarkDisplayCurrentValue(benchmark), benchmark.unit)}
                                         </div>
                                       </div>
                                       <div className="p-3 bg-muted rounded-lg">
@@ -7207,6 +7253,15 @@ export default function GA4Metrics() {
                                           <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">
                                             <div className="text-sm text-muted-foreground/70 mt-1">
                                               Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. This Benchmark is paused until inputs are restored.
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                      if (isInsufficient) {
+                                        return (
+                                          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">
+                                            <div className="text-sm text-muted-foreground/70 mt-1">
+                                              {sufficiency.reason || "This Benchmark needs more data before it can be scored."}
                                             </div>
                                           </div>
                                         );

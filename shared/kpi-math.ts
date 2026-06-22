@@ -25,12 +25,14 @@ export type BenchmarkThresholdResult = {
   lowerIsBetter: boolean;
 };
 export type KpiDataSufficiencyCode = "insufficient_sessions" | "insufficient_conversions" | "insufficient_spend";
+export type BenchmarkDataSufficiencyCode = KpiDataSufficiencyCode;
 
 export type KpiDataSufficiencyResult = {
   sufficient: boolean;
   code?: KpiDataSufficiencyCode;
   reason?: string;
 };
+export type BenchmarkDataSufficiencyResult = KpiDataSufficiencyResult;
 
 const LOWER_IS_BETTER_HINTS = ["cpc", "cpm", "cpa", "cpl", "spend"];
 const RATE_HINTS = ["rate", "ctr", "cvr", "percentage"];
@@ -256,6 +258,41 @@ export function computeBenchmarkThresholdResult(opts: {
     effectiveDeltaPct: computeEffectiveDeltaPct({ current: opts.current, target: opts.benchmarkValue, lowerIsBetter }),
     lowerIsBetter,
   };
+}
+
+export function resolveBenchmarkDataSufficiency(opts: {
+  metric?: string | null;
+  name?: string | null;
+  sessions?: number | null;
+  conversions?: number | null;
+  spend?: number | null;
+  minSessions?: number;
+  minConversions?: number;
+  minSpend?: number;
+}): BenchmarkDataSufficiencyResult {
+  const metric = normalizeMetricKey(opts.metric);
+  const name = normalizeMetricKey(opts.name);
+  const keys = [metric, name];
+  const sessions = Number.isFinite(opts.sessions) ? Number(opts.sessions) : 0;
+  const conversions = Number.isFinite(opts.conversions) ? Number(opts.conversions) : 0;
+  const spend = Number.isFinite(opts.spend) ? Number(opts.spend) : 0;
+  const minSessions = Math.max(1, Number(opts.minSessions || 1));
+  const minConversions = Math.max(1, Number(opts.minConversions || 1));
+  const minSpend = Math.max(0.01, Number(opts.minSpend || 0.01));
+
+  if (keys.some((key) => key === "conversionrate" || key === "engagementrate") && sessions < minSessions) {
+    return { sufficient: false, code: "insufficient_sessions", reason: "Needs sessions before this Benchmark can be scored." };
+  }
+
+  if (keys.some((key) => key === "cpa" || key.includes("costperacquisition")) && conversions < minConversions) {
+    return { sufficient: false, code: "insufficient_conversions", reason: "Needs conversions before this Benchmark can be scored." };
+  }
+
+  if (keys.some((key) => key === "cpa" || key === "roas" || key === "roi" || key.includes("costperacquisition")) && spend < minSpend) {
+    return { sufficient: false, code: "insufficient_spend", reason: "Needs spend before this Benchmark can be scored." };
+  }
+
+  return { sufficient: true };
 }
 
 export function classifyKpiBandWithPolicy(opts: {

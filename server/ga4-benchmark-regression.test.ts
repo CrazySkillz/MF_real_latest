@@ -42,6 +42,45 @@ describe("GA4 Benchmark regression guard", () => {
     expect(ga4MetricsFile).not.toContain("below 70% of benchmark");
   });
 
+  it("excludes insufficient GA4 benchmarks from scoring and shows the reason on cards", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+    const trackerStart = ga4MetricsFile.indexOf("const benchmarkTracker = useMemo(() => {");
+    const trackerEnd = ga4MetricsFile.indexOf("// --- Rolling window rollups", trackerStart);
+    const trackerSection = ga4MetricsFile.slice(trackerStart, trackerEnd);
+    const cardStart = ga4MetricsFile.indexOf("{benchmarks.map((benchmark) => {");
+    const cardEnd = ga4MetricsFile.indexOf("No Benchmarks Yet", cardStart);
+    const cardSection = ga4MetricsFile.slice(cardStart, cardEnd);
+    const insightsStart = ga4MetricsFile.indexOf("// 2) Actionable insights from Benchmark performance");
+    const insightsEnd = ga4MetricsFile.indexOf("// 2b) Scheduler dependency", insightsStart);
+    const insightsSection = ga4MetricsFile.slice(insightsStart, insightsEnd);
+    const reportStart = ga4MetricsFile.indexOf("sectionTitle(\"Performance Benchmarks\"");
+    const reportEnd = ga4MetricsFile.indexOf("renderAdsSection();", reportStart);
+    const reportSection = ga4MetricsFile.slice(reportStart, reportEnd);
+
+    expect(ga4MetricsFile).toContain("resolveBenchmarkDataSufficiency");
+    expect(trackerStart).toBeGreaterThan(-1);
+    expect(trackerEnd).toBeGreaterThan(trackerStart);
+    expect(cardStart).toBeGreaterThan(-1);
+    expect(cardEnd).toBeGreaterThan(cardStart);
+    expect(insightsStart).toBeGreaterThan(-1);
+    expect(insightsEnd).toBeGreaterThan(insightsStart);
+    expect(reportStart).toBeGreaterThan(-1);
+    expect(reportEnd).toBeGreaterThan(reportStart);
+    expect(trackerSection).toContain("const sufficiency = getBenchmarkDataSufficiency(b);");
+    expect(trackerSection).toContain("insufficient += 1;");
+    expect(trackerSection).toContain("return { total: items.length, scored, onTrack, needsAttention, behind, blocked, insufficient, avgPct };");
+    expect(cardSection).toContain("const isInsufficient = !sufficiency.sufficient;");
+    expect(cardSection).toContain("const isUnavailable = isBlocked || isInsufficient;");
+    expect(cardSection).toContain("sufficiency.reason || \"This Benchmark needs more data before it can be scored.\"");
+    expect(insightsSection).toContain("if (!getBenchmarkDataSufficiency(b).sufficient) continue;");
+    expect(reportSection).toContain("const sufficiency = getBenchmarkDataSufficiency(b);");
+    expect(reportSection).toContain("Insufficient data -");
+    expect(ga4MetricsFile).toContain("Some Benchmarks Need More Data");
+  });
+
   it("routes GA4 benchmark notifications to ga4-metrics benchmarks", () => {
     const benchmarkNotificationsFile = readFileSync(
       join(process.cwd(), "server", "benchmark-notifications.ts"),

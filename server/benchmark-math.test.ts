@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeBenchmarkThresholdResult,
   resolveBenchmarkThresholdPolicy,
+  resolveBenchmarkDataSufficiency,
 } from "../shared/kpi-math";
 
 describe("benchmark threshold math (shared)", () => {
@@ -139,5 +140,35 @@ describe("benchmark threshold math (shared)", () => {
 
     expect(result.ratio).toBe(0);
     expect(result.status).toBe("behind");
+  });
+
+  it("marks rate benchmarks insufficient when sessions are unavailable", () => {
+    expect(resolveBenchmarkDataSufficiency({ metric: "Conversion Rate", sessions: 0 })).toMatchObject({
+      sufficient: false,
+      code: "insufficient_sessions",
+    });
+    expect(resolveBenchmarkDataSufficiency({ metric: "Engagement Rate", sessions: 1 })).toMatchObject({
+      sufficient: true,
+    });
+  });
+
+  it("marks CPA benchmarks insufficient when conversions are unavailable", () => {
+    expect(resolveBenchmarkDataSufficiency({ metric: "CPA", conversions: 0, spend: 100 })).toMatchObject({
+      sufficient: false,
+      code: "insufficient_conversions",
+    });
+    expect(resolveBenchmarkDataSufficiency({ metric: "CPA", conversions: 1, spend: 100 })).toMatchObject({
+      sufficient: true,
+    });
+  });
+
+  it("marks ROAS and ROI benchmarks insufficient when spend is unavailable", () => {
+    expect(resolveBenchmarkDataSufficiency({ metric: "ROAS", spend: 0 })).toMatchObject({
+      sufficient: false,
+      code: "insufficient_spend",
+    });
+    expect(resolveBenchmarkDataSufficiency({ metric: "ROI", spend: 0.01 })).toMatchObject({
+      sufficient: true,
+    });
   });
 });

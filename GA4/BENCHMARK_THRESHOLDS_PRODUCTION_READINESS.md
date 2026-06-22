@@ -292,6 +292,14 @@ Validation:
 - UI/static regression guard for tracker labels and counts
 - `npm run check`
 
+Status:
+
+- Completed in commit `e955b245` (`Wire GA4 benchmarks to shared threshold policy`).
+- Validation passed locally with `npm test -- server/benchmark-math.test.ts server/ga4-benchmark-regression.test.ts server/ga4-cross-tab-consistency.test.ts` (`124` tests passed).
+- Validation also passed with `npm test -- server/kpi-math.test.ts server/metric-math.test.ts` (`23` tests passed).
+- `npm run check` passed.
+- Commit 2 intentionally did not align Executive Summary, scheduled reports, server routes, or background benchmark history; those remain Commit 4 scope.
+
 ### Commit 3 - Add Benchmark Data Sufficiency Gating
 
 Goal:

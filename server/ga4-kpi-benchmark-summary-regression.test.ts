@@ -32,6 +32,18 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
     expect(ga4MetricsFile).toContain("within metric-aware tolerance");
   });
 
+  it("keeps KPI card status text aligned with metric-aware bands", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+
+    expect(ga4MetricsFile).toContain('if (p.band === "near") return "On track";');
+    expect(ga4MetricsFile.indexOf('if (p.band === "near") return "On track";')).toBeLessThan(
+      ga4MetricsFile.indexOf('`${absStr}% below target`')
+    );
+  });
+
   it("prefills benchmark edit current value from the live current-value path", () => {
     const ga4MetricsFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),

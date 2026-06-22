@@ -6500,6 +6500,7 @@ export default function GA4Metrics() {
                                           <div className="mt-2 text-xs text-muted-foreground/70">
                                             {(() => {
                                               if (Math.abs(p.effectiveDeltaPct) < 0.0001) return "At target";
+                                              if (p.band === "near") return "On track";
                                               const abs = Math.abs(p.effectiveDeltaPct);
                                               const absStr = formatPct(abs).replace("%", "");
                                               return p.effectiveDeltaPct > 0

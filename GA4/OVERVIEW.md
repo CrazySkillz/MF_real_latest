@@ -256,13 +256,12 @@ Columns:
 - `Users`
 - `Conversions`
 - `Conv. rate`
-- `GA4 Revenue`
 
 Important meaning:
 
 - it can reflect multiple GA4 campaign values if those values were intentionally selected for this one app campaign
 - it is not a rollup across unrelated campaigns in the property
-- the `GA4 Revenue` column is GA4-native row revenue from GA4 `totalRevenue`, or fallback `purchaseRevenue`
+- revenue is intentionally not shown in `Landing Pages`; page-level rows remain traffic and conversion context only
 - campaign-matched imported revenue is not allocated into landing-page rows unless a future source provides real landing-page-level identifiers that can be matched safely
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
 - the same person can appear on more than one landing-page row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
@@ -277,11 +276,10 @@ Columns:
 - `Conversions`
 - `Event count`
 - `Users`
-- `GA4 Revenue`
 
 Important meaning:
 
-- the `GA4 Revenue` column is GA4-native row revenue from GA4 `totalRevenue`, or fallback `purchaseRevenue`
+- revenue is intentionally not shown in `Conversion Events`; event rows remain conversion-volume context only
 - campaign-matched imported revenue is not allocated into event rows unless a future source provides real event-level identifiers that can be matched safely
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
 - the same person can appear in more than one conversion-event row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
@@ -321,14 +319,14 @@ Campaign Breakdown:
 Landing Pages:
 
 - confirm rows populate for the same GA4 property and campaign scope
-- confirm `Source/Medium`, `Sessions`, `Users`, `Conversions`, and `GA4 Revenue` look coherent for that scope
+- confirm `Source/Medium`, `Sessions`, `Users`, `Conversions`, and `Conv. rate` look coherent for that scope
 - confirm campaign-only imported revenue is not allocated into landing-page rows
 - confirm page rows are not unexpectedly mixing unrelated campaigns due to bad GA4 campaign tagging/filtering
 
 Conversion Events:
 
 - confirm rows populate for the same GA4 property and campaign scope
-- confirm `Conversions`, `Event count`, `Users`, and `GA4 Revenue` are coherent with GA4 event tracking for that scope
+- confirm `Conversions`, `Event count`, and `Users` are coherent with GA4 event tracking for that scope
 - confirm campaign-only imported revenue is not allocated into conversion-event rows
 - confirm conversion-event naming and totals reflect real GA4 configuration rather than stale or misconfigured events
 

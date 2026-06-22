@@ -69,7 +69,7 @@ Current standard-template output rule:
 - each standard template PDF should mirror the same tab substance and section order as the corresponding live GA4 tab as closely as the current PDF renderer allows
 - `Overview` should follow the live Overview order
 - in `Overview` report output, `Campaign Breakdown` should use the column label `Revenue` because it can include exact campaign-matched imported revenue
-- in `Overview` report output, `Landing Pages` and `Conversion Events` should use `GA4 Revenue` because those table rows remain GA4-native only
+- in `Overview` report output, `Landing Pages` and `Conversion Events` should omit revenue
 - `KPIs` should follow the live KPI order
 - `Benchmarks` should follow the live Benchmark order
 - `Ad Comparison` should follow the live Ad Comparison order

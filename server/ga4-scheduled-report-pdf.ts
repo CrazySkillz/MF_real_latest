@@ -838,7 +838,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     if (includeLandingPages) {
       addSimpleTable(
         "Landing Pages",
-        ["LANDING PAGE", "SOURCE/MEDIUM", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "GA4 REVENUE"],
+        ["LANDING PAGE", "SOURCE/MEDIUM", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE"],
         (payload.landingPages?.rows || []).slice(0, 15).map((row: any) => [
           String(row?.landingPage || "(not set)"),
           `${String(row?.source || "(not set)")}/${String(row?.medium || "(not set)")}`,
@@ -846,24 +846,22 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
           formatNumber(row?.users || 0),
           formatNumber(row?.conversions || 0),
           formatPct(Number(row?.sessions || 0) > 0 ? (Number(row?.conversions || 0) / Number(row?.sessions || 0)) * 100 : 0),
-          formatMoney(Number(row?.revenue || 0)),
         ]),
-        [42, 38, 20, 18, 26, 22, 18],
+        [52, 44, 22, 20, 28, 26],
         COLORS.overview
       );
     }
     if (includeConversionEvents) {
       addSimpleTable(
         "Conversion Events",
-        ["EVENT", "CONVERSIONS", "EVENT COUNT", "USERS", "GA4 REVENUE"],
+        ["EVENT", "CONVERSIONS", "EVENT COUNT", "USERS"],
         (payload.conversionEvents?.rows || []).slice(0, 15).map((row: any) => [
           String(row?.eventName || "(not set)"),
           formatNumber(row?.conversions || 0),
           formatNumber(row?.eventCount || 0),
           formatNumber(row?.users || 0),
-          formatMoney(Number(row?.revenue || 0)),
         ]),
-        [64, 30, 30, 24, 36],
+        [76, 36, 36, 28],
         COLORS.overview
       );
     }

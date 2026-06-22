@@ -2923,7 +2923,7 @@ export default function GA4Metrics() {
 
       if (includeOverviewLandingPages) addSimpleTable(
         "Landing Pages",
-        ["LANDING PAGE", "SOURCE/MEDIUM", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "GA4 REVENUE"],
+        ["LANDING PAGE", "SOURCE/MEDIUM", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE"],
         (Array.isArray(ga4LandingPages?.rows) ? ga4LandingPages.rows : []).slice(0, 15).map((r: any) => [
           String(r?.landingPage || "(not set)"),
           `${String(r?.source || "(not set)")}/${String(r?.medium || "(not set)")}`,
@@ -2931,22 +2931,20 @@ export default function GA4Metrics() {
           fN(Number(r?.users || 0)),
           fN(Number(r?.conversions || 0)),
           fP(Number(r?.sessions || 0) > 0 ? (Number(r?.conversions || 0) / Number(r?.sessions || 0)) * 100 : 0),
-          fC(Number(r?.revenue || 0)),
         ]),
-        [42, 38, 20, 18, 26, 22, 18]
+        [52, 44, 22, 20, 28, 26]
       );
 
       if (includeOverviewConversionEvents) addSimpleTable(
         "Conversion Events",
-        ["EVENT", "CONVERSIONS", "EVENT COUNT", "USERS", "GA4 REVENUE"],
+        ["EVENT", "CONVERSIONS", "EVENT COUNT", "USERS"],
         (Array.isArray(ga4ConversionEvents?.rows) ? ga4ConversionEvents.rows : []).slice(0, 15).map((r: any) => [
           String(r?.eventName || "(not set)"),
           fN(Number(r?.conversions || 0)),
           fN(Number(r?.eventCount || 0)),
           fN(Number(r?.users || 0)),
-          fC(Number(r?.revenue || 0)),
         ]),
-        [64, 30, 30, 24, 36]
+        [76, 36, 36, 28]
       );
     }
 
@@ -5814,7 +5812,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Landing Pages</h3>
-                        <p className="text-sm text-muted-foreground/70">Cumulative for this GA4 property and this campaign&apos;s selected GA4 campaign scope — Revenue is GA4-native only, not campaign-matched imported revenue</p>
+                        <p className="text-sm text-muted-foreground/70">Cumulative for this GA4 property and this campaign&apos;s selected GA4 campaign scope</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
@@ -5823,9 +5821,9 @@ export default function GA4Metrics() {
                               <table className="w-full text-sm table-fixed">
                                 <thead className="bg-muted border-b">
                                   <tr>
-                                    <th className="text-left p-3 w-[30%]">Landing page</th>
-                                    <th className="text-left p-3 w-[18%]">Source/Medium</th>
-                                    <th className="text-right p-3 w-[10%]">Sessions</th>
+                                    <th className="text-left p-3 w-[34%]">Landing page</th>
+                                    <th className="text-left p-3 w-[22%]">Source/Medium</th>
+                                    <th className="text-right p-3 w-[12%]">Sessions</th>
                                     <th className="text-right p-3 w-[10%]">
                                       <div className="flex items-center justify-end gap-1">
                                         Users
@@ -5841,9 +5839,8 @@ export default function GA4Metrics() {
                                         </UITooltip>
                                       </div>
                                     </th>
-                                    <th className="text-right p-3 w-[10%]">Conversions</th>
-                                    <th className="text-right p-3 w-[9%] whitespace-nowrap">Conv. Rate</th>
-                                    <th className="text-right p-3 w-[13%] whitespace-nowrap">GA4 Revenue</th>
+                                    <th className="text-right p-3 w-[12%]">Conversions</th>
+                                    <th className="text-right p-3 w-[10%] whitespace-nowrap">Conv. Rate</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -5867,7 +5864,6 @@ export default function GA4Metrics() {
                                         <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
                                         <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
                                         <td className="p-3 text-right">{formatPercentage(cr)}</td>
-                                        <td className="p-3 text-right">{formatMoney(Number(r?.revenue || 0))}</td>
                                       </tr>
                                     );
                                   })}
@@ -5887,7 +5883,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Conversion Events</h3>
-                        <p className="text-sm text-muted-foreground/70">Cumulative for this GA4 property and this campaign&apos;s selected GA4 campaign scope — Revenue is GA4-native only, not campaign-matched imported revenue</p>
+                        <p className="text-sm text-muted-foreground/70">Cumulative for this GA4 property and this campaign&apos;s selected GA4 campaign scope</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
@@ -5896,7 +5892,7 @@ export default function GA4Metrics() {
                               <table className="w-full text-sm table-fixed">
                                 <thead className="bg-muted border-b">
                                   <tr>
-                                    <th className="text-left p-3 w-[36%]">Event</th>
+                                    <th className="text-left p-3 w-[40%]">Event</th>
                                     <th className="text-right p-3">Conversions</th>
                                     <th className="text-right p-3">Event Count</th>
                                     <th className="text-right p-3">
@@ -5914,7 +5910,6 @@ export default function GA4Metrics() {
                                         </UITooltip>
                                       </div>
                                     </th>
-                                    <th className="text-right p-3">GA4 Revenue</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -5928,7 +5923,6 @@ export default function GA4Metrics() {
                                       <td className="p-3 text-right">{formatNumber(Number(r?.conversions || 0))}</td>
                                       <td className="p-3 text-right">{formatNumber(Number(r?.eventCount || 0))}</td>
                                       <td className="p-3 text-right">{formatNumber(Number(r?.users || 0))}</td>
-                                      <td className="p-3 text-right">{formatMoney(Number(r?.revenue || 0))}</td>
                                     </tr>
                                   ))}
                                 </tbody>

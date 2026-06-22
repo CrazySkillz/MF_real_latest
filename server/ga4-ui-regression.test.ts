@@ -123,6 +123,55 @@ describe("GA4 UI regression guard", () => {
     expect(summarySection).toContain("renderSummaryValue(formatNumber(financialConversions || 0))");
   });
 
+  it("keeps GA4 Overview detail tables traffic-focused without revenue columns", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");
+
+    const liveStart = ga4Metrics.indexOf("{/* Landing Pages */}");
+    const liveEnd = ga4Metrics.indexOf("{/* Conversion Events */}", liveStart);
+    const liveSection = ga4Metrics.slice(liveStart, liveEnd);
+    const liveEventsStart = liveEnd;
+    const liveEventsEnd = ga4Metrics.indexOf("{/* Modals (rendered always) */}", liveEventsStart);
+    const liveEventsSection = ga4Metrics.slice(liveEventsStart, liveEventsEnd);
+
+    const browserPdfStart = ga4Metrics.indexOf("if (includeOverviewLandingPages) addSimpleTable");
+    const browserPdfEnd = ga4Metrics.indexOf("if (includeOverviewConversionEvents) addSimpleTable", browserPdfStart);
+    const browserPdfSection = ga4Metrics.slice(browserPdfStart, browserPdfEnd);
+    const browserPdfEventsStart = browserPdfEnd;
+    const browserPdfEventsEnd = ga4Metrics.indexOf("// ========== AD COMPARISON ==========", browserPdfEventsStart);
+    const browserPdfEventsSection = ga4Metrics.slice(browserPdfEventsStart, browserPdfEventsEnd);
+
+    const scheduledPdfStart = scheduledPdf.indexOf("if (includeLandingPages) {");
+    const scheduledPdfEnd = scheduledPdf.indexOf("if (includeConversionEvents) {", scheduledPdfStart);
+    const scheduledPdfSection = scheduledPdf.slice(scheduledPdfStart, scheduledPdfEnd);
+    const scheduledPdfEventsStart = scheduledPdfEnd;
+    const scheduledPdfEventsEnd = scheduledPdf.indexOf("if (sections.ads)", scheduledPdfEventsStart);
+    const scheduledPdfEventsSection = scheduledPdf.slice(scheduledPdfEventsStart, scheduledPdfEventsEnd);
+
+    expect(liveStart).toBeGreaterThan(-1);
+    expect(liveEnd).toBeGreaterThan(liveStart);
+    expect(liveEventsEnd).toBeGreaterThan(liveEventsStart);
+    expect(browserPdfStart).toBeGreaterThan(-1);
+    expect(browserPdfEnd).toBeGreaterThan(browserPdfStart);
+    expect(browserPdfEventsEnd).toBeGreaterThan(browserPdfEventsStart);
+    expect(scheduledPdfStart).toBeGreaterThan(-1);
+    expect(scheduledPdfEnd).toBeGreaterThan(scheduledPdfStart);
+    expect(scheduledPdfEventsEnd).toBeGreaterThan(scheduledPdfEventsStart);
+
+    expect(liveSection).not.toContain("GA4 Revenue");
+    expect(liveSection).not.toContain("formatMoney(Number(r?.revenue || 0))");
+    expect(liveEventsSection).not.toContain("GA4 Revenue");
+    expect(liveEventsSection).not.toContain("formatMoney(Number(r?.revenue || 0))");
+    expect(browserPdfSection).not.toContain("GA4 REVENUE");
+    expect(browserPdfSection).not.toContain("fC(Number(r?.revenue || 0))");
+    expect(browserPdfEventsSection).not.toContain("GA4 REVENUE");
+    expect(browserPdfEventsSection).not.toContain("fC(Number(r?.revenue || 0))");
+    expect(scheduledPdfSection).not.toContain("GA4 REVENUE");
+    expect(scheduledPdfSection).not.toContain("formatMoney(Number(row?.revenue || 0))");
+    expect(scheduledPdfEventsSection).not.toContain("GA4 REVENUE");
+    expect(scheduledPdfEventsSection).not.toContain("formatMoney(Number(row?.revenue || 0))");
+  });
+
   it("lets mapped GA4 revenue sources create campaign breakdown rows when GA4 rows are missing", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const pdf = readServer("ga4-scheduled-report-pdf.ts");

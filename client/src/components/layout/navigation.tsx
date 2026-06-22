@@ -180,12 +180,23 @@ export default function Navigation() {
 
       if (campaignId && itemId) {
         try {
+          if (rawUrl) {
+            const baseUrl = new URL(rawUrl, window.location.origin);
+            if (baseUrl.origin === window.location.origin && baseUrl.pathname.startsWith(`/campaigns/${campaignId}/`)) {
+              baseUrl.searchParams.set('tab', isBenchmark ? 'benchmarks' : 'kpis');
+              baseUrl.searchParams.set('highlight', itemId);
+              navigateFromBell(`${baseUrl.pathname}${baseUrl.search}`);
+              return;
+            }
+          }
+        } catch {
+          // Fall through to legacy handling below
+        }
+        try {
           const baseUrl = rawUrl
             ? new URL(rawUrl, window.location.origin)
             : new URL(`/campaigns/${campaignId}/ga4-metrics`, window.location.origin);
-          const isGa4 = baseUrl.pathname.includes('ga4-metrics');
-          const platformPath = isGa4 ? 'ga4-metrics' : 'linkedin-analytics';
-          baseUrl.pathname = `/campaigns/${campaignId}/${platformPath}`;
+          baseUrl.pathname = `/campaigns/${campaignId}/${baseUrl.pathname.includes('ga4-metrics') ? 'ga4-metrics' : 'linkedin-analytics'}`;
           baseUrl.searchParams.set('tab', isBenchmark ? 'benchmarks' : 'kpis');
           baseUrl.searchParams.set('highlight', itemId);
           navigateFromBell(`${baseUrl.pathname}${baseUrl.search}`);

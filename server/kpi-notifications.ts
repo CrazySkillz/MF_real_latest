@@ -72,17 +72,19 @@ async function getLinkedInWindowKey(campaignId: string): Promise<string | null> 
  */
 
 function buildKPIActionUrl(kpi: KPI): string {
+  const campaignId = String((kpi as any)?.campaignId || "").trim();
+  const id = String((kpi as any)?.id || "").trim();
   const platform = String((kpi as any)?.platformType || "").trim().toLowerCase();
 
   if (platform === "google_analytics") {
-    return kpi.campaignId
-      ? `/campaigns/${kpi.campaignId}/ga4-metrics?tab=kpis&highlight=${kpi.id}`
-      : `/ga4-metrics?tab=kpis&highlight=${kpi.id}`;
+    return campaignId && id
+      ? `/campaigns/${campaignId}/ga4-metrics?tab=kpis&highlight=${id}`
+      : "/notifications";
   }
 
-  return kpi.campaignId
-    ? `/campaigns/${kpi.campaignId}/linkedin-analytics?tab=kpis&highlight=${kpi.id}`
-    : `/linkedin-analytics?tab=kpis&highlight=${kpi.id}`;
+  return campaignId
+    ? `/campaigns/${campaignId}/linkedin-analytics?tab=kpis&highlight=${id}`
+    : `/linkedin-analytics?tab=kpis&highlight=${id}`;
 }
 
 /**

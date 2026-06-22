@@ -196,7 +196,14 @@ Validation completed:
 - `npm test -- server/notification-visibility-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-benchmark-regression.test.ts server/alert-email-regression.test.ts`
 - `npm run check`
 
+Manual validation requirement:
+
+- manual validation is not required for Commit 5 acceptance because the changed behavior is backend route ordering plus React Query notification-cache refetch wiring, covered by the focused regression tests above
+- browser click-through validation remains useful for final readiness evidence, but it is not required to accept the local Commit 5 fix
+
 ### Commit 6: Deep-Link Template Safety
+
+Status: complete.
 
 Fix scope:
 
@@ -224,6 +231,17 @@ Required tests:
 - GA4 KPI bell click preserves the GA4 path
 - GA4 Benchmark bell click preserves the GA4 path
 - Notifications page view action preserves the metadata action URL
+
+Root cause fixed:
+
+- GA4 KPI action URL generation still had a non-campaign `/ga4-metrics` fallback when campaign identity was missing, even though production alert links must be campaign-scoped or fail closed
+- the notification bell click handler rebuilt every KPI/Benchmark metadata link into either `ga4-metrics` or `linkedin-analytics`; this preserved current GA4 links only by path sniffing and would rewrite valid campaign-scoped metadata links for other connected-platform templates
+- the Notifications page view action already preserved the metadata action URL path and now has regression coverage proving that behavior
+
+Validation completed:
+
+- `npm test -- server/notification-visibility-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-benchmark-regression.test.ts`
+- `npm run check`
 
 ### Commit 7: Numeric Capacity Hardening
 
@@ -300,11 +318,13 @@ Proven locally:
 - Commit 4 moved immediate and scheduled KPI/Benchmark email alert checks onto the same campaign current-value resolver used by in-app alert checks, preserved email throttling before send attempts, kept invalid values fail-closed, and kept immediate email hooks on the current GA4 KPI/Benchmark create/update routes
 - Commit 4 does not require manual validation for local acceptance; actual provider delivery and inbox receipt remain final deployed-evidence items
 - Commit 5 makes GA4 KPI create/update routes await in-app alert reconciliation before responding, proves GA4 Benchmark create/update routes preserve awaited reconciliation, and refreshes `/api/notifications` after GA4 KPI/Benchmark create, update, and delete mutations
+- Commit 5 does not require manual validation for local acceptance; final browser click-through evidence remains part of the final readiness pass
+- Commit 6 makes GA4 KPI action URLs fail closed to `/notifications` when campaign/item identity is missing, preserves campaign-scoped metadata action URLs in bell navigation, and regression-covers Notifications page action URL preservation
 
 Partially reviewed:
 
-- existing code traces identified remaining gaps in notification raw-row visibility checks, bell deep-link rewriting, numeric capacity, final build validation, and deployed/manual evidence
-- the lifecycle matrix above defines the paths that must be proven by Commits 6 through 8 before GA4 readiness can be claimed
+- existing code traces identified remaining gaps in notification raw-row visibility checks, numeric capacity, final build validation, and deployed/manual evidence
+- the lifecycle matrix above defines the paths that must be proven by Commits 7 through 8 before GA4 readiness can be claimed
 
 Not locally verifiable yet:
 
@@ -315,7 +335,7 @@ Not locally verifiable yet:
 
 Not production-ready yet:
 
-- GA4 KPI/Benchmark alerts and notifications must complete Commits 6 through 8 and the required validation pass before this document can mark them production-ready
+- GA4 KPI/Benchmark alerts and notifications must complete Commits 7 through 8 and the required validation pass before this document can mark them production-ready
 - Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration must each pass this same lifecycle with source-specific evidence before their KPI/Benchmark alert and notification behavior can be marked production-ready
 
 ## Cross-Platform Template Rules

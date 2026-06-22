@@ -149,4 +149,50 @@ describe("notification visibility regression guard", () => {
       expect(mutation).toContain("await refreshNotificationQueries();");
     }
   });
+
+  it("preserves campaign-scoped metadata action URLs in bell navigation", () => {
+    const navigationFile = readFileSync(
+      join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),
+      "utf-8"
+    );
+
+    const preserveIndex = navigationFile.indexOf("baseUrl.pathname.startsWith(`/campaigns/${campaignId}/`)");
+    const legacyRewriteIndex = navigationFile.indexOf("baseUrl.pathname = `/campaigns/${campaignId}/${baseUrl.pathname.includes('ga4-metrics') ? 'ga4-metrics' : 'linkedin-analytics'}`;");
+
+    expect(preserveIndex).toBeGreaterThan(-1);
+    expect(legacyRewriteIndex).toBeGreaterThan(preserveIndex);
+    expect(navigationFile).toContain("navigateFromBell(`${baseUrl.pathname}${baseUrl.search}`);");
+    expect(navigationFile).not.toContain("const platformPath = isGa4 ? 'ga4-metrics' : 'linkedin-analytics';");
+  });
+
+  it("preserves metadata action URLs from the Notifications page view action", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+    const actionStart = notificationsPage.indexOf("const rawUrl = String(metadata?.actionUrl || \"\");");
+    const actionEnd = notificationsPage.indexOf("if (metadata?.actionUrl)", actionStart);
+    const actionSection = notificationsPage.slice(actionStart, actionEnd);
+
+    expect(actionStart).toBeGreaterThan(-1);
+    expect(actionEnd).toBeGreaterThan(actionStart);
+    expect(actionSection).toContain("const baseUrl = rawUrl");
+    expect(actionSection).toContain("new URL(rawUrl, window.location.origin)");
+    expect(actionSection).toContain("setLocation(`${baseUrl.pathname}${baseUrl.search}`);");
+    expect(actionSection).not.toContain("linkedin-analytics");
+  });
+
+  it("keeps GA4 KPI alert action URLs campaign-scoped and fail-closed", () => {
+    const kpiNotificationsFile = readFileSync(
+      join(process.cwd(), "server", "kpi-notifications.ts"),
+      "utf-8"
+    );
+
+    expect(kpiNotificationsFile).toContain('const campaignId = String((kpi as any)?.campaignId || "").trim();');
+    expect(kpiNotificationsFile).toContain('const id = String((kpi as any)?.id || "").trim();');
+    expect(kpiNotificationsFile).toContain('if (platform === "google_analytics") {');
+    expect(kpiNotificationsFile).toContain("? `/campaigns/${campaignId}/ga4-metrics?tab=kpis&highlight=${id}`");
+    expect(kpiNotificationsFile).toContain(': "/notifications";');
+    expect(kpiNotificationsFile).not.toContain("`/ga4-metrics?tab=kpis&highlight=${kpi.id}`");
+  });
 });

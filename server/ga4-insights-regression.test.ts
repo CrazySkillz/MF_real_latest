@@ -205,4 +205,22 @@ describe("GA4 Insights regression guard", () => {
     expect(pdfContent).toContain("Review source and medium mix for the largest acquisition-channel changes.");
     expect(pdfContent).not.toContain("dropped first");
   });
+
+  it("keeps GA4 Insights report output aligned with grouped and evidence-aware findings", () => {
+    const content = ga4MetricsFile();
+    const renderStart = content.indexOf("const renderInsightsSection = () => {");
+    const renderEnd = content.indexOf("// ========== KPIs ==========", renderStart);
+    const renderSection = content.slice(renderStart, renderEnd);
+
+    expect(renderStart).toBeGreaterThan(-1);
+    expect(renderEnd).toBeGreaterThan(renderStart);
+    expect(renderSection).toContain("const actionDescLines = wrapPdfText(String(insightsActionDescription || \"\")");
+    expect(renderSection).toContain("const groupedTop = INSIGHT_CATEGORY_GROUPS.map((group) => ({");
+    expect(renderSection).toContain("items: top.filter((i: any) => i.category === group.key)");
+    expect(renderSection).toContain("for (const group of groupedTop)");
+    expect(renderSection).toContain("doc.text(group.label");
+    expect(renderSection).toContain("const meta = [basis ? `Basis: ${basis}` : \"\", confidence ? `Confidence: ${confidence}` : \"\"].filter(Boolean).join(\" | \");");
+    expect(renderSection).toContain("Recommended check: ${rec}");
+    expect(renderSection).toContain("renderInsightCard(item)");
+  });
 });

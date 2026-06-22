@@ -73,8 +73,10 @@ Current standard-template output rule:
 - `KPIs` should follow the live KPI order
 - `Benchmarks` should follow the live Benchmark order
 - `Ad Comparison` should follow the live Ad Comparison order
+- `Ad Comparison` report leader cards, chart/table sections, and revenue breakdown should use the same adjusted campaign comparison rows as the live tab, including exact campaign-matched imported revenue and mapped-revenue-created rows
 - `Insights` should follow the live Insights order
 - `Insights` report output should include the same daily-history freshness context as the live Trends section: `Data through`, reporting timezone, and last refreshed timestamp
+- `Insights` report output should keep `What to investigate next` aligned with the live section by printing the history-aware intro, grouped findings, data basis, confidence, and `Recommended check:` wording
 
 ## Custom Report
 

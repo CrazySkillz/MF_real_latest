@@ -149,7 +149,7 @@ Validation:
 
 ### Commit 5: Make Recommendations Explicitly Non-Causal
 
-Status: Implemented and locally validated
+Status: Implemented, locally validated, and user validated
 
 Goal:
 
@@ -171,10 +171,11 @@ Validation:
 - recommendations say what to check first
 - recommendations do not claim a root cause unless the rule directly proves it
 - report output uses the same wording
+- user validation passed after commit `0676dd98`
 
 ### Commit 6: Regression Coverage And Documentation
 
-Status: Not started
+Status: Implemented and locally validated
 
 Goal:
 
@@ -188,9 +189,15 @@ Smallest safe implementation:
   - history-aware intro copy
   - report output compatibility where applicable
 - update `GA4/INSIGHTS.md` after validation
+- align GA4 Insights report output with the live `What to investigate next` intro, grouping, and evidence metadata without changing calculations
 
 Validation:
 
+- local regression guard added for GA4 Insights report output preserving the history-aware intro, grouped findings, data basis, confidence, and `Recommended check:` wording
+- passed `npm test -- --run server/ga4-insights-regression.test.ts`
+- passed `npm test -- --run server/ga4-ui-regression.test.ts`
+- passed `npm run check`
+- passed `git diff --check` for touched Commit 6 files
 - run focused GA4 Insights tests
 - run `npm run check`
 - manually validate with a campaign that has:

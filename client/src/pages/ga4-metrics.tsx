@@ -3565,20 +3565,36 @@ export default function GA4Metrics() {
         if (!insightsOnlyActions) {
           sectionTitle("What to investigate next", C.insights, 24);
         }
+        const actionDescLines = wrapPdfText(String(insightsActionDescription || "").replace(/[^\x20-\x7E]/g, " ").trim(), CW - 8);
+        if (actionDescLines.length > 0) {
+          checkPage(actionDescLines.length * 4.5 + 6);
+          doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+          for (const line of actionDescLines) { doc.text(line, MX + 4, y); y += 4.5; }
+          y += 3;
+        }
         const insightCardTextWidth = CW - 40;
-        for (const item of top) {
+        const groupedTop = INSIGHT_CATEGORY_GROUPS.map((group) => ({
+          ...group,
+          items: top.filter((i: any) => i.category === group.key),
+        })).filter((group) => group.items.length > 0);
+        const renderInsightCard = (item: any) => {
           const sev = String((item as any)?.severity || "info").toLowerCase();
           const title = String((item as any)?.title || "");
+          const basis = String((item as any)?.dataBasis || "").trim();
+          const confidence = String((item as any)?.confidence || "").trim();
+          const meta = [basis ? `Basis: ${basis}` : "", confidence ? `Confidence: ${confidence}` : ""].filter(Boolean).join(" | ");
           const desc = trunc(String((item as any)?.description || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500);
           const rec = trunc(String((item as any)?.recommendation || "").replace(/[^\x20-\x7E]/g, " ").trim(), 500);
           const recText = rec ? `Recommended check: ${rec}` : "";
 
           doc.setFontSize(8); doc.setFont("helvetica", "normal");
+          const metaLines = meta ? wrapPdfText(meta, insightCardTextWidth) : [];
           const descLines = desc ? wrapPdfText(desc, insightCardTextWidth) : [];
           const recLines = recText ? wrapPdfText(recText, insightCardTextWidth) : [];
+          const metaL = metaLines.length;
           const descL = descLines.length;
           const recL = recLines.length;
-          const ch = 16 + descL * 4.5 + (recL > 0 ? recL * 4.5 + 4 : 0) + 4;
+          const ch = 16 + metaL * 4 + (metaL > 0 ? 2 : 0) + descL * 4.5 + (recL > 0 ? recL * 4.5 + 4 : 0) + 4;
           checkPage(ch + 4);
 
           // Card
@@ -3604,6 +3620,12 @@ export default function GA4Metrics() {
           doc.text(trunc(title, 70), MX + 8 + pillW + 4, y + 8);
           let iy = y + 14;
 
+          // Evidence metadata
+          if (metaL > 0) {
+            doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+            for (const l of metaLines) { doc.text(l, MX + 8, iy); iy += 4; }
+            iy += 1;
+          }
           // Description
           if (desc) {
             doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
@@ -3616,6 +3638,13 @@ export default function GA4Metrics() {
             for (const l of recLines) { doc.text(l, MX + 8, iy); iy += 4.5; }
           }
           y += ch + 4;
+        };
+        for (const group of groupedTop) {
+          checkPage(10);
+          doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
+          doc.text(group.label, MX + 4, y);
+          y += 6;
+          for (const item of group.items) renderInsightCard(item);
         }
         if (items.length > top.length) {
           doc.setFontSize(7); doc.setTextColor(...C.textTert);

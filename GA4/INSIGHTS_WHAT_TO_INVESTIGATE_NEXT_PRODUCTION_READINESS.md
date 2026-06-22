@@ -33,7 +33,7 @@ The section should be:
 
 ### Commit 1: Group Findings By Type
 
-Status: Implemented and locally validated
+Status: Implemented, locally validated, and user validated
 
 Goal:
 
@@ -64,10 +64,11 @@ Validation:
 - confirm behind KPI/Benchmark items appear under targets
 - confirm GA4/imported revenue double-count warning appears under revenue and spend checks
 - confirm empty-state behavior still works
+- user validation passed after commit `68189822`
 
 ### Commit 2: Add Invalid KPI/Benchmark Configuration Detection
 
-Status: Not started
+Status: Implemented and locally validated
 
 Goal:
 
@@ -82,9 +83,13 @@ Smallest safe implementation:
 
 Validation:
 
-- percent metrics such as `Engagement Rate` and `Conversion Rate` flag targets above `100%`
-- count, currency, ratio, and percent units reject negative values where not meaningful
-- invalid items do not create misleading behind-target cards
+- local regression guard added for invalid KPI/Benchmark configuration handling
+- passed `npm test -- --run server/ga4-insights-regression.test.ts`
+- passed `npm test -- --run server/ga4-ui-regression.test.ts`
+- passed `npm run check`
+- percent rate metrics such as `Engagement Rate` and `Conversion Rate` flag targets above `100%`
+- count, currency, ratio, and percent values reject non-positive saved target/benchmark values in Insights guidance
+- invalid items do not create misleading behind-target or behind-benchmark cards
 - valid custom KPI/Benchmark values still calculate normally
 
 ### Commit 3: Add Data Basis And Confidence Labels

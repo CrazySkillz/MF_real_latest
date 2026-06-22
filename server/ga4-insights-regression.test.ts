@@ -108,4 +108,28 @@ describe("GA4 Insights regression guard", () => {
     expect(renderSection).toContain("visibleInsights.filter((i) => i.category === group.key)");
     expect(renderSection).toContain("groupInsights.map((i) =>");
   });
+
+  it("flags invalid KPI and Benchmark targets before generating performance guidance", () => {
+    const content = ga4MetricsFile();
+    const helperStart = content.indexOf("const isBoundedRateMetric =");
+    const insightsStart = content.indexOf("const insights = useMemo<InsightItem[]>(() => {");
+    const insightsEnd = content.indexOf("// Collect GA4 campaign names from all imported campaigns", insightsStart);
+    const helperSection = content.slice(helperStart, insightsStart);
+    const insightsSection = content.slice(insightsStart, insightsEnd);
+
+    expect(helperStart).toBeGreaterThan(-1);
+    expect(insightsEnd).toBeGreaterThan(insightsStart);
+    expect(helperSection).toContain('keys.includes("conversionrate") || keys.includes("engagementrate")');
+    expect(helperSection).toContain("value <= 0");
+    expect(helperSection).toContain("value > 100");
+    expect(helperSection).toContain("percentage rate metrics");
+    expect(insightsSection).toContain("const invalidKpis =");
+    expect(insightsSection).toContain("const invalidBenchmarks =");
+    expect(insightsSection).toContain("integrity:kpi_invalid_config");
+    expect(insightsSection).toContain("integrity:bench_invalid_config");
+    expect(insightsSection).toContain("if (getInvalidKpiConfigReason(k)) continue; // invalid KPIs are handled in integrity checks above");
+    expect(insightsSection).toContain("if (getInvalidBenchmarkConfigReason(b)) continue; // invalid benchmarks are handled in integrity checks above");
+    expect(insightsSection).toContain("This KPI is not used for behind-target guidance until the saved target is corrected.");
+    expect(insightsSection).toContain("This Benchmark is not used for behind-benchmark guidance until the saved benchmark value is corrected.");
+  });
 });

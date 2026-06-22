@@ -2360,6 +2360,44 @@ export default function GA4Metrics() {
     if (requiresRevenue && !revenueMetricAvailable) missing.push("Revenue");
     return { requiresSpend, requiresRevenue, missing };
   };
+
+  const isBoundedRateMetric = (metricKey: any, name: any) => {
+    const keys = [metricKey, name].map((value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, ""));
+    return keys.includes("conversionrate") || keys.includes("engagementrate");
+  };
+
+  const getInvalidComparisonConfigReason = (input: {
+    rawValue: any;
+    metricKey: any;
+    name: any;
+    label: "target" | "benchmark";
+  }) => {
+    const raw = stripNumberFormatting(String(input.rawValue ?? ""));
+    const value = Number(raw);
+    const label = input.label === "target" ? "Target" : "Benchmark";
+    if (!raw || !Number.isFinite(value)) return `${label} value must be a valid number.`;
+    if (value <= 0) return `${label} value must be greater than 0.`;
+    if (isBoundedRateMetric(input.metricKey, input.name) && value > 100) {
+      return `${label} value cannot exceed 100% for percentage rate metrics.`;
+    }
+    return "";
+  };
+
+  const getInvalidKpiConfigReason = (kpi: any) =>
+    getInvalidComparisonConfigReason({
+      rawValue: kpi?.targetValue,
+      metricKey: kpi?.metric,
+      name: kpi?.name,
+      label: "target",
+    });
+
+  const getInvalidBenchmarkConfigReason = (benchmark: any) =>
+    getInvalidComparisonConfigReason({
+      rawValue: benchmark?.benchmarkValue,
+      metricKey: benchmark?.metric,
+      name: benchmark?.name,
+      label: "benchmark",
+    });
   // Prefer spend-breakdown total (sums actual spend_records) over spend-to-date (reads campaign.spend column which may be stale/zero).
   // If no spend sources exist at all, force to 0 — the campaign.spend column may be stale after source deletion.
   const hasSpendSources = spendDisplaySources.length > 0;
@@ -4185,6 +4223,20 @@ export default function GA4Metrics() {
       })
       .filter(Boolean) as Array<{ b: any; missing: Array<"Spend" | "Revenue"> }>;
 
+    const invalidKpis = (Array.isArray(platformKPIs) ? platformKPIs : [])
+      .map((k: any) => {
+        const reason = getInvalidKpiConfigReason(k);
+        return reason ? { k, reason } : null;
+      })
+      .filter(Boolean) as Array<{ k: any; reason: string }>;
+
+    const invalidBenchmarks = (Array.isArray(benchmarks) ? benchmarks : [])
+      .map((b: any) => {
+        const reason = getInvalidBenchmarkConfigReason(b);
+        return reason ? { b, reason } : null;
+      })
+      .filter(Boolean) as Array<{ b: any; reason: string }>;
+
     for (const item of blockedKpis) {
       const name = String(item.k?.name || item.k?.metric || "KPI");
       const missingLabel = item.missing.join(" + ");
@@ -4216,6 +4268,28 @@ export default function GA4Metrics() {
             : item.missing.includes("Revenue")
               ? "Add a GA4 revenue metric (if available) or import revenue to resume benchmark tracking."
               : "Add spend-to-date to resume benchmark tracking.",
+      });
+    }
+
+    for (const item of invalidKpis) {
+      const name = String(item.k?.name || item.k?.metric || "KPI");
+      out.push({
+        id: `integrity:kpi_invalid_config:${String(item.k?.id || name)}`,
+        severity: "high",
+        title: `KPI configuration needs review: ${name}`,
+        description: `"${name}" cannot be evaluated reliably. ${item.reason} This KPI is not used for behind-target guidance until the saved target is corrected.`,
+        recommendation: "Edit the KPI target, then recheck Insights before making budget, creative, or landing-page decisions from this KPI.",
+      });
+    }
+
+    for (const item of invalidBenchmarks) {
+      const name = String(item.b?.name || getBenchmarkMetricLabel(String(item.b?.metric || ""), "Benchmark"));
+      out.push({
+        id: `integrity:bench_invalid_config:${String(item.b?.id || name)}`,
+        severity: "high",
+        title: `Benchmark configuration needs review: ${name}`,
+        description: `"${name}" cannot be evaluated reliably. ${item.reason} This Benchmark is not used for behind-benchmark guidance until the saved benchmark value is corrected.`,
+        recommendation: "Edit the Benchmark value, then recheck Insights before making budget, creative, or landing-page decisions from this Benchmark.",
       });
     }
 
@@ -4311,6 +4385,7 @@ export default function GA4Metrics() {
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
       const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
       if (deps.missing.length > 0) continue; // blocked KPIs are handled in integrity checks above
+      if (getInvalidKpiConfigReason(k)) continue; // invalid KPIs are handled in integrity checks above
       const p = computeKpiProgress(k);
       const attPct = p?.attainmentPct ?? 100;
       if (attPct >= KPI_NEEDS_ATTENTION_PCT) continue; // Only flag KPIs below attainment threshold
@@ -4400,6 +4475,7 @@ export default function GA4Metrics() {
     for (const b of Array.isArray(benchmarks) ? benchmarks : []) {
       const deps = getMissingDependenciesForMetric(String((b as any)?.metric || ""));
       if (deps.missing.length > 0) continue; // blocked benchmarks are handled in integrity checks above
+      if (getInvalidBenchmarkConfigReason(b)) continue; // invalid benchmarks are handled in integrity checks above
       const p = computeBenchmarkProgress(b);
       const status = String(p?.status || "");
       if (status !== "behind" && status !== "needs_attention") continue;
@@ -4704,6 +4780,7 @@ export default function GA4Metrics() {
     for (const k of Array.isArray(platformKPIs) ? platformKPIs : []) {
       const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
       if (deps.missing.length > 0) continue;
+      if (getInvalidKpiConfigReason(k)) continue;
       const p = computeKpiProgress(k);
       const attPct = p?.attainmentPct ?? 0;
       if (attPct >= POSITIVE_KPI_EXCEEDS_PCT) {

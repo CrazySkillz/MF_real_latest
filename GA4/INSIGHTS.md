@@ -218,6 +218,8 @@ Important meaning:
 - the findings list is a merged output from one insights engine
 - it combines integrity/config checks, KPI context, benchmark context, anomaly signals, and financial/performance context
 - not every item is a negative alert; the list can also contain positive or informational items
+- live UI findings are grouped by investigation type so setup problems, off-track targets, trend signals, revenue/spend checks, and informational context are easier to scan
+- invalid saved KPI or Benchmark targets should appear as configuration findings before performance conclusions; invalid items must not also create normal behind-target or behind-benchmark guidance
 
 ## Current Limits Of Recommendations
 

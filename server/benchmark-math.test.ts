@@ -128,4 +128,16 @@ describe("benchmark threshold math (shared)", () => {
     expect(result.lowerIsBetter).toBe(true);
     expect(result.status).toBe("behind");
   });
+
+  it("does not classify zero lower-is-better current values as healthy before sufficiency checks run", () => {
+    const result = computeBenchmarkThresholdResult({
+      metric: "CPA",
+      unit: "currency",
+      current: 0,
+      benchmarkValue: 100,
+    });
+
+    expect(result.ratio).toBe(0);
+    expect(result.status).toBe("behind");
+  });
 });

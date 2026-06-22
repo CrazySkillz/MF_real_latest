@@ -5,7 +5,6 @@ import {
   computeRoiPercent,
   computeRoasPercent,
   normalizeRateToPercent,
-  computeProgress,
 } from "../shared/metric-math";
 import {
   isLowerIsBetterKpi,
@@ -13,6 +12,7 @@ import {
   classifyKpiBand,
   computeAttainmentPct,
   computeAttainmentFillPct,
+  computeBenchmarkThresholdResult,
 } from "../shared/kpi-math";
 
 // --- Inlined from ga4-kpi-benchmark-jobs.ts (avoids importing heavy storage/analytics modules) ---
@@ -271,40 +271,39 @@ describe("KPI tab: progress scenarios (band, attainment, bar color)", () => {
 });
 
 // =============================================================
-// 5. Benchmark tab: progress with ratio-based thresholds
+// 5. Benchmark tab: progress with shared benchmark policy
 // =============================================================
 describe("Benchmark tab: computeBenchmarkProgress scenarios", () => {
-  // Simulates the client-side computeBenchmarkProgress logic using computeProgress
-  // Thresholds: ratio >= 0.9 => on_track, >= 0.7 => needs_attention, < 0.7 => behind
+  // Mirrors the GA4 computeBenchmarkProgress path, which delegates status to shared benchmark policy.
 
-  it("Sessions: current=750, benchmark=800 => on_track (ratio=0.9375)", () => {
-    const p = computeProgress({ current: 750, target: 800, lowerIsBetter: false });
+  it("Sessions: current=750, benchmark=800 => needs_attention (outside count tolerance)", () => {
+    const p = computeBenchmarkThresholdResult({ metric: "sessions", unit: "count", current: 750, benchmarkValue: 800 });
     expect(p.ratio).toBeCloseTo(0.9375, 4);
-    expect(p.status).toBe("on_track");
+    expect(p.status).toBe("needs_attention");
   });
 
   it("Revenue: current=2850, benchmark=5000 => behind (ratio=0.57)", () => {
-    const p = computeProgress({ current: 2850, target: 5000, lowerIsBetter: false });
+    const p = computeBenchmarkThresholdResult({ metric: "revenue", unit: "$", current: 2850, benchmarkValue: 5000 });
     expect(p.ratio).toBeCloseTo(0.57, 2);
     expect(p.status).toBe("behind");
   });
 
   it("CPA (lower-is-better): current=25, benchmark=30 => on_track", () => {
     // For lower-is-better, ratio = benchmark/current = 30/25 = 1.2
-    const p = computeProgress({ current: 25, target: 30, lowerIsBetter: true });
-    expect(p.ratio).toBeGreaterThanOrEqual(0.9);
+    const p = computeBenchmarkThresholdResult({ metric: "cpa", unit: "$", current: 25, benchmarkValue: 30 });
+    expect(p.ratio).toBeGreaterThanOrEqual(1.2);
     expect(p.status).toBe("on_track");
   });
 
   it("CPA (lower-is-better): current=50, benchmark=30 => behind", () => {
     // ratio = 30/50 = 0.6
-    const p = computeProgress({ current: 50, target: 30, lowerIsBetter: true });
+    const p = computeBenchmarkThresholdResult({ metric: "cpa", unit: "$", current: 50, benchmarkValue: 30 });
     expect(p.ratio).toBeCloseTo(0.6, 2);
     expect(p.status).toBe("behind");
   });
 
   it("Revenue: current=2850, benchmark=3500 => needs_attention (ratio=0.814)", () => {
-    const p = computeProgress({ current: 2850, target: 3500, lowerIsBetter: false });
+    const p = computeBenchmarkThresholdResult({ metric: "revenue", unit: "$", current: 2850, benchmarkValue: 3500 });
     expect(p.ratio).toBeCloseTo(0.8143, 2);
     expect(p.status).toBe("needs_attention");
   });

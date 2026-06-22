@@ -185,12 +185,10 @@ export function resolveBenchmarkThresholdPolicy(opts: {
 }
 
 export function computeBenchmarkAttainmentRatio(opts: { current: number; benchmarkValue: number; lowerIsBetter: boolean }): number | null {
-  const pct = computeAttainmentPct({
-    current: opts.current,
-    target: opts.benchmarkValue,
-    lowerIsBetter: opts.lowerIsBetter,
-  });
-  return pct === null ? null : pct / 100;
+  const current = Number.isFinite(opts.current) ? opts.current : 0;
+  const benchmarkValue = Number.isFinite(opts.benchmarkValue) ? opts.benchmarkValue : 0;
+  if (benchmarkValue <= 0) return null;
+  return opts.lowerIsBetter ? (current > 0 ? benchmarkValue / current : 0) : current / benchmarkValue;
 }
 
 export function classifyBenchmarkStatusWithPolicy(opts: {
@@ -201,6 +199,7 @@ export function classifyBenchmarkStatusWithPolicy(opts: {
 }): BenchmarkThresholdStatus | null {
   const ratio = computeBenchmarkAttainmentRatio(opts);
   if (ratio === null) return null;
+  if (ratio <= FLOAT_EPSILON) return "behind";
 
   const effectiveDeltaPct = computeEffectiveDeltaPct({
     current: opts.current,

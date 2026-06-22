@@ -34,7 +34,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct } from "@shared/metric-math";
-import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency } from "@shared/kpi-math";
+import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult } from "@shared/kpi-math";
 
 interface Campaign {
   id: string;
@@ -2537,39 +2537,26 @@ export default function GA4Metrics() {
     const safeCurrent = Number.isFinite(current) ? current : 0;
     const safeBench = Number.isFinite(bench) ? bench : 0;
 
-    const metricKey = String((benchmark as any)?.metric || (benchmark as any)?.name || "").toLowerCase();
-    const lowerIsBetter = metricKey === "cpa" || metricKey.includes("cpa");
-
-    let ratio = 0;
-    if (lowerIsBetter) {
-      ratio = safeCurrent > 0 ? (safeBench / safeCurrent) : 0;
-    } else {
-      ratio = safeBench > 0 ? (safeCurrent / safeBench) : 0;
-    }
-
-    const pct = Math.max(0, Math.min(ratio * 100, 100));
-    const status =
-      ratio >= 0.9 ? "on_track" :
-        ratio >= 0.7 ? "needs_attention" :
-          "behind";
+    const result = computeBenchmarkThresholdResult({
+      metric: String((benchmark as any)?.metric || ""),
+      name: String((benchmark as any)?.name || ""),
+      unit: String((benchmark as any)?.unit || ""),
+      current: safeCurrent,
+      benchmarkValue: safeBench,
+    });
+    const status = result.status || "behind";
     const color =
-      ratio >= 0.9 ? "bg-green-500" :
-        ratio >= 0.7 ? "bg-yellow-500" :
+      status === "on_track" ? "bg-green-500" :
+        status === "needs_attention" ? "bg-yellow-500" :
           "bg-red-500";
 
-    // Positive means "better than benchmark" (direction-aware).
-    const deltaPct =
-      safeBench > 0
-        ? (lowerIsBetter ? ((safeBench - safeCurrent) / safeBench) * 100 : ((safeCurrent - safeBench) / safeBench) * 100)
-        : 0;
-
     return {
-      ratio,
-      pct,
-      labelPct: pct.toFixed(1),
+      ratio: result.ratio || 0,
+      pct: result.pct,
+      labelPct: result.labelPct,
       status,
       color,
-      deltaPct,
+      deltaPct: result.effectiveDeltaPct || 0,
     };
   };
 
@@ -7019,7 +7006,7 @@ export default function GA4Metrics() {
                                   <div>
                                     <p className="text-sm text-muted-foreground/70">On Track</p>
                                     <p className="text-2xl font-bold text-green-600">{benchmarkTracker.onTrack}</p>
-                                    <p className="text-xs text-muted-foreground">90% or more of benchmark</p>
+                                    <p className="text-xs text-muted-foreground">within benchmark tolerance</p>
                                   </div>
                                   <CheckCircle2 className="w-8 h-8 text-green-500" />
                                 </div>
@@ -7032,7 +7019,7 @@ export default function GA4Metrics() {
                                   <div>
                                     <p className="text-sm text-muted-foreground/70">Needs Attention</p>
                                     <p className="text-2xl font-bold text-amber-600">{benchmarkTracker.needsAttention}</p>
-                                    <p className="text-xs text-muted-foreground">70% to under 90% of benchmark</p>
+                                    <p className="text-xs text-muted-foreground">moderate benchmark miss</p>
                                   </div>
                                   <AlertCircle className="w-8 h-8 text-amber-500" />
                                 </div>
@@ -7045,7 +7032,7 @@ export default function GA4Metrics() {
                                   <div>
                                     <p className="text-sm text-muted-foreground/70">Behind</p>
                                     <p className="text-2xl font-bold text-red-600">{benchmarkTracker.behind}</p>
-                                    <p className="text-xs text-muted-foreground">below 70% of benchmark</p>
+                                    <p className="text-xs text-muted-foreground">material benchmark miss</p>
                                   </div>
                                   <AlertTriangle className="w-8 h-8 text-red-500" />
                                 </div>

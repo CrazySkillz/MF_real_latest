@@ -260,6 +260,13 @@ Validation:
 - focused benchmark math tests
 - `npm run check`
 
+Status:
+
+- Completed in commit `e07f53bc` (`Add shared benchmark threshold policy`).
+- Validation passed locally with `npm test -- server/benchmark-math.test.ts server/kpi-math.test.ts server/metric-math.test.ts server/ga4-cross-tab-consistency.test.ts` (`141` tests passed).
+- `npm run check` passed.
+- Commit 1 intentionally did not wire GA4 UI, reports, Executive Summary, or scheduler paths to the shared benchmark policy.
+
 ### Commit 2 - Wire GA4 Benchmark Tab To Shared Policy
 
 Goal:

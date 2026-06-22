@@ -1,10 +1,28 @@
 export type KpiBand = "above" | "near" | "below";
 export type KpiThresholdPolicyKind = "count" | "rate" | "revenue" | "ratio" | "cost" | "generic";
+export type BenchmarkThresholdStatus = "on_track" | "needs_attention" | "behind";
+export type BenchmarkThresholdDirection = "higher_is_better" | "lower_is_better";
 
 export type KpiThresholdPolicy = {
   kind: KpiThresholdPolicyKind;
   nearTargetBandPct: number;
   absoluteTolerance: number;
+};
+export type BenchmarkThresholdPolicy = {
+  kind: KpiThresholdPolicyKind;
+  direction: BenchmarkThresholdDirection;
+  onTrackTolerancePct: number;
+  absoluteTolerance: number;
+  behindThresholdPct: number;
+};
+export type BenchmarkThresholdResult = {
+  policy: BenchmarkThresholdPolicy;
+  status: BenchmarkThresholdStatus | null;
+  ratio: number | null;
+  pct: number;
+  labelPct: string;
+  effectiveDeltaPct: number | null;
+  lowerIsBetter: boolean;
 };
 export type KpiDataSufficiencyCode = "insufficient_sessions" | "insufficient_conversions" | "insufficient_spend";
 
@@ -20,6 +38,8 @@ const REVENUE_HINTS = ["revenue", "sales", "profit", "value"];
 const RATIO_HINTS = ["roas", "roi", "ratio"];
 const COUNT_HINTS = ["conversion", "conversions", "users", "sessions", "leads", "events", "count"];
 const DEFAULT_NEAR_TARGET_BAND_PCT = 5;
+const DEFAULT_BENCHMARK_BEHIND_THRESHOLD_PCT = 70;
+const FLOAT_EPSILON = 1e-9;
 
 export function isLowerIsBetterKpi(opts: { metric?: string | null; name?: string | null }): boolean {
   const metric = String(opts.metric || "").toLowerCase();
@@ -115,6 +135,128 @@ export function resolveKpiThresholdPolicy(opts: {
   }
 
   return { kind: "generic", nearTargetBandPct: defaultBand, absoluteTolerance: 0 };
+}
+
+export function isLowerIsBetterBenchmark(opts: { metric?: string | null; name?: string | null }): boolean {
+  return isLowerIsBetterKpi(opts);
+}
+
+export function resolveBenchmarkThresholdPolicy(opts: {
+  metric?: string | null;
+  name?: string | null;
+  unit?: string | null;
+  benchmarkValue: number;
+  currentValue?: number;
+  lowerIsBetter?: boolean;
+  defaultOnTrackTolerancePct?: number;
+  behindThresholdPct?: number;
+  legacyRatioPolicy?: boolean;
+}): BenchmarkThresholdPolicy {
+  const lowerIsBetter = opts.lowerIsBetter ?? isLowerIsBetterBenchmark({ metric: opts.metric, name: opts.name });
+  const behindThresholdPct = Math.max(0, Number(opts.behindThresholdPct ?? DEFAULT_BENCHMARK_BEHIND_THRESHOLD_PCT));
+
+  if (opts.legacyRatioPolicy) {
+    return {
+      kind: "generic",
+      direction: lowerIsBetter ? "lower_is_better" : "higher_is_better",
+      onTrackTolerancePct: 10,
+      absoluteTolerance: 0,
+      behindThresholdPct,
+    };
+  }
+
+  const kpiPolicy = resolveKpiThresholdPolicy({
+    metric: opts.metric,
+    name: opts.name,
+    unit: opts.unit,
+    target: opts.benchmarkValue,
+    current: opts.currentValue,
+    lowerIsBetter,
+    defaultNearTargetBandPct: opts.defaultOnTrackTolerancePct ?? DEFAULT_NEAR_TARGET_BAND_PCT,
+  });
+
+  return {
+    kind: kpiPolicy.kind,
+    direction: lowerIsBetter ? "lower_is_better" : "higher_is_better",
+    onTrackTolerancePct: kpiPolicy.nearTargetBandPct,
+    absoluteTolerance: kpiPolicy.absoluteTolerance,
+    behindThresholdPct,
+  };
+}
+
+export function computeBenchmarkAttainmentRatio(opts: { current: number; benchmarkValue: number; lowerIsBetter: boolean }): number | null {
+  const pct = computeAttainmentPct({
+    current: opts.current,
+    target: opts.benchmarkValue,
+    lowerIsBetter: opts.lowerIsBetter,
+  });
+  return pct === null ? null : pct / 100;
+}
+
+export function classifyBenchmarkStatusWithPolicy(opts: {
+  current: number;
+  benchmarkValue: number;
+  lowerIsBetter: boolean;
+  policy: BenchmarkThresholdPolicy;
+}): BenchmarkThresholdStatus | null {
+  const ratio = computeBenchmarkAttainmentRatio(opts);
+  if (ratio === null) return null;
+
+  const effectiveDeltaPct = computeEffectiveDeltaPct({
+    current: opts.current,
+    target: opts.benchmarkValue,
+    lowerIsBetter: opts.lowerIsBetter,
+  });
+  if (effectiveDeltaPct === null) return null;
+
+  const rawDelta = computeDelta(opts.current, opts.benchmarkValue);
+  const effectiveDelta = rawDelta === null ? null : opts.lowerIsBetter ? -rawDelta : rawDelta;
+  const absoluteTolerance = Math.max(0, Number(opts.policy.absoluteTolerance || 0));
+  if (effectiveDelta !== null && Math.abs(effectiveDelta) <= absoluteTolerance + FLOAT_EPSILON) return "on_track";
+
+  const onTrackTolerancePct = Math.max(0, Number(opts.policy.onTrackTolerancePct || 0));
+  if (effectiveDeltaPct + FLOAT_EPSILON >= -onTrackTolerancePct) return "on_track";
+
+  const behindThresholdRatio = Math.max(0, Number(opts.policy.behindThresholdPct || 0)) / 100;
+  return ratio + FLOAT_EPSILON < behindThresholdRatio ? "behind" : "needs_attention";
+}
+
+export function computeBenchmarkThresholdResult(opts: {
+  metric?: string | null;
+  name?: string | null;
+  unit?: string | null;
+  current: number;
+  benchmarkValue: number;
+  lowerIsBetter?: boolean;
+  defaultOnTrackTolerancePct?: number;
+  behindThresholdPct?: number;
+  legacyRatioPolicy?: boolean;
+}): BenchmarkThresholdResult {
+  const lowerIsBetter = opts.lowerIsBetter ?? isLowerIsBetterBenchmark({ metric: opts.metric, name: opts.name });
+  const policy = resolveBenchmarkThresholdPolicy({
+    metric: opts.metric,
+    name: opts.name,
+    unit: opts.unit,
+    benchmarkValue: opts.benchmarkValue,
+    currentValue: opts.current,
+    lowerIsBetter,
+    defaultOnTrackTolerancePct: opts.defaultOnTrackTolerancePct,
+    behindThresholdPct: opts.behindThresholdPct,
+    legacyRatioPolicy: opts.legacyRatioPolicy,
+  });
+  const ratio = computeBenchmarkAttainmentRatio({ current: opts.current, benchmarkValue: opts.benchmarkValue, lowerIsBetter });
+  const pct = ratio === null ? 0 : Math.max(0, Math.min(ratio * 100, 100));
+  const status = classifyBenchmarkStatusWithPolicy({ current: opts.current, benchmarkValue: opts.benchmarkValue, lowerIsBetter, policy });
+
+  return {
+    policy,
+    status,
+    ratio,
+    pct,
+    labelPct: pct.toFixed(1),
+    effectiveDeltaPct: computeEffectiveDeltaPct({ current: opts.current, target: opts.benchmarkValue, lowerIsBetter }),
+    lowerIsBetter,
+  };
 }
 
 export function classifyKpiBandWithPolicy(opts: {

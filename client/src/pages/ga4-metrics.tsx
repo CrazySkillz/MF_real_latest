@@ -34,7 +34,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct } from "@shared/metric-math";
-import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBand, computeAttainmentPct, computeAttainmentFillPct } from "@shared/kpi-math";
+import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 
 interface Campaign {
   id: string;
@@ -2483,8 +2483,6 @@ export default function GA4Metrics() {
     return String(kpi?.currentValue ?? "0.00");
   };
 
-  const NEAR_TARGET_BAND_PCT = 5;
-
   const computeKpiProgress = (kpi: any) => {
     const current = parseFloat(String(getLiveKpiValue(kpi) || "0"));
     const safeCurrent = Number.isFinite(current) ? current : 0;
@@ -2494,9 +2492,15 @@ export default function GA4Metrics() {
     const name = String(kpi?.metric || kpi?.name || "");
     const lowerIsBetter = isLowerIsBetterKpi({ metric: name, name: kpi?.name });
     const effectiveDeltaPctVal = computeEffectiveDeltaPct({ current: safeCurrent, target: safeTarget, lowerIsBetter });
-    const band = effectiveDeltaPctVal !== null
-      ? classifyKpiBand({ effectiveDeltaPct: effectiveDeltaPctVal, nearTargetBandPct: NEAR_TARGET_BAND_PCT })
-      : "below" as const;
+    const policy = resolveKpiThresholdPolicy({
+      metric: name,
+      name: kpi?.name,
+      unit: kpi?.unit,
+      current: safeCurrent,
+      target: safeTarget,
+      lowerIsBetter,
+    });
+    const band = classifyKpiBandWithPolicy({ current: safeCurrent, target: safeTarget, lowerIsBetter, policy }) ?? ("below" as const);
     const attainmentPct = computeAttainmentPct({ current: safeCurrent, target: safeTarget, lowerIsBetter });
     const fillPct = attainmentPct !== null ? computeAttainmentFillPct(attainmentPct) : 0;
     const progressColor =
@@ -6264,7 +6268,7 @@ export default function GA4Metrics() {
                                     <div>
                                       <p className="text-sm text-muted-foreground/70">Above Target</p>
                                       <p className="text-2xl font-bold text-green-600">{kpiTracker.above}</p>
-                                      <p className="text-xs text-muted-foreground">more than +5% above target</p>
+                                      <p className="text-xs text-muted-foreground">better than target tolerance</p>
                                     </div>
                                     <TrendingUp className="w-8 h-8 text-green-500" />
                                   </div>
@@ -6276,7 +6280,7 @@ export default function GA4Metrics() {
                                     <div>
                                       <p className="text-sm text-muted-foreground/70">On Track</p>
                                       <p className="text-2xl font-bold text-blue-600">{kpiTracker.near}</p>
-                                      <p className="text-xs text-muted-foreground">within ±5% of target</p>
+                                      <p className="text-xs text-muted-foreground">within metric-aware tolerance</p>
                                     </div>
                                     <CheckCircle2 className="w-8 h-8 text-blue-500" />
                                   </div>
@@ -6288,7 +6292,7 @@ export default function GA4Metrics() {
                                     <div>
                                       <p className="text-sm text-muted-foreground/70">Below Target</p>
                                       <p className="text-2xl font-bold text-red-600">{kpiTracker.below}</p>
-                                      <p className="text-xs text-muted-foreground">more than −5% below target</p>
+                                      <p className="text-xs text-muted-foreground">outside target tolerance</p>
                                     </div>
                                     <AlertCircle className="w-8 h-8 text-red-500" />
                                   </div>

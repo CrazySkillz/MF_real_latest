@@ -15,6 +15,23 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
     expect(ga4MetricsFile).toContain("financialRevenue, financialROI, financialCPA");
   });
 
+  it("wires GA4 KPI summary bands to the shared metric-aware threshold policy", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+
+    expect(ga4MetricsFile).toContain("resolveKpiThresholdPolicy");
+    expect(ga4MetricsFile).toContain("classifyKpiBandWithPolicy");
+    expect(ga4MetricsFile).toContain("const policy = resolveKpiThresholdPolicy({");
+    expect(ga4MetricsFile).toContain("const band = classifyKpiBandWithPolicy({ current: safeCurrent, target: safeTarget, lowerIsBetter, policy })");
+    expect(ga4MetricsFile).not.toContain("const NEAR_TARGET_BAND_PCT = 5");
+    expect(ga4MetricsFile).not.toContain("within ±5% of target");
+    expect(ga4MetricsFile).not.toContain("more than +5% above target");
+    expect(ga4MetricsFile).not.toContain("more than −5% below target");
+    expect(ga4MetricsFile).toContain("within metric-aware tolerance");
+  });
+
   it("prefills benchmark edit current value from the live current-value path", () => {
     const ga4MetricsFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),

@@ -119,6 +119,13 @@ describe("kpi math (shared)", () => {
     expect(classifyKpiBandWithPolicy({ current: 1.76, target: 2, lowerIsBetter: false, policy })).toBe("below");
   });
 
+  it("recognizes custom ratio units", () => {
+    const policy = resolveKpiThresholdPolicy({ metric: "Custom Efficiency", unit: "ratio", target: 2, current: 1.95 });
+
+    expect(policy).toMatchObject({ kind: "ratio", nearTargetBandPct: 5, absoluteTolerance: 0 });
+    expect(classifyKpiBandWithPolicy({ current: 1.95, target: 2, lowerIsBetter: false, policy })).toBe("near");
+  });
+
   it("recognizes campaign currency codes for custom currency KPIs", () => {
     const policy = resolveKpiThresholdPolicy({ metric: "Custom Pipeline Value", unit: "CAD", target: 1000, current: 950 });
 

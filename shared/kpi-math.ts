@@ -80,7 +80,7 @@ export function resolveKpiThresholdPolicy(opts: {
   const defaultBand = Math.max(0, Number(opts.defaultNearTargetBandPct ?? DEFAULT_NEAR_TARGET_BAND_PCT));
   const lowerIsBetter = opts.lowerIsBetter ?? isLowerIsBetterKpi({ metric, name });
 
-  if (includesAnyMetricHint(metric, name, RATIO_HINTS)) {
+  if (unit === "ratio" || unit === "x" || includesAnyMetricHint(metric, name, RATIO_HINTS)) {
     return { kind: "ratio", nearTargetBandPct: defaultBand, absoluteTolerance: 0 };
   }
 

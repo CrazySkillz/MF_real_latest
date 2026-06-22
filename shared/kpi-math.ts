@@ -60,6 +60,10 @@ function normalizeUnit(unit?: string | null): string {
   return String(unit || "").trim().toLowerCase();
 }
 
+function isCurrencyUnit(unit: string): boolean {
+  return unit === "currency" || unit === "$" || unit === "€" || unit === "£" || unit === "¥" || /^[a-z]{3}$/.test(unit);
+}
+
 export function resolveKpiThresholdPolicy(opts: {
   metric?: string | null;
   name?: string | null;
@@ -76,6 +80,10 @@ export function resolveKpiThresholdPolicy(opts: {
   const defaultBand = Math.max(0, Number(opts.defaultNearTargetBandPct ?? DEFAULT_NEAR_TARGET_BAND_PCT));
   const lowerIsBetter = opts.lowerIsBetter ?? isLowerIsBetterKpi({ metric, name });
 
+  if (includesAnyMetricHint(metric, name, RATIO_HINTS)) {
+    return { kind: "ratio", nearTargetBandPct: defaultBand, absoluteTolerance: 0 };
+  }
+
   if (unit === "%" || unit === "percent" || unit === "percentage" || includesAnyMetricHint(metric, name, RATE_HINTS)) {
     const absoluteTolerance = target >= 2 ? 0.25 : 0;
     return { kind: "rate", nearTargetBandPct: defaultBand, absoluteTolerance };
@@ -87,12 +95,8 @@ export function resolveKpiThresholdPolicy(opts: {
     return { kind: "count", nearTargetBandPct, absoluteTolerance };
   }
 
-  if (unit === "currency" || unit === "$" || unit === "usd" || unit === "eur" || unit === "gbp" || includesAnyMetricHint(metric, name, REVENUE_HINTS)) {
+  if (isCurrencyUnit(unit) || includesAnyMetricHint(metric, name, REVENUE_HINTS)) {
     return { kind: lowerIsBetter ? "cost" : "revenue", nearTargetBandPct: defaultBand, absoluteTolerance: 0 };
-  }
-
-  if (unit === "ratio" || unit === "x" || includesAnyMetricHint(metric, name, RATIO_HINTS)) {
-    return { kind: "ratio", nearTargetBandPct: defaultBand, absoluteTolerance: 0 };
   }
 
   if (lowerIsBetter) {

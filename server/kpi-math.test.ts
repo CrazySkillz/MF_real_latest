@@ -112,6 +112,20 @@ describe("kpi math (shared)", () => {
     expect(classifyKpiBandWithPolicy({ current: 95000, target: 100000, lowerIsBetter: false, policy })).toBe("near");
   });
 
+  it("treats ROI as a relative efficiency KPI even when displayed as a percent", () => {
+    const policy = resolveKpiThresholdPolicy({ metric: "ROI", unit: "%", target: 2, current: 1.76 });
+
+    expect(policy).toMatchObject({ kind: "ratio", nearTargetBandPct: 5, absoluteTolerance: 0 });
+    expect(classifyKpiBandWithPolicy({ current: 1.76, target: 2, lowerIsBetter: false, policy })).toBe("below");
+  });
+
+  it("recognizes campaign currency codes for custom currency KPIs", () => {
+    const policy = resolveKpiThresholdPolicy({ metric: "Custom Pipeline Value", unit: "CAD", target: 1000, current: 950 });
+
+    expect(policy).toMatchObject({ kind: "revenue", nearTargetBandPct: 5, absoluteTolerance: 0 });
+    expect(classifyKpiBandWithPolicy({ current: 950, target: 1000, lowerIsBetter: false, policy })).toBe("near");
+  });
+
   it("uses lower-is-better direction for CPA policy bands", () => {
     const worsePolicy = resolveKpiThresholdPolicy({ metric: "CPA", unit: "currency", target: 100, current: 105, lowerIsBetter: true });
     const betterPolicy = resolveKpiThresholdPolicy({ metric: "CPA", unit: "currency", target: 100, current: 95, lowerIsBetter: true });

@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar } from "recharts";
 import { format } from "date-fns";
 import { formatPct } from "@shared/metric-math";
+import { classifyKpiBandWithPolicy, computeAttainmentFillPct, computeAttainmentPct, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 
 const EXECUTIVE_SUMMARY_TABS = new Set(["overview", "recommendations"]);
 
@@ -231,8 +232,9 @@ export default function ExecutiveSummary() {
       if (!metric || !targetMetrics.has(metric)) return;
       const target = Number(kpi.target) || 0;
       if (target <= 0) return;
-      const progressPct = kpiProgressPct(kpi);
-      const isBelow = progressPct < 95;
+      const targetState = resolveExecutiveKpiTargetState(kpi);
+      if (!targetState) return;
+      const isBelow = targetState?.band === "below";
       if (isBelow) hasBelowTarget = true;
       targetComparisons.push(`${targetMetricLabels[metric]} KPI is ${isBelow ? "below target" : "on track"}`);
     });
@@ -320,6 +322,32 @@ export default function ExecutiveSummary() {
     return null;
   };
   const lowerIsBetterKpiMetrics = new Set(["cpa", "cpc", "cpm"]);
+  const resolveExecutiveKpiTargetState = (kpi: any) => {
+    const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
+    if (!aggregateKpiMetric) return null;
+    const current = aggregateMetricValue(aggregateKpiMetric);
+    const target = Number(kpi.target ?? kpi.targetValue) || 0;
+    const lowerIsBetter = isLowerIsBetterKpi({ metric: aggregateKpiMetric, name: kpi?.name || kpi?.metric });
+    const policy = resolveKpiThresholdPolicy({
+      metric: aggregateKpiMetric,
+      name: kpi?.name || kpi?.metric,
+      unit: kpi?.unit,
+      current,
+      target,
+      lowerIsBetter,
+    });
+    const band = target > 0
+      ? classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy }) ?? "below"
+      : "near";
+    const attainmentPct = computeAttainmentPct({ current, target, lowerIsBetter }) ?? 0;
+    return {
+      aggregateKpiMetric,
+      current,
+      target,
+      band,
+      fillPct: computeAttainmentFillPct(attainmentPct),
+    };
+  };
   const executiveKpiProgress = Array.isArray((executiveSummary as any).kpiProgress)
     ? (executiveSummary as any).kpiProgress.filter((kpi: any) => resolveKpiAggregateMetric(kpi))
     : [];
@@ -769,28 +797,15 @@ export default function ExecutiveSummary() {
                   <CardContent>
                     <div className="space-y-4">
                       {executiveKpiProgress.map((kpi: any, index: number) => {
-                        const aggregateKpiMetric = resolveKpiAggregateMetric(kpi);
-                        if (!aggregateKpiMetric) return null;
-                        const current = aggregateMetricValue(aggregateKpiMetric);
-                        const target = Number(kpi.target) || 0;
-                        const lowerIsBetter = lowerIsBetterKpiMetrics.has(aggregateKpiMetric);
-                        const targetDeltaPct = target > 0
-                          ? lowerIsBetter
-                            ? ((target - current) / target) * 100
-                            : ((current - target) / target) * 100
-                          : 0;
-                        const progressRatio = target > 0
-                          ? lowerIsBetter
-                            ? (current > 0 ? target / current : 1)
-                            : current / target
-                          : 0;
-                        const pct = Math.max(0, Math.min(progressRatio * 100, 100));
-                        const statusLabel = targetDeltaPct > 5 ? 'Above Target' :
-                          targetDeltaPct >= -5 ? 'On Track' : 'Below Target';
-                        const statusColor = targetDeltaPct > 5 ? 'text-green-600 dark:text-green-400' :
-                          targetDeltaPct >= -5 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400';
-                        const barColor = targetDeltaPct > 5 ? 'bg-green-500' :
-                          targetDeltaPct >= -5 ? 'bg-blue-500' : 'bg-red-500';
+                        const targetState = resolveExecutiveKpiTargetState(kpi);
+                        if (!targetState) return null;
+                        const { aggregateKpiMetric, current, target, band, fillPct } = targetState;
+                        const statusLabel = band === "above" ? 'Above Target' :
+                          band === "near" ? 'On Track' : 'Below Target';
+                        const statusColor = band === "above" ? 'text-green-600 dark:text-green-400' :
+                          band === "near" ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400';
+                        const barColor = band === "above" ? 'bg-green-500' :
+                          band === "near" ? 'bg-blue-500' : 'bg-red-500';
                         return (
                           <div key={index} className="space-y-2">
                             <div className="flex items-center justify-between">
@@ -808,7 +823,7 @@ export default function ExecutiveSummary() {
                                 </span>
                               </div>
                             </div>
-                            <Progress value={pct} className="h-2" indicatorClassName={barColor} />
+                            <Progress value={fillPct} className="h-2" indicatorClassName={barColor} />
                           </div>
                         );
                       })}

@@ -44,6 +44,18 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
     );
   });
 
+  it("keeps GA4 report KPI status aligned with the shared KPI progress helper", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+
+    expect(ga4MetricsFile).toContain("const p = computeKpiProgress(k);");
+    expect(ga4MetricsFile).toContain('const statusLabel = p.band === "above" ? "Above Target" : p.band === "near" ? "On Track" : "Below Target";');
+    expect(ga4MetricsFile).toContain('const statusCol: C3 = p.band === "above" ? C.success : p.band === "near" ? C.info : C.danger;');
+    expect(ga4MetricsFile).not.toContain("const targetDeltaPct = target > 0");
+  });
+
   it("excludes insufficient-data KPIs from summary scoring and card progress", () => {
     const ga4MetricsFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),

@@ -30,6 +30,7 @@ import {
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { reportStorage, type StoredReport } from "@/lib/reportStorage";
+import { classifyKpiBandWithPolicy, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 
 const customReportMetricGroups = [
   { title: "Web analytics", keys: ["users", "sessions", "cvr"] },
@@ -1020,11 +1021,24 @@ export default function Reports() {
       .filter((bm: any) => bm.aggregateMetric);
     const kpiTargetValue = (kpi: any) => Number(kpi.targetValue ?? kpi.target) || 0;
     const benchmarkTargetValue = (benchmark: any) => Number(benchmark.benchmarkValue ?? benchmark.benchmark) || 0;
-    const kpiStatus = (kpi: any) => {
+    const kpiBand = (kpi: any) => {
       const current = metricNumber(kpi.aggregateMetric);
       const target = kpiTargetValue(kpi);
-      const pct = progressPct(current, target, kpi.aggregateMetric);
-      return pct > 105 ? "Above Target" : pct >= 95 ? "On Track" : "Below Target";
+      if (target <= 0) return "near";
+      const lowerIsBetter = isLowerIsBetterKpi({ metric: kpi.aggregateMetric, name: kpi?.name || kpi?.metric });
+      const policy = resolveKpiThresholdPolicy({
+        metric: kpi.aggregateMetric,
+        name: kpi?.name || kpi?.metric,
+        unit: kpi?.unit,
+        current,
+        target,
+        lowerIsBetter,
+      });
+      return classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy }) ?? "below";
+    };
+    const kpiStatus = (kpi: any) => {
+      const band = kpiBand(kpi);
+      return band === "above" ? "Above Target" : band === "near" ? "On Track" : "Below Target";
     };
     const benchmarkStatus = (benchmark: any) => {
       const pct = progressPct(metricNumber(benchmark.aggregateMetric), benchmarkTargetValue(benchmark), benchmark.aggregateMetric);

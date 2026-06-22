@@ -265,6 +265,14 @@ Validation:
 - verify blocked and insufficient-data KPIs do not inflate or reduce summary counts
 - `npm run check`
 
+Commit 3 status as of June 22, 2026:
+
+- Implemented in `shared/kpi-math.ts`, `client/src/pages/ga4-metrics.tsx`, `server/kpi-math.test.ts`, and `server/ga4-kpi-benchmark-summary-regression.test.ts`.
+- Automated validation passed with `npm test -- server/kpi-math.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/ga4-cross-tab-consistency.test.ts` and `npm run check`.
+- Proven locally: insufficient sessions, conversions, and spend are excluded from GA4 KPI tracker scoring and card progress.
+- Not locally verified: browser/manual edge validation on a live GA4 campaign with zero sessions, zero conversions, or zero spend.
+- Validation note: manual/live UI validation is optional for Commit 3 because the implemented gating only blocks exact unavailable denominators; broader statistical sufficiency thresholds are not defined or implemented yet.
+
 ### Commit 4 - Align Reports And Executive Surfaces
 
 Goal:

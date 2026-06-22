@@ -574,6 +574,12 @@ describe("campaign Custom Report regression guard", () => {
     expect(reports).toContain("const renderCustomReportKpiBenchmarkOutput = (report: StoredReport) => {");
     expect(reports).toContain("Current: {metric?.available === true ? formatCustomReportMetricValue(metricKey!, metric.value) : \"Unavailable\"}");
     expect(reports).toContain('selectedSections: activeCampaignId ? selectedReportSections : undefined,');
+    expect(reports).toContain("classifyKpiBandWithPolicy");
+    expect(reports).toContain("const kpiBand = (kpi: any) => {");
+    expect(reports).toContain("const policy = resolveKpiThresholdPolicy({");
+    expect(reports).toContain('return classifyKpiBandWithPolicy({ current, target, lowerIsBetter, policy }) ?? "below";');
+    expect(reports).toContain("const band = kpiBand(kpi);");
+    expect(reports).not.toContain('return pct > 105 ? "Above Target" : pct >= 95 ? "On Track" : "Below Target";');
     expect(reports).not.toContain("{renderCustomReportKpiBenchmarkOutput(report)}");
   });
 

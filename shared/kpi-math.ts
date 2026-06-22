@@ -1,6 +1,18 @@
 export type KpiBand = "above" | "near" | "below";
+export type KpiThresholdPolicyKind = "count" | "rate" | "revenue" | "ratio" | "cost" | "generic";
+
+export type KpiThresholdPolicy = {
+  kind: KpiThresholdPolicyKind;
+  nearTargetBandPct: number;
+  absoluteTolerance: number;
+};
 
 const LOWER_IS_BETTER_HINTS = ["cpc", "cpm", "cpa", "cpl", "spend"];
+const RATE_HINTS = ["rate", "ctr", "cvr", "percentage"];
+const REVENUE_HINTS = ["revenue", "sales", "profit", "value"];
+const RATIO_HINTS = ["roas", "roi", "ratio"];
+const COUNT_HINTS = ["conversion", "conversions", "users", "sessions", "leads", "events", "count"];
+const DEFAULT_NEAR_TARGET_BAND_PCT = 5;
 
 export function isLowerIsBetterKpi(opts: { metric?: string | null; name?: string | null }): boolean {
   const metric = String(opts.metric || "").toLowerCase();
@@ -38,6 +50,77 @@ export function classifyKpiBand(opts: { effectiveDeltaPct: number; nearTargetBan
   if (opts.effectiveDeltaPct > band) return "above";
   if (opts.effectiveDeltaPct < -band) return "below";
   return "near";
+}
+
+function includesAnyMetricHint(metric: string, name: string, hints: string[]): boolean {
+  return hints.some((hint) => metric.includes(hint) || name.includes(hint));
+}
+
+function normalizeUnit(unit?: string | null): string {
+  return String(unit || "").trim().toLowerCase();
+}
+
+export function resolveKpiThresholdPolicy(opts: {
+  metric?: string | null;
+  name?: string | null;
+  unit?: string | null;
+  target: number;
+  current?: number;
+  lowerIsBetter?: boolean;
+  defaultNearTargetBandPct?: number;
+}): KpiThresholdPolicy {
+  const metric = String(opts.metric || "").toLowerCase();
+  const name = String(opts.name || "").toLowerCase();
+  const unit = normalizeUnit(opts.unit);
+  const target = Number.isFinite(opts.target) ? Math.abs(opts.target) : 0;
+  const defaultBand = Math.max(0, Number(opts.defaultNearTargetBandPct ?? DEFAULT_NEAR_TARGET_BAND_PCT));
+  const lowerIsBetter = opts.lowerIsBetter ?? isLowerIsBetterKpi({ metric, name });
+
+  if (unit === "%" || unit === "percent" || unit === "percentage" || includesAnyMetricHint(metric, name, RATE_HINTS)) {
+    const absoluteTolerance = target >= 2 ? 0.25 : 0;
+    return { kind: "rate", nearTargetBandPct: defaultBand, absoluteTolerance };
+  }
+
+  if (unit === "count" || includesAnyMetricHint(metric, name, COUNT_HINTS)) {
+    const absoluteTolerance = target < 5 ? 0 : target < 20 ? 1 : Math.max(1, target * (defaultBand / 100));
+    const nearTargetBandPct = target > 0 ? Math.max(defaultBand, (absoluteTolerance / target) * 100) : defaultBand;
+    return { kind: "count", nearTargetBandPct, absoluteTolerance };
+  }
+
+  if (unit === "currency" || unit === "$" || unit === "usd" || unit === "eur" || unit === "gbp" || includesAnyMetricHint(metric, name, REVENUE_HINTS)) {
+    return { kind: lowerIsBetter ? "cost" : "revenue", nearTargetBandPct: defaultBand, absoluteTolerance: 0 };
+  }
+
+  if (unit === "ratio" || unit === "x" || includesAnyMetricHint(metric, name, RATIO_HINTS)) {
+    return { kind: "ratio", nearTargetBandPct: defaultBand, absoluteTolerance: 0 };
+  }
+
+  if (lowerIsBetter) {
+    return { kind: "cost", nearTargetBandPct: defaultBand, absoluteTolerance: 0 };
+  }
+
+  return { kind: "generic", nearTargetBandPct: defaultBand, absoluteTolerance: 0 };
+}
+
+export function classifyKpiBandWithPolicy(opts: {
+  current: number;
+  target: number;
+  lowerIsBetter: boolean;
+  policy: KpiThresholdPolicy;
+}): KpiBand | null {
+  const effectiveDeltaPct = computeEffectiveDeltaPct({
+    current: opts.current,
+    target: opts.target,
+    lowerIsBetter: opts.lowerIsBetter,
+  });
+  if (effectiveDeltaPct === null) return null;
+
+  const rawDelta = computeDelta(opts.current, opts.target);
+  const effectiveDelta = rawDelta === null ? null : opts.lowerIsBetter ? -rawDelta : rawDelta;
+  const absoluteTolerance = Math.max(0, Number(opts.policy.absoluteTolerance || 0));
+  if (effectiveDelta !== null && Math.abs(effectiveDelta) <= absoluteTolerance) return "near";
+
+  return classifyKpiBand({ effectiveDeltaPct, nearTargetBandPct: opts.policy.nearTargetBandPct });
 }
 
 // Progress for KPI cards:

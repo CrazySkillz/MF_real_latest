@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
   classifyKpiBand,
+  classifyKpiBandWithPolicy,
   computeAttainmentFillPct,
   computeAttainmentPct,
   computeDeltaPct,
   computeEffectiveDeltaPct,
+  resolveKpiThresholdPolicy,
 } from "../shared/kpi-math";
 
 describe("kpi math (shared)", () => {
@@ -71,6 +73,52 @@ describe("kpi math (shared)", () => {
     // lower-is-better: current 120, target 100 => raw +20% (worse) => effective -20% => below
     const eff3 = computeEffectiveDeltaPct({ current: 120, target: 100, lowerIsBetter: true })!;
     expect(classifyKpiBand({ effectiveDeltaPct: eff3, nearTargetBandPct: nearBand })).toBe("below");
+  });
+
+  it("preserves generic +/-5% policy behavior", () => {
+    const policy = resolveKpiThresholdPolicy({ metric: "generic score", target: 100, current: 95 });
+
+    expect(policy).toMatchObject({ kind: "generic", nearTargetBandPct: 5, absoluteTolerance: 0 });
+    expect(classifyKpiBandWithPolicy({ current: 95, target: 100, lowerIsBetter: false, policy })).toBe("near");
+    expect(classifyKpiBandWithPolicy({ current: 94, target: 100, lowerIsBetter: false, policy })).toBe("below");
+    expect(classifyKpiBandWithPolicy({ current: 106, target: 100, lowerIsBetter: false, policy })).toBe("above");
+  });
+
+  it("allows one-count misses for normal count targets", () => {
+    const policy = resolveKpiThresholdPolicy({ metric: "Conversions", unit: "count", target: 10, current: 9 });
+
+    expect(policy).toMatchObject({ kind: "count", nearTargetBandPct: 10, absoluteTolerance: 1 });
+    expect(classifyKpiBandWithPolicy({ current: 9, target: 10, lowerIsBetter: false, policy })).toBe("near");
+  });
+
+  it("requires exact performance for tiny count targets", () => {
+    const policy = resolveKpiThresholdPolicy({ metric: "Conversions", unit: "count", target: 1, current: 0 });
+
+    expect(policy).toMatchObject({ kind: "count", nearTargetBandPct: 5, absoluteTolerance: 0 });
+    expect(classifyKpiBandWithPolicy({ current: 0, target: 1, lowerIsBetter: false, policy })).toBe("below");
+  });
+
+  it("uses rate tolerance for normal percentage targets", () => {
+    const policy = resolveKpiThresholdPolicy({ metric: "Conversion Rate", unit: "%", target: 5, current: 4.8 });
+
+    expect(policy).toMatchObject({ kind: "rate", nearTargetBandPct: 5, absoluteTolerance: 0.25 });
+    expect(classifyKpiBandWithPolicy({ current: 4.8, target: 5, lowerIsBetter: false, policy })).toBe("near");
+  });
+
+  it("keeps revenue KPIs on the default relative tolerance", () => {
+    const policy = resolveKpiThresholdPolicy({ metric: "Revenue", unit: "currency", target: 100000, current: 95000 });
+
+    expect(policy).toMatchObject({ kind: "revenue", nearTargetBandPct: 5, absoluteTolerance: 0 });
+    expect(classifyKpiBandWithPolicy({ current: 95000, target: 100000, lowerIsBetter: false, policy })).toBe("near");
+  });
+
+  it("uses lower-is-better direction for CPA policy bands", () => {
+    const worsePolicy = resolveKpiThresholdPolicy({ metric: "CPA", unit: "currency", target: 100, current: 105, lowerIsBetter: true });
+    const betterPolicy = resolveKpiThresholdPolicy({ metric: "CPA", unit: "currency", target: 100, current: 95, lowerIsBetter: true });
+
+    expect(worsePolicy).toMatchObject({ kind: "cost", nearTargetBandPct: 5, absoluteTolerance: 0 });
+    expect(classifyKpiBandWithPolicy({ current: 105, target: 100, lowerIsBetter: true, policy: worsePolicy })).toBe("near");
+    expect(classifyKpiBandWithPolicy({ current: 95, target: 100, lowerIsBetter: true, policy: betterPolicy })).toBe("near");
   });
 });
 

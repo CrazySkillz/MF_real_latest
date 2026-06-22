@@ -2,6 +2,7 @@ import { db } from "../db";
 import { campaigns, kpis, benchmarks, kpiAlerts } from "../../shared/schema.js";
 import { eq, and, sql } from "drizzle-orm";
 import { emailService } from "./email-service.js";
+import { evaluateAlertCondition, parseAlertNumber as parseSharedAlertNumber } from "../utils/alert-evaluation";
 
 interface AlertCheck {
   id: string;
@@ -24,16 +25,7 @@ class AlertMonitoringService {
     thresholdValue: number,
     condition: 'below' | 'above' | 'equals'
   ): boolean {
-    switch (condition) {
-      case 'below':
-        return currentValue < thresholdValue;
-      case 'above':
-        return currentValue > thresholdValue;
-      case 'equals':
-        return Math.abs(currentValue - thresholdValue) < 0.01; // Allow small floating point difference
-      default:
-        return false;
-    }
+    return evaluateAlertCondition(currentValue, thresholdValue, condition);
   }
 
   // Check if enough time has passed since last alert (to prevent spam)
@@ -51,8 +43,7 @@ class AlertMonitoringService {
   }
 
   private parseAlertNumber(value: unknown): number {
-    const n = parseFloat(String(value ?? '').replace(/,/g, '').replace(/[^\d.-]/g, ''));
-    return Number.isFinite(n) ? n : NaN;
+    return parseSharedAlertNumber(value);
   }
 
   private async getExistingCampaignName(campaignId: unknown): Promise<string | null> {

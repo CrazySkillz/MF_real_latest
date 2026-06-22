@@ -4,15 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import type { InsertNotification } from "../shared/schema";
 import { storage } from "./storage";
 import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";
-
-function parseLooseNumber(input: unknown): number {
-  // Accept formatted inputs like "370,000", "$1,234.50", "  1000  ".
-  // Keep digits, decimal point, and leading minus.
-  const s = String(input ?? "").trim();
-  const cleaned = s.replace(/,/g, "").replace(/[^\d.-]/g, "");
-  const n = parseFloat(cleaned);
-  return Number.isFinite(n) ? n : NaN;
-}
+import { evaluateAlertThreshold, parseAlertNumber } from "./utils/alert-evaluation";
 
 function isIsoCurrencyCode(unit: string): boolean {
   return /^[A-Z]{3}$/.test(String(unit || "").trim());
@@ -25,7 +17,7 @@ function formatPct(value: number): string {
 }
 
 function formatAlertDisplayValue(input: unknown, unit: unknown): string {
-  const num = parseLooseNumber(input);
+  const num = parseAlertNumber(input);
   if (!Number.isFinite(num)) return String(input ?? "");
   const normalizedUnit = String(unit || "").trim();
 
@@ -75,24 +67,6 @@ async function getLinkedInWindowKey(campaignId: string): Promise<string | null> 
   }
 }
 
-function shouldTriggerBenchmarkAlert(opts: {
-  currentValue: number;
-  thresholdValue: number;
-  condition: 'below' | 'above' | 'equals';
-}): boolean {
-  const { currentValue, thresholdValue, condition } = opts;
-  switch (condition) {
-    case 'below':
-      return currentValue < thresholdValue;
-    case 'above':
-      return currentValue > thresholdValue;
-    case 'equals':
-      return Math.abs(currentValue - thresholdValue) < 0.01;
-    default:
-      return false;
-  }
-}
-
 function buildBenchmarkActionUrl(b: any): string {
   const campaignId = String(b?.campaignId || "").trim();
   const id = String(b?.id || "").trim();
@@ -133,15 +107,18 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
     const currentRaw = b.currentValue;
     if (thresholdRaw === null || typeof thresholdRaw === "undefined") continue;
 
-    const thresholdValue = parseLooseNumber(thresholdRaw);
-    const currentValue = parseLooseNumber(currentRaw ?? "0");
+    const evaluation = evaluateAlertThreshold({
+      currentValue: currentRaw,
+      thresholdValue: thresholdRaw,
+      condition: b.alertCondition,
+    });
+    const { currentValue, thresholdValue } = evaluation;
     if (!Number.isFinite(thresholdValue)) continue;
     if (!Number.isFinite(currentValue)) continue;
 
-    const condition = (String(b.alertCondition || "below") as any) as 'below' | 'above' | 'equals';
     const platformType = String((b?.platformType || "")).trim().toLowerCase();
     const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";
-    if (!shouldTriggerBenchmarkAlert({ currentValue, thresholdValue, condition })) continue;
+    if (!evaluation.triggered) continue;
 
     // For LinkedIn test-mode, dedupe per simulated day instead of per real day.
     let windowKey: string | null = null;

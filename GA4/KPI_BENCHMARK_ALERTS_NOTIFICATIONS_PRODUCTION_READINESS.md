@@ -78,6 +78,8 @@ Validation:
 
 ### Commit 2: Shared Alert Evaluation Contract
 
+Status: complete.
+
 Fix scope:
 
 - add a small internal server helper for alert number parsing and threshold evaluation
@@ -91,6 +93,11 @@ Required tests:
 - invalid current values fail closed
 - below, above, and equals conditions evaluate consistently
 - GA4 KPI and Benchmark checks use the same current-value source as visible cards
+
+Validation completed:
+
+- `npm test -- server/alert-evaluation.test.ts server/campaign-alert-current-value-regression.test.ts server/notification-visibility-regression.test.ts server/alert-email-regression.test.ts`
+- `npm run check`
 
 ### Commit 3: Deterministic In-App Alert Lifecycle
 
@@ -237,11 +244,13 @@ Proven locally:
 - this authoritative readiness document exists and records the GA4 KPI/Benchmark alert and notification lifecycle gate
 - Commit 1 is documentation-only and does not change runtime behavior
 - the required documentation set for this Commit 1 review was read before finalizing this file
+- Commit 2 added a shared internal alert evaluation helper, moved KPI in-app alert checks, Benchmark in-app alert checks, and email alert condition checks onto the shared parser/evaluator, and removed the Benchmark missing-current-value fallback to `0`
+- Commit 2 focused tests prove formatted alert numbers parse, invalid current values and thresholds fail closed, `below`/`above`/`equals` condition math is shared, and GA4 campaign KPI/Benchmark alert checks still resolve connected-platform current values before threshold evaluation
 
 Partially reviewed:
 
-- existing code traces identified gaps in Benchmark resolution, email/current-value parity, notification raw-row visibility checks, async route reconciliation, UI notification refresh, and bell deep-link rewriting
-- the lifecycle matrix above defines the paths that must be proven by Commits 2 through 8 before GA4 readiness can be claimed
+- existing code traces identified remaining gaps in Benchmark resolution lifecycle behavior, email/current-value parity, notification raw-row visibility checks, async route reconciliation, UI notification refresh, and bell deep-link rewriting
+- the lifecycle matrix above defines the paths that must be proven by Commits 3 through 8 before GA4 readiness can be claimed
 
 Not locally verifiable yet:
 
@@ -252,7 +261,7 @@ Not locally verifiable yet:
 
 Not production-ready yet:
 
-- GA4 KPI/Benchmark alerts and notifications must complete Commits 2 through 8 and the required validation pass before this document can mark them production-ready
+- GA4 KPI/Benchmark alerts and notifications must complete Commits 3 through 8 and the required validation pass before this document can mark them production-ready
 - Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration must each pass this same lifecycle with source-specific evidence before their KPI/Benchmark alert and notification behavior can be marked production-ready
 
 ## Cross-Platform Template Rules

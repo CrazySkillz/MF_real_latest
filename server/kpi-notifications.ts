@@ -3,15 +3,7 @@ import { linkedinDailyMetrics, notifications, kpis } from "../shared/schema";
 import { desc, eq } from "drizzle-orm";
 import type { KPI, InsertNotification, Notification as AppNotification } from "../shared/schema";
 import { storage } from "./storage";
-
-function parseLooseNumber(input: unknown): number {
-  // Accept formatted inputs like "370,000", "$1,234.50", "  1000  ".
-  // Keep digits, decimal point, and leading minus.
-  const s = String(input ?? "").trim();
-  const cleaned = s.replace(/,/g, "").replace(/[^\d.-]/g, "");
-  const n = parseFloat(cleaned);
-  return Number.isFinite(n) ? n : NaN;
-}
+import { evaluateAlertThreshold, parseAlertNumber } from "./utils/alert-evaluation";
 
 function isIsoCurrencyCode(unit: string): boolean {
   return /^[A-Z]{3}$/.test(String(unit || "").trim());
@@ -24,7 +16,7 @@ function formatPct(value: number): string {
 }
 
 function formatAlertDisplayValue(input: unknown, unit: unknown): string {
-  const num = parseLooseNumber(input);
+  const num = parseAlertNumber(input);
   if (!Number.isFinite(num)) return String(input ?? "");
   const normalizedUnit = String(unit || "").trim();
 
@@ -165,8 +157,9 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
     .from(notifications)
     .where(eq(notifications.type, 'performance-alert')) as AppNotification[];
   
-  const currentValue = parseLooseNumber(kpi.currentValue);
-  const alertThreshold = kpi.alertThreshold ? parseLooseNumber(kpi.alertThreshold) : null;
+  const alertThreshold = kpi.alertThreshold === null || typeof kpi.alertThreshold === "undefined"
+    ? null
+    : parseAlertNumber(kpi.alertThreshold);
   const directionText =
     String(kpi.alertCondition || "below") === "above"
       ? "above"
@@ -373,23 +366,14 @@ export async function createTrendAlert(kpi: KPI, consecutivePeriods: number): Pr
  * Helper function to check if KPI should trigger alert
  */
 export function shouldTriggerAlert(kpi: KPI): boolean {
-  if (!kpi.alertsEnabled || !kpi.alertThreshold) {
+  if (!kpi.alertsEnabled || kpi.alertThreshold === null || typeof kpi.alertThreshold === "undefined") {
     return false;
   }
 
-  const currentValue = parseLooseNumber(kpi.currentValue);
-  const alertThreshold = parseLooseNumber(kpi.alertThreshold);
-  const alertCondition = kpi.alertCondition || 'below';
-
-  switch (alertCondition) {
-    case 'below':
-      return currentValue < alertThreshold;   // Triggers when value goes BELOW threshold
-    case 'above':
-      return currentValue > alertThreshold;   // Triggers when value goes ABOVE threshold
-    case 'equals':
-      return Math.abs(currentValue - alertThreshold) < 0.01;  // Triggers when value EQUALS threshold
-    default:
-      return false;
-  }
+  return evaluateAlertThreshold({
+    currentValue: kpi.currentValue,
+    thresholdValue: kpi.alertThreshold,
+    condition: kpi.alertCondition,
+  }).triggered;
 }
 

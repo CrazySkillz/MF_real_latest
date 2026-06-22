@@ -75,25 +75,40 @@ When editing an existing benchmark:
 
 Current status model:
 
+- status is computed by the shared metric-aware Benchmark threshold policy, not one fixed percentage rule for every metric
+- progress is the benchmark attainment ratio, bounded from `0%` to `100%` for display and averaging
+- higher-is-better benchmarks use `current value / benchmark value`
+- lower-is-better benchmarks such as `CPA`, `CPC`, `CPM`, `CPL`, spend, and relevant custom cost benchmarks use `benchmark value / current value`
 - `On Track`
-  `90%` or more of the benchmark
+  at or better than benchmark, or within the metric-aware on-track tolerance
 - `Needs Attention`
-  `70%` to under `90%` of the benchmark
+  worse than the on-track tolerance but not a material miss
 - `Behind`
-  Below `70%` of the benchmark
+  a material miss, with a default floor around `70%` attainment; zero performance is `Behind` when the benchmark value is positive
+- invalid or zero benchmark values are not scored
 
 Executive snapshot meaning:
 
 - `Total Benchmarks`
   Number of total benchmarks.
 - `On Track`
-  `90%` or more of the benchmark.
+  Number of scorable benchmarks at or within metric-aware tolerance of the benchmark.
 - `Needs Attention`
-  `70%` to under `90%` of the benchmark.
+  Number of scorable benchmarks with a moderate miss.
 - `Behind`
-  Below `70%` of the benchmark.
+  Number of scorable benchmarks with a material miss.
 - `Avg. Progress`
-  Average benchmark progress across scorable benchmarks.
+  Average bounded progress across scorable benchmarks only.
+
+Metric-specific examples:
+
+- count benchmark: `Conversions` benchmark `10`, current `9` is `On Track`; benchmark `1`, current `0` is `Behind`
+- rate benchmark: `Conversion Rate` benchmark `5%`, current `4.8%` is `On Track` when sessions are available
+- revenue benchmark: `Revenue` benchmark `100,000`, current `95,000` is `On Track`
+- ratio benchmark: `ROAS` benchmark `2.0x`, current `1.9x` is `On Track`
+- ROI benchmark: `ROI` benchmark `100%`, current `60%` is `Behind`
+- lower-is-better benchmark: `CPA` benchmark `100`, current `105` is `On Track`; current `150` is `Behind`
+- custom cost benchmark: custom names or metrics that clearly indicate cost, spend, `CPC`, `CPM`, `CPA`, or `CPL` should use lower-is-better direction
 
 ## Benchmark Value Sources
 
@@ -139,6 +154,11 @@ Important meaning:
 - blocked benchmarks should be excluded from tracker counts
 - blocked benchmarks should be excluded from `Avg. Progress`
 - blocked benchmarks should not be classified into `On Track`, `Needs Attention`, or `Behind`
+- data-insufficient benchmarks should also be excluded from tracker counts and `Avg. Progress`
+- rate benchmarks need sessions before scoring
+- `CPA` benchmarks need conversions and spend before scoring
+- `ROAS` and `ROI` benchmarks need spend before scoring
+- insufficient benchmarks should show an explanatory reason instead of being treated as healthy or weak performance
 
 ## Benchmark Alerts And Notifications
 

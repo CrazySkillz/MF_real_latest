@@ -2,19 +2,19 @@
 
 ## Purpose
 
-This file tracks the plan to refine GA4 Benchmark performance thresholds so benchmark scoring is reliable enough for executive use.
+This file tracks the plan and implementation status for refining GA4 Benchmark performance thresholds so benchmark scoring is reliable enough for executive use.
 
-This is a planning file only. It does not change current behavior.
+This is a documentation/status file. Behavior changes live in the implementation commits listed below.
 
-## Current Root Cause
+## Original Root Cause
 
-GA4 Benchmark scoring currently uses one generic attainment model for all benchmark types:
+GA4 Benchmark scoring originally used one generic attainment model for all benchmark types:
 
 - `On Track`: current performance is `90%` or more of the benchmark
 - `Needs Attention`: current performance is `70%` to under `90%` of the benchmark
 - `Behind`: current performance is below `70%` of the benchmark
 
-The primary GA4 implementation path is:
+The primary GA4 implementation path was:
 
 - `client/src/pages/ga4-metrics.tsx`
   - `computeBenchmarkProgress`
@@ -23,9 +23,9 @@ The primary GA4 implementation path is:
   - Benchmark card progress and status
   - GA4 report benchmark rows
 - `GA4/BENCHMARKS.md`
-  - documents the same `90% / 70%` status model
+  - documented the same `90% / 70%` status model before Commit 5
 
-Related benchmark status paths also exist outside the live GA4 card path:
+Related benchmark status paths also existed outside the live GA4 card path:
 
 - `server/routes-oauth.ts`
   - campaign/platform benchmark evaluation paths
@@ -39,25 +39,25 @@ Related benchmark status paths also exist outside the live GA4 card path:
 - `server/report-scheduler.ts`
   - scheduled Campaign DeepDive benchmark risk output
 - `server/ga4-cross-tab-consistency.test.ts`
-  - tests currently encode the `90% / 70%` model
+  - tests encoded the old `90% / 70%` model before the shared benchmark policy tests were added
 
-The current model is internally coherent on the GA4 Benchmark tab because the tracker and benchmark cards both use `computeBenchmarkProgress`.
+The old model was internally coherent on the GA4 Benchmark tab because the tracker and benchmark cards both used `computeBenchmarkProgress`.
 
-The weakness is that the same generic `90% / 70%` thresholds are applied to counts, rates, revenue, ratios, and lower-is-better cost benchmarks.
+The weakness was that the same generic `90% / 70%` thresholds were applied to counts, rates, revenue, ratios, and lower-is-better cost benchmarks.
 
-## Why The Current Model Is Not Production-Perfect
+## Why The Original Generic Model Was Not Production-Perfect
 
-The current model is logical as a broad benchmark-attainment signal, but not robust enough as the only executive benchmark health model.
+The original generic model was logical as a broad benchmark-attainment signal, but not robust enough as the only executive benchmark health model.
 
 Examples:
 
-- `Conversions` benchmark `10`, current `9` is `On Track`, which is reasonable; but `Conversions` benchmark `1`, current `0` is `Behind`, which is also reasonable. The current model only reaches this result accidentally through percentages, not through explicit low-volume count policy.
-- `Users` benchmark `1000`, current `890` is `Needs Attention`, while `Conversions` benchmark `10`, current `9` is `On Track`; both are close misses but the generic model gives different interpretation based only on relative percentage.
-- `Conversion Rate` benchmark `5%`, current `4.8%` is `On Track`, but the status may be misleading when sessions are unavailable or too low.
-- `Revenue` benchmark `100000`, current `95000` is `On Track`, which can be acceptable, but the tolerance is not explicit and not shared with other surfaces.
-- `CPA` direction is handled in GA4 only by checking whether the metric is `cpa`; future lower-is-better benchmark metrics such as `CPC`, `CPM`, `CPL`, or custom cost benchmarks can be misclassified.
-- Executive Summary and report paths contain their own benchmark status logic, so benchmark status can drift as fixes are made to only one surface.
-- The background benchmark job computes variance and rating separately from live card status, so daily history/rating semantics are not guaranteed to match live benchmark status.
+- `Conversions` benchmark `10`, current `9` is `On Track`, which is reasonable; but `Conversions` benchmark `1`, current `0` is `Behind`, which is also reasonable. The original model only reached this result accidentally through percentages, not through explicit low-volume count policy.
+- `Users` benchmark `1000`, current `890` is `Needs Attention`, while `Conversions` benchmark `10`, current `9` is `On Track`; both are close misses but the generic model gave different interpretation based only on relative percentage.
+- `Conversion Rate` benchmark `5%`, current `4.8%` could be `On Track`, but the status could be misleading when sessions were unavailable or too low.
+- `Revenue` benchmark `100000`, current `95000` could be `On Track`, which can be acceptable, but the tolerance was not explicit and not shared with other surfaces.
+- `CPA` direction was handled in GA4 only by checking whether the metric was `cpa`; future lower-is-better benchmark metrics such as `CPC`, `CPM`, `CPL`, or custom cost benchmarks could be misclassified.
+- Executive Summary and report paths contained their own benchmark status logic, so benchmark status could drift as fixes were made to only one surface.
+- The background benchmark job computed variance and rating separately from live card status, so daily history/rating semantics needed to be documented as distinct from live benchmark status.
 
 ## Production-Ready Target Behavior
 
@@ -325,6 +325,15 @@ Validation:
 - verify blocked and insufficient-data benchmarks do not inflate or reduce summary counts
 - `npm run check`
 
+Status:
+
+- Completed in commit `4131e624` (`Add GA4 benchmark sufficiency gating`).
+- Automated validation passed locally with `npm test -- server/benchmark-math.test.ts server/ga4-benchmark-regression.test.ts server/ga4-cross-tab-consistency.test.ts` (`128` tests passed).
+- Automated validation also passed with `npm test -- server/kpi-math.test.ts server/metric-math.test.ts` (`23` tests passed).
+- `npm run check` passed.
+- Manual validation available with current data was checked and passed: existing scorable Benchmarks still show normal progress/status, tracker counts match visible scored cards, and existing blocked spend/revenue-source behavior remains unchanged.
+- Live UI edge validation for zero-session and zero-denominator revenue-related benchmark cases is not currently possible from available campaign data. These edge-case UI checks should be performed later with disposable local/staging data or a campaign/date range that safely has zero sessions, zero spend, or zero conversions.
+
 ### Commit 4 - Align Reports, Executive Summary, And Background Paths
 
 Goal:
@@ -356,6 +365,13 @@ Validation:
 - scheduler/static report tests where reachable
 - `npm run check`
 
+Status:
+
+- Completed in commit `c93911dd` (`Align benchmark status downstream`).
+- Automated validation passed locally with `npm test -- server/benchmark-math.test.ts server/ga4-benchmark-regression.test.ts server/custom-report-regression.test.ts server/executive-summary-regression.test.ts server/ga4-cross-tab-consistency.test.ts` (`167` tests passed).
+- `npm run check` passed.
+- Campaign-level Benchmark manual validation is deferred until the campaign-level section is refined. Do not treat campaign-level Benchmark UI/manual testing as completed by this GA4 downstream alignment commit.
+
 ### Commit 5 - Documentation And Manual Validation
 
 Goal:
@@ -386,6 +402,15 @@ Validation:
   - CPA benchmark
   - custom benchmark
 
+Status:
+
+- Documentation updated to replace fixed `90% / 70%` GA4 Benchmark wording with the implemented metric-aware threshold model.
+- Documentation review checked against `shared/kpi-math.ts`, `client/src/pages/ga4-metrics.tsx`, downstream report/Executive Summary alignment from commit `c93911dd`, and the focused benchmark regression tests.
+- Marketing-readable validation examples were added for count, rate, revenue, ROAS, ROI, CPA, and custom lower-is-better benchmarks.
+- Full live manual validation of every GA4 benchmark type remains pending.
+- Campaign-level Benchmark manual validation is deferred until the campaign-level section is refined.
+- `GA4/README.md` was intentionally not touched because it already has unrelated dirty changes and the required Commit 5 details are covered in `GA4/BENCHMARKS.md` and this readiness file.
+
 ## Acceptance Criteria
 
 The benchmark threshold implementation is not production-ready until all of these are true:
@@ -404,16 +429,21 @@ The benchmark threshold implementation is not production-ready until all of thes
 
 Proven from local code:
 
-- GA4 Benchmark cards and tracker currently use a fixed `90% / 70%` status model.
-- The GA4 card and tracker use the same `computeBenchmarkProgress` helper.
-- GA4 benchmark lower-is-better direction currently checks only `CPA`.
-- Blocked benchmarks are excluded from tracker scoring.
+- Shared Benchmark policy and types are implemented in `shared/kpi-math.ts`.
+- GA4 Benchmark cards and tracker use `computeBenchmarkProgress`, which delegates status to `computeBenchmarkThresholdResult`.
+- The shared helper uses metric-aware tolerance for count, rate, revenue, ratio, generic, and lower-is-better cost benchmarks.
+- Lower-is-better direction covers `CPA`, `CPC`, `CPM`, `CPL`, spend, and relevant custom cost names.
+- Blocked and insufficient-data benchmarks are excluded from tracker scoring and `Avg. Progress`.
 - `Avg. Progress` uses bounded progress percentage.
-- Campaign/executive/report/server paths also contain benchmark status or risk logic based on `90% / 70%` or `70%` benchmark thresholds.
+- GA4 report output, Executive Summary Benchmark Comparison, campaign benchmark evaluation, and scheduled Campaign DeepDive benchmark-risk output use the shared benchmark status helper after commit `c93911dd`.
+- GA4 background benchmark `performanceRating` is documented as a historical variance bucket, not the live `On Track` / `Needs Attention` / `Behind` status.
+- `GA4/BENCHMARKS.md` now documents the metric-aware model and marketing-readable validation examples.
 
 Partially reviewed:
 
 - Scheduled Campaign DeepDive report output includes benchmark risk wording, but live scheduled email/PDF behavior has not been validated for this benchmark threshold change.
+- Live GA4 UI behavior with each benchmark type has not yet been manually validated end to end.
+- Campaign-level Benchmark manual validation is deferred until the campaign-level section is refined.
 - Other platform pages also contain similar benchmark thresholds; they are intentionally out of scope for the first GA4-specific plan unless a later implementation step explicitly broadens scope.
 
 Not locally verified:
@@ -421,5 +451,7 @@ Not locally verified:
 - Live executive behavior with real mixed benchmark sets.
 - Downloaded report PDF output with live benchmark rows.
 - Scheduled email output with live benchmark rows.
+- Manual GA4 examples for every benchmark type listed in Commit 5.
+- Campaign-level Benchmark UI/manual behavior.
 - Whether users expect custom per-benchmark tolerance controls.
 - Whether industry-specific benchmark thresholds should vary by campaign category or metric source.

@@ -102,7 +102,7 @@ describe("GA4 Insights regression guard", () => {
     expect(categorySection).toContain('{ key: "trends", label: "Trend signals" }');
     expect(categorySection).toContain('{ key: "finance", label: "Revenue and spend checks" }');
     expect(categorySection).toContain('{ key: "context", label: "Informational context" }');
-    expect(content).toContain("return out.map((item) => ({ ...item, category: getInsightCategory(item) }));");
+    expect(content).toContain("category: getInsightCategory(item),");
     expect(renderSection).toContain("const visibleInsights = insights.slice(0, 12);");
     expect(renderSection).toContain("INSIGHT_CATEGORY_GROUPS.map((group) =>");
     expect(renderSection).toContain("visibleInsights.filter((i) => i.category === group.key)");
@@ -131,5 +131,30 @@ describe("GA4 Insights regression guard", () => {
     expect(insightsSection).toContain("if (getInvalidBenchmarkConfigReason(b)) continue; // invalid benchmarks are handled in integrity checks above");
     expect(insightsSection).toContain("This KPI is not used for behind-target guidance until the saved target is corrected.");
     expect(insightsSection).toContain("This Benchmark is not used for behind-benchmark guidance until the saved benchmark value is corrected.");
+  });
+
+  it("shows data basis and confidence metadata on What to investigate next cards", () => {
+    const content = ga4MetricsFile();
+    const metadataStart = content.indexOf("const getInsightDataBasis =");
+    const metadataEnd = content.indexOf("const insights = useMemo<InsightItem[]>(() => {", metadataStart);
+    const metadataSection = content.slice(metadataStart, metadataEnd);
+    const renderStart = content.indexOf('<CardTitle className="text-lg">What to investigate next</CardTitle>');
+    const renderEnd = content.indexOf("</CardContent>", renderStart);
+    const renderSection = content.slice(renderStart, renderEnd);
+
+    expect(metadataStart).toBeGreaterThan(-1);
+    expect(metadataEnd).toBeGreaterThan(metadataStart);
+    expect(content).toContain('type InsightConfidence = "High" | "Medium" | "Low";');
+    expect(content).toContain("dataBasis?: string;");
+    expect(content).toContain("confidence?: InsightConfidence;");
+    expect(metadataSection).toContain("Saved KPI target + current values");
+    expect(metadataSection).toContain("Saved Benchmark + current values");
+    expect(metadataSection).toContain("GA4 completed daily history");
+    expect(metadataSection).toContain("Revenue/spend to-date totals");
+    expect(metadataSection).toContain("GA4 native + imported revenue");
+    expect(content).toContain("dataBasis: getInsightDataBasis(item),");
+    expect(content).toContain("confidence: getInsightConfidence(item),");
+    expect(renderSection).toContain("Basis: {i.dataBasis}");
+    expect(renderSection).toContain("Confidence: {i.confidence}");
   });
 });

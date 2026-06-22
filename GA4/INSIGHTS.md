@@ -220,6 +220,7 @@ Important meaning:
 - not every item is a negative alert; the list can also contain positive or informational items
 - live UI findings are grouped by investigation type so setup problems, off-track targets, trend signals, revenue/spend checks, and informational context are easier to scan
 - invalid saved KPI or Benchmark targets should appear as configuration findings before performance conclusions; invalid items must not also create normal behind-target or behind-benchmark guidance
+- live UI findings should show display-only data-basis and confidence metadata so executives can see whether a card is based on saved KPI/Benchmark configuration, GA4 completed daily history, GA4 to-date values, imported revenue, or revenue/spend totals
 
 ## Current Limits Of Recommendations
 

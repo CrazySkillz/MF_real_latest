@@ -4158,10 +4158,13 @@ export default function GA4Metrics() {
     { key: "context", label: "Informational context" },
   ] as const;
   type InsightCategory = typeof INSIGHT_CATEGORY_GROUPS[number]["key"];
+  type InsightConfidence = "High" | "Medium" | "Low";
 
   type InsightItem = {
     id: string;
     category?: InsightCategory;
+    dataBasis?: string;
+    confidence?: InsightConfidence;
     severity: "high" | "medium" | "low";
     title: string;
     description: string;
@@ -4194,6 +4197,42 @@ export default function GA4Metrics() {
       id === "info:revenue_summary"
     ) return "finance";
     return "context";
+  };
+
+  const getInsightDataBasis = (item: Pick<InsightItem, "id">): string => {
+    const id = String(item.id || "");
+    if (id.startsWith("integrity:kpi")) return "Saved KPI configuration";
+    if (id.startsWith("integrity:bench")) return "Saved Benchmark configuration";
+    if (id === "financial:ga4_to_date_unavailable") return "GA4 to-date totals";
+    if (id === "financial:revenue_missing" || id === "financial:spend_missing") return "Source configuration";
+    if (id.startsWith("financial:") || id === "positive:roas:lifetime") return "Revenue/spend to-date totals";
+    if (id === "info:ga4_revenue_and_imported_revenue_included") return "GA4 native + imported revenue";
+    if (id.startsWith("kpi:") || id.startsWith("positive:kpi:")) return "Saved KPI target + current values";
+    if (id.startsWith("bench:")) return "Saved Benchmark + current values";
+    if (id === "info:top_channel") return "GA4 campaign breakdown";
+    if (id === "info:revenue_summary") return "Revenue to-date totals";
+    if (id.startsWith("anomaly:") || id === "info:short_window" || id === "info:avg_sessions" || id === "info:engagement_rate" || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) {
+      return "GA4 completed daily history";
+    }
+    if (id === "info:scheduler_no_history") return "KPI/Benchmark snapshot history";
+    return "Current campaign data";
+  };
+
+  const getInsightConfidence = (item: Pick<InsightItem, "id">): InsightConfidence => {
+    const id = String(item.id || "");
+    if (
+      id.startsWith("integrity:") ||
+      id === "financial:ga4_to_date_unavailable" ||
+      id === "financial:revenue_missing" ||
+      id === "financial:spend_missing" ||
+      id === "info:scheduler_no_history" ||
+      id === "anomaly:not-enough-history"
+    ) return "High";
+    if (id.includes(":3d") || id === "info:short_window") return "Low";
+    if (id.startsWith("anomaly:") || id.startsWith("positive:sessions:") || id.startsWith("positive:revenue:") || id.startsWith("positive:conversions:")) return "Medium";
+    if (id.startsWith("kpi:") || id.startsWith("bench:") || id.startsWith("positive:kpi:")) return "Medium";
+    if (id.startsWith("financial:") || id === "info:ga4_revenue_and_imported_revenue_included" || id === "positive:roas:lifetime") return "High";
+    return "Medium";
   };
 
   const insights = useMemo<InsightItem[]>(() => {
@@ -4865,7 +4904,12 @@ export default function GA4Metrics() {
     // Stable ordering: high -> medium -> low
     const order = { high: 0, medium: 1, low: 2 } as const;
     out.sort((a, b) => order[a.severity] - order[b.severity]);
-    return out.map((item) => ({ ...item, category: getInsightCategory(item) }));
+    return out.map((item) => ({
+      ...item,
+      category: getInsightCategory(item),
+      dataBasis: getInsightDataBasis(item),
+      confidence: getInsightConfidence(item),
+    }));
   }, [
     platformKPIs,
     benchmarks,
@@ -8050,6 +8094,18 @@ export default function GA4Metrics() {
                                                   <div className="flex items-center gap-2 flex-wrap">
                                                     <div className="font-semibold text-foreground">{i.title}</div>
                                                     <Badge className={`text-xs border ${badgeClass}`}>{badgeText}</Badge>
+                                                  </div>
+                                                  <div className="mt-2 flex flex-wrap gap-2">
+                                                    {i.dataBasis ? (
+                                                      <Badge variant="outline" className="max-w-full whitespace-normal text-left text-xs font-normal text-muted-foreground">
+                                                        Basis: {i.dataBasis}
+                                                      </Badge>
+                                                    ) : null}
+                                                    {i.confidence ? (
+                                                      <Badge variant="outline" className="max-w-full whitespace-normal text-left text-xs font-normal text-muted-foreground">
+                                                        Confidence: {i.confidence}
+                                                      </Badge>
+                                                    ) : null}
                                                   </div>
                                                   <div className="text-sm text-muted-foreground/70 mt-1">{i.description}</div>
                                                   {i.recommendation ? (

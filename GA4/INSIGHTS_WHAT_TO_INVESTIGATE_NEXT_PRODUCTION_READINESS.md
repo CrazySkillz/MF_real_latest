@@ -68,7 +68,7 @@ Validation:
 
 ### Commit 2: Add Invalid KPI/Benchmark Configuration Detection
 
-Status: Implemented and locally validated
+Status: Implemented, locally validated, and user validated
 
 Goal:
 
@@ -91,10 +91,11 @@ Validation:
 - count, currency, ratio, and percent values reject non-positive saved target/benchmark values in Insights guidance
 - invalid items do not create misleading behind-target or behind-benchmark cards
 - valid custom KPI/Benchmark values still calculate normally
+- user validation passed after commit `4276f3e0`
 
 ### Commit 3: Add Data Basis And Confidence Labels
 
-Status: Not started
+Status: Implemented and locally validated
 
 Goal:
 
@@ -109,6 +110,10 @@ Smallest safe implementation:
 
 Validation:
 
+- local regression guard added for data-basis and confidence metadata rendering
+- passed `npm test -- --run server/ga4-insights-regression.test.ts`
+- passed `npm test -- --run server/ga4-ui-regression.test.ts`
+- passed `npm run check`
 - setup/config cards show high confidence
 - trend/anomaly cards show confidence based on available history
 - KPI/Benchmark cards identify saved target inputs

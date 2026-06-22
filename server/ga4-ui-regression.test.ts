@@ -241,4 +241,18 @@ describe("GA4 UI regression guard", () => {
     expect(spendModal).toContain('h-[95vh] max-h-[95vh] p-0 flex flex-col min-h-0 overflow-hidden');
     expect(spendModal).toContain("overflow-y-auto");
   });
+
+  it("shows clear Custom Report empty states when no GA4 KPIs or Benchmarks exist", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const customReportStart = ga4Metrics.indexOf("<h3 className=\"text-lg font-bold text-foreground mb-2\">Custom Report</h3>");
+    const scheduleStart = ga4Metrics.indexOf("{/* Schedule Automated Reports for Custom */}", customReportStart);
+    const customReportSection = ga4Metrics.slice(customReportStart, scheduleStart);
+
+    expect(customReportStart).toBeGreaterThan(-1);
+    expect(scheduleStart).toBeGreaterThan(customReportStart);
+    expect(customReportSection).toContain("No KPIs created yet");
+    expect(customReportSection).toContain("No Benchmarks created yet");
+    expect(customReportSection).not.toContain("No KPIs selected for this report.");
+    expect(customReportSection).not.toContain("No benchmarks selected for this report.");
+  });
 });

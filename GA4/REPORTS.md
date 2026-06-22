@@ -76,7 +76,7 @@ Current standard-template output rule:
 - `Ad Comparison` report leader cards, chart/table sections, and revenue breakdown should use the same adjusted campaign comparison rows as the live tab, including exact campaign-matched imported revenue and mapped-revenue-created rows
 - `Insights` should follow the live Insights order
 - `Insights` report output should include the same daily-history freshness context as the live Trends section: `Data through`, reporting timezone, and last refreshed timestamp
-- `Insights` report output should keep `What to investigate next` aligned with the live section by printing the history-aware intro, grouped findings, data basis, confidence, and `Recommended check:` wording
+- downloaded and scheduled `Insights` report output should keep `What to investigate next` aligned with the live section by printing the history-aware intro, grouped findings, data basis, confidence, and `Recommended check:` wording
 
 ## Custom Report
 
@@ -157,6 +157,7 @@ Important meaning:
 - top-level custom sections are parent headers, not checkboxes
 - subsection checkboxes default to unchecked for new custom reports
 - KPI and Benchmark selection is item-based
+- when no GA4 KPI or Benchmark rows exist, the Custom Report picker should show `No KPIs created yet` or `No Benchmarks created yet` in the expanded KPI/Benchmark section instead of leaving a blank list
 - subsection picker layout is presentation only; saved report meaning comes from the checked subsection keys and selected KPI/Benchmark ids
 
 Campaign-scoped Report Type menu:

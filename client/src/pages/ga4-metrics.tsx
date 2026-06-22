@@ -9111,8 +9111,11 @@ export default function GA4Metrics() {
                               </div>
                               {s.key === "kpis" && (
                                 <div className="space-y-1">
-                                  <div className="grid grid-cols-2 gap-2 text-sm">
-                                    {(Array.isArray(platformKPIs) ? platformKPIs : []).map((k: any) => {
+                                  {(Array.isArray(platformKPIs) ? platformKPIs : []).length === 0 ? (
+                                    <p className="text-sm text-muted-foreground pt-2">No KPIs created yet</p>
+                                  ) : (
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                      {(Array.isArray(platformKPIs) ? platformKPIs : []).map((k: any) => {
                                       const cfgKpis = normalizeCustomReportConfig(ga4ReportForm.configuration).selectedKpiIds || [];
                                       const isChecked = cfgKpis.includes(String(k.id));
                                       return (
@@ -9133,14 +9136,18 @@ export default function GA4Metrics() {
                                           {String(k.name || k.metric || "KPI")}
                                         </label>
                                       );
-                                    })}
-                                  </div>
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                               {s.key === "benchmarks" && (
                                 <div className="space-y-1">
-                                  <div className="grid grid-cols-2 gap-2 text-sm">
-                                    {(Array.isArray(benchmarks) ? benchmarks : []).map((b: any) => {
+                                  {(Array.isArray(benchmarks) ? benchmarks : []).length === 0 ? (
+                                    <p className="text-sm text-muted-foreground pt-2">No Benchmarks created yet</p>
+                                  ) : (
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                      {(Array.isArray(benchmarks) ? benchmarks : []).map((b: any) => {
                                       const cfgBenchmarks = normalizeCustomReportConfig(ga4ReportForm.configuration).selectedBenchmarkIds || [];
                                       const isChecked = cfgBenchmarks.includes(String(b.id));
                                       return (
@@ -9161,8 +9168,9 @@ export default function GA4Metrics() {
                                           {String(b.name || b.metric || "Benchmark")}
                                         </label>
                                       );
-                                    })}
-                                  </div>
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

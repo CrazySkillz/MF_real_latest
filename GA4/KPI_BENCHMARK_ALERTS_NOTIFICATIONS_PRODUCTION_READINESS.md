@@ -131,8 +131,11 @@ Validation completed:
 
 - `npm test -- server/benchmark-alert-lifecycle-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/notification-visibility-regression.test.ts server/alert-evaluation.test.ts server/ga4-kpi-regression.test.ts`
 - `npm run check`
+- Validation confirmed passed on 2026-06-23 before Commit 4 work began.
 
 ### Commit 4: Email Alert Parity
+
+Status: complete.
 
 Fix scope:
 
@@ -148,6 +151,17 @@ Required tests:
 - email checks use resolved current values for campaign-backed rows
 - immediate email checks are attempted after breached create/update when email alerts are enabled
 - throttling still prevents repeated reminder emails
+
+Root cause fixed:
+
+- immediate KPI email checks read persisted `kpi.currentValue` directly instead of resolving campaign/current-value-backed rows through `resolveCampaignCurrentValueForAlert`
+- immediate Benchmark email checks read persisted `benchmark.currentValue` directly instead of resolving campaign/current-value-backed rows through `resolveCampaignCurrentValueForAlert`
+- scheduled KPI and Benchmark email checks used the same persisted-row-only path, so email threshold decisions could drift from in-app GA4/campaign current-value resolution
+
+Validation completed:
+
+- `npm test -- server/alert-email-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-evaluation.test.ts server/notification-visibility-regression.test.ts`
+- `npm run check`
 
 ### Commit 5: GA4 Route And UI Synchronization
 
@@ -264,11 +278,13 @@ Proven locally:
 - Commit 2 focused tests prove formatted alert numbers parse, invalid current values and thresholds fail closed, `below`/`above`/`equals` condition math is shared, and GA4 campaign KPI/Benchmark alert checks still resolve connected-platform current values before threshold evaluation
 - Commit 2 user-requested validation rerun passed on 2026-06-22 with 4 focused alert test files / 13 tests and `npm run check`
 - Commit 3 added KPI and Benchmark soft-resolution for GA4/campaign-style in-app alerts, including non-breach, disabled alerts, missing/invalid thresholds, missing/invalid current values, missing campaign context, dismissed still-breached recreation, and duplicate active Benchmark alert collapse
+- Commit 3 validation was confirmed passed on 2026-06-23 before Commit 4 work began
+- Commit 4 moved immediate and scheduled KPI/Benchmark email alert checks onto the same campaign current-value resolver used by in-app alert checks, preserved email throttling before send attempts, kept invalid values fail-closed, and kept immediate email hooks on the current GA4 KPI/Benchmark create/update routes
 
 Partially reviewed:
 
-- existing code traces identified remaining gaps in email/current-value parity, notification raw-row visibility checks, async route reconciliation, UI notification refresh, and bell deep-link rewriting
-- the lifecycle matrix above defines the paths that must be proven by Commits 4 through 8 before GA4 readiness can be claimed
+- existing code traces identified remaining gaps in notification raw-row visibility checks, async route reconciliation, UI notification refresh, and bell deep-link rewriting
+- the lifecycle matrix above defines the paths that must be proven by Commits 5 through 8 before GA4 readiness can be claimed
 
 Not locally verifiable yet:
 
@@ -279,7 +295,7 @@ Not locally verifiable yet:
 
 Not production-ready yet:
 
-- GA4 KPI/Benchmark alerts and notifications must complete Commits 4 through 8 and the required validation pass before this document can mark them production-ready
+- GA4 KPI/Benchmark alerts and notifications must complete Commits 5 through 8 and the required validation pass before this document can mark them production-ready
 - Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration must each pass this same lifecycle with source-specific evidence before their KPI/Benchmark alert and notification behavior can be marked production-ready
 
 ## Cross-Platform Template Rules

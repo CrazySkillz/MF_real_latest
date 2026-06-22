@@ -3,6 +3,7 @@ import { campaigns, kpis, benchmarks, kpiAlerts } from "../../shared/schema.js";
 import { eq, and, sql } from "drizzle-orm";
 import { emailService } from "./email-service.js";
 import { evaluateAlertCondition, parseAlertNumber as parseSharedAlertNumber } from "../utils/alert-evaluation";
+import { resolveCampaignCurrentValueForAlert } from "../utils/campaign-current-values";
 
 interface AlertCheck {
   id: string;
@@ -54,8 +55,9 @@ class AlertMonitoringService {
   }
 
   async sendImmediateKPIAlertIfNeeded(kpiId: string): Promise<boolean> {
-    const [kpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
-    if (!kpi || !kpi.alertsEnabled || !kpi.emailNotifications || !kpi.emailRecipients) return false;
+    const [rawKpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
+    if (!rawKpi || !rawKpi.alertsEnabled || !rawKpi.emailNotifications || !rawKpi.emailRecipients) return false;
+    const kpi = await resolveCampaignCurrentValueForAlert(rawKpi);
     const campaignName = await this.getExistingCampaignName((kpi as any).campaignId);
     if (!campaignName) return false;
 
@@ -107,8 +109,9 @@ class AlertMonitoringService {
   }
 
   async sendImmediateBenchmarkAlertIfNeeded(benchmarkId: string): Promise<boolean> {
-    const [benchmark] = await db.select().from(benchmarks).where(eq(benchmarks.id, benchmarkId));
-    if (!benchmark || !benchmark.alertsEnabled || !benchmark.emailNotifications || !benchmark.emailRecipients) return false;
+    const [rawBenchmark] = await db.select().from(benchmarks).where(eq(benchmarks.id, benchmarkId));
+    if (!rawBenchmark || !rawBenchmark.alertsEnabled || !rawBenchmark.emailNotifications || !rawBenchmark.emailRecipients) return false;
+    const benchmark = await resolveCampaignCurrentValueForAlert(rawBenchmark);
     if (String((benchmark as any).status || 'active') !== 'active') return false;
     const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId);
     if (!campaignName) return false;
@@ -159,8 +162,10 @@ class AlertMonitoringService {
         .where(and(eq(kpis.alertsEnabled, true), eq(kpis.emailNotifications, true)));
 
       let alertsSent = 0;
+      const campaignMetricCache = new Map<string, Promise<any>>();
 
-      for (const kpi of kpisToCheck) {
+      for (const rawKpi of kpisToCheck) {
+        const kpi = await resolveCampaignCurrentValueForAlert(rawKpi, campaignMetricCache);
         // Skip if no email recipients configured
         if (!kpi.emailRecipients) continue;
         const campaignName = await this.getExistingCampaignName((kpi as any).campaignId);
@@ -247,8 +252,10 @@ class AlertMonitoringService {
         .where(and(eq(benchmarks.alertsEnabled, true), eq(benchmarks.emailNotifications, true)));
 
       let alertsSent = 0;
+      const campaignMetricCache = new Map<string, Promise<any>>();
 
-      for (const benchmark of benchmarksToCheck) {
+      for (const rawBenchmark of benchmarksToCheck) {
+        const benchmark = await resolveCampaignCurrentValueForAlert(rawBenchmark, campaignMetricCache);
         // Skip if no email recipients configured
         if (!benchmark.emailRecipients) continue;
         const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId);

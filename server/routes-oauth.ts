@@ -33,6 +33,7 @@ import { buildPerformanceSummaryAggregate } from "./utils/performance-summary-ag
 import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
 import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
+import { computeBenchmarkThresholdResult } from "@shared/kpi-math";
 
 function withReportingTimeZone<T extends Record<string, any>>(campaign: T): T {
   return {
@@ -24544,22 +24545,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         }
 
-        const lower = isLowerBetter(metricKey);
-        const ratio = lower ? (safeCurrent > 0 ? safeBench / safeCurrent : 0) : safeCurrent / safeBench;
-        const pct = Math.max(0, Math.min(ratio * 100, 100));
-        const status = ratio >= 0.9 ? "on_track" : ratio >= 0.7 ? "needs_attention" : "behind";
-        const deltaPct = lower ? ((safeBench - safeCurrent) / safeBench) * 100 : ((safeCurrent - safeBench) / safeBench) * 100;
+        const threshold = computeBenchmarkThresholdResult({
+          metric,
+          name: b?.name || b?.metric,
+          unit: b?.unit,
+          current: safeCurrent,
+          benchmarkValue: safeBench,
+        });
+        const status = threshold.status || "behind";
 
         return {
           ...b,
           evaluation: {
             status,
-            ratio,
-            pct,
-            deltaPct: Number.isFinite(deltaPct) ? deltaPct : 0,
+            ratio: threshold.ratio ?? 0,
+            pct: threshold.pct,
+            deltaPct: threshold.effectiveDeltaPct ?? 0,
             currentValue: safeCurrent,
             benchmarkValue: safeBench,
-            lowerIsBetter: lower,
+            lowerIsBetter: threshold.lowerIsBetter,
             hasRevenueTracking,
             conversionValueUsed,
             sessionIdUsed: resolvedSession ? String(resolvedSession.id) : null,
@@ -27897,18 +27901,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (targetVal > 0 && ["cvr", "revenue", "conversions"].includes(aggregateBenchmarkMetric)) {
             recommendationTargetMetrics.add(aggregateBenchmarkMetric);
           }
-          const lowerIsBetter = lowerIsBetterKpiMetrics.has(aggregateBenchmarkMetric);
-          const delta = targetVal > 0
-            ? lowerIsBetter
-              ? ((targetVal - currentVal) / targetVal) * 100
-              : ((currentVal - targetVal) / targetVal) * 100
-            : 0;
-          const progressRatio = targetVal > 0
-            ? lowerIsBetter
-              ? (currentVal > 0 ? targetVal / currentVal : 0)
-              : currentVal / targetVal
-            : 0;
-          const progressPct = progressRatio * 100;
+          const threshold = computeBenchmarkThresholdResult({
+            metric: aggregateBenchmarkMetric,
+            name: bm?.name || bm?.metric,
+            unit: bm?.unit,
+            current: currentVal,
+            benchmarkValue: targetVal,
+          });
+          const delta = threshold.effectiveDeltaPct ?? 0;
 
           benchmarkComparison.push({
             metric: bm.name,
@@ -27916,7 +27916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             benchmark: targetVal,
             unit: bm.unit || '',
             delta: `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`,
-            status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind',
+            status: threshold.status || 'behind',
             category: bm.category || '',
           });
         }
@@ -28083,7 +28083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (missedBenchmarkCount > 0) {
         riskExtraFactors.push({
           type: "benchmark",
-          message: `${missedBenchmarkCount} benchmark${missedBenchmarkCount === 1 ? " is" : "s are"} below 70% of benchmark`,
+          message: `${missedBenchmarkCount} benchmark${missedBenchmarkCount === 1 ? " is" : "s are"} classified behind benchmark`,
           severity: "medium",
         });
       }

@@ -8,6 +8,7 @@ import * as cron from "node-cron";
 import { DateTime } from "luxon";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { aggregateCampaignMetrics } from "./scheduler";
+import { computeBenchmarkThresholdResult } from "../shared/kpi-math";
 
 /**
  * Report Scheduler - Automated Email Reports
@@ -954,6 +955,16 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
     }
     return null;
   };
+  const benchmarkThresholdResult = (row: any) => {
+    const key = resolveAggregateMetric(row);
+    return key ? computeBenchmarkThresholdResult({
+      metric: key,
+      name: row?.name || row?.metric,
+      unit: row?.unit,
+      current: metricNumber(key),
+      benchmarkValue: Number(row?.benchmarkValue ?? row?.benchmark) || 0,
+    }) : null;
+  };
   const addMetricRows = (keys: string[], indent = 8) => {
     if (!performanceSummary) {
       addText("- Connected-source aggregate values are unavailable.", { indent });
@@ -1059,12 +1070,10 @@ async function buildCampaignDeepDiveScheduledPdfAttachment(args: {
         return key && target > 0 && metricNumber(key) / target < 0.7;
       }).length;
       const benchmarkRisk = (Array.isArray(benchmarks) ? benchmarks : []).filter((row: any) => {
-        const key = resolveAggregateMetric(row);
-        const target = Number(row?.benchmarkValue ?? row?.benchmark) || 0;
-        return key && target > 0 && metricNumber(key) / target < 0.7;
+        return benchmarkThresholdResult(row)?.status === "behind";
       }).length;
       addText(`- KPI Risk: ${kpiRisk > 0 ? `${kpiRisk} KPI row(s) below 70% of target` : "No mapped KPI rows below 70% of target"}`, { indent: 8 });
-      addText(`- Benchmark Risk: ${benchmarkRisk > 0 ? `${benchmarkRisk} Benchmark row(s) below 70% of benchmark` : "No mapped Benchmark rows below 70% of benchmark"}`, { indent: 8 });
+      addText(`- Benchmark Risk: ${benchmarkRisk > 0 ? `${benchmarkRisk} Benchmark row(s) classified behind benchmark` : "No mapped Benchmark rows classified behind"}`, { indent: 8 });
     } else if (section === "executive-summary:recommendations") {
       addText("Recommendation basis", { bold: true, indent: 4 });
       if (!executiveSummary?.performanceSummary) {

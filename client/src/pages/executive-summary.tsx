@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar } from "recharts";
 import { format } from "date-fns";
 import { formatPct } from "@shared/metric-math";
-import { classifyKpiBandWithPolicy, computeAttainmentFillPct, computeAttainmentPct, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
+import { classifyKpiBandWithPolicy, computeAttainmentFillPct, computeAttainmentPct, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 
 const EXECUTIVE_SUMMARY_TABS = new Set(["overview", "recommendations"]);
 
@@ -358,24 +358,20 @@ export default function ExecutiveSummary() {
         if (!aggregateBenchmarkMetric) return null;
         const yours = aggregateMetricValue(aggregateBenchmarkMetric);
         const benchmark = Number(bm.benchmark) || 0;
-        const lowerIsBetter = lowerIsBetterKpiMetrics.has(aggregateBenchmarkMetric);
-        const deltaPct = benchmark > 0
-          ? lowerIsBetter
-            ? ((benchmark - yours) / benchmark) * 100
-            : ((yours - benchmark) / benchmark) * 100
-          : 0;
-        const progressRatio = benchmark > 0
-          ? lowerIsBetter
-            ? (yours > 0 ? benchmark / yours : 0)
-            : yours / benchmark
-          : 0;
-        const progressPct = progressRatio * 100;
+        const threshold = computeBenchmarkThresholdResult({
+          metric: aggregateBenchmarkMetric,
+          name: bm?.name || bm?.metric,
+          unit: bm?.unit,
+          current: yours,
+          benchmarkValue: benchmark,
+        });
+        const deltaPct = threshold.effectiveDeltaPct ?? 0;
         return {
           ...bm,
           aggregateMetric: aggregateBenchmarkMetric,
           yours,
           delta: `${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%`,
-          status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind',
+          status: threshold.status || 'behind',
         };
       })
       .filter(Boolean)
@@ -418,7 +414,7 @@ export default function ExecutiveSummary() {
     ...(aggregateMetricAvailable("roi") && aggregateMetricValue("roi") < 0 ? [{ type: "performance", message: "Negative ROI - immediate optimization required" }] : []),
     ...(aggregateMetricAvailable("roas") && aggregateMetricValue("roas") < 1 ? [{ type: "performance", message: "ROAS below breakeven - review campaign strategy" }] : []),
     ...(riskKpiMissCount > 0 ? [{ type: "kpi", message: `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} below 70% of target` }] : []),
-    ...(riskBenchmarkMissCount > 0 ? [{ type: "benchmark", message: `${riskBenchmarkMissCount} benchmark${riskBenchmarkMissCount === 1 ? " is" : "s are"} below 70% of benchmark` }] : []),
+    ...(riskBenchmarkMissCount > 0 ? [{ type: "benchmark", message: `${riskBenchmarkMissCount} benchmark${riskBenchmarkMissCount === 1 ? " is" : "s are"} classified behind benchmark` }] : []),
     ...riskFreshnessWarnings.map((warning: any) => ({ type: "freshness", message: warning.message })),
   ];
   const displayedRiskLevel = (aggregateMetricAvailable("roi") && aggregateMetricValue("roi") < 0) || riskFreshnessWarnings.some((warning: any) => warning.severity === "high")
@@ -430,7 +426,7 @@ export default function ExecutiveSummary() {
   const executiveSummaryNarrative = `${(campaign as any)?.name}: ${executiveMetricSummary} Risk level is ${displayedRiskLevel}. ${executiveTrajectorySummary}`;
   const riskInputRows = [
     { label: "KPI Risk", status: riskKpiMissCount > 0 ? "Risk" : executiveKpiProgress.length > 0 ? "No Risk" : "Not Applicable", detail: riskKpiMissCount > 0 ? `${riskKpiMissCount} KPI${riskKpiMissCount === 1 ? " is" : "s are"} below 70% of target` : executiveKpiProgress.length > 0 ? "Mapped KPIs are at or above 70% of target" : "No mapped campaign KPIs available" },
-    { label: "Benchmark Risk", status: riskBenchmarkMissCount > 0 ? "Risk" : executiveBenchmarkComparison.length > 0 ? "No Risk" : "Not Applicable", detail: riskBenchmarkMissCount > 0 ? `${riskBenchmarkMissCount} benchmark${riskBenchmarkMissCount === 1 ? " is" : "s are"} below 70% of benchmark` : executiveBenchmarkComparison.length > 0 ? "Mapped benchmarks are at or above 70% of benchmark" : "No mapped campaign benchmarks available" },
+    { label: "Benchmark Risk", status: riskBenchmarkMissCount > 0 ? "Risk" : executiveBenchmarkComparison.length > 0 ? "No Risk" : "Not Applicable", detail: riskBenchmarkMissCount > 0 ? `${riskBenchmarkMissCount} benchmark${riskBenchmarkMissCount === 1 ? " is" : "s are"} classified behind benchmark` : executiveBenchmarkComparison.length > 0 ? "Mapped benchmarks are not classified behind" : "No mapped campaign benchmarks available" },
     { label: "Data Freshness", status: riskFreshnessWarnings.length > 0 ? "Risk" : "No Risk", detail: riskFreshnessWarnings.length > 0 ? `${riskFreshnessWarnings.length} stale source warning${riskFreshnessWarnings.length === 1 ? "" : "s"}` : "No stale connected-source warnings" },
     { label: "ROI / ROAS Risk", status: roiRoasRisk ? "Risk" : aggregateMetricAvailable("roi") || aggregateMetricAvailable("roas") ? "No Risk" : "Not Applicable", detail: aggregateMetricAvailable("roi") || aggregateMetricAvailable("roas") ? [aggregateMetricAvailable("roi") ? `ROI ${formatAggregatePercent("roi")}` : null, aggregateMetricAvailable("roas") ? `ROAS ${formatAggregateRatio("roas")}` : null].filter(Boolean).join(", ") : "ROI and ROAS unavailable from connected sources" },
     { label: "7-Day Trend Risk", status: trendRisk ? "Risk" : executiveTrajectory ? "No Risk" : "Not Enough History", detail: executiveTrajectory ? `${executiveTrajectory}${trendPercentage ? ` (${trendPercentage.toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },

@@ -30,7 +30,7 @@ import {
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { reportStorage, type StoredReport } from "@/lib/reportStorage";
-import { classifyKpiBandWithPolicy, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
+import { classifyKpiBandWithPolicy, computeBenchmarkThresholdResult, isLowerIsBetterKpi, resolveKpiThresholdPolicy } from "@shared/kpi-math";
 
 const customReportMetricGroups = [
   { title: "Web analytics", keys: ["users", "sessions", "cvr"] },
@@ -1021,6 +1021,13 @@ export default function Reports() {
       .filter((bm: any) => bm.aggregateMetric);
     const kpiTargetValue = (kpi: any) => Number(kpi.targetValue ?? kpi.target) || 0;
     const benchmarkTargetValue = (benchmark: any) => Number(benchmark.benchmarkValue ?? benchmark.benchmark) || 0;
+    const benchmarkThresholdResult = (benchmark: any) => computeBenchmarkThresholdResult({
+      metric: benchmark.aggregateMetric,
+      name: benchmark?.name || benchmark?.metric,
+      unit: benchmark?.unit,
+      current: metricNumber(benchmark.aggregateMetric),
+      benchmarkValue: benchmarkTargetValue(benchmark),
+    });
     const kpiBand = (kpi: any) => {
       const current = metricNumber(kpi.aggregateMetric);
       const target = kpiTargetValue(kpi);
@@ -1041,9 +1048,10 @@ export default function Reports() {
       return band === "above" ? "Above Target" : band === "near" ? "On Track" : "Below Target";
     };
     const benchmarkStatus = (benchmark: any) => {
-      const pct = progressPct(metricNumber(benchmark.aggregateMetric), benchmarkTargetValue(benchmark), benchmark.aggregateMetric);
-      return pct >= 90 ? "On Track" : pct >= 70 ? "Needs Attention" : "Below Target";
+      const status = benchmarkThresholdResult(benchmark).status || "behind";
+      return status === "on_track" ? "On Track" : status === "needs_attention" ? "Needs Attention" : "Behind";
     };
+    const benchmarkProgressLabel = (benchmark: any) => benchmarkThresholdResult(benchmark).labelPct;
     const performanceHealthScore = () => {
       const total = performanceKpiRows.length + performanceBenchmarkRows.length;
       if (total === 0) return null;
@@ -1476,7 +1484,7 @@ export default function Reports() {
       const trendPct = Number(campaignExecutiveSummary?.health?.trendPercentage) || 0;
       const freshnessWarnings = Array.isArray(campaignExecutiveSummary?.dataFreshness?.warnings) ? campaignExecutiveSummary.dataFreshness.warnings : [];
       const kpiMissCount = executiveKpiRows.filter((kpi: any) => progressPct(metricNumber(kpi.aggregateMetric), Number(kpi.target) || 0, kpi.aggregateMetric) < 70).length;
-      const benchmarkMissCount = executiveBenchmarkRows.filter((bm: any) => progressPct(metricNumber(bm.aggregateMetric), Number(bm.benchmark) || 0, bm.aggregateMetric) < 70).length;
+      const benchmarkMissCount = executiveBenchmarkRows.filter((bm: any) => benchmarkThresholdResult(bm).status === "behind").length;
       const aggregateSources = Array.isArray(customReportPerformanceSummary?.sources) ? customReportPerformanceSummary.sources : [];
       const paidSources = aggregateSources.filter((source: any) =>
         source?.connected === true &&
@@ -1498,7 +1506,7 @@ export default function Reports() {
       const metricSummary = [metricAvailable("roi") ? `ROI is ${metricValue("roi")}` : "", metricAvailable("roas") ? `ROAS is ${metricValue("roas")}` : ""].filter(Boolean);
       const riskInputRows = [
         { label: "KPI Risk", status: kpiMissCount > 0 ? "Risk" : executiveKpiRows.length > 0 ? "No Risk" : "Not Applicable", detail: kpiMissCount > 0 ? `${kpiMissCount} KPI${kpiMissCount === 1 ? " is" : "s are"} below 70% of target` : executiveKpiRows.length > 0 ? "Mapped KPIs are at or above 70% of target" : "No mapped campaign KPIs available" },
-        { label: "Benchmark Risk", status: benchmarkMissCount > 0 ? "Risk" : executiveBenchmarkRows.length > 0 ? "No Risk" : "Not Applicable", detail: benchmarkMissCount > 0 ? `${benchmarkMissCount} benchmark${benchmarkMissCount === 1 ? " is" : "s are"} below 70% of benchmark` : executiveBenchmarkRows.length > 0 ? "Mapped benchmarks are at or above 70% of benchmark" : "No mapped campaign benchmarks available" },
+        { label: "Benchmark Risk", status: benchmarkMissCount > 0 ? "Risk" : executiveBenchmarkRows.length > 0 ? "No Risk" : "Not Applicable", detail: benchmarkMissCount > 0 ? `${benchmarkMissCount} benchmark${benchmarkMissCount === 1 ? " is" : "s are"} classified behind benchmark` : executiveBenchmarkRows.length > 0 ? "Mapped benchmarks are not classified behind" : "No mapped campaign benchmarks available" },
         { label: "Data Freshness", status: freshnessWarnings.length > 0 ? "Risk" : "No Risk", detail: freshnessWarnings.length > 0 ? `${freshnessWarnings.length} stale source warning${freshnessWarnings.length === 1 ? "" : "s"}` : "No stale connected-source warnings" },
         { label: "ROI / ROAS Risk", status: roiRoasRisk ? "Risk" : metricAvailable("roi") || metricAvailable("roas") ? "No Risk" : "Not Applicable", detail: metricAvailable("roi") || metricAvailable("roas") ? [metricAvailable("roi") ? `ROI ${metricValue("roi")}` : "", metricAvailable("roas") ? `ROAS ${metricValue("roas")}` : ""].filter(Boolean).join(", ") : "ROI and ROAS unavailable from connected sources" },
         { label: "7-Day Trend Risk", status: trendRisk ? "Risk" : trajectory ? "No Risk" : "Not Enough History", detail: trajectory ? `${trajectory}${trendPct ? ` (${trendPct.toFixed(1)}%)` : ""}` : "Not enough compatible aggregate snapshot history" },
@@ -1523,7 +1531,7 @@ export default function Reports() {
       executiveBenchmarkRows.forEach((bm: any) => {
         const current = metricNumber(bm.aggregateMetric);
         const benchmark = Number(bm.benchmark) || 0;
-        addText(`- ${bm.metric || bm.name}: Yours ${formatCustomReportMetricValue(bm.aggregateMetric, current)}; Benchmark ${formatCustomReportMetricValue(bm.aggregateMetric, benchmark)} (${progressPct(current, benchmark, bm.aggregateMetric).toFixed(1)}%)`, { indent: 8 });
+        addText(`- ${bm.metric || bm.name}: Yours ${formatCustomReportMetricValue(bm.aggregateMetric, current)}; Benchmark ${formatCustomReportMetricValue(bm.aggregateMetric, benchmark)} (${benchmarkProgressLabel(bm)}%)`, { indent: 8 });
       });
       addText("Risk Assessment", { bold: true, indent: 4 });
       riskInputRows.forEach((row) => addText(`- ${row.label}: ${row.status} - ${row.detail}`, { indent: 8 }));

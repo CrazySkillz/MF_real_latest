@@ -122,4 +122,73 @@ describe("GA4 Benchmark regression guard", () => {
     expect(ga4JobsFile).toContain('const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");');
     expect(ga4JobsFile).toContain("await checkBenchmarkPerformanceAlerts();");
   });
+
+  it("keeps downstream Benchmark status surfaces on the shared threshold policy", () => {
+    const executivePage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "executive-summary.tsx"),
+      "utf-8"
+    );
+    const reportsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "reports.tsx"),
+      "utf-8"
+    );
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+    const schedulerFile = readFileSync(
+      join(process.cwd(), "server", "report-scheduler.ts"),
+      "utf-8"
+    );
+
+    const executiveBenchmarkStart = executivePage.indexOf("const executiveBenchmarkComparison =");
+    const executiveBenchmarkEnd = executivePage.indexOf("const kpiProgressPct", executiveBenchmarkStart);
+    const executiveBenchmarkSection = executivePage.slice(executiveBenchmarkStart, executiveBenchmarkEnd);
+    expect(executiveBenchmarkSection).toContain("const threshold = computeBenchmarkThresholdResult({");
+    expect(executiveBenchmarkSection).not.toContain("progressPct >= 90");
+    expect(executiveBenchmarkSection).not.toContain("progressPct >= 70");
+    expect(executivePage).not.toContain("below 70% of benchmark");
+
+    const reportDownloadStart = reportsPage.indexOf("const downloadReportPdf = async");
+    const reportDownloadEnd = reportsPage.indexOf("const safeName", reportDownloadStart);
+    const reportDownloadSection = reportsPage.slice(reportDownloadStart, reportDownloadEnd);
+    expect(reportDownloadSection).toContain("const benchmarkThresholdResult = (benchmark: any) => computeBenchmarkThresholdResult({");
+    expect(reportDownloadSection).toContain('benchmarkThresholdResult(bm).status === "behind"');
+    expect(reportDownloadSection).not.toContain("return pct >= 90");
+    expect(reportDownloadSection).not.toContain("return pct >= 70");
+    expect(reportDownloadSection).not.toContain("below 70% of benchmark");
+
+    const executiveRouteStart = routesFile.indexOf('app.get("/api/campaigns/:id/executive-summary"');
+    const executiveRouteEnd = routesFile.indexOf("// ============================================================================", executiveRouteStart);
+    const executiveRoute = routesFile.slice(executiveRouteStart, executiveRouteEnd);
+    expect(executiveRoute).toContain("const threshold = computeBenchmarkThresholdResult({");
+    expect(executiveRoute).not.toContain("progressPct >= 90");
+    expect(executiveRoute).not.toContain("progressPct >= 70");
+    expect(executiveRoute).not.toContain("below 70% of benchmark");
+
+    const evaluatedRouteStart = routesFile.indexOf('app.get("/api/campaigns/:id/benchmarks/evaluated"');
+    const evaluatedRouteEnd = routesFile.indexOf("  // Get platform benchmarks", evaluatedRouteStart);
+    const evaluatedRoute = routesFile.slice(evaluatedRouteStart, evaluatedRouteEnd);
+    expect(evaluatedRoute).toContain("const threshold = computeBenchmarkThresholdResult({");
+    expect(evaluatedRoute).not.toContain("ratio >= 0.9");
+    expect(evaluatedRoute).not.toContain("ratio >= 0.7");
+
+    const scheduledRiskStart = schedulerFile.indexOf('section === "executive-summary:overview"');
+    const scheduledRiskEnd = schedulerFile.indexOf('} else if (section === "executive-summary:recommendations")', scheduledRiskStart);
+    const scheduledRiskSection = schedulerFile.slice(scheduledRiskStart, scheduledRiskEnd);
+    expect(schedulerFile).toContain("const benchmarkThresholdResult = (row: any) => {");
+    expect(scheduledRiskSection).toContain('benchmarkThresholdResult(row)?.status === "behind"');
+    expect(scheduledRiskSection).not.toContain("below 70% of benchmark");
+  });
+
+  it("documents GA4 background benchmark history ratings as distinct from live status", () => {
+    const ga4JobsFile = readFileSync(
+      join(process.cwd(), "server", "ga4-kpi-benchmark-jobs.ts"),
+      "utf-8"
+    );
+
+    expect(ga4JobsFile).toContain("Historical performanceRating is a variance bucket for trend history");
+    expect(ga4JobsFile).toContain("not the live");
+    expect(ga4JobsFile).toContain("on_track / needs_attention / behind benchmark status");
+  });
 });

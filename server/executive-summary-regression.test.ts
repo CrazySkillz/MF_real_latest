@@ -134,8 +134,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(route).toContain("const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);");
     expect(route).toContain("if (!aggregateBenchmarkMetric) continue;");
     expect(route).toContain("const currentVal = aggregateMetricValue(aggregateBenchmarkMetric);");
-    expect(route).toContain("const progressPct = progressRatio * 100;");
-    expect(route).toContain("status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind'");
+    expect(route).toContain("const threshold = computeBenchmarkThresholdResult({");
+    expect(route).toContain("status: threshold.status || 'behind'");
+    expect(route).not.toContain("status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind'");
     expect(route).not.toContain("parseNum(bm.currentValue)");
     expect(route).toContain("const snapshotPerformanceSummary = (snapshot: any) => snapshot?.metrics?.performanceSummary || null;");
     expect(route).toContain("currentSnapshotSummary.version === previousSnapshotSummary?.version");
@@ -458,7 +459,9 @@ describe("campaign Executive Summary regression guard", () => {
     expect(page).toContain("const executiveBenchmarkComparison = Array.isArray((executiveSummary as any).benchmarkComparison)");
     expect(page).toContain("const aggregateBenchmarkMetric = resolveKpiAggregateMetric(bm);");
     expect(page).toContain("const yours = aggregateMetricValue(aggregateBenchmarkMetric);");
-    expect(page).toContain("status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind'");
+    expect(page).toContain("const threshold = computeBenchmarkThresholdResult({");
+    expect(page).toContain("status: threshold.status || 'behind'");
+    expect(page).not.toContain("status: progressPct >= 90 ? 'on_track' : progressPct >= 70 ? 'needs_attention' : 'behind'");
     expect(page).toContain("if (!aggregateKpiMetric) return null;");
     expect(page).toContain("const current = aggregateMetricValue(aggregateKpiMetric);");
     expect(page).toContain("const kpiProgressPct = (kpi: any): number => {");

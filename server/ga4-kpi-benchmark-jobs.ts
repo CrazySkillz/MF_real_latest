@@ -167,6 +167,8 @@ export function computeBenchmarkVariance(metricKey: string, current: number, ben
 }
 
 export function computeBenchmarkRating(variancePct: number) {
+  // Historical performanceRating is a variance bucket for trend history, not the live
+  // on_track / needs_attention / behind benchmark status used by cards and reports.
   if (variancePct >= 20) return "excellent";
   if (variancePct >= 5) return "good";
   if (variancePct >= -5) return "average";

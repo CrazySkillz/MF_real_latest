@@ -44,6 +44,21 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
     );
   });
 
+  it("excludes insufficient-data KPIs from summary scoring and card progress", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+
+    expect(ga4MetricsFile).toContain("resolveKpiDataSufficiency");
+    expect(ga4MetricsFile).toContain("const getKpiDataSufficiency = (kpi: any) => {");
+    expect(ga4MetricsFile).toContain("let insufficient = 0;");
+    expect(ga4MetricsFile).toContain("if (!sufficiency.sufficient) {");
+    expect(ga4MetricsFile).toContain("continue; // do NOT score thin-data KPIs as strong or weak performance");
+    expect(ga4MetricsFile).toContain("const p = isBlocked || isInsufficient ? null : computeKpiProgress(kpi);");
+    expect(ga4MetricsFile).toContain("Insufficient data:");
+  });
+
   it("prefills benchmark edit current value from the live current-value path", () => {
     const ga4MetricsFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),

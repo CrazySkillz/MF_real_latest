@@ -6,6 +6,13 @@ export type KpiThresholdPolicy = {
   nearTargetBandPct: number;
   absoluteTolerance: number;
 };
+export type KpiDataSufficiencyCode = "insufficient_sessions" | "insufficient_conversions" | "insufficient_spend";
+
+export type KpiDataSufficiencyResult = {
+  sufficient: boolean;
+  code?: KpiDataSufficiencyCode;
+  reason?: string;
+};
 
 const LOWER_IS_BETTER_HINTS = ["cpc", "cpm", "cpa", "cpl", "spend"];
 const RATE_HINTS = ["rate", "ctr", "cvr", "percentage"];
@@ -58,6 +65,10 @@ function includesAnyMetricHint(metric: string, name: string, hints: string[]): b
 
 function normalizeUnit(unit?: string | null): string {
   return String(unit || "").trim().toLowerCase();
+}
+
+function normalizeMetricKey(value?: string | null): string {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 function isCurrencyUnit(unit: string): boolean {
@@ -125,6 +136,41 @@ export function classifyKpiBandWithPolicy(opts: {
   if (effectiveDelta !== null && Math.abs(effectiveDelta) <= absoluteTolerance) return "near";
 
   return classifyKpiBand({ effectiveDeltaPct, nearTargetBandPct: opts.policy.nearTargetBandPct });
+}
+
+export function resolveKpiDataSufficiency(opts: {
+  metric?: string | null;
+  name?: string | null;
+  sessions?: number | null;
+  conversions?: number | null;
+  spend?: number | null;
+  minSessions?: number;
+  minConversions?: number;
+  minSpend?: number;
+}): KpiDataSufficiencyResult {
+  const metric = normalizeMetricKey(opts.metric);
+  const name = normalizeMetricKey(opts.name);
+  const keys = [metric, name];
+  const sessions = Number.isFinite(opts.sessions) ? Number(opts.sessions) : 0;
+  const conversions = Number.isFinite(opts.conversions) ? Number(opts.conversions) : 0;
+  const spend = Number.isFinite(opts.spend) ? Number(opts.spend) : 0;
+  const minSessions = Math.max(1, Number(opts.minSessions || 1));
+  const minConversions = Math.max(1, Number(opts.minConversions || 1));
+  const minSpend = Math.max(0.01, Number(opts.minSpend || 0.01));
+
+  if (keys.some((key) => key === "conversionrate" || key === "engagementrate") && sessions < minSessions) {
+    return { sufficient: false, code: "insufficient_sessions", reason: "Needs sessions before this KPI can be scored." };
+  }
+
+  if (keys.some((key) => key === "cpa" || key.includes("costperacquisition")) && conversions < minConversions) {
+    return { sufficient: false, code: "insufficient_conversions", reason: "Needs conversions before this KPI can be scored." };
+  }
+
+  if (keys.some((key) => key === "roas" || key === "roi") && spend < minSpend) {
+    return { sufficient: false, code: "insufficient_spend", reason: "Needs spend before this KPI can be scored." };
+  }
+
+  return { sufficient: true };
 }
 
 // Progress for KPI cards:

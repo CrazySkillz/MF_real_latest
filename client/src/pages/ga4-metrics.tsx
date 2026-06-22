@@ -34,7 +34,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct } from "@shared/metric-math";
-import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy } from "@shared/kpi-math";
+import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency } from "@shared/kpi-math";
 
 interface Campaign {
   id: string;
@@ -2483,6 +2483,17 @@ export default function GA4Metrics() {
     return String(kpi?.currentValue ?? "0.00");
   };
 
+  const getKpiDataSufficiency = (kpi: any) => {
+    const name = String(kpi?.metric || kpi?.name || "");
+    return resolveKpiDataSufficiency({
+      metric: name,
+      name: kpi?.name,
+      sessions: Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0),
+      conversions: Number(financialConversions || 0),
+      spend: Number(financialSpend || 0),
+    });
+  };
+
   const computeKpiProgress = (kpi: any) => {
     const current = parseFloat(String(getLiveKpiValue(kpi) || "0"));
     const safeCurrent = Number.isFinite(current) ? current : 0;
@@ -3962,6 +3973,7 @@ export default function GA4Metrics() {
     let near = 0;
     let below = 0;
     let blocked = 0;
+    let insufficient = 0;
     let sumPct = 0;
 
     for (const kpi of items) {
@@ -3970,6 +3982,11 @@ export default function GA4Metrics() {
       if (deps.missing.length > 0) {
         blocked += 1;
         continue; // do NOT score blocked KPIs (missing inputs ≠ poor performance)
+      }
+      const sufficiency = getKpiDataSufficiency(kpi);
+      if (!sufficiency.sufficient) {
+        insufficient += 1;
+        continue; // do NOT score thin-data KPIs as strong or weak performance
       }
       const target = parseFloat(String((kpi as any)?.targetValue || "0"));
       if (!Number.isFinite(target) || target <= 0) continue; // can't score without a target
@@ -3984,9 +4001,9 @@ export default function GA4Metrics() {
     }
 
     const avgPct = scored > 0 ? sumPct / scored : 0;
-    return { total: items.length, scored, above, near, below, blocked, avgPct };
+    return { total: items.length, scored, above, near, below, blocked, insufficient, avgPct };
     // computeKpiProgress depends on live values; include the main value inputs so the tracker updates correctly.
-  }, [platformKPIs, breakdownTotals, ga4Metrics, dailySummedTotals, financialSpend, financialRevenue, financialROI, financialCPA, spendMetricAvailable, revenueMetricAvailable]);
+  }, [platformKPIs, breakdownTotals, ga4Metrics, dailySummedTotals, financialSpend, financialRevenue, financialROI, financialCPA, financialConversions, spendMetricAvailable, revenueMetricAvailable]);
 
   const benchmarkTracker = useMemo(() => {
     const items = Array.isArray(benchmarks) ? benchmarks : [];
@@ -4456,6 +4473,7 @@ export default function GA4Metrics() {
       const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
       if (deps.missing.length > 0) continue; // blocked KPIs are handled in integrity checks above
       if (getInvalidKpiConfigReason(k)) continue; // invalid KPIs are handled in integrity checks above
+      if (!getKpiDataSufficiency(k).sufficient) continue;
       const p = computeKpiProgress(k);
       const attPct = p?.attainmentPct ?? 100;
       if (attPct >= KPI_NEEDS_ATTENTION_PCT) continue; // Only flag KPIs below attainment threshold
@@ -4851,6 +4869,7 @@ export default function GA4Metrics() {
       const deps = getMissingDependenciesForMetric(String((k as any)?.metric || (k as any)?.name || ""));
       if (deps.missing.length > 0) continue;
       if (getInvalidKpiConfigReason(k)) continue;
+      if (!getKpiDataSufficiency(k).sufficient) continue;
       const p = computeKpiProgress(k);
       const attPct = p?.attainmentPct ?? 0;
       if (attPct >= POSITIVE_KPI_EXCEEDS_PCT) {
@@ -4949,6 +4968,7 @@ export default function GA4Metrics() {
     ga4Metrics,
     financialSpend,
     financialRevenue,
+    financialConversions,
     financialROI,
     financialROAS,
     ga4RevenueForFinancials,
@@ -6325,6 +6345,18 @@ export default function GA4Metrics() {
                               </div>
                             ) : null}
 
+                            {kpiTracker.insufficient > 0 ? (
+                              <div className="rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-900/20 p-4">
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-foreground">Some KPIs Need More Data</div>
+                                  <div className="text-sm text-foreground/80/60 mt-1">
+                                    {kpiTracker.insufficient} KPI{kpiTracker.insufficient === 1 ? "" : "s"} can't be scored until the required denominator data is available.
+                                    These KPIs are excluded from performance scoring to avoid misleading executives.
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
+
                             {platformKPIs.length === 0 ? (
                               <div className="text-center text-muted-foreground/70 py-8">
                                 <Target className="w-12 h-12 text-muted-foreground/70 mx-auto mb-4" />
@@ -6338,7 +6370,9 @@ export default function GA4Metrics() {
                                 {platformKPIs.map((kpi: any) => {
                                   const deps = getMissingDependenciesForMetric(String(kpi?.metric || kpi?.name || ""));
                                   const isBlocked = deps.missing.length > 0;
-                                  const p = isBlocked ? null : computeKpiProgress(kpi);
+                                  const sufficiency = getKpiDataSufficiency(kpi);
+                                  const isInsufficient = !sufficiency.sufficient;
+                                  const p = isBlocked || isInsufficient ? null : computeKpiProgress(kpi);
                                   const t = getKpiEffectiveTarget(kpi);
                                   const metricKey = String(kpi?.metric || kpi?.name || "");
                                   const { Icon, color } = getKpiIcon(metricKey);
@@ -6513,6 +6547,11 @@ export default function GA4Metrics() {
                                         {isBlocked ? (
                                           <div className="mt-4 text-sm text-muted-foreground/70">
                                             Missing: <span className="font-medium">{deps.missing.join(" + ")}</span>. This KPI is paused until inputs are restored.
+                                          </div>
+                                        ) : null}
+                                        {!isBlocked && isInsufficient ? (
+                                          <div className="mt-4 text-sm text-muted-foreground/70">
+                                            Insufficient data: <span className="font-medium">{sufficiency.reason}</span>
                                           </div>
                                         ) : null}
                                       </CardContent>

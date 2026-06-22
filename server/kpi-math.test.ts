@@ -6,6 +6,7 @@ import {
   computeAttainmentPct,
   computeDeltaPct,
   computeEffectiveDeltaPct,
+  resolveKpiDataSufficiency,
   resolveKpiThresholdPolicy,
 } from "../shared/kpi-math";
 
@@ -140,6 +141,30 @@ describe("kpi math (shared)", () => {
     expect(worsePolicy).toMatchObject({ kind: "cost", nearTargetBandPct: 5, absoluteTolerance: 0 });
     expect(classifyKpiBandWithPolicy({ current: 105, target: 100, lowerIsBetter: true, policy: worsePolicy })).toBe("near");
     expect(classifyKpiBandWithPolicy({ current: 95, target: 100, lowerIsBetter: true, policy: betterPolicy })).toBe("near");
+  });
+
+  it("marks rate KPIs insufficient when the known session denominator is unavailable", () => {
+    expect(resolveKpiDataSufficiency({ metric: "Conversion Rate", sessions: 0 })).toMatchObject({
+      sufficient: false,
+      code: "insufficient_sessions",
+    });
+    expect(resolveKpiDataSufficiency({ metric: "Conversion Rate", sessions: 1 })).toMatchObject({ sufficient: true });
+  });
+
+  it("marks CPA insufficient when conversions are unavailable", () => {
+    expect(resolveKpiDataSufficiency({ metric: "CPA", conversions: 0, spend: 100 })).toMatchObject({
+      sufficient: false,
+      code: "insufficient_conversions",
+    });
+    expect(resolveKpiDataSufficiency({ metric: "CPA", conversions: 1, spend: 100 })).toMatchObject({ sufficient: true });
+  });
+
+  it("marks ROAS and ROI insufficient when spend is unavailable", () => {
+    expect(resolveKpiDataSufficiency({ metric: "ROAS", spend: 0 })).toMatchObject({
+      sufficient: false,
+      code: "insufficient_spend",
+    });
+    expect(resolveKpiDataSufficiency({ metric: "ROI", spend: 0.01 })).toMatchObject({ sufficient: true });
   });
 });
 

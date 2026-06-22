@@ -94,6 +94,14 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
     );
 
     expect(kpisDoc).toContain("bounded to `0%` to `100%` per KPI");
+    expect(kpisDoc).toContain("Metric-aware threshold policy:");
+    expect(kpisDoc).toContain("count KPIs such as `Conversions`, `Users`, and `Sessions` use count-aware tolerance");
+    expect(kpisDoc).toContain("rate KPIs such as `Conversion Rate` and `Engagement Rate` use relative tolerance");
+    expect(kpisDoc).toContain("lower-is-better cost KPIs such as `CPA`, `CPC`, `CPM`, and `CPL` invert the direction");
+    expect(kpisDoc).toContain("blocked or insufficient-data KPIs are excluded");
+    expect(kpisDoc).toContain("Validation examples:");
+    expect(kpisDoc).not.toContain("More than `+5%` above target.");
+    expect(kpisDoc).not.toContain("More than `-5%` below target.");
     expect(benchmarksDoc).toContain("the edit modal should show the same live current value the benchmark card is using");
   });
 });

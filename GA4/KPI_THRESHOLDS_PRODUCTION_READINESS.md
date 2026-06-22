@@ -298,6 +298,14 @@ Validation:
 - Executive Summary KPI progress tests
 - `npm run check`
 
+Commit 4 status as of June 22, 2026:
+
+- Implemented in `client/src/pages/executive-summary.tsx`, `client/src/pages/reports.tsx`, `server/executive-summary-regression.test.ts`, `server/custom-report-regression.test.ts`, and `server/ga4-kpi-benchmark-summary-regression.test.ts`.
+- Automated validation passed with `npm test -- server/kpi-math.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/executive-summary-regression.test.ts server/custom-report-regression.test.ts`, `npm test -- server/ga4-cross-tab-consistency.test.ts`, and `npm run check`.
+- Proven locally: Executive Summary KPI Progress and campaign-scoped Custom Report KPI status no longer use fixed `5%` or `95-105%` status checks.
+- Partially reviewed: scheduled Campaign DeepDive report rendering was traced and did not emit `Above Target` / `On Track` / `Below Target` KPI status bands in the current path, so no scheduler code was changed.
+- Not locally verified: browser UI rendering, downloaded PDF inspection, and scheduled email output with live campaign data.
+
 ### Commit 5 - Documentation And Manual Validation
 
 Goal:
@@ -328,6 +336,14 @@ Validation:
   - CPA KPI
   - custom KPI
 
+Commit 5 status as of June 22, 2026:
+
+- Implemented in `GA4/KPIS.md`, `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md`, and `server/ga4-kpi-benchmark-summary-regression.test.ts`.
+- `GA4/README.md` was not edited in this commit because it already had unrelated dirty worktree changes.
+- Automated validation passed with `npm test -- server/kpi-math.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/executive-summary-regression.test.ts server/custom-report-regression.test.ts` and `npm run check`.
+- Proven locally: the GA4 KPI doc no longer describes active KPI status as fixed `+/-5%`; it documents metric-aware count, rate, revenue/currency, ratio, lower-is-better, blocked, and insufficient-data behavior with validation examples.
+- Not locally verified: manual browser validation for count, rate, revenue, ROAS/ROI, CPA, and custom KPI examples.
+
 ## Acceptance Criteria
 
 The implementation is not production-ready until all of these are true:
@@ -346,18 +362,20 @@ The implementation is not production-ready until all of these are true:
 
 Proven from local code:
 
-- GA4 KPI summary currently uses fixed `NEAR_TARGET_BAND_PCT = 5`.
-- Shared KPI math currently handles lower-is-better direction.
-- Blocked KPIs are excluded from KPI summary scoring.
+- GA4 KPI summary, GA4 report KPI rows, Executive Summary KPI Progress, and campaign-scoped Custom Report KPI status use shared metric-aware KPI banding.
+- Shared KPI math handles count, rate, revenue/currency, ratio, generic, and lower-is-better cost policies.
+- Blocked and insufficient-data KPIs are excluded from KPI summary scoring.
 - `Avg. Progress` uses bounded fill percentage.
 
 Partially reviewed:
 
-- Report and Executive Summary KPI display paths reference KPI status/progress, but every lifecycle path has not yet been traced end to end for this threshold change.
-- Campaign-level KPI behavior appears intended to mirror GA4 KPI thresholds, but it needs a full trace before implementation.
+- Scheduled Campaign DeepDive report rendering was traced for conflicting KPI status-band output, but no live scheduled PDF/email send was run.
+- Broader campaign-level KPI tabs outside the GA4 and traced Campaign DeepDive surfaces were not refactored as part of this GA4 threshold sequence.
 
 Not locally verified:
 
 - Live executive behavior with real mixed KPI sets.
+- Downloaded report PDF inspection with live KPI rows.
+- Scheduled email output with live KPI rows.
 - Whether users expect custom per-KPI tolerance controls.
 - Whether industry-specific KPI thresholds should vary by campaign category.

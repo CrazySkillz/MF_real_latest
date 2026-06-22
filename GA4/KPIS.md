@@ -19,11 +19,11 @@ Executive snapshot cards:
 - `Total KPIs`
   Number of total KPIs.
 - `Above Target`
-  More than `+5%` above target.
+  Better than the target by more than the metric-aware tolerance.
 - `On Track`
-  Within `±5%` of target.
+  Within metric-aware tolerance.
 - `Below Target`
-  More than `-5%` below target.
+  Worse than the target by more than the metric-aware tolerance.
 - `Avg. Progress`
   Average progress across scorable KPIs, bounded to `0%` to `100%` per KPI so over-target KPIs do not inflate the executive summary above full completion.
 
@@ -74,6 +74,24 @@ The KPI grid is the detailed record of KPI state.
 
 The executive snapshot tracker is a summary derived from the KPI grid, not a separate source of truth.
 
+Metric-aware threshold policy:
+
+- count KPIs such as `Conversions`, `Users`, and `Sessions` use count-aware tolerance so normal one-unit misses are not over-penalized, while tiny targets still require meaningful progress
+- rate KPIs such as `Conversion Rate` and `Engagement Rate` use relative tolerance plus a small percentage-point tolerance where appropriate
+- revenue and currency KPIs use relative tolerance unless a more specific policy is defined
+- ratio and efficiency KPIs such as `ROAS` and `ROI` use relative tolerance with the correct unit meaning
+- lower-is-better cost KPIs such as `CPA`, `CPC`, `CPM`, and `CPL` invert the direction so lower than target is favorable
+- blocked or insufficient-data KPIs are excluded from `Above Target`, `On Track`, `Below Target`, and `Avg. Progress`
+
+Validation examples:
+
+- `Conversions` target `10`, current `9` should be `On Track`
+- `Conversions` target `1`, current `0` should be `Below Target`
+- `Conversion Rate` target `5%`, current `4.8%` should be `On Track` when sessions are available
+- `Conversion Rate` with no sessions should show `Insufficient data` instead of a target status
+- `Revenue` target `100000`, current `95000` should be `On Track`
+- `CPA` target `100`, current `105` should be `On Track`, while larger misses should be `Below Target`
+
 When editing an existing KPI:
 
 - the edit modal should highlight the matching predefined KPI tile when the KPI maps to a standard template
@@ -121,7 +139,7 @@ Campaign-level KPI source previews:
 - the campaign-level `ROAS`, `ROI`, and `CPA` create flow should show the connected-platform provenance, not separate revenue/spend source-picker sections, because those metrics are aggregate values sourced from Google Analytics in Connected Platforms
 - the campaign-level `Create KPI` modal must use the KPI tiles as the metric selector; do not show a separate `Aggregated Metric` dropdown in create mode because it duplicates the selected tile and can drift from the tile-driven calculation config
 - the campaign-level `Create KPI` modal should match the GA4 KPI modal's visual pattern: card-colored dialog, muted template container, blue selected tile state, neutral unselected tiles, KPI form fields directly below the template selector, Priority field, and the same `Enable alerts for this KPI` section layout
-- campaign-level KPI summary cards should use the same executive snapshot model as GA4 KPIs: `Above Target` more than `+5%`, `On Track` within `±5%`, `Below Target` more than `-5%`, and bounded `Avg. Progress`
+- campaign-level KPI summary cards should use the same executive snapshot model as GA4 KPIs: shared metric-aware `Above Target`, `On Track`, and `Below Target` classification plus bounded `Avg. Progress`
 - the campaign-level `Create KPI` modal must use the same GA4-scoped totals as the GA4 Overview page for GA4 source values
 - GA4 revenue, conversions, sessions, and users shown in campaign-level KPI source options must be derived from the selected GA4 connection using the GA4 to-date response plus persisted daily rows, matching the GA4 Overview fallback rules
 - do not read GA4 campaign KPI source values only from generic campaign outcome totals when a GA4-page-specific total exists, because that can drift from the values shown in GA4 Overview and Total Revenue Sources
@@ -149,20 +167,21 @@ Important meaning:
 
 ## Executive Snapshot Band Logic
 
-The executive snapshot tracker uses these classification bands:
+The executive snapshot tracker uses shared metric-aware classification bands:
 
 - `Above Target`
-  More than `+5%` above target.
+  Better than the target by more than the metric-aware tolerance.
 - `On Track`
-  Within `±5%` of target.
+  Within metric-aware tolerance.
 - `Below Target`
-  More than `-5%` below target.
+  Worse than the target by more than the metric-aware tolerance.
 
 Important meaning:
 
 - these bands drive the campaign-level KPI summary state
 - they should be derived from the same KPI progress logic as the KPI grid
 - tracker status should never drift from KPI card status for the same KPI
+- reports and Executive Summary KPI progress should use the same shared classification result
 
 ## KPI Alerts And Notifications
 

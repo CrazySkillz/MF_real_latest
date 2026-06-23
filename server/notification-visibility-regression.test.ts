@@ -254,6 +254,21 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).toContain('${isSelectedNotification ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5" : ""}');
   });
 
+  it("does not scroll the page when selecting an already visible notification row", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+
+    expect(notificationsPage).toContain('import { useState, useEffect, useRef } from "react";');
+    expect(notificationsPage).toContain("const suppressNextSelectedScrollRef = useRef(false);");
+    expect(notificationsPage).toContain("if (suppressNextSelectedScrollRef.current) {");
+    expect(notificationsPage).toContain("suppressNextSelectedScrollRef.current = false;");
+    expect(notificationsPage).toContain("if (String(notificationId) === selectedNotificationId) return;");
+    expect(notificationsPage).toContain("suppressNextSelectedScrollRef.current = true;");
+    expect(notificationsPage).toContain("setLocation(`/notifications?selected=${encodeURIComponent(String(notificationId))}`);");
+  });
+
   it("shows a safe empty state when a selected notification is unavailable", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),

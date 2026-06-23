@@ -666,6 +666,7 @@ Root cause fixed:
 
 - after UX-2 the page could resolve a selected notification from the URL, but the UI was still a single list where alert context, row focus, and actions competed inside each row
 - selecting an already-visible row could also trigger the selected-route filter-reset path, so in-list selection risked losing the user's current filter/search context instead of updating detail state in place
+- follow-up UX-3 validation found the page still jumped when clicking between visible alerts because the URL-backed selection scroll effect called `scrollIntoView` for direct row clicks as well as external/deep-link selection
 
 Files changed:
 
@@ -676,6 +677,7 @@ Validation completed:
 
 - `npm test -- server/notification-visibility-regression.test.ts`
 - `npm run check`
+- follow-up validation reran `npm test -- server/notification-visibility-regression.test.ts` and `npm run check` after suppressing scroll only for direct row selection
 
 Partially reviewed:
 

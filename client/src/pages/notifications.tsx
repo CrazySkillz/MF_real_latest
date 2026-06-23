@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useLocation, useSearch } from "wouter";
@@ -31,6 +31,7 @@ export default function Notifications() {
   const search = useSearch();
   const notificationSearchParams = new URLSearchParams(search);
   const selectedNotificationId = notificationSearchParams.get("selected") || notificationSearchParams.get("highlight") || "";
+  const suppressNextSelectedScrollRef = useRef(false);
   const { clients } = useClient();
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
@@ -184,6 +185,11 @@ export default function Notifications() {
   useEffect(() => {
     if (!selectedNotificationId || isLoading || !selectedNotificationVisible) return;
 
+    if (suppressNextSelectedScrollRef.current) {
+      suppressNextSelectedScrollRef.current = false;
+      return;
+    }
+
     const frame = window.requestAnimationFrame(() => {
       const el = document.getElementById(`notification-${selectedNotificationId}`);
       if (el) {
@@ -266,6 +272,8 @@ export default function Notifications() {
     };
   };
   const selectNotification = (notificationId: string) => {
+    if (String(notificationId) === selectedNotificationId) return;
+    suppressNextSelectedScrollRef.current = true;
     setLocation(`/notifications?selected=${encodeURIComponent(String(notificationId))}`);
   };
   const selectedNotificationBody = selectedNotification ? formatNotificationMessage(selectedNotification) : null;

@@ -407,6 +407,257 @@ After GA4 passes this matrix, other connected-platform KPI/Benchmark alert imple
 - refresh `/api/notifications` after alert-impacting create, update, and delete mutations
 - add focused regression tests before marking the copied source production-ready
 
+## Notifications Triage UX Improvement Strategy
+
+Status: planned; not implemented by the completed GA4 alert readiness commits.
+
+### UX Root Cause Analysis
+
+The current alert user journey is functionally safer than the earlier direct deep-link-only flow, but it is still not the best product experience.
+
+Current friction:
+
+- the bell, Notifications page, and KPI/Benchmark cards each behave like separate destinations instead of one guided alert workflow
+- clicking a bell alert can feel like an intermediate stop because the user lands on a highlighted notification row before taking the actual KPI/Benchmark action
+- the Notifications page is mostly an inbox/list, not a triage center that explains what breached, why it matters, and what the next action is
+- alert read state, dismiss state, analytical resolution, and KPI/Benchmark editing are separate concepts, but the UI does not make those differences obvious enough
+- the full Notifications page has filters and pagination, but not a persistent selected-alert detail surface that keeps alert context visible
+
+Recommended product model:
+
+- Bell = quick alert entry point and unread/active alert signal
+- Notifications page = alert triage center
+- KPI/Benchmark page = metric action context
+
+Recommended user journey:
+
+`Bell -> Notifications alert detail -> Open KPI/Benchmark or edit alert settings`
+
+The bell should help the user find the alert quickly. The Notifications page should explain the alert and offer the next action. The KPI/Benchmark page should remain where the user edits the underlying metric target, threshold, or benchmark.
+
+### Target UX Contract
+
+The improved flow should behave as follows:
+
+- clicking a bell performance alert opens `/notifications?selected=:notificationId`
+- the Notifications page shows a two-pane triage layout on desktop: alert list on the left, selected alert detail on the right
+- on mobile, the selected alert detail can replace the list with a clear back-to-list control
+- the selected alert detail shows client, campaign, source/platform, KPI/Benchmark name, current value, threshold value, condition, alert status, created time, and last refreshed time when available
+- the primary action is `Open KPI` or `Open Benchmark`
+- secondary actions are `Edit alert settings`, `Dismiss alert`, and read/unread toggle where appropriate
+- dismissed alerts are clearly described as hidden from the active inbox, not analytically resolved
+- resolved alerts do not appear in the default active-alert view, but can be available in a history/status view if retained by the API
+- deleting a KPI/Benchmark removes the related active alert from bell and Notifications without deleting unrelated alert history
+- editing a still-breached KPI/Benchmark refreshes the selected alert detail without creating duplicates
+- editing a KPI/Benchmark so it no longer breaches removes it from the active alert list
+
+### Commit UX-1: Authoritative UX Contract
+
+Status: planned.
+
+Scope:
+
+- document the alert triage product contract in this file
+- update the lifecycle matrix rows that currently describe bell and Notifications deep-links so they distinguish triage navigation from KPI/Benchmark action navigation
+- update the manual validation checklist to validate the triage journey rather than direct bell-to-card navigation
+
+Validation:
+
+- documentation review only
+- confirm no runtime files are changed
+
+### Commit UX-2: Notifications Page Selected Alert State
+
+Status: planned.
+
+Scope:
+
+- make `/notifications?selected=:notificationId` the canonical selected-alert route
+- keep backwards compatibility with `/notifications?highlight=:notificationId` during transition
+- derive selected alert state from the URL
+- when a selected alert is hidden, resolved, or missing, show a clear empty/detail state instead of silently doing nothing
+- keep existing notification query and ownership filtering unchanged
+
+Required tests:
+
+- selected notification id is read from query string
+- legacy `highlight` query still focuses the same row during transition
+- missing selected notification renders a safe empty state
+- filters do not prevent the selected active alert from being visible
+
+### Commit UX-3: Two-Pane Alert Triage Layout
+
+Status: planned.
+
+Scope:
+
+- convert the Notifications page from list-only to list plus selected-detail layout
+- preserve current filters/search but make `Active alerts` the default user-facing mode
+- keep cards compact in the list; move detailed breach context into the detail panel
+- add stable row selection styling without relying only on scroll/highlight
+- keep pagination behavior predictable, or replace pagination with a scrollable list only if the existing page pattern supports it cleanly
+
+Required tests:
+
+- selected alert row has selected styling
+- selected alert detail renders the same notification id
+- list filters/search do not mutate notification data
+- empty active-alert state remains clear
+
+Manual validation:
+
+- open Notifications directly
+- select several alerts
+- confirm detail panel updates without losing list context
+
+### Commit UX-4: Alert Detail Content And Actions
+
+Status: planned.
+
+Scope:
+
+- add a reusable alert detail renderer for KPI and Benchmark performance alerts
+- show client, campaign, platform/source, item name, current value, threshold value, condition, created time, and status
+- make `Open KPI` / `Open Benchmark` the primary action using the stored `metadata.actionUrl`
+- add `Edit alert settings` where the destination can be proven from the existing item route
+- keep `Dismiss alert` as a visibility action and label it accordingly
+- do not change alert evaluation math or notification API response shape unless a missing field is proven necessary
+
+Required tests:
+
+- KPI alert detail shows KPI-specific action label
+- Benchmark alert detail shows Benchmark-specific action label
+- primary action preserves `metadata.actionUrl`
+- dismiss action does not imply analytical resolution
+
+Manual validation:
+
+- select a KPI alert and click `Open KPI`
+- select a Benchmark alert and click `Open Benchmark`
+- dismiss a still-breached alert and confirm it leaves active view only
+
+### Commit UX-5: Bell Dropdown As Quick Entry
+
+Status: planned.
+
+Scope:
+
+- make bell rows route to `/notifications?selected=:notificationId`
+- keep unread count and popover refresh behavior
+- make the dropdown copy/action clear that the user is opening alert details
+- avoid duplicating full triage controls inside the bell dropdown
+- keep the dismiss icon behavior separate from row click behavior
+
+Required tests:
+
+- performance-alert bell row routes to `/notifications?selected=:notificationId`
+- dismiss icon does not trigger row navigation
+- unread count still derives from `/api/notifications`
+
+Manual validation:
+
+- click bell alert and confirm the Notifications detail opens selected
+- dismiss from bell and confirm the row is hidden without navigating
+
+### Commit UX-6: Edit/Delete Reflection And Detail Refresh
+
+Status: planned.
+
+Scope:
+
+- ensure KPI/Benchmark create, update, delete, dismiss, and alert reconciliation paths refresh `/api/notifications`
+- ensure selected alert detail updates when the linked KPI/Benchmark is edited and still breaching
+- ensure selected alert detail exits to a clear resolved/deleted state when the linked KPI/Benchmark is no longer visible
+- preserve one active alert per breached item
+
+Required tests:
+
+- editing a still-breached KPI refreshes the existing active alert detail
+- editing a still-breached Benchmark refreshes the existing active alert detail
+- deleting a KPI hides the selected alert from active Notifications
+- deleting a Benchmark hides the selected alert from active Notifications
+- bell count and Notifications page query are invalidated/refetched after each mutation
+
+Manual validation:
+
+- edit an alert-enabled KPI threshold/name/current state and confirm bell plus selected detail update
+- delete a KPI/Benchmark with an active alert and confirm it disappears from active views
+
+### Commit UX-7: Alert Status Model And History View
+
+Status: planned.
+
+Scope:
+
+- separate active, read, dismissed, and resolved concepts in UI copy
+- add an `Active` default view and optional `History` view if current API data supports it safely
+- do not expose hidden/dismissed rows unless the API can prove user ownership and status meaning
+- avoid hard-deleting user-visible alert history
+
+Required tests:
+
+- active view excludes dismissed/resolved alerts
+- history view, if implemented, labels dismissed/resolved rows accurately
+- read/unread state does not change analytical alert status
+
+Manual validation:
+
+- mark alert read/unread and confirm status copy remains accurate
+- dismiss alert and confirm it moves out of active view
+
+### Commit UX-8: Cross-Platform Triage Template
+
+Status: planned.
+
+Scope:
+
+- make the triage UI consume platform-neutral metadata where possible
+- define the minimum metadata required for future sources: item id, item type, platform/source, campaign id, action URL, current value, threshold value, condition, and display labels
+- preserve GA4 behavior while allowing Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration to plug into the same triage contract
+- do not mark a future source ready until its own links, ownership checks, alert reconciliation, and detail content are regression-covered
+
+Required tests:
+
+- unknown platform alerts fail closed to safe detail copy
+- GA4 action links still work
+- platform label rendering does not hard-code GA4 only
+
+### Commit UX-9: Final UX Validation And Documentation Closure
+
+Status: planned.
+
+Required validation:
+
+```bash
+npm test -- server/notification-visibility-regression.test.ts server/benchmark-alert-lifecycle-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-evaluation.test.ts
+npm test -- server/ga4-kpi-regression.test.ts server/ga4-benchmark-regression.test.ts server/ga4-ui-regression.test.ts
+npm run check
+npm run build
+```
+
+Manual validation:
+
+1. Create a breached GA4 KPI alert.
+2. Confirm the bell count increments.
+3. Click the bell row.
+4. Confirm Notifications opens with that alert selected in the detail panel.
+5. Confirm the detail panel shows client, campaign, KPI name, current value, threshold, and condition.
+6. Click `Open KPI`.
+7. Confirm the GA4 KPI card opens.
+8. Edit the KPI so it still breaches.
+9. Confirm the selected detail refreshes and no duplicate active alert appears.
+10. Edit the KPI so it no longer breaches.
+11. Confirm the alert leaves active bell and Notifications views.
+12. Repeat for a GA4 Benchmark.
+13. Dismiss a still-breached alert and confirm the UI explains that dismissal hides the notification but does not resolve the KPI/Benchmark breach.
+
+Final documentation must separate:
+
+- proven locally
+- partially reviewed
+- not locally verifiable
+- deployed/manual validation evidence
+
 ## Manual Validation Checklist
 
 Use a disposable GA4 campaign with known values.

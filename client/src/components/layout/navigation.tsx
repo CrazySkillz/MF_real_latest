@@ -163,7 +163,7 @@ export default function Navigation() {
     }
 
     if (notification.type === "performance-alert") {
-      navigateFromBell(`/notifications?highlight=${encodeURIComponent(String(notification.id))}`);
+      navigateFromBell(`/notifications?selected=${encodeURIComponent(String(notification.id))}`);
       return;
     }
 
@@ -362,6 +362,11 @@ export default function Navigation() {
                               <span className="text-xs text-muted-foreground/70">
                                 {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                               </span>
+                              {notification.type === "performance-alert" && (
+                                <span className="text-xs font-medium text-primary">
+                                  Open details
+                                </span>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-1">

@@ -529,7 +529,7 @@ After GA4 passes this matrix, other connected-platform KPI/Benchmark alert imple
 
 ## Notifications Triage UX Improvement Strategy
 
-Status: UX-4 alert detail content/actions is implemented; UX-5 through UX-9 runtime work is not implemented.
+Status: UX-5 bell quick-entry routing is implemented; UX-6 through UX-9 runtime work is not implemented.
 
 ### UX Root Cause Analysis
 
@@ -741,7 +741,6 @@ Partially reviewed:
 
 Not locally verified:
 
-- browser click-through for `Open KPI`, `Open Benchmark`, `Edit alert settings`, and `Dismiss alert`
 - responsive/browser-rendered visual fit of the enriched right-side detail panel
 
 Manual validation:
@@ -750,9 +749,13 @@ Manual validation:
 - select a Benchmark alert and click `Open Benchmark`
 - dismiss a still-breached alert and confirm it leaves active view only
 
+Manual validation completed:
+
+- user-reported manual validation passed on 2026-06-23 for `Open KPI`, `Open Benchmark`, and `Dismiss alert` from the selected detail panel
+
 ### Commit UX-5: Bell Dropdown As Quick Entry
 
-Status: planned.
+Status: complete for the local code/test scope.
 
 Scope:
 
@@ -767,6 +770,39 @@ Required tests:
 - performance-alert bell row routes to `/notifications?selected=:notificationId`
 - dismiss icon does not trigger row navigation
 - unread count still derives from `/api/notifications`
+
+Root cause fixed:
+
+- the bell performance-alert click handler still routed to `/notifications?highlight=:notificationId`, even though the Notifications page selected-detail contract now treats `/notifications?selected=:notificationId` as canonical
+- the bell row already marked alerts read and closed the popover before navigating, and the dismiss icon already stopped propagation, so no lifecycle or visibility mutation changes were required
+
+Files changed:
+
+- `client/src/components/layout/navigation.tsx`
+- `server/notification-visibility-regression.test.ts`
+- `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
+
+Validation completed:
+
+- `npm test -- server/notification-visibility-regression.test.ts`
+- `npm run check`
+
+Proven locally:
+
+- performance-alert bell row clicks route to `/notifications?selected=:notificationId`
+- bell popover still derives unread count from `/api/notifications`
+- bell popover still invalidates/refetches `/api/notifications` when opened
+- bell dismiss icon keeps `preventDefault()` and `stopPropagation()` before dismissing the notification, so it does not trigger row navigation
+- the bell row uses a compact `Open details` cue without duplicating selected-detail triage controls inside the popover
+
+Partially reviewed:
+
+- the change is limited to bell performance-alert routing/copy and source guards; it does not change notification visibility, alert evaluation, KPI/Benchmark math, email behavior, or API ownership/scoping rules
+
+Not locally verified:
+
+- browser click from bell alert to selected Notifications detail
+- browser dismiss from bell alert without navigation
 
 Manual validation:
 

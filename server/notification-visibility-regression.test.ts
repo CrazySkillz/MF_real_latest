@@ -210,7 +210,7 @@ describe("notification visibility regression guard", () => {
     expect(campaignDetail.match(/await refreshNotificationQueries\(\);/g) || []).toHaveLength(6);
   });
 
-  it("opens performance-alert bell clicks on the highlighted Notifications page row", () => {
+  it("opens performance-alert bell clicks on the selected Notifications page detail", () => {
     const navigationFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),
       "utf-8"
@@ -221,9 +221,28 @@ describe("notification visibility regression guard", () => {
     expect(alertRedirectIndex).toBeGreaterThan(-1);
     expect(metadataIndex).toBeGreaterThan(alertRedirectIndex);
     expect(navigationFile.slice(alertRedirectIndex, metadataIndex)).toContain(
-      "navigateFromBell(`/notifications?highlight=${encodeURIComponent(String(notification.id))}`);"
+      "navigateFromBell(`/notifications?selected=${encodeURIComponent(String(notification.id))}`);"
     );
     expect(navigationFile.slice(alertRedirectIndex, metadataIndex)).toContain("return;");
+    expect(navigationFile.slice(alertRedirectIndex, metadataIndex)).not.toContain("/notifications?highlight=");
+    expect(navigationFile).toContain("Open details");
+  });
+
+  it("keeps bell dismiss clicks separate from row navigation and keeps unread count on notifications query", () => {
+    const navigationFile = readFileSync(
+      join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),
+      "utf-8"
+    );
+    const deleteButtonStart = navigationFile.indexOf('data-testid={`button-delete-notification-popover-${notification.id}`}');
+    const deleteHandlerStart = navigationFile.lastIndexOf("onClick={(e) => {", deleteButtonStart);
+    const deleteHandler = navigationFile.slice(deleteHandlerStart, deleteButtonStart);
+
+    expect(navigationFile).toContain('queryKey: ["/api/notifications"]');
+    expect(navigationFile).toContain("const unreadCount = notifications.filter(n => !n.read).length;");
+    expect(deleteHandler).toContain("e.preventDefault();");
+    expect(deleteHandler).toContain("e.stopPropagation();");
+    expect(deleteHandler).toContain("deleteNotificationMutation.mutate(notification.id);");
+    expect(deleteHandler).not.toContain("handleNotificationClick(notification)");
   });
 
   it("focuses selected or legacy highlighted notification rows on the Notifications page", () => {

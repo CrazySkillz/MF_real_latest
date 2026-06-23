@@ -10,6 +10,8 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(routesFile).toContain("return !!meta?.dismissedAt || !!meta?.resolved;");
+    expect(routesFile).toContain("const visible = rows.map((r: any) => r.n).filter((n: any) => !isNotificationDismissed(n));");
+    expect(routesFile).toContain('if (!ownedIds.includes(String((n as any)?.campaignId || "")) || isNotificationDismissed(n)) return null;');
   });
 
   it("hides orphaned or cross-campaign performance alert notifications", () => {
@@ -432,6 +434,23 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).toContain("Edit alert settings");
     expect(notificationsPage).toContain("Hides this notification from active views. It does not resolve the underlying KPI/Benchmark breach.");
     expect(notificationsPage).toContain("deleteNotificationMutation.mutate(notification.id)");
+  });
+
+  it("keeps active alert status separate from read state without exposing history rows", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+
+    expect(notificationsPage).toContain('statusLabel: "Active",');
+    expect(notificationsPage).toContain('readStateLabel: notification.read ? "Read" : "Unread",');
+    expect(notificationsPage).toContain("Alert status");
+    expect(notificationsPage).toContain("Read state");
+    expect(notificationsPage).toContain('<Label htmlFor="read-filter">Read state</Label>');
+    expect(notificationsPage).toContain("All Read States");
+    expect(notificationsPage).not.toContain('statusLabel: notification.read ? "Active, read" : "Active, unread"');
+    expect(notificationsPage).not.toContain('<Label htmlFor="read-filter">Status</Label>');
+    expect(notificationsPage).not.toContain('value="history"');
   });
 
   it("keeps GA4 KPI alert action URLs campaign-scoped and fail-closed", () => {

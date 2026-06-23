@@ -529,7 +529,7 @@ After GA4 passes this matrix, other connected-platform KPI/Benchmark alert imple
 
 ## Notifications Triage UX Improvement Strategy
 
-Status: UX-6 edit/delete reflection and detail refresh behavior is implemented; UX-7 through UX-9 runtime work is not implemented.
+Status: UX-7 active alert status/read-state separation is implemented; UX-8 through UX-9 runtime work is not implemented.
 
 ### UX Root Cause Analysis
 
@@ -857,19 +857,18 @@ Partially reviewed:
 
 - this commit only changes query refresh and selected-detail fallback UI; it does not change alert evaluation math, notification visibility predicates, KPI/Benchmark calculations, email behavior, or API ownership/scoping rules
 
-Not locally verified:
-
-- browser edit of a still-breached KPI/Benchmark refreshing the bell and selected detail
-- browser delete of a KPI/Benchmark with an active selected alert removing it from active views
-
 Manual validation:
 
 - edit an alert-enabled KPI threshold/name/current state and confirm bell plus selected detail update
 - delete a KPI/Benchmark with an active alert and confirm it disappears from active views
 
+Manual validation completed:
+
+- user-reported manual validation passed on 2026-06-23 for still-breached edit refresh and active-alert removal after KPI/Benchmark delete
+
 ### Commit UX-7: Alert Status Model And History View
 
-Status: planned.
+Status: complete for the local code/test scope.
 
 Scope:
 
@@ -883,6 +882,40 @@ Required tests:
 - active view excludes dismissed/resolved alerts
 - history view, if implemented, labels dismissed/resolved rows accurately
 - read/unread state does not change analytical alert status
+
+Root cause fixed:
+
+- the Notifications UI used `Status` for read/unread filtering and combined selected-detail alert status with read state as `Active, read` or `Active, unread`
+- that copy blurred two different concepts: active analytical alert visibility versus whether the user has read the notification row
+- the current `/api/notifications` route is intentionally active-only and filters dismissed/resolved rows through campaign ownership checks; exposing hidden/dismissed history would require a separate audited API/status contract and was not safe as part of this small UX commit
+
+Files changed:
+
+- `client/src/pages/notifications.tsx`
+- `server/notification-visibility-regression.test.ts`
+- `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
+
+Validation completed:
+
+- `npm test -- server/notification-visibility-regression.test.ts`
+- `npm run check`
+
+Proven locally:
+
+- the active notifications route excludes dismissed/resolved rows before the UI receives them
+- the selected KPI/Benchmark detail now renders `Alert status: Active` separately from `Read state: Read/Unread`
+- the page filter label is `Read state`, not generic `Status`
+- read/unread state no longer changes the analytical alert-status copy
+- no History view was added because the current active-notification API does not safely expose dismissed/resolved history rows
+
+Partially reviewed:
+
+- this commit is UI copy/status separation plus regression coverage only; it does not change notification visibility rules, alert lifecycle mutations, KPI/Benchmark calculations, email behavior, API ownership/scoping rules, or expose hidden history rows
+
+Not locally verified:
+
+- browser mark read/unread flow confirming `Alert status` remains `Active`
+- browser dismiss flow confirming the alert leaves the active view
 
 Manual validation:
 

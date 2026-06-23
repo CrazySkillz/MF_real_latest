@@ -315,7 +315,8 @@ export default function Notifications() {
       currentValue: values.currentValue || String(metadata?.currentValue ?? ""),
       thresholdValue: values.thresholdValue || String(metadata?.thresholdValue ?? ""),
       conditionLabel: formatAlertCondition(metadata?.alertCondition),
-      statusLabel: notification.read ? "Active, read" : "Active, unread",
+      statusLabel: "Active",
+      readStateLabel: notification.read ? "Read" : "Unread",
     };
   };
   const openAlertDestination = (notification: Notification, actionUrl: string) => {
@@ -426,8 +427,12 @@ export default function Notifications() {
             <div className="text-foreground">{detail.conditionLabel}</div>
           </div>
           <div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase">Status</div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase">Alert status</div>
             <div className="text-foreground">{detail.statusLabel}</div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase">Read state</div>
+            <div className="text-foreground">{detail.readStateLabel}</div>
           </div>
           <div>
             <div className="text-xs font-semibold text-muted-foreground uppercase">Created</div>
@@ -540,13 +545,13 @@ export default function Notifications() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="read-filter">Status</Label>
+                    <Label htmlFor="read-filter">Read state</Label>
                     <Select value={readFilter} onValueChange={setReadFilter}>
                       <SelectTrigger data-testid="select-read-filter">
-                        <SelectValue placeholder="All" />
+                        <SelectValue placeholder="All read states" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="all">All Read States</SelectItem>
                         <SelectItem value="unread">Unread</SelectItem>
                         <SelectItem value="read">Read</SelectItem>
                       </SelectContent>

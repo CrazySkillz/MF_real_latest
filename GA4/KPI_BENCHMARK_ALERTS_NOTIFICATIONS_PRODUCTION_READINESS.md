@@ -30,6 +30,7 @@ Initial alert readiness was not proven end to end because alert truth was split 
 - GA4 KPI/Benchmark frontend mutations refreshed their KPI/Benchmark lists but did not consistently refresh `/api/notifications`
 - bell navigation could rewrite non-GA4 action URLs and needed to preserve valid GA4 deep-links
 - older production-readiness docs overclaimed completion from targeted checks instead of proving every lifecycle path
+- the completed bell-to-Notifications implementation and the planned triage UX used different query names (`highlight` versus `selected`) without one authoritative contract distinguishing triage selection from KPI/Benchmark card highlighting
 
 Commits 2 through 8 made the GA4 alert lifecycle deterministic, regression-covered, and documented. This GA4 lifecycle is now the required implementation template for other sources.
 
@@ -54,7 +55,7 @@ GA4 KPI and Benchmark alerts and notifications are production-ready only when al
 - alert frequency controls reminder email throttle behavior, not duplicate in-app notification rows
 - GA4 KPI alert metadata action URLs open `/campaigns/:id/ga4-metrics?tab=kpis&highlight=:kpiId`
 - GA4 Benchmark alert metadata action URLs open `/campaigns/:id/ga4-metrics?tab=benchmarks&highlight=:benchmarkId`
-- clicking a performance alert in the bell opens the Notifications page at `/notifications?highlight=:notificationId`, marks the row read, and highlights the specific alert row
+- completed pre-triage bell behavior opens `/notifications?highlight=:notificationId`; the planned triage UX below changes bell entry to `/notifications?selected=:notificationId` while preserving KPI/Benchmark action URLs
 - the Notifications page `View KPI` / `View Benchmark` action preserves the metadata action URL and opens the correct GA4 tab/card
 - if the user is already on the same GA4 page, query-only action URL changes still switch to the correct tab/item by listening to the URL search string
 - successful GA4 and campaign-level KPI/Benchmark create, update, and delete mutations refresh `/api/notifications`
@@ -444,8 +445,8 @@ Template requirement:
 | Scheduler/source refresh | alerts evaluate after current values refresh | alerts evaluate after current values refresh | scheduler tests |
 | Email reminder | same resolved value as in-app; throttled by frequency | same resolved value as in-app; throttled by frequency | email tests |
 | Alert frequency UI | `Send email notifications` left; `Alert Frequency` right; frequency disabled until email is selected | `Send email notifications` left; `Alert Frequency` right; frequency disabled until email is selected | UI/source tests |
-| Bell alert click | marks alert read and opens `/notifications?highlight=:notificationId` | marks alert read and opens `/notifications?highlight=:notificationId` | UI/source tests |
-| Notifications page view action | preserves metadata action URL and opens GA4 KPI tab/card highlight | preserves metadata action URL and opens GA4 Benchmark tab/card highlight | UI/source tests |
+| Bell alert click / triage entry | target UX marks alert read and opens `/notifications?selected=:notificationId`; legacy `highlight` remains transition-compatible | target UX marks alert read and opens `/notifications?selected=:notificationId`; legacy `highlight` remains transition-compatible | UX source tests and legacy compatibility tests |
+| Notifications selected-detail primary action | `Open KPI` preserves metadata action URL and opens GA4 KPI tab/card highlight | `Open Benchmark` preserves metadata action URL and opens GA4 Benchmark tab/card highlight | UI/source tests |
 | Query-only platform action URL | existing GA4 page reacts to `tab`/`highlight` search changes | existing GA4 page reacts to `tab`/`highlight` search changes | UI/source tests |
 
 ## Validation Status
@@ -521,14 +522,14 @@ After GA4 passes this matrix, other connected-platform KPI/Benchmark alert imple
 - update an existing active alert row in place when the linked item is edited and still breached
 - generate platform-correct campaign-scoped deep-links
 - make platform pages react to query-only action URL changes when action URLs use query params for tab/item selection
-- make bell performance-alert clicks open the Notifications center row in the current implementation: `/notifications?highlight=:notificationId`
+- make bell performance-alert clicks open Notifications triage context; the completed implementation uses `/notifications?highlight=:notificationId`, while the planned canonical UX route is `/notifications?selected=:notificationId`
 - preserve the metadata action URL from the Notifications page `View KPI` / `View Benchmark` action
 - refresh `/api/notifications` after alert-impacting create, update, and delete mutations
 - add focused regression tests before marking the copied source production-ready
 
 ## Notifications Triage UX Improvement Strategy
 
-Status: planned; not implemented by the completed GA4 alert readiness commits.
+Status: UX-1 contract documented; UX-2 through UX-9 runtime work is not implemented.
 
 ### UX Root Cause Analysis
 
@@ -558,6 +559,9 @@ The bell should help the user find the alert quickly. The Notifications page sho
 
 The improved flow should behave as follows:
 
+- `/notifications?selected=:notificationId` is the canonical triage selection route for the planned UX
+- `/notifications?highlight=:notificationId` remains a legacy compatibility route during the transition and must not be removed until UX compatibility is regression-covered
+- KPI/Benchmark metadata action URLs keep using `highlight` for platform card highlighting, for example `/campaigns/:id/ga4-metrics?tab=kpis&highlight=:kpiId`
 - clicking a bell performance alert opens `/notifications?selected=:notificationId`
 - the Notifications page shows a two-pane triage layout on desktop: alert list on the left, selected alert detail on the right
 - on mobile, the selected alert detail can replace the list with a clear back-to-list control
@@ -572,7 +576,7 @@ The improved flow should behave as follows:
 
 ### Commit UX-1: Authoritative UX Contract
 
-Status: planned.
+Status: complete for the documentation-only scope.
 
 Scope:
 
@@ -584,6 +588,16 @@ Validation:
 
 - documentation review only
 - confirm no runtime files are changed
+
+Root cause documented:
+
+- the readiness tracker mixed current implementation navigation with the planned triage route, so future commits could confuse Notifications triage selection with platform KPI/Benchmark card highlighting
+
+Validation completed:
+
+- documentation-only review of this file
+- local runtime trace confirmed current code still uses `/notifications?highlight=:notificationId` for bell-to-Notifications navigation and does not yet implement `/notifications?selected=:notificationId`
+- no runtime files were changed for UX-1
 
 ### Commit UX-2: Notifications Page Selected Alert State
 
@@ -777,34 +791,38 @@ Final documentation must separate:
 - not locally verifiable
 - deployed/manual validation evidence
 
-## Manual Validation Checklist
+## Target UX Manual Validation Checklist
+
+This checklist validates the planned triage journey after UX-2 through UX-9 are implemented. The current pre-UX implementation still uses `/notifications?highlight=:notificationId` for bell-to-Notifications navigation.
 
 Use a disposable GA4 campaign with known values.
 
 1. Create a GA4 KPI with alerts enabled and a breached threshold.
-2. Confirm the bell count updates and the Notifications page shows one KPI alert.
-3. Click the bell alert and confirm it opens `/notifications?highlight=:notificationId`, resets filters as needed, scrolls to the exact alert row, and highlights it.
-4. From the Notifications page, click `View KPI` and confirm it opens the GA4 KPI tab with the KPI card highlighted.
-5. Update the KPI while it still breaches and confirm the existing active alert row updates in bell and Notifications without creating a duplicate.
-6. Update the KPI so it no longer breaches.
-7. Confirm the alert disappears from active notification views.
-8. Re-breach the same KPI.
-9. Confirm exactly one active alert returns.
-10. Repeat the same flow for a GA4 Benchmark.
-11. Confirm the alert form layout: `Send email notifications` appears on the left, `Alert Frequency` appears on the right, and `Alert Frequency` is disabled until email notifications are selected.
-12. Dismiss a still-breached KPI/Benchmark alert.
-13. Run or trigger the valid reconciliation path.
-14. Confirm exactly one new active alert appears.
-15. Enable email alerts with a safe recipient in a deployed environment.
-16. Confirm provider acceptance separately from inbox/provider delivery.
+2. Confirm the bell count updates and the Notifications page active view shows one KPI alert.
+3. Click the bell alert and confirm it opens `/notifications?selected=:notificationId`, marks the row read, and selects that alert in the detail panel.
+4. Confirm the selected detail shows client, campaign, source/platform, KPI name, current value, threshold, condition, status, created time, and last refreshed time when available.
+5. From the selected detail, click `Open KPI` and confirm it preserves the metadata action URL and opens the GA4 KPI tab with the KPI card highlighted.
+6. Update the KPI while it still breaches and confirm the selected alert detail updates without creating a duplicate active alert.
+7. Update the KPI so it no longer breaches.
+8. Confirm the alert disappears from active bell and Notifications views and the selected detail shows a clear resolved/deleted state if still opened.
+9. Re-breach the same KPI.
+10. Confirm exactly one active alert returns and can be selected from the bell or Notifications list.
+11. Repeat the same flow for a GA4 Benchmark, using `Open Benchmark` from the selected detail.
+12. Confirm the alert form layout: `Send email notifications` appears on the left, `Alert Frequency` appears on the right, and `Alert Frequency` is disabled until email notifications are selected.
+13. Dismiss a still-breached KPI/Benchmark alert and confirm the UI explains that dismissal hides the notification from active views but does not analytically resolve the KPI/Benchmark breach.
+14. Run or trigger the valid reconciliation path.
+15. Confirm exactly one new active alert appears.
+16. Enable email alerts with a safe recipient in a deployed environment.
+17. Confirm provider acceptance separately from inbox/provider delivery.
 
 Pass criteria:
 
 - visible in-app state matches the underlying GA4 KPI/Benchmark breach state
 - no stale resolved alerts remain visible
 - no duplicate active alerts appear for the same GA4 KPI/Benchmark
-- bell alert clicks open the exact Notifications page row
-- Notifications page `View KPI` / `View Benchmark` actions open the correct campaign, tab, and item
+- bell alert clicks open the exact Notifications selected-alert detail through canonical `selected` routing
+- legacy `highlight` notification URLs remain transition-compatible until their removal is explicitly planned and regression-covered
+- Notifications selected-detail `Open KPI` / `Open Benchmark` actions open the correct campaign, tab, and item
 - query-only GA4 action URL changes update the visible tab/card highlight
 - Alert Frequency remains email-reminder-only and disabled unless email notifications are selected
 - email status is reported only according to the evidence available

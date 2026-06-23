@@ -529,7 +529,7 @@ After GA4 passes this matrix, other connected-platform KPI/Benchmark alert imple
 
 ## Notifications Triage UX Improvement Strategy
 
-Status: UX-1 contract documented; UX-2 through UX-9 runtime work is not implemented.
+Status: UX-2 selected-alert URL state is implemented; UX-3 through UX-9 runtime work is not implemented.
 
 ### UX Root Cause Analysis
 
@@ -601,7 +601,7 @@ Validation completed:
 
 ### Commit UX-2: Notifications Page Selected Alert State
 
-Status: planned.
+Status: complete.
 
 Scope:
 
@@ -617,6 +617,25 @@ Required tests:
 - legacy `highlight` query still focuses the same row during transition
 - missing selected notification renders a safe empty state
 - filters do not prevent the selected active alert from being visible
+
+Root cause fixed:
+
+- the Notifications page read only `/notifications?highlight=:notificationId`, so canonical `/notifications?selected=:notificationId` links were ignored
+- the existing highlight compatibility path reset filters and paginated to a matching alert, but it had no explicit unavailable-selected-alert state when the selected notification was hidden, resolved, dismissed, deleted, or not returned by the active notification query
+
+Files changed:
+
+- `client/src/pages/notifications.tsx`
+- `server/notification-visibility-regression.test.ts`
+
+Validation completed:
+
+- `npm test -- server/notification-visibility-regression.test.ts`
+- `npm run check`
+
+Manual validation requirement:
+
+- manual browser validation is useful for final UX evidence, but it is not required for local UX-2 acceptance because the changed behavior is URL-state parsing, selected-row focus compatibility, filter reset preservation, and unavailable-selected-alert copy covered by the focused regression guard
 
 ### Commit UX-3: Two-Pane Alert Triage Layout
 

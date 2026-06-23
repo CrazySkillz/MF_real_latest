@@ -224,7 +224,7 @@ describe("notification visibility regression guard", () => {
     expect(navigationFile.slice(alertRedirectIndex, metadataIndex)).toContain("return;");
   });
 
-  it("focuses highlighted notification rows from bell navigation on the Notifications page", () => {
+  it("focuses selected or legacy highlighted notification rows on the Notifications page", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
       "utf-8"
@@ -232,19 +232,32 @@ describe("notification visibility regression guard", () => {
 
     expect(notificationsPage).toContain('import { useLocation, useSearch } from "wouter";');
     expect(notificationsPage).toContain("const search = useSearch();");
-    expect(notificationsPage).toContain('const highlightedNotificationId = new URLSearchParams(search).get("highlight") || "";');
+    expect(notificationsPage).toContain("const notificationSearchParams = new URLSearchParams(search);");
+    expect(notificationsPage).toContain('const selectedNotificationId = notificationSearchParams.get("selected") || notificationSearchParams.get("highlight") || "";');
     expect(notificationsPage).toContain('setSearchTerm("");');
     expect(notificationsPage).toContain('setPriorityFilter("all");');
     expect(notificationsPage).toContain('setReadFilter("all");');
     expect(notificationsPage).toContain('setClientFilter("all");');
     expect(notificationsPage).toContain('setDateFilter("all");');
-    expect(notificationsPage).toContain("const highlightedNotificationVisible = highlightedNotificationId");
-    expect(notificationsPage).toContain("if (!highlightedNotificationId || isLoading || !highlightedNotificationVisible) return;");
-    expect(notificationsPage).toContain("document.getElementById(`notification-${highlightedNotificationId}`)");
+    expect(notificationsPage).toContain("const selectedNotification = selectedNotificationId");
+    expect(notificationsPage).toContain("const selectedNotificationVisible = selectedNotificationId");
+    expect(notificationsPage).toContain("if (!selectedNotificationId || isLoading || !selectedNotificationVisible) return;");
+    expect(notificationsPage).toContain("document.getElementById(`notification-${selectedNotificationId}`)");
     expect(notificationsPage).toContain('el.scrollIntoView({ block: "center", behavior: "smooth" });');
-    expect(notificationsPage).toContain("const isHighlightedNotification = String(notification.id) === highlightedNotificationId;");
+    expect(notificationsPage).toContain("const isSelectedNotification = String(notification.id) === selectedNotificationId;");
     expect(notificationsPage).toContain('id={`notification-${notification.id}`}');
-    expect(notificationsPage).toContain('${isHighlightedNotification ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5" : ""}');
+    expect(notificationsPage).toContain('${isSelectedNotification ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5" : ""}');
+  });
+
+  it("shows a safe empty state when a selected notification is unavailable", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+
+    expect(notificationsPage).toContain("const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !selectedNotification);");
+    expect(notificationsPage).toContain("Selected alert is no longer active");
+    expect(notificationsPage).toContain("This alert may have been dismissed, resolved, deleted, or is no longer available in your active notifications.");
   });
 
   it("preserves metadata action URLs from the Notifications page view action", () => {

@@ -29,7 +29,8 @@ export default function Notifications() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const search = useSearch();
-  const highlightedNotificationId = new URLSearchParams(search).get("highlight") || "";
+  const notificationSearchParams = new URLSearchParams(search);
+  const selectedNotificationId = notificationSearchParams.get("selected") || notificationSearchParams.get("highlight") || "";
   const { clients } = useClient();
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
@@ -149,12 +150,16 @@ export default function Notifications() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedNotifications = filteredNotifications.slice(startIndex, endIndex);
-  const highlightedNotificationVisible = highlightedNotificationId
-    ? paginatedNotifications.some((notification) => String(notification.id) === highlightedNotificationId)
+  const selectedNotification = selectedNotificationId
+    ? notifications.find((notification) => String(notification.id) === selectedNotificationId)
+    : undefined;
+  const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !selectedNotification);
+  const selectedNotificationVisible = selectedNotificationId
+    ? paginatedNotifications.some((notification) => String(notification.id) === selectedNotificationId)
     : false;
 
   useEffect(() => {
-    if (!highlightedNotificationId) return;
+    if (!selectedNotificationId) return;
 
     setSearchTerm("");
     setPriorityFilter("all");
@@ -162,30 +167,30 @@ export default function Notifications() {
     setClientFilter("all");
     setDateFilter("all");
 
-    const index = notifications.findIndex((notification) => String(notification.id) === highlightedNotificationId);
+    const index = notifications.findIndex((notification) => String(notification.id) === selectedNotificationId);
     if (index >= 0) {
       setCurrentPage(Math.floor(index / itemsPerPage) + 1);
     }
-  }, [highlightedNotificationId, notifications]);
+  }, [selectedNotificationId, notifications]);
 
   useEffect(() => {
-    if (!highlightedNotificationId || isLoading || !highlightedNotificationVisible) return;
+    if (!selectedNotificationId || isLoading || !selectedNotificationVisible) return;
 
     const frame = window.requestAnimationFrame(() => {
-      const el = document.getElementById(`notification-${highlightedNotificationId}`);
+      const el = document.getElementById(`notification-${selectedNotificationId}`);
       if (el) {
         el.scrollIntoView({ block: "center", behavior: "smooth" });
       }
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [highlightedNotificationId, highlightedNotificationVisible, currentPage, isLoading]);
+  }, [selectedNotificationId, selectedNotificationVisible, currentPage, isLoading]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
-    if (highlightedNotificationId) return;
+    if (selectedNotificationId) return;
     setCurrentPage(1);
-  }, [searchTerm, priorityFilter, readFilter, clientFilter, dateFilter, highlightedNotificationId]);
+  }, [searchTerm, priorityFilter, readFilter, clientFilter, dateFilter, selectedNotificationId]);
 
   // Adjust current page if it's now out of bounds (after deletion)
   useEffect(() => {
@@ -368,6 +373,24 @@ export default function Notifications() {
               </CardContent>
             </Card>
 
+            {selectedNotificationMissing && (
+              <Card className="mb-6 border-amber-200 bg-amber-50/60">
+                <CardContent className="py-5">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">
+                        Selected alert is no longer active
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        This alert may have been dismissed, resolved, deleted, or is no longer available in your active notifications.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Notifications List */}
             {isLoading ? (
               <div className="text-center py-12">
@@ -397,14 +420,14 @@ export default function Notifications() {
                 <div className="space-y-4">
                   {paginatedNotifications.map((notification) => {
                     const body = formatNotificationMessage(notification);
-                    const isHighlightedNotification = String(notification.id) === highlightedNotificationId;
+                    const isSelectedNotification = String(notification.id) === selectedNotificationId;
                     return (
                   <Card
                     key={notification.id}
                     id={`notification-${notification.id}`}
                     className={`transition-all hover:shadow-md ${
                       !notification.read ? "border-l-4 border-l-blue-500 bg-blue-50/30" : ""
-                    } ${isHighlightedNotification ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5" : ""}`}
+                    } ${isSelectedNotification ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5" : ""}`}
                     data-testid={`notification-${notification.id}`}
                   >
                     <CardContent className="p-4">

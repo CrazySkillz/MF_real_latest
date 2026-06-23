@@ -304,4 +304,23 @@ describe("GA4 UI regression guard", () => {
     expect(customReportSection).not.toContain("No KPIs selected for this report.");
     expect(customReportSection).not.toContain("No benchmarks selected for this report.");
   });
+
+  it("keeps GA4 alert frequency scoped to email reminders", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const benchmarkStart = ga4Metrics.indexOf("<Label>Alert Frequency</Label>");
+    const benchmarkEnd = ga4Metrics.indexOf('id="ga4-benchmark-email-notifications"', benchmarkStart);
+    const benchmarkSection = ga4Metrics.slice(benchmarkStart, benchmarkEnd);
+    const kpiStart = ga4Metrics.indexOf('<Label htmlFor="kpi-alert-frequency">Alert Frequency</Label>');
+    const kpiEnd = ga4Metrics.indexOf('id="kpi-email-notifications"', kpiStart);
+    const kpiSection = ga4Metrics.slice(kpiStart, kpiEnd);
+
+    expect(benchmarkStart).toBeGreaterThan(-1);
+    expect(benchmarkEnd).toBeGreaterThan(benchmarkStart);
+    expect(kpiStart).toBeGreaterThan(-1);
+    expect(kpiEnd).toBeGreaterThan(kpiStart);
+    expect(benchmarkSection).toContain("disabled={!newBenchmark.emailNotifications}");
+    expect(benchmarkSection).toContain("This setting controls how often reminder emails are sent while the Benchmark is still breaching");
+    expect(kpiSection).toContain('disabled={!kpiForm.watch("emailNotifications")}');
+    expect(kpiSection).toContain("This setting controls how often reminder emails are sent while the KPI is still breaching");
+  });
 });

@@ -6955,7 +6955,11 @@ export default function GA4Metrics() {
                                   <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                       <Label>Alert Frequency</Label>
-                                      <Select value={newBenchmark.alertFrequency || "immediate"} onValueChange={(v) => setNewBenchmark({ ...newBenchmark, alertFrequency: v })}>
+                                      <Select
+                                        value={newBenchmark.alertFrequency || "immediate"}
+                                        onValueChange={(v) => setNewBenchmark({ ...newBenchmark, alertFrequency: v })}
+                                        disabled={!newBenchmark.emailNotifications}
+                                      >
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent className="z-[10000]">
                                           <SelectItem value="immediate">Immediate</SelectItem>
@@ -6964,7 +6968,7 @@ export default function GA4Metrics() {
                                         </SelectContent>
                                       </Select>
                                       <p className="text-xs text-muted-foreground/70">
-                                        Bell and Notifications keep one active alert record. This setting controls reminder emails while the breach stays unresolved.
+                                        This setting controls how often reminder emails are sent while the Benchmark is still breaching
                                       </p>
                                     </div>
                                     <div className="space-y-2">
@@ -8687,6 +8691,7 @@ export default function GA4Metrics() {
                         <Select
                           value={kpiForm.watch("alertFrequency") || "daily"}
                           onValueChange={(v) => kpiForm.setValue("alertFrequency", v as any)}
+                          disabled={!kpiForm.watch("emailNotifications")}
                         >
                           <SelectTrigger id="kpi-alert-frequency">
                             <SelectValue />
@@ -8698,7 +8703,7 @@ export default function GA4Metrics() {
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-muted-foreground/70">
-                          Bell and Notifications keep one active alert record. This setting controls reminder emails while the breach stays unresolved.
+                          This setting controls how often reminder emails are sent while the KPI is still breaching
                         </p>
                       </div>
 

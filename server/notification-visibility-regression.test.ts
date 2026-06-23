@@ -22,9 +22,11 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain('if (!kpi || String((kpi as any).campaignId || "") !== String(n.campaignId || "")) return null;');
     expect(routesFile).toContain('if (!benchmark || String((benchmark as any).campaignId || "") !== String(n.campaignId || "")) return null;');
     expect(routesFile).toContain("if (isPerformanceAlert) return null;");
-    expect(routesFile).toContain('if (String((n as any)?.type || "") !== "performance-alert") return true;');
+    expect(routesFile).toContain('if (String((n as any)?.type || "") !== "performance-alert") return n;');
     expect(routesFile).toContain("const kpi = await storage.getKPI(String(meta.kpiId)).catch(() => undefined as any);");
     expect(routesFile).toContain("const benchmark = await storage.getBenchmark(String(meta.benchmarkId)).catch(() => undefined as any);");
+    expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, kpi, "kpi");');
+    expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, benchmark, "benchmark");');
   });
 
   it("hides performance alert notifications when the linked row no longer breaches", () => {
@@ -38,8 +40,8 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain("const resolved = await resolveCampaignCurrentValueForAlert(row);");
     expect(routesFile).toContain("if (isPerformanceAlert && !(await isAlertRowBreached(kpi))) return null;");
     expect(routesFile).toContain("if (isPerformanceAlert && !(await isAlertRowBreached(benchmark))) return null;");
-    expect(routesFile).toContain("&& await isAlertRowBreached(kpi);");
-    expect(routesFile).toContain("&& await isAlertRowBreached(benchmark);");
+    expect(routesFile).toContain("&& await isAlertRowBreached(kpi)");
+    expect(routesFile).toContain("&& await isAlertRowBreached(benchmark)");
   });
 
   it("deduplicates visible performance alerts by linked KPI or Benchmark", () => {
@@ -334,6 +336,38 @@ describe("notification visibility regression guard", () => {
     expect(actionSection).toContain("new URL(rawUrl, window.location.origin)");
     expect(actionSection).toContain("setLocation(`${baseUrl.pathname}${baseUrl.search}`);");
     expect(actionSection).not.toContain("linkedin-analytics");
+  });
+
+  it("enriches performance-alert notification details from linked KPI and Benchmark rows", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    expect(routesFile).toContain('const enrichPerformanceAlertNotification = (n: any, row: any, itemType: "kpi" | "benchmark") => {');
+    expect(routesFile).toContain('const itemLabel = itemType === "benchmark" ? "Benchmark" : "KPI";');
+    expect(routesFile).toContain("itemName: row?.name,");
+    expect(routesFile).toContain("platformLabel,");
+    expect(routesFile).toContain("currentValue: row?.currentValue,");
+    expect(routesFile).toContain("thresholdValue: row?.alertThreshold,");
+    expect(routesFile).toContain('alertCondition: row?.alertCondition || "below",');
+  });
+
+  it("renders KPI and Benchmark selected-alert detail actions without implying dismissal resolves the breach", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+
+    expect(notificationsPage).toContain("const renderAlertDetail = (notification: Notification) => {");
+    expect(notificationsPage).toContain('const isPerformanceAlertDetail = notification.type === "performance-alert" && Boolean(metadata?.kpiId || metadata?.benchmarkId || metadata?.itemType);');
+    expect(notificationsPage).toContain('const itemType = isBenchmark ? "Benchmark" : "KPI";');
+    expect(notificationsPage).toContain("actionLabel: `Open ${itemType}`,");
+    expect(notificationsPage).toContain("setLocation(actionUrl);");
+    expect(notificationsPage).toContain('data-testid={`button-open-selected-alert-${notification.id}`}');
+    expect(notificationsPage).toContain("Edit alert settings");
+    expect(notificationsPage).toContain("Hides this notification from active views. It does not resolve the underlying KPI/Benchmark breach.");
+    expect(notificationsPage).toContain("deleteNotificationMutation.mutate(notification.id)");
   });
 
   it("keeps GA4 KPI alert action URLs campaign-scoped and fail-closed", () => {

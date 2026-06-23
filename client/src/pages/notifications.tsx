@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, X, Mail, MailOpen } from "lucide-react";
+import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, X, Mail, MailOpen, ExternalLink, Settings } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Campaign, Notification } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -260,6 +260,13 @@ export default function Notifications() {
     const campaign = campaigns.find(c => c.id === notification.campaignId);
     return clients.find(c => c.id === campaign?.clientId)?.name || "";
   };
+  const parseNotificationMetadata = (notification: Notification) => {
+    try {
+      return notification.metadata ? JSON.parse(notification.metadata) : {};
+    } catch {
+      return {};
+    }
+  };
   const formatNotificationMessage = (notification: Notification) => {
     const message = String(notification.message || "").trim();
     if (notification.type !== "performance-alert") {
@@ -271,12 +278,201 @@ export default function Notifications() {
       threshold: parts[1] ? `Alert threshold value: ${parts[1]}` : "",
     };
   };
+  const extractPerformanceAlertValues = (notification: Notification) => {
+    const message = String(notification.message || "").trim();
+    const currentMatch = message.match(/Current value:\s*(.*?)(?:\.\s*Alert threshold value:|$)/);
+    const thresholdMatch = message.match(/Alert threshold value:\s*(.*)$/);
+    return {
+      currentValue: currentMatch?.[1]?.trim() || "",
+      thresholdValue: thresholdMatch?.[1]?.trim() || "",
+    };
+  };
+  const formatAlertCondition = (condition: unknown) => {
+    switch (String(condition || "").toLowerCase()) {
+      case "above":
+        return "Above threshold";
+      case "equals":
+        return "Equals threshold";
+      case "below":
+        return "Below threshold";
+      default:
+        return "Not available";
+    }
+  };
+  const getAlertDetail = (notification: Notification) => {
+    const metadata = parseNotificationMetadata(notification);
+    const isBenchmark = Boolean(metadata?.benchmarkId || metadata?.itemType === "benchmark" || /Benchmark Alert:/i.test(notification.title));
+    const itemType = isBenchmark ? "Benchmark" : "KPI";
+    const itemName = String(metadata?.itemName || notification.title.replace(/^.*?\b(?:KPI|Benchmark) Alert:\s*/i, "") || notification.title);
+    const values = extractPerformanceAlertValues(notification);
+    return {
+      metadata,
+      itemType,
+      itemName,
+      platformLabel: String(metadata?.platformLabel || metadata?.platformType || "Not available"),
+      actionUrl: metadata?.actionUrl ? String(metadata.actionUrl) : "",
+      actionLabel: `Open ${itemType}`,
+      currentValue: values.currentValue || String(metadata?.currentValue ?? ""),
+      thresholdValue: values.thresholdValue || String(metadata?.thresholdValue ?? ""),
+      conditionLabel: formatAlertCondition(metadata?.alertCondition),
+      statusLabel: notification.read ? "Active, read" : "Active, unread",
+    };
+  };
+  const openAlertDestination = (notification: Notification, actionUrl: string) => {
+    if (!actionUrl) {
+      toast({
+        title: "Error",
+        description: "Cannot navigate to alert - link not available",
+        variant: "destructive",
+      });
+      return;
+    }
+    setReadStateMutation.mutate({ notificationId: notification.id, read: true });
+    setLocation(actionUrl);
+  };
   const selectNotification = (notificationId: string) => {
     if (String(notificationId) === selectedNotificationId) return;
     suppressNextSelectedScrollRef.current = true;
     setLocation(`/notifications?selected=${encodeURIComponent(String(notificationId))}`);
   };
-  const selectedNotificationBody = selectedNotification ? formatNotificationMessage(selectedNotification) : null;
+  const renderAlertDetail = (notification: Notification) => {
+    const metadata = parseNotificationMetadata(notification);
+    const isPerformanceAlertDetail = notification.type === "performance-alert" && Boolean(metadata?.kpiId || metadata?.benchmarkId || metadata?.itemType);
+    if (!isPerformanceAlertDetail) {
+      const body = formatNotificationMessage(notification);
+      return (
+        <CardContent className="space-y-4">
+          <div className="rounded-md border border-border/70 bg-muted/30 p-3 text-sm text-muted-foreground space-y-2">
+            <p>{body.lead}</p>
+            {body.threshold && <p>{body.threshold}</p>}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3 text-sm">
+            <div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase">Alert ID</div>
+              <div className="text-foreground break-all">{String(notification.id)}</div>
+            </div>
+            {getClientNameForNotification(notification) && (
+              <div>
+                <div className="text-xs font-semibold text-muted-foreground uppercase">Client</div>
+                <div className="text-foreground">{getClientNameForNotification(notification)}</div>
+              </div>
+            )}
+            {notification.campaignName && (
+              <div>
+                <div className="text-xs font-semibold text-muted-foreground uppercase">Campaign</div>
+                <div className="text-foreground">{notification.campaignName}</div>
+              </div>
+            )}
+            <div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase">Priority</div>
+              <div className="mt-1">{getPriorityBadge(notification.priority)}</div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase">Read state</div>
+              <div className="text-foreground">{notification.read ? "Read" : "Unread"}</div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase">Created</div>
+              <div className="text-foreground">{formatNotificationDate(String(notification.createdAt))}</div>
+            </div>
+          </div>
+        </CardContent>
+      );
+    }
+
+    const detail = getAlertDetail(notification);
+    const body = formatNotificationMessage(notification);
+    return (
+      <CardContent className="space-y-4">
+        <div className="rounded-md border border-border/70 bg-muted/30 p-3 text-sm text-muted-foreground space-y-2">
+          <p>{body.lead}</p>
+          {body.threshold && <p>{body.threshold}</p>}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3 text-sm">
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase">Alert ID</div>
+            <div className="text-foreground break-all">{String(notification.id)}</div>
+          </div>
+          {getClientNameForNotification(notification) && (
+            <div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase">Client</div>
+              <div className="text-foreground">{getClientNameForNotification(notification)}</div>
+            </div>
+          )}
+          {notification.campaignName && (
+            <div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase">Campaign</div>
+              <div className="text-foreground">{notification.campaignName}</div>
+            </div>
+          )}
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase">Platform / Source</div>
+            <div className="text-foreground">{detail.platformLabel}</div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase">{detail.itemType}</div>
+            <div className="text-foreground">{detail.itemName}</div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase">Current value</div>
+            <div className="text-foreground">{detail.currentValue || "Not available"}</div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase">Threshold value</div>
+            <div className="text-foreground">{detail.thresholdValue || "Not available"}</div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase">Condition</div>
+            <div className="text-foreground">{detail.conditionLabel}</div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase">Status</div>
+            <div className="text-foreground">{detail.statusLabel}</div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase">Created</div>
+            <div className="text-foreground">{formatNotificationDate(String(notification.createdAt))}</div>
+          </div>
+        </div>
+        <div className="space-y-3 border-t border-border/70 pt-4">
+          <Button
+            className="w-full justify-center"
+            onClick={() => openAlertDestination(notification, detail.actionUrl)}
+            disabled={!detail.actionUrl}
+            data-testid={`button-open-selected-alert-${notification.id}`}
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            {detail.actionLabel}
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full justify-center"
+            onClick={() => openAlertDestination(notification, detail.actionUrl)}
+            disabled={!detail.actionUrl}
+            data-testid={`button-edit-selected-alert-settings-${notification.id}`}
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Edit alert settings
+          </Button>
+          <div className="rounded-md border border-border/70 p-3">
+            <p className="text-xs text-muted-foreground mb-2">
+              Hides this notification from active views. It does not resolve the underlying KPI/Benchmark breach.
+            </p>
+            <Button
+              variant="outline"
+              className="w-full justify-center"
+              onClick={() => deleteNotificationMutation.mutate(notification.id)}
+              disabled={deleteNotificationMutation.isPending}
+              data-testid={`button-dismiss-selected-alert-${notification.id}`}
+            >
+              <X className="w-4 h-4 mr-2" />
+              Dismiss alert
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -763,42 +959,7 @@ export default function Notifications() {
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="rounded-md border border-border/70 bg-muted/30 p-3 text-sm text-muted-foreground space-y-2">
-                          <p>{selectedNotificationBody?.lead}</p>
-                          {selectedNotificationBody?.threshold && <p>{selectedNotificationBody.threshold}</p>}
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3 text-sm">
-                          <div>
-                            <div className="text-xs font-semibold text-muted-foreground uppercase">Alert ID</div>
-                            <div className="text-foreground break-all">{String(selectedNotification.id)}</div>
-                          </div>
-                          {getClientNameForNotification(selectedNotification) && (
-                            <div>
-                              <div className="text-xs font-semibold text-muted-foreground uppercase">Client</div>
-                              <div className="text-foreground">{getClientNameForNotification(selectedNotification)}</div>
-                            </div>
-                          )}
-                          {selectedNotification.campaignName && (
-                            <div>
-                              <div className="text-xs font-semibold text-muted-foreground uppercase">Campaign</div>
-                              <div className="text-foreground">{selectedNotification.campaignName}</div>
-                            </div>
-                          )}
-                          <div>
-                            <div className="text-xs font-semibold text-muted-foreground uppercase">Priority</div>
-                            <div className="mt-1">{getPriorityBadge(selectedNotification.priority)}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs font-semibold text-muted-foreground uppercase">Read state</div>
-                            <div className="text-foreground">{selectedNotification.read ? "Read" : "Unread"}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs font-semibold text-muted-foreground uppercase">Created</div>
-                            <div className="text-foreground">{formatNotificationDate(String(selectedNotification.createdAt))}</div>
-                          </div>
-                        </div>
-                      </CardContent>
+                      {renderAlertDetail(selectedNotification)}
                     </Card>
                   ) : (
                     <Card data-testid="selected-notification-empty-detail">

@@ -529,7 +529,7 @@ After GA4 passes this matrix, other connected-platform KPI/Benchmark alert imple
 
 ## Notifications Triage UX Improvement Strategy
 
-Status: UX-3 two-pane triage layout is implemented; UX-4 through UX-9 runtime work is not implemented.
+Status: UX-4 alert detail content/actions is implemented; UX-5 through UX-9 runtime work is not implemented.
 
 ### UX Root Cause Analysis
 
@@ -678,18 +678,19 @@ Validation completed:
 - `npm test -- server/notification-visibility-regression.test.ts`
 - `npm run check`
 - follow-up validation reran `npm test -- server/notification-visibility-regression.test.ts` and `npm run check` after suppressing scroll only for direct row selection
+- user-reported manual validation passed on 2026-06-23: opening Notifications directly, selecting several alerts, and confirming the detail panel updated without losing list context
 
 Partially reviewed:
 
 - local source/test validation proves the two-pane layout structure, selected-row styling, selected detail identity, local filtering behavior, and active-alert empty state
 
-Not locally verified:
+Not independently verified by the agent:
 
-- browser-rendered layout, responsive desktop/mobile behavior, and click-through selection of several real alerts remain manual UX evidence
+- browser-rendered UX-3 evidence was provided by user manual validation and was not independently rerun in this local session
 
 ### Commit UX-4: Alert Detail Content And Actions
 
-Status: planned.
+Status: complete for the local code/test scope.
 
 Scope:
 
@@ -706,6 +707,42 @@ Required tests:
 - Benchmark alert detail shows Benchmark-specific action label
 - primary action preserves `metadata.actionUrl`
 - dismiss action does not imply analytical resolution
+
+Root cause fixed:
+
+- UX-3 added a selected-alert detail panel, but that panel still rendered mostly generic notification title/message fields and did not provide a shared KPI/Benchmark detail/action model.
+- The `/api/notifications` route already fetched linked KPI/Benchmark rows for ownership, active-breach visibility, and title enrichment, but it did not expose the linked row's platform label, item name, current value, threshold, or alert condition to the selected-detail UI.
+- The selected-detail UI had no primary `Open KPI` / `Open Benchmark`, no proven alert-settings destination, and no dismiss copy that explicitly separated notification visibility from analytical resolution.
+
+Files changed:
+
+- `client/src/pages/notifications.tsx`
+- `server/routes-oauth.ts`
+- `server/notification-visibility-regression.test.ts`
+- `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
+
+Validation completed:
+
+- `npm test -- server/notification-visibility-regression.test.ts`
+- `npm run check`
+
+Proven locally:
+
+- the notification route keeps the same top-level response shape while response-enriching existing `metadata` from already-fetched linked KPI/Benchmark rows
+- KPI and Benchmark selected-alert details use the shared renderer and show item type, item name, platform/source, current value, threshold value, condition, status, and created time
+- selected-detail primary action uses the stored `metadata.actionUrl`
+- `Edit alert settings` uses the same proven item route rather than inventing a new destination
+- `Dismiss alert` copy states that dismissal hides the notification from active views and does not resolve the underlying KPI/Benchmark breach
+- non-performance notification details keep the previous generic detail rendering and do not get KPI/Benchmark action labels
+
+Partially reviewed:
+
+- response-only metadata enrichment is backward-compatible for existing consumers that already parse `metadata.actionUrl`, `kpiId`, or `benchmarkId`; no alert evaluation math, KPI/Benchmark calculations, email behavior, ownership checks, or notification visibility predicates were changed
+
+Not locally verified:
+
+- browser click-through for `Open KPI`, `Open Benchmark`, `Edit alert settings`, and `Dismiss alert`
+- responsive/browser-rendered visual fit of the enriched right-side detail panel
 
 Manual validation:
 

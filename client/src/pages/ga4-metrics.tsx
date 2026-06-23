@@ -6954,24 +6954,6 @@ export default function GA4Metrics() {
                                   </div>
                                   <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                      <Label>Alert Frequency</Label>
-                                      <Select
-                                        value={newBenchmark.alertFrequency || "immediate"}
-                                        onValueChange={(v) => setNewBenchmark({ ...newBenchmark, alertFrequency: v })}
-                                        disabled={!newBenchmark.emailNotifications}
-                                      >
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent className="z-[10000]">
-                                          <SelectItem value="immediate">Immediate</SelectItem>
-                                          <SelectItem value="daily">Daily</SelectItem>
-                                          <SelectItem value="weekly">Weekly</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                      <p className="text-xs text-muted-foreground/70">
-                                        This setting controls how often reminder emails are sent while the Benchmark is still breaching
-                                      </p>
-                                    </div>
-                                    <div className="space-y-2">
                                       <div className="flex items-center space-x-2 pt-1">
                                         <Checkbox
                                           id="ga4-benchmark-email-notifications"
@@ -6994,6 +6976,24 @@ export default function GA4Metrics() {
                                           <p className="text-xs text-muted-foreground/70">Comma-separated email addresses for alerts.</p>
                                         </div>
                                       )}
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Alert Frequency</Label>
+                                      <Select
+                                        value={newBenchmark.alertFrequency || "immediate"}
+                                        onValueChange={(v) => setNewBenchmark({ ...newBenchmark, alertFrequency: v })}
+                                        disabled={!newBenchmark.emailNotifications}
+                                      >
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent className="z-[10000]">
+                                          <SelectItem value="immediate">Immediate</SelectItem>
+                                          <SelectItem value="daily">Daily</SelectItem>
+                                          <SelectItem value="weekly">Weekly</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <p className="text-xs text-muted-foreground/70">
+                                        This setting controls how often reminder emails are sent while the Benchmark is still breaching
+                                      </p>
                                     </div>
                                   </div>
                                 </div>
@@ -8687,27 +8687,6 @@ export default function GA4Metrics() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="kpi-alert-frequency">Alert Frequency</Label>
-                        <Select
-                          value={kpiForm.watch("alertFrequency") || "daily"}
-                          onValueChange={(v) => kpiForm.setValue("alertFrequency", v as any)}
-                          disabled={!kpiForm.watch("emailNotifications")}
-                        >
-                          <SelectTrigger id="kpi-alert-frequency">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="immediate">Immediate</SelectItem>
-                            <SelectItem value="daily">Daily</SelectItem>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground/70">
-                          This setting controls how often reminder emails are sent while the KPI is still breaching
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
                         <div className="flex items-center space-x-2 pt-1">
                           <Checkbox
                             id="kpi-email-notifications"
@@ -8733,6 +8712,27 @@ export default function GA4Metrics() {
                             </p>
                           </div>
                         )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="kpi-alert-frequency">Alert Frequency</Label>
+                        <Select
+                          value={kpiForm.watch("alertFrequency") || "daily"}
+                          onValueChange={(v) => kpiForm.setValue("alertFrequency", v as any)}
+                          disabled={!kpiForm.watch("emailNotifications")}
+                        >
+                          <SelectTrigger id="kpi-alert-frequency">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="immediate">Immediate</SelectItem>
+                            <SelectItem value="daily">Daily</SelectItem>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground/70">
+                          This setting controls how often reminder emails are sent while the KPI is still breaching
+                        </p>
                       </div>
                     </div>
                   </div>

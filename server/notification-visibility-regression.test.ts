@@ -244,51 +244,52 @@ describe("notification visibility regression guard", () => {
     expect(campaignDetail.match(/await refreshNotificationQueries\(\);/g) || []).toHaveLength(6);
   });
 
-  it("opens performance-alert bell clicks on the selected Notifications page detail", () => {
+  it("routes top bar bell clicks directly to the Notifications page without the dropdown", () => {
     const navigationFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),
       "utf-8"
     );
-    const alertRedirectIndex = navigationFile.indexOf('if (notification.type === "performance-alert") {');
-    const metadataIndex = navigationFile.indexOf("let metadata = notification.metadata;", alertRedirectIndex);
 
-    expect(alertRedirectIndex).toBeGreaterThan(-1);
-    expect(metadataIndex).toBeGreaterThan(alertRedirectIndex);
-    expect(navigationFile.slice(alertRedirectIndex, metadataIndex)).toContain(
-      "navigateFromBell(`/notifications?selected=${encodeURIComponent(String(notification.id))}`);"
-    );
-    expect(navigationFile.slice(alertRedirectIndex, metadataIndex)).toContain("return;");
-    expect(navigationFile.slice(alertRedirectIndex, metadataIndex)).not.toContain("/notifications?highlight=");
-    expect(navigationFile).toContain("Open details");
+    expect(navigationFile).toContain('data-testid="button-notifications"');
+    expect(navigationFile).toContain('onClick={() => setLocation("/notifications")}');
+    expect(navigationFile).toContain('aria-label="Open Notifications"');
+    expect(navigationFile).not.toContain("PopoverTrigger");
+    expect(navigationFile).not.toContain("PopoverContent");
+    expect(navigationFile).not.toContain("navigateFromBell");
+    expect(navigationFile).not.toContain("/notifications?selected=");
   });
 
-  it("keeps bell dismiss clicks separate from row navigation and keeps unread count on notifications query", () => {
+  it("keeps the top bar unread count and Notifications page unread row highlighting", () => {
     const navigationFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),
       "utf-8"
     );
-    const deleteButtonStart = navigationFile.indexOf('data-testid={`button-delete-notification-popover-${notification.id}`}');
-    const deleteHandlerStart = navigationFile.lastIndexOf("onClick={(e) => {", deleteButtonStart);
-    const deleteHandler = navigationFile.slice(deleteHandlerStart, deleteButtonStart);
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
 
     expect(navigationFile).toContain('queryKey: ["/api/notifications"]');
     expect(navigationFile).toContain("const unreadCount = notifications.filter(n => !n.read).length;");
-    expect(deleteHandler).toContain("e.preventDefault();");
-    expect(deleteHandler).toContain("e.stopPropagation();");
-    expect(deleteHandler).toContain("deleteNotificationMutation.mutate(notification.id);");
-    expect(deleteHandler).not.toContain("handleNotificationClick(notification)");
+    expect(navigationFile).toContain("{unreadCount > 0 && (");
+    expect(navigationFile).toContain("{unreadCount > 99 ? '99+' : unreadCount}");
+    expect(notificationsPage).toContain('!notification.read ? "border-l-4 border-l-blue-500 bg-blue-50/30" : ""');
+    expect(notificationsPage).toContain("{/* Unread state is shown via left blue border + subtle background */}");
   });
 
-  it("refetches bell notifications after read, clear, and dismiss mutations", () => {
+  it("does not expose top bar dropdown notification mutation actions", () => {
     const navigationFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),
       "utf-8"
     );
 
-    expect(navigationFile).toContain("const refreshNotificationQueries = async () => {");
-    expect(navigationFile).toContain('await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });');
-    expect(navigationFile).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');
-    expect(navigationFile.match(/await refreshNotificationQueries\(\);/g) || []).toHaveLength(4);
+    expect(navigationFile).not.toContain("markAsReadMutation");
+    expect(navigationFile).not.toContain("markAllAsReadMutation");
+    expect(navigationFile).not.toContain("deleteNotificationMutation");
+    expect(navigationFile).not.toContain("/api/notifications/all/clear");
+    expect(navigationFile).not.toContain("button-delete-notification-popover");
+    expect(navigationFile).not.toContain("Mark all as read");
+    expect(navigationFile).not.toContain("Clear all");
   });
 
   it("focuses selected or legacy highlighted notification rows on the Notifications page", () => {

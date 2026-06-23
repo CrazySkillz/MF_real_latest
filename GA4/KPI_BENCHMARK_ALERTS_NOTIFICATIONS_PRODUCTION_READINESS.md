@@ -15,6 +15,7 @@ This file is the authoritative tracker for GA4 KPI/Benchmark alert and notificat
 - GA4 KPI/Benchmark alerts and notifications are not production-ready at Commit 1.
 - After Commits 2 through 8 in this file are implemented, their required validation passes, and final evidence is recorded here, the GA4 KPI alerts, GA4 KPI notifications, GA4 Benchmark alerts, and GA4 Benchmark notifications sections can be marked production-ready.
 - As of Commit 8, the locally verifiable GA4 KPI/Benchmark alert and notification implementation is production-ready by this document's code-readiness criteria.
+- The current implementation template also includes the post-Commit-8 alignment fixes documented below: alert frequency UI scope/layout, all-row GA4 KPI reconciliation, query-only action URL handling, bell-to-Notifications routing, and edit/delete notification refresh.
 - This file is the implementation and validation template for applying the same alert/notification lifecycle to other connected-platform sources, including Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration.
 - Other connected-platform sources are not production-ready from GA4 evidence alone. Each source must copy the proven GA4 lifecycle and pass the same lifecycle matrix with source-specific evidence before its KPI/Benchmark alert and notification behavior can be marked production-ready.
 
@@ -51,9 +52,15 @@ GA4 KPI and Benchmark alerts and notifications are production-ready only when al
 - missing campaign, missing current value, invalid current value, missing threshold, or invalid threshold fails closed
 - in-app and email alert checks use the same resolved current value and threshold math
 - alert frequency controls reminder email throttle behavior, not duplicate in-app notification rows
-- GA4 KPI alert links open `/campaigns/:id/ga4-metrics?tab=kpis&highlight=:kpiId`
-- GA4 Benchmark alert links open `/campaigns/:id/ga4-metrics?tab=benchmarks&highlight=:benchmarkId`
-- successful GA4 KPI/Benchmark create, update, and delete mutations refresh `/api/notifications`
+- GA4 KPI alert metadata action URLs open `/campaigns/:id/ga4-metrics?tab=kpis&highlight=:kpiId`
+- GA4 Benchmark alert metadata action URLs open `/campaigns/:id/ga4-metrics?tab=benchmarks&highlight=:benchmarkId`
+- clicking a performance alert in the bell opens the Notifications page at `/notifications?highlight=:notificationId`, marks the row read, and highlights the specific alert row
+- the Notifications page `View KPI` / `View Benchmark` action preserves the metadata action URL and opens the correct GA4 tab/card
+- if the user is already on the same GA4 page, query-only action URL changes still switch to the correct tab/item by listening to the URL search string
+- successful GA4 and campaign-level KPI/Benchmark create, update, and delete mutations refresh `/api/notifications`
+- alert UI places `Send email notifications` on the left and `Alert Frequency` on the right
+- `Alert Frequency` is disabled unless `Send email notifications` is selected
+- alert frequency helper text says it controls how often reminder emails are sent while the KPI or Benchmark is still breaching
 - scheduler/source-refresh reconciliation does not rely on opening the bell, loading Notifications, or manually refreshing the page
 - local focused tests, `npm run check`, and `npm run build` pass
 - deployed email provider delivery remains separately documented as provider/inbox evidence, not inferred from local code
@@ -326,6 +333,100 @@ Validation note:
 
 - the first `npm run build` attempt failed with `spawn EPERM` while Vite tried to start esbuild under sandbox permissions; the same command passed when rerun with the required elevated permission
 
+## Post-Commit-8 Implementation Alignment
+
+Status: complete for the locally committed implementation through `c9f582f9`.
+
+These follow-up commits are part of the current GA4 alert/notification implementation and must be treated as part of the template before applying the lifecycle to Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, Custom Integration, or any other connected-platform source.
+
+### Commit `4f313218`: Alert Frequency Reminder Scope
+
+Runtime behavior:
+
+- `Alert Frequency` controls email reminder cadence only
+- bell and Notifications keep one active in-app alert record while the breach remains unresolved
+- duplicate in-app rows are not created for `Immediate`, `Daily`, or `Weekly`
+- KPI helper text says: `This setting controls how often reminder emails are sent while the KPI is still breaching`
+- Benchmark helper text says: `This setting controls how often reminder emails are sent while the Benchmark is still breaching`
+
+Template requirement:
+
+- future platform KPI/Benchmark alert forms must not imply that `Alert Frequency` creates repeated bell or Notifications rows
+- helper text must distinguish in-app alert lifecycle from reminder email cadence
+
+### Commit `75c38529`: Alert Email Control Layout
+
+Runtime behavior:
+
+- `Send email notifications` is rendered on the left
+- `Alert Frequency` is rendered on the right
+- `Alert Frequency` is disabled unless `Send email notifications` is selected
+- email recipient fields appear only when email notifications are selected
+
+Template requirement:
+
+- future platform alert forms should use the same layout and disabled-state model unless there is a documented platform-specific reason not to
+- if email notifications are off, users can still receive in-app bell and Notifications alerts, but reminder email frequency is inactive
+
+### Commit `4bbffd53`: GA4 KPI Alert Reconciliation Completeness
+
+Runtime behavior:
+
+- GA4 KPI alert reconciliation considers all KPI rows instead of only a deduplicated/latest-by-metric subset
+- disabled stale GA4/campaign-style KPI alerts can be observed and resolved
+- older still-valid GA4 KPI alert rows are not incorrectly superseded merely because another KPI has the same campaign/metric key
+- scheduler reconciliation uses the same KPI row lifecycle boundary as manual create/update/delete paths
+
+Template requirement:
+
+- future platform KPI reconciliation must not collapse distinct KPI rows by display metric or campaign/metric key unless that dedupe rule is explicitly product-defined and regression-covered
+- stale alert cleanup must include disabled-alert, missing-threshold, invalid-value, missing-campaign, and non-breach paths
+
+### Commit `99415fe6` And Commit `12bcf04b`: GA4 Deep-Link Rendering And Query Sync
+
+Runtime behavior:
+
+- GA4 KPI and Benchmark cards visually highlight when opened from alert action URLs
+- the GA4 page listens to URL search changes through Wouter `useSearch`
+- if the user is already on `/campaigns/:id/ga4-metrics`, changing only `?tab=...&highlight=...` still updates active tab and highlighted item state
+- the visible card highlight is temporary and does not mutate alert state
+
+Template requirement:
+
+- future platform analytics pages that use alert action URLs must react to query-only URL changes, not only path changes
+- action URL highlighting should be visual navigation feedback only; it must not mark alerts read, dismiss alerts, resolve breaches, or mutate KPI/Benchmark state
+
+### Commit `4562711e`: Bell To Notifications Center Flow
+
+Runtime behavior:
+
+- clicking a performance alert in the bell marks it read and opens `/notifications?highlight=:notificationId`
+- the Notifications page resets filters to show the specific alert, moves to the correct page, scrolls to it, and highlights it
+- the Notifications page `View KPI` / `View Benchmark` action remains the action that opens the platform KPI/Benchmark card via metadata action URL
+- dismissing from the bell remains a separate visibility action and does not navigate
+
+Template requirement:
+
+- bell rows should be treated as quick entry points into alert context, not as the only action surface
+- the full Notifications page must preserve the platform action URL and provide the jump into the KPI/Benchmark card
+- future planned triage UX changes may replace `highlight` with canonical `selected`, but current implementation uses `highlight`
+
+### Commit `1bac44e4`: Edit/Delete Reflection In Bell And Notifications
+
+Runtime behavior:
+
+- existing active KPI alert rows are updated in place when the KPI is edited and remains breaching
+- existing active Benchmark alert rows are updated in place when the Benchmark is edited and remains breaching
+- campaign-level Benchmark create/update routes await alert reconciliation before responding
+- GA4 and campaign-level KPI/Benchmark create, update, and delete mutations refresh `/api/notifications`
+- deleting a KPI/Benchmark hides the related active alert rows without hard-deleting unrelated notification history
+
+Template requirement:
+
+- alert reconciliation must update the preserved active alert row's title, message, priority, campaign context, and metadata action URL when the linked item remains breached after edit
+- UI mutation handlers must invalidate and refetch `/api/notifications` after alert-impacting create, update, or delete actions
+- delete remains a visibility/history-preserving soft-hide path for linked notifications
+
 ## Lifecycle Matrix
 
 | Lifecycle path | GA4 KPI expected behavior | GA4 Benchmark expected behavior | Required evidence |
@@ -339,10 +440,13 @@ Validation note:
 | Delete item | related notifications hidden, unrelated history preserved | related notifications hidden, unrelated history preserved | route tests |
 | Dismiss notification | current row hidden only | current row hidden only | visibility tests |
 | Reconcile still-breached dismissed item | one new active alert may be created | one new active alert may be created | lifecycle tests |
+| Reconcile still-breached edited item | preserved active alert row updates in place | preserved active alert row updates in place | lifecycle and visibility tests |
 | Scheduler/source refresh | alerts evaluate after current values refresh | alerts evaluate after current values refresh | scheduler tests |
 | Email reminder | same resolved value as in-app; throttled by frequency | same resolved value as in-app; throttled by frequency | email tests |
-| Bell deep-link | opens GA4 KPI tab and highlighted KPI | opens GA4 Benchmark tab and highlighted Benchmark | UI/source tests |
-| Notifications page deep-link | opens GA4 KPI tab and highlighted KPI | opens GA4 Benchmark tab and highlighted Benchmark | UI/source tests |
+| Alert frequency UI | `Send email notifications` left; `Alert Frequency` right; frequency disabled until email is selected | `Send email notifications` left; `Alert Frequency` right; frequency disabled until email is selected | UI/source tests |
+| Bell alert click | marks alert read and opens `/notifications?highlight=:notificationId` | marks alert read and opens `/notifications?highlight=:notificationId` | UI/source tests |
+| Notifications page view action | preserves metadata action URL and opens GA4 KPI tab/card highlight | preserves metadata action URL and opens GA4 Benchmark tab/card highlight | UI/source tests |
+| Query-only platform action URL | existing GA4 page reacts to `tab`/`highlight` search changes | existing GA4 page reacts to `tab`/`highlight` search changes | UI/source tests |
 
 ## Validation Status
 
@@ -368,12 +472,19 @@ Proven locally:
 - Commit 7 does not require manual validation for local acceptance; deployed database migration application remains an operational deployment step
 - Commit 8 makes notification visibility use the same campaign current-value resolver as alert creation before deciding whether linked KPI/Benchmark alerts remain visible
 - Commit 8 final focused regression suite passed: 8 test files / 49 tests
+- Commit `4f313218` clarifies that `Alert Frequency` controls reminder emails while the KPI or Benchmark remains breaching, not repeated in-app notification rows
+- Commit `75c38529` aligns GA4 KPI/Benchmark alert form layout so `Send email notifications` is on the left, `Alert Frequency` is on the right, and frequency is disabled until email notifications are selected
+- Commit `4bbffd53` makes GA4 KPI alert reconciliation consider all KPI rows so valid active alerts are not incorrectly superseded by campaign/metric dedupe and disabled stale alerts can be cleared
+- Commit `99415fe6` adds visible GA4 KPI/Benchmark card highlighting for alert action URLs
+- Commit `12bcf04b` makes the GA4 page react to query-only `tab`/`highlight` changes through URL search state
+- Commit `4562711e` changes bell performance-alert clicks to open the specific alert in the Notifications center at `/notifications?highlight=:notificationId`
+- Commit `1bac44e4` refreshes active alert rows after KPI/Benchmark edits, awaits campaign Benchmark alert reconciliation, and refetches `/api/notifications` after GA4 and campaign-level KPI/Benchmark create/update/delete mutations
 - `npm run check` passed
 - `npm run build` passed after rerunning with elevated permission required for Vite/esbuild process spawning
 
 Partially reviewed:
 
-- browser-rendered click-through of the bell and Notifications page remains manual/deployed evidence; local proof is source-level regression coverage plus successful production build
+- browser-rendered click-through of the bell, Notifications page highlight, and `View KPI` / `View Benchmark` action remains manual/deployed evidence; local proof is source-level regression coverage plus successful production build
 - scheduler/source-refresh behavior is covered by focused regression traces and existing job wiring, not by a live scheduled run in this local pass
 
 Not locally verifiable:
@@ -403,7 +514,15 @@ After GA4 passes this matrix, other connected-platform KPI/Benchmark alert imple
 - resolve/hide alerts when breach clears, alerts are disabled, threshold is removed, or the item is deleted
 - attempt immediate email only after save/update succeeds and only when email alerts are enabled
 - preserve frequency throttling for reminder emails
+- render `Send email notifications` on the left and `Alert Frequency` on the right
+- disable `Alert Frequency` unless email notifications are selected
+- describe alert frequency as reminder email cadence while the KPI/Benchmark remains breaching
+- reconcile every relevant active KPI/Benchmark row instead of deduplicating by display metric unless the dedupe rule is explicitly product-defined and tested
+- update an existing active alert row in place when the linked item is edited and still breached
 - generate platform-correct campaign-scoped deep-links
+- make platform pages react to query-only action URL changes when action URLs use query params for tab/item selection
+- make bell performance-alert clicks open the Notifications center row in the current implementation: `/notifications?highlight=:notificationId`
+- preserve the metadata action URL from the Notifications page `View KPI` / `View Benchmark` action
 - refresh `/api/notifications` after alert-impacting create, update, and delete mutations
 - add focused regression tests before marking the copied source production-ready
 
@@ -664,22 +783,28 @@ Use a disposable GA4 campaign with known values.
 
 1. Create a GA4 KPI with alerts enabled and a breached threshold.
 2. Confirm the bell count updates and the Notifications page shows one KPI alert.
-3. Click the bell alert and confirm it opens the GA4 KPI tab with the KPI highlighted.
-4. Update the KPI so it no longer breaches.
-5. Confirm the alert disappears from active notification views.
-6. Re-breach the same KPI.
-7. Confirm exactly one active alert returns.
-8. Repeat the same flow for a GA4 Benchmark.
-9. Dismiss a still-breached KPI/Benchmark alert.
-10. Run or trigger the valid reconciliation path.
-11. Confirm exactly one new active alert appears.
-12. Enable email alerts with a safe recipient in a deployed environment.
-13. Confirm provider acceptance separately from inbox/provider delivery.
+3. Click the bell alert and confirm it opens `/notifications?highlight=:notificationId`, resets filters as needed, scrolls to the exact alert row, and highlights it.
+4. From the Notifications page, click `View KPI` and confirm it opens the GA4 KPI tab with the KPI card highlighted.
+5. Update the KPI while it still breaches and confirm the existing active alert row updates in bell and Notifications without creating a duplicate.
+6. Update the KPI so it no longer breaches.
+7. Confirm the alert disappears from active notification views.
+8. Re-breach the same KPI.
+9. Confirm exactly one active alert returns.
+10. Repeat the same flow for a GA4 Benchmark.
+11. Confirm the alert form layout: `Send email notifications` appears on the left, `Alert Frequency` appears on the right, and `Alert Frequency` is disabled until email notifications are selected.
+12. Dismiss a still-breached KPI/Benchmark alert.
+13. Run or trigger the valid reconciliation path.
+14. Confirm exactly one new active alert appears.
+15. Enable email alerts with a safe recipient in a deployed environment.
+16. Confirm provider acceptance separately from inbox/provider delivery.
 
 Pass criteria:
 
 - visible in-app state matches the underlying GA4 KPI/Benchmark breach state
 - no stale resolved alerts remain visible
 - no duplicate active alerts appear for the same GA4 KPI/Benchmark
-- deep-links open the correct campaign, tab, and item
+- bell alert clicks open the exact Notifications page row
+- Notifications page `View KPI` / `View Benchmark` actions open the correct campaign, tab, and item
+- query-only GA4 action URL changes update the visible tab/card highlight
+- Alert Frequency remains email-reminder-only and disabled unless email notifications are selected
 - email status is reported only according to the evidence available

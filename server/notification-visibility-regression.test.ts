@@ -152,19 +152,43 @@ describe("notification visibility regression guard", () => {
     }
   });
 
-  it("preserves campaign-scoped metadata action URLs in bell navigation", () => {
+  it("opens performance-alert bell clicks on the highlighted Notifications page row", () => {
     const navigationFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),
       "utf-8"
     );
+    const alertRedirectIndex = navigationFile.indexOf('if (notification.type === "performance-alert") {');
+    const metadataIndex = navigationFile.indexOf("let metadata = notification.metadata;", alertRedirectIndex);
 
-    const preserveIndex = navigationFile.indexOf("baseUrl.pathname.startsWith(`/campaigns/${campaignId}/`)");
-    const legacyRewriteIndex = navigationFile.indexOf("baseUrl.pathname = `/campaigns/${campaignId}/${baseUrl.pathname.includes('ga4-metrics') ? 'ga4-metrics' : 'linkedin-analytics'}`;");
+    expect(alertRedirectIndex).toBeGreaterThan(-1);
+    expect(metadataIndex).toBeGreaterThan(alertRedirectIndex);
+    expect(navigationFile.slice(alertRedirectIndex, metadataIndex)).toContain(
+      "navigateFromBell(`/notifications?highlight=${encodeURIComponent(String(notification.id))}`);"
+    );
+    expect(navigationFile.slice(alertRedirectIndex, metadataIndex)).toContain("return;");
+  });
 
-    expect(preserveIndex).toBeGreaterThan(-1);
-    expect(legacyRewriteIndex).toBeGreaterThan(preserveIndex);
-    expect(navigationFile).toContain("navigateFromBell(`${baseUrl.pathname}${baseUrl.search}`);");
-    expect(navigationFile).not.toContain("const platformPath = isGa4 ? 'ga4-metrics' : 'linkedin-analytics';");
+  it("focuses highlighted notification rows from bell navigation on the Notifications page", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+
+    expect(notificationsPage).toContain('import { useLocation, useSearch } from "wouter";');
+    expect(notificationsPage).toContain("const search = useSearch();");
+    expect(notificationsPage).toContain('const highlightedNotificationId = new URLSearchParams(search).get("highlight") || "";');
+    expect(notificationsPage).toContain('setSearchTerm("");');
+    expect(notificationsPage).toContain('setPriorityFilter("all");');
+    expect(notificationsPage).toContain('setReadFilter("all");');
+    expect(notificationsPage).toContain('setClientFilter("all");');
+    expect(notificationsPage).toContain('setDateFilter("all");');
+    expect(notificationsPage).toContain("const highlightedNotificationVisible = highlightedNotificationId");
+    expect(notificationsPage).toContain("if (!highlightedNotificationId || isLoading || !highlightedNotificationVisible) return;");
+    expect(notificationsPage).toContain("document.getElementById(`notification-${highlightedNotificationId}`)");
+    expect(notificationsPage).toContain('el.scrollIntoView({ block: "center", behavior: "smooth" });');
+    expect(notificationsPage).toContain("const isHighlightedNotification = String(notification.id) === highlightedNotificationId;");
+    expect(notificationsPage).toContain('id={`notification-${notification.id}`}');
+    expect(notificationsPage).toContain('${isHighlightedNotification ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5" : ""}');
   });
 
   it("preserves metadata action URLs from the Notifications page view action", () => {

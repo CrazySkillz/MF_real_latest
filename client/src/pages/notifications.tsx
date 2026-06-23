@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import Navigation from "@/components/layout/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,8 @@ export default function Notifications() {
   const itemsPerPage = 10;
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const search = useSearch();
+  const highlightedNotificationId = new URLSearchParams(search).get("highlight") || "";
   const { clients } = useClient();
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
@@ -147,11 +149,43 @@ export default function Notifications() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedNotifications = filteredNotifications.slice(startIndex, endIndex);
+  const highlightedNotificationVisible = highlightedNotificationId
+    ? paginatedNotifications.some((notification) => String(notification.id) === highlightedNotificationId)
+    : false;
+
+  useEffect(() => {
+    if (!highlightedNotificationId) return;
+
+    setSearchTerm("");
+    setPriorityFilter("all");
+    setReadFilter("all");
+    setClientFilter("all");
+    setDateFilter("all");
+
+    const index = notifications.findIndex((notification) => String(notification.id) === highlightedNotificationId);
+    if (index >= 0) {
+      setCurrentPage(Math.floor(index / itemsPerPage) + 1);
+    }
+  }, [highlightedNotificationId, notifications]);
+
+  useEffect(() => {
+    if (!highlightedNotificationId || isLoading || !highlightedNotificationVisible) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const el = document.getElementById(`notification-${highlightedNotificationId}`);
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [highlightedNotificationId, highlightedNotificationVisible, currentPage, isLoading]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
+    if (highlightedNotificationId) return;
     setCurrentPage(1);
-  }, [searchTerm, priorityFilter, readFilter, clientFilter, dateFilter]);
+  }, [searchTerm, priorityFilter, readFilter, clientFilter, dateFilter, highlightedNotificationId]);
 
   // Adjust current page if it's now out of bounds (after deletion)
   useEffect(() => {
@@ -363,12 +397,14 @@ export default function Notifications() {
                 <div className="space-y-4">
                   {paginatedNotifications.map((notification) => {
                     const body = formatNotificationMessage(notification);
+                    const isHighlightedNotification = String(notification.id) === highlightedNotificationId;
                     return (
                   <Card
                     key={notification.id}
+                    id={`notification-${notification.id}`}
                     className={`transition-all hover:shadow-md ${
                       !notification.read ? "border-l-4 border-l-blue-500 bg-blue-50/30" : ""
-                    }`}
+                    } ${isHighlightedNotification ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5" : ""}`}
                     data-testid={`notification-${notification.id}`}
                   >
                     <CardContent className="p-4">

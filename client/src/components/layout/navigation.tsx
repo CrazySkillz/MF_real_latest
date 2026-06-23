@@ -162,6 +162,11 @@ export default function Navigation() {
       markAsReadMutation.mutate(notification.id);
     }
 
+    if (notification.type === "performance-alert") {
+      navigateFromBell(`/notifications?highlight=${encodeURIComponent(String(notification.id))}`);
+      return;
+    }
+
     // Parse metadata if it's a string
     let metadata = notification.metadata;
     if (typeof metadata === 'string') {

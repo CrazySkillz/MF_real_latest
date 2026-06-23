@@ -24,6 +24,9 @@ describe("GA4 KPI regression guard", () => {
 
     expect(schedulerFile).toContain("const activeKPIsRaw = await db.select()");
     expect(schedulerFile).toContain(".from(kpis);");
+    expect(schedulerFile).toContain("const activeKPIs = activeKPIsRaw;");
+    expect(schedulerFile).not.toContain("latestGa4ByCampaignMetric");
+    expect(schedulerFile).not.toContain("resolveKPIAlerts(String((kpi as any).id), 'superseded');");
     expect(schedulerFile).toContain("if (!kpi.alertsEnabled || kpi.alertThreshold === null || typeof kpi.alertThreshold === \"undefined\") {");
     expect(schedulerFile).toContain("if (usesSingleActiveAlert) await resolveKPIAlerts(String(kpi.id), 'cleared');");
     expect(schedulerFile).toContain("if (shouldTriggerAlert(kpi)) {");

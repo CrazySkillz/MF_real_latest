@@ -176,6 +176,38 @@ describe("notification visibility regression guard", () => {
     expect(benchmarkNotificationsFile).toContain("metadata: JSON.stringify({");
   });
 
+  it("hides selected KPI and Benchmark alerts when linked rows are deleted", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+    const platformKpiDelete = routesFile.slice(
+      routesFile.indexOf('app.delete("/api/platforms/:platformType/kpis/:kpiId"'),
+      routesFile.indexOf('app.post("/api/campaigns/:id/kpis"', routesFile.indexOf('app.delete("/api/platforms/:platformType/kpis/:kpiId"'))
+    );
+    const campaignKpiDelete = routesFile.slice(
+      routesFile.indexOf('app.delete("/api/campaigns/:id/kpis/:kpiId"'),
+      routesFile.indexOf("// Campaign-level Benchmark routes", routesFile.indexOf('app.delete("/api/campaigns/:id/kpis/:kpiId"'))
+    );
+    const campaignBenchmarkDelete = routesFile.slice(
+      routesFile.indexOf('app.delete("/api/campaigns/:campaignId/benchmarks/:benchmarkId"'),
+      routesFile.indexOf("// Get KPI analytics", routesFile.indexOf('app.delete("/api/campaigns/:campaignId/benchmarks/:benchmarkId"'))
+    );
+    const platformBenchmarkDelete = routesFile.slice(
+      routesFile.indexOf('app.delete("/api/platforms/:platformType/benchmarks/:benchmarkId"'),
+      routesFile.indexOf("// Platform Reports routes", routesFile.indexOf('app.delete("/api/platforms/:platformType/benchmarks/:benchmarkId"'))
+    );
+
+    expect(platformKpiDelete).toContain('if (String(meta?.kpiId || "") === String(kpiId))');
+    expect(platformKpiDelete).toContain('await softHideNotification(n, getActorId(req as any) || "system", "kpi_deleted");');
+    expect(campaignKpiDelete).toContain('if (String(meta?.kpiId || "") === String(kpiId))');
+    expect(campaignKpiDelete).toContain('await softHideNotification(n, getActorId(req as any) || "system", "kpi_deleted");');
+    expect(campaignBenchmarkDelete).toContain('if (String(meta?.benchmarkId || "") === String(benchmarkId))');
+    expect(campaignBenchmarkDelete).toContain('await softHideNotification(n, getActorId(req as any) || "system", "benchmark_deleted");');
+    expect(platformBenchmarkDelete).toContain('if (String(meta?.benchmarkId || "") === String(benchmarkId))');
+    expect(platformBenchmarkDelete).toContain('await softHideNotification(n, getActorId(req as any) || "system", "benchmark_deleted");');
+  });
+
   it("runs campaign-level Benchmark alert reconciliation before create/update responses", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),
@@ -245,6 +277,18 @@ describe("notification visibility regression guard", () => {
     expect(deleteHandler).not.toContain("handleNotificationClick(notification)");
   });
 
+  it("refetches bell notifications after read, clear, and dismiss mutations", () => {
+    const navigationFile = readFileSync(
+      join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),
+      "utf-8"
+    );
+
+    expect(navigationFile).toContain("const refreshNotificationQueries = async () => {");
+    expect(navigationFile).toContain('await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });');
+    expect(navigationFile).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');
+    expect(navigationFile.match(/await refreshNotificationQueries\(\);/g) || []).toHaveLength(4);
+  });
+
   it("focuses selected or legacy highlighted notification rows on the Notifications page", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
@@ -297,6 +341,7 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(notificationsPage).toContain("const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !selectedNotification);");
+    expect(notificationsPage).toContain('data-testid="selected-notification-missing-detail"');
     expect(notificationsPage).toContain("Selected alert is no longer active");
     expect(notificationsPage).toContain("This alert may have been dismissed, resolved, deleted, or is no longer available in your active notifications.");
   });

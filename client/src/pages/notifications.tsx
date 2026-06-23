@@ -961,6 +961,18 @@ export default function Notifications() {
                       </CardHeader>
                       {renderAlertDetail(selectedNotification)}
                     </Card>
+                  ) : selectedNotificationMissing ? (
+                    <Card data-testid="selected-notification-missing-detail">
+                      <CardContent className="py-10">
+                        <div className="text-center">
+                          <AlertCircle className="w-10 h-10 text-amber-600 mx-auto mb-3" />
+                          <h3 className="text-base font-semibold text-foreground">Selected alert is no longer active</h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            This alert may have been dismissed, resolved, deleted, or is no longer available in your active notifications.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ) : (
                     <Card data-testid="selected-notification-empty-detail">
                       <CardContent className="py-10">

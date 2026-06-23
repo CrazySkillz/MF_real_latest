@@ -529,7 +529,7 @@ After GA4 passes this matrix, other connected-platform KPI/Benchmark alert imple
 
 ## Notifications Triage UX Improvement Strategy
 
-Status: UX-5 bell quick-entry routing is implemented; UX-6 through UX-9 runtime work is not implemented.
+Status: UX-6 edit/delete reflection and detail refresh behavior is implemented; UX-7 through UX-9 runtime work is not implemented.
 
 ### UX Root Cause Analysis
 
@@ -799,19 +799,18 @@ Partially reviewed:
 
 - the change is limited to bell performance-alert routing/copy and source guards; it does not change notification visibility, alert evaluation, KPI/Benchmark math, email behavior, or API ownership/scoping rules
 
-Not locally verified:
-
-- browser click from bell alert to selected Notifications detail
-- browser dismiss from bell alert without navigation
-
 Manual validation:
 
 - click bell alert and confirm the Notifications detail opens selected
 - dismiss from bell and confirm the row is hidden without navigating
 
+Manual validation completed:
+
+- user-reported manual validation passed on 2026-06-23 for bell alert selected-detail navigation and bell dismiss without navigation
+
 ### Commit UX-6: Edit/Delete Reflection And Detail Refresh
 
-Status: planned.
+Status: complete for the local code/test scope.
 
 Scope:
 
@@ -827,6 +826,41 @@ Required tests:
 - deleting a KPI hides the selected alert from active Notifications
 - deleting a Benchmark hides the selected alert from active Notifications
 - bell count and Notifications page query are invalidated/refetched after each mutation
+
+Root cause fixed:
+
+- prior commits had already made GA4 and campaign-level KPI/Benchmark create, update, and delete mutations invalidate/refetch `/api/notifications`, and alert reconciliation already updates existing active KPI/Benchmark notification rows in place when an item is edited and still breached
+- linked KPI/Benchmark delete routes already soft-hide related active notifications, but the selected-detail panel could fall back to generic `Select an alert` copy when the selected alert disappeared while other alerts remained visible
+- bell notification mutations updated the cache optimistically or invalidated `/api/notifications`, but did not explicitly refetch the notification query on mutation success like the Notifications page and KPI/Benchmark mutation paths do
+
+Files changed:
+
+- `client/src/components/layout/navigation.tsx`
+- `client/src/pages/notifications.tsx`
+- `server/notification-visibility-regression.test.ts`
+- `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
+
+Validation completed:
+
+- `npm test -- server/notification-visibility-regression.test.ts`
+- `npm run check`
+
+Proven locally:
+
+- bell read, mark-all-read, clear-all, and dismiss mutation success handlers now invalidate and refetch `/api/notifications`
+- selected Notifications detail now renders a dedicated `Selected alert is no longer active` detail state when the selected row disappears while the two-pane layout remains visible
+- existing GA4 KPI/Benchmark and campaign-level KPI/Benchmark mutations still invalidate/refetch `/api/notifications`
+- existing KPI/Benchmark alert reconciliation still updates preserved active notification rows in place after still-breached edits
+- existing linked KPI/Benchmark delete routes soft-hide related active notifications through the current visibility path
+
+Partially reviewed:
+
+- this commit only changes query refresh and selected-detail fallback UI; it does not change alert evaluation math, notification visibility predicates, KPI/Benchmark calculations, email behavior, or API ownership/scoping rules
+
+Not locally verified:
+
+- browser edit of a still-breached KPI/Benchmark refreshing the bell and selected detail
+- browser delete of a KPI/Benchmark with an active selected alert removing it from active views
 
 Manual validation:
 

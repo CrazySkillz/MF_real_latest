@@ -47,6 +47,10 @@ export default function Navigation() {
     const campaign = campaigns.find(c => c.id === notification.campaignId);
     return clients.find(c => c.id === campaign?.clientId)?.name || "";
   };
+  const refreshNotificationQueries = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });
+  };
 
   // Mark notification as read mutation
   const markAsReadMutation = useMutation({
@@ -59,8 +63,8 @@ export default function Navigation() {
       if (!res.ok) throw new Error('Failed to mark as read');
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+    onSuccess: async () => {
+      await refreshNotificationQueries();
     },
   });
 
@@ -78,8 +82,8 @@ export default function Navigation() {
         )
       );
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+    onSuccess: async () => {
+      await refreshNotificationQueries();
     },
   });
 
@@ -92,8 +96,8 @@ export default function Navigation() {
       if (!res.ok) throw new Error('Failed to delete all notifications');
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+    onSuccess: async () => {
+      await refreshNotificationQueries();
     },
   });
 
@@ -118,8 +122,8 @@ export default function Navigation() {
         queryClient.setQueryData(["/api/notifications"], context.previous);
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    onSuccess: async () => {
+      await refreshNotificationQueries();
     },
   });
 

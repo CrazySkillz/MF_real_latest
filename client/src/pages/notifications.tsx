@@ -412,14 +412,7 @@ export default function Notifications() {
             )}
 
             {/* Notifications List */}
-            {isLoading ? (
-              <div className="text-center py-12">
-                <div className="inline-flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                  <span className="text-muted-foreground">Loading notifications...</span>
-                </div>
-              </div>
-            ) : filteredNotifications.length === 0 ? (
+            {isLoading ? null : filteredNotifications.length === 0 ? (
               <Card>
                 <CardContent className="py-12">
                   <div className="text-center">

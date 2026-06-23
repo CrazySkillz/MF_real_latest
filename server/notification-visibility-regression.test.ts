@@ -309,6 +309,16 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).toContain("No active alerts match your current filters.");
   });
 
+  it("does not show a second Notifications page loading message after the route loader", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+
+    expect(notificationsPage).toContain("{isLoading ? null : filteredNotifications.length === 0 ? (");
+    expect(notificationsPage).not.toContain("Loading notifications...");
+  });
+
   it("preserves metadata action URLs from the Notifications page view action", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),

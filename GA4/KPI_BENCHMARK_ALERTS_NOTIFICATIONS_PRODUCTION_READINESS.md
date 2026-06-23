@@ -529,7 +529,7 @@ After GA4 passes this matrix, other connected-platform KPI/Benchmark alert imple
 
 ## Notifications Triage UX Improvement Strategy
 
-Status: UX-2 selected-alert URL state is implemented; UX-3 through UX-9 runtime work is not implemented.
+Status: UX-3 two-pane triage layout is implemented; UX-4 through UX-9 runtime work is not implemented.
 
 ### UX Root Cause Analysis
 
@@ -639,7 +639,7 @@ Manual validation requirement:
 
 ### Commit UX-3: Two-Pane Alert Triage Layout
 
-Status: planned.
+Status: complete.
 
 Scope:
 
@@ -661,6 +661,29 @@ Manual validation:
 - open Notifications directly
 - select several alerts
 - confirm detail panel updates without losing list context
+
+Root cause fixed:
+
+- after UX-2 the page could resolve a selected notification from the URL, but the UI was still a single list where alert context, row focus, and actions competed inside each row
+- selecting an already-visible row could also trigger the selected-route filter-reset path, so in-list selection risked losing the user's current filter/search context instead of updating detail state in place
+
+Files changed:
+
+- `client/src/pages/notifications.tsx`
+- `server/notification-visibility-regression.test.ts`
+
+Validation completed:
+
+- `npm test -- server/notification-visibility-regression.test.ts`
+- `npm run check`
+
+Partially reviewed:
+
+- local source/test validation proves the two-pane layout structure, selected-row styling, selected detail identity, local filtering behavior, and active-alert empty state
+
+Not locally verified:
+
+- browser-rendered layout, responsive desktop/mobile behavior, and click-through selection of several real alerts remain manual UX evidence
 
 ### Commit UX-4: Alert Detail Content And Actions
 

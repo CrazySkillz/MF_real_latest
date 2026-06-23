@@ -239,6 +239,9 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).toContain('setReadFilter("all");');
     expect(notificationsPage).toContain('setClientFilter("all");');
     expect(notificationsPage).toContain('setDateFilter("all");');
+    expect(notificationsPage).toContain("const selectedFilteredIndex = selectedNotificationId");
+    expect(notificationsPage).toContain("const selectedInFilteredResults = selectedFilteredIndex >= 0;");
+    expect(notificationsPage).toContain("if (!selectedInFilteredResults) {");
     expect(notificationsPage).toContain("const selectedNotification = selectedNotificationId");
     expect(notificationsPage).toContain("const selectedNotificationVisible = selectedNotificationId");
     expect(notificationsPage).toContain("if (!selectedNotificationId || isLoading || !selectedNotificationVisible) return;");
@@ -246,6 +249,8 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).toContain('el.scrollIntoView({ block: "center", behavior: "smooth" });');
     expect(notificationsPage).toContain("const isSelectedNotification = String(notification.id) === selectedNotificationId;");
     expect(notificationsPage).toContain('id={`notification-${notification.id}`}');
+    expect(notificationsPage).toContain('aria-pressed={isSelectedNotification}');
+    expect(notificationsPage).toContain('data-selected={isSelectedNotification ? "true" : "false"}');
     expect(notificationsPage).toContain('${isSelectedNotification ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5" : ""}');
   });
 
@@ -258,6 +263,35 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).toContain("const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !selectedNotification);");
     expect(notificationsPage).toContain("Selected alert is no longer active");
     expect(notificationsPage).toContain("This alert may have been dismissed, resolved, deleted, or is no longer available in your active notifications.");
+  });
+
+  it("renders Notifications as a two-pane triage layout with selected detail identity", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+
+    expect(notificationsPage).toContain('data-testid="notifications-triage-layout"');
+    expect(notificationsPage).toContain('data-testid="notifications-active-alerts-list"');
+    expect(notificationsPage).toContain("Active alerts");
+    expect(notificationsPage).toContain('data-testid="selected-notification-detail-panel"');
+    expect(notificationsPage).toContain('data-testid="selected-notification-detail"');
+    expect(notificationsPage).toContain("data-selected-notification-id={String(selectedNotification.id)}");
+    expect(notificationsPage).toContain('data-testid="selected-notification-empty-detail"');
+    expect(notificationsPage).toContain("Select an alert");
+  });
+
+  it("keeps filtering local and preserves a clear empty active-alert state", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+
+    expect(notificationsPage).toContain("const filteredNotifications = notifications.filter(notification => {");
+    expect(notificationsPage).toContain("return matchesSearch && matchesPriority && matchesRead && matchesClient && matchesDate;");
+    expect(notificationsPage).toContain("const paginatedNotifications = filteredNotifications.slice(startIndex, endIndex);");
+    expect(notificationsPage).toContain("No active alerts found");
+    expect(notificationsPage).toContain("No active alerts match your current filters.");
   });
 
   it("preserves metadata action URLs from the Notifications page view action", () => {

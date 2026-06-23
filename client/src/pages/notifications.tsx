@@ -136,6 +136,10 @@ export default function Notifications() {
 
     return matchesSearch && matchesPriority && matchesRead && matchesClient && matchesDate;
   });
+  const selectedFilteredIndex = selectedNotificationId
+    ? filteredNotifications.findIndex((notification) => String(notification.id) === selectedNotificationId)
+    : -1;
+  const selectedInFilteredResults = selectedFilteredIndex >= 0;
 
   const uniqueClientIds = Array.from(
     new Set(
@@ -161,17 +165,21 @@ export default function Notifications() {
   useEffect(() => {
     if (!selectedNotificationId) return;
 
-    setSearchTerm("");
-    setPriorityFilter("all");
-    setReadFilter("all");
-    setClientFilter("all");
-    setDateFilter("all");
+    if (!selectedInFilteredResults) {
+      setSearchTerm("");
+      setPriorityFilter("all");
+      setReadFilter("all");
+      setClientFilter("all");
+      setDateFilter("all");
+    }
 
-    const index = notifications.findIndex((notification) => String(notification.id) === selectedNotificationId);
+    const index = selectedFilteredIndex >= 0
+      ? selectedFilteredIndex
+      : notifications.findIndex((notification) => String(notification.id) === selectedNotificationId);
     if (index >= 0) {
       setCurrentPage(Math.floor(index / itemsPerPage) + 1);
     }
-  }, [selectedNotificationId, notifications]);
+  }, [selectedNotificationId, notifications, selectedFilteredIndex, selectedInFilteredResults]);
 
   useEffect(() => {
     if (!selectedNotificationId || isLoading || !selectedNotificationVisible) return;
@@ -257,6 +265,10 @@ export default function Notifications() {
       threshold: parts[1] ? `Alert threshold value: ${parts[1]}` : "",
     };
   };
+  const selectNotification = (notificationId: string) => {
+    setLocation(`/notifications?selected=${encodeURIComponent(String(notificationId))}`);
+  };
+  const selectedNotificationBody = selectedNotification ? formatNotificationMessage(selectedNotification) : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -405,27 +417,47 @@ export default function Notifications() {
                   <div className="text-center">
                     <Bell className="w-12 h-12 text-muted-foreground/60 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-foreground mb-2">
-                      No notifications found
+                      No active alerts found
                     </h3>
                     <p className="text-muted-foreground/70">
                       {notifications.length === 0
-                        ? "You don't have any notifications yet."
-                        : "No notifications match your current filters."}
+                        ? "You don't have any active alerts yet."
+                        : "No active alerts match your current filters."}
                     </p>
                   </div>
                 </CardContent>
               </Card>
             ) : (
-              <>
-                <div className="space-y-4">
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start" data-testid="notifications-triage-layout">
+                <section className="min-w-0" data-testid="notifications-active-alerts-list">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h2 className="text-lg font-semibold text-foreground">Active alerts</h2>
+                      <p className="text-sm text-muted-foreground">
+                        {filteredNotifications.length} alert{filteredNotifications.length === 1 ? "" : "s"} in the current view
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
                   {paginatedNotifications.map((notification) => {
-                    const body = formatNotificationMessage(notification);
                     const isSelectedNotification = String(notification.id) === selectedNotificationId;
                     return (
                   <Card
                     key={notification.id}
                     id={`notification-${notification.id}`}
-                    className={`transition-all hover:shadow-md ${
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isSelectedNotification}
+                    data-selected={isSelectedNotification ? "true" : "false"}
+                    onClick={() => selectNotification(notification.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        selectNotification(notification.id);
+                      }
+                    }}
+                    className={`transition-all hover:shadow-md cursor-pointer ${
                       !notification.read ? "border-l-4 border-l-blue-500 bg-blue-50/30" : ""
                     } ${isSelectedNotification ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5" : ""}`}
                     data-testid={`notification-${notification.id}`}
@@ -445,12 +477,7 @@ export default function Notifications() {
                               {/* Unread state is shown via left blue border + subtle background */}
                             </div>
                             
-                            <div className="text-muted-foreground text-sm mb-2 space-y-1">
-                              <p>{body.lead}</p>
-                              {body.threshold && <p>{body.threshold}</p>}
-                            </div>
-                            
-                            <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
                               {getClientNameForNotification(notification) && (
                                 <div className="flex items-center space-x-1">
                                   <span className="font-semibold text-foreground/80">Client:</span>
@@ -549,12 +576,13 @@ export default function Notifications() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() =>
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setReadStateMutation.mutate({
                                     notificationId: notification.id,
                                     read: !notification.read,
                                   })
-                                }
+                                }}
                                 disabled={setReadStateMutation.isPending}
                                 aria-label={notification.read ? "Mark as unread" : "Mark as read"}
                                 data-testid={`button-toggle-read-${notification.id}`}
@@ -572,7 +600,10 @@ export default function Notifications() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => deleteNotificationMutation.mutate(notification.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotificationMutation.mutate(notification.id);
+                            }}
                             disabled={deleteNotificationMutation.isPending}
                             aria-label="Dismiss notification"
                             title="Dismiss this alert"
@@ -712,7 +743,77 @@ export default function Notifications() {
                     </div>
                   </div>
                 )}
-              </>
+                </section>
+
+                <aside className="xl:sticky xl:top-6" data-testid="selected-notification-detail-panel">
+                  {selectedNotification ? (
+                    <Card
+                      data-testid="selected-notification-detail"
+                      data-selected-notification-id={String(selectedNotification.id)}
+                    >
+                      <CardHeader>
+                        <div className="flex items-start gap-3">
+                          <div className="mt-1">
+                            {getTypeIcon(selectedNotification.type)}
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">{selectedNotification.title}</CardTitle>
+                            <CardDescription>Active alert details</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="rounded-md border border-border/70 bg-muted/30 p-3 text-sm text-muted-foreground space-y-2">
+                          <p>{selectedNotificationBody?.lead}</p>
+                          {selectedNotificationBody?.threshold && <p>{selectedNotificationBody.threshold}</p>}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3 text-sm">
+                          <div>
+                            <div className="text-xs font-semibold text-muted-foreground uppercase">Alert ID</div>
+                            <div className="text-foreground break-all">{String(selectedNotification.id)}</div>
+                          </div>
+                          {getClientNameForNotification(selectedNotification) && (
+                            <div>
+                              <div className="text-xs font-semibold text-muted-foreground uppercase">Client</div>
+                              <div className="text-foreground">{getClientNameForNotification(selectedNotification)}</div>
+                            </div>
+                          )}
+                          {selectedNotification.campaignName && (
+                            <div>
+                              <div className="text-xs font-semibold text-muted-foreground uppercase">Campaign</div>
+                              <div className="text-foreground">{selectedNotification.campaignName}</div>
+                            </div>
+                          )}
+                          <div>
+                            <div className="text-xs font-semibold text-muted-foreground uppercase">Priority</div>
+                            <div className="mt-1">{getPriorityBadge(selectedNotification.priority)}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-muted-foreground uppercase">Read state</div>
+                            <div className="text-foreground">{selectedNotification.read ? "Read" : "Unread"}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-muted-foreground uppercase">Created</div>
+                            <div className="text-foreground">{formatNotificationDate(String(selectedNotification.createdAt))}</div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card data-testid="selected-notification-empty-detail">
+                      <CardContent className="py-10">
+                        <div className="text-center">
+                          <AlertCircle className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
+                          <h3 className="text-base font-semibold text-foreground">Select an alert</h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Choose an active alert from the list to review its context.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </aside>
+              </div>
             )}
           </div>
         </main>

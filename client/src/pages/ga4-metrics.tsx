@@ -6404,12 +6404,13 @@ export default function GA4Metrics() {
                                   const t = getKpiEffectiveTarget(kpi);
                                   const metricKey = String(kpi?.metric || kpi?.name || "");
                                   const { Icon, color } = getKpiIcon(metricKey);
+                                  const isHighlightedKpi = String(highlightedItemId || "") === String(kpi.id || "");
 
                                   return (
                                     <Card
                                       key={kpi.id}
                                       id={`ga4-kpi-${kpi.id}`}
-                                      className="border-border"
+                                      className={`border-border transition-shadow ${isHighlightedKpi ? "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg bg-primary/5" : ""}`}
                                     >
                                       <CardContent className="p-5">
                                         <div className="flex items-start justify-between gap-3">
@@ -7131,11 +7132,12 @@ export default function GA4Metrics() {
                                 const sufficiency = getBenchmarkDataSufficiency(benchmark);
                                 const isInsufficient = !sufficiency.sufficient;
                                 const isUnavailable = isBlocked || isInsufficient;
+                                const isHighlightedBenchmark = String(highlightedItemId || "") === String(benchmark.id || "");
                                 return (
                                 <Card
                                   key={benchmark.id}
                                   id={`ga4-benchmark-${benchmark.id}`}
-                                  className="border-border"
+                                  className={`border-border transition-shadow ${isHighlightedBenchmark ? "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg bg-primary/5" : ""}`}
                                 >
                                   <CardContent className="p-5">
                                     <div className="flex items-start justify-between mb-4">

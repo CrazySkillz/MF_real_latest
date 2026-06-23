@@ -327,4 +327,14 @@ describe("GA4 UI regression guard", () => {
     expect(kpiSection).toContain('disabled={!kpiForm.watch("emailNotifications")}');
     expect(kpiSection).toContain("This setting controls how often reminder emails are sent while the KPI is still breaching");
   });
+
+  it("visibly highlights GA4 KPI and Benchmark cards opened from alert deep links", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+
+    expect(ga4Metrics).toContain("const [highlightedItemId, setHighlightedItemId] = useState<string>(initialHighlight);");
+    expect(ga4Metrics).toContain('const isHighlightedKpi = String(highlightedItemId || "") === String(kpi.id || "");');
+    expect(ga4Metrics).toContain('const isHighlightedBenchmark = String(highlightedItemId || "") === String(benchmark.id || "");');
+    expect(ga4Metrics).toContain('${isHighlightedKpi ? "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg bg-primary/5" : ""}');
+    expect(ga4Metrics).toContain('${isHighlightedBenchmark ? "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg bg-primary/5" : ""}');
+  });
 });

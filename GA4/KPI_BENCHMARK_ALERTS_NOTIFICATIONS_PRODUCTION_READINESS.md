@@ -243,7 +243,14 @@ Validation completed:
 - `npm test -- server/notification-visibility-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-benchmark-regression.test.ts`
 - `npm run check`
 
+Manual validation requirement:
+
+- manual validation is not required for Commit 6 acceptance because the changed behavior is deterministic URL generation/navigation preservation covered by source-level regression guards
+- final browser click-through validation remains useful for production-readiness evidence, but it is not required to accept the local Commit 6 fix
+
 ### Commit 7: Numeric Capacity Hardening
+
+Status: complete.
 
 Fix scope:
 
@@ -258,6 +265,18 @@ Required tests:
 - schema regression guard proves Benchmark absolute alert/value fields can hold revenue-sized values
 - KPI precision remains unchanged or intentionally matched
 - migration is additive/widening only
+
+Root cause fixed:
+
+- KPI live target/current/alert threshold fields were already widened to `numeric(18,2)`, but KPI alert audit rows still stored `current_value`, `target_value`, and `threshold_value` as `numeric(10,2)` even though email alert sends write the live KPI values into that audit table
+- Benchmark live `benchmark_value`, `current_value`, and `alert_threshold` were still `numeric(10,2)`, which caps enterprise revenue/spend-sized values at `99,999,999.99`
+- Benchmark history `current_value` and `benchmark_value` were also `numeric(10,2)`, so history writes could fail for the same enterprise-scale absolute values
+- Benchmark `variance` and `benchmark_history.variance` remain unchanged because they are percentage fields, not absolute revenue/spend/current/threshold values
+
+Validation completed:
+
+- `npm test -- server/alert-numeric-capacity-regression.test.ts server/notification-visibility-regression.test.ts server/alert-email-regression.test.ts`
+- `npm run check`
 
 ### Commit 8: Final Validation And Documentation Closure
 
@@ -320,11 +339,13 @@ Proven locally:
 - Commit 5 makes GA4 KPI create/update routes await in-app alert reconciliation before responding, proves GA4 Benchmark create/update routes preserve awaited reconciliation, and refreshes `/api/notifications` after GA4 KPI/Benchmark create, update, and delete mutations
 - Commit 5 does not require manual validation for local acceptance; final browser click-through evidence remains part of the final readiness pass
 - Commit 6 makes GA4 KPI action URLs fail closed to `/notifications` when campaign/item identity is missing, preserves campaign-scoped metadata action URLs in bell navigation, and regression-covers Notifications page action URL preservation
+- Commit 6 does not require manual validation for local acceptance; final browser click-through evidence remains part of the final readiness pass
+- Commit 7 widens KPI alert audit absolute numeric fields plus Benchmark live/history absolute value and alert-threshold fields to `numeric(18,2)`, leaves percentage variance fields unchanged, and adds a widening-only migration plus regression guard
 
 Partially reviewed:
 
-- existing code traces identified remaining gaps in notification raw-row visibility checks, numeric capacity, final build validation, and deployed/manual evidence
-- the lifecycle matrix above defines the paths that must be proven by Commits 7 through 8 before GA4 readiness can be claimed
+- existing code traces identified remaining gaps in notification raw-row visibility checks, final build validation, and deployed/manual evidence
+- the lifecycle matrix above defines the paths that must be proven by Commit 8 before GA4 readiness can be claimed
 
 Not locally verifiable yet:
 
@@ -335,7 +356,7 @@ Not locally verifiable yet:
 
 Not production-ready yet:
 
-- GA4 KPI/Benchmark alerts and notifications must complete Commits 7 through 8 and the required validation pass before this document can mark them production-ready
+- GA4 KPI/Benchmark alerts and notifications must complete Commit 8 and the required validation pass before this document can mark them production-ready
 - Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration must each pass this same lifecycle with source-specific evidence before their KPI/Benchmark alert and notification behavior can be marked production-ready
 
 ## Cross-Platform Template Rules

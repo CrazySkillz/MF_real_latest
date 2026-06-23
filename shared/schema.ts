@@ -819,9 +819,9 @@ export const kpiAlerts = pgTable("kpi_alerts", {
   alertType: text("alert_type").notNull(), // 'threshold_breach', 'target_missed', 'trend_negative', 'deadline_approaching'
   severity: text("severity").notNull().default("medium"), // 'low', 'medium', 'high', 'critical'
   message: text("message").notNull(),
-  currentValue: decimal("current_value", { precision: 10, scale: 2 }),
-  targetValue: decimal("target_value", { precision: 10, scale: 2 }),
-  thresholdValue: decimal("threshold_value", { precision: 10, scale: 2 }),
+  currentValue: decimal("current_value", { precision: 18, scale: 2 }),
+  targetValue: decimal("target_value", { precision: 18, scale: 2 }),
+  thresholdValue: decimal("threshold_value", { precision: 18, scale: 2 }),
   isActive: boolean("is_active").notNull().default(true),
   acknowledgedAt: timestamp("acknowledged_at"),
   resolvedAt: timestamp("resolved_at"),
@@ -839,8 +839,8 @@ export const benchmarks = pgTable("benchmarks", {
   name: text("name").notNull(), // 'Industry Average CTR', 'Competitor Conversion Rate', etc.
   metric: text("metric"), // Metric source: 'users', 'sessions', 'pageviews', 'bounceRate', etc.
   description: text("description"),
-  benchmarkValue: decimal("benchmark_value", { precision: 10, scale: 2 }).notNull(),
-  currentValue: decimal("current_value", { precision: 10, scale: 2 }).default("0"),
+  benchmarkValue: decimal("benchmark_value", { precision: 18, scale: 2 }).notNull(),
+  currentValue: decimal("current_value", { precision: 18, scale: 2 }).default("0"),
   unit: text("unit").notNull(), // '%', '$', 'ratio', 'count', etc.
   benchmarkType: text("benchmark_type").notNull().default("industry"), // 'industry', 'competitor', 'historical', 'goal'
   competitorName: text("competitor_name"), // Name of competitor (when benchmarkType is 'competitor')
@@ -858,7 +858,7 @@ export const benchmarks = pgTable("benchmarks", {
   specificCampaignId: text("specific_campaign_id"), // Campaign ID when applyTo is 'specific', null when 'all'
   linkedInCampaignName: text("linkedin_campaign_name"), // LinkedIn campaign name for display (when applicable)
   // Alert and notification settings
-  alertThreshold: decimal("alert_threshold", { precision: 10, scale: 2 }), // Threshold value to trigger alert
+  alertThreshold: decimal("alert_threshold", { precision: 18, scale: 2 }), // Threshold value to trigger alert
   alertCondition: text("alert_condition").default("below"), // 'below', 'above', 'equals'
   alertsEnabled: boolean("alerts_enabled").notNull().default(false),
   emailNotifications: boolean("email_notifications").notNull().default(false),
@@ -873,8 +873,8 @@ export const benchmarks = pgTable("benchmarks", {
 export const benchmarkHistory = pgTable("benchmark_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   benchmarkId: text("benchmark_id").notNull(),
-  currentValue: decimal("current_value", { precision: 10, scale: 2 }).notNull(),
-  benchmarkValue: decimal("benchmark_value", { precision: 10, scale: 2 }).notNull(),
+  currentValue: decimal("current_value", { precision: 18, scale: 2 }).notNull(),
+  benchmarkValue: decimal("benchmark_value", { precision: 18, scale: 2 }).notNull(),
   variance: decimal("variance", { precision: 10, scale: 2 }).notNull(),
   performanceRating: text("performance_rating").notNull().default("average"), // 'excellent', 'good', 'average', 'below_average', 'poor'
   recordedAt: timestamp("recorded_at").notNull().default(sql`CURRENT_TIMESTAMP`),

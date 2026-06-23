@@ -55,7 +55,7 @@ GA4 KPI and Benchmark alerts and notifications are production-ready only when al
 - alert frequency controls reminder email throttle behavior, not duplicate in-app notification rows
 - GA4 KPI alert metadata action URLs open `/campaigns/:id/ga4-metrics?tab=kpis&highlight=:kpiId`
 - GA4 Benchmark alert metadata action URLs open `/campaigns/:id/ga4-metrics?tab=benchmarks&highlight=:benchmarkId`
-- completed pre-triage bell behavior opens `/notifications?highlight=:notificationId`; the planned triage UX below changes bell entry to `/notifications?selected=:notificationId` while preserving KPI/Benchmark action URLs
+- completed triage bell behavior opens `/notifications?selected=:notificationId`; legacy `/notifications?highlight=:notificationId` remains transition-compatible while KPI/Benchmark action URLs continue to use platform-card `highlight`
 - the Notifications page `View KPI` / `View Benchmark` action preserves the metadata action URL and opens the correct GA4 tab/card
 - if the user is already on the same GA4 page, query-only action URL changes still switch to the correct tab/item by listening to the URL search string
 - successful GA4 and campaign-level KPI/Benchmark create, update, and delete mutations refresh `/api/notifications`
@@ -410,7 +410,7 @@ Template requirement:
 
 - bell rows should be treated as quick entry points into alert context, not as the only action surface
 - the full Notifications page must preserve the platform action URL and provide the jump into the KPI/Benchmark card
-- future planned triage UX changes may replace `highlight` with canonical `selected`, but current implementation uses `highlight`
+- current triage UX uses canonical `selected` for bell-to-Notifications selection, while legacy `highlight` notification links remain transition-compatible
 
 ### Commit `1bac44e4`: Edit/Delete Reflection In Bell And Notifications
 
@@ -522,14 +522,14 @@ After GA4 passes this matrix, other connected-platform KPI/Benchmark alert imple
 - update an existing active alert row in place when the linked item is edited and still breached
 - generate platform-correct campaign-scoped deep-links
 - make platform pages react to query-only action URL changes when action URLs use query params for tab/item selection
-- make bell performance-alert clicks open Notifications triage context; the completed implementation uses `/notifications?highlight=:notificationId`, while the planned canonical UX route is `/notifications?selected=:notificationId`
+- make bell performance-alert clicks open Notifications triage context through canonical `/notifications?selected=:notificationId`, while legacy `/notifications?highlight=:notificationId` remains transition-compatible
 - preserve the metadata action URL from the Notifications page `View KPI` / `View Benchmark` action
 - refresh `/api/notifications` after alert-impacting create, update, and delete mutations
 - add focused regression tests before marking the copied source production-ready
 
 ## Notifications Triage UX Improvement Strategy
 
-Status: UX-8 cross-platform triage metadata template is implemented; UX-9 final validation/documentation closure is not implemented.
+Status: UX-9 final validation/documentation closure is complete.
 
 ### UX Root Cause Analysis
 
@@ -979,14 +979,13 @@ Partially reviewed:
 
 - the UI can display platform-neutral metadata for future sources, but each future source still needs source-specific link generation, ownership checks, alert reconciliation, and regression coverage before it is production-ready
 
-Not locally verified:
+Manual validation completed:
 
-- browser display of non-GA4 platform alert labels and action routing
-- browser fallback rendering for a deliberately unsupported/unknown alert item type
+- user-reported manual validation passed on 2026-06-23 for normal alert detail display, `Open KPI` / `Open Benchmark` action behavior, and platform label display
 
 ### Commit UX-9: Final UX Validation And Documentation Closure
 
-Status: planned.
+Status: complete.
 
 Required validation:
 
@@ -1020,9 +1019,52 @@ Final documentation must separate:
 - not locally verifiable
 - deployed/manual validation evidence
 
+Root cause closed:
+
+- UX-2 through UX-8 implemented the Notifications triage route, two-pane detail layout, bell quick-entry path, selected-detail actions, refresh behavior, status copy, and platform-neutral metadata handling, but this tracker still needed final validation evidence and explicit separation of local proof versus browser/deployed evidence.
+
+Files changed:
+
+- `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
+
+Validation completed:
+
+- `npm test -- server/notification-visibility-regression.test.ts server/benchmark-alert-lifecycle-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-evaluation.test.ts` passed: 4 files / 38 tests
+- `npm test -- server/ga4-kpi-regression.test.ts server/ga4-benchmark-regression.test.ts server/ga4-ui-regression.test.ts` passed: 3 files / 40 tests
+- `npm run check` passed
+- `npm run build` passed after rerun outside the sandbox; the first sandboxed attempt failed at Vite config loading with `spawn EPERM`
+
+Proven locally:
+
+- performance-alert visibility still hides dismissed/resolved rows and fail-closes orphaned, cross-campaign, non-breaching, and malformed rows
+- selected notification routing supports canonical `selected` and legacy `highlight` compatibility
+- bell performance-alert clicks route to `/notifications?selected=:notificationId`
+- selected-detail `Open KPI` / `Open Benchmark` actions preserve stored `metadata.actionUrl`
+- notification dismiss remains a visibility action and does not claim KPI/Benchmark breach resolution
+- read/unread state is separate from active alert status
+- KPI/Benchmark create, update, delete, and reconciliation paths remain regression-covered for notification query refresh, active-row update, deletion hiding, duplicate suppression, and current-value alert evaluation
+- GA4 KPI/Benchmark UI regressions and TypeScript/build validation pass
+
+Partially reviewed:
+
+- cross-platform triage metadata is template-ready at the UI contract level, but future sources still need source-specific action URL generation, ownership checks, alert reconciliation, and regression evidence before their alert/notification behavior can be marked production-ready
+- history/dismissed-row display remains intentionally unimplemented because the current active notification API safely excludes dismissed/resolved rows and does not expose an audited history contract
+
+Not locally verifiable:
+
+- deployed browser rendering across real desktop/mobile viewports
+- deployed provider/inbox email delivery
+- production database migration/application state from earlier alert-readiness work
+- real non-GA4 future-source alert lifecycle correctness beyond the platform-neutral UI metadata fallback
+
+Deployed/manual validation evidence:
+
+- user-reported manual validation passed for UX-3 through UX-8 on 2026-06-23
+- final end-to-end deployed evidence remains recommended for a disposable GA4 KPI and Benchmark alert covering bell count, selected Notifications detail, `Open KPI` / `Open Benchmark`, still-breached edit refresh, non-breaching edit removal, delete removal, dismiss-as-visibility, and reminder-email provider/inbox evidence where email is enabled
+
 ## Target UX Manual Validation Checklist
 
-This checklist validates the planned triage journey after UX-2 through UX-9 are implemented. The current pre-UX implementation still uses `/notifications?highlight=:notificationId` for bell-to-Notifications navigation.
+This checklist validates the implemented triage journey after UX-2 through UX-9. Bell performance-alert navigation now uses `/notifications?selected=:notificationId`; legacy `/notifications?highlight=:notificationId` remains transition-compatible for old links.
 
 Use a disposable GA4 campaign with known values.
 

@@ -7,7 +7,8 @@ import type { Notification } from "@shared/schema";
 import { UserButton } from "@clerk/clerk-react";
 
 export default function Navigation() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const isNotificationsPage = location === "/notifications" || location.startsWith("/notifications?");
 
   // Fetch notifications to get unread count
   const { data: allNotifications = [] } = useQuery<Notification[]>({
@@ -47,13 +48,15 @@ export default function Navigation() {
             type="button"
             variant="ghost"
             size="sm"
-            className="relative"
+            className="relative disabled:opacity-100 disabled:cursor-default"
             onClick={() => setLocation("/notifications")}
+            disabled={isNotificationsPage}
+            aria-current={isNotificationsPage ? "page" : undefined}
             aria-label="Open Notifications"
             title="Open Notifications"
             data-testid="button-notifications"
           >
-            <Bell className="w-4 h-4" />
+            <Bell className={`w-4 h-4 ${isNotificationsPage ? "text-green-600" : ""}`} />
             {unreadCount > 0 && (
               <Badge
                 className="absolute -top-1 -right-1 min-w-[20px] h-5 flex items-center justify-center p-0 px-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold"

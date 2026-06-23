@@ -244,14 +244,19 @@ describe("notification visibility regression guard", () => {
     expect(campaignDetail.match(/await refreshNotificationQueries\(\);/g) || []).toHaveLength(6);
   });
 
-  it("routes top bar bell clicks directly to the Notifications page without the dropdown", () => {
+  it("routes top bar bell clicks directly to Notifications and disables it on the Notifications page", () => {
     const navigationFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),
       "utf-8"
     );
 
+    expect(navigationFile).toContain("const [location, setLocation] = useLocation();");
+    expect(navigationFile).toContain('const isNotificationsPage = location === "/notifications" || location.startsWith("/notifications?");');
     expect(navigationFile).toContain('data-testid="button-notifications"');
     expect(navigationFile).toContain('onClick={() => setLocation("/notifications")}');
+    expect(navigationFile).toContain("disabled={isNotificationsPage}");
+    expect(navigationFile).toContain('aria-current={isNotificationsPage ? "page" : undefined}');
+    expect(navigationFile).toContain('className={`w-4 h-4 ${isNotificationsPage ? "text-green-600" : ""}`}');
     expect(navigationFile).toContain('aria-label="Open Notifications"');
     expect(navigationFile).not.toContain("PopoverTrigger");
     expect(navigationFile).not.toContain("PopoverContent");

@@ -1069,7 +1069,7 @@ Deployed/manual validation evidence:
 
 ### Post-UX-9 Direct Bell Navigation Adjustment
 
-Status: implemented locally.
+Status: implemented and pushed in commit `20cec5d8`.
 
 Root cause:
 
@@ -1090,6 +1090,18 @@ Files changed:
 - `server/notification-visibility-regression.test.ts`
 - `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
 
+Validation completed:
+
+- `npm test -- server/notification-visibility-regression.test.ts` passed: 1 file / 27 tests
+- `npm test -- server/notification-visibility-regression.test.ts server/benchmark-alert-lifecycle-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-evaluation.test.ts` passed: 4 files / 38 tests
+- `npm run check` passed
+- `npm run build` passed after rerun outside the sandbox; the first sandboxed attempt failed at Vite config loading with `spawn EPERM`
+
+Not locally verifiable:
+
+- real browser click/rendering of the top-bar bell opening `/notifications` directly
+- deployed unread-row visual highlighting across supported viewport sizes
+
 Not changed:
 
 - alert evaluation math
@@ -1100,31 +1112,60 @@ Not changed:
 - selected Notifications detail behavior
 - KPI/Benchmark metadata action URLs
 
+### Post-UX-9 Notifications Page Bell Active State Adjustment
+
+Status: implemented locally.
+
+Root cause:
+
+- after the direct bell navigation fix, the top-bar bell still rendered as an active button on the Notifications page, so clicking it could re-navigate to the page the user was already on
+- the navigation component did not derive an active Notifications route state from `useLocation`, so it had no way to distinguish normal navigation from the current-page state
+
+Smallest safe fix:
+
+- derive `isNotificationsPage` from the current route in `client/src/components/layout/navigation.tsx`
+- keep the same unread notification query and badge
+- disable the bell button when the current route is `/notifications` or a Notifications query route
+- render the bell icon green in that active state
+- keep direct `/notifications` navigation unchanged on every other route
+
+Validation completed:
+
+- `npm test -- server/notification-visibility-regression.test.ts` passed: 1 file / 27 tests
+- `npm test -- server/notification-visibility-regression.test.ts server/benchmark-alert-lifecycle-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-evaluation.test.ts` passed: 4 files / 38 tests
+- `npm run check` passed
+- `npm run build` passed after rerun outside the sandbox; the first sandboxed attempt failed at Vite config loading with `spawn EPERM`
+
+Not locally verifiable:
+
+- real browser confirmation that the active Notifications bell appears green and cannot be clicked
+
 ## Target UX Manual Validation Checklist
 
-This checklist validates the implemented triage journey after UX-2 through UX-9 and the direct bell navigation adjustment. The top-bar bell now opens `/notifications`; selected alert rows use `/notifications?selected=:notificationId`; legacy `/notifications?highlight=:notificationId` remains transition-compatible for old links.
+This checklist validates the implemented triage journey after UX-2 through UX-9 and the direct bell navigation adjustments. The top-bar bell now opens `/notifications` from other pages, appears green and disabled on the Notifications page, selected alert rows use `/notifications?selected=:notificationId`, and legacy `/notifications?highlight=:notificationId` remains transition-compatible for old links.
 
 Use a disposable GA4 campaign with known values.
 
 1. Create a GA4 KPI with alerts enabled and a breached threshold.
 2. Confirm the bell count updates and the Notifications page active view shows one KPI alert.
 3. Click the top-bar bell icon and confirm it opens the Notifications page directly without opening a dropdown.
-4. Confirm unread alert rows are highlighted in the Notifications list.
-5. Click the unread alert row and confirm it selects that alert in the detail panel.
-6. Confirm the selected detail shows client, campaign, source/platform, KPI name, current value, threshold, condition, status, created time, and last refreshed time when available.
-7. From the selected detail, click `Open KPI` and confirm it preserves the metadata action URL and opens the GA4 KPI tab with the KPI card highlighted.
-8. Update the KPI while it still breaches and confirm the selected alert detail updates without creating a duplicate active alert.
-9. Update the KPI so it no longer breaches.
-10. Confirm the alert disappears from active bell and Notifications views and the selected detail shows a clear resolved/deleted state if still opened.
-11. Re-breach the same KPI.
-12. Confirm exactly one active alert returns and can be selected from the Notifications list.
-13. Repeat the same flow for a GA4 Benchmark, using `Open Benchmark` from the selected detail.
-14. Confirm the alert form layout: `Send email notifications` appears on the left, `Alert Frequency` appears on the right, and `Alert Frequency` is disabled until email notifications are selected.
-15. Dismiss a still-breached KPI/Benchmark alert and confirm the UI explains that dismissal hides the notification from active views but does not analytically resolve the KPI/Benchmark breach.
-16. Run or trigger the valid reconciliation path.
-17. Confirm exactly one new active alert appears.
-18. Enable email alerts with a safe recipient in a deployed environment.
-19. Confirm provider acceptance separately from inbox/provider delivery.
+4. Confirm the bell icon is green and cannot be clicked while you are on the Notifications page.
+5. Confirm unread alert rows are highlighted in the Notifications list.
+6. Click the unread alert row and confirm it selects that alert in the detail panel.
+7. Confirm the selected detail shows client, campaign, source/platform, KPI name, current value, threshold, condition, status, created time, and last refreshed time when available.
+8. From the selected detail, click `Open KPI` and confirm it preserves the metadata action URL and opens the GA4 KPI tab with the KPI card highlighted.
+9. Update the KPI while it still breaches and confirm the selected alert detail updates without creating a duplicate active alert.
+10. Update the KPI so it no longer breaches.
+11. Confirm the alert disappears from active bell and Notifications views and the selected detail shows a clear resolved/deleted state if still opened.
+12. Re-breach the same KPI.
+13. Confirm exactly one active alert returns and can be selected from the Notifications list.
+14. Repeat the same flow for a GA4 Benchmark, using `Open Benchmark` from the selected detail.
+15. Confirm the alert form layout: `Send email notifications` appears on the left, `Alert Frequency` appears on the right, and `Alert Frequency` is disabled until email notifications are selected.
+16. Dismiss a still-breached KPI/Benchmark alert and confirm the UI explains that dismissal hides the notification from active views but does not analytically resolve the KPI/Benchmark breach.
+17. Run or trigger the valid reconciliation path.
+18. Confirm exactly one new active alert appears.
+19. Enable email alerts with a safe recipient in a deployed environment.
+20. Confirm provider acceptance separately from inbox/provider delivery.
 
 Pass criteria:
 
@@ -1132,6 +1173,7 @@ Pass criteria:
 - no stale resolved alerts remain visible
 - no duplicate active alerts appear for the same GA4 KPI/Benchmark
 - top-bar bell clicks open the Notifications page directly without an intermediate dropdown
+- top-bar bell is green and disabled when already on the Notifications page
 - unread alert rows are visually highlighted in the Notifications list
 - alert row selection opens the exact Notifications selected-alert detail through canonical `selected` routing
 - legacy `highlight` notification URLs remain transition-compatible until their removal is explicitly planned and regression-covered

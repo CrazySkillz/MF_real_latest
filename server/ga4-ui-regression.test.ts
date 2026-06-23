@@ -331,6 +331,10 @@ describe("GA4 UI regression guard", () => {
   it("visibly highlights GA4 KPI and Benchmark cards opened from alert deep links", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 
+    expect(ga4Metrics).toContain('import { useLocation, useRoute, useSearch } from "wouter";');
+    expect(ga4Metrics).toContain("const search = useSearch();");
+    expect(ga4Metrics).toContain("const nextSearchParams = new URLSearchParams(search);");
+    expect(ga4Metrics).toContain("}, [location, search]);");
     expect(ga4Metrics).toContain("const [highlightedItemId, setHighlightedItemId] = useState<string>(initialHighlight);");
     expect(ga4Metrics).toContain('const isHighlightedKpi = String(highlightedItemId || "") === String(kpi.id || "");');
     expect(ga4Metrics).toContain('const isHighlightedBenchmark = String(highlightedItemId || "") === String(benchmark.id || "");');

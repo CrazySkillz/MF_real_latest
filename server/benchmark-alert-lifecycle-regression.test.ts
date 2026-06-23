@@ -43,7 +43,9 @@ describe("benchmark alert lifecycle regression guard", () => {
 
     expect(source).toContain("if (meta?.dismissedAt) return false;");
     expect(source).toContain("!meta?.resolved && !meta?.dismissedAt");
-    expect(source).toContain("if (hasRecent) continue;");
+    expect(source).toContain("if (hasRecent) {");
+    expect(source).toContain("await storage.updateNotification(String(preservedAlert.id), {");
+    expect(source).toContain("continue;");
   });
 
   it("collapses duplicate active GA4/campaign KPI and Benchmark alerts", () => {

@@ -177,6 +177,15 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   const nextMessage = alertThreshold === null
     ? `Current value: ${formatAlertDisplayValue(kpi.currentValue, kpi.unit)}`
     : `Current value: ${formatAlertDisplayValue(kpi.currentValue, kpi.unit)}. Alert threshold value: ${formatAlertDisplayValue(alertThreshold, kpi.unit)}`;
+  const actionUrl = buildKPIActionUrl(kpi);
+  const metadata = JSON.stringify({
+    kpiId: kpi.id,
+    alertType: 'performance-alert',
+    actionUrl,
+    ...(windowKey ? { windowKey } : {}),
+  });
+  const nextTitle = `⚠️ KPI Alert: ${kpi.name}`;
+  const nextPriority = kpi.priority === 'high' ? 'high' : 'normal';
 
   // GA4 keeps one active in-app alert record per unresolved breach.
   // Other platforms preserve their existing window-based behavior.
@@ -244,25 +253,41 @@ export async function createKPIAlert(kpi: KPI): Promise<void> {
   }
 
   if (hasRecentAlert) {
+    const preservedAlert = preservedAlertId
+      ? existingAlerts.find((alert) => String(alert.id) === String(preservedAlertId))
+      : null;
+    if (preservedAlert) {
+      try {
+        const meta = typeof preservedAlert.metadata === 'string'
+          ? JSON.parse(preservedAlert.metadata)
+          : (preservedAlert.metadata || {});
+        await storage.updateNotification(String(preservedAlert.id), {
+          title: nextTitle,
+          message: nextMessage,
+          priority: nextPriority,
+          campaignId,
+          campaignName: campaign.name,
+          metadata: JSON.stringify({
+            ...meta,
+            kpiId: kpi.id,
+            alertType: 'performance-alert',
+            actionUrl,
+            ...(windowKey ? { windowKey } : {}),
+          }),
+        } as any);
+      } catch {
+        // ignore malformed legacy metadata
+      }
+    }
     console.log(`[KPI Notification] Skipping duplicate alert for KPI: ${kpi.name} (active in-app alert already exists)`);
     return;
   }
 
-  const actionUrl = buildKPIActionUrl(kpi);
-  
-  // Fetch campaign name if campaignId exists
-  const metadata = JSON.stringify({
-    kpiId: kpi.id,
-    alertType: 'performance-alert',
-    actionUrl,
-    ...(windowKey ? { windowKey } : {}),
-  });
-
   const notification: InsertNotification = {
-    title: `⚠️ KPI Alert: ${kpi.name}`,
+    title: nextTitle,
     message: nextMessage,
     type: 'performance-alert',
-    priority: kpi.priority === 'high' ? 'high' : 'normal',
+    priority: nextPriority,
     campaignId,
     campaignName: campaign.name,
     read: false,

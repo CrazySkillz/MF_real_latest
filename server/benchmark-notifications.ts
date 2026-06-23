@@ -174,6 +174,16 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
       continue;
     }
 
+    const actionUrl = buildBenchmarkActionUrl(b);
+    const metadata = JSON.stringify({
+      benchmarkId: b.id,
+      alertType: "benchmark-alert",
+      actionUrl,
+      ...(windowKey ? { windowKey } : {}),
+    });
+    const nextTitle = `⚠️ Benchmark Alert: ${b.name}`;
+    const nextMessage = `Current value: ${formatAlertDisplayValue(currentValue, b.unit)}. Alert threshold value: ${formatAlertDisplayValue(thresholdValue, b.unit)}`;
+
     // Duplicate prevention: benchmarkId + createdAt >= today
     const hasRecent = (existingAlerts || []).some((n: any) => {
       if (!n?.metadata) return false;
@@ -192,6 +202,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
         return false;
       }
     });
+    let preservedAlertId: string | undefined;
     if (usesSingleActiveAlert) {
       const sameBenchmarkAlerts = (existingAlerts || []).filter((n: any) => {
         if (!n?.metadata) return false;
@@ -202,7 +213,7 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
           return false;
         }
       });
-      const preservedAlertId = sameBenchmarkAlerts
+      preservedAlertId = sameBenchmarkAlerts
         .sort((a: any, b: any) => new Date(String(b.createdAt)).getTime() - new Date(String(a.createdAt)).getTime())[0]?.id;
       for (const alert of sameBenchmarkAlerts) {
         if (preservedAlertId && String(alert.id) === String(preservedAlertId)) continue;
@@ -222,19 +233,39 @@ export async function checkBenchmarkPerformanceAlerts(): Promise<number> {
         }
       }
     }
-    if (hasRecent) continue;
-
-    const actionUrl = buildBenchmarkActionUrl(b);
-    const metadata = JSON.stringify({
-      benchmarkId: b.id,
-      alertType: "benchmark-alert",
-      actionUrl,
-      ...(windowKey ? { windowKey } : {}),
-    });
+    if (hasRecent) {
+      const preservedAlert = preservedAlertId
+        ? (existingAlerts || []).find((alert: any) => String(alert.id) === String(preservedAlertId))
+        : null;
+      if (preservedAlert) {
+        try {
+          const meta = typeof preservedAlert.metadata === "string"
+            ? JSON.parse(preservedAlert.metadata)
+            : (preservedAlert.metadata || {});
+          await storage.updateNotification(String(preservedAlert.id), {
+            title: nextTitle,
+            message: nextMessage,
+            priority: "high",
+            campaignId,
+            campaignName: campaign.name,
+            metadata: JSON.stringify({
+              ...meta,
+              benchmarkId: b.id,
+              alertType: "benchmark-alert",
+              actionUrl,
+              ...(windowKey ? { windowKey } : {}),
+            }),
+          } as any);
+        } catch {
+          // ignore malformed legacy metadata
+        }
+      }
+      continue;
+    }
 
     const notification: InsertNotification = {
-      title: `⚠️ Benchmark Alert: ${b.name}`,
-      message: `Current value: ${formatAlertDisplayValue(currentValue, b.unit)}. Alert threshold value: ${formatAlertDisplayValue(thresholdValue, b.unit)}`,
+      title: nextTitle,
+      message: nextMessage,
       type: "performance-alert",
       priority: "high",
       campaignId,

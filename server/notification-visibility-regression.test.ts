@@ -152,6 +152,62 @@ describe("notification visibility regression guard", () => {
     }
   });
 
+  it("refreshes existing active KPI and Benchmark alert rows after edits", () => {
+    const kpiNotificationsFile = readFileSync(
+      join(process.cwd(), "server", "kpi-notifications.ts"),
+      "utf-8"
+    );
+    const benchmarkNotificationsFile = readFileSync(
+      join(process.cwd(), "server", "benchmark-notifications.ts"),
+      "utf-8"
+    );
+
+    expect(kpiNotificationsFile).toContain("const preservedAlert = preservedAlertId");
+    expect(kpiNotificationsFile).toContain("await storage.updateNotification(String(preservedAlert.id), {");
+    expect(kpiNotificationsFile).toContain("message: nextMessage,");
+    expect(kpiNotificationsFile).toContain("campaignName: campaign.name,");
+    expect(kpiNotificationsFile).toContain("metadata: JSON.stringify({");
+    expect(benchmarkNotificationsFile).toContain("const preservedAlert = preservedAlertId");
+    expect(benchmarkNotificationsFile).toContain("await storage.updateNotification(String(preservedAlert.id), {");
+    expect(benchmarkNotificationsFile).toContain("message: nextMessage,");
+    expect(benchmarkNotificationsFile).toContain("campaignName: campaign.name,");
+    expect(benchmarkNotificationsFile).toContain("metadata: JSON.stringify({");
+  });
+
+  it("runs campaign-level Benchmark alert reconciliation before create/update responses", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+    const createStart = routesFile.indexOf('app.post("/api/campaigns/:id/benchmarks"');
+    const createEnd = routesFile.indexOf('app.patch("/api/campaigns/:campaignId/benchmarks/:benchmarkId"', createStart);
+    const updateEnd = routesFile.indexOf('app.delete("/api/campaigns/:campaignId/benchmarks/:benchmarkId"', createEnd);
+    const createRoute = routesFile.slice(createStart, createEnd);
+    const updateRoute = routesFile.slice(createEnd, updateEnd);
+    const createAlertIndex = createRoute.indexOf("await checkBenchmarkPerformanceAlerts();");
+    const updateAlertIndex = updateRoute.indexOf("await checkBenchmarkPerformanceAlerts();");
+
+    expect(createStart).toBeGreaterThan(-1);
+    expect(createEnd).toBeGreaterThan(createStart);
+    expect(updateEnd).toBeGreaterThan(createEnd);
+    expect(createAlertIndex).toBeGreaterThan(-1);
+    expect(updateAlertIndex).toBeGreaterThan(-1);
+    expect(createAlertIndex).toBeLessThan(createRoute.indexOf("res.json(benchmark);", createAlertIndex));
+    expect(updateAlertIndex).toBeLessThan(updateRoute.indexOf("res.json(benchmark);", updateAlertIndex));
+  });
+
+  it("refreshes notifications after campaign-level KPI and Benchmark mutations", () => {
+    const campaignDetail = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"),
+      "utf-8"
+    );
+
+    expect(campaignDetail).toContain("const refreshNotificationQueries = async () => {");
+    expect(campaignDetail).toContain('await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });');
+    expect(campaignDetail).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');
+    expect(campaignDetail.match(/await refreshNotificationQueries\(\);/g) || []).toHaveLength(6);
+  });
+
   it("opens performance-alert bell clicks on the highlighted Notifications page row", () => {
     const navigationFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),

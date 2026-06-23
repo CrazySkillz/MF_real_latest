@@ -24622,6 +24622,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedBenchmark = insertBenchmarkSchema.parse(cleanedData);
       const benchmark = await storage.createBenchmark(validatedBenchmark);
 
+      try {
+        const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
+        await checkBenchmarkPerformanceAlerts();
+      } catch (e: any) {
+        console.warn("[Campaign Benchmark Create] Alert check failed:", (e as any)?.message || e);
+      }
+
       res.json(benchmark);
     } catch (error) {
       console.error('Campaign Benchmark creation error:', error);
@@ -24668,6 +24675,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const benchmark = await storage.updateBenchmark(benchmarkId, validatedBenchmark);
       if (!benchmark) {
         return res.status(404).json({ message: "Benchmark not found" });
+      }
+
+      try {
+        const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
+        await checkBenchmarkPerformanceAlerts();
+      } catch (e: any) {
+        console.warn("[Campaign Benchmark Update] Alert check failed:", (e as any)?.message || e);
       }
 
       res.json(benchmark);

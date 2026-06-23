@@ -1081,16 +1081,20 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     if (typeof live === 'number' && Number.isFinite(live)) return live;
     return parseNumSafe(kpi?.currentValue);
   };
+  const refreshNotificationQueries = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });
+  };
 
   const createKpiMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiRequest('POST', `/api/campaigns/${campaign.id}/kpis`, data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaign.id, "executive-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      await refreshNotificationQueries();
       setShowCreateDialog(false);
       setKpiCalculationConfig(null);
       setKpiForm({
@@ -1129,9 +1133,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
     mutationFn: async (kpiId: string) => {
       await apiRequest('DELETE', `/api/campaigns/${campaign.id}/kpis/${kpiId}`);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaign.id, "executive-summary"] });
+      await refreshNotificationQueries();
       toast({
         title: "KPI Deleted",
         description: "The KPI has been successfully deleted.",
@@ -1152,10 +1157,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
       const res = await apiRequest('PATCH', `/api/campaigns/${campaign.id}/kpis/${id}`, updateData);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/kpis`] });
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaign.id, "executive-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      await refreshNotificationQueries();
       setShowEditDialog(false);
       setEditingKPI(null);
       setKpiCalculationConfig(null);
@@ -2486,6 +2491,10 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 // Campaign Benchmarks Component
 function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
   const { toast } = useToast();
+  const refreshNotificationQueries = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });
+  };
   
   // Fetch campaign-level benchmarks
   const { data: benchmarks = [], isLoading } = useQuery<any[]>({
@@ -3205,9 +3214,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       const res = await apiRequest('POST', `/api/campaigns/${campaign.id}/benchmarks`, data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/benchmarks`] });
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaign.id, "executive-summary"] });
+      await refreshNotificationQueries();
       toast({
         title: "Benchmark Created",
         description: "Your benchmark has been successfully created.",
@@ -3231,9 +3241,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       const res = await apiRequest('PATCH', `/api/campaigns/${campaign.id}/benchmarks/${id}`, data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/benchmarks`] });
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaign.id, "executive-summary"] });
+      await refreshNotificationQueries();
       toast({
         title: "Benchmark Updated",
         description: "Your benchmark has been successfully updated.",
@@ -3257,9 +3268,10 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
       const res = await apiRequest('DELETE', `/api/campaigns/${campaign.id}/benchmarks/${id}`);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaign.id}/benchmarks`] });
       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaign.id, "executive-summary"] });
+      await refreshNotificationQueries();
       toast({
         title: "Benchmark Deleted",
         description: "Your benchmark has been successfully deleted.",

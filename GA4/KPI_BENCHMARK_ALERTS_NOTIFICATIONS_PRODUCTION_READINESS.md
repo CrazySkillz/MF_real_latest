@@ -14,22 +14,23 @@ This file is the authoritative tracker for GA4 KPI/Benchmark alert and notificat
 
 - GA4 KPI/Benchmark alerts and notifications are not production-ready at Commit 1.
 - After Commits 2 through 8 in this file are implemented, their required validation passes, and final evidence is recorded here, the GA4 KPI alerts, GA4 KPI notifications, GA4 Benchmark alerts, and GA4 Benchmark notifications sections can be marked production-ready.
+- As of Commit 8, the locally verifiable GA4 KPI/Benchmark alert and notification implementation is production-ready by this document's code-readiness criteria.
 - This file is the implementation and validation template for applying the same alert/notification lifecycle to other connected-platform sources, including Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration.
 - Other connected-platform sources are not production-ready from GA4 evidence alone. Each source must copy the proven GA4 lifecycle and pass the same lifecycle matrix with source-specific evidence before its KPI/Benchmark alert and notification behavior can be marked production-ready.
 
 ## Root Cause Analysis
 
-Current alert readiness is not proven end to end because alert truth is split across multiple paths:
+Initial alert readiness was not proven end to end because alert truth was split across multiple paths:
 
-- in-app KPI alert creation resolves stale alerts, but Benchmark alert creation does not yet have equivalent resolve-on-clear behavior
-- in-app checks can use connected-platform current-value resolution while email checks still read persisted `currentValue`
-- notification visibility currently re-checks raw stored rows instead of the exact resolved value path used by alert creation
-- some create/update routes await alert reconciliation, while others return before async alert checks finish
-- GA4 KPI/Benchmark frontend mutations refresh their KPI/Benchmark lists but do not consistently refresh `/api/notifications`
-- bell navigation can rewrite non-GA4 action URLs and must not damage valid GA4 deep-links
+- in-app KPI alert creation resolved stale alerts, but Benchmark alert creation did not have equivalent resolve-on-clear behavior
+- in-app checks could use connected-platform current-value resolution while email checks still read persisted `currentValue`
+- notification visibility re-checked raw stored rows instead of the exact resolved value path used by alert creation
+- some create/update routes awaited alert reconciliation, while others returned before async alert checks finished
+- GA4 KPI/Benchmark frontend mutations refreshed their KPI/Benchmark lists but did not consistently refresh `/api/notifications`
+- bell navigation could rewrite non-GA4 action URLs and needed to preserve valid GA4 deep-links
 - older production-readiness docs overclaimed completion from targeted checks instead of proving every lifecycle path
 
-The smallest safe production-readiness strategy is to make one GA4 alert lifecycle deterministic, regression-covered, and documented, then use that as the required implementation template for other sources.
+Commits 2 through 8 made the GA4 alert lifecycle deterministic, regression-covered, and documented. This GA4 lifecycle is now the required implementation template for other sources.
 
 ## Production-Ready Acceptance Criteria
 
@@ -278,7 +279,14 @@ Validation completed:
 - `npm test -- server/alert-numeric-capacity-regression.test.ts server/notification-visibility-regression.test.ts server/alert-email-regression.test.ts`
 - `npm run check`
 
+Manual validation requirement:
+
+- manual validation is not required for Commit 7 acceptance because the changed behavior is schema/migration numeric capacity and is covered by the schema/migration regression guard plus `npm run check`
+- migration application in a deployed database remains an operational deployment step, not a manual product-flow validation requirement for local acceptance
+
 ### Commit 8: Final Validation And Documentation Closure
+
+Status: complete.
 
 Fix scope:
 
@@ -290,7 +298,7 @@ Fix scope:
 Required final commands:
 
 ```bash
-npm test -- server/ga4-kpi-regression.test.ts server/ga4-benchmark-regression.test.ts server/notification-visibility-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-email-regression.test.ts
+npm test -- server/ga4-kpi-regression.test.ts server/ga4-benchmark-regression.test.ts server/notification-visibility-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-email-regression.test.ts server/alert-numeric-capacity-regression.test.ts server/benchmark-alert-lifecycle-regression.test.ts server/alert-evaluation.test.ts
 npm run check
 npm run build
 ```
@@ -301,6 +309,22 @@ Final documentation must separate:
 - partially reviewed
 - not locally verifiable
 - deployed/manual validation required
+
+Root cause fixed:
+
+- final trace found `/api/notifications` still checked raw persisted KPI/Benchmark `currentValue` values when deciding whether a performance alert should remain visible
+- this could keep a stale alert visible when the stored row still breached but the resolved campaign/current-value-backed value no longer breached
+- the notification visibility predicate now resolves linked KPI/Benchmark rows through `resolveCampaignCurrentValueForAlert` before applying alert threshold math, while preserving existing campaign ownership checks and duplicate suppression
+
+Validation completed:
+
+- `npm test -- server/ga4-kpi-regression.test.ts server/ga4-benchmark-regression.test.ts server/notification-visibility-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-email-regression.test.ts server/alert-numeric-capacity-regression.test.ts server/benchmark-alert-lifecycle-regression.test.ts server/alert-evaluation.test.ts`
+- `npm run check`
+- `npm run build`
+
+Validation note:
+
+- the first `npm run build` attempt failed with `spawn EPERM` while Vite tried to start esbuild under sandbox permissions; the same command passed when rerun with the required elevated permission
 
 ## Lifecycle Matrix
 
@@ -341,22 +365,30 @@ Proven locally:
 - Commit 6 makes GA4 KPI action URLs fail closed to `/notifications` when campaign/item identity is missing, preserves campaign-scoped metadata action URLs in bell navigation, and regression-covers Notifications page action URL preservation
 - Commit 6 does not require manual validation for local acceptance; final browser click-through evidence remains part of the final readiness pass
 - Commit 7 widens KPI alert audit absolute numeric fields plus Benchmark live/history absolute value and alert-threshold fields to `numeric(18,2)`, leaves percentage variance fields unchanged, and adds a widening-only migration plus regression guard
+- Commit 7 does not require manual validation for local acceptance; deployed database migration application remains an operational deployment step
+- Commit 8 makes notification visibility use the same campaign current-value resolver as alert creation before deciding whether linked KPI/Benchmark alerts remain visible
+- Commit 8 final focused regression suite passed: 8 test files / 49 tests
+- `npm run check` passed
+- `npm run build` passed after rerunning with elevated permission required for Vite/esbuild process spawning
 
 Partially reviewed:
 
-- existing code traces identified remaining gaps in notification raw-row visibility checks, final build validation, and deployed/manual evidence
-- the lifecycle matrix above defines the paths that must be proven by Commit 8 before GA4 readiness can be claimed
+- browser-rendered click-through of the bell and Notifications page remains manual/deployed evidence; local proof is source-level regression coverage plus successful production build
+- scheduler/source-refresh behavior is covered by focused regression traces and existing job wiring, not by a live scheduled run in this local pass
 
-Not locally verifiable yet:
+Not locally verifiable:
 
 - deployed email delivery
 - provider delivery events
 - live GA4 freshness timing
 - production data edge cases
+- deployed database migration application
 
-Not production-ready yet:
+Production-ready conclusion:
 
-- GA4 KPI/Benchmark alerts and notifications must complete Commit 8 and the required validation pass before this document can mark them production-ready
+- GA4 KPI/Benchmark alerts and notifications can be marked production-ready for the locally verifiable implementation scope after Commit 8
+- provider/inbox email delivery must still be evidenced separately before anyone claims a real email was delivered
+- deployed database migration application must still be verified in the target environment
 - Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration must each pass this same lifecycle with source-specific evidence before their KPI/Benchmark alert and notification behavior can be marked production-ready
 
 ## Cross-Platform Template Rules

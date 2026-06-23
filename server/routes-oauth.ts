@@ -34,6 +34,7 @@ import { buildTrendAnalysisAggregate } from "./utils/trend-analysis-aggregate";
 import { buildGoogleSheetsPlatformSourceForAggregate } from "./utils/google-sheets-aggregate-source";
 import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";
 import { computeBenchmarkThresholdResult } from "@shared/kpi-math";
+import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";
 
 function withReportingTimeZone<T extends Record<string, any>>(campaign: T): T {
   return {
@@ -5097,12 +5098,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const n = parseFloat(String(value ?? "").replace(/,/g, "").replace(/[^\d.-]/g, ""));
     return Number.isFinite(n) ? n : NaN;
   };
-  const isAlertRowBreached = (row: any): boolean => {
-    if (!row?.alertsEnabled || row?.alertThreshold === null || typeof row?.alertThreshold === "undefined") return false;
-    const current = parseNotificationNumber(row?.currentValue);
-    const threshold = parseNotificationNumber(row?.alertThreshold);
+  const isAlertRowBreached = async (row: any): Promise<boolean> => {
+    const resolved = await resolveCampaignCurrentValueForAlert(row);
+    if (!resolved?.alertsEnabled || resolved?.alertThreshold === null || typeof resolved?.alertThreshold === "undefined") return false;
+    const current = parseNotificationNumber(resolved?.currentValue);
+    const threshold = parseNotificationNumber(resolved?.alertThreshold);
     if (!Number.isFinite(current) || !Number.isFinite(threshold)) return false;
-    const condition = String(row?.alertCondition || "below");
+    const condition = String(resolved?.alertCondition || "below");
     if (condition === "above") return current > threshold;
     if (condition === "equals") return Math.abs(current - threshold) < 0.01;
     return current < threshold;
@@ -5167,14 +5169,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const { kpis } = await import("../shared/schema");
               const [kpi] = await db.select().from(kpis).where(eq((kpis as any).id, String(meta.kpiId))).limit(1);
               if (!kpi || String((kpi as any).campaignId || "") !== String(n.campaignId || "")) return null;
-              if (isPerformanceAlert && !isAlertRowBreached(kpi)) return null;
+              if (isPerformanceAlert && !(await isAlertRowBreached(kpi))) return null;
               if (kpi) return { ...n, title: `${notificationPlatformLabel((kpi as any).platformType)} KPI Alert: ${(kpi as any).name}` };
             }
             if (meta?.benchmarkId) {
               const { benchmarks } = await import("../shared/schema");
               const [benchmark] = await db.select().from(benchmarks).where(eq((benchmarks as any).id, String(meta.benchmarkId))).limit(1);
               if (!benchmark || String((benchmark as any).campaignId || "") !== String(n.campaignId || "")) return null;
-              if (isPerformanceAlert && !isAlertRowBreached(benchmark)) return null;
+              if (isPerformanceAlert && !(await isAlertRowBreached(benchmark))) return null;
               if (benchmark) return { ...n, title: `${notificationPlatformLabel((benchmark as any).platformType)} Benchmark Alert: ${(benchmark as any).name}` };
             }
             if (isPerformanceAlert) return null;
@@ -5204,11 +5206,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const meta = notificationMetadata((n as any)?.metadata);
         if (meta?.kpiId) {
           const kpi = await storage.getKPI(String(meta.kpiId)).catch(() => undefined as any);
-          return !!kpi && String((kpi as any).campaignId || "") === String((n as any).campaignId || "") && isAlertRowBreached(kpi);
+          return !!kpi && String((kpi as any).campaignId || "") === String((n as any).campaignId || "") && await isAlertRowBreached(kpi);
         }
         if (meta?.benchmarkId) {
           const benchmark = await storage.getBenchmark(String(meta.benchmarkId)).catch(() => undefined as any);
-          return !!benchmark && String((benchmark as any).campaignId || "") === String((n as any).campaignId || "") && isAlertRowBreached(benchmark);
+          return !!benchmark && String((benchmark as any).campaignId || "") === String((n as any).campaignId || "") && await isAlertRowBreached(benchmark);
         }
         return false;
       }));

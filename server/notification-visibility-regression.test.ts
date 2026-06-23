@@ -33,11 +33,13 @@ describe("notification visibility regression guard", () => {
       "utf-8"
     );
 
-    expect(routesFile).toContain("const isAlertRowBreached = (row: any): boolean => {");
-    expect(routesFile).toContain("if (isPerformanceAlert && !isAlertRowBreached(kpi)) return null;");
-    expect(routesFile).toContain("if (isPerformanceAlert && !isAlertRowBreached(benchmark)) return null;");
-    expect(routesFile).toContain("&& isAlertRowBreached(kpi);");
-    expect(routesFile).toContain("&& isAlertRowBreached(benchmark);");
+    expect(routesFile).toContain('import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";');
+    expect(routesFile).toContain("const isAlertRowBreached = async (row: any): Promise<boolean> => {");
+    expect(routesFile).toContain("const resolved = await resolveCampaignCurrentValueForAlert(row);");
+    expect(routesFile).toContain("if (isPerformanceAlert && !(await isAlertRowBreached(kpi))) return null;");
+    expect(routesFile).toContain("if (isPerformanceAlert && !(await isAlertRowBreached(benchmark))) return null;");
+    expect(routesFile).toContain("&& await isAlertRowBreached(kpi);");
+    expect(routesFile).toContain("&& await isAlertRowBreached(benchmark);");
   });
 
   it("deduplicates visible performance alerts by linked KPI or Benchmark", () => {

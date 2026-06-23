@@ -299,17 +299,34 @@ export default function Notifications() {
         return "Not available";
     }
   };
+  const formatPlatformLabel = (value: unknown) => {
+    const raw = String(value || "").trim();
+    const normalized = raw.toLowerCase();
+    if (!normalized) return "Not available";
+    if (normalized === "campaign") return "Campaign";
+    if (normalized === "ga4" || normalized === "google_analytics") return "GA4";
+    if (normalized === "google_ads") return "Google Ads";
+    if (normalized === "google_sheets") return "Google Sheets";
+    if (normalized === "meta" || normalized === "facebook") return "Meta";
+    if (normalized === "custom-integration" || normalized === "custom_integration") return "Custom Integration";
+    return raw.split(/[_-]+/).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+  };
+  const getAlertItemType = (metadata: any, title: string) => {
+    const itemType = String(metadata?.itemType || "").trim().toLowerCase();
+    if (itemType === "benchmark" || metadata?.benchmarkId || /Benchmark Alert:/i.test(title)) return "Benchmark";
+    if (itemType === "kpi" || metadata?.kpiId || /KPI Alert:/i.test(title)) return "KPI";
+    return null;
+  };
   const getAlertDetail = (notification: Notification) => {
     const metadata = parseNotificationMetadata(notification);
-    const isBenchmark = Boolean(metadata?.benchmarkId || metadata?.itemType === "benchmark" || /Benchmark Alert:/i.test(notification.title));
-    const itemType = isBenchmark ? "Benchmark" : "KPI";
+    const itemType = getAlertItemType(metadata, notification.title) || "Alert";
     const itemName = String(metadata?.itemName || notification.title.replace(/^.*?\b(?:KPI|Benchmark) Alert:\s*/i, "") || notification.title);
     const values = extractPerformanceAlertValues(notification);
     return {
       metadata,
       itemType,
       itemName,
-      platformLabel: String(metadata?.platformLabel || metadata?.platformType || "Not available"),
+      platformLabel: formatPlatformLabel(metadata?.platformLabel || metadata?.platformType),
       actionUrl: metadata?.actionUrl ? String(metadata.actionUrl) : "",
       actionLabel: `Open ${itemType}`,
       currentValue: values.currentValue || String(metadata?.currentValue ?? ""),
@@ -338,7 +355,7 @@ export default function Notifications() {
   };
   const renderAlertDetail = (notification: Notification) => {
     const metadata = parseNotificationMetadata(notification);
-    const isPerformanceAlertDetail = notification.type === "performance-alert" && Boolean(metadata?.kpiId || metadata?.benchmarkId || metadata?.itemType);
+    const isPerformanceAlertDetail = notification.type === "performance-alert" && Boolean(getAlertItemType(metadata, notification.title));
     if (!isPerformanceAlertDetail) {
       const body = formatNotificationMessage(notification);
       return (

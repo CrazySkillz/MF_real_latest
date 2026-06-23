@@ -426,8 +426,8 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(notificationsPage).toContain("const renderAlertDetail = (notification: Notification) => {");
-    expect(notificationsPage).toContain('const isPerformanceAlertDetail = notification.type === "performance-alert" && Boolean(metadata?.kpiId || metadata?.benchmarkId || metadata?.itemType);');
-    expect(notificationsPage).toContain('const itemType = isBenchmark ? "Benchmark" : "KPI";');
+    expect(notificationsPage).toContain('const isPerformanceAlertDetail = notification.type === "performance-alert" && Boolean(getAlertItemType(metadata, notification.title));');
+    expect(notificationsPage).toContain('const itemType = getAlertItemType(metadata, notification.title) || "Alert";');
     expect(notificationsPage).toContain("actionLabel: `Open ${itemType}`,");
     expect(notificationsPage).toContain("setLocation(actionUrl);");
     expect(notificationsPage).toContain('data-testid={`button-open-selected-alert-${notification.id}`}');
@@ -451,6 +451,25 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).not.toContain('statusLabel: notification.read ? "Active, read" : "Active, unread"');
     expect(notificationsPage).not.toContain('<Label htmlFor="read-filter">Status</Label>');
     expect(notificationsPage).not.toContain('value="history"');
+  });
+
+  it("uses platform-neutral alert metadata and fails unknown item types closed to generic detail", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+
+    expect(notificationsPage).toContain("const formatPlatformLabel = (value: unknown) => {");
+    expect(notificationsPage).toContain('if (normalized === "ga4" || normalized === "google_analytics") return "GA4";');
+    expect(notificationsPage).toContain('if (normalized === "google_ads") return "Google Ads";');
+    expect(notificationsPage).toContain('if (normalized === "custom-integration" || normalized === "custom_integration") return "Custom Integration";');
+    expect(notificationsPage).toContain('return raw.split(/[_-]+/).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");');
+    expect(notificationsPage).toContain("const getAlertItemType = (metadata: any, title: string) => {");
+    expect(notificationsPage).toContain('if (itemType === "benchmark" || metadata?.benchmarkId || /Benchmark Alert:/i.test(title)) return "Benchmark";');
+    expect(notificationsPage).toContain('if (itemType === "kpi" || metadata?.kpiId || /KPI Alert:/i.test(title)) return "KPI";');
+    expect(notificationsPage).toContain("return null;");
+    expect(notificationsPage).toContain("platformLabel: formatPlatformLabel(metadata?.platformLabel || metadata?.platformType),");
+    expect(notificationsPage).not.toContain('metadata?.itemType === "benchmark"');
   });
 
   it("keeps GA4 KPI alert action URLs campaign-scoped and fail-closed", () => {

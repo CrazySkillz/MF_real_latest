@@ -529,7 +529,7 @@ After GA4 passes this matrix, other connected-platform KPI/Benchmark alert imple
 
 ## Notifications Triage UX Improvement Strategy
 
-Status: UX-7 active alert status/read-state separation is implemented; UX-8 through UX-9 runtime work is not implemented.
+Status: UX-8 cross-platform triage metadata template is implemented; UX-9 final validation/documentation closure is not implemented.
 
 ### UX Root Cause Analysis
 
@@ -912,19 +912,18 @@ Partially reviewed:
 
 - this commit is UI copy/status separation plus regression coverage only; it does not change notification visibility rules, alert lifecycle mutations, KPI/Benchmark calculations, email behavior, API ownership/scoping rules, or expose hidden history rows
 
-Not locally verified:
-
-- browser mark read/unread flow confirming `Alert status` remains `Active`
-- browser dismiss flow confirming the alert leaves the active view
-
 Manual validation:
 
 - mark alert read/unread and confirm status copy remains accurate
 - dismiss alert and confirm it moves out of active view
 
+Manual validation completed:
+
+- user-reported manual validation passed on 2026-06-23 for read/unread status separation and dismissal moving the alert out of the active view
+
 ### Commit UX-8: Cross-Platform Triage Template
 
-Status: planned.
+Status: complete for the local code/test scope.
 
 Scope:
 
@@ -938,6 +937,52 @@ Required tests:
 - unknown platform alerts fail closed to safe detail copy
 - GA4 action links still work
 - platform label rendering does not hard-code GA4 only
+
+Root cause fixed:
+
+- the selected alert detail renderer consumed some platform-neutral metadata, but it still inferred unsupported `itemType` values as KPI and could show raw platform keys such as `google_analytics` when server-side metadata enrichment was absent
+- this made future-source alert rows too easy to mislabel in the triage panel before that source's links, ownership checks, alert reconciliation, and detail content were proven
+
+Minimum metadata template for future sources:
+
+- `itemType`: `kpi` or `benchmark`
+- `kpiId` or `benchmarkId`
+- `itemName`
+- `platformType`
+- `platformLabel`
+- `campaignId`
+- `actionUrl`
+- `currentValue`
+- `thresholdValue`
+- `alertCondition`
+
+Files changed:
+
+- `client/src/pages/notifications.tsx`
+- `server/notification-visibility-regression.test.ts`
+- `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
+
+Validation completed:
+
+- `npm test -- server/notification-visibility-regression.test.ts`
+- `npm run check`
+
+Proven locally:
+
+- selected alert detail recognizes only KPI and Benchmark metadata for the rich triage renderer
+- unsupported or unknown item metadata falls back to generic notification detail instead of showing KPI/Benchmark actions
+- platform labels are normalized from `platformLabel` or `platformType`, including GA4, Google Ads, Google Sheets, Meta, Custom Integration, and generic future platform keys
+- GA4 action URLs remain preserved through existing `metadata.actionUrl` handling
+- no notification visibility, alert lifecycle, KPI/Benchmark calculation, email behavior, or API ownership/scoping rule was changed
+
+Partially reviewed:
+
+- the UI can display platform-neutral metadata for future sources, but each future source still needs source-specific link generation, ownership checks, alert reconciliation, and regression coverage before it is production-ready
+
+Not locally verified:
+
+- browser display of non-GA4 platform alert labels and action routing
+- browser fallback rendering for a deliberately unsupported/unknown alert item type
 
 ### Commit UX-9: Final UX Validation And Documentation Closure
 

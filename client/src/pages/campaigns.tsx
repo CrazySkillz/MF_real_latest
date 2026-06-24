@@ -388,8 +388,10 @@ export default function Campaigns() {
       }
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });
       toast({
         title: "Campaign deleted",
         description: "Campaign has been permanently deleted.",

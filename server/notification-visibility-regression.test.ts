@@ -244,6 +244,32 @@ describe("notification visibility regression guard", () => {
     expect(campaignDetail.match(/await refreshNotificationQueries\(\);/g) || []).toHaveLength(6);
   });
 
+  it("hides and refreshes KPI and Benchmark notifications after client and campaign deletion", () => {
+    const storageFile = readFileSync(
+      join(process.cwd(), "server", "storage.ts"),
+      "utf-8"
+    );
+    const homeFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "home.tsx"),
+      "utf-8"
+    );
+    const campaignsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "campaigns.tsx"),
+      "utf-8"
+    );
+
+    expect(storageFile).toContain("private async deleteCampaignChildren(campaignId: string, tx: any = db): Promise<void> {");
+    expect(storageFile).toContain("await tx.update(notifications)");
+    expect(storageFile).toContain("'dismissalReason', 'campaign_deleted'");
+    expect(storageFile).toContain("await this.deleteCampaignChildren(String(campaign.id), tx);");
+    expect(homeFile).toContain("onSuccess: async (_data, clientId) => {");
+    expect(homeFile).toContain('await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });');
+    expect(homeFile).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');
+    expect(campaignsFile).toContain("onSuccess: async () => {");
+    expect(campaignsFile).toContain('await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });');
+    expect(campaignsFile).toContain('await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });');
+  });
+
   it("routes top bar bell clicks directly to Notifications and disables it on the Notifications page", () => {
     const navigationFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),

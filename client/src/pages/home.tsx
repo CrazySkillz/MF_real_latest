@@ -25,11 +25,12 @@ export default function HomePage() {
       if (!data.success) throw new Error(data.message || "Failed to delete client");
       return data;
     },
-    onSuccess: (_data, clientId) => {
+    onSuccess: async (_data, clientId) => {
       if (selectedClientId === clientId) setSelectedClientId(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });
       setClientToDelete(null);
       toast({ title: "Client deleted", description: "Client and related campaigns were deleted." });
     },

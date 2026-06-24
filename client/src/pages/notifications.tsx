@@ -241,6 +241,33 @@ export default function Notifications() {
     const campaign = campaigns.find(c => c.id === notification.campaignId);
     return clients.find(c => c.id === campaign?.clientId)?.name || "";
   };
+  const getNotificationMetadata = (notification: Notification): any => {
+    try {
+      return notification.metadata ? JSON.parse(notification.metadata) : {};
+    } catch {
+      return {};
+    }
+  };
+  const formatAlertDetailValue = (value: unknown) => {
+    if (value === null || typeof value === "undefined" || value === "") return "-";
+    const num = Number(String(value).replace(/,/g, ""));
+    return Number.isFinite(num)
+      ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 }).format(num)
+      : String(value);
+  };
+  const formatAlertThresholdValue = (metadata: any) => {
+    const value = formatAlertDetailValue(metadata?.thresholdValue);
+    const condition = String(metadata?.alertCondition || "below");
+    if (value === "-") return value;
+    if (condition === "above") return `above ${value}`;
+    if (condition === "equals") return `equal to ${value}`;
+    return `below ${value}`;
+  };
+  const formatNotificationCreatedDate = (value: unknown) => {
+    const date = new Date(String(value || ""));
+    if (!Number.isFinite(date.getTime())) return "-";
+    return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
+  };
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -257,9 +284,11 @@ export default function Notifications() {
                   <h1 className="text-2xl font-bold text-foreground">
                     Notifications
                   </h1>
-                  <p className="text-muted-foreground/70">
-                    {unreadCount > 0 ? `${unreadCount} unread notifications` : "All notifications are read"}
-                  </p>
+                  {unreadCount > 0 && (
+                    <p className="text-muted-foreground/70">
+                      {`${unreadCount} unread notifications`}
+                    </p>
+                  )}
                 </div>
               </div>
               
@@ -381,6 +410,7 @@ export default function Notifications() {
                 <div className="space-y-3">
                   {paginatedNotifications.map((notification) => {
                     const isSelectedNotification = String(notification.id) === selectedNotificationId;
+                    const metadata = getNotificationMetadata(notification);
                     return (
                   <Card
                     key={notification.id}
@@ -426,14 +456,28 @@ export default function Notifications() {
                               
                               <div>{getPriorityBadge(notification.priority)}</div>
                             </div>
+                            {(metadata?.kpiId || metadata?.benchmarkId) && (
+                              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                                <div>
+                                  <span className="font-semibold text-foreground/80">Current value:</span>{" "}
+                                  {formatAlertDetailValue(metadata?.currentValue)}
+                                </div>
+                                <div>
+                                  <span className="font-semibold text-foreground/80">Threshold value:</span>{" "}
+                                  {formatAlertThresholdValue(metadata)}
+                                </div>
+                                <div>
+                                  <span className="font-semibold text-foreground/80">Created date:</span>{" "}
+                                  {formatNotificationCreatedDate(notification.createdAt)}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                         
                         <div className="flex items-center space-x-2">
                           {/* View alert button */}
                           {(() => {
-                            try {
-                              const metadata = notification.metadata ? JSON.parse(notification.metadata) : null;
                               if (metadata?.kpiId || metadata?.benchmarkId) {
                                 return (
                                   <Button
@@ -483,9 +527,6 @@ export default function Notifications() {
                                   </Button>
                                 );
                               }
-                            } catch (e) {
-                              // Ignore malformed metadata
-                            }
                             return null;
                           })()}
                         </div>

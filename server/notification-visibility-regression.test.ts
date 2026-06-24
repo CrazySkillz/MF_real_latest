@@ -403,6 +403,17 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).not.toContain("Loading notifications...");
   });
 
+  it("does not render a zero-unread header message on the Notifications page", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+
+    expect(notificationsPage).not.toContain("All notifications are read");
+    expect(notificationsPage).toContain("{unreadCount > 0 && (");
+    expect(notificationsPage).toContain("{`${unreadCount} unread notifications`}");
+  });
+
   it("preserves metadata action URLs from the Notifications page view action", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
@@ -438,6 +449,21 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain("currentValue: row?.currentValue,");
     expect(routesFile).toContain("thresholdValue: row?.alertThreshold,");
     expect(routesFile).toContain('alertCondition: row?.alertCondition || "below",');
+  });
+
+  it("renders KPI and Benchmark alert values and created date on notification cards", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+
+    expect(notificationsPage).toContain("const metadata = getNotificationMetadata(notification);");
+    expect(notificationsPage).toContain("Current value:");
+    expect(notificationsPage).toContain("{formatAlertDetailValue(metadata?.currentValue)}");
+    expect(notificationsPage).toContain("Threshold value:");
+    expect(notificationsPage).toContain("{formatAlertThresholdValue(metadata)}");
+    expect(notificationsPage).toContain("Created date:");
+    expect(notificationsPage).toContain("{formatNotificationCreatedDate(notification.createdAt)}");
   });
 
   it("highlights campaign KPI and Benchmark cards opened from notification deep links", () => {

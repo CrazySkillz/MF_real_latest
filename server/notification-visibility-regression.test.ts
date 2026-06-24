@@ -291,7 +291,7 @@ describe("notification visibility regression guard", () => {
     expect(navigationFile).not.toContain("/notifications?selected=");
   });
 
-  it("shows a dot-only top bar breach indicator while keeping Notifications unread row highlighting", () => {
+  it("shows a dot-only top bar breach indicator without Notifications read-state highlighting", () => {
     const navigationFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),
       "utf-8"
@@ -313,8 +313,10 @@ describe("notification visibility regression guard", () => {
     expect(navigationFile).toContain('aria-hidden="true"');
     expect(navigationFile).not.toContain("const unreadCount = notifications.filter(n => !n.read).length;");
     expect(navigationFile).not.toContain("{unreadCount > 99 ? '99+' : unreadCount}");
-    expect(notificationsPage).toContain('!notification.read ? "border-l-4 border-l-blue-500 bg-blue-50/30" : ""');
-    expect(notificationsPage).toContain("{/* Unread state is shown via left blue border + subtle background */}");
+    expect(notificationsPage).not.toContain('!notification.read ? "border-l-4 border-l-blue-500 bg-blue-50/30" : ""');
+    expect(notificationsPage).not.toContain("{/* Unread state is shown via left blue border + subtle background */}");
+    expect(notificationsPage).not.toContain("border-l-blue-500");
+    expect(notificationsPage).not.toContain("bg-blue-50/30");
   });
 
   it("does not expose top bar dropdown notification mutation actions", () => {
@@ -344,7 +346,6 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).toContain('const selectedNotificationId = notificationSearchParams.get("selected") || notificationSearchParams.get("highlight") || "";');
     expect(notificationsPage).toContain('setSearchTerm("");');
     expect(notificationsPage).toContain('setPriorityFilter("all");');
-    expect(notificationsPage).toContain('setReadFilter("all");');
     expect(notificationsPage).toContain('setClientFilter("all");');
     expect(notificationsPage).toContain('setDateFilter("all");');
     expect(notificationsPage).toContain("const selectedFilteredIndex = selectedNotificationId");
@@ -413,7 +414,8 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(notificationsPage).toContain("const filteredNotifications = notifications.filter(notification => {");
-    expect(notificationsPage).toContain("return matchesSearch && matchesPriority && matchesRead && matchesClient && matchesDate;");
+    expect(notificationsPage).toContain("return matchesSearch && matchesPriority && matchesClient && matchesDate;");
+    expect(notificationsPage).not.toContain("const matchesRead =");
     expect(notificationsPage).toContain("const paginatedNotifications = filteredNotifications.slice(startIndex, endIndex);");
     expect(notificationsPage).toContain("No active alerts found");
     expect(notificationsPage).toContain("No active alerts match your current filters.");
@@ -429,15 +431,17 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).not.toContain("Loading notifications...");
   });
 
-  it("does not render a zero-unread header message on the Notifications page", () => {
+  it("does not render read-state header controls on the Notifications page", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
       "utf-8"
     );
 
     expect(notificationsPage).not.toContain("All notifications are read");
-    expect(notificationsPage).toContain("{unreadCount > 0 && (");
-    expect(notificationsPage).toContain("{`${unreadCount} unread notifications`}");
+    expect(notificationsPage).not.toContain("unread notifications");
+    expect(notificationsPage).not.toContain("button-mark-all-read");
+    expect(notificationsPage).not.toContain("Mark All as Read");
+    expect(notificationsPage).not.toContain("markAllAsReadMutation");
   });
 
   it("preserves metadata action URLs from the Notifications page view action", () => {
@@ -536,6 +540,10 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).not.toContain("All Read States");
     expect(notificationsPage).not.toContain('data-testid="select-read-filter"');
     expect(notificationsPage).toContain('className="grid grid-cols-1 md:grid-cols-3 gap-4"');
+    expect(notificationsPage).not.toContain("readFilter");
+    expect(notificationsPage).not.toContain("setReadFilter");
+    expect(notificationsPage).not.toContain("matchesRead");
+    expect(notificationsPage).not.toContain("setReadStateMutation");
     expect(notificationsPage).not.toContain('aria-label={notification.read ? "Mark as unread" : "Mark as read"}');
     expect(notificationsPage).not.toContain('<TooltipContent>{notification.read ? "Mark as unread" : "Mark as read"}</TooltipContent>');
     expect(notificationsPage).not.toContain('statusLabel: "Active",');

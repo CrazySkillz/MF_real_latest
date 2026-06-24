@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Filter, Search, AlertCircle, CheckCircle, Info, XCircle, Check } from "lucide-react";
+import { Bell, Filter, Search, AlertCircle, CheckCircle, Info, XCircle } from "lucide-react";
 import { Campaign, Notification } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +20,6 @@ import { useClient } from "@/lib/clientContext";
 export default function Notifications() {
   const [searchTerm, setSearchTerm] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
-  const [readFilter, setReadFilter] = useState("all");
   const [clientFilter, setClientFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -37,30 +36,6 @@ export default function Notifications() {
   });
   const { data: campaigns = [] } = useQuery<Campaign[]>({
     queryKey: ["/api/campaigns"],
-  });
-
-  const setReadStateMutation = useMutation({
-    mutationFn: async (vars: { notificationId: string; read: boolean }) => {
-      const response = await apiRequest("PATCH", `/api/notifications/${vars.notificationId}`, { read: vars.read });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-    },
-  });
-
-  const markAllAsReadMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("PATCH", "/api/notifications/mark-all-read", {});
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-      toast({
-        title: "All notifications marked as read",
-        description: "All notifications have been marked as read.",
-      });
-    },
   });
 
   const deleteNotificationMutation = useMutation({
@@ -104,9 +79,6 @@ export default function Notifications() {
                          (notification.campaignName && notification.campaignName.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesPriority = priorityFilter === "all" || notification.priority === priorityFilter;
-    const matchesRead = readFilter === "all" || 
-                       (readFilter === "unread" && !notification.read) || 
-                       (readFilter === "read" && notification.read);
     const campaignClientId = campaigns.find(c => c.id === notification.campaignId)?.clientId || null;
     const matchesClient = clientFilter === "all" || campaignClientId === clientFilter;
 
@@ -133,7 +105,7 @@ export default function Notifications() {
       }
     }
 
-    return matchesSearch && matchesPriority && matchesRead && matchesClient && matchesDate;
+    return matchesSearch && matchesPriority && matchesClient && matchesDate;
   });
   const selectedFilteredIndex = selectedNotificationId
     ? filteredNotifications.findIndex((notification) => String(notification.id) === selectedNotificationId)
@@ -167,7 +139,6 @@ export default function Notifications() {
     if (!selectedInFilteredResults) {
       setSearchTerm("");
       setPriorityFilter("all");
-      setReadFilter("all");
       setClientFilter("all");
       setDateFilter("all");
     }
@@ -197,7 +168,7 @@ export default function Notifications() {
   useEffect(() => {
     if (selectedNotificationId) return;
     setCurrentPage(1);
-  }, [searchTerm, priorityFilter, readFilter, clientFilter, dateFilter, selectedNotificationId]);
+  }, [searchTerm, priorityFilter, clientFilter, dateFilter, selectedNotificationId]);
 
   // Adjust current page if it's now out of bounds (after deletion)
   useEffect(() => {
@@ -236,7 +207,6 @@ export default function Notifications() {
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
   const getClientNameForNotification = (notification: Notification) => {
     const campaign = campaigns.find(c => c.id === notification.campaignId);
     return clients.find(c => c.id === campaign?.clientId)?.name || "";
@@ -284,25 +254,7 @@ export default function Notifications() {
                   <h1 className="text-2xl font-bold text-foreground">
                     Notifications
                   </h1>
-                  {unreadCount > 0 && (
-                    <p className="text-muted-foreground/70">
-                      {`${unreadCount} unread notifications`}
-                    </p>
-                  )}
                 </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                {unreadCount > 0 && (
-                  <Button
-                    onClick={() => markAllAsReadMutation.mutate()}
-                    disabled={markAllAsReadMutation.isPending}
-                    data-testid="button-mark-all-read"
-                  >
-                    <Check className="w-4 h-4 mr-2" />
-                    Mark All as Read
-                  </Button>
-                )}
               </div>
             </div>
 
@@ -416,9 +368,7 @@ export default function Notifications() {
                     key={notification.id}
                     id={`notification-${notification.id}`}
                     data-selected={isSelectedNotification ? "true" : "false"}
-                    className={`transition-all ${
-                      !notification.read ? "border-l-4 border-l-blue-500 bg-blue-50/30" : ""
-                    } ${isSelectedNotification ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5" : ""}`}
+                    className={`transition-all ${isSelectedNotification ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5" : ""}`}
                     data-testid={`notification-${notification.id}`}
                   >
                     <CardContent className="p-4">
@@ -430,10 +380,9 @@ export default function Notifications() {
                           
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center space-x-2 mb-1">
-                              <h3 className={`font-semibold ${!notification.read ? "text-foreground" : "text-foreground/80"}`}>
+                              <h3 className="font-semibold text-foreground">
                                 {notification.title}
                               </h3>
-                              {/* Unread state is shown via left blue border + subtle background */}
                             </div>
                             
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
@@ -486,8 +435,6 @@ export default function Notifications() {
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      
-                                      setReadStateMutation.mutate({ notificationId: notification.id, read: true });
                                       
                                       const campaignId = notification.campaignId;
                                       if (campaignId && (metadata?.kpiId || metadata?.benchmarkId)) {

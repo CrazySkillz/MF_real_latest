@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useLocation, useSearch } from "wouter";
@@ -10,12 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, X, Mail, MailOpen } from "lucide-react";
+import { Bell, Filter, Search, AlertCircle, CheckCircle, Info, XCircle, Check, X, Mail, MailOpen } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Campaign, Notification } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { format, isToday, isYesterday } from "date-fns";
+import { isToday, isYesterday } from "date-fns";
 import { useClient } from "@/lib/clientContext";
 
 export default function Notifications() {
@@ -31,7 +31,6 @@ export default function Notifications() {
   const search = useSearch();
   const notificationSearchParams = new URLSearchParams(search);
   const selectedNotificationId = notificationSearchParams.get("selected") || notificationSearchParams.get("highlight") || "";
-  const suppressNextSelectedScrollRef = useRef(false);
   const { clients } = useClient();
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
@@ -185,11 +184,6 @@ export default function Notifications() {
   useEffect(() => {
     if (!selectedNotificationId || isLoading || !selectedNotificationVisible) return;
 
-    if (suppressNextSelectedScrollRef.current) {
-      suppressNextSelectedScrollRef.current = false;
-      return;
-    }
-
     const frame = window.requestAnimationFrame(() => {
       const el = document.getElementById(`notification-${selectedNotificationId}`);
       if (el) {
@@ -248,12 +242,6 @@ export default function Notifications() {
     const campaign = campaigns.find(c => c.id === notification.campaignId);
     return clients.find(c => c.id === campaign?.clientId)?.name || "";
   };
-  const selectNotification = (notificationId: string) => {
-    if (String(notificationId) === selectedNotificationId) return;
-    suppressNextSelectedScrollRef.current = true;
-    setLocation(`/notifications?selected=${encodeURIComponent(String(notificationId))}`);
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -413,18 +401,8 @@ export default function Notifications() {
                   <Card
                     key={notification.id}
                     id={`notification-${notification.id}`}
-                    role="button"
-                    tabIndex={0}
-                    aria-pressed={isSelectedNotification}
                     data-selected={isSelectedNotification ? "true" : "false"}
-                    onClick={() => selectNotification(notification.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        selectNotification(notification.id);
-                      }
-                    }}
-                    className={`transition-all hover:shadow-md cursor-pointer ${
+                    className={`transition-all ${
                       !notification.read ? "border-l-4 border-l-blue-500 bg-blue-50/30" : ""
                     } ${isSelectedNotification ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5" : ""}`}
                     data-testid={`notification-${notification.id}`}
@@ -463,17 +441,6 @@ export default function Notifications() {
                               )}
                               
                               <div>{getPriorityBadge(notification.priority)}</div>
-                              
-                              <div className="flex items-center space-x-1">
-                                <Clock className="w-3 h-3" />
-                                <span>
-                                  {isToday(new Date(notification.createdAt))
-                                    ? `Today at ${format(new Date(notification.createdAt), 'h:mm a')}`
-                                    : isYesterday(new Date(notification.createdAt))
-                                    ? `Yesterday at ${format(new Date(notification.createdAt), 'h:mm a')}`
-                                    : format(new Date(notification.createdAt), 'MMM d, yyyy h:mm a')}
-                                </span>
-                              </div>
                             </div>
                           </div>
                         </div>

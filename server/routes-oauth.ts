@@ -5090,6 +5090,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const notificationMetadata = (value: any) => {
     try { return typeof value === "string" && value ? JSON.parse(value) : (value || {}); } catch { return {}; }
   };
+  const notificationActionUrl = (row: any, itemType: "kpi" | "benchmark"): string => {
+    const campaignId = String(row?.campaignId || "").trim();
+    const id = String(row?.id || "").trim();
+    const platform = String(row?.platformType || "").trim().toLowerCase();
+    const tab = itemType === "benchmark" ? "benchmarks" : "kpis";
+    if (!campaignId || !id) return "/notifications";
+    if (platform === "google_analytics") return `/campaigns/${campaignId}/ga4-metrics?tab=${tab}&highlight=${id}`;
+    if (platform === "linkedin") return `/campaigns/${campaignId}/linkedin-analytics?tab=${tab}&highlight=${id}`;
+    return itemType === "kpi"
+      ? `/campaigns/${campaignId}/linkedin-analytics?tab=kpis&highlight=${id}`
+      : `/campaigns/${campaignId}`;
+  };
   const enrichPerformanceAlertNotification = (n: any, row: any, itemType: "kpi" | "benchmark") => {
     const meta = notificationMetadata(n?.metadata);
     const itemLabel = itemType === "benchmark" ? "Benchmark" : "KPI";
@@ -5105,6 +5117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         itemName: row?.name,
         platformType: row?.platformType,
         platformLabel,
+        actionUrl: notificationActionUrl(row, itemType),
         currentValue: row?.currentValue,
         thresholdValue: row?.alertThreshold,
         alertCondition: row?.alertCondition || "below",

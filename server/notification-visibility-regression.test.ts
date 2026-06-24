@@ -331,24 +331,23 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).toContain('el.scrollIntoView({ block: "center", behavior: "smooth" });');
     expect(notificationsPage).toContain("const isSelectedNotification = String(notification.id) === selectedNotificationId;");
     expect(notificationsPage).toContain('id={`notification-${notification.id}`}');
-    expect(notificationsPage).toContain('aria-pressed={isSelectedNotification}');
     expect(notificationsPage).toContain('data-selected={isSelectedNotification ? "true" : "false"}');
     expect(notificationsPage).toContain('${isSelectedNotification ? "ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5" : ""}');
   });
 
-  it("does not scroll the page when selecting an already visible notification row", () => {
+  it("does not make full notification rows clickable", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
       "utf-8"
     );
 
-    expect(notificationsPage).toContain('import { useState, useEffect, useRef } from "react";');
-    expect(notificationsPage).toContain("const suppressNextSelectedScrollRef = useRef(false);");
-    expect(notificationsPage).toContain("if (suppressNextSelectedScrollRef.current) {");
-    expect(notificationsPage).toContain("suppressNextSelectedScrollRef.current = false;");
-    expect(notificationsPage).toContain("if (String(notificationId) === selectedNotificationId) return;");
-    expect(notificationsPage).toContain("suppressNextSelectedScrollRef.current = true;");
-    expect(notificationsPage).toContain("setLocation(`/notifications?selected=${encodeURIComponent(String(notificationId))}`);");
+    expect(notificationsPage).not.toContain('role="button"');
+    expect(notificationsPage).not.toContain("aria-pressed={isSelectedNotification}");
+    expect(notificationsPage).not.toContain("const selectNotification = (notificationId: string) => {");
+    expect(notificationsPage).not.toContain("onClick={() => selectNotification(notification.id)}");
+    expect(notificationsPage).not.toContain("onKeyDown={(e) => {");
+    expect(notificationsPage).not.toContain("cursor-pointer");
+    expect(notificationsPage).not.toContain("hover:shadow-md");
   });
 
   it("shows a safe empty state when a selected notification is unavailable", () => {
@@ -428,9 +427,13 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(routesFile).toContain('const enrichPerformanceAlertNotification = (n: any, row: any, itemType: "kpi" | "benchmark") => {');
+    expect(routesFile).toContain('const notificationActionUrl = (row: any, itemType: "kpi" | "benchmark"): string => {');
+    expect(routesFile).toContain('const tab = itemType === "benchmark" ? "benchmarks" : "kpis";');
+    expect(routesFile).toContain('if (platform === "google_analytics") return `/campaigns/${campaignId}/ga4-metrics?tab=${tab}&highlight=${id}`;');
     expect(routesFile).toContain('const itemLabel = itemType === "benchmark" ? "Benchmark" : "KPI";');
     expect(routesFile).toContain("itemName: row?.name,");
     expect(routesFile).toContain("platformLabel,");
+    expect(routesFile).toContain("actionUrl: notificationActionUrl(row, itemType),");
     expect(routesFile).toContain("currentValue: row?.currentValue,");
     expect(routesFile).toContain("thresholdValue: row?.alertThreshold,");
     expect(routesFile).toContain('alertCondition: row?.alertCondition || "below",');

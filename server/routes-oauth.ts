@@ -5098,7 +5098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!campaignId || !id) return "/notifications";
     if (platform === "google_analytics") return `/campaigns/${campaignId}/ga4-metrics?tab=${tab}&highlight=${id}`;
     if (platform === "linkedin") return `/campaigns/${campaignId}/linkedin-analytics?tab=${tab}&highlight=${id}`;
-    if (!platform || platform === "campaign") return `/campaigns/${campaignId}#${tab}`;
+    if (!platform || platform === "campaign") return `/campaigns/${campaignId}?tab=${tab}&highlight=${id}#${tab}`;
     return itemType === "kpi"
       ? `/campaigns/${campaignId}/linkedin-analytics?tab=kpis&highlight=${id}`
       : `/campaigns/${campaignId}`;

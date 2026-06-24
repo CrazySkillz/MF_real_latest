@@ -1513,16 +1513,11 @@ export default function GA4Metrics() {
     const prefix = activeTab === "kpis" ? "ga4-kpi-" : "ga4-benchmark-";
     const el = document.getElementById(`${prefix}${highlightedItemId}`);
     if (!el) return;
-    let timer: number | undefined;
     const frame = window.requestAnimationFrame(() => {
       const top = Math.max(0, el.getBoundingClientRect().top + window.scrollY - 96);
-      window.scrollTo({ top, behavior: "auto" });
-      timer = window.setTimeout(() => setHighlightedItemId(""), 3000);
+      window.scrollTo({ top, behavior: "smooth" });
     });
-    return () => {
-      window.cancelAnimationFrame(frame);
-      if (timer) window.clearTimeout(timer);
-    };
+    return () => window.cancelAnimationFrame(frame);
   }, [activeTab, highlightedItemId, platformKPIs, benchmarks]);
   const defaultCustomReportSections = useMemo(
     () => ({ overview: false, kpis: false, benchmarks: false, ads: false, insights: false }),

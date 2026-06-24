@@ -430,7 +430,7 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain('const notificationActionUrl = (row: any, itemType: "kpi" | "benchmark"): string => {');
     expect(routesFile).toContain('const tab = itemType === "benchmark" ? "benchmarks" : "kpis";');
     expect(routesFile).toContain('if (platform === "google_analytics") return `/campaigns/${campaignId}/ga4-metrics?tab=${tab}&highlight=${id}`;');
-    expect(routesFile).toContain('if (!platform || platform === "campaign") return `/campaigns/${campaignId}#${tab}`;');
+    expect(routesFile).toContain('if (!platform || platform === "campaign") return `/campaigns/${campaignId}?tab=${tab}&highlight=${id}#${tab}`;');
     expect(routesFile).toContain('const itemLabel = itemType === "benchmark" ? "Benchmark" : "KPI";');
     expect(routesFile).toContain("itemName: row?.name,");
     expect(routesFile).toContain("platformLabel,");
@@ -438,6 +438,24 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain("currentValue: row?.currentValue,");
     expect(routesFile).toContain("thresholdValue: row?.alertThreshold,");
     expect(routesFile).toContain('alertCondition: row?.alertCondition || "below",');
+  });
+
+  it("highlights campaign KPI and Benchmark cards opened from notification deep links", () => {
+    const campaignDetail = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "campaign-detail.tsx"),
+      "utf-8"
+    );
+
+    expect(campaignDetail).toContain('import { useRoute, useSearch } from "wouter";');
+    expect(campaignDetail).toContain('const highlightedKpiId = useMemo(() => new URLSearchParams(search).get("highlight") || "", [search]);');
+    expect(campaignDetail).toContain('const el = document.getElementById(`campaign-kpi-${highlightedKpiId}`);');
+    expect(campaignDetail).toContain('id={`campaign-kpi-${kpi.id}`}');
+    expect(campaignDetail).toContain('const isHighlightedKpi = String(highlightedKpiId || "") === String(kpi.id || "");');
+    expect(campaignDetail).toContain('const highlightedBenchmarkId = useMemo(() => new URLSearchParams(search).get("highlight") || "", [search]);');
+    expect(campaignDetail).toContain('const el = document.getElementById(`campaign-benchmark-${highlightedBenchmarkId}`);');
+    expect(campaignDetail).toContain('id={`campaign-benchmark-${benchmark.id}`}');
+    expect(campaignDetail).toContain('const isHighlightedBenchmark = String(highlightedBenchmarkId || "") === String(benchmark.id || "");');
+    expect(campaignDetail).toContain('window.scrollTo({ top, behavior: "smooth" });');
   });
 
   it("keeps KPI and Benchmark row actions without the removed selected-detail panel", () => {

@@ -340,5 +340,8 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain('const isHighlightedBenchmark = String(highlightedItemId || "") === String(benchmark.id || "");');
     expect(ga4Metrics).toContain('${isHighlightedKpi ? "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg bg-primary/5" : ""}');
     expect(ga4Metrics).toContain('${isHighlightedBenchmark ? "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg bg-primary/5" : ""}');
+    expect(ga4Metrics).toContain('window.scrollTo({ top, behavior: "smooth" });');
+    expect(ga4Metrics).not.toContain('window.scrollTo({ top, behavior: "auto" });');
+    expect(ga4Metrics).not.toContain('setHighlightedItemId(""), 3000');
   });
 });

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useRoute } from "wouter";
+import { useRoute, useSearch } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useClient } from "@/lib/clientContext";
@@ -160,10 +160,22 @@ const parseFormattedNumber = (value: string): number => {
 // Campaign KPIs Component
 function CampaignKPIs({ campaign }: { campaign: Campaign }) {
   const { toast } = useToast();
+  const search = useSearch();
   const { data: kpis = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/campaigns/${campaign.id}/kpis`],
     enabled: !!campaign.id,
   });
+  const highlightedKpiId = useMemo(() => new URLSearchParams(search).get("highlight") || "", [search]);
+  useEffect(() => {
+    if (!highlightedKpiId || !kpis.some((kpi: any) => String(kpi.id) === String(highlightedKpiId))) return;
+    const frame = window.requestAnimationFrame(() => {
+      const el = document.getElementById(`campaign-kpi-${highlightedKpiId}`);
+      if (!el) return;
+      const top = Math.max(0, el.getBoundingClientRect().top + window.scrollY - 96);
+      window.scrollTo({ top, behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [highlightedKpiId, kpis]);
 
   // Outcome-centric campaign totals (dynamic: GA4 outcomes + unified spend + all connected platform inputs)
   const { data: outcomeTotals } = useQuery<any>({
@@ -1558,9 +1570,14 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
               const progressBand = getCampaignKpiSnapshot(kpi)?.band || 'below';
               const liveDisplay = formatValueWithUnit(current, displayUnit);
               const targetDisplay = formatValueWithUnit(target, displayUnit);
+              const isHighlightedKpi = String(highlightedKpiId || "") === String(kpi.id || "");
               
               return (
-          <Card key={kpi.id}>
+          <Card
+            key={kpi.id}
+            id={`campaign-kpi-${kpi.id}`}
+            className={`transition-shadow ${isHighlightedKpi ? "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg bg-primary/5" : ""}`}
+          >
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-3">
@@ -2491,6 +2508,7 @@ function CampaignKPIs({ campaign }: { campaign: Campaign }) {
 // Campaign Benchmarks Component
 function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
   const { toast } = useToast();
+  const search = useSearch();
   const refreshNotificationQueries = async () => {
     await queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
     await queryClient.refetchQueries({ queryKey: ["/api/notifications"], exact: true });
@@ -2501,6 +2519,17 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
     queryKey: [`/api/campaigns/${campaign.id}/benchmarks`],
     enabled: !!campaign.id,
   });
+  const highlightedBenchmarkId = useMemo(() => new URLSearchParams(search).get("highlight") || "", [search]);
+  useEffect(() => {
+    if (!highlightedBenchmarkId || !benchmarks.some((benchmark: any) => String(benchmark.id) === String(highlightedBenchmarkId))) return;
+    const frame = window.requestAnimationFrame(() => {
+      const el = document.getElementById(`campaign-benchmark-${highlightedBenchmarkId}`);
+      if (!el) return;
+      const top = Math.max(0, el.getBoundingClientRect().top + window.scrollY - 96);
+      window.scrollTo({ top, behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [highlightedBenchmarkId, benchmarks]);
 
   // Use the same normalized campaign totals as the Campaign KPIs tab so numbers never disagree.
   const { data: outcomeTotals } = useQuery<any>({
@@ -3654,8 +3683,15 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
 
           {/* Benchmarks List */}
           <div className="grid gap-6 lg:grid-cols-2">
-            {benchmarks.map((benchmark) => (
-          <Card key={benchmark.id} data-testid={`benchmark-card-${benchmark.id}`}>
+            {benchmarks.map((benchmark) => {
+              const isHighlightedBenchmark = String(highlightedBenchmarkId || "") === String(benchmark.id || "");
+              return (
+          <Card
+            key={benchmark.id}
+            id={`campaign-benchmark-${benchmark.id}`}
+            data-testid={`benchmark-card-${benchmark.id}`}
+            className={`transition-shadow ${isHighlightedBenchmark ? "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg bg-primary/5" : ""}`}
+          >
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div>
@@ -3791,7 +3827,8 @@ function CampaignBenchmarks({ campaign }: { campaign: Campaign }) {
               })()}
             </CardContent>
           </Card>
-            ))}
+              );
+            })}
           </div>
             </div>
           </CardContent>

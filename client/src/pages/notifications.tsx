@@ -10,12 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, X, Mail, MailOpen, ExternalLink, Settings } from "lucide-react";
+import { Bell, Filter, Search, Clock, AlertCircle, CheckCircle, Info, XCircle, Check, X, Mail, MailOpen } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Campaign, Notification } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
 import { useClient } from "@/lib/clientContext";
 
 export default function Notifications() {
@@ -243,257 +243,15 @@ export default function Notifications() {
     }
   };
 
-  // Format notification date
-  const formatNotificationDate = (dateString: string) => {
-    const date = new Date(dateString);
-    if (isToday(date)) {
-      return formatDistanceToNow(date, { addSuffix: true });
-    } else if (isYesterday(date)) {
-      return "Yesterday";
-    } else {
-      return format(date, "MMM dd, yyyy");
-    }
-  };
-
   const unreadCount = notifications.filter(n => !n.read).length;
   const getClientNameForNotification = (notification: Notification) => {
     const campaign = campaigns.find(c => c.id === notification.campaignId);
     return clients.find(c => c.id === campaign?.clientId)?.name || "";
   };
-  const parseNotificationMetadata = (notification: Notification) => {
-    try {
-      return notification.metadata ? JSON.parse(notification.metadata) : {};
-    } catch {
-      return {};
-    }
-  };
-  const formatNotificationMessage = (notification: Notification) => {
-    const message = String(notification.message || "").trim();
-    if (notification.type !== "performance-alert") {
-      return { lead: message, threshold: "" };
-    }
-    const parts = message.split(/\.?\s*Alert threshold value:\s*/);
-    return {
-      lead: parts[0] || message,
-      threshold: parts[1] ? `Alert threshold value: ${parts[1]}` : "",
-    };
-  };
-  const extractPerformanceAlertValues = (notification: Notification) => {
-    const message = String(notification.message || "").trim();
-    const currentMatch = message.match(/Current value:\s*(.*?)(?:\.\s*Alert threshold value:|$)/);
-    const thresholdMatch = message.match(/Alert threshold value:\s*(.*)$/);
-    return {
-      currentValue: currentMatch?.[1]?.trim() || "",
-      thresholdValue: thresholdMatch?.[1]?.trim() || "",
-    };
-  };
-  const formatAlertCondition = (condition: unknown) => {
-    switch (String(condition || "").toLowerCase()) {
-      case "above":
-        return "Above threshold";
-      case "equals":
-        return "Equals threshold";
-      case "below":
-        return "Below threshold";
-      default:
-        return "Not available";
-    }
-  };
-  const formatPlatformLabel = (value: unknown) => {
-    const raw = String(value || "").trim();
-    const normalized = raw.toLowerCase();
-    if (!normalized) return "Not available";
-    if (normalized === "campaign") return "Campaign";
-    if (normalized === "ga4" || normalized === "google_analytics") return "GA4";
-    if (normalized === "google_ads") return "Google Ads";
-    if (normalized === "google_sheets") return "Google Sheets";
-    if (normalized === "meta" || normalized === "facebook") return "Meta";
-    if (normalized === "custom-integration" || normalized === "custom_integration") return "Custom Integration";
-    return raw.split(/[_-]+/).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
-  };
-  const getAlertItemType = (metadata: any, title: string) => {
-    const itemType = String(metadata?.itemType || "").trim().toLowerCase();
-    if (itemType === "benchmark" || metadata?.benchmarkId || /Benchmark Alert:/i.test(title)) return "Benchmark";
-    if (itemType === "kpi" || metadata?.kpiId || /KPI Alert:/i.test(title)) return "KPI";
-    return null;
-  };
-  const getAlertDetail = (notification: Notification) => {
-    const metadata = parseNotificationMetadata(notification);
-    const itemType = getAlertItemType(metadata, notification.title) || "Alert";
-    const itemName = String(metadata?.itemName || notification.title.replace(/^.*?\b(?:KPI|Benchmark) Alert:\s*/i, "") || notification.title);
-    const values = extractPerformanceAlertValues(notification);
-    return {
-      metadata,
-      itemType,
-      itemName,
-      platformLabel: formatPlatformLabel(metadata?.platformLabel || metadata?.platformType),
-      actionUrl: metadata?.actionUrl ? String(metadata.actionUrl) : "",
-      actionLabel: `Open ${itemType}`,
-      currentValue: values.currentValue || String(metadata?.currentValue ?? ""),
-      thresholdValue: values.thresholdValue || String(metadata?.thresholdValue ?? ""),
-      conditionLabel: formatAlertCondition(metadata?.alertCondition),
-      statusLabel: "Active",
-      readStateLabel: notification.read ? "Read" : "Unread",
-    };
-  };
-  const openAlertDestination = (notification: Notification, actionUrl: string) => {
-    if (!actionUrl) {
-      toast({
-        title: "Error",
-        description: "Cannot navigate to alert - link not available",
-        variant: "destructive",
-      });
-      return;
-    }
-    setReadStateMutation.mutate({ notificationId: notification.id, read: true });
-    setLocation(actionUrl);
-  };
   const selectNotification = (notificationId: string) => {
     if (String(notificationId) === selectedNotificationId) return;
     suppressNextSelectedScrollRef.current = true;
     setLocation(`/notifications?selected=${encodeURIComponent(String(notificationId))}`);
-  };
-  const renderAlertDetail = (notification: Notification) => {
-    const metadata = parseNotificationMetadata(notification);
-    const isPerformanceAlertDetail = notification.type === "performance-alert" && Boolean(getAlertItemType(metadata, notification.title));
-    if (!isPerformanceAlertDetail) {
-      const body = formatNotificationMessage(notification);
-      return (
-        <CardContent className="space-y-4">
-          <div className="rounded-md border border-border/70 bg-muted/30 p-3 text-sm text-muted-foreground space-y-2">
-            <p>{body.lead}</p>
-            {body.threshold && <p>{body.threshold}</p>}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3 text-sm">
-            <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase">Alert ID</div>
-              <div className="text-foreground break-all">{String(notification.id)}</div>
-            </div>
-            {getClientNameForNotification(notification) && (
-              <div>
-                <div className="text-xs font-semibold text-muted-foreground uppercase">Client</div>
-                <div className="text-foreground">{getClientNameForNotification(notification)}</div>
-              </div>
-            )}
-            {notification.campaignName && (
-              <div>
-                <div className="text-xs font-semibold text-muted-foreground uppercase">Campaign</div>
-                <div className="text-foreground">{notification.campaignName}</div>
-              </div>
-            )}
-            <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase">Priority</div>
-              <div className="mt-1">{getPriorityBadge(notification.priority)}</div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase">Read state</div>
-              <div className="text-foreground">{notification.read ? "Read" : "Unread"}</div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase">Created</div>
-              <div className="text-foreground">{formatNotificationDate(String(notification.createdAt))}</div>
-            </div>
-          </div>
-        </CardContent>
-      );
-    }
-
-    const detail = getAlertDetail(notification);
-    const body = formatNotificationMessage(notification);
-    return (
-      <CardContent className="space-y-4">
-        <div className="rounded-md border border-border/70 bg-muted/30 p-3 text-sm text-muted-foreground space-y-2">
-          <p>{body.lead}</p>
-          {body.threshold && <p>{body.threshold}</p>}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3 text-sm">
-          <div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase">Alert ID</div>
-            <div className="text-foreground break-all">{String(notification.id)}</div>
-          </div>
-          {getClientNameForNotification(notification) && (
-            <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase">Client</div>
-              <div className="text-foreground">{getClientNameForNotification(notification)}</div>
-            </div>
-          )}
-          {notification.campaignName && (
-            <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase">Campaign</div>
-              <div className="text-foreground">{notification.campaignName}</div>
-            </div>
-          )}
-          <div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase">Platform / Source</div>
-            <div className="text-foreground">{detail.platformLabel}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase">{detail.itemType}</div>
-            <div className="text-foreground">{detail.itemName}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase">Current value</div>
-            <div className="text-foreground">{detail.currentValue || "Not available"}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase">Threshold value</div>
-            <div className="text-foreground">{detail.thresholdValue || "Not available"}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase">Condition</div>
-            <div className="text-foreground">{detail.conditionLabel}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase">Alert status</div>
-            <div className="text-foreground">{detail.statusLabel}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase">Read state</div>
-            <div className="text-foreground">{detail.readStateLabel}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase">Created</div>
-            <div className="text-foreground">{formatNotificationDate(String(notification.createdAt))}</div>
-          </div>
-        </div>
-        <div className="space-y-3 border-t border-border/70 pt-4">
-          <Button
-            className="w-full justify-center"
-            onClick={() => openAlertDestination(notification, detail.actionUrl)}
-            disabled={!detail.actionUrl}
-            data-testid={`button-open-selected-alert-${notification.id}`}
-          >
-            <ExternalLink className="w-4 h-4 mr-2" />
-            {detail.actionLabel}
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full justify-center"
-            onClick={() => openAlertDestination(notification, detail.actionUrl)}
-            disabled={!detail.actionUrl}
-            data-testid={`button-edit-selected-alert-settings-${notification.id}`}
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            Edit alert settings
-          </Button>
-          <div className="rounded-md border border-border/70 p-3">
-            <p className="text-xs text-muted-foreground mb-2">
-              Hides this notification from active views. It does not resolve the underlying KPI/Benchmark breach.
-            </p>
-            <Button
-              variant="outline"
-              className="w-full justify-center"
-              onClick={() => deleteNotificationMutation.mutate(notification.id)}
-              disabled={deleteNotificationMutation.isPending}
-              data-testid={`button-dismiss-selected-alert-${notification.id}`}
-            >
-              <X className="w-4 h-4 mr-2" />
-              Dismiss alert
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    );
   };
 
   return (
@@ -612,7 +370,7 @@ export default function Notifications() {
             </Card>
 
             {selectedNotificationMissing && (
-              <Card className="mb-6 border-amber-200 bg-amber-50/60">
+              <Card className="mb-6 border-amber-200 bg-amber-50/60" data-testid="selected-notification-missing-alert">
                 <CardContent className="py-5">
                   <div className="flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
@@ -647,18 +405,8 @@ export default function Notifications() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start" data-testid="notifications-triage-layout">
-                <section className="min-w-0" data-testid="notifications-active-alerts-list">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h2 className="text-lg font-semibold text-foreground">Active alerts</h2>
-                      <p className="text-sm text-muted-foreground">
-                        {filteredNotifications.length} alert{filteredNotifications.length === 1 ? "" : "s"} in the current view
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
+              <section className="min-w-0" data-testid="notifications-active-alerts-list">
+                <div className="space-y-3">
                   {paginatedNotifications.map((notification) => {
                     const isSelectedNotification = String(notification.id) === selectedNotificationId;
                     return (
@@ -962,54 +710,7 @@ export default function Notifications() {
                     </div>
                   </div>
                 )}
-                </section>
-
-                <aside className="xl:sticky xl:top-6" data-testid="selected-notification-detail-panel">
-                  {selectedNotification ? (
-                    <Card
-                      data-testid="selected-notification-detail"
-                      data-selected-notification-id={String(selectedNotification.id)}
-                    >
-                      <CardHeader>
-                        <div className="flex items-start gap-3">
-                          <div className="mt-1">
-                            {getTypeIcon(selectedNotification.type)}
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg">{selectedNotification.title}</CardTitle>
-                            <CardDescription>Active alert details</CardDescription>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      {renderAlertDetail(selectedNotification)}
-                    </Card>
-                  ) : selectedNotificationMissing ? (
-                    <Card data-testid="selected-notification-missing-detail">
-                      <CardContent className="py-10">
-                        <div className="text-center">
-                          <AlertCircle className="w-10 h-10 text-amber-600 mx-auto mb-3" />
-                          <h3 className="text-base font-semibold text-foreground">Selected alert is no longer active</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            This alert may have been dismissed, resolved, deleted, or is no longer available in your active notifications.
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <Card data-testid="selected-notification-empty-detail">
-                      <CardContent className="py-10">
-                        <div className="text-center">
-                          <AlertCircle className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
-                          <h3 className="text-base font-semibold text-foreground">Select an alert</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Choose an active alert from the list to review its context.
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </aside>
-              </div>
+              </section>
             )}
           </div>
         </main>

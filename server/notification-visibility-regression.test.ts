@@ -349,25 +349,27 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(notificationsPage).toContain("const selectedNotificationMissing = Boolean(selectedNotificationId && !isLoading && !selectedNotification);");
-    expect(notificationsPage).toContain('data-testid="selected-notification-missing-detail"');
+    expect(notificationsPage).toContain('data-testid="selected-notification-missing-alert"');
     expect(notificationsPage).toContain("Selected alert is no longer active");
     expect(notificationsPage).toContain("This alert may have been dismissed, resolved, deleted, or is no longer available in your active notifications.");
   });
 
-  it("renders Notifications as a two-pane triage layout with selected detail identity", () => {
+  it("renders Notifications as a full-width alert list without the selected-detail side panel", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
       "utf-8"
     );
 
-    expect(notificationsPage).toContain('data-testid="notifications-triage-layout"');
     expect(notificationsPage).toContain('data-testid="notifications-active-alerts-list"');
-    expect(notificationsPage).toContain("Active alerts");
-    expect(notificationsPage).toContain('data-testid="selected-notification-detail-panel"');
-    expect(notificationsPage).toContain('data-testid="selected-notification-detail"');
-    expect(notificationsPage).toContain("data-selected-notification-id={String(selectedNotification.id)}");
-    expect(notificationsPage).toContain('data-testid="selected-notification-empty-detail"');
-    expect(notificationsPage).toContain("Select an alert");
+    expect(notificationsPage).toContain('<section className="min-w-0" data-testid="notifications-active-alerts-list">');
+    expect(notificationsPage).not.toContain('data-testid="notifications-triage-layout"');
+    expect(notificationsPage).not.toContain("xl:grid-cols-[minmax(0,1fr)_380px]");
+    expect(notificationsPage).not.toContain("Active alerts");
+    expect(notificationsPage).not.toContain("alerts in the current view");
+    expect(notificationsPage).not.toContain('data-testid="selected-notification-detail-panel"');
+    expect(notificationsPage).not.toContain('data-testid="selected-notification-detail"');
+    expect(notificationsPage).not.toContain('data-testid="selected-notification-empty-detail"');
+    expect(notificationsPage).not.toContain("Select an alert");
   });
 
   it("keeps filtering local and preserves a clear empty active-alert state", () => {
@@ -425,56 +427,49 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain('alertCondition: row?.alertCondition || "below",');
   });
 
-  it("renders KPI and Benchmark selected-alert detail actions without implying dismissal resolves the breach", () => {
+  it("keeps KPI and Benchmark row actions without the removed selected-detail panel", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
       "utf-8"
     );
 
-    expect(notificationsPage).toContain("const renderAlertDetail = (notification: Notification) => {");
-    expect(notificationsPage).toContain('const isPerformanceAlertDetail = notification.type === "performance-alert" && Boolean(getAlertItemType(metadata, notification.title));');
-    expect(notificationsPage).toContain('const itemType = getAlertItemType(metadata, notification.title) || "Alert";');
-    expect(notificationsPage).toContain("actionLabel: `Open ${itemType}`,");
-    expect(notificationsPage).toContain("setLocation(actionUrl);");
-    expect(notificationsPage).toContain('data-testid={`button-open-selected-alert-${notification.id}`}');
-    expect(notificationsPage).toContain("Edit alert settings");
-    expect(notificationsPage).toContain("Hides this notification from active views. It does not resolve the underlying KPI/Benchmark breach.");
+    expect(notificationsPage).not.toContain("const renderAlertDetail = (notification: Notification) => {");
+    expect(notificationsPage).not.toContain('data-testid={`button-open-selected-alert-${notification.id}`}');
+    expect(notificationsPage).not.toContain("Edit alert settings");
+    expect(notificationsPage).toContain('data-testid={`button-view-alert-${notification.id}`}');
+    expect(notificationsPage).toContain('metadata?.benchmarkId ? "View Benchmark" : "View KPI"');
     expect(notificationsPage).toContain("deleteNotificationMutation.mutate(notification.id)");
   });
 
-  it("keeps active alert status separate from read state without exposing history rows", () => {
+  it("keeps read state filtering separate without exposing history rows", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
       "utf-8"
     );
 
-    expect(notificationsPage).toContain('statusLabel: "Active",');
-    expect(notificationsPage).toContain('readStateLabel: notification.read ? "Read" : "Unread",');
-    expect(notificationsPage).toContain("Alert status");
-    expect(notificationsPage).toContain("Read state");
     expect(notificationsPage).toContain('<Label htmlFor="read-filter">Read state</Label>');
     expect(notificationsPage).toContain("All Read States");
+    expect(notificationsPage).toContain('aria-label={notification.read ? "Mark as unread" : "Mark as read"}');
+    expect(notificationsPage).toContain('<TooltipContent>{notification.read ? "Mark as unread" : "Mark as read"}</TooltipContent>');
+    expect(notificationsPage).not.toContain('statusLabel: "Active",');
+    expect(notificationsPage).not.toContain("Alert status");
     expect(notificationsPage).not.toContain('statusLabel: notification.read ? "Active, read" : "Active, unread"');
     expect(notificationsPage).not.toContain('<Label htmlFor="read-filter">Status</Label>');
     expect(notificationsPage).not.toContain('value="history"');
   });
 
-  it("uses platform-neutral alert metadata and fails unknown item types closed to generic detail", () => {
+  it("keeps row actions metadata-driven after removing platform detail helpers", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
       "utf-8"
     );
 
-    expect(notificationsPage).toContain("const formatPlatformLabel = (value: unknown) => {");
-    expect(notificationsPage).toContain('if (normalized === "ga4" || normalized === "google_analytics") return "GA4";');
-    expect(notificationsPage).toContain('if (normalized === "google_ads") return "Google Ads";');
-    expect(notificationsPage).toContain('if (normalized === "custom-integration" || normalized === "custom_integration") return "Custom Integration";');
-    expect(notificationsPage).toContain('return raw.split(/[_-]+/).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");');
-    expect(notificationsPage).toContain("const getAlertItemType = (metadata: any, title: string) => {");
-    expect(notificationsPage).toContain('if (itemType === "benchmark" || metadata?.benchmarkId || /Benchmark Alert:/i.test(title)) return "Benchmark";');
-    expect(notificationsPage).toContain('if (itemType === "kpi" || metadata?.kpiId || /KPI Alert:/i.test(title)) return "KPI";');
-    expect(notificationsPage).toContain("return null;");
-    expect(notificationsPage).toContain("platformLabel: formatPlatformLabel(metadata?.platformLabel || metadata?.platformType),");
+    expect(notificationsPage).toContain("if (metadata?.kpiId || metadata?.benchmarkId) {");
+    expect(notificationsPage).toContain('const rawUrl = String(metadata?.actionUrl || "");');
+    expect(notificationsPage).toContain('metadata?.benchmarkId ? "View Benchmark" : "View KPI"');
+    expect(notificationsPage).not.toContain("const formatPlatformLabel = (value: unknown) => {");
+    expect(notificationsPage).not.toContain("const getAlertItemType = (metadata: any, title: string) => {");
+    expect(notificationsPage).not.toContain("platformLabel: formatPlatformLabel(metadata?.platformLabel || metadata?.platformType),");
     expect(notificationsPage).not.toContain('metadata?.itemType === "benchmark"');
   });
 

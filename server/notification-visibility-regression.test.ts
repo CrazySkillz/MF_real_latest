@@ -416,7 +416,7 @@ describe("notification visibility regression guard", () => {
     expect(actionEnd).toBeGreaterThan(actionStart);
     expect(actionSection).toContain("const baseUrl = rawUrl");
     expect(actionSection).toContain("new URL(rawUrl, window.location.origin)");
-    expect(actionSection).toContain("setLocation(`${baseUrl.pathname}${baseUrl.search}`);");
+    expect(actionSection).toContain("setLocation(`${baseUrl.pathname}${baseUrl.search}${baseUrl.hash}`);");
     expect(actionSection).not.toContain("linkedin-analytics");
   });
 
@@ -430,6 +430,7 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain('const notificationActionUrl = (row: any, itemType: "kpi" | "benchmark"): string => {');
     expect(routesFile).toContain('const tab = itemType === "benchmark" ? "benchmarks" : "kpis";');
     expect(routesFile).toContain('if (platform === "google_analytics") return `/campaigns/${campaignId}/ga4-metrics?tab=${tab}&highlight=${id}`;');
+    expect(routesFile).toContain('if (!platform || platform === "campaign") return `/campaigns/${campaignId}#${tab}`;');
     expect(routesFile).toContain('const itemLabel = itemType === "benchmark" ? "Benchmark" : "KPI";');
     expect(routesFile).toContain("itemName: row?.name,");
     expect(routesFile).toContain("platformLabel,");

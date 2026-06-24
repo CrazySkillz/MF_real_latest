@@ -471,7 +471,7 @@ export default function Notifications() {
                                           const isBenchmark = Boolean(metadata?.benchmarkId);
                                           baseUrl.searchParams.set("tab", isBenchmark ? "benchmarks" : "kpis");
                                           baseUrl.searchParams.set("highlight", String(isBenchmark ? metadata.benchmarkId : metadata.kpiId));
-                                          setLocation(`${baseUrl.pathname}${baseUrl.search}`);
+                                          setLocation(`${baseUrl.pathname}${baseUrl.search}${baseUrl.hash}`);
                                           return;
                                         } catch {
                                           // Fall through to existing non-URL-safe fallback below

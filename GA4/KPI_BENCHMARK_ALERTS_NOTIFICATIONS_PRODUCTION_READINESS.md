@@ -1187,13 +1187,16 @@ Root cause:
 
 - the top-bar bell indicator was tied to unread notification count, so a KPI/Benchmark alert could lose the badge after being marked read even when the KPI/Benchmark remained in breach
 - the badge rendered a number, which made the bell look like an unread-message counter instead of an active breach signal
+- the first dot-only render positioned the dot against the full bell button instead of the bell icon, making it appear too high and too large
+- the active Notifications-page bell icon still used the prior green state, but the simplified process now keeps the bell in its original color while disabling it on the current page
 - the header already receives the active visible notifications from `/api/notifications`, so the UI can derive a boolean active KPI/Benchmark breach indicator without changing alert evaluation or notification visibility rules
 
 Smallest safe fix:
 
 - keep the existing top-bar bell route to `/notifications`
 - derive `hasActiveKpiBenchmarkBreach` from visible `performance-alert` notifications whose metadata identifies a KPI or Benchmark
-- render a small red dot with no number when `hasActiveKpiBenchmarkBreach` is true
+- render a smaller red dot with no number at the bottom corner of the bell icon when `hasActiveKpiBenchmarkBreach` is true
+- keep the Notifications-page bell disabled but in its original icon color
 - keep the dot independent from read/unread state so it remains while any KPI/Benchmark breach remains active
 - keep the Notifications page unread row highlighting and read/unread controls unchanged
 
@@ -1216,18 +1219,19 @@ Validation completed:
 
 Not locally verifiable:
 
-- real browser confirmation that the bell shows a red dot with no number while a KPI/Benchmark remains breached, including after the alert is marked read
+- real browser confirmation that the bell shows a smaller red dot at the bell icon's bottom corner with no number while a KPI/Benchmark remains breached, including after the alert is marked read
+- real browser confirmation that the disabled Notifications-page bell keeps its original icon color
 
 ## Target UX Manual Validation Checklist
 
-This checklist validates the implemented triage journey after UX-2 through UX-9 and the direct bell/full-width list adjustments. The top-bar bell now opens `/notifications` from other pages, shows a red dot with no number while any KPI/Benchmark breach is active, appears green and disabled on the Notifications page, alert cards span the Notifications content width, selected alert rows use `/notifications?selected=:notificationId`, and legacy `/notifications?highlight=:notificationId` remains transition-compatible for old links.
+This checklist validates the implemented triage journey after UX-2 through UX-9 and the direct bell/full-width list adjustments. The top-bar bell now opens `/notifications` from other pages, shows a small red dot with no number at the bottom corner of the bell icon while any KPI/Benchmark breach is active, keeps its original color and is disabled on the Notifications page, alert cards span the Notifications content width, selected alert rows use `/notifications?selected=:notificationId`, and legacy `/notifications?highlight=:notificationId` remains transition-compatible for old links.
 
 Use a disposable GA4 campaign with known values.
 
 1. Create a GA4 KPI with alerts enabled and a breached threshold.
-2. Confirm the bell shows a red dot with no number and the Notifications page active view shows one KPI alert.
+2. Confirm the bell shows a small red dot with no number at the bottom corner of the bell icon and the Notifications page active view shows one KPI alert.
 3. Click the top-bar bell icon and confirm it opens the Notifications page directly without opening a dropdown.
-4. Confirm the bell icon is green and cannot be clicked while you are on the Notifications page.
+4. Confirm the bell icon keeps its original color and cannot be clicked while you are on the Notifications page.
 5. Confirm there is no right-side `Select an alert` panel.
 6. Confirm the `Active alerts` heading/current-view count is not shown above the cards.
 7. Confirm alert cards span the Notifications content width.
@@ -1250,10 +1254,10 @@ Pass criteria:
 - visible in-app state matches the underlying GA4 KPI/Benchmark breach state
 - no stale resolved alerts remain visible
 - no duplicate active alerts appear for the same GA4 KPI/Benchmark
-- top-bar bell indicator is a red dot without a number while any KPI/Benchmark breach is active
+- top-bar bell indicator is a small red dot at the bottom corner of the bell icon without a number while any KPI/Benchmark breach is active
 - marking an active alert read does not remove the bell red dot while the KPI/Benchmark still breaches
 - top-bar bell clicks open the Notifications page directly without an intermediate dropdown
-- top-bar bell is green and disabled when already on the Notifications page
+- top-bar bell keeps its original icon color and is disabled when already on the Notifications page
 - the Notifications page does not render the right-side `Select an alert` panel
 - the Notifications page does not render the `Active alerts` heading/current-view count above alert cards
 - alert cards span the Notifications content width

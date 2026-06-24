@@ -69,14 +69,16 @@ export default function Navigation() {
             title="Open Notifications"
             data-testid="button-notifications"
           >
-            <Bell className={`w-4 h-4 ${isNotificationsPage ? "text-green-600" : ""}`} />
-            {hasActiveKpiBenchmarkBreach && (
-              <span
-                className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background"
-                aria-hidden="true"
-                data-testid="notification-breach-indicator"
-              />
-            )}
+            <span className="relative inline-flex">
+              <Bell className="w-4 h-4" />
+              {hasActiveKpiBenchmarkBreach && (
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-red-500 ring-1 ring-background"
+                  aria-hidden="true"
+                  data-testid="notification-breach-indicator"
+                />
+              )}
+            </span>
           </Button>
 
           <UserButton afterSignOutUrl="/sign-in" />

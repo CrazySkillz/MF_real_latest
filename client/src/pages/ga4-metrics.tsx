@@ -1817,15 +1817,8 @@ export default function GA4Metrics() {
     },
   });
 
-  // Compute campaign start date for cumulative queries (no arbitrary date range limit)
-  const campaignStartDateISO = useMemo(() => {
-    const sd = (campaign as any)?.startDate || (campaign as any)?.createdAt;
-    if (!sd) return undefined;
-    try { return new Date(sd).toISOString().slice(0, 10); } catch { return undefined; }
-  }, [campaign]);
-
   const { data: ga4LandingPages } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", campaignStartDateISO, selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", dateRange, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: false,
@@ -1834,9 +1827,9 @@ export default function GA4Metrics() {
     queryFn: async () => {
       const params = new URLSearchParams({
         propertyId: String(selectedGA4PropertyId),
+        dateRange: String(dateRange),
         limit: '50',
       });
-      if (campaignStartDateISO) params.set('startDate', campaignStartDateISO);
       const resp = await fetch(
         `/api/campaigns/${campaignId}/ga4-landing-pages?${params.toString()}`
       );
@@ -1847,7 +1840,7 @@ export default function GA4Metrics() {
   });
 
   const { data: ga4ConversionEvents } = useQuery<any>({
-    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", campaignStartDateISO, selectedGA4PropertyId],
+    queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", dateRange, selectedGA4PropertyId],
     enabled: !!campaignId && !!ga4Connection?.connected && !!selectedGA4PropertyId,
     staleTime: 0,
     refetchOnWindowFocus: false,
@@ -1856,9 +1849,9 @@ export default function GA4Metrics() {
     queryFn: async () => {
       const params = new URLSearchParams({
         propertyId: String(selectedGA4PropertyId),
+        dateRange: String(dateRange),
         limit: '50',
       });
-      if (campaignStartDateISO) params.set('startDate', campaignStartDateISO);
       const resp = await fetch(
         `/api/campaigns/${campaignId}/ga4-conversion-events?${params.toString()}`
       );
@@ -5859,7 +5852,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Landing Pages</h3>
-                        <p className="text-sm text-muted-foreground/70">Cumulative for this GA4 property and this campaign&apos;s selected GA4 campaign scope</p>
+                        <p className="text-sm text-muted-foreground/70">For this GA4 property&apos;s selected date range and this campaign&apos;s selected GA4 campaign scope</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">
@@ -5930,7 +5923,7 @@ export default function GA4Metrics() {
                     <div>
                       <div className="mb-3">
                         <h3 className="text-base font-semibold text-foreground">Conversion Events</h3>
-                        <p className="text-sm text-muted-foreground/70">Cumulative for this GA4 property and this campaign&apos;s selected GA4 campaign scope</p>
+                        <p className="text-sm text-muted-foreground/70">For this GA4 property&apos;s selected date range and this campaign&apos;s selected GA4 campaign scope</p>
                       </div>
                       <Card>
                         <CardContent className="p-6">

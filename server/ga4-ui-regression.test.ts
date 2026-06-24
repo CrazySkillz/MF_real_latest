@@ -83,6 +83,29 @@ describe("GA4 UI regression guard", () => {
     expect(ga4ConnectionFlow).toContain("new URLSearchParams({ dateRange: `${lookbackDays}days`, limit: '200' })");
   });
 
+  it("uses the selected GA4 Overview date range for Landing Pages and Conversion Events", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const routes = readServer("routes-oauth.ts");
+    const landingStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-landing-pages"');
+    const conversionStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-conversion-events"', landingStart);
+    const breakdownStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-breakdown"', conversionStart);
+    const landingRoute = routes.slice(landingStart, conversionStart);
+    const conversionRoute = routes.slice(conversionStart, breakdownStart);
+
+    expect(landingStart).toBeGreaterThan(-1);
+    expect(conversionStart).toBeGreaterThan(landingStart);
+    expect(breakdownStart).toBeGreaterThan(conversionStart);
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-landing-pages", dateRange, selectedGA4PropertyId]');
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-conversion-events", dateRange, selectedGA4PropertyId]');
+    expect(ga4Metrics).toContain("dateRange: String(dateRange),");
+    expect(ga4Metrics).not.toContain("campaignStartDateISO");
+    expect(ga4Metrics).not.toContain("params.set('startDate'");
+    expect(landingRoute).toContain("const ga4DateRange = explicitStartDate || toGA4LookbackStartDate(dateRange, '90daysAgo');");
+    expect(conversionRoute).toContain("const ga4DateRange = explicitStartDate || toGA4LookbackStartDate(dateRange, '90daysAgo');");
+    expect(landingRoute).not.toContain("campaignStartDate");
+    expect(conversionRoute).not.toContain("campaignStartDate");
+  });
+
   it("keeps campaign-scoped GA4 mapping options limited to imported campaign values", () => {
     const routes = readServer("routes-oauth.ts");
     const routeStart = routes.indexOf('app.get("/api/campaigns/:id/ga4-campaign-values"');

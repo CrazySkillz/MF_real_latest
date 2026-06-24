@@ -597,6 +597,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return 30;
   };
 
+  const toGA4LookbackStartDate = (dr: string, fallback = "30daysAgo"): string => {
+    const v = String(dr || "").toLowerCase();
+    if (v === "7days") return "7daysAgo";
+    if (v === "30days") return "30daysAgo";
+    if (v === "60days") return "60daysAgo";
+    if (v === "90days") return "90daysAgo";
+    return fallback;
+  };
+
   const formatISODateUTC = (d: Date) => {
     const yyyy = d.getUTCFullYear();
     const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
@@ -10072,13 +10081,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use current campaign's ga4CampaignFilter only (not cross-client)
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
-      // Use campaign startDate for cumulative data (no arbitrary date range limit)
-      const startDateParam = req.query.startDate ? String(req.query.startDate) : null;
-      const campaignStartDate = startDateParam
-        || ((campaign as any)?.startDate ? new Date((campaign as any).startDate).toISOString().slice(0, 10) : null)
-        || ((campaign as any)?.createdAt ? new Date((campaign as any).createdAt).toISOString().slice(0, 10) : null)
-        || '2020-01-01';
-      const ga4DateRange = campaignStartDate;
+      const explicitStartDate = req.query.startDate ? String(req.query.startDate) : null;
+      const ga4DateRange = explicitStartDate || toGA4LookbackStartDate(dateRange, '90daysAgo');
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');
@@ -10172,13 +10176,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use current campaign's ga4CampaignFilter only (not cross-client)
       const campaignFilter = parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter);
 
-      // Use campaign startDate for cumulative data (no arbitrary date range limit)
-      const startDateParam = req.query.startDate ? String(req.query.startDate) : null;
-      const campaignStartDate = startDateParam
-        || ((campaign as any)?.startDate ? new Date((campaign as any).startDate).toISOString().slice(0, 10) : null)
-        || ((campaign as any)?.createdAt ? new Date((campaign as any).createdAt).toISOString().slice(0, 10) : null)
-        || '2020-01-01';
-      const ga4DateRange = campaignStartDate;
+      const explicitStartDate = req.query.startDate ? String(req.query.startDate) : null;
+      const ga4DateRange = explicitStartDate || toGA4LookbackStartDate(dateRange, '90daysAgo');
 
       if (shouldSimulate) {
         res.setHeader('Cache-Control', 'no-store');

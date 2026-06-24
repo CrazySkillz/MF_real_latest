@@ -1,6 +1,5 @@
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import type { Notification } from "@shared/schema";
@@ -10,7 +9,7 @@ export default function Navigation() {
   const [location, setLocation] = useLocation();
   const isNotificationsPage = location === "/notifications" || location.startsWith("/notifications?");
 
-  // Fetch notifications to get unread count
+  // Fetch visible notifications to show active KPI/Benchmark breach state.
   const { data: allNotifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     staleTime: 0,
@@ -20,7 +19,21 @@ export default function Navigation() {
   });
 
   const notifications = allNotifications;
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const hasActiveKpiBenchmarkBreach = notifications.some((notification) => {
+    if (notification.type !== "performance-alert") return false;
+
+    let metadata: any = notification.metadata;
+    if (typeof metadata === "string") {
+      try {
+        metadata = metadata ? JSON.parse(metadata) : {};
+      } catch {
+        metadata = {};
+      }
+    }
+
+    const itemType = String(metadata?.itemType || "").toLowerCase();
+    return itemType === "kpi" || itemType === "benchmark" || Boolean(metadata?.kpiId || metadata?.benchmarkId);
+  });
 
   return (
     <nav className="bg-card border-b border-border/40 px-6 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
@@ -52,17 +65,17 @@ export default function Navigation() {
             onClick={() => setLocation("/notifications")}
             disabled={isNotificationsPage}
             aria-current={isNotificationsPage ? "page" : undefined}
-            aria-label="Open Notifications"
+            aria-label={hasActiveKpiBenchmarkBreach ? "Open Notifications, active KPI or Benchmark breach" : "Open Notifications"}
             title="Open Notifications"
             data-testid="button-notifications"
           >
             <Bell className={`w-4 h-4 ${isNotificationsPage ? "text-green-600" : ""}`} />
-            {unreadCount > 0 && (
-              <Badge
-                className="absolute -top-1 -right-1 min-w-[20px] h-5 flex items-center justify-center p-0 px-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold"
-              >
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </Badge>
+            {hasActiveKpiBenchmarkBreach && (
+              <span
+                className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background"
+                aria-hidden="true"
+                data-testid="notification-breach-indicator"
+              />
             )}
           </Button>
 

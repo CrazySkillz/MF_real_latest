@@ -257,14 +257,14 @@ describe("notification visibility regression guard", () => {
     expect(navigationFile).toContain("disabled={isNotificationsPage}");
     expect(navigationFile).toContain('aria-current={isNotificationsPage ? "page" : undefined}');
     expect(navigationFile).toContain('className={`w-4 h-4 ${isNotificationsPage ? "text-green-600" : ""}`}');
-    expect(navigationFile).toContain('aria-label="Open Notifications"');
+    expect(navigationFile).toContain('aria-label={hasActiveKpiBenchmarkBreach ? "Open Notifications, active KPI or Benchmark breach" : "Open Notifications"}');
     expect(navigationFile).not.toContain("PopoverTrigger");
     expect(navigationFile).not.toContain("PopoverContent");
     expect(navigationFile).not.toContain("navigateFromBell");
     expect(navigationFile).not.toContain("/notifications?selected=");
   });
 
-  it("keeps the top bar unread count and Notifications page unread row highlighting", () => {
+  it("shows a dot-only top bar breach indicator while keeping Notifications unread row highlighting", () => {
     const navigationFile = readFileSync(
       join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),
       "utf-8"
@@ -275,9 +275,15 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(navigationFile).toContain('queryKey: ["/api/notifications"]');
-    expect(navigationFile).toContain("const unreadCount = notifications.filter(n => !n.read).length;");
-    expect(navigationFile).toContain("{unreadCount > 0 && (");
-    expect(navigationFile).toContain("{unreadCount > 99 ? '99+' : unreadCount}");
+    expect(navigationFile).toContain("const hasActiveKpiBenchmarkBreach = notifications.some((notification) => {");
+    expect(navigationFile).toContain('if (notification.type !== "performance-alert") return false;');
+    expect(navigationFile).toContain('const itemType = String(metadata?.itemType || "").toLowerCase();');
+    expect(navigationFile).toContain('return itemType === "kpi" || itemType === "benchmark" || Boolean(metadata?.kpiId || metadata?.benchmarkId);');
+    expect(navigationFile).toContain("{hasActiveKpiBenchmarkBreach && (");
+    expect(navigationFile).toContain('data-testid="notification-breach-indicator"');
+    expect(navigationFile).toContain('aria-hidden="true"');
+    expect(navigationFile).not.toContain("const unreadCount = notifications.filter(n => !n.read).length;");
+    expect(navigationFile).not.toContain("{unreadCount > 99 ? '99+' : unreadCount}");
     expect(notificationsPage).toContain('!notification.read ? "border-l-4 border-l-blue-500 bg-blue-50/30" : ""');
     expect(notificationsPage).toContain("{/* Unread state is shown via left blue border + subtle background */}");
   });

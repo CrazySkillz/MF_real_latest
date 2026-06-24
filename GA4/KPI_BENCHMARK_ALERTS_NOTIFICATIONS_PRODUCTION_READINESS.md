@@ -56,6 +56,7 @@ GA4 KPI and Benchmark alerts and notifications are production-ready only when al
 - GA4 KPI alert metadata action URLs open `/campaigns/:id/ga4-metrics?tab=kpis&highlight=:kpiId`
 - GA4 Benchmark alert metadata action URLs open `/campaigns/:id/ga4-metrics?tab=benchmarks&highlight=:benchmarkId`
 - completed triage bell behavior opens `/notifications` directly; selected row routes still use `/notifications?selected=:notificationId`, legacy `/notifications?highlight=:notificationId` remains transition-compatible, and KPI/Benchmark action URLs continue to use platform-card `highlight`
+- the top-bar bell shows a red dot only, with no number, while at least one active KPI/Benchmark breach notification is visible
 - the Notifications page `View KPI` / `View Benchmark` action preserves the metadata action URL and opens the correct GA4 tab/card
 - if the user is already on the same GA4 page, query-only action URL changes still switch to the correct tab/item by listening to the URL search string
 - successful GA4 and campaign-level KPI/Benchmark create, update, and delete mutations refresh `/api/notifications`
@@ -545,7 +546,7 @@ Current friction:
 
 Recommended product model:
 
-- Bell = quick alert entry point and unread/active alert signal
+- Bell = quick alert entry point and active KPI/Benchmark breach signal
 - Notifications page = alert triage center
 - KPI/Benchmark page = metric action context
 
@@ -563,6 +564,8 @@ The improved flow should behave as follows:
 - `/notifications?highlight=:notificationId` remains a legacy compatibility route during the transition and must not be removed until UX compatibility is regression-covered
 - KPI/Benchmark metadata action URLs keep using `highlight` for platform card highlighting, for example `/campaigns/:id/ga4-metrics?tab=kpis&highlight=:kpiId`
 - clicking the top-bar bell opens `/notifications` directly instead of opening a dropdown
+- the top-bar bell indicator is a red dot without numbers, derived from active KPI/Benchmark breach notifications rather than unread count
+- the red dot remains while any KPI/Benchmark remains in breach, even if the notification has been marked read
 - unread alert rows are highlighted in the Notifications list
 - clicking a Notifications row selects and highlights it through `/notifications?selected=:notificationId` for legacy selected-link compatibility
 - the Notifications page shows a full-width alert list without a persistent selected-detail side panel
@@ -1140,7 +1143,7 @@ Not locally verifiable:
 
 ### Post-UX-9 Full-Width Notifications List Adjustment
 
-Status: implemented locally.
+Status: implemented and pushed in commit `d014b80b`.
 
 Root cause:
 
@@ -1176,14 +1179,53 @@ Not locally verifiable:
 
 - real browser confirmation that the selected-detail panel and `Active alerts` heading/count are removed and alert cards span the Notifications content width
 
+### Post-UX-9 Dot-Only Active Breach Bell Indicator
+
+Status: implemented locally.
+
+Root cause:
+
+- the top-bar bell indicator was tied to unread notification count, so a KPI/Benchmark alert could lose the badge after being marked read even when the KPI/Benchmark remained in breach
+- the badge rendered a number, which made the bell look like an unread-message counter instead of an active breach signal
+- the header already receives the active visible notifications from `/api/notifications`, so the UI can derive a boolean active KPI/Benchmark breach indicator without changing alert evaluation or notification visibility rules
+
+Smallest safe fix:
+
+- keep the existing top-bar bell route to `/notifications`
+- derive `hasActiveKpiBenchmarkBreach` from visible `performance-alert` notifications whose metadata identifies a KPI or Benchmark
+- render a small red dot with no number when `hasActiveKpiBenchmarkBreach` is true
+- keep the dot independent from read/unread state so it remains while any KPI/Benchmark breach remains active
+- keep the Notifications page unread row highlighting and read/unread controls unchanged
+
+Not changed:
+
+- alert evaluation math
+- notification visibility rules
+- KPI/Benchmark calculations
+- email delivery behavior
+- API ownership/scoping rules
+- KPI/Benchmark metadata action URLs
+- Notifications page row actions and dismiss behavior
+
+Validation completed:
+
+- `npm test -- server/notification-visibility-regression.test.ts` passed: 1 file / 27 tests
+- `npm test -- server/notification-visibility-regression.test.ts server/benchmark-alert-lifecycle-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-evaluation.test.ts` passed: 4 files / 38 tests
+- `npm run check` passed
+- `npm run build` passed after rerun outside the sandbox; the first sandboxed attempt failed at Vite config loading with `spawn EPERM`
+
+Not locally verifiable:
+
+- real browser confirmation that the bell shows a red dot with no number while a KPI/Benchmark remains breached, including after the alert is marked read
+
 ## Target UX Manual Validation Checklist
 
-This checklist validates the implemented triage journey after UX-2 through UX-9 and the direct bell/full-width list adjustments. The top-bar bell now opens `/notifications` from other pages, appears green and disabled on the Notifications page, alert cards span the Notifications content width, selected alert rows use `/notifications?selected=:notificationId`, and legacy `/notifications?highlight=:notificationId` remains transition-compatible for old links.
+This checklist validates the implemented triage journey after UX-2 through UX-9 and the direct bell/full-width list adjustments. The top-bar bell now opens `/notifications` from other pages, shows a red dot with no number while any KPI/Benchmark breach is active, appears green and disabled on the Notifications page, alert cards span the Notifications content width, selected alert rows use `/notifications?selected=:notificationId`, and legacy `/notifications?highlight=:notificationId` remains transition-compatible for old links.
 
 Use a disposable GA4 campaign with known values.
 
 1. Create a GA4 KPI with alerts enabled and a breached threshold.
-2. Confirm the bell count updates and the Notifications page active view shows one KPI alert.
+2. Confirm the bell shows a red dot with no number and the Notifications page active view shows one KPI alert.
 3. Click the top-bar bell icon and confirm it opens the Notifications page directly without opening a dropdown.
 4. Confirm the bell icon is green and cannot be clicked while you are on the Notifications page.
 5. Confirm there is no right-side `Select an alert` panel.
@@ -1194,7 +1236,7 @@ Use a disposable GA4 campaign with known values.
 10. Update the KPI so it no longer breaches.
 11. Confirm the alert disappears from active bell and Notifications views.
 12. Re-breach the same KPI.
-13. Confirm exactly one active alert returns and can be selected from the Notifications list.
+13. Confirm exactly one active alert returns, the bell red dot returns with no number, and the alert can be selected from the Notifications list.
 14. Repeat the same flow for a GA4 Benchmark, using `View Benchmark` from the alert row.
 15. Confirm the alert form layout: `Send email notifications` appears on the left, `Alert Frequency` appears on the right, and `Alert Frequency` is disabled until email notifications are selected.
 16. Dismiss a still-breached KPI/Benchmark alert and confirm the UI explains that dismissal hides the notification from active views but does not analytically resolve the KPI/Benchmark breach.
@@ -1208,6 +1250,8 @@ Pass criteria:
 - visible in-app state matches the underlying GA4 KPI/Benchmark breach state
 - no stale resolved alerts remain visible
 - no duplicate active alerts appear for the same GA4 KPI/Benchmark
+- top-bar bell indicator is a red dot without a number while any KPI/Benchmark breach is active
+- marking an active alert read does not remove the bell red dot while the KPI/Benchmark still breaches
 - top-bar bell clicks open the Notifications page directly without an intermediate dropdown
 - top-bar bell is green and disabled when already on the Notifications page
 - the Notifications page does not render the right-side `Select an alert` panel

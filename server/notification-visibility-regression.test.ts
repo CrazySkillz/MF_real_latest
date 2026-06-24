@@ -458,7 +458,7 @@ describe("notification visibility regression guard", () => {
     expect(campaignDetail).toContain('window.scrollTo({ top, behavior: "smooth" });');
   });
 
-  it("keeps KPI and Benchmark row actions without the removed selected-detail panel", () => {
+  it("keeps KPI and Benchmark navigation without the removed selected-detail panel", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
       "utf-8"
@@ -469,19 +469,23 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).not.toContain("Edit alert settings");
     expect(notificationsPage).toContain('data-testid={`button-view-alert-${notification.id}`}');
     expect(notificationsPage).toContain('metadata?.benchmarkId ? "View Benchmark" : "View KPI"');
-    expect(notificationsPage).toContain("deleteNotificationMutation.mutate(notification.id)");
+    expect(notificationsPage).not.toContain('data-testid={`button-toggle-read-${notification.id}`}');
+    expect(notificationsPage).not.toContain('data-testid={`button-delete-${notification.id}`}');
+    expect(notificationsPage).not.toContain('aria-label="Dismiss notification"');
   });
 
-  it("keeps read state filtering separate without exposing history rows", () => {
+  it("removes the visible read state filter without exposing history rows", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
       "utf-8"
     );
 
-    expect(notificationsPage).toContain('<Label htmlFor="read-filter">Read state</Label>');
-    expect(notificationsPage).toContain("All Read States");
-    expect(notificationsPage).toContain('aria-label={notification.read ? "Mark as unread" : "Mark as read"}');
-    expect(notificationsPage).toContain('<TooltipContent>{notification.read ? "Mark as unread" : "Mark as read"}</TooltipContent>');
+    expect(notificationsPage).not.toContain('<Label htmlFor="read-filter">Read state</Label>');
+    expect(notificationsPage).not.toContain("All Read States");
+    expect(notificationsPage).not.toContain('data-testid="select-read-filter"');
+    expect(notificationsPage).toContain('className="grid grid-cols-1 md:grid-cols-3 gap-4"');
+    expect(notificationsPage).not.toContain('aria-label={notification.read ? "Mark as unread" : "Mark as read"}');
+    expect(notificationsPage).not.toContain('<TooltipContent>{notification.read ? "Mark as unread" : "Mark as read"}</TooltipContent>');
     expect(notificationsPage).not.toContain('statusLabel: "Active",');
     expect(notificationsPage).not.toContain("Alert status");
     expect(notificationsPage).not.toContain('statusLabel: notification.read ? "Active, read" : "Active, unread"');

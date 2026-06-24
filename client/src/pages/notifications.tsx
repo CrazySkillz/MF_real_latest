@@ -10,8 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Filter, Search, AlertCircle, CheckCircle, Info, XCircle, Check, X, Mail, MailOpen } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Bell, Filter, Search, AlertCircle, CheckCircle, Info, XCircle, Check } from "lucide-react";
 import { Campaign, Notification } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -290,7 +289,7 @@ export default function Notifications() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="priority-filter">Priority</Label>
                     <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -306,21 +305,6 @@ export default function Notifications() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="read-filter">Read state</Label>
-                    <Select value={readFilter} onValueChange={setReadFilter}>
-                      <SelectTrigger data-testid="select-read-filter">
-                        <SelectValue placeholder="All read states" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Read States</SelectItem>
-                        <SelectItem value="unread">Unread</SelectItem>
-                        <SelectItem value="read">Read</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
                   <div className="space-y-2">
                     <Label htmlFor="client-filter">Client</Label>
                     <Select value={clientFilter} onValueChange={setClientFilter}>
@@ -504,48 +488,6 @@ export default function Notifications() {
                             }
                             return null;
                           })()}
-                          
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setReadStateMutation.mutate({
-                                    notificationId: notification.id,
-                                    read: !notification.read,
-                                  })
-                                }}
-                                disabled={setReadStateMutation.isPending}
-                                aria-label={notification.read ? "Mark as unread" : "Mark as read"}
-                                data-testid={`button-toggle-read-${notification.id}`}
-                              >
-                                {notification.read ? (
-                                  <MailOpen className="w-4 h-4" />
-                                ) : (
-                                  <Mail className="w-4 h-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{notification.read ? "Mark as unread" : "Mark as read"}</TooltipContent>
-                          </Tooltip>
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteNotificationMutation.mutate(notification.id);
-                            }}
-                            disabled={deleteNotificationMutation.isPending}
-                            aria-label="Dismiss notification"
-                            title="Dismiss this alert"
-                            data-testid={`button-delete-${notification.id}`}
-                          >
-                            <X className="w-4 h-4 mr-2" />
-                            Dismiss
-                          </Button>
                         </div>
                       </div>
                     </CardContent>

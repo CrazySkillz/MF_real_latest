@@ -50,6 +50,6 @@ describe("GA4 reporting-day cutoff", () => {
 
     expect(page).toContain("const trendsReportingTimeZone = normalizeClientReportingTimeZone((ga4DailyResp as any)?.reportingTimeZone);");
     expect(page).toContain("const trendsDataThroughDate = String(ga4DailyDataThroughDate || ga4ReportDate || \"\").trim();");
-    expect(page).toContain("completed {trendsReportingTimeZone} GA4 daily rows");
+    expect(page).toContain("completed {trendsReportingTimeZoneLabel} GA4 daily rows");
   });
 });

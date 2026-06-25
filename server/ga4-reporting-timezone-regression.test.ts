@@ -20,13 +20,18 @@ describe("GA4 reporting timezone contract", () => {
     expect(timezoneUtil).toContain('export const DEFAULT_REPORTING_TIME_ZONE = "UTC";');
     expect(timezoneUtil).toContain("export function normalizeReportingTimeZone(value: any): string");
     expect(timezoneUtil).toContain("new Intl.DateTimeFormat(\"en-US\", { timeZone: tz }).format(new Date(0));");
-    expect(routes).toContain('import { getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";');
+    expect(routes).toContain('import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";');
     expect(routes).toContain("sanitizedData.reportingTimeZone = normalizeReportingTimeZone(sanitizedData.reportingTimeZone);");
     expect(routes).toContain('Object.prototype.hasOwnProperty.call(sanitizedData, "reportingTimeZone")');
     expect(routes).toContain("reportingTimeZone: normalizeReportingTimeZone(campaign?.reportingTimeZone),");
 
+    expect(campaigns).toContain('const DEFAULT_REPORTING_TIME_ZONE = "UTC";');
     expect(campaigns).toContain("const getBrowserReportingTimeZone = () =>");
-    expect(campaigns).toContain("Intl.DateTimeFormat().resolvedOptions().timeZone || \"UTC\"");
+    expect(campaigns).toContain("Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_REPORTING_TIME_ZONE");
+    expect(campaigns).toContain("reportingTimeZone: getBrowserReportingTimeZone(),");
     expect(campaigns).toContain("reportingTimeZone: data.reportingTimeZone || getBrowserReportingTimeZone(),");
+    expect(campaigns).toContain("reportingTimeZone: data.reportingTimeZone || DEFAULT_REPORTING_TIME_ZONE,");
+    expect(campaigns).toContain("reportingTimeZone: editingCampaign.reportingTimeZone || DEFAULT_REPORTING_TIME_ZONE,");
+    expect(campaigns).toContain('data-testid="input-edit-reporting-time-zone"');
   });
 });

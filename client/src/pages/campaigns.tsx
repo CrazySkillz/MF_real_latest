@@ -28,12 +28,48 @@ import { LinkedInConnectionFlow } from "@/components/LinkedInConnectionFlow";
 import { SimpleMetaAuth } from "@/components/SimpleMetaAuth";
 import { GoogleAdsConnectionFlow } from "@/components/GoogleAdsConnectionFlow";
 
+const DEFAULT_REPORTING_TIME_ZONE = "UTC";
+
+const isValidReportingTimeZone = (value: string) => {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date(0));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const getBrowserReportingTimeZone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_REPORTING_TIME_ZONE;
+  } catch {
+    return DEFAULT_REPORTING_TIME_ZONE;
+  }
+};
+
+const REPORTING_TIME_ZONE_OPTIONS = [
+  DEFAULT_REPORTING_TIME_ZONE,
+  "Europe/Amsterdam",
+  "Europe/London",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "Asia/Singapore",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+];
+
 const campaignFormSchema = insertCampaignSchema.extend({
   name: z.string().min(1, "Campaign name is required"),
   clientWebsite: z.string().optional(),
   label: z.string().optional(),
   budget: z.string().optional(),
   currency: z.string().optional(),
+  reportingTimeZone: z.string()
+    .trim()
+    .min(1, "Reporting timezone is required")
+    .refine(isValidReportingTimeZone, "Use a valid IANA timezone, e.g. Europe/Amsterdam"),
   startDate: z.union([z.string(), z.date(), z.null()]).transform((val) => {
     if (!val || val === null) return undefined;
     if (typeof val === 'string') {
@@ -66,14 +102,6 @@ const campaignFormSchema = insertCampaignSchema.extend({
 });
 
 type CampaignFormData = z.infer<typeof campaignFormSchema>;
-
-const getBrowserReportingTimeZone = () => {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  } catch {
-    return "UTC";
-  }
-};
 
 const platforms = [
   {
@@ -265,6 +293,7 @@ export default function Campaigns() {
       label: "",
       budget: "",
       industry: "",
+      reportingTimeZone: getBrowserReportingTimeZone(),
     },
   });
 
@@ -276,6 +305,7 @@ export default function Campaigns() {
       label: "",
       budget: "",
       industry: "",
+      reportingTimeZone: DEFAULT_REPORTING_TIME_ZONE,
     },
   });
 
@@ -339,6 +369,7 @@ export default function Campaigns() {
         budget: data.budget || null,
         currency: data.currency || "USD",
         conversionValue: data.conversionValue || null, // Added conversion value
+        reportingTimeZone: data.reportingTimeZone || DEFAULT_REPORTING_TIME_ZONE,
         startDate: data.startDate || null,
         endDate: data.endDate || null,
       });
@@ -683,6 +714,7 @@ export default function Campaigns() {
         budget: formattedBudget,
         currency: editingCampaign.currency || "USD",
         conversionValue: editingCampaign.conversionValue?.toString() || "",
+        reportingTimeZone: editingCampaign.reportingTimeZone || DEFAULT_REPORTING_TIME_ZONE,
         startDate: startDateValue,
         endDate: endDateValue,
       } as any);
@@ -767,7 +799,14 @@ export default function Campaigns() {
     setIsTikTokConnecting(false);
     setCustomIntegrationConnectingAction(null);
     setCustomIntegrationForwardingEmail("");
-    form.reset();
+    form.reset({
+      name: "",
+      clientWebsite: "",
+      label: "",
+      budget: "",
+      industry: "",
+      reportingTimeZone: getBrowserReportingTimeZone(),
+    } as any);
   };
 
   const handleCreateModalChange = (open: boolean) => {
@@ -2001,6 +2040,24 @@ export default function Campaigns() {
                 placeholder="e.g., Q1 2024, Brand Awareness"
                 data-testid="input-edit-label"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-reporting-time-zone">Reporting Timezone</Label>
+              <Input
+                id="edit-reporting-time-zone"
+                list="reporting-time-zone-options"
+                {...editForm.register("reportingTimeZone")}
+                placeholder="Europe/Amsterdam"
+                data-testid="input-edit-reporting-time-zone"
+              />
+              <datalist id="reporting-time-zone-options">
+                {REPORTING_TIME_ZONE_OPTIONS.map((tz) => (
+                  <option key={tz} value={tz} />
+                ))}
+              </datalist>
+              {editForm.formState.errors.reportingTimeZone && (
+                <p className="text-sm text-red-500">{editForm.formState.errors.reportingTimeZone.message}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-3">

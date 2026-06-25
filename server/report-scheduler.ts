@@ -9,6 +9,7 @@ import { DateTime } from "luxon";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { aggregateCampaignMetrics } from "./scheduler";
 import { computeBenchmarkThresholdResult } from "../shared/kpi-math";
+import { waitForMailgunDelivery } from "./utils/mailgun-delivery";
 
 /**
  * Report Scheduler - Automated Email Reports
@@ -77,36 +78,6 @@ async function getLatestReportEmailAudit(reportId: string, success: boolean): Pr
     error: String(row?.error || "").trim(),
     providerResponseId,
   };
-}
-
-async function waitForMailgunDelivery(providerResponseId: string): Promise<{ status: string; error?: string }> {
-  const domain = process.env.MAILGUN_DOMAIN;
-  const apiKey = process.env.MAILGUN_API_KEY;
-  if (!domain || !apiKey || !providerResponseId) return { status: "not_checked" };
-  const region = process.env.MAILGUN_REGION || "us";
-  const baseUrl = region === "eu" ? "https://api.eu.mailgun.net/v3" : "https://api.mailgun.net/v3";
-  const messageIds = Array.from(new Set([providerResponseId, providerResponseId.replace(/^<|>$/g, "")].filter(Boolean)));
-
-  for (let attempt = 0; attempt < 4; attempt++) {
-    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 2500));
-    for (const messageId of messageIds) {
-      const params = new URLSearchParams();
-      params.set("message-id", messageId);
-      params.set("limit", "10");
-      const response = await fetch(`${baseUrl}/${domain}/events?${params.toString()}`, {
-        headers: { Authorization: `Basic ${Buffer.from(`api:${apiKey}`).toString("base64")}` },
-      });
-      if (!response.ok) return { status: "not_checked", error: await response.text().catch(() => "") };
-      const data = await response.json().catch(() => ({}));
-      const items = Array.isArray((data as any)?.items) ? (data as any).items : [];
-      const delivered = items.find((item: any) => String(item?.event || "").toLowerCase() === "delivered");
-      if (delivered) return { status: "delivered" };
-      const failed = items.find((item: any) => ["failed", "rejected"].includes(String(item?.event || "").toLowerCase()));
-      if (failed) return { status: "failed", error: String(failed?.["delivery-status"]?.message || failed?.reason || failed?.event || "Mailgun delivery failed") };
-    }
-  }
-
-  return { status: "pending" };
 }
 
 function coercePdfBufferFromDoc(doc: any): Buffer | null {

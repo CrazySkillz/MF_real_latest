@@ -3,6 +3,7 @@ import { db } from "../db";
 import { campaigns, clients, emailAlertEvents } from "../../shared/schema.js";
 import { eq } from "drizzle-orm";
 import { buildAlertEmailAuditState } from "../utils/alert-email-audit";
+import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "../utils/mailgun-delivery";
 
 interface EmailAuditContext {
   kind: 'alert' | 'report' | 'test' | 'generic';
@@ -187,7 +188,11 @@ class EmailService {
         success: result.success,
         error: result.error,
         providerResponseId: result.id,
+        deliveryStatus: result.success ? "accepted" : undefined,
       });
+      if (result.success) {
+        void this.confirmMailgunAlertDelivery(options.auditContext, result.id);
+      }
       return result.success;
     }
 
@@ -459,6 +464,42 @@ class EmailService {
     return raw.map((item) => String(item || '').trim()).filter(Boolean);
   }
 
+  private async confirmMailgunAlertDelivery(ctx: EmailAuditContext | undefined, providerResponseId: string | undefined): Promise<void> {
+    const auditEventId = String(ctx?.auditEventId || "").trim();
+    const responseId = String(providerResponseId || "").trim();
+    if (ctx?.kind !== "alert" || !auditEventId || !responseId) return;
+
+    try {
+      const delivery = await waitForMailgunDelivery(responseId);
+      const deliveryStatus = mapMailgunDeliveryToAlertEmailStatus(delivery.status);
+      if (deliveryStatus === "accepted") return;
+
+      const now = new Date();
+      const updates: any = {
+        deliveryStatus,
+        providerResponseId: responseId,
+        metadata: JSON.stringify({
+          providerResponseId: responseId,
+          mailgunDeliveryStatus: delivery.status,
+          mailgunDeliveryError: delivery.error,
+        }),
+      };
+      if (deliveryStatus === "delivered") {
+        updates.deliveredAt = now;
+      }
+      if (deliveryStatus === "failed") {
+        updates.failedAt = now;
+        updates.error = delivery.error || "Mailgun delivery failed";
+      }
+
+      await db.update(emailAlertEvents)
+        .set(updates)
+        .where(eq(emailAlertEvents.id, auditEventId));
+    } catch (e: any) {
+      console.warn("[Email Service] Mailgun alert delivery confirmation failed:", e?.message || e);
+    }
+  }
+
   private async logEmailAuditEvent(args: {
     options: EmailOptions;
     provider: string;
@@ -466,6 +507,7 @@ class EmailService {
     success: boolean;
     error?: string;
     providerResponseId?: string;
+    deliveryStatus?: unknown;
   }): Promise<void> {
     try {
       if (!db) return;
@@ -476,7 +518,7 @@ class EmailService {
       });
       const auditState = buildAlertEmailAuditState({
         dedupeKey: ctx?.dedupeKey,
-        deliveryStatus: ctx?.deliveryStatus,
+        deliveryStatus: args.deliveryStatus ?? ctx?.deliveryStatus,
         providerResponseId: args.providerResponseId,
         attemptCount: ctx?.attemptCount,
         success: args.success,

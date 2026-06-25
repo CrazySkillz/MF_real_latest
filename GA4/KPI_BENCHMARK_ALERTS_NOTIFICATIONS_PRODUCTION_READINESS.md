@@ -512,6 +512,311 @@ Production-ready conclusion:
 - deployed database migration application must still be verified in the target environment
 - Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration must each pass this same lifecycle with source-specific evidence before their KPI/Benchmark alert and notification behavior can be marked production-ready
 
+## Alert Email Scheduler Production-Readiness Plan
+
+Status: planned; not implemented by this documentation update.
+
+Scope:
+
+- KPI and Benchmark alert emails for GA4 and campaign-level alert rows
+- reminder emails controlled by `Alert Frequency`
+- immediate email attempts after successful breached create/update
+- email audit, idempotency, retry, and deployed delivery evidence
+
+Out of scope for this plan:
+
+- in-app alert evaluation math
+- Notification page visibility rules
+- bell red-dot behavior
+- KPI/Benchmark current-value calculations
+- action URL routing and card highlighting
+- report email scheduling
+
+### 2026-06-25 Email Scheduler Root Cause Analysis
+
+The alert email scheduler is not production-ready for executive-critical delivery because the current implementation proves email attempt wiring, not end-to-end reliable delivery.
+
+Confirmed causes:
+
+- `EmailService.sendEmail()` returns `true` when Mailgun HTTP API or SMTP accepts the message, but alert emails do not confirm provider delivery or inbox receipt before treating the send as successful.
+- report test-send has Mailgun delivery polling through `waitForMailgunDelivery`, but alert emails do not use an equivalent provider delivery confirmation path.
+- `alertMonitoringService` maps `Immediate` to a one-hour throttle, `Daily` to 24 hours, and `Weekly` to 7 days, but the background email reminder check is currently called by the daily KPI scheduler path; this cannot reliably honor an hourly immediate-reminder cadence.
+- GA4 daily refresh and external auto-refresh paths run in-app KPI/Benchmark alert reconciliation, but they do not run the alert email reminder check after source-driven current values change.
+- immediate email hooks after create/update are fire-and-forget imports; the route can return after saving the KPI/Benchmark before the email attempt succeeds, fails, or writes a durable audit result.
+- dedupe depends on `lastAlertSent`, which is updated after a send attempt succeeds; overlapping scheduler runs or multiple server instances can pass the throttle check before either one updates the row.
+- `email_alert_events` records audit rows, but it does not currently provide an atomic send claim, frequency-window dedupe key, delivery status lifecycle, retry schedule, or dead-letter state for alert emails.
+- there is no bounded retry/backoff plan for provider failures, delivery failures, or transient network errors.
+- deployed provider delivery, provider delivery events, and actual inbox receipt remain unverified for alert emails.
+
+### Email Scheduler Implementation Rules
+
+Every commit in this plan must preserve:
+
+- existing alert threshold math
+- current-value resolution parity between in-app and email checks
+- one active in-app notification per unresolved GA4/campaign KPI or Benchmark breach
+- Notification visibility rules
+- KPI/Benchmark create, update, delete, and recompute behavior
+- existing ownership and campaign-scope checks
+- existing report email scheduler behavior unless a shared delivery helper is extracted without changing report semantics
+
+Do not report a delivered email unless provider delivery events or inbox receipt prove delivery. Provider/API acceptance may be reported only as `accepted`.
+
+### Commit EMAIL-0: Authoritative Alert Email Scheduler Plan
+
+Status: documentation-only plan.
+
+Fix scope:
+
+- record this RCA and implementation strategy
+- explicitly state that alert email scheduler delivery is not production-ready for executive-critical alerts yet
+- define commit boundaries, acceptance criteria, and validation evidence
+
+Validation:
+
+- documentation-only diff review
+- `git diff --check -- GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
+
+### Commit EMAIL-1: Delivery Audit State And Dedupe Contract
+
+Status: complete in commit `a508b4fc`.
+
+Fix scope:
+
+- extend the existing alert email audit path instead of adding a parallel email system
+- add the smallest schema/migration support needed for alert email lifecycle state, such as:
+  - deterministic `dedupeKey`
+  - `deliveryStatus`
+  - `providerResponseId`
+  - `attemptCount`
+  - `lastAttemptAt`
+  - `nextAttemptAt`
+  - `deliveredAt`
+  - `failedAt`
+- add a unique constraint or unique index on the alert email dedupe key
+- define delivery states at minimum as `pending`, `sending`, `accepted`, `pending_delivery`, `delivered`, `failed`, `retry_scheduled`, and `skipped`
+- keep existing `email_alert_events.success` backward compatible for current consumers, but do not use it as proof of delivery
+
+Required tests:
+
+- schema/migration guard proves the dedupe key and delivery status fields exist
+- helper tests prove delivery status values are normalized
+- helper tests prove existing audit inserts remain backward compatible
+
+Validation:
+
+- focused alert email tests
+- migration/schema regression test
+- `npm run check`
+
+### Commit EMAIL-2: Atomic Send Claim And Frequency-Window Idempotency
+
+Status: complete in commit `0ee82ec7`.
+
+Fix scope:
+
+- add a small internal helper that atomically claims an alert email send window before calling the provider
+- compute deterministic dedupe keys from item type, item id, alert frequency, and due window
+- use the database unique key to skip duplicate attempts from overlapping scheduler runs or multiple server instances
+- keep `lastAlertSent` as a compatibility mirror after an accepted or delivered send, not as the primary dedupe mechanism
+- keep skipped duplicate attempts observable as `skipped` audit rows or structured logs without sending email
+
+Required tests:
+
+- duplicate KPI send claims for the same frequency window produce one sendable claim and one skipped duplicate
+- duplicate Benchmark send claims for the same frequency window produce one sendable claim and one skipped duplicate
+- a new due window can be claimed after the previous window expires
+- `lastAlertSent` no longer acts as the only duplicate-send guard
+
+Validation:
+
+- focused unit tests for the claim helper
+- alert email regression tests
+- `npm run check`
+
+### Commit EMAIL-3: Cadence-Aligned Alert Email Reminder Scheduler
+
+Status: complete in commit `11450ddf`.
+
+Fix scope:
+
+- add or extend a scheduler so alert email reminder checks run often enough to honor all saved frequencies
+- default to a small interval such as 15 minutes, while dedupe still enforces:
+  - immediate: at most once per hour while still breaching
+  - daily: at most once per day while still breaching
+  - weekly: at most once per week while still breaching
+- start the scheduler from the existing server startup scheduler block
+- add an in-process overlap guard so one long run does not overlap the next run in the same process
+- keep production `/api/alerts/check` disabled unless a separate protected/admin trigger is explicitly implemented later
+- run the email reminder check after source-refresh paths that update current values, or make the dedicated reminder scheduler frequent enough that source refresh does not need to send synchronously
+
+Required tests:
+
+- server startup imports and starts the alert email scheduler
+- scheduler interval is configurable and has a safe default
+- scheduler uses an overlap guard
+- immediate frequency is not limited to the daily KPI scheduler cadence
+- GA4/source refresh paths do not become responsible for synchronous email delivery unless explicitly designed
+
+Validation:
+
+- focused scheduler source tests
+- alert email regression tests
+- `npm run check`
+
+### Commit EMAIL-4: Durable Immediate Email Attempts After Create And Update
+
+Status: complete in commit `986048b7`.
+
+Fix scope:
+
+- replace fire-and-forget immediate email hooks with a durable, observable path
+- after a KPI/Benchmark save/update succeeds and the row is still breaching, create or claim the alert email attempt before the route returns
+- do not fail the KPI/Benchmark save solely because email delivery fails, but persist the email attempt state so failure is visible and retryable
+- preserve existing API response shape unless a response extension is explicitly proven backward compatible
+- keep immediate send eligibility tied to email notifications, recipients, alert threshold, resolved current value, campaign existence, and breach state
+
+Required tests:
+
+- GA4 KPI create/update records an immediate email attempt when email alerts are enabled and breached
+- GA4 Benchmark create/update records an immediate email attempt when email alerts are enabled and breached
+- invalid values, missing campaign, no recipients, disabled email notifications, or non-breach create no sendable attempt
+- route source no longer uses fire-and-forget `.then(...)` for the critical immediate alert email path
+
+Validation:
+
+- route/source regression tests
+- alert email regression tests
+- `npm run check`
+
+### Commit EMAIL-5: Provider Delivery Confirmation Semantics
+
+Status: complete in commit `23a5e799`.
+
+Fix scope:
+
+- reuse or extract the existing Mailgun delivery polling logic used by report test-send without changing report scheduler behavior
+- for Mailgun HTTP API alert emails, update delivery status from accepted to delivered, failed, or pending_delivery based on provider events
+- for SMTP or providers without delivery events, record `accepted` only and do not claim delivery
+- add a production-readiness rule that executive-critical alert email delivery requires a provider path with delivery events or deployed inbox evidence
+- store provider response IDs in first-class audit state so delivery events can be correlated
+
+Required tests:
+
+- Mailgun API acceptance records `accepted` or `pending_delivery`, not `delivered`
+- confirmed Mailgun delivery updates status to `delivered`
+- Mailgun failure updates status to `failed`
+- SMTP success remains `accepted`, not `delivered`
+- alert email user-facing/status copy does not say delivered without delivery evidence
+
+Validation:
+
+- focused provider-status tests with mocked provider responses
+- alert email regression tests
+- `npm run check`
+
+### Commit EMAIL-6: Retry, Backoff, And Resolved-Breach Suppression
+
+Status: complete in commit `a65c0b90`.
+
+Fix scope:
+
+- add bounded retry/backoff for provider send failures and confirmed delivery failures
+- retry only while the linked KPI/Benchmark still exists, belongs to the same campaign, email notifications remain enabled, recipients still exist, and the resolved current value still breaches the threshold
+- do not retry after a KPI/Benchmark breach clears, alerts are disabled, threshold is removed, item is deleted, campaign is deleted, or client is deleted
+- cap retry attempts and mark the audit row as failed/dead-lettered when retries are exhausted
+- keep retry attempts within the same dedupe window so retries do not become duplicate executive emails
+
+Required tests:
+
+- failed send schedules retry with `nextAttemptAt`
+- retry skips when the KPI no longer breaches
+- retry skips when the Benchmark no longer breaches
+- retry skips when email notifications are disabled or recipients are removed
+- exhausted retries produce a final failed status without sending duplicates
+
+Validation:
+
+- focused retry tests
+- notification visibility regression tests for resolved/deleted rows
+- `npm run check`
+
+### Commit EMAIL-7: Deployed Evidence And Documentation Closure
+
+Status: complete for local evidence and documentation closure on 2026-06-25; deployed provider/inbox evidence remains pending and is not locally verifiable.
+
+Fix scope:
+
+- run final focused local regression suite
+- run TypeScript and production build checks
+- update this document with exact evidence by category
+- record deployed validation evidence for at least one GA4 KPI alert and one GA4 Benchmark alert
+- record provider acceptance separately from confirmed delivery and inbox receipt
+- document any provider that remains acceptance-only as not delivery-confirmed
+
+Root cause fixed:
+
+- After EMAIL-1 through EMAIL-6, alert email code paths had local regression coverage for audit state, idempotency, scheduler cadence, durable immediate attempts, provider delivery semantics, and retry suppression, but the readiness tracker still left EMAIL-7 as planned.
+- Without a final evidence closure section, local code readiness could be confused with deployed email delivery readiness.
+- Provider/API acceptance is locally testable; confirmed delivery and inbox receipt are not proven by local code and must remain separate deployed evidence.
+
+Smallest safe fix:
+
+- change no runtime alert, KPI, Benchmark, notification, API, scheduler, or report email behavior
+- rerun the focused EMAIL-1 through EMAIL-6 regression suite plus the required alert evaluation/current-value/visibility checks
+- rerun TypeScript and production build checks
+- record local evidence and deployed-evidence gaps in this tracker without claiming provider or inbox delivery
+
+Files changed:
+
+- `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
+
+Regression test note:
+
+- no new regression test file was added in EMAIL-7 because there is no runtime behavior change
+- the focused regression tests added or updated by EMAIL-1 through EMAIL-6 were rerun as the EMAIL-7 evidence gate
+
+Required local validation:
+
+- `npm test -- server/alert-email-regression.test.ts server/alert-evaluation.test.ts server/campaign-alert-current-value-regression.test.ts server/notification-visibility-regression.test.ts`
+- new alert email scheduler/idempotency/delivery/retry focused tests added by EMAIL-1 through EMAIL-6
+- `npm run check`
+- `npm run build`
+- `git diff --check`
+
+Local validation completed on 2026-06-25:
+
+- `npm test -- server/alert-email-regression.test.ts server/alert-evaluation.test.ts server/campaign-alert-current-value-regression.test.ts server/notification-visibility-regression.test.ts server/alert-email-audit-regression.test.ts server/alert-email-idempotency-regression.test.ts server/alert-email-scheduler-regression.test.ts server/alert-email-immediate-route-regression.test.ts server/alert-email-delivery-regression.test.ts server/alert-email-retry-regression.test.ts` passed: 10 files, 74 tests
+- `npm run check` passed
+- `npm run build` passed after rerunning with sandbox escalation for the Vite/esbuild child process; the initial unprivileged build failed before build execution with `spawn EPERM`
+- `git diff --check -- GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md` passed for the EMAIL-7 documentation file
+- `git diff --check` passed for the current worktree, with line-ending normalization warnings only
+
+Required deployed validation:
+
+- create or update a breached GA4 KPI with email notifications enabled and a safe recipient
+- confirm one immediate email attempt is recorded
+- confirm provider acceptance is recorded
+- confirm delivery status is recorded as delivered only when provider events or inbox receipt prove delivery
+- confirm no duplicate email is sent when the scheduler runs twice in the same frequency window
+- confirm a still-breached immediate-frequency alert can send again only after the hourly window is due
+- confirm a cleared breach suppresses future retry/reminder sends
+- repeat the same evidence path for a GA4 Benchmark
+
+Deployed validation evidence:
+
+- not locally verifiable in this workspace
+- no provider delivery event evidence was recorded by this local run
+- no inbox receipt evidence was recorded by this local run
+- do not claim real alert email delivery until provider delivery events or inbox receipt are recorded in the target environment
+
+Production-ready conclusion after EMAIL-7:
+
+- alert email attempt wiring is locally code-ready by the focused tests above
+- alert email scheduling is locally code-ready by the cadence, idempotency, and retry tests above
+- alert email delivery is not delivery-confirmed by this local run
+- alert email delivery is production-ready only for the provider and environment where provider delivery events or inbox receipt have been recorded
+
 ## Cross-Platform Template Rules
 
 After GA4 passes this matrix, other connected-platform KPI/Benchmark alert implementations must copy the same rules:

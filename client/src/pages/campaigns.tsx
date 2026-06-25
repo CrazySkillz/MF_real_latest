@@ -1175,6 +1175,25 @@ export default function Campaigns() {
                         )}
                       </div>
 
+                      <div className="space-y-2">
+                        <Label htmlFor="reporting-time-zone">Reporting Timezone</Label>
+                        <Select
+                          value={form.watch("reportingTimeZone") || DEFAULT_REPORTING_TIME_ZONE}
+                          onValueChange={(value) => form.setValue("reportingTimeZone", value, { shouldDirty: true, shouldValidate: true })}
+                        >
+                          <SelectTrigger id="reporting-time-zone" data-testid="select-create-reporting-time-zone">
+                            <SelectValue placeholder="Europe/Amsterdam" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {REPORTING_TIME_ZONE_OPTIONS.map((tz) => (
+                              <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {form.formState.errors.reportingTimeZone && (
+                          <p className="text-sm text-destructive">{form.formState.errors.reportingTimeZone.message}</p>
+                        )}
+                      </div>
                       <div className="grid grid-cols-3 gap-3">
                         <div className="col-span-2 space-y-2">
                           <Label htmlFor="budget">Budget (optional)</Label>

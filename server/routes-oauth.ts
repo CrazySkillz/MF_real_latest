@@ -5087,7 +5087,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   const notificationPlatformLabel = (platformType?: string | null): string => {
     const p = String(platformType || '').trim().toLowerCase();
-    if (!p || p === 'campaign') return 'Campaign';
+    if (!p || p === 'campaign') return 'Campaign-level';
     if (p === 'google_analytics') return 'GA4';
     if (p === 'google_ads') return 'Google Ads';
     if (p === 'google_sheets') return 'Google Sheets';

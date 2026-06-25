@@ -414,7 +414,13 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(notificationsPage).toContain("const filteredNotifications = notifications.filter(notification => {");
-    expect(notificationsPage).toContain("return matchesSearch && matchesPriority && matchesClient && matchesDate;");
+    expect(notificationsPage).toContain('const [campaignFilter, setCampaignFilter] = useState("all");');
+    expect(notificationsPage).toContain('const matchesCampaign = campaignFilter === "all" || String(notification.campaignId || "") === campaignFilter;');
+    expect(notificationsPage).toContain("return matchesSearch && matchesPriority && matchesClient && matchesCampaign && matchesDate;");
+    expect(notificationsPage).toContain("const uniqueCampaignOptions = Array.from(");
+    expect(notificationsPage).toContain('<Label htmlFor="campaign-filter">Campaign</Label>');
+    expect(notificationsPage).toContain('data-testid="select-campaign-filter"');
+    expect(notificationsPage).toContain("All Campaigns");
     expect(notificationsPage).not.toContain("const matchesRead =");
     expect(notificationsPage).toContain("const paginatedNotifications = filteredNotifications.slice(startIndex, endIndex);");
     expect(notificationsPage).toContain("No active alerts found");
@@ -481,6 +487,22 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain('alertCondition: row?.alertCondition || "below",');
   });
 
+  it("labels campaign-level and GA4 alert notifications distinctly", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+    const labelStart = routesFile.indexOf("const notificationPlatformLabel =");
+    const labelEnd = routesFile.indexOf("const notificationMetadata =", labelStart);
+    const labelSection = routesFile.slice(labelStart, labelEnd);
+
+    expect(labelStart).toBeGreaterThan(-1);
+    expect(labelEnd).toBeGreaterThan(labelStart);
+    expect(labelSection).toContain("if (!p || p === 'campaign') return 'Campaign-level';");
+    expect(labelSection).toContain("if (p === 'google_analytics') return 'GA4';");
+    expect(routesFile).toContain('title: `${platformLabel} ${itemLabel} Alert: ${row?.name}`');
+  });
+
   it("renders KPI and Benchmark alert values and created date on notification cards", () => {
     const notificationsPage = readFileSync(
       join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
@@ -539,7 +561,7 @@ describe("notification visibility regression guard", () => {
     expect(notificationsPage).not.toContain('<Label htmlFor="read-filter">Read state</Label>');
     expect(notificationsPage).not.toContain("All Read States");
     expect(notificationsPage).not.toContain('data-testid="select-read-filter"');
-    expect(notificationsPage).toContain('className="grid grid-cols-1 md:grid-cols-3 gap-4"');
+    expect(notificationsPage).toContain('className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4"');
     expect(notificationsPage).not.toContain("readFilter");
     expect(notificationsPage).not.toContain("setReadFilter");
     expect(notificationsPage).not.toContain("matchesRead");

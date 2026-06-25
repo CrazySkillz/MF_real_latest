@@ -21,6 +21,7 @@ export default function Notifications() {
   const [searchTerm, setSearchTerm] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [clientFilter, setClientFilter] = useState("all");
+  const [campaignFilter, setCampaignFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -81,6 +82,7 @@ export default function Notifications() {
     const matchesPriority = priorityFilter === "all" || notification.priority === priorityFilter;
     const campaignClientId = campaigns.find(c => c.id === notification.campaignId)?.clientId || null;
     const matchesClient = clientFilter === "all" || campaignClientId === clientFilter;
+    const matchesCampaign = campaignFilter === "all" || String(notification.campaignId || "") === campaignFilter;
 
     let matchesDate = true;
     if (dateFilter !== "all") {
@@ -105,7 +107,7 @@ export default function Notifications() {
       }
     }
 
-    return matchesSearch && matchesPriority && matchesClient && matchesDate;
+    return matchesSearch && matchesPriority && matchesClient && matchesCampaign && matchesDate;
   });
   const selectedFilteredIndex = selectedNotificationId
     ? filteredNotifications.findIndex((notification) => String(notification.id) === selectedNotificationId)
@@ -119,6 +121,18 @@ export default function Notifications() {
         .filter(Boolean)
     )
   );
+  const uniqueCampaignOptions = Array.from(
+    new Map(
+      notifications
+        .map((notification) => {
+          const campaignId = String(notification.campaignId || "").trim();
+          if (!campaignId) return null;
+          const campaignName = campaigns.find(c => String(c.id) === campaignId)?.name || notification.campaignName || campaignId;
+          return [campaignId, campaignName] as const;
+        })
+        .filter((entry): entry is readonly [string, string] => Boolean(entry))
+    )
+  ).map(([id, name]) => ({ id, name }));
 
   // Pagination
   const totalPages = Math.ceil(filteredNotifications.length / itemsPerPage);
@@ -140,6 +154,7 @@ export default function Notifications() {
       setSearchTerm("");
       setPriorityFilter("all");
       setClientFilter("all");
+      setCampaignFilter("all");
       setDateFilter("all");
     }
 
@@ -168,7 +183,7 @@ export default function Notifications() {
   useEffect(() => {
     if (selectedNotificationId) return;
     setCurrentPage(1);
-  }, [searchTerm, priorityFilter, clientFilter, dateFilter, selectedNotificationId]);
+  }, [searchTerm, priorityFilter, clientFilter, campaignFilter, dateFilter, selectedNotificationId]);
 
   // Adjust current page if it's now out of bounds (after deletion)
   useEffect(() => {
@@ -270,7 +285,7 @@ export default function Notifications() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="priority-filter">Priority</Label>
                     <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -297,6 +312,23 @@ export default function Notifications() {
                         {uniqueClientIds.map((clientId) => (
                           <SelectItem key={clientId} value={clientId || ""}>
                             {clients.find(c => c.id === clientId)?.name || clientId}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="campaign-filter">Campaign</Label>
+                    <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+                      <SelectTrigger data-testid="select-campaign-filter">
+                        <SelectValue placeholder="All campaigns" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Campaigns</SelectItem>
+                        {uniqueCampaignOptions.map((campaign) => (
+                          <SelectItem key={campaign.id} value={campaign.id}>
+                            {campaign.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

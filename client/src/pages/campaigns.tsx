@@ -1997,20 +1997,20 @@ export default function Campaigns() {
 
       {/* Edit Campaign Dialog */}
       <Dialog open={!!editingCampaign} onOpenChange={() => setEditingCampaign(null)}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Edit className="w-5 h-5 text-blue-500" />
-              Edit Campaign
-            </DialogTitle>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="pb-4 shrink-0">
+            <DialogTitle>Edit Campaign</DialogTitle>
             <DialogDescription>
               Update the campaign details below.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={editForm.handleSubmit(handleEditSubmit)} className="space-y-4">
+            <input type="hidden" {...editForm.register("conversionValue")} />
+            <input type="hidden" {...editForm.register("startDate")} />
+            <input type="hidden" {...editForm.register("endDate")} />
             <div className="space-y-2">
-              <Label htmlFor="edit-name">Campaign Name</Label>
+              <Label htmlFor="edit-name">Campaign Name *</Label>
               <Input
                 id="edit-name"
                 {...editForm.register("name")}
@@ -2023,7 +2023,7 @@ export default function Campaigns() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-website">Client Website</Label>
+              <Label htmlFor="edit-website">Client's Website (optional)</Label>
               <Input
                 id="edit-website"
                 {...editForm.register("clientWebsite")}
@@ -2033,28 +2033,29 @@ export default function Campaigns() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-label">Label/Tag</Label>
+              <Label htmlFor="edit-label">Label (optional)</Label>
               <Input
                 id="edit-label"
                 {...editForm.register("label")}
-                placeholder="e.g., Q1 2024, Brand Awareness"
+                placeholder="Add a label or tag"
                 data-testid="input-edit-label"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-reporting-time-zone">Reporting Timezone</Label>
-              <Input
-                id="edit-reporting-time-zone"
-                list="reporting-time-zone-options"
-                {...editForm.register("reportingTimeZone")}
-                placeholder="Europe/Amsterdam"
-                data-testid="input-edit-reporting-time-zone"
-              />
-              <datalist id="reporting-time-zone-options">
-                {REPORTING_TIME_ZONE_OPTIONS.map((tz) => (
-                  <option key={tz} value={tz} />
-                ))}
-              </datalist>
+              <Select
+                value={editForm.watch("reportingTimeZone") || DEFAULT_REPORTING_TIME_ZONE}
+                onValueChange={(value) => editForm.setValue("reportingTimeZone", value, { shouldDirty: true, shouldValidate: true })}
+              >
+                <SelectTrigger id="edit-reporting-time-zone" data-testid="select-edit-reporting-time-zone">
+                  <SelectValue placeholder="Europe/Amsterdam" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REPORTING_TIME_ZONE_OPTIONS.map((tz) => (
+                    <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {editForm.formState.errors.reportingTimeZone && (
                 <p className="text-sm text-red-500">{editForm.formState.errors.reportingTimeZone.message}</p>
               )}
@@ -2062,7 +2063,7 @@ export default function Campaigns() {
 
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2 space-y-2">
-                <Label htmlFor="edit-budget">Budget</Label>
+                <Label htmlFor="edit-budget">Budget (optional)</Label>
                 {(() => {
                   const budgetRegister = editForm.register("budget");
                   return (
@@ -2106,6 +2107,9 @@ export default function Campaigns() {
                     />
                   );
                 })()}
+                <p className="text-xs text-muted-foreground/70">
+                  Add your total campaign budget to enable spend tracking and pacing alerts in Insights.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-currency">Currency</Label>
@@ -2137,134 +2141,11 @@ export default function Campaigns() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="edit-conversionValue">Conversion Value (optional)</Label>
-                {(() => {
-                  const connectedPlatforms = editDialogPlatformsData?.statuses?.filter(p => p.connected) || [];
-                  const hasMultiplePlatforms = connectedPlatforms.length > 1;
-
-                  // If multiple platforms, disable the field and show message
-                  if (hasMultiplePlatforms) {
-                    return (
-                      <div className="space-y-2">
-                        <Input
-                          id="edit-conversionValue"
-                          disabled
-                          placeholder="Multiple platforms - see status above"
-                          className="bg-muted"
-                          data-testid="input-edit-conversion-value"
-                        />
-                        <p className="text-xs text-muted-foreground/70">
-                          This field is disabled when multiple platforms are connected. Each platform has its own conversion value.
-                        </p>
-                      </div>
-                    );
-                  }
-
-                  const conversionValueRegister = editForm.register("conversionValue");
-                  return (
-                    <Input
-                      id="edit-conversionValue"
-                      {...conversionValueRegister}
-                      onChange={(e) => {
-                        conversionValueRegister.onChange(e);
-                        const value = e.target.value.replace(/[^0-9.]/g, '');
-                        const parts = value.split('.');
-
-                        if (parts[1]?.length > 2) {
-                          const formatted = `${parts[0]}.${parts[1].slice(0, 2)}`;
-                          editForm.setValue("conversionValue", formatted);
-                          e.target.value = formatted;
-                        } else {
-                          editForm.setValue("conversionValue", value);
-                        }
-                      }}
-                      onBlur={(e) => {
-                        conversionValueRegister.onBlur(e);
-                        const value = e.target.value.replace(/[^0-9.]/g, '');
-                        if (value) {
-                          const parts = value.split('.');
-                          const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                          const formatted = parts[1] !== undefined
-                            ? `${integerPart}.${parts[1].padEnd(2, '0').slice(0, 2)}`
-                            : `${integerPart}.00`;
-                          editForm.setValue("conversionValue", value);
-                          e.target.value = formatted;
-                        }
-                      }}
-                      onFocus={(e: FocusEvent<HTMLInputElement>) => {
-                        const value = e.target.value.replace(/,/g, '');
-                        e.target.value = value;
-                      }}
-                      placeholder="0.00"
-                      type="text"
-                      inputMode="decimal"
-                      min="0"
-                      data-testid="input-edit-conversion-value"
-                    />
-                  );
-                })()}
-                <p className="text-xs text-muted-foreground/70">
-                  Average revenue per conversion for ROI calculations
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-conversionCurrency">Currency</Label>
-                <Select
-                  value={editForm.watch("currency") || "USD"}
-                  onValueChange={(value) => editForm.setValue("currency", value)}
-                >
-                  <SelectTrigger id="edit-conversionCurrency" data-testid="select-edit-conversion-currency">
-                    <SelectValue placeholder="USD" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USD">USD - US Dollar</SelectItem>
-                    <SelectItem value="EUR">EUR - Euro</SelectItem>
-                    <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                    <SelectItem value="JPY">JPY - Japanese Yen</SelectItem>
-                    <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
-                    <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
-                    <SelectItem value="INR">INR - Indian Rupee</SelectItem>
-                    <SelectItem value="CNY">CNY - Chinese Yuan</SelectItem>
-                    <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
-                    <SelectItem value="MXN">MXN - Mexican Peso</SelectItem>
-                    <SelectItem value="CHF">CHF - Swiss Franc</SelectItem>
-                    <SelectItem value="SEK">SEK - Swedish Krona</SelectItem>
-                    <SelectItem value="NZD">NZD - New Zealand Dollar</SelectItem>
-                    <SelectItem value="SGD">SGD - Singapore Dollar</SelectItem>
-                    <SelectItem value="HKD">HKD - Hong Kong Dollar</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-startDate">Start Date</Label>
-                <Input
-                  id="edit-startDate"
-                  type="date"
-                  {...editForm.register("startDate")}
-                  data-testid="input-edit-start-date"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-endDate">End Date</Label>
-                <Input
-                  id="edit-endDate"
-                  type="date"
-                  {...editForm.register("endDate")}
-                  data-testid="input-edit-end-date"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="flex items-center space-x-3 pt-4">
               <Button
                 type="button"
                 variant="outline"
+                className="flex-1"
                 onClick={() => setEditingCampaign(null)}
                 disabled={updateCampaignMutation.isPending}
                 data-testid="button-cancel-edit"
@@ -2273,6 +2154,7 @@ export default function Campaigns() {
               </Button>
               <Button
                 type="submit"
+                className="flex-1"
                 disabled={updateCampaignMutation.isPending}
                 data-testid="button-save-edit"
               >

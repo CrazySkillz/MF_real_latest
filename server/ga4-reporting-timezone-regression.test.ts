@@ -32,6 +32,9 @@ describe("GA4 reporting timezone contract", () => {
     expect(campaigns).toContain("reportingTimeZone: data.reportingTimeZone || getBrowserReportingTimeZone(),");
     expect(campaigns).toContain("reportingTimeZone: data.reportingTimeZone || DEFAULT_REPORTING_TIME_ZONE,");
     expect(campaigns).toContain("reportingTimeZone: editingCampaign.reportingTimeZone || DEFAULT_REPORTING_TIME_ZONE,");
-    expect(campaigns).toContain('data-testid="input-edit-reporting-time-zone"');
+    expect(campaigns).toContain('data-testid="select-edit-reporting-time-zone"');
+    expect(campaigns).toContain('onValueChange={(value) => editForm.setValue("reportingTimeZone", value, { shouldDirty: true, shouldValidate: true })}');
+    expect(campaigns).toContain('DialogContent className="sm:max-w-xl max-h-[90vh] overflow-hidden flex flex-col"');
+    expect(campaigns).toContain('<input type="hidden" {...editForm.register("conversionValue")} />');
   });
 });

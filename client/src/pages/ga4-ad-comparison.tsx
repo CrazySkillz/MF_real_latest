@@ -32,7 +32,9 @@ interface GA4AdComparisonProps {
   formatNumber: (n: number) => string;
   formatMoney: (n: number) => string;
   totalRevenue?: number;
+  ga4RevenueTotal?: number;
   revenueDisplaySources?: Array<{ sourceId: string; displayName: string; sourceType: string; revenue: number | null; mappingConfig?: any }>;
+  importedRevenue?: number;
 }
 
 const METRIC_OPTIONS = [
@@ -51,6 +53,8 @@ const METRIC_LABELS: Record<string, string> = {
   conversionRate: "Conversion Rate",
 };
 
+const REVENUE_ALLOCATION_RESIDUAL_THRESHOLD = 0.01;
+
 export default function GA4AdComparison({
   campaignBreakdownAgg,
   breakdownLoading,
@@ -59,13 +63,20 @@ export default function GA4AdComparison({
   formatNumber,
   formatMoney,
   totalRevenue = 0,
+  ga4RevenueTotal,
   revenueDisplaySources = [],
+  importedRevenue: importedRevenueTotal,
 }: GA4AdComparisonProps) {
   const normalizeCampaignKey = (value: string) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
 
   const ga4Revenue = useMemo(() => campaignBreakdownAgg.reduce((s, c) => s + c.revenue, 0), [campaignBreakdownAgg]);
-  const importedRevenue = totalRevenue - ga4Revenue;
+  const ga4RevenueTotalValue = Number(ga4RevenueTotal);
+  const ga4RevenueForBreakdown = Number((Number.isFinite(ga4RevenueTotalValue) && ga4RevenueTotalValue > 0 ? ga4RevenueTotalValue : ga4Revenue).toFixed(2));
+  const importedRevenueInput = importedRevenueTotal ?? (totalRevenue - ga4RevenueForBreakdown);
+  const importedRevenueValue = Number(importedRevenueInput);
+  const importedRevenue = Math.max(0, Number.isFinite(importedRevenueValue) ? importedRevenueValue : 0);
   const hasImportedRevenue = importedRevenue > 0;
+  const revenueBreakdownTotal = Number((totalRevenue > 0 ? totalRevenue : ga4RevenueForBreakdown + importedRevenue).toFixed(2));
   const allocationSummary = useMemo(() => {
     const rowCounts = new Map<string, number>();
     const rowNameByKey = new Map<string, string>();
@@ -104,10 +115,15 @@ export default function GA4AdComparison({
       }
     }
 
+    let unallocatedExternalRevenue = Math.max(0, Number((importedRevenue - matchedExternalRevenue).toFixed(2)));
+    if (matchedExternalRevenue > 0 && unallocatedExternalRevenue <= REVENUE_ALLOCATION_RESIDUAL_THRESHOLD) {
+      unallocatedExternalRevenue = 0;
+    }
+
     return {
       matchedByRow,
       matchedExternalRevenue: Number(matchedExternalRevenue.toFixed(2)),
-      unallocatedExternalRevenue: Math.max(0, Number((importedRevenue - matchedExternalRevenue).toFixed(2))),
+      unallocatedExternalRevenue,
     };
   }, [campaignBreakdownAgg, importedRevenue, revenueDisplaySources]);
 
@@ -231,10 +247,20 @@ export default function GA4AdComparison({
     <TooltipProvider>
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <div>
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-3 md:items-end">
+        <div className="md:col-span-2">
           <h3 className="text-lg font-semibold text-foreground">Ad Comparison</h3>
           <p className="text-sm text-muted-foreground/70">Compare performance across your GA4 campaigns</p>
+        </div>
+        <div className="min-w-[220px] sm:max-w-[280px] md:w-full md:justify-self-end">
+          <Select value={selectedMetric} onValueChange={onMetricChange}>
+            <SelectTrigger className="h-9"><SelectValue placeholder="Sort by metric" /></SelectTrigger>
+            <SelectContent>
+              {METRIC_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label} (High to Low)</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -291,17 +317,6 @@ export default function GA4AdComparison({
           )}
         </div>
       )}
-
-      <div className="min-w-[220px] sm:max-w-[280px]">
-        <Select value={selectedMetric} onValueChange={onMetricChange}>
-          <SelectTrigger className="h-9"><SelectValue placeholder="Sort by metric" /></SelectTrigger>
-          <SelectContent>
-            {METRIC_OPTIONS.map(opt => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label} (High to Low)</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
 
       {/* Bar chart */}
       <Card>
@@ -464,7 +479,7 @@ export default function GA4AdComparison({
               <tbody>
                 <tr className="border-b">
                   <td className="px-3 py-2 text-foreground">GA4 Revenue</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatMoney(ga4Revenue)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{formatMoney(ga4RevenueForBreakdown)}</td>
                 </tr>
                 {revenueDisplaySources.filter(s => s.revenue != null && Number(s.revenue) > 0).map((s) => (
                   <Fragment key={s.sourceId}>
@@ -487,7 +502,7 @@ export default function GA4AdComparison({
                 )}
                 <tr className="border-b font-bold bg-muted/30 last:border-b-0">
                   <td className="px-3 py-2.5 text-foreground">Total Revenue</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{formatMoney(totalRevenue > 0 ? totalRevenue : ga4Revenue)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{formatMoney(revenueBreakdownTotal)}</td>
                 </tr>
               </tbody>
             </table>

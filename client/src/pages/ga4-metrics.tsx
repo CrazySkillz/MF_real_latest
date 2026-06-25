@@ -68,6 +68,7 @@ const BENCHMARK_DESC_MAX = 200;
 const KPI_DESC_MAX = 200;
 const VALID_GA4_TABS = ["overview", "kpis", "benchmarks", "campaigns", "insights", "reports"] as const;
 const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";
+const REVENUE_ALLOCATION_RESIDUAL_THRESHOLD = 0.01;
 
 const normalizeClientReportingTimeZone = (value: any) => {
   const tz = String(value || "").trim();
@@ -3034,7 +3035,10 @@ export default function GA4Metrics() {
           matchedExternalRevenue += revenue;
         });
       });
-      const unallocatedExternalRevenue = Math.max(0, Number((importedRevenueForFinancials - matchedExternalRevenue).toFixed(2)));
+      let unallocatedExternalRevenue = Math.max(0, Number((importedRevenueForFinancials - matchedExternalRevenue).toFixed(2)));
+      if (matchedExternalRevenue > 0 && unallocatedExternalRevenue <= REVENUE_ALLOCATION_RESIDUAL_THRESHOLD) {
+        unallocatedExternalRevenue = 0;
+      }
       const comparisonRows = rows.map((row: any) => {
         const adjustedRevenue = Number((Number(row?.revenue || 0) + Number(matchedByRow.get(row?.name || "") || 0)).toFixed(2));
         return { ...row, revenue: adjustedRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? adjustedRevenue / Number(row.sessions || 0) : 0 };
@@ -7542,7 +7546,9 @@ export default function GA4Metrics() {
                     formatNumber={formatNumber}
                     formatMoney={formatMoney}
                     totalRevenue={financialRevenue}
+                    ga4RevenueTotal={ga4RevenueForFinancials}
                     revenueDisplaySources={revenueDisplaySources}
+                    importedRevenue={importedRevenueForFinancials}
                   />
                 </TabsContent>
 

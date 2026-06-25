@@ -254,6 +254,59 @@ describe("GA4 UI regression guard", () => {
     expect(adComparison).not.toContain("[...campaignBreakdownAgg]");
   });
 
+  it("keeps GA4 Ad Comparison unallocated external revenue on imported-source residuals only", () => {
+    const adComparison = readClient("pages/ga4-ad-comparison.tsx");
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const allocationStart = adComparison.indexOf("const allocationSummary = useMemo(() => {");
+    const allocationEnd = adComparison.indexOf("const sourceRevenueBreakdowns = useMemo(() => {", allocationStart);
+    const allocationSection = adComparison.slice(allocationStart, allocationEnd);
+    const pdfAllocationStart = ga4Metrics.indexOf("let matchedExternalRevenue = 0;");
+    const pdfAllocationEnd = ga4Metrics.indexOf("const comparisonRows = rows.map", pdfAllocationStart);
+    const pdfAllocationSection = ga4Metrics.slice(pdfAllocationStart, pdfAllocationEnd);
+
+    expect(adComparison).toContain("importedRevenue?: number;");
+    expect(adComparison).toContain("const importedRevenueInput = importedRevenueTotal ?? (totalRevenue - ga4RevenueForBreakdown);");
+    expect(ga4Metrics).toContain("importedRevenue={importedRevenueForFinancials}");
+    expect(allocationSection).toContain("let unallocatedExternalRevenue = Math.max(0, Number((importedRevenue - matchedExternalRevenue).toFixed(2)));");
+    expect(allocationSection).toContain("matchedExternalRevenue > 0 && unallocatedExternalRevenue <= REVENUE_ALLOCATION_RESIDUAL_THRESHOLD");
+    expect(pdfAllocationSection).toContain("let unallocatedExternalRevenue = Math.max(0, Number((importedRevenueForFinancials - matchedExternalRevenue).toFixed(2)));");
+    expect(pdfAllocationSection).toContain("matchedExternalRevenue > 0 && unallocatedExternalRevenue <= REVENUE_ALLOCATION_RESIDUAL_THRESHOLD");
+  });
+
+  it("keeps GA4 Ad Comparison Revenue Breakdown on source-level GA4 totals", () => {
+    const adComparison = readClient("pages/ga4-ad-comparison.tsx");
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const breakdownStart = adComparison.indexOf("{/* Revenue Breakdown sub-table */}");
+    const breakdownSection = adComparison.slice(breakdownStart);
+    const pdfBreakdownStart = ga4Metrics.indexOf("if (includeAdsRevenueBreakdown && tableRevenueSummaryVisible) {");
+    const pdfBreakdownSection = ga4Metrics.slice(pdfBreakdownStart, ga4Metrics.indexOf("sectionTitle(\"Revenue Breakdown\"", pdfBreakdownStart));
+
+    expect(breakdownStart).toBeGreaterThan(-1);
+    expect(adComparison).toContain("ga4RevenueTotal?: number;");
+    expect(adComparison).toContain("const ga4RevenueForBreakdown = Number((Number.isFinite(ga4RevenueTotalValue) && ga4RevenueTotalValue > 0 ? ga4RevenueTotalValue : ga4Revenue).toFixed(2));");
+    expect(ga4Metrics).toContain("ga4RevenueTotal={ga4RevenueForFinancials}");
+    expect(breakdownSection).toContain("{formatMoney(ga4RevenueForBreakdown)}");
+    expect(breakdownSection).toContain("{formatMoney(revenueBreakdownTotal)}");
+    expect(breakdownSection).not.toContain("{formatMoney(ga4Revenue)}</td>");
+    expect(pdfBreakdownSection).toContain('{ label: "GA4 Revenue", amount: fC(ga4RevenueForFinancials) }');
+  });
+
+  it("keeps the GA4 Ad Comparison metric selector in the header before leader cards", () => {
+    const adComparison = readClient("pages/ga4-ad-comparison.tsx");
+    const headerStart = adComparison.indexOf("{/* Header */}");
+    const rankingsStart = adComparison.indexOf("{/* Performance Rankings */}", headerStart);
+    const selectorStart = adComparison.indexOf("<Select value={selectedMetric}", headerStart);
+    const headerSection = adComparison.slice(headerStart, rankingsStart);
+
+    expect(headerStart).toBeGreaterThan(-1);
+    expect(rankingsStart).toBeGreaterThan(headerStart);
+    expect(selectorStart).toBeGreaterThan(headerStart);
+    expect(selectorStart).toBeLessThan(rankingsStart);
+    expect(adComparison.indexOf("<Select value={selectedMetric}", rankingsStart)).toBe(-1);
+    expect(headerSection).toContain("md:grid md:grid-cols-3");
+    expect(headerSection).toContain("md:justify-self-end");
+  });
+
   it("keeps GA4 Insights trend history requirements aligned to selected mode", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 

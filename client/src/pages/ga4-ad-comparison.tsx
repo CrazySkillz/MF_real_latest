@@ -221,6 +221,12 @@ export default function GA4AdComparison({
     return sortedByMetric.reduce((sum, c) => sum + Number((c as any)[selectedMetric] || 0), 0);
   }, [sortedByMetric, selectedMetric, totalRevenue]);
 
+  const summaryMetricLabel = selectedMetric === "revenue"
+    ? "Total Revenue (All Sources)"
+    : selectedMetric === "conversionRate"
+      ? "Overall Conversion Rate"
+      : `Total ${METRIC_LABELS[selectedMetric] || selectedMetric}`;
+
   if (breakdownLoading) {
     return (
       <div className="space-y-6">
@@ -350,14 +356,14 @@ export default function GA4AdComparison({
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground/70">
-              {selectedMetric === "revenue" ? "Total Revenue (All Sources)" : `Total ${METRIC_LABELS[selectedMetric] || selectedMetric}`}
+              {summaryMetricLabel}
               {selectedMetric === "users" && (
                 <UITooltip>
                   <TooltipTrigger asChild>
                     <Info className="w-3.5 h-3.5 text-amber-500 cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                    <p className="text-xs">User counts are approximate. GA4 users are non-additive â€” the same user visiting across multiple days, devices, or traffic sources is counted in each breakdown row. Per-campaign and total user counts may be higher than actual unique users.</p>
+                    <p className="text-xs">User counts are approximate. GA4 users are non-additive - the same user visiting across multiple days, devices, or traffic sources is counted in each breakdown row. Per-campaign and total user counts may be higher than actual unique users.</p>
                   </TooltipContent>
                 </UITooltip>
               )}
@@ -383,7 +389,7 @@ export default function GA4AdComparison({
           <CardTitle className="text-lg">All Campaigns</CardTitle>
           <CardDescription>
             Full comparison sorted by {METRIC_LABELS[selectedMetric] || selectedMetric}
-            {revenueModeWithImportedSources ? " â€¢ exact matched external revenue is added to campaign rows; unmatched external revenue stays separate" : ""}
+            {revenueModeWithImportedSources ? " - exact matched external revenue is added to campaign rows; unmatched external revenue stays separate" : ""}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
@@ -403,7 +409,7 @@ export default function GA4AdComparison({
                             <Info className="w-3 h-3 text-amber-500 cursor-help" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs bg-slate-900 text-white border-slate-700">
-                            <p className="text-xs">Approximate â€” users are non-additive across breakdown dimensions (dates, devices, sources). Actual unique users may be lower.</p>
+                            <p className="text-xs">Approximate - users are non-additive across breakdown dimensions (dates, devices, sources). Actual unique users may be lower.</p>
                           </TooltipContent>
                         </UITooltip>
                       </div>

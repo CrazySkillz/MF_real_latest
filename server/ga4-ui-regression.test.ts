@@ -291,6 +291,20 @@ describe("GA4 UI regression guard", () => {
     expect(pdfBreakdownSection).toContain('{ label: "GA4 Revenue", amount: fC(ga4RevenueForFinancials) }');
   });
 
+  it("keeps GA4 Ad Comparison summary labels and tooltips readable", () => {
+    const adComparison = readClient("pages/ga4-ad-comparison.tsx");
+    const summaryStart = adComparison.indexOf("const summaryMetricLabel =");
+    const summarySection = adComparison.slice(summaryStart, adComparison.indexOf("if (breakdownLoading)", summaryStart));
+
+    expect(summaryStart).toBeGreaterThan(-1);
+    expect(summarySection).toContain("Overall Conversion Rate");
+    expect(summarySection).not.toContain("Total Conversion Rate");
+    expect(adComparison).toContain("User counts are approximate. GA4 users are non-additive - the same user visiting across multiple days");
+    expect(adComparison).toContain("Approximate - users are non-additive across breakdown dimensions");
+    expect(adComparison).not.toContain("Ã");
+    expect(adComparison).not.toContain("â");
+  });
+
   it("keeps the GA4 Ad Comparison metric selector in the header before leader cards", () => {
     const adComparison = readClient("pages/ga4-ad-comparison.tsx");
     const headerStart = adComparison.indexOf("{/* Header */}");

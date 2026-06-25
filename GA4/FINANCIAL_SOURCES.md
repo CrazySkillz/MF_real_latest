@@ -79,7 +79,10 @@ Important clarification:
 - for GA4 `Overview -> Campaign Breakdown`, the same exact campaign-matched rule applies, so that table's column label should be `Revenue`, not `GA4 Revenue`
 - `Overview -> Landing Pages` and `Overview -> Conversion Events` remain GA4-native row views and should keep the `GA4 Revenue` label
 - any external revenue that cannot be matched safely must remain visible as `Unallocated External Revenue`, not proportionally distributed
+- in GA4 `Ad Comparison`, unallocated external revenue is computed from imported-source revenue minus exact matched external revenue; do not infer it from `Total Revenue - GA4 campaign-row revenue`
+- one-cent residuals after exact matched external revenue are rounding reconciliation and should not appear as standalone unallocated revenue
 - in the GA4 `Ad Comparison` Revenue Breakdown table, a source may show an indented per-campaign subsection from its saved exact `campaignValueRevenueTotals`
+- in the GA4 `Ad Comparison` Revenue Breakdown table, `GA4 Revenue` should use the source-level GA4 financial total, not the sum of rounded comparison rows
 - that subsection should use the stored source values directly and should not be duplicated by a separate standalone unallocated row when the same amount is already represented there
 
 ### Previous-Day Revenue Records

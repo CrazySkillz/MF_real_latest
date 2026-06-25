@@ -1939,16 +1939,36 @@ export default function GA4Metrics() {
     };
   }, [ga4Breakdown]);
 
-  // Use the higher of (to-date API total, summed daily rows) so cumulative totals
-  // are never less than individual daily values.
-  // EXCEPTION: Users are non-additive across dates — summing daily rows overcounts.
-  // Prefer the deduplicated ga4-to-date count; only fall back to daily sum when unavailable.
+  const ga4ToDateOverviewTotals = {
+    sessions: Number((ga4ToDateResp as any)?.totals?.sessions || 0),
+    conversions: Number((ga4ToDateResp as any)?.totals?.conversions || 0),
+    revenue: Number((ga4ToDateResp as any)?.totals?.revenue || 0),
+    users: Number((ga4ToDateResp as any)?.totals?.users || 0),
+  };
+  const hasDailyOverviewTotals =
+    dailySummedTotals.sessions > 0 ||
+    dailySummedTotals.users > 0 ||
+    dailySummedTotals.conversions > 0 ||
+    dailySummedTotals.revenue > 0 ||
+    dailySummedTotals.pageviews > 0;
+  const hasToDateOverviewTotals =
+    ga4ToDateOverviewTotals.sessions > 0 ||
+    ga4ToDateOverviewTotals.users > 0 ||
+    ga4ToDateOverviewTotals.conversions > 0 ||
+    ga4ToDateOverviewTotals.revenue > 0;
+  const overviewTotalsSource = hasDailyOverviewTotals
+    ? dailySummedTotals
+    : hasToDateOverviewTotals ? ga4ToDateOverviewTotals : ga4BreakdownTotals;
+
+  // Keep GA4 Overview totals on one coherent source. Do not take per-metric max
+  // values across daily, to-date, and breakdown endpoints; that can combine
+  // different date windows into one impossible Summary.
   const breakdownTotals = {
     date: ga4ReportDate,
-    sessions: Math.max(Number((ga4ToDateResp as any)?.totals?.sessions || 0), dailySummedTotals.sessions, ga4BreakdownTotals.sessions),
-    conversions: Math.max(Number((ga4ToDateResp as any)?.totals?.conversions || 0), dailySummedTotals.conversions, ga4BreakdownTotals.conversions),
-    revenue: Math.max(Number((ga4ToDateResp as any)?.totals?.revenue || 0), dailySummedTotals.revenue, ga4BreakdownTotals.revenue),
-    users: Number((ga4ToDateResp as any)?.totals?.users || 0) || dailySummedTotals.users || ga4BreakdownTotals.users,
+    sessions: Number(overviewTotalsSource.sessions || 0),
+    conversions: Number(overviewTotalsSource.conversions || 0),
+    revenue: Number(overviewTotalsSource.revenue || 0),
+    users: Number(overviewTotalsSource.users || 0),
   };
 
   const { data: importedRevenueToDateResp } = useQuery<any>({
@@ -2403,11 +2423,9 @@ export default function GA4Metrics() {
   const usingAutoLinkedInSpend = false;
 
   const importedRevenueForFinancials = Number((importedRevenueToDateResp as any)?.totalRevenue || 0);
-  const ga4RevenueFromToDate = Number((ga4ToDateResp as any)?.totals?.revenue || 0);
   const ga4RevenueMetricName = String((ga4ToDateResp as any)?.revenueMetric || "").trim();
-  const ga4HasRevenueMetric = !!ga4RevenueMetricName || dailySummedTotals.revenue > 0 || ga4BreakdownTotals.revenue > 0;
-  // Use the higher of (to-date total, summed daily rows) so Total Revenue is never less than populated daily GA4 revenue.
-  const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue, ga4BreakdownTotals.revenue);
+  const ga4RevenueForFinancials = Number(breakdownTotals.revenue || 0);
+  const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials > 0;
   // GA4 page: Total Revenue = GA4 native revenue + any imported revenue (manual, CSV, Sheets, CRM).
   // This matches what executives expect: the full revenue picture for this campaign.
   const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;
@@ -2420,7 +2438,7 @@ export default function GA4Metrics() {
     }
     return labels;
   }, [ga4HasRevenueMetric, revenueDisplaySources]);
-  const financialConversions = Math.max(Number((ga4ToDateResp as any)?.totals?.conversions || 0), dailySummedTotals.conversions, breakdownTotals.conversions);
+  const financialConversions = Number(breakdownTotals.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const revenueSourcesCount = revenueDisplaySources.length + (ga4RevenueForFinancials > 0 ? 1 : 0);
   const spendSourcesCount = spendDisplaySources.length;
@@ -2439,6 +2457,7 @@ export default function GA4Metrics() {
     return n > 1 ? n / 100 : n;
   };
   const overviewEngagementRate = (() => {
+    if (hasDailyOverviewTotals && dailySummedTotals.engagementRate > 0) return dailySummedTotals.engagementRate;
     const toDateRate = toRateRatio((ga4ToDateResp as any)?.totals?.engagementRate);
     if (toDateRate > 0) return toDateRate;
     const engagedSessions = Number((ga4ToDateResp as any)?.totals?.engagedSessions || 0);
@@ -5199,6 +5218,8 @@ export default function GA4Metrics() {
     !!campaignId &&
     !!ga4Connection?.connected &&
     !!selectedGA4PropertyId &&
+    !hasDailyOverviewTotals &&
+    !hasToDateOverviewTotals &&
     !ga4Breakdown &&
     breakdownLoading;
   const renderSummaryValue = (value: string) => ga4SummaryTotalsInitializing

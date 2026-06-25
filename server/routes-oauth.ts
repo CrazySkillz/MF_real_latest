@@ -7062,6 +7062,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const toDailyMetricUpserts = (series: any[]) => (Array.isArray(series) ? series : [])
+        .map((r: any) => ({
+          campaignId,
+          propertyId: String(selectedConnection.propertyId),
+          date: String(r?.date || "").trim(),
+          users: Number(r?.users || 0) || 0,
+          sessions: Number(r?.sessions || 0) || 0,
+          pageviews: Number(r?.pageviews || 0) || 0,
+          conversions: Number(r?.conversions || 0) || 0,
+          revenue: String(Number(r?.revenue || 0).toFixed(2)),
+          engagementRate: (r as any)?.engagementRate ?? null,
+          revenueMetric: (r as any)?.revenueMetric ?? null,
+          isSimulated: false,
+        }))
+        .filter((x: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(x.date || "")));
+
+      const hasCampaignFilter = Array.isArray(campaignFilter)
+        ? campaignFilter.length > 0
+        : !!String(campaignFilter || "").trim();
+      const needsConversionRevenueRepair = (rows: any[]) => {
+        const list = Array.isArray(rows) ? rows : [];
+        if (!hasCampaignFilter || list.length === 0) return false;
+        const hasTraffic = list.some((r: any) =>
+          Number(r?.sessions || 0) > 0 ||
+          Number(r?.users || 0) > 0 ||
+          Number(r?.pageviews || 0) > 0
+        );
+        const hasConversionRevenue = list.some((r: any) =>
+          Number(r?.conversions || 0) > 0 ||
+          Number(r?.revenue || 0) > 0
+        );
+        return hasTraffic && !hasConversionRevenue;
+      };
+
       // Read from persisted store first
       let stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
       if (!stored || stored.length === 0) {
@@ -7073,27 +7107,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           String(selectedConnection.propertyId),
           campaignFilter
         );
-        const rows = Array.isArray(series) ? series : [];
-        const upserts = rows
-          .map((r: any) => ({
-            campaignId,
-            propertyId: String(selectedConnection.propertyId),
-            date: String(r?.date || "").trim(),
-            users: Number(r?.users || 0) || 0,
-            sessions: Number(r?.sessions || 0) || 0,
-            pageviews: Number(r?.pageviews || 0) || 0,
-            conversions: Number(r?.conversions || 0) || 0,
-            revenue: String(Number(r?.revenue || 0).toFixed(2)),
-            engagementRate: (r as any)?.engagementRate ?? null,
-            revenueMetric: (r as any)?.revenueMetric ?? null,
-            isSimulated: false,
-          }))
-          .filter((x: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(x.date || "")));
+        const upserts = toDailyMetricUpserts(series);
 
         if (upserts.length > 0) {
           await storage.upsertGA4DailyMetrics(upserts as any);
         }
         stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
+      } else if (needsConversionRevenueRepair(stored)) {
+        const series = await ga4Service.getTimeSeriesData(
+          campaignId,
+          storage,
+          startDate,
+          String(selectedConnection.propertyId),
+          campaignFilter
+        );
+        const upserts = toDailyMetricUpserts(series);
+        const recoveredConversionRevenue = upserts.some((r: any) =>
+          Number(r?.conversions || 0) > 0 ||
+          Number(r?.revenue || 0) > 0
+        );
+        if (recoveredConversionRevenue) {
+          await storage.upsertGA4DailyMetrics(upserts as any);
+          stored = await storage.getGA4DailyMetrics(campaignId, String(selectedConnection.propertyId), startDate, endDate).catch(() => []);
+        }
       }
 
       const lastUpdated =

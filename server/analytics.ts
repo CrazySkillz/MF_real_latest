@@ -826,16 +826,88 @@ export class GoogleAnalytics4Service {
       }
     };
 
+    const runConversionRevenueTotals = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any) => {
+      const resp = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dateRanges: [{ startDate, endDate }],
+          ...(scopeFilter ? scopeFilter : {}),
+          metrics: [
+            { name: 'conversions' },
+            { name: revenueMetric },
+          ],
+        }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`GA4 Conversion/Revenue API Error: ${txt}`);
+      }
+      const json = await resp.json().catch(() => ({} as any));
+      const row = (Array.isArray(json?.rows) && json.rows[0]) ? json.rows[0] : null;
+      const mv = Array.isArray(row?.metricValues) ? row.metricValues : [];
+      const conversions = parseInt(String(mv?.[0]?.value || '0'), 10) || 0;
+      const revenue = Number.parseFloat(String(mv?.[1]?.value || '0')) || 0;
+      return { revenueMetric, totals: { conversions, revenue: Number(revenue.toFixed(2)) } };
+    };
+
+    const runConversionRevenueTotalsWithFallback = async (scopeFilter: any) => {
+      try {
+        return await runConversionRevenueTotals('totalRevenue', scopeFilter);
+      } catch (e: any) {
+        const msg = String(e?.message || '').toLowerCase();
+        if (msg.includes('totalrevenue') || msg.includes('metric') || msg.includes('invalid')) {
+          return await runConversionRevenueTotals('purchaseRevenue', scopeFilter);
+        }
+        throw e;
+      }
+    };
+
     const isEmptyTotals = (result: Awaited<ReturnType<typeof run>>) => {
       const totals = result?.totals || {};
       return (Number(totals.sessions || 0) + Number(totals.users || 0) + Number(totals.conversions || 0) + Number(totals.pageviews || 0) + Number(totals.revenue || 0)) <= 0;
     };
 
+    const hasTrafficTotals = (result: Awaited<ReturnType<typeof run>>) => {
+      const totals = result?.totals || {};
+      return (
+        Number(totals.sessions || 0) > 0 ||
+        Number(totals.users || 0) > 0 ||
+        Number(totals.pageviews || 0) > 0
+      );
+    };
+
+    const hasConversionRevenueTotals = (result: Awaited<ReturnType<typeof run>>) => {
+      const totals = result?.totals || {};
+      return Number(totals.conversions || 0) > 0 || Number(totals.revenue || 0) > 0;
+    };
+
+    const supplementConversionRevenueTotals = async (result: Awaited<ReturnType<typeof run>>) => {
+      const campaignNameFilter = this.buildCampaignDimensionFilter(campaignFilter, 'campaignName');
+      if (!campaignNameFilter || !hasTrafficTotals(result) || hasConversionRevenueTotals(result)) return result;
+
+      const supplement = await runConversionRevenueTotalsWithFallback(campaignNameFilter).catch(() => null);
+      if (!supplement || (Number(supplement.totals.conversions || 0) <= 0 && Number(supplement.totals.revenue || 0) <= 0)) return result;
+
+      return {
+        revenueMetric: supplement.revenueMetric || result.revenueMetric,
+        totals: {
+          ...result.totals,
+          conversions: supplement.totals.conversions,
+          revenue: supplement.totals.revenue,
+        },
+      };
+    };
+
     try {
       const result = await runWithRevenueFallback(campaignDimensionFilter);
-      if (!isEmptyTotals(result) || !pageLocationCampaignFilter) return result;
+      if (!isEmptyTotals(result) || !pageLocationCampaignFilter) return await supplementConversionRevenueTotals(result);
       const utmResult = await runWithRevenueFallback(pageLocationCampaignFilter, 'today').catch(() => null);
-      return utmResult && !isEmptyTotals(utmResult) ? utmResult : result;
+      const selectedResult = utmResult && !isEmptyTotals(utmResult) ? utmResult : result;
+      return await supplementConversionRevenueTotals(selectedResult);
     } catch (e: any) {
       throw e;
     }
@@ -1774,6 +1846,57 @@ export class GoogleAnalytics4Service {
         }
       };
 
+      const runConversionRevenue = async (revenueMetric: 'totalRevenue' | 'purchaseRevenue', scopeFilter: any) => {
+        const response = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${normalizedPropertyId}:runReport`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            dateRanges: [
+              {
+                startDate: dateRange,
+                endDate: 'today',
+              },
+            ],
+            dimensions: [{ name: 'date' }],
+            ...(scopeFilter ? scopeFilter : {}),
+            metrics: [
+              { name: 'conversions' },
+              { name: revenueMetric },
+            ],
+            orderBys: [
+              {
+                dimension: {
+                  dimensionName: 'date'
+                }
+              }
+            ]
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`GA4 Time Series Conversion/Revenue API Error: ${errorText}`);
+        }
+
+        const data = await response.json();
+        return { data, revenueMetric };
+      };
+
+      const runConversionRevenueWithFallback = async (scopeFilter: any) => {
+        try {
+          return await runConversionRevenue('totalRevenue', scopeFilter);
+        } catch (e: any) {
+          const msg = String(e?.message || e || '').toLowerCase();
+          if (msg.includes('totalrevenue') || msg.includes('metric') || msg.includes('invalid')) {
+            return await runConversionRevenue('purchaseRevenue', scopeFilter);
+          }
+          throw e;
+        }
+      };
+
       const res = await runWithRevenueFallback(campaignDimensionFilter);
       data = res.data;
       revenueMetric = res.revenueMetric;
@@ -1792,7 +1915,19 @@ export class GoogleAnalytics4Service {
       });
 
       // Process the response data into chart format
-      const timeSeriesData: any[] = [];
+      let timeSeriesData: any[] = [];
+      const formatDate = (value: any) => {
+        let dateISO = String(value || '').trim();
+        let dateLabel = dateISO;
+        if (/^\d{8}$/.test(dateISO)) {
+          const year = dateISO.substring(0, 4);
+          const month = dateISO.substring(4, 6);
+          const day = dateISO.substring(6, 8);
+          dateISO = `${year}-${month}-${day}`;
+          dateLabel = `${month}/${day}`;
+        }
+        return { dateISO, dateLabel };
+      };
       
       if (data.rows) {
         for (const row of data.rows) {
@@ -1807,15 +1942,7 @@ export class GoogleAnalytics4Service {
             
             // IMPORTANT: return ISO date for downstream correctness (Insights WoW needs YYYY-MM-DD).
             // Keep a lightweight label available for charts.
-            let dateISO = String(date || '').trim();
-            let dateLabel = dateISO;
-            if (/^\d{8}$/.test(dateISO)) {
-              const year = dateISO.substring(0, 4);
-              const month = dateISO.substring(4, 6);
-              const day = dateISO.substring(6, 8);
-              dateISO = `${year}-${month}-${day}`;
-              dateLabel = `${month}/${day}`;
-            }
+            const { dateISO, dateLabel } = formatDate(date);
             
             timeSeriesData.push({
               date: dateISO,
@@ -1829,6 +1956,50 @@ export class GoogleAnalytics4Service {
               engagementRate,
             });
           }
+        }
+      }
+
+      const hasBaseTraffic = timeSeriesData.some((r) =>
+        Number(r?.sessions || 0) > 0 ||
+        Number(r?.users || 0) > 0 ||
+        Number(r?.pageviews || 0) > 0
+      );
+      const hasConversionRevenue = timeSeriesData.some((r) =>
+        Number(r?.conversions || 0) > 0 ||
+        Number(r?.revenue || 0) > 0
+      );
+      const campaignNameConversionFilter = this.buildCampaignDimensionFilter(campaignFilter, 'campaignName');
+
+      if (hasBaseTraffic && !hasConversionRevenue && campaignNameConversionFilter) {
+        const supplemental = await runConversionRevenueWithFallback(campaignNameConversionFilter).catch(() => null);
+        const supplementalRows = Array.isArray(supplemental?.data?.rows) ? supplemental.data.rows : [];
+        const conversionRevenueByDate = new Map<string, { conversions: number; revenue: number; revenueMetric: string }>();
+
+        for (const row of supplementalRows) {
+          const date = formatDate(row?.dimensionValues?.[0]?.value || '').dateISO;
+          if (!date) continue;
+          const conversions = parseInt(String(row?.metricValues?.[0]?.value || '0'), 10) || 0;
+          const revenue = Number.parseFloat(String(row?.metricValues?.[1]?.value || '0')) || 0;
+          if (conversions > 0 || revenue > 0) {
+            conversionRevenueByDate.set(date, {
+              conversions,
+              revenue: Number(revenue.toFixed(2)),
+              revenueMetric: String(supplemental?.revenueMetric || revenueMetric),
+            });
+          }
+        }
+
+        if (conversionRevenueByDate.size > 0) {
+          timeSeriesData = timeSeriesData.map((row) => {
+            const supplementalRow = conversionRevenueByDate.get(String(row?.date || ''));
+            if (!supplementalRow) return row;
+            return {
+              ...row,
+              conversions: supplementalRow.conversions,
+              revenue: supplementalRow.revenue,
+              revenueMetric: supplementalRow.revenueMetric,
+            };
+          });
         }
       }
 

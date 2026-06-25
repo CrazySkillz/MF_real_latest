@@ -119,15 +119,19 @@ describe("GA4 UI regression guard", () => {
     expect(route).toContain("campaigns: applySavedCampaignScope(result.campaigns || [])");
   });
 
-  it("keeps live GA4 breakdown totals from being scaled down to zero when to-date/daily totals are empty", () => {
+  it("keeps GA4 Overview totals on one coherent source before falling back to breakdown totals", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
 
     expect(ga4Metrics).toContain("const ga4BreakdownTotals = useMemo(() => {");
-    expect(ga4Metrics).toContain("dailySummedTotals.sessions, ga4BreakdownTotals.sessions");
-    expect(ga4Metrics).toContain("dailySummedTotals.conversions, ga4BreakdownTotals.conversions");
-    expect(ga4Metrics).toContain("dailySummedTotals.revenue, ga4BreakdownTotals.revenue");
-    expect(ga4Metrics).toContain("dailySummedTotals.users || ga4BreakdownTotals.users");
-    expect(ga4Metrics).toContain("const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue, ga4BreakdownTotals.revenue);");
+    expect(ga4Metrics).toContain("const hasDailyOverviewTotals =");
+    expect(ga4Metrics).toContain("const hasToDateOverviewTotals =");
+    expect(ga4Metrics).toContain("const overviewTotalsSource = hasDailyOverviewTotals");
+    expect(ga4Metrics).toContain(": hasToDateOverviewTotals ? ga4ToDateOverviewTotals : ga4BreakdownTotals;");
+    expect(ga4Metrics).toContain("sessions: Number(overviewTotalsSource.sessions || 0)");
+    expect(ga4Metrics).toContain("conversions: Number(overviewTotalsSource.conversions || 0)");
+    expect(ga4Metrics).toContain("revenue: Number(overviewTotalsSource.revenue || 0)");
+    expect(ga4Metrics).not.toContain("Math.max(Number((ga4ToDateResp as any)?.totals?.sessions || 0), dailySummedTotals.sessions, ga4BreakdownTotals.sessions)");
+    expect(ga4Metrics).not.toContain("const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue, ga4BreakdownTotals.revenue);");
   });
 
   it("waits for GA4 breakdown totals before rendering Overview Summary numbers", () => {
@@ -139,6 +143,8 @@ describe("GA4 UI regression guard", () => {
     expect(summaryStart).toBeGreaterThan(-1);
     expect(revenueStart).toBeGreaterThan(summaryStart);
     expect(ga4Metrics).toContain("const ga4SummaryTotalsInitializing =");
+    expect(ga4Metrics).toContain("!hasDailyOverviewTotals");
+    expect(ga4Metrics).toContain("!hasToDateOverviewTotals");
     expect(ga4Metrics).toContain("!ga4Breakdown &&");
     expect(ga4Metrics).toContain("breakdownLoading;");
     expect(ga4Metrics).toContain("const renderSummaryValue = (value: string) => ga4SummaryTotalsInitializing");

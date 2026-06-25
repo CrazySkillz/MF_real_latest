@@ -187,6 +187,51 @@ describe("GA4 campaign value picker", () => {
     expect(fallbackBody.dateRanges[0].endDate).toBe("today");
   });
 
+  it("supplements to-date conversion and revenue values without changing traffic totals", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const scope = JSON.stringify(body?.dimensionFilter || {});
+      const isPageLocationScope = scope.includes("pageLocation");
+      const isCampaignNameScope = scope.includes('"fieldName":"campaignName"');
+
+      return {
+        ok: true,
+        json: async () => ({
+          rows: isCampaignNameScope
+            ? [{ metricValues: [{ value: "7" }, { value: "123.456" }] }]
+            : isPageLocationScope
+              ? [{ metricValues: [{ value: "85" }, { value: "85" }, { value: "0" }, { value: "108" }, { value: "0" }, { value: "54" }, { value: "0.64" }] }]
+              : [{ metricValues: [{ value: "0" }, { value: "0" }, { value: "0" }, { value: "0" }, { value: "0" }, { value: "0" }, { value: "0" }] }],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await ga4Service.getTotalsWithRevenue(
+      "properties/123",
+      "token",
+      "2026-06-01",
+      "2026-06-17",
+      "summer_sale",
+    );
+
+    expect(result.totals).toEqual({
+      sessions: 85,
+      users: 85,
+      conversions: 7,
+      pageviews: 108,
+      revenue: 123.46,
+      engagedSessions: 54,
+      engagementRate: 0.64,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const trafficBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
+    const supplementBody = JSON.parse(String(fetchMock.mock.calls[2][1]?.body || "{}"));
+    expect(JSON.stringify(trafficBody.dimensionFilter)).toContain("pageLocation");
+    expect(JSON.stringify(supplementBody.dimensionFilter)).toContain('"fieldName":"campaignName"');
+    expect(supplementBody.metrics).toEqual([{ name: "conversions" }, { name: "totalRevenue" }]);
+  });
+
   it("uses pageLocation UTM fallback for daily time series when campaign dimensions are empty", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
@@ -238,6 +283,68 @@ describe("GA4 campaign value picker", () => {
     expect(JSON.stringify(primaryBody.dimensionFilter)).toContain("sessionCampaignName");
     expect(JSON.stringify(fallbackBody.dimensionFilter)).toContain("pageLocation");
     expect(fallbackBody.dimensions).toEqual([{ name: "date" }]);
+  });
+
+  it("supplements daily conversion and revenue values without changing daily traffic totals", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const metricNames = (body?.metrics || []).map((m: any) => String(m?.name || ""));
+      const scope = JSON.stringify(body?.dimensionFilter || {});
+      const isConversionRevenueSupplement = metricNames.length === 2 && scope.includes("campaignName");
+
+      return {
+        ok: true,
+        json: async () => ({
+          rows: isConversionRevenueSupplement
+            ? [
+                {
+                  dimensionValues: [{ value: "20260618" }],
+                  metricValues: [{ value: "7" }, { value: "123.456" }],
+                },
+              ]
+            : [
+                {
+                  dimensionValues: [{ value: "20260618" }],
+                  metricValues: [
+                    { value: "85" },
+                    { value: "108" },
+                    { value: "0" },
+                    { value: "85" },
+                    { value: "0" },
+                    { value: "0.64" },
+                  ],
+                },
+              ],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await ga4Service.getTimeSeriesWithToken(
+      "properties/123",
+      "token",
+      "2026-06-01",
+      "summer_sale",
+    );
+
+    expect(result).toEqual([{
+      date: "2026-06-18",
+      dateLabel: "06/18",
+      sessions: 85,
+      pageviews: 108,
+      conversions: 7,
+      users: 85,
+      revenue: 123.46,
+      revenueMetric: "totalRevenue",
+      engagementRate: 0.64,
+    }]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const primaryBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body || "{}"));
+    const supplementBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body || "{}"));
+    expect(JSON.stringify(primaryBody.dimensionFilter)).toContain("sessionCampaignName");
+    expect(JSON.stringify(supplementBody.dimensionFilter)).toContain("campaignName");
+    expect(supplementBody.metrics).toEqual([{ name: "conversions" }, { name: "totalRevenue" }]);
+    expect(supplementBody.dimensions).toEqual([{ name: "date" }]);
   });
 
   it("uses pageLocation UTM fallback for acquisition rows when campaign dimensions are empty", async () => {

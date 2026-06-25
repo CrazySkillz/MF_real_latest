@@ -6962,31 +6962,29 @@ export default function GA4Metrics() {
                                       </Select>
                                     </div>
                                   </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                      <div className="flex items-center space-x-2 pt-1">
-                                        <Checkbox
-                                          id="ga4-benchmark-email-notifications"
-                                          checked={!!newBenchmark.emailNotifications}
-                                          onCheckedChange={(checked) => setNewBenchmark({ ...newBenchmark, emailNotifications: checked as boolean })}
-                                        />
-                                        <Label htmlFor="ga4-benchmark-email-notifications" className="cursor-pointer font-medium">
-                                          Send email notifications
-                                        </Label>
-                                      </div>
-                                      {newBenchmark.emailNotifications && (
-                                        <div className="space-y-2">
-                                          <Label>Email addresses *</Label>
-                                          <Input
-                                            type="text"
-                                            placeholder="email1@example.com, email2@example.com"
-                                            value={newBenchmark.emailRecipients}
-                                            onChange={(e) => setNewBenchmark({ ...newBenchmark, emailRecipients: e.target.value })}
-                                          />
-                                          <p className="text-xs text-muted-foreground/70">Comma-separated email addresses for alerts.</p>
-                                        </div>
-                                      )}
+                                  <div className="space-y-4">
+                                    <div className="flex items-center space-x-2 pt-1">
+                                      <Checkbox
+                                        id="ga4-benchmark-email-notifications"
+                                        checked={!!newBenchmark.emailNotifications}
+                                        onCheckedChange={(checked) => setNewBenchmark({ ...newBenchmark, emailNotifications: checked as boolean })}
+                                      />
+                                      <Label htmlFor="ga4-benchmark-email-notifications" className="cursor-pointer font-medium">
+                                        Send email notifications
+                                      </Label>
                                     </div>
+                                    {newBenchmark.emailNotifications && (
+                                      <div className="grid grid-cols-[max-content_1fr] items-center gap-x-3 gap-y-2">
+                                        <Label className="whitespace-nowrap">Email addresses *</Label>
+                                        <Input
+                                          type="text"
+                                          placeholder="email1@example.com, email2@example.com"
+                                          value={newBenchmark.emailRecipients}
+                                          onChange={(e) => setNewBenchmark({ ...newBenchmark, emailRecipients: e.target.value })}
+                                        />
+                                        <p className="col-start-2 text-xs text-muted-foreground/70">Comma-separated email addresses for alerts.</p>
+                                      </div>
+                                    )}
                                     <div className="space-y-2">
                                       <Label>Alert Frequency</Label>
                                       <Select
@@ -8696,34 +8694,32 @@ export default function GA4Metrics() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2 pt-1">
-                          <Checkbox
-                            id="kpi-email-notifications"
-                            checked={kpiForm.watch("emailNotifications")}
-                            onCheckedChange={(checked) => kpiForm.setValue("emailNotifications", checked as boolean)}
-                          />
-                          <Label htmlFor="kpi-email-notifications" className="cursor-pointer font-medium">
-                            Send email notifications
-                          </Label>
-                        </div>
-                        {kpiForm.watch("emailNotifications") && (
-                          <div className="space-y-2">
-                            <Label htmlFor="kpi-email-recipients">Email addresses *</Label>
-                            <Input
-                              id="kpi-email-recipients"
-                              type="text"
-                              placeholder="email1@example.com, email2@example.com"
-                              value={kpiForm.watch("emailRecipients") || ""}
-                              onChange={(e) => kpiForm.setValue("emailRecipients", e.target.value)}
-                            />
-                            <p className="text-xs text-muted-foreground/70">
-                              Comma-separated. Best for execs who want alerts outside the app.
-                            </p>
-                          </div>
-                        )}
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2 pt-1">
+                        <Checkbox
+                          id="kpi-email-notifications"
+                          checked={kpiForm.watch("emailNotifications")}
+                          onCheckedChange={(checked) => kpiForm.setValue("emailNotifications", checked as boolean)}
+                        />
+                        <Label htmlFor="kpi-email-notifications" className="cursor-pointer font-medium">
+                          Send email notifications
+                        </Label>
                       </div>
+                      {kpiForm.watch("emailNotifications") && (
+                        <div className="grid grid-cols-[max-content_1fr] items-center gap-x-3 gap-y-2">
+                          <Label htmlFor="kpi-email-recipients" className="whitespace-nowrap">Email addresses *</Label>
+                          <Input
+                            id="kpi-email-recipients"
+                            type="text"
+                            placeholder="email1@example.com, email2@example.com"
+                            value={kpiForm.watch("emailRecipients") || ""}
+                            onChange={(e) => kpiForm.setValue("emailRecipients", e.target.value)}
+                          />
+                          <p className="col-start-2 text-xs text-muted-foreground/70">
+                            Comma-separated. Best for execs who want alerts outside the app.
+                          </p>
+                        </div>
+                      )}
 
                       <div className="space-y-2">
                         <Label htmlFor="kpi-alert-frequency">Alert Frequency</Label>

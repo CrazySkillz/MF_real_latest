@@ -2,13 +2,18 @@ import nodemailer from 'nodemailer';
 import { db } from "../db";
 import { campaigns, clients, emailAlertEvents } from "../../shared/schema.js";
 import { eq } from "drizzle-orm";
+import { buildAlertEmailAuditState } from "../utils/alert-email-audit";
 
 interface EmailAuditContext {
   kind: 'alert' | 'report' | 'test' | 'generic';
   entityType?: 'kpi' | 'benchmark' | 'report' | 'test' | string;
   entityId?: string;
+  dedupeKey?: string;
   campaignId?: string;
   campaignName?: string;
+  deliveryStatus?: unknown;
+  attemptCount?: number;
+  nextAttemptAt?: Date;
 }
 
 interface EmailOptions {
@@ -463,17 +468,34 @@ class EmailService {
       const metadata = JSON.stringify({
         providerResponseId: args.providerResponseId,
       });
+      const auditState = buildAlertEmailAuditState({
+        dedupeKey: ctx?.dedupeKey,
+        deliveryStatus: ctx?.deliveryStatus,
+        providerResponseId: args.providerResponseId,
+        attemptCount: ctx?.attemptCount,
+        success: args.success,
+        error: args.error,
+        nextAttemptAt: ctx?.nextAttemptAt,
+      });
 
       await db.insert(emailAlertEvents).values({
         kind: ctx?.kind || 'generic',
         entityType: ctx?.entityType,
         entityId: ctx?.entityId,
+        dedupeKey: auditState.dedupeKey,
         campaignId: ctx?.campaignId,
         campaignName: ctx?.campaignName,
         to: args.toText,
         subject: args.options.subject,
         provider: args.provider,
         success: args.success,
+        deliveryStatus: auditState.deliveryStatus,
+        providerResponseId: auditState.providerResponseId,
+        attemptCount: auditState.attemptCount,
+        lastAttemptAt: auditState.lastAttemptAt,
+        nextAttemptAt: auditState.nextAttemptAt,
+        deliveredAt: auditState.deliveredAt,
+        failedAt: auditState.failedAt,
         error: args.error,
         metadata,
       });

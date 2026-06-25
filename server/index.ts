@@ -311,16 +311,39 @@ process.on('uncaughtException', (error: Error) => {
               kind TEXT NOT NULL DEFAULT 'generic',
               entity_type TEXT,
               entity_id TEXT,
+              dedupe_key TEXT,
               campaign_id TEXT,
               campaign_name TEXT,
               "to" TEXT NOT NULL,
               subject TEXT NOT NULL,
               provider TEXT,
               success BOOLEAN NOT NULL DEFAULT false,
+              delivery_status TEXT NOT NULL DEFAULT 'pending',
+              provider_response_id TEXT,
+              attempt_count INTEGER NOT NULL DEFAULT 0,
+              last_attempt_at TIMESTAMP,
+              next_attempt_at TIMESTAMP,
+              delivered_at TIMESTAMP,
+              failed_at TIMESTAMP,
               error TEXT,
               metadata TEXT,
               created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+          `);
+          await db.execute(sql`
+            ALTER TABLE email_alert_events
+            ADD COLUMN IF NOT EXISTS dedupe_key TEXT,
+            ADD COLUMN IF NOT EXISTS delivery_status TEXT NOT NULL DEFAULT 'pending',
+            ADD COLUMN IF NOT EXISTS provider_response_id TEXT,
+            ADD COLUMN IF NOT EXISTS attempt_count INTEGER NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS last_attempt_at TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS failed_at TIMESTAMP;
+          `);
+          await db.execute(sql`
+            CREATE UNIQUE INDEX IF NOT EXISTS email_alert_events_dedupe_key_unique
+            ON email_alert_events (dedupe_key);
           `);
 
           // Migration: Add GA4 campaign filter to campaigns (so each MetricMind campaign maps to one GA4 campaign)

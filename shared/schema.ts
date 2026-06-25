@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -191,16 +191,26 @@ export const emailAlertEvents = pgTable("email_alert_events", {
   kind: text("kind").notNull().default("generic"), // 'alert' | 'report' | 'test' | 'generic'
   entityType: text("entity_type"), // 'kpi' | 'benchmark' | 'report' | 'test'
   entityId: text("entity_id"),
+  dedupeKey: text("dedupe_key"),
   campaignId: text("campaign_id"),
   campaignName: text("campaign_name"),
   to: text("to").notNull(), // comma-separated
   subject: text("subject").notNull(),
   provider: text("provider"), // 'smtp' | 'mailgun-api' | 'mailgun-smtp' | 'sendgrid-smtp' | etc.
   success: boolean("success").notNull().default(false),
+  deliveryStatus: text("delivery_status").notNull().default("pending"),
+  providerResponseId: text("provider_response_id"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  nextAttemptAt: timestamp("next_attempt_at"),
+  deliveredAt: timestamp("delivered_at"),
+  failedAt: timestamp("failed_at"),
   error: text("error"),
   metadata: text("metadata"), // JSON string (provider response IDs, etc.)
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => ({
+  dedupeKeyUnique: uniqueIndex("email_alert_events_dedupe_key_unique").on(table.dedupeKey),
+}));
 
 export const googleSheetsConnections = pgTable("google_sheets_connections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1684,12 +1694,20 @@ export const insertEmailAlertEventSchema = createInsertSchema(emailAlertEvents).
   kind: true,
   entityType: true,
   entityId: true,
+  dedupeKey: true,
   campaignId: true,
   campaignName: true,
   to: true,
   subject: true,
   provider: true,
   success: true,
+  deliveryStatus: true,
+  providerResponseId: true,
+  attemptCount: true,
+  lastAttemptAt: true,
+  nextAttemptAt: true,
+  deliveredAt: true,
+  failedAt: true,
   error: true,
   metadata: true,
 });

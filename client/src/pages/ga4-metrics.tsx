@@ -6974,35 +6974,37 @@ export default function GA4Metrics() {
                                       </Label>
                                     </div>
                                     {newBenchmark.emailNotifications && (
-                                      <div className="grid grid-cols-[max-content_1fr] items-center gap-x-3 gap-y-2">
-                                        <Label className="whitespace-nowrap">Email addresses *</Label>
-                                        <Input
-                                          type="text"
-                                          placeholder="email1@example.com, email2@example.com"
-                                          value={newBenchmark.emailRecipients}
-                                          onChange={(e) => setNewBenchmark({ ...newBenchmark, emailRecipients: e.target.value })}
-                                        />
-                                        <p className="col-start-2 text-xs text-muted-foreground/70">Comma-separated email addresses for alerts.</p>
-                                      </div>
+                                      <>
+                                        <div className="grid grid-cols-[max-content_1fr] items-center gap-x-3 gap-y-2">
+                                          <Label className="whitespace-nowrap">Email addresses *</Label>
+                                          <Input
+                                            type="text"
+                                            placeholder="email1@example.com, email2@example.com"
+                                            value={newBenchmark.emailRecipients}
+                                            onChange={(e) => setNewBenchmark({ ...newBenchmark, emailRecipients: e.target.value })}
+                                          />
+                                          <p className="col-start-2 text-xs text-muted-foreground/70">Comma-separated email addresses for alerts.</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                          <Label>Alert Frequency</Label>
+                                          <Select
+                                            value={newBenchmark.alertFrequency || "immediate"}
+                                            onValueChange={(v) => setNewBenchmark({ ...newBenchmark, alertFrequency: v })}
+                                            disabled={!newBenchmark.emailNotifications}
+                                          >
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent className="z-[10000]">
+                                              <SelectItem value="immediate">Immediate</SelectItem>
+                                              <SelectItem value="daily">Daily</SelectItem>
+                                              <SelectItem value="weekly">Weekly</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                          <p className="text-xs text-muted-foreground/70">
+                                            This setting controls how often reminder emails are sent while the Benchmark is still breaching
+                                          </p>
+                                        </div>
+                                      </>
                                     )}
-                                    <div className="space-y-2">
-                                      <Label>Alert Frequency</Label>
-                                      <Select
-                                        value={newBenchmark.alertFrequency || "immediate"}
-                                        onValueChange={(v) => setNewBenchmark({ ...newBenchmark, alertFrequency: v })}
-                                        disabled={!newBenchmark.emailNotifications}
-                                      >
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent className="z-[10000]">
-                                          <SelectItem value="immediate">Immediate</SelectItem>
-                                          <SelectItem value="daily">Daily</SelectItem>
-                                          <SelectItem value="weekly">Weekly</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                      <p className="text-xs text-muted-foreground/70">
-                                        This setting controls how often reminder emails are sent while the Benchmark is still breaching
-                                      </p>
-                                    </div>
                                   </div>
                                 </div>
                               )}
@@ -8706,41 +8708,42 @@ export default function GA4Metrics() {
                         </Label>
                       </div>
                       {kpiForm.watch("emailNotifications") && (
-                        <div className="grid grid-cols-[max-content_1fr] items-center gap-x-3 gap-y-2">
-                          <Label htmlFor="kpi-email-recipients" className="whitespace-nowrap">Email addresses *</Label>
-                          <Input
-                            id="kpi-email-recipients"
-                            type="text"
-                            placeholder="email1@example.com, email2@example.com"
-                            value={kpiForm.watch("emailRecipients") || ""}
-                            onChange={(e) => kpiForm.setValue("emailRecipients", e.target.value)}
-                          />
-                          <p className="col-start-2 text-xs text-muted-foreground/70">
-                            Comma-separated. Best for execs who want alerts outside the app.
-                          </p>
-                        </div>
+                        <>
+                          <div className="grid grid-cols-[max-content_1fr] items-center gap-x-3 gap-y-2">
+                            <Label htmlFor="kpi-email-recipients" className="whitespace-nowrap">Email addresses *</Label>
+                            <Input
+                              id="kpi-email-recipients"
+                              type="text"
+                              placeholder="email1@example.com, email2@example.com"
+                              value={kpiForm.watch("emailRecipients") || ""}
+                              onChange={(e) => kpiForm.setValue("emailRecipients", e.target.value)}
+                            />
+                            <p className="col-start-2 text-xs text-muted-foreground/70">
+                              Comma-separated. Best for execs who want alerts outside the app.
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="kpi-alert-frequency">Alert Frequency</Label>
+                            <Select
+                              value={kpiForm.watch("alertFrequency") || "daily"}
+                              onValueChange={(v) => kpiForm.setValue("alertFrequency", v as any)}
+                              disabled={!kpiForm.watch("emailNotifications")}
+                            >
+                              <SelectTrigger id="kpi-alert-frequency">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="immediate">Immediate</SelectItem>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground/70">
+                              This setting controls how often reminder emails are sent while the KPI is still breaching
+                            </p>
+                          </div>
+                        </>
                       )}
-
-                      <div className="space-y-2">
-                        <Label htmlFor="kpi-alert-frequency">Alert Frequency</Label>
-                        <Select
-                          value={kpiForm.watch("alertFrequency") || "daily"}
-                          onValueChange={(v) => kpiForm.setValue("alertFrequency", v as any)}
-                          disabled={!kpiForm.watch("emailNotifications")}
-                        >
-                          <SelectTrigger id="kpi-alert-frequency">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="immediate">Immediate</SelectItem>
-                            <SelectItem value="daily">Daily</SelectItem>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground/70">
-                          This setting controls how often reminder emails are sent while the KPI is still breaching
-                        </p>
-                      </div>
                     </div>
                   </div>
                 )}

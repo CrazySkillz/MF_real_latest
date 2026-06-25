@@ -12,6 +12,7 @@ import { startGA4DailyScheduler } from "./ga4-daily-scheduler";
 import { startGoogleAdsScheduler } from "./google-ads-scheduler";
 import { startInstagramScheduler } from "./instagram-scheduler";
 import { startTikTokScheduler } from "./tiktok-scheduler";
+import { startAlertEmailScheduler } from "./alert-email-scheduler";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { clerkMiddleware } from "@clerk/express";
@@ -997,6 +998,13 @@ process.on('uncaughtException', (error: Error) => {
           startTikTokScheduler();
         } catch (error) {
           console.error('Failed to start TikTok scheduler:', error);
+        }
+
+        // Start alert email reminder scheduler
+        try {
+          startAlertEmailScheduler();
+        } catch (error) {
+          console.error('Failed to start alert email scheduler:', error);
         }
       }, 5000); // 5 second delay
     });

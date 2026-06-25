@@ -43,6 +43,28 @@ function withReportingTimeZone<T extends Record<string, any>>(campaign: T): T {
   };
 }
 
+async function runImmediateKPIEmailAlertCheck(kpiId: unknown, logPrefix: string): Promise<void> {
+  const id = String(kpiId || "").trim();
+  if (!id) return;
+  try {
+    const { alertMonitoringService } = await import("./services/alert-monitoring.js");
+    await alertMonitoringService.sendImmediateKPIAlertIfNeeded(id);
+  } catch (e: any) {
+    console.warn(`[${logPrefix}] Immediate email alert check failed:`, (e as any)?.message || e);
+  }
+}
+
+async function runImmediateBenchmarkEmailAlertCheck(benchmarkId: unknown, logPrefix: string): Promise<void> {
+  const id = String(benchmarkId || "").trim();
+  if (!id) return;
+  try {
+    const { alertMonitoringService } = await import("./services/alert-monitoring.js");
+    await alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(id);
+  } catch (e: any) {
+    console.warn(`[${logPrefix}] Immediate email alert check failed:`, (e as any)?.message || e);
+  }
+}
+
 // Helper functions for column type detection
 function inferColumnType(values: any[]): 'number' | 'text' | 'date' | 'currency' | 'percentage' | 'boolean' | 'unknown' {
   if (values.length === 0) return 'unknown';
@@ -21993,9 +22015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedKPI = insertKPISchema.parse(requestData);
       const kpi = await storage.createKPI(validatedKPI);
       checkPerformanceAlerts().catch((e) => console.warn("[Meta KPI Create] Alert check failed:", (e as any)?.message || e));
-      import("./services/alert-monitoring.js")
-        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateKPIAlertIfNeeded(String((kpi as any)?.id || "")))
-        .catch((e) => console.warn("[Meta KPI Create] Immediate email alert check failed:", e?.message || e));
+      await runImmediateKPIEmailAlertCheck((kpi as any)?.id, "Meta KPI Create");
       res.json({ kpi });
     } catch (error: any) {
       console.error('[Meta KPIs] Create error:', error);
@@ -24136,9 +24156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         checkPerformanceAlerts().catch((e) => console.warn("[KPI Create] Alert check failed:", (e as any)?.message || e));
       }
-      import("./services/alert-monitoring.js")
-        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateKPIAlertIfNeeded(String((kpi as any)?.id || "")))
-        .catch((e) => console.warn("[KPI Create] Immediate email alert check failed:", (e as any)?.message || e));
+      await runImmediateKPIEmailAlertCheck((kpi as any)?.id, "KPI Create");
 
       res.json(responseKpi || kpi);
     } catch (error) {
@@ -24223,9 +24241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         checkPerformanceAlerts().catch((e) => console.warn("[KPI Update] Alert check failed:", (e as any)?.message || e));
       }
-      import("./services/alert-monitoring.js")
-        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateKPIAlertIfNeeded(String(kpiId)))
-        .catch((e) => console.warn("[KPI Update] Immediate email alert check failed:", (e as any)?.message || e));
+      await runImmediateKPIEmailAlertCheck(kpiId, "KPI Update");
 
       res.json(responseKPI || updatedKPI);
     } catch (error) {
@@ -24318,6 +24334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (e: any) {
         console.warn("[Campaign KPI Create] checkPerformanceAlerts failed:", e?.message || e);
       }
+      await runImmediateKPIEmailAlertCheck((kpi as any)?.id, "Campaign KPI Create");
       res.json(kpi);
     } catch (error) {
       console.error('KPI create error:', error);
@@ -24387,6 +24404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (e: any) {
         console.warn("[KPI Update] checkPerformanceAlerts failed:", e?.message || e);
       }
+      await runImmediateKPIEmailAlertCheck(kpiId, "Campaign KPI Update");
 
       res.json(kpi);
     } catch (error) {
@@ -24702,6 +24720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (e: any) {
         console.warn("[Campaign Benchmark Create] Alert check failed:", (e as any)?.message || e);
       }
+      await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Campaign Benchmark Create");
 
       res.json(benchmark);
     } catch (error) {
@@ -24757,6 +24776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (e: any) {
         console.warn("[Campaign Benchmark Update] Alert check failed:", (e as any)?.message || e);
       }
+      await runImmediateBenchmarkEmailAlertCheck(benchmarkId, "Campaign Benchmark Update");
 
       res.json(benchmark);
     } catch (error) {
@@ -24950,9 +24970,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       import("./benchmark-notifications.js")
         .then(({ checkBenchmarkPerformanceAlerts }) => checkBenchmarkPerformanceAlerts())
         .catch((e) => console.warn("[Platform Benchmark Create] Alert check failed:", (e as any)?.message || e));
-      import("./services/alert-monitoring.js")
-        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(String((benchmark as any)?.id || "")))
-        .catch((e) => console.warn("[Platform Benchmark Create] Immediate email alert check failed:", (e as any)?.message || e));
+      await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Platform Benchmark Create");
       res.status(201).json(responseBenchmark || benchmark);
     } catch (error) {
       console.error('Platform benchmark creation error:', error);
@@ -25016,9 +25034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
         await checkBenchmarkPerformanceAlerts();
       } catch (e: any) { console.warn("[Platform Benchmark Update] Alert check failed:", (e as any)?.message || e); }
-      import("./services/alert-monitoring.js")
-        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(String(benchmarkId)))
-        .catch((e) => console.warn("[Platform Benchmark Update] Immediate email alert check failed:", (e as any)?.message || e));
+      await runImmediateBenchmarkEmailAlertCheck(benchmarkId, "Platform Benchmark Update");
 
       res.json(responseBenchmark || benchmark);
     } catch (error) {
@@ -25574,9 +25590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
         await checkBenchmarkPerformanceAlerts();
       } catch (e: any) { console.warn("[Benchmark Create] Alert check failed:", (e as any)?.message || e); }
-      import("./services/alert-monitoring.js")
-        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(String((benchmark as any)?.id || "")))
-        .catch((e) => console.warn("[Benchmark Create] Immediate email alert check failed:", (e as any)?.message || e));
+      await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Benchmark Create");
 
       res.status(201).json(benchmark);
     } catch (error) {
@@ -25622,9 +25636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { checkBenchmarkPerformanceAlerts } = await import("./benchmark-notifications.js");
         await checkBenchmarkPerformanceAlerts();
       } catch (e: any) { console.warn("[Benchmark Update] Alert check failed:", (e as any)?.message || e); }
-      import("./services/alert-monitoring.js")
-        .then(({ alertMonitoringService }) => alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(String(id)))
-        .catch((e) => console.warn("[Benchmark Update] Immediate email alert check failed:", (e as any)?.message || e));
+      await runImmediateBenchmarkEmailAlertCheck(id, "Benchmark Update");
 
       res.json(benchmark);
     } catch (error) {

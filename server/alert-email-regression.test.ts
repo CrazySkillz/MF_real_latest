@@ -58,12 +58,19 @@ describe("alert email regression guard", () => {
     expect(sendIndex).toBeGreaterThan(parseIndex);
   });
 
-  it("attempts immediate email checks after GA4 KPI and Benchmark create/update routes", () => {
+  it("awaits immediate email checks after KPI and Benchmark create/update routes", () => {
     const routes = readRoutes();
 
-    expect(routes).toContain("alertMonitoringService.sendImmediateKPIAlertIfNeeded(String((kpi as any)?.id || \"\"))");
-    expect(routes).toContain("alertMonitoringService.sendImmediateKPIAlertIfNeeded(String(kpiId))");
-    expect(routes).toContain("alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(String((benchmark as any)?.id || \"\"))");
-    expect(routes).toContain("alertMonitoringService.sendImmediateBenchmarkAlertIfNeeded(String(id))");
+    expect(routes).toContain('await runImmediateKPIEmailAlertCheck((kpi as any)?.id, "KPI Create");');
+    expect(routes).toContain('await runImmediateKPIEmailAlertCheck(kpiId, "KPI Update");');
+    expect(routes).toContain('await runImmediateKPIEmailAlertCheck((kpi as any)?.id, "Campaign KPI Create");');
+    expect(routes).toContain('await runImmediateKPIEmailAlertCheck(kpiId, "Campaign KPI Update");');
+    expect(routes).toContain('await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Campaign Benchmark Create");');
+    expect(routes).toContain('await runImmediateBenchmarkEmailAlertCheck(benchmarkId, "Campaign Benchmark Update");');
+    expect(routes).toContain('await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Platform Benchmark Create");');
+    expect(routes).toContain('await runImmediateBenchmarkEmailAlertCheck(benchmarkId, "Platform Benchmark Update");');
+    expect(routes).toContain('await runImmediateBenchmarkEmailAlertCheck((benchmark as any)?.id, "Benchmark Create");');
+    expect(routes).toContain('await runImmediateBenchmarkEmailAlertCheck(id, "Benchmark Update");');
+    expect(routes).not.toContain(".then(({ alertMonitoringService }) => alertMonitoringService.sendImmediate");
   });
 });

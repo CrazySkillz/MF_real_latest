@@ -8,6 +8,7 @@ interface EmailAuditContext {
   kind: 'alert' | 'report' | 'test' | 'generic';
   entityType?: 'kpi' | 'benchmark' | 'report' | 'test' | string;
   entityId?: string;
+  auditEventId?: string;
   dedupeKey?: string;
   campaignId?: string;
   campaignName?: string;
@@ -326,7 +327,7 @@ class EmailService {
   async sendAlertEmail(
     recipients: string | string[],
     data: AlertEmailData,
-    auditContext?: Pick<EmailAuditContext, "entityId" | "campaignId" | "campaignName">,
+    auditContext?: Pick<EmailAuditContext, "entityId" | "auditEventId" | "dedupeKey" | "campaignId" | "campaignName" | "deliveryStatus" | "attemptCount" | "nextAttemptAt">,
   ): Promise<boolean> {
     const conditionText = {
       below: 'fallen below',
@@ -438,8 +439,13 @@ class EmailService {
         kind: 'alert',
         entityType: data.type,
         entityId: auditContext?.entityId,
+        auditEventId: auditContext?.auditEventId,
+        dedupeKey: auditContext?.dedupeKey,
         campaignId: auditContext?.campaignId,
         campaignName: auditContext?.campaignName,
+        deliveryStatus: auditContext?.deliveryStatus,
+        attemptCount: auditContext?.attemptCount,
+        nextAttemptAt: auditContext?.nextAttemptAt,
       }
     });
   }
@@ -477,8 +483,7 @@ class EmailService {
         error: args.error,
         nextAttemptAt: ctx?.nextAttemptAt,
       });
-
-      await db.insert(emailAlertEvents).values({
+      const auditValues = {
         kind: ctx?.kind || 'generic',
         entityType: ctx?.entityType,
         entityId: ctx?.entityId,
@@ -498,7 +503,17 @@ class EmailService {
         failedAt: auditState.failedAt,
         error: args.error,
         metadata,
-      });
+      };
+
+      const auditEventId = String(ctx?.auditEventId || "").trim();
+      if (auditEventId) {
+        await db.update(emailAlertEvents)
+          .set(auditValues as any)
+          .where(eq(emailAlertEvents.id, auditEventId));
+        return;
+      }
+
+      await db.insert(emailAlertEvents).values(auditValues as any);
     } catch (e: any) {
       // Never block email sending on audit logging
       console.warn('[Email Service] Audit log insert failed:', e?.message || e);

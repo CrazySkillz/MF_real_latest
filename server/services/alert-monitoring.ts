@@ -4,6 +4,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { emailService } from "./email-service.js";
 import { evaluateAlertCondition, parseAlertNumber as parseSharedAlertNumber } from "../utils/alert-evaluation";
 import { resolveCampaignCurrentValueForAlert } from "../utils/campaign-current-values";
+import { claimAlertEmailSend, type AlertEmailSendClaim } from "../utils/alert-email-audit";
 
 interface AlertCheck {
   id: string;
@@ -54,6 +55,27 @@ class AlertMonitoringService {
     return campaign?.name || null;
   }
 
+  private async claimAlertEmailWindow(args: {
+    itemType: "kpi" | "benchmark";
+    itemId: unknown;
+    itemName: unknown;
+    frequency: unknown;
+    recipients: string[];
+    campaignId: unknown;
+    campaignName: string;
+  }): Promise<AlertEmailSendClaim | null> {
+    const claim = await claimAlertEmailSend({
+      itemType: args.itemType,
+      itemId: String(args.itemId || ""),
+      frequency: args.frequency,
+      recipients: args.recipients,
+      subject: `Alert email send claim: ${String(args.itemName || args.itemType)}`,
+      campaignId: String(args.campaignId || "").trim() || undefined,
+      campaignName: args.campaignName,
+    });
+    return claim.claimed ? claim : null;
+  }
+
   async sendImmediateKPIAlertIfNeeded(kpiId: string): Promise<boolean> {
     const [rawKpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
     if (!rawKpi || !rawKpi.alertsEnabled || !rawKpi.emailNotifications || !rawKpi.emailRecipients) return false;
@@ -76,6 +98,16 @@ class AlertMonitoringService {
 
     const recipients = this.parseEmailRecipients(kpi.emailRecipients);
     if (recipients.length === 0) return false;
+    const claim = await this.claimAlertEmailWindow({
+      itemType: "kpi",
+      itemId: kpi.id,
+      itemName: kpi.name,
+      frequency,
+      recipients,
+      campaignId: (kpi as any).campaignId,
+      campaignName,
+    });
+    if (!claim) return false;
 
     const emailSent = await emailService.sendAlertEmail(recipients, {
       type: 'kpi',
@@ -87,8 +119,11 @@ class AlertMonitoringService {
       unit: kpi.unit || undefined,
     }, {
       entityId: kpi.id,
+      auditEventId: claim.auditEventId,
+      dedupeKey: claim.dedupeKey,
       campaignId: (kpi as any).campaignId || undefined,
       campaignName,
+      attemptCount: 1,
     });
 
     if (!emailSent) return false;
@@ -131,6 +166,16 @@ class AlertMonitoringService {
 
     const recipients = this.parseEmailRecipients(benchmark.emailRecipients);
     if (recipients.length === 0) return false;
+    const claim = await this.claimAlertEmailWindow({
+      itemType: "benchmark",
+      itemId: benchmark.id,
+      itemName: benchmark.name,
+      frequency,
+      recipients,
+      campaignId: (benchmark as any).campaignId,
+      campaignName,
+    });
+    if (!claim) return false;
 
     const emailSent = await emailService.sendAlertEmail(recipients, {
       type: 'benchmark',
@@ -142,8 +187,11 @@ class AlertMonitoringService {
       unit: benchmark.unit || undefined,
     }, {
       entityId: benchmark.id,
+      auditEventId: claim.auditEventId,
+      dedupeKey: claim.dedupeKey,
       campaignId: (benchmark as any).campaignId || undefined,
       campaignName,
+      attemptCount: 1,
     });
 
     if (!emailSent) return false;
@@ -193,6 +241,16 @@ class AlertMonitoringService {
           const recipients = this.parseEmailRecipients(kpi.emailRecipients);
           
           if (recipients.length === 0) continue;
+          const claim = await this.claimAlertEmailWindow({
+            itemType: "kpi",
+            itemId: kpi.id,
+            itemName: kpi.name,
+            frequency,
+            recipients,
+            campaignId: (kpi as any).campaignId,
+            campaignName,
+          });
+          if (!claim) continue;
 
           // Send alert email
           const emailSent = await emailService.sendAlertEmail(recipients, {
@@ -205,8 +263,11 @@ class AlertMonitoringService {
             unit: kpi.unit || undefined,
           }, {
             entityId: kpi.id,
+            auditEventId: claim.auditEventId,
+            dedupeKey: claim.dedupeKey,
             campaignId: (kpi as any).campaignId || undefined,
             campaignName,
+            attemptCount: 1,
           });
 
           if (emailSent) {
@@ -283,6 +344,16 @@ class AlertMonitoringService {
           const recipients = this.parseEmailRecipients(benchmark.emailRecipients);
           
           if (recipients.length === 0) continue;
+          const claim = await this.claimAlertEmailWindow({
+            itemType: "benchmark",
+            itemId: benchmark.id,
+            itemName: benchmark.name,
+            frequency,
+            recipients,
+            campaignId: (benchmark as any).campaignId,
+            campaignName,
+          });
+          if (!claim) continue;
 
           // Send alert email
           const emailSent = await emailService.sendAlertEmail(recipients, {
@@ -295,8 +366,11 @@ class AlertMonitoringService {
             unit: benchmark.unit || undefined,
           }, {
             entityId: benchmark.id,
+            auditEventId: claim.auditEventId,
+            dedupeKey: claim.dedupeKey,
             campaignId: (benchmark as any).campaignId || undefined,
             campaignName,
+            attemptCount: 1,
           });
 
           if (emailSent) {

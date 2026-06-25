@@ -136,11 +136,11 @@ describe("immediate alert email route durability regression guard", () => {
     expect(kpiImmediate).toContain("if (!rawKpi || !rawKpi.alertsEnabled || !rawKpi.emailNotifications || !rawKpi.emailRecipients) return false;");
     expect(benchmarkImmediate).toContain("if (!rawBenchmark || !rawBenchmark.alertsEnabled || !rawBenchmark.emailNotifications || !rawBenchmark.emailRecipients) return false;");
     for (const immediateSource of [kpiImmediate, benchmarkImmediate]) {
-      expectBefore(immediateSource, "if (!campaignName) return false;", "const claim = await this.claimAlertEmailWindow({");
-      expectBefore(immediateSource, "if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) return false;", "const claim = await this.claimAlertEmailWindow({");
-      expectBefore(immediateSource, "if (!this.shouldSendAlert(currentValue, thresholdValue, condition)) return false;", "const claim = await this.claimAlertEmailWindow({");
-      expectBefore(immediateSource, "if (recipients.length === 0) return false;", "const claim = await this.claimAlertEmailWindow({");
-      expectBefore(immediateSource, "const claim = await this.claimAlertEmailWindow({", "const emailSent = await emailService.sendAlertEmail(recipients, {");
+      expectBefore(immediateSource, "if (!campaignName) return false;", "const claim = retryClaim || await this.claimAlertEmailWindow({");
+      expectBefore(immediateSource, "if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) return false;", "const claim = retryClaim || await this.claimAlertEmailWindow({");
+      expectBefore(immediateSource, "if (!this.shouldSendAlert(currentValue, thresholdValue, condition)) return false;", "const claim = retryClaim || await this.claimAlertEmailWindow({");
+      expectBefore(immediateSource, "if (recipients.length === 0) return false;", "const claim = retryClaim || await this.claimAlertEmailWindow({");
+      expectBefore(immediateSource, "const claim = retryClaim || await this.claimAlertEmailWindow({", "const emailSent = await emailService.sendAlertEmail(recipients, {");
     }
   });
 

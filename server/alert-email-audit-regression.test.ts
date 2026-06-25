@@ -88,7 +88,7 @@ describe("alert email audit state regression guard", () => {
     expect(emailService).toContain("const metadata = JSON.stringify({");
     expect(emailService).toContain("providerResponseId: args.providerResponseId");
     expect(emailService).toContain("success: args.success,");
-    expect(emailService).toContain("deliveryStatus: auditState.deliveryStatus,");
+    expect(emailService).toContain("deliveryStatus: retryState?.deliveryStatus || auditState.deliveryStatus,");
     expect(emailService).toContain("providerResponseId: auditState.providerResponseId,");
     expect(emailService).toContain("attemptCount: auditState.attemptCount,");
     expect(emailService).not.toContain('deliveryStatus: "delivered"');

@@ -110,7 +110,7 @@ describe("alert email idempotency regression guard", () => {
   it("claims before provider sends and keeps lastAlertSent as a compatibility mirror", () => {
     const alertMonitoring = source("server/services/alert-monitoring.ts");
 
-    expect(alertMonitoring).toContain('import { claimAlertEmailSend, type AlertEmailSendClaim } from "../utils/alert-email-audit";');
+    expect(alertMonitoring).toContain('claimAlertEmailSend, type AlertEmailSendClaim');
     expect(alertMonitoring.match(/await this\.claimAlertEmailWindow\(/g) || []).toHaveLength(4);
     expect(alertMonitoring.match(/auditEventId: claim\.auditEventId/g) || []).toHaveLength(4);
     expect(alertMonitoring.match(/dedupeKey: claim\.dedupeKey/g) || []).toHaveLength(4);

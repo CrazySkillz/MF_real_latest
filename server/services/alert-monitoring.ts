@@ -1,10 +1,10 @@
 import { db } from "../db";
-import { campaigns, kpis, benchmarks, kpiAlerts } from "../../shared/schema.js";
-import { eq, and, sql } from "drizzle-orm";
+import { campaigns, clients, kpis, benchmarks, kpiAlerts, emailAlertEvents } from "../../shared/schema.js";
+import { eq, and, sql, lte } from "drizzle-orm";
 import { emailService } from "./email-service.js";
 import { evaluateAlertCondition, parseAlertNumber as parseSharedAlertNumber } from "../utils/alert-evaluation";
 import { resolveCampaignCurrentValueForAlert } from "../utils/campaign-current-values";
-import { claimAlertEmailSend, type AlertEmailSendClaim } from "../utils/alert-email-audit";
+import { ALERT_EMAIL_MAX_ATTEMPTS, claimAlertEmailSend, type AlertEmailSendClaim } from "../utils/alert-email-audit";
 
 interface AlertCheck {
   id: string;
@@ -17,6 +17,12 @@ interface AlertCheck {
   emailRecipients?: string;
   lastAlertSent?: Date;
   type: 'kpi' | 'benchmark';
+}
+
+type ExistingAlertEmailClaim = {
+  auditEventId?: string;
+  dedupeKey: string;
+  attemptCount: number;
 }
 
 class AlertMonitoringService {
@@ -48,11 +54,16 @@ class AlertMonitoringService {
     return parseSharedAlertNumber(value);
   }
 
-  private async getExistingCampaignName(campaignId: unknown): Promise<string | null> {
+  private async getExistingCampaignName(campaignId: unknown, requireClient = false): Promise<string | null> {
     const id = String(campaignId || '').trim();
     if (!id) return null;
-    const [campaign] = await db.select({ name: campaigns.name }).from(campaigns).where(eq(campaigns.id, id)).limit(1);
-    return campaign?.name || null;
+    const [campaign] = await db.select({ name: campaigns.name, clientId: campaigns.clientId }).from(campaigns).where(eq(campaigns.id, id)).limit(1);
+    if (!campaign?.name) return null;
+    if (requireClient && campaign.clientId) {
+      const [client] = await db.select({ id: clients.id }).from(clients).where(eq(clients.id, campaign.clientId)).limit(1);
+      if (!client?.id) return null;
+    }
+    return campaign.name;
   }
 
   private async claimAlertEmailWindow(args: {
@@ -76,11 +87,11 @@ class AlertMonitoringService {
     return claim.claimed ? claim : null;
   }
 
-  async sendImmediateKPIAlertIfNeeded(kpiId: string): Promise<boolean> {
+  async sendImmediateKPIAlertIfNeeded(kpiId: string, retryClaim?: ExistingAlertEmailClaim): Promise<boolean> {
     const [rawKpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
     if (!rawKpi || !rawKpi.alertsEnabled || !rawKpi.emailNotifications || !rawKpi.emailRecipients) return false;
     const kpi = await resolveCampaignCurrentValueForAlert(rawKpi);
-    const campaignName = await this.getExistingCampaignName((kpi as any).campaignId);
+    const campaignName = await this.getExistingCampaignName((kpi as any).campaignId, Boolean(retryClaim));
     if (!campaignName) return false;
 
     const frequency = (kpi.alertFrequency || 'daily') as any;
@@ -88,7 +99,7 @@ class AlertMonitoringService {
       frequency === 'immediate' ? 1 :
       frequency === 'weekly' ? 24 * 7 :
       24;
-    if (this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) return false;
+    if (!retryClaim && this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) return false;
 
     const currentValue = this.parseAlertNumber(kpi.currentValue);
     const thresholdValue = this.parseAlertNumber(kpi.alertThreshold);
@@ -98,7 +109,7 @@ class AlertMonitoringService {
 
     const recipients = this.parseEmailRecipients(kpi.emailRecipients);
     if (recipients.length === 0) return false;
-    const claim = await this.claimAlertEmailWindow({
+    const claim = retryClaim || await this.claimAlertEmailWindow({
       itemType: "kpi",
       itemId: kpi.id,
       itemName: kpi.name,
@@ -123,32 +134,34 @@ class AlertMonitoringService {
       dedupeKey: claim.dedupeKey,
       campaignId: (kpi as any).campaignId || undefined,
       campaignName,
-      attemptCount: 1,
+      attemptCount: retryClaim?.attemptCount || 1,
     });
 
     if (!emailSent) return false;
 
     await db.update(kpis).set({ lastAlertSent: sql`CURRENT_TIMESTAMP` }).where(eq(kpis.id, kpi.id));
-    await db.insert(kpiAlerts).values({
-      kpiId: kpi.id,
-      alertType: 'threshold_breach',
-      severity: 'high',
-      message: `${kpi.name} has ${condition} threshold of ${thresholdValue}${kpi.unit || ''}`,
-      currentValue: kpi.currentValue,
-      targetValue: kpi.targetValue,
-      thresholdValue: kpi.alertThreshold,
-      isActive: true,
-      emailSent: true,
-    });
+    if (!retryClaim) {
+      await db.insert(kpiAlerts).values({
+        kpiId: kpi.id,
+        alertType: 'threshold_breach',
+        severity: 'high',
+        message: `${kpi.name} has ${condition} threshold of ${thresholdValue}${kpi.unit || ''}`,
+        currentValue: kpi.currentValue,
+        targetValue: kpi.targetValue,
+        thresholdValue: kpi.alertThreshold,
+        isActive: true,
+        emailSent: true,
+      });
+    }
     return true;
   }
 
-  async sendImmediateBenchmarkAlertIfNeeded(benchmarkId: string): Promise<boolean> {
+  async sendImmediateBenchmarkAlertIfNeeded(benchmarkId: string, retryClaim?: ExistingAlertEmailClaim): Promise<boolean> {
     const [rawBenchmark] = await db.select().from(benchmarks).where(eq(benchmarks.id, benchmarkId));
     if (!rawBenchmark || !rawBenchmark.alertsEnabled || !rawBenchmark.emailNotifications || !rawBenchmark.emailRecipients) return false;
     const benchmark = await resolveCampaignCurrentValueForAlert(rawBenchmark);
     if (String((benchmark as any).status || 'active') !== 'active') return false;
-    const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId);
+    const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId, Boolean(retryClaim));
     if (!campaignName) return false;
 
     const frequency = (benchmark.alertFrequency || 'daily') as any;
@@ -156,7 +169,7 @@ class AlertMonitoringService {
       frequency === 'immediate' ? 1 :
       frequency === 'weekly' ? 24 * 7 :
       24;
-    if (this.shouldThrottleAlert(benchmark.lastAlertSent, frequencyHours)) return false;
+    if (!retryClaim && this.shouldThrottleAlert(benchmark.lastAlertSent, frequencyHours)) return false;
 
     const currentValue = this.parseAlertNumber(benchmark.currentValue);
     const thresholdValue = this.parseAlertNumber(benchmark.alertThreshold);
@@ -166,7 +179,7 @@ class AlertMonitoringService {
 
     const recipients = this.parseEmailRecipients(benchmark.emailRecipients);
     if (recipients.length === 0) return false;
-    const claim = await this.claimAlertEmailWindow({
+    const claim = retryClaim || await this.claimAlertEmailWindow({
       itemType: "benchmark",
       itemId: benchmark.id,
       itemName: benchmark.name,
@@ -191,7 +204,7 @@ class AlertMonitoringService {
       dedupeKey: claim.dedupeKey,
       campaignId: (benchmark as any).campaignId || undefined,
       campaignName,
-      attemptCount: 1,
+      attemptCount: retryClaim?.attemptCount || 1,
     });
 
     if (!emailSent) return false;
@@ -200,6 +213,121 @@ class AlertMonitoringService {
     return true;
   }
 
+  private async markAlertEmailRetrySkipped(row: any, reason: string): Promise<void> {
+    const id = String(row?.id || "").trim();
+    if (!id) return;
+    await db.update(emailAlertEvents)
+      .set({
+        deliveryStatus: "skipped",
+        nextAttemptAt: null,
+        error: reason,
+        metadata: JSON.stringify({
+          retrySkippedReason: reason,
+          originalDedupeKey: row?.dedupeKey || null,
+        }),
+      } as any)
+      .where(eq(emailAlertEvents.id, id));
+  }
+
+  private async markAlertEmailRetryExhausted(row: any): Promise<void> {
+    const id = String(row?.id || "").trim();
+    if (!id) return;
+    await db.update(emailAlertEvents)
+      .set({
+        deliveryStatus: "failed",
+        nextAttemptAt: null,
+        failedAt: new Date(),
+        error: "Alert email retry attempts exhausted",
+        metadata: JSON.stringify({
+          retryExhausted: true,
+          originalDedupeKey: row?.dedupeKey || null,
+        }),
+      } as any)
+      .where(eq(emailAlertEvents.id, id));
+  }
+
+  private async isKPIAlertRetryStillSendable(kpiId: string): Promise<boolean> {
+    const [rawKpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
+    if (!rawKpi || !rawKpi.alertsEnabled || !rawKpi.emailNotifications || !rawKpi.emailRecipients) return false;
+    const kpi = await resolveCampaignCurrentValueForAlert(rawKpi);
+    const campaignName = await this.getExistingCampaignName((kpi as any).campaignId, true);
+    if (!campaignName) return false;
+    const currentValue = this.parseAlertNumber(kpi.currentValue);
+    const thresholdValue = this.parseAlertNumber(kpi.alertThreshold);
+    if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) return false;
+    const condition = (kpi.alertCondition || 'below') as 'below' | 'above' | 'equals';
+    if (!this.shouldSendAlert(currentValue, thresholdValue, condition)) return false;
+    return this.parseEmailRecipients(kpi.emailRecipients).length > 0;
+  }
+
+  private async isBenchmarkAlertRetryStillSendable(benchmarkId: string): Promise<boolean> {
+    const [rawBenchmark] = await db.select().from(benchmarks).where(eq(benchmarks.id, benchmarkId));
+    if (!rawBenchmark || !rawBenchmark.alertsEnabled || !rawBenchmark.emailNotifications || !rawBenchmark.emailRecipients) return false;
+    const benchmark = await resolveCampaignCurrentValueForAlert(rawBenchmark);
+    if (String((benchmark as any).status || 'active') !== 'active') return false;
+    const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId, true);
+    if (!campaignName) return false;
+    const currentValue = this.parseAlertNumber(benchmark.currentValue);
+    const thresholdValue = this.parseAlertNumber(benchmark.alertThreshold);
+    if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) return false;
+    const condition = (benchmark.alertCondition || 'below') as 'below' | 'above' | 'equals';
+    if (!this.shouldSendAlert(currentValue, thresholdValue, condition)) return false;
+    return this.parseEmailRecipients(benchmark.emailRecipients).length > 0;
+  }
+
+  async processDueAlertEmailRetries(now: Date = new Date()): Promise<number> {
+    const rows = await db
+      .select()
+      .from(emailAlertEvents)
+      .where(and(
+        eq(emailAlertEvents.kind, "alert"),
+        eq(emailAlertEvents.deliveryStatus, "retry_scheduled"),
+        lte(emailAlertEvents.nextAttemptAt, now),
+      ))
+      .limit(50)
+      .catch((error: any) => {
+        console.warn("[Alert Email Retry] Failed to load due retries:", error?.message || error);
+        return [];
+      });
+
+    let retried = 0;
+    for (const row of rows as any[]) {
+      const id = String(row?.id || "").trim();
+      const entityType = String(row?.entityType || "").trim().toLowerCase();
+      const entityId = String(row?.entityId || "").trim();
+      const dedupeKey = String(row?.dedupeKey || "").trim();
+      const attemptCount = Number(row?.attemptCount || 0);
+
+      if (!id || !entityId || !dedupeKey || (entityType !== "kpi" && entityType !== "benchmark")) {
+        await this.markAlertEmailRetrySkipped(row, "retry skipped: missing alert email retry identity");
+        continue;
+      }
+      if (attemptCount >= ALERT_EMAIL_MAX_ATTEMPTS) {
+        await this.markAlertEmailRetryExhausted(row);
+        continue;
+      }
+
+      const stillSendable = entityType === "kpi"
+        ? await this.isKPIAlertRetryStillSendable(entityId)
+        : await this.isBenchmarkAlertRetryStillSendable(entityId);
+      if (!stillSendable) {
+        await this.markAlertEmailRetrySkipped(row, "retry skipped: alert no longer sendable");
+        continue;
+      }
+
+      const retryClaim = {
+        auditEventId: id,
+        dedupeKey,
+        attemptCount: attemptCount + 1,
+      };
+      const sent = entityType === "kpi"
+        ? await this.sendImmediateKPIAlertIfNeeded(entityId, retryClaim)
+        : await this.sendImmediateBenchmarkAlertIfNeeded(entityId, retryClaim);
+      if (sent) retried++;
+    }
+
+    return retried;
+  }
   // Check all KPIs for alerts
   async checkKPIAlerts(): Promise<number> {
     try {
@@ -397,10 +525,11 @@ class AlertMonitoringService {
   async runAlertChecks(): Promise<{ kpiAlerts: number; benchmarkAlerts: number }> {
     console.log('Starting alert monitoring check...');
     
+    const retries = await this.processDueAlertEmailRetries();
     const kpiAlerts = await this.checkKPIAlerts();
     const benchmarkAlerts = await this.checkBenchmarkAlerts();
     
-    console.log(`Alert check complete. KPI alerts: ${kpiAlerts}, Benchmark alerts: ${benchmarkAlerts}`);
+    console.log(`Alert check complete. KPI alerts: ${kpiAlerts}, Benchmark alerts: ${benchmarkAlerts}, retries: ${retries}`);
     
     return { kpiAlerts, benchmarkAlerts };
   }

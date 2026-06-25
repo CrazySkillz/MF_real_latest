@@ -50,7 +50,7 @@ describe("alert email regression guard", () => {
 
     expect(source).toContain("if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) return false;");
     expect(source).toContain("if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) continue;");
-    const throttleIndex = source.indexOf("if (this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) return false;");
+    const throttleIndex = source.indexOf("if (!retryClaim && this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) return false;");
     const parseIndex = source.indexOf("const currentValue = this.parseAlertNumber(kpi.currentValue);");
     const sendIndex = source.indexOf("const emailSent = await emailService.sendAlertEmail(recipients, {");
     expect(throttleIndex).toBeGreaterThan(-1);

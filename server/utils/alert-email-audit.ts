@@ -16,6 +16,10 @@ export type AlertEmailDeliveryStatus = typeof ALERT_EMAIL_DELIVERY_STATUSES[numb
 export type AlertEmailItemType = "kpi" | "benchmark";
 export type AlertEmailFrequency = "immediate" | "daily" | "weekly";
 
+export const ALERT_EMAIL_MAX_ATTEMPTS = 3;
+export const ALERT_EMAIL_RETRY_BASE_DELAY_MS = 15 * 60 * 1000;
+export const ALERT_EMAIL_RETRY_MAX_DELAY_MS = 4 * 60 * 60 * 1000;
+
 type AlertEmailClaimInsertValues = {
   kind: "alert";
   entityType: AlertEmailItemType;
@@ -228,5 +232,44 @@ export function buildAlertEmailAuditState(args: {
     nextAttemptAt: args.nextAttemptAt,
     deliveredAt: deliveryStatus === "delivered" ? now : undefined,
     failedAt: deliveryStatus === "failed" ? now : undefined,
+  };
+}
+export function normalizeAlertEmailAttemptCount(value: unknown): number {
+  const attemptCount = Number(value);
+  return Number.isFinite(attemptCount) ? Math.max(0, Math.trunc(attemptCount)) : 0;
+}
+
+export function getAlertEmailRetryDelayMs(attemptCount: unknown): number {
+  const currentAttempt = Math.max(1, normalizeAlertEmailAttemptCount(attemptCount));
+  const delay = ALERT_EMAIL_RETRY_BASE_DELAY_MS * Math.pow(2, currentAttempt - 1);
+  return Math.min(delay, ALERT_EMAIL_RETRY_MAX_DELAY_MS);
+}
+
+export function buildAlertEmailRetryState(args: {
+  attemptCount: unknown;
+  now?: Date;
+  maxAttempts?: number;
+}): {
+  deliveryStatus: AlertEmailDeliveryStatus;
+  nextAttemptAt?: Date;
+  failedAt?: Date;
+  retryExhausted: boolean;
+} {
+  const now = args.now || new Date();
+  const attemptCount = normalizeAlertEmailAttemptCount(args.attemptCount);
+  const maxAttempts = Math.max(1, normalizeAlertEmailAttemptCount(args.maxAttempts ?? ALERT_EMAIL_MAX_ATTEMPTS));
+
+  if (attemptCount >= maxAttempts) {
+    return {
+      deliveryStatus: "failed",
+      failedAt: now,
+      retryExhausted: true,
+    };
+  }
+
+  return {
+    deliveryStatus: "retry_scheduled",
+    nextAttemptAt: new Date(now.getTime() + getAlertEmailRetryDelayMs(attemptCount)),
+    retryExhausted: false,
   };
 }

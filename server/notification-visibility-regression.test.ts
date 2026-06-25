@@ -91,8 +91,10 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(alertMonitoringFile).toContain("private parseAlertNumber(value: unknown): number {");
-    expect(alertMonitoringFile).toContain("private async getExistingCampaignName(campaignId: unknown): Promise<string | null> {");
+    expect(alertMonitoringFile).toContain("private async getExistingCampaignName(campaignId: unknown, requireClient = false): Promise<string | null> {");
+    expect(alertMonitoringFile).toContain("const campaignName = await this.getExistingCampaignName((kpi as any).campaignId, Boolean(retryClaim));");
     expect(alertMonitoringFile).toContain("const campaignName = await this.getExistingCampaignName((kpi as any).campaignId);");
+    expect(alertMonitoringFile).toContain("const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId, Boolean(retryClaim));");
     expect(alertMonitoringFile).toContain("const campaignName = await this.getExistingCampaignName((benchmark as any).campaignId);");
     expect(alertMonitoringFile).toContain("if (!campaignName) return false;");
     expect(alertMonitoringFile).toContain("if (!campaignName) continue;");

@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 import { db } from "../db";
 import { campaigns, clients, emailAlertEvents } from "../../shared/schema.js";
 import { eq } from "drizzle-orm";
-import { buildAlertEmailAuditState } from "../utils/alert-email-audit";
+import { buildAlertEmailAuditState, buildAlertEmailRetryState } from "../utils/alert-email-audit";
 import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "../utils/mailgun-delivery";
 
 interface EmailAuditContext {
@@ -488,8 +488,21 @@ class EmailService {
         updates.deliveredAt = now;
       }
       if (deliveryStatus === "failed") {
-        updates.failedAt = now;
-        updates.error = delivery.error || "Mailgun delivery failed";
+        const retryState = buildAlertEmailRetryState({
+          attemptCount: ctx?.attemptCount ?? 1,
+          now,
+        });
+        updates.deliveryStatus = retryState.deliveryStatus;
+        updates.nextAttemptAt = retryState.nextAttemptAt || null;
+        updates.failedAt = retryState.failedAt || null;
+        updates.error = delivery.error || (retryState.retryExhausted ? "Alert email retry attempts exhausted" : "Mailgun delivery failed");
+        updates.metadata = JSON.stringify({
+          providerResponseId: responseId,
+          mailgunDeliveryStatus: delivery.status,
+          mailgunDeliveryError: delivery.error,
+          retryExhausted: retryState.retryExhausted,
+          nextAttemptAt: retryState.nextAttemptAt?.toISOString(),
+        });
       }
 
       await db.update(emailAlertEvents)
@@ -513,9 +526,6 @@ class EmailService {
       if (!db) return;
 
       const ctx = args.options.auditContext;
-      const metadata = JSON.stringify({
-        providerResponseId: args.providerResponseId,
-      });
       const auditState = buildAlertEmailAuditState({
         dedupeKey: ctx?.dedupeKey,
         deliveryStatus: args.deliveryStatus ?? ctx?.deliveryStatus,
@@ -524,6 +534,14 @@ class EmailService {
         success: args.success,
         error: args.error,
         nextAttemptAt: ctx?.nextAttemptAt,
+      });
+      const retryState = ctx?.kind === "alert" && !args.success
+        ? buildAlertEmailRetryState({ attemptCount: auditState.attemptCount })
+        : null;
+      const metadata = JSON.stringify({
+        providerResponseId: args.providerResponseId,
+        retryExhausted: retryState?.retryExhausted,
+        nextAttemptAt: retryState?.nextAttemptAt?.toISOString(),
       });
       const auditValues = {
         kind: ctx?.kind || 'generic',
@@ -536,13 +554,13 @@ class EmailService {
         subject: args.options.subject,
         provider: args.provider,
         success: args.success,
-        deliveryStatus: auditState.deliveryStatus,
+        deliveryStatus: retryState?.deliveryStatus || auditState.deliveryStatus,
         providerResponseId: auditState.providerResponseId,
         attemptCount: auditState.attemptCount,
         lastAttemptAt: auditState.lastAttemptAt,
-        nextAttemptAt: auditState.nextAttemptAt,
+        nextAttemptAt: retryState ? (retryState.nextAttemptAt || null) : auditState.nextAttemptAt,
         deliveredAt: auditState.deliveredAt,
-        failedAt: auditState.failedAt,
+        failedAt: retryState ? (retryState.failedAt || null) : auditState.failedAt,
         error: args.error,
         metadata,
       };

@@ -52,10 +52,14 @@ Important meaning:
   Covers the current comparison tab, its present campaign-row comparison implementation, and refresh behavior.
 - `GA4/INSIGHTS.md`
   Covers executive financials, trends, findings, action guidance, and budget/pacing notes.
+- `GA4/INSIGHTS_WHAT_TO_INVESTIGATE_NEXT_PRODUCTION_READINESS.md`
+  Tracks the commit plan for hardening the Insights `What to investigate next` section into clearer, grouped, evidence-aware executive guidance.
 - `GA4/REPORTS.md`
   Covers report creation, custom reports, scheduling, downloads, report-library behavior, and current-state caveats.
 - `GA4/REFRESH_AND_PROCESSING.md`
   Covers schedulers, cross-tab dependency order, recomputation rules, and current-state notes for background freshness.
+- `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md`
+  Tracks the commit plan for executive-ready reporting timezone, data-through, last-refreshed, scheduler timing, and stale-data behavior.
 - `GA4_DEVELOPMENT_WORKFLOW.md`
   Covers the recommended GA4 bug-fix, regression-testing, and manual-testing workflow for stabilizing the platform safely.
 - `GA4/FINANCIAL_SOURCES.md`
@@ -110,15 +114,22 @@ These are now part of the GA4 template contract:
 - live GA4 campaign setup should show selectable UTM campaign values after property selection, not require the user to retype `campaignName` when real campaign values can be discovered
 - placeholder values such as `(direct)` must not be treated as the only available campaign choice when manual UTM dimensions or `pageLocation` URLs contain real `utm_campaign` values
 - live Overview cards and tables should use the selected UTM campaign scope from GA4 attribution dimensions first, with a `pageLocation` `utm_campaign` fallback for fresh Measurement Protocol or tagged traffic that is visible in URLs before attribution dimensions populate
+- live Overview Summary cards must import metrics from the selected GA4 property and saved campaign values as one coherent source: persisted selected-campaign daily facts when available, then selected-campaign to-date totals, then selected-campaign breakdown totals
+- when GA4 exposes selected-campaign traffic through `pageLocation` `utm_campaign` but exposes conversions/native revenue through `campaignName`, the Overview import path supplements only missing `Conversions` and GA4-native `Revenue`; it must not overwrite sessions, users, pageviews, engagement, KPI/Benchmark math, imported revenue, spend, or alert behavior
 - live breakdown totals can feed the visible Overview cards when GA4 to-date totals or persisted daily rows are still empty, so a live property with current UTM traffic does not render zero top-line metrics while populated tables exist
 - Overview Summary cards should not flash stale fallback totals while the selected GA4 property's campaign breakdown is still loading. During that initial breakdown load, card values render a stable skeleton so values such as `Conversions` load directly into the current total instead of briefly showing an older lower value.
+- GA4 Overview `Landing Pages` and `Conversion Events` use the same selected Overview date range as the nearby Summary/Campaign Breakdown/current performance sections, while preserving GA4 property selection and saved GA4 campaign scope
 - exact campaign-matched imported revenue now propagates into GA4 Overview `Campaign Breakdown`, GA4 `Ad Comparison`, and report output while `Total Revenue` remains GA4 native revenue plus all active imported revenue sources; targeted validation passed for commits `44c68a2a`, `2713efd7`, and `8c4103fd`
 - the `Add revenue source` chooser shows saved-source status for every revenue source family: CRM/ecommerce sources show connection/import status where applicable, Google Sheets shows `Connected` when an active Google Sheets revenue source exists for the current platform context, and CSV shows `Uploaded` when an active CSV revenue source exists
 - CRM/ecommerce Crosswalk screens should not render a redundant `Selected Campaigns label` field; selected counts and selected value rows are the visible selection summary
 - HubSpot and Salesforce `Review Settings` show the selected deal/opportunity labels together with the amount that will be imported for each selected record, while the confirmed `Total Revenue (to date)` remains the sum of those included confirmed records
 - Shopify `Review Settings` revenue breakdown rows show campaign/value revenue amounts without appending order-count text such as `(1 order)`
-- GA4 KPI creation uses a constrained unit dropdown, highlights `Create Custom KPI` when selected, keeps custom KPI current/target values in generic numeric format until a real unit is selected, and disables `Update KPI` in edit mode until at least one form value changes
+- GA4 KPI creation uses a constrained unit dropdown, highlights `Create Custom KPI` when selected, keeps custom KPI current/target values in generic numeric format until a real unit is selected, disables `Create KPI` until `KPI Name` and `Target Value` are entered, and disables `Update KPI` in edit mode until at least one form value changes
+- GA4 Benchmark creation follows the same custom-entry pattern: `Create Custom Benchmark` is highlighted when selected, shows `Choose name + unit, then set values`, uses a constrained unit dropdown, keeps custom current/benchmark values in generic numeric format until a real unit is selected, disables `Create Benchmark` until `Benchmark Name` and `Benchmark Value` are entered, and disables `Update Benchmark` in edit mode until at least one form value changes
+- GA4 `Ad Comparison` leader cards and report output use the same refreshed campaign comparison rows as the live table, including exact campaign-matched imported revenue and mapped-revenue-created rows; `Best Performing`, `Most Efficient`, and `Needs Attention` must not render stale GA4-only values when the underlying revenue/breakdown inputs update
+- GA4 daily time-series/backfill uses the same selected-campaign import rule as Overview: query campaign attribution dimensions first, use `pageLocation` `utm_campaign` only when the primary daily result has no rows, and supplement missing conversion/revenue fields from a compatible selected-campaign `campaignName` query when GA4 splits traffic and purchase attribution across dimensions. Visible Trends rows remain completed-day rows and exclude today's intraday data.
 - GA4 Insights Trends history gating is mode-specific: `Daily` needs 2 days, `7d` needs 14 days, `30d` needs 60 days, and `Monthly` needs 2 calendar months
+- GA4 Insights `What to investigate next` is validated as grouped, evidence-aware, history-aware, non-causal executive guidance; downloaded and scheduled report output preserves the same intro, finding groups, data basis, confidence, and `Recommended check:` wording as the live Insights tab
 
 Live GA4 processing caveat:
 

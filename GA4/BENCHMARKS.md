@@ -27,15 +27,19 @@ Executive snapshot cards:
 1. user clicks `Create Benchmark`
 2. user chooses a benchmark metric or custom benchmark
 3. the app prefills the latest current value from live GA4-backed calculations
-4. if `Custom` is selected, the user enters the benchmark value
-5. the user enters a custom benchmark value
-6. the benchmark is saved to this campaign and platform scope
+4. if `Create Custom Benchmark` is selected, the user chooses name and unit, then enters current and benchmark values
+5. the benchmark is saved to this campaign and platform scope
 
 Important meaning:
 
 - a benchmark is a reference value the campaign is compared against
 - it is not the same as a KPI target or campaign goal
 - benchmarks answer "how do we compare?" rather than "what are we trying to hit?"
+- the benchmark template tile grid is the metric selector; selecting `Create Custom Benchmark` should highlight that tile with the same selected styling used by predefined benchmark tiles
+- the `Create Custom Benchmark` tile should show the helper text `Choose name + unit, then set values`
+- the `Unit` field is a constrained dropdown, not free text. Supported visible choices are `Select unit`, `Percentage (%)`, campaign currency, `Count`, and `Ratio (x)`, with the current campaign currency used for currency-style benchmarks.
+- for a custom benchmark before the user selects a real unit, `Current Value` and `Benchmark Value` should be formatted as generic numbers. Whole numbers such as `700` should remain `700`, while currency-style two-decimal formatting should apply only after a currency unit is selected.
+- `Create Benchmark` should remain disabled until `Benchmark Name` and `Benchmark Value` are both non-empty; submit-handler validation is only the fallback, not the primary UX.
 
 ## Benchmark Target Source
 
@@ -70,6 +74,7 @@ When editing an existing benchmark:
 - it should not prefill from a stale stored snapshot if the current GA4 or financial inputs have changed
 - count-unit current and benchmark values should display as whole numbers without `.00` suffixes
 - currency-unit current and benchmark values should display with thousands separators while preserving cents, for example `450,000.00`
+- `Update Benchmark` should remain disabled immediately after opening edit mode and should become enabled only after at least one form value differs from the loaded edit values
 
 ## Benchmark Progress And Status
 
@@ -173,6 +178,8 @@ Default form behavior:
 
 - new GA4 Benchmark forms should preselect `Immediate` for `Alert Frequency`
 - editing an existing Benchmark should preserve the saved frequency value
+- when `Send email notifications` is not selected, the form should hide `Email addresses *` and `Alert Frequency`
+- when `Send email notifications` is selected, `Email addresses *` should render as a full-width row with the label next to the input, and `Alert Frequency` should render underneath it
 
 Alert frequency meaning:
 
@@ -191,6 +198,7 @@ Expected behavior:
 - bell and Notifications `View Benchmark` navigation should always open the correct campaign, the `Benchmarks` tab, and the exact benchmark card
 - if the user is already on the same GA4 campaign page, the URL change must still switch to the correct benchmark tab/item instead of staying on the previously open tab
 - email delivery is optional
+- `Email addresses *` and `Alert Frequency` should appear only after `Send email notifications` is selected
 - the selected `Alert Frequency` controls reminder emails, not duplicate in-app notification rows
 - when email alerts are enabled and the benchmark is already breached on create/update, the first email should send immediately
 - if a breached GA4 benchmark has no active in-app notification row, the next GA4 KPI/Benchmark recompute or daily scheduler cycle should restore exactly one active bell / Notifications alert row

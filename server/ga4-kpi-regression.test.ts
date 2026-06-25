@@ -158,7 +158,7 @@ describe("GA4 KPI regression guard", () => {
     expect(formatSection.indexOf("normalizedUnit === SELECT_UNIT")).toBeLessThan(formatSection.indexOf('normalizedUnit === "count"'));
   });
 
-  it("disables the GA4 edit KPI submit button until the form changes", () => {
+  it("disables the GA4 KPI submit button for missing create fields and unchanged edits", () => {
     const ga4MetricsFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
       "utf-8"
@@ -175,7 +175,8 @@ describe("GA4 KPI regression guard", () => {
     expect(ga4MetricsFile).toContain("const areKpiFormValuesEqual = (current: Partial<KPIFormData>, initial: Partial<KPIFormData>) =>");
     expect(ga4MetricsFile).toContain("const watchedKpiFormValues = kpiForm.watch();");
     expect(ga4MetricsFile).toContain("const isKpiEditUnchanged = Boolean(editingKPI) && (!kpiEditInitialValues || areKpiFormValuesEqual(watchedKpiFormValues, kpiEditInitialValues));");
-    expect(ga4MetricsFile).toContain("const isKpiSubmitDisabled = createKPIMutation.isPending || updateKPIMutation.isPending || isKpiEditUnchanged;");
+    expect(ga4MetricsFile).toContain("const isKpiCreateRequiredFieldsMissing = !editingKPI && (!String(watchedKpiFormValues.name || \"\").trim() || !String(watchedKpiFormValues.targetValue || \"\").trim());");
+    expect(ga4MetricsFile).toContain("const isKpiSubmitDisabled = createKPIMutation.isPending || updateKPIMutation.isPending || isKpiEditUnchanged || isKpiCreateRequiredFieldsMissing;");
     expect(editStart).toBeGreaterThan(-1);
     expect(editEnd).toBeGreaterThan(editStart);
     expect(editSection).toContain("const editValues: KPIFormData = {");
@@ -184,7 +185,7 @@ describe("GA4 KPI regression guard", () => {
     expect(footerSection).toContain('disabled={isKpiSubmitDisabled}');
   });
 
-  it("disables the GA4 edit Benchmark submit button until the form changes", () => {
+  it("disables the GA4 Benchmark submit button for missing create fields and unchanged edits", () => {
     const ga4MetricsFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
       "utf-8"
@@ -200,7 +201,8 @@ describe("GA4 KPI regression guard", () => {
     expect(ga4MetricsFile).toContain("const [benchmarkEditInitialValues, setBenchmarkEditInitialValues] = useState<typeof newBenchmark | null>(null);");
     expect(ga4MetricsFile).toContain("const areBenchmarkFormValuesEqual = (current: Record<string, unknown>, initial: Record<string, unknown>) =>");
     expect(ga4MetricsFile).toContain("const isBenchmarkEditUnchanged = Boolean(editingBenchmark) && (!benchmarkEditInitialValues || areBenchmarkFormValuesEqual(newBenchmark, benchmarkEditInitialValues));");
-    expect(ga4MetricsFile).toContain("const isBenchmarkSubmitDisabled = createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending || isBenchmarkEditUnchanged;");
+    expect(ga4MetricsFile).toContain("const isBenchmarkCreateRequiredFieldsMissing = !editingBenchmark && (!String(newBenchmark.name || \"\").trim() || !String(newBenchmark.benchmarkValue || \"\").trim());");
+    expect(ga4MetricsFile).toContain("const isBenchmarkSubmitDisabled = createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending || isBenchmarkEditUnchanged || isBenchmarkCreateRequiredFieldsMissing;");
     expect(editStart).toBeGreaterThan(-1);
     expect(editEnd).toBeGreaterThan(editStart);
     expect(editSection).toContain("const editValues = {");

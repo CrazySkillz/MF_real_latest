@@ -55,6 +55,7 @@ Important meaning:
 - the KPI template tile grid is the metric selector; selecting `Create Custom KPI` should highlight that tile with the same selected styling used by predefined KPI tiles
 - the `Unit` field is a constrained dropdown, not free text. Supported visible choices are `Select unit`, `Percentage (%)`, campaign currency, `Count`, and `Ratio (x)`, with the current campaign currency used for currency-style KPIs.
 - for a custom KPI before the user selects a real unit, `Current Value` and `Target Value` should be formatted as generic numbers. Whole numbers such as `700` should remain `700`, while currency-style two-decimal formatting should apply only after a currency unit is selected.
+- `Create KPI` should remain disabled until `KPI Name` and `Target Value` are both non-empty; submit-handler validation is only the fallback, not the primary UX.
 
 ## KPI Grid Behavior
 
@@ -196,6 +197,8 @@ Default form behavior:
 
 - new GA4 KPI forms should preselect `Immediate` for `Alert Frequency`
 - editing an existing KPI should preserve the saved frequency value
+- when `Send email notifications` is not selected, the form should hide `Email addresses *` and `Alert Frequency`
+- when `Send email notifications` is selected, `Email addresses *` should render as a full-width row with the label next to the input, and `Alert Frequency` should render underneath it
 
 Alert frequency meaning:
 
@@ -214,6 +217,7 @@ Expected behavior:
 - bell and Notifications `View KPI` navigation should always open the correct campaign, the `KPIs` tab, and the exact KPI card
 - if the user is already on the same GA4 campaign page, the URL change must still switch to the correct KPI tab/item instead of staying on the previously open tab
 - email delivery is optional
+- `Email addresses *` and `Alert Frequency` should appear only after `Send email notifications` is selected
 - the selected `Alert Frequency` controls reminder emails, not duplicate in-app notification rows
 - when email alerts are enabled and the KPI is already breached on create/update, the first email should send immediately
 - if a breached GA4 KPI has no active in-app notification row, the next GA4 KPI/Benchmark recompute or daily scheduler cycle should restore exactly one active bell / Notifications alert row

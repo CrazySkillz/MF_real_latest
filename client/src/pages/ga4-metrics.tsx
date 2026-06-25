@@ -5251,9 +5251,11 @@ export default function GA4Metrics() {
   });
   const watchedKpiFormValues = kpiForm.watch();
   const isKpiEditUnchanged = Boolean(editingKPI) && (!kpiEditInitialValues || areKpiFormValuesEqual(watchedKpiFormValues, kpiEditInitialValues));
-  const isKpiSubmitDisabled = createKPIMutation.isPending || updateKPIMutation.isPending || isKpiEditUnchanged;
+  const isKpiCreateRequiredFieldsMissing = !editingKPI && (!String(watchedKpiFormValues.name || "").trim() || !String(watchedKpiFormValues.targetValue || "").trim());
+  const isKpiSubmitDisabled = createKPIMutation.isPending || updateKPIMutation.isPending || isKpiEditUnchanged || isKpiCreateRequiredFieldsMissing;
   const isBenchmarkEditUnchanged = Boolean(editingBenchmark) && (!benchmarkEditInitialValues || areBenchmarkFormValuesEqual(newBenchmark, benchmarkEditInitialValues));
-  const isBenchmarkSubmitDisabled = createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending || isBenchmarkEditUnchanged;
+  const isBenchmarkCreateRequiredFieldsMissing = !editingBenchmark && (!String(newBenchmark.name || "").trim() || !String(newBenchmark.benchmarkValue || "").trim());
+  const isBenchmarkSubmitDisabled = createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending || isBenchmarkEditUnchanged || isBenchmarkCreateRequiredFieldsMissing;
 
   if (campaignLoading) {
     return (

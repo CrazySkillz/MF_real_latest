@@ -15,7 +15,8 @@ This file is the authoritative tracker for GA4 KPI/Benchmark alert and notificat
 - GA4 KPI/Benchmark alerts and notifications are not production-ready at Commit 1.
 - After Commits 2 through 8 in this file are implemented, their required validation passes, and final evidence is recorded here, the GA4 KPI alerts, GA4 KPI notifications, GA4 Benchmark alerts, and GA4 Benchmark notifications sections can be marked production-ready.
 - As of Commit 8, the locally verifiable GA4 KPI/Benchmark alert and notification implementation is production-ready by this document's code-readiness criteria.
-- The current implementation template also includes the post-Commit-8 alignment fixes documented below: alert frequency UI scope/layout, all-row GA4 KPI reconciliation, query-only action URL handling, bell-to-Notifications routing, edit/delete notification refresh, simplified Notification cards, authoritative action URL enrichment, persistent smooth KPI/Benchmark target highlighting, simplified Notifications filters, card actions limited to explicit KPI/Benchmark navigation, card-level alert detail values, removal of the zero-unread header message, and client/campaign delete notification refresh.
+- The current implementation template also includes the post-Commit-8 alignment fixes documented below: alert frequency UI scope/layout, GA4 alert email full-width address row and conditional frequency visibility, create-button required-field gates, all-row GA4 KPI reconciliation, query-only action URL handling, bell-to-Notifications routing, edit/delete notification refresh, simplified Notification cards, authoritative action URL enrichment, persistent smooth KPI/Benchmark target highlighting, simplified Notifications filters, card actions limited to explicit KPI/Benchmark navigation, card-level alert detail values, removal of Notifications read-state UI, and client/campaign delete notification refresh.
+- The alert email scheduler is not production-ready for executive-critical email delivery as of the 2026-06-25 audit. In-app alert visibility remains locally code-ready, but executive-critical email readiness requires the planned alert email scheduler commits below: atomic send idempotency, cadence-aligned reminders, delivery-status semantics, bounded retry/backoff, and deployed delivery evidence.
 - This file is the implementation and validation template for applying the same alert/notification lifecycle to other connected-platform sources, including Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration.
 - Other connected-platform sources are not production-ready from GA4 evidence alone. Each source must copy the proven GA4 lifecycle and pass the same lifecycle matrix with source-specific evidence before its KPI/Benchmark alert and notification behavior can be marked production-ready.
 
@@ -60,16 +61,25 @@ GA4 KPI and Benchmark alerts and notifications are production-ready only when al
 - the Notifications page Filters section does not expose `Read state`
 - Notification cards do not expose per-card read/unread envelope controls or `Dismiss` controls
 - Notification cards display `Current value`, `Threshold value`, and `Created date` for KPI/Benchmark alerts using the active notification response
-- the Notifications page does not show `All notifications are read`; the unread subtitle appears only when unread notifications exist
+- the Notifications page does not expose read-state UI: no unread subtitle, no `Mark All as Read`, no unread blue card highlight, and no read-state filtering
 - the Notifications page `View KPI` / `View Benchmark` action preserves the metadata action URL and opens the correct KPI/Benchmark tab/card
 - if the user is already on the same GA4 page, query-only action URL changes still switch to the correct tab/item by listening to the URL search string
 - the target KPI/Benchmark card remains visibly highlighted while the action URL contains `highlight`, and destination scrolling is smooth rather than instant/jumpy
 - successful GA4 and campaign-level KPI/Benchmark create, update, and delete mutations refresh `/api/notifications`
 - successful client and campaign delete actions refresh `/api/notifications` so active Notifications do not keep stale KPI/Benchmark alerts for deleted campaigns
-- alert UI places `Send email notifications` on the left and `Alert Frequency` on the right
-- `Alert Frequency` is disabled unless `Send email notifications` is selected
+- `Create KPI` remains disabled until `KPI Name` and `Target Value` are both non-empty
+- `Create Benchmark` remains disabled until `Benchmark Name` and `Benchmark Value` are both non-empty
+- alert UI shows only `Send email notifications` by default when email notifications are off
+- when email notifications are selected, `Email addresses *` appears as a full-width row with the label next to the input, and `Alert Frequency` appears underneath it
+- `Email addresses *` and `Alert Frequency` are hidden unless `Send email notifications` is selected
 - alert frequency helper text says it controls how often reminder emails are sent while the KPI or Benchmark is still breaching
 - scheduler/source-refresh reconciliation does not rely on opening the bell, loading Notifications, or manually refreshing the page
+- alert email reminders are checked by a scheduler cadence that can honor the saved frequency windows: immediate means at most once per hour while still breaching, daily means at most once per day, and weekly means at most once per week
+- alert email send attempts are atomically deduplicated per KPI/Benchmark and frequency window so overlapping scheduler runs or multiple server instances cannot send duplicate executive emails for the same due window
+- alert email audit state distinguishes at least `pending`, `sending`, `accepted`, `delivered`, `failed`, `skipped`, and `retry_scheduled`; provider/API acceptance must not be labeled as inbox delivery
+- provider delivery confirmation is required before the product or validation notes say an executive alert email was delivered; when delivery events are unavailable, the status must remain `accepted` or `pending_delivery`
+- failed alert email sends retry with bounded backoff while the KPI/Benchmark is still breaching, without bypassing dedupe or sending after the breach resolves
+- immediate create/update email paths are durable and observable; route success must not hide a failed or skipped email attempt
 - local focused tests, `npm run check`, and `npm run build` pass
 - deployed email provider delivery remains separately documented as provider/inbox evidence, not inferred from local code
 
@@ -343,7 +353,7 @@ Validation note:
 
 ## Post-Commit-8 Implementation Alignment
 
-Status: complete for the locally committed implementation through `c9f582f9`.
+Status: complete for the locally committed implementation through `82f0695a`.
 
 These follow-up commits are part of the current GA4 alert/notification implementation and must be treated as part of the template before applying the lifecycle to Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, Custom Integration, or any other connected-platform source.
 
@@ -362,19 +372,51 @@ Template requirement:
 - future platform KPI/Benchmark alert forms must not imply that `Alert Frequency` creates repeated bell or Notifications rows
 - helper text must distinguish in-app alert lifecycle from reminder email cadence
 
-### Commit `75c38529`: Alert Email Control Layout
+### Commit `75c38529`: Alert Email Control Layout (Superseded)
 
-Runtime behavior:
+Historical runtime behavior:
 
-- `Send email notifications` is rendered on the left
-- `Alert Frequency` is rendered on the right
-- `Alert Frequency` is disabled unless `Send email notifications` is selected
-- email recipient fields appear only when email notifications are selected
+- the earlier implementation placed `Send email notifications` and `Alert Frequency` side by side
+- the earlier implementation disabled `Alert Frequency` unless `Send email notifications` was selected
+- email recipient fields appeared only when email notifications were selected
+
+Superseded by:
+
+- commit `60aa0d41` for the current full-width email address row layout
+- commit `82f0695a` for the current conditional `Alert Frequency` visibility
 
 Template requirement:
 
-- future platform alert forms should use the same layout and disabled-state model unless there is a documented platform-specific reason not to
-- if email notifications are off, users can still receive in-app bell and Notifications alerts, but reminder email frequency is inactive
+- use the newer `60aa0d41` and `82f0695a` contract below for current GA4 and future platform alert forms
+- if email notifications are off, users can still receive in-app bell and Notifications alerts, but reminder email fields and cadence controls are inactive and hidden
+
+### Commit `60aa0d41`: Alert Email Address Row Layout
+
+Runtime behavior:
+
+- `Send email notifications` remains the only visible email control before email notifications are selected
+- once selected, `Email addresses *` renders as a full-width row with the label next to the input
+- `Alert Frequency` renders underneath the email address row instead of beside it
+- no alert math, notification visibility, API payload, email scheduler, or report email behavior changed
+
+Template requirement:
+
+- future platform alert forms should use the same full-width email address row and place `Alert Frequency` below it
+- email layout changes must not change in-app alert lifecycle, current-value resolution, or email send eligibility
+
+### Commit `82f0695a`: Conditional Alert Email Frequency Visibility
+
+Runtime behavior:
+
+- when `Send email notifications` is not selected, `Email addresses *` and `Alert Frequency` are hidden
+- selecting `Send email notifications` reveals the full-width email address row and then `Alert Frequency`
+- in-app bell and Notifications alerts remain available when email notifications are off
+- no alert math, notification visibility, API payload, email scheduler, or report email behavior changed
+
+Template requirement:
+
+- future platform alert forms should hide both `Email addresses *` and `Alert Frequency` until email notifications are selected
+- `Alert Frequency` remains email-reminder-only and must not imply repeated in-app notification rows
 
 ### Commit `4bbffd53`: GA4 KPI Alert Reconciliation Completeness
 
@@ -453,8 +495,9 @@ Template requirement:
 | Reconcile still-breached edited item | preserved active alert row updates in place | preserved active alert row updates in place | lifecycle and visibility tests |
 | Scheduler/source refresh | alerts evaluate after current values refresh | alerts evaluate after current values refresh | scheduler tests |
 | Email reminder | same resolved value as in-app; throttled by frequency | same resolved value as in-app; throttled by frequency | email tests |
-| Alert frequency UI | `Send email notifications` left; `Alert Frequency` right; frequency disabled until email is selected | `Send email notifications` left; `Alert Frequency` right; frequency disabled until email is selected | UI/source tests |
-| Bell alert click / triage entry | top-bar bell opens `/notifications`; unread rows are highlighted in the Notifications list; selected row routes use canonical `selected` with legacy `highlight` compatibility | top-bar bell opens `/notifications`; unread rows are highlighted in the Notifications list; selected row routes use canonical `selected` with legacy `highlight` compatibility | UX source tests and legacy compatibility tests |
+| Create form required fields | `Create KPI` disabled until `KPI Name` and `Target Value` are non-empty | `Create Benchmark` disabled until `Benchmark Name` and `Benchmark Value` are non-empty | UI/source tests |
+| Alert frequency UI | default shows only `Send email notifications`; when selected, `Email addresses *` is a full-width label/input row and `Alert Frequency` appears underneath | default shows only `Send email notifications`; when selected, `Email addresses *` is a full-width label/input row and `Alert Frequency` appears underneath | UI/source tests |
+| Bell alert click / triage entry | top-bar bell opens `/notifications`; active alert cards do not use read-state styling; selected row routes use canonical `selected` with legacy `highlight` compatibility | top-bar bell opens `/notifications`; active alert cards do not use read-state styling; selected row routes use canonical `selected` with legacy `highlight` compatibility | UX source tests and legacy compatibility tests |
 | Notifications row primary action | `View KPI` preserves metadata action URL and opens the correct KPI tab/card highlight | `View Benchmark` preserves metadata action URL and opens the correct Benchmark tab/card highlight | UI/source tests |
 | Query-only platform action URL | existing GA4 page reacts to `tab`/`highlight` search changes and keeps the target card highlighted while `highlight` is present | existing GA4 page reacts to `tab`/`highlight` search changes and keeps the target card highlighted while `highlight` is present | UI/source tests |
 
@@ -483,7 +526,10 @@ Proven locally:
 - Commit 8 makes notification visibility use the same campaign current-value resolver as alert creation before deciding whether linked KPI/Benchmark alerts remain visible
 - Commit 8 final focused regression suite passed: 8 test files / 49 tests
 - Commit `4f313218` clarifies that `Alert Frequency` controls reminder emails while the KPI or Benchmark remains breaching, not repeated in-app notification rows
-- Commit `75c38529` aligns GA4 KPI/Benchmark alert form layout so `Send email notifications` is on the left, `Alert Frequency` is on the right, and frequency is disabled until email notifications are selected
+- Commit `75c38529` aligned the earlier GA4 KPI/Benchmark alert form layout, superseded by the current `60aa0d41` and `82f0695a` email-control visibility contract
+- Commit `60aa0d41` makes GA4 KPI/Benchmark email address controls use a full-width label/input row and places `Alert Frequency` underneath the email address row
+- Commit `82f0695a` hides both `Email addresses *` and `Alert Frequency` until `Send email notifications` is selected
+- Current GA4 create-submit required-field gating is regression-covered: `Create KPI` is gated by `KPI Name` plus `Target Value`, and `Create Benchmark` is gated by `Benchmark Name` plus `Benchmark Value`
 - Commit `4bbffd53` makes GA4 KPI alert reconciliation consider all KPI rows so valid active alerts are not incorrectly superseded by campaign/metric dedupe and disabled stale alerts can be cleared
 - Commit `99415fe6` adds visible GA4 KPI/Benchmark card highlighting for alert action URLs
 - Commit `12bcf04b` makes the GA4 page react to query-only `tab`/`highlight` changes through URL search state
@@ -829,8 +875,11 @@ After GA4 passes this matrix, other connected-platform KPI/Benchmark alert imple
 - resolve/hide alerts when breach clears, alerts are disabled, threshold is removed, or the item is deleted
 - attempt immediate email only after save/update succeeds and only when email alerts are enabled
 - preserve frequency throttling for reminder emails
-- render `Send email notifications` on the left and `Alert Frequency` on the right
-- disable `Alert Frequency` unless email notifications are selected
+- show only `Send email notifications` before email notifications are selected
+- when email notifications are selected, render `Email addresses *` as a full-width label/input row and place `Alert Frequency` underneath it
+- hide both `Email addresses *` and `Alert Frequency` unless email notifications are selected
+- keep `Create KPI` disabled until `KPI Name` and `Target Value` are non-empty
+- keep `Create Benchmark` disabled until `Benchmark Name` and `Benchmark Value` are non-empty
 - describe alert frequency as reminder email cadence while the KPI/Benchmark remains breaching
 - reconcile every relevant active KPI/Benchmark row instead of deduplicating by display metric unless the dedupe rule is explicitly product-defined and tested
 - update an existing active alert row in place when the linked item is edited and still breached
@@ -854,7 +903,7 @@ Current friction:
 - the bell, Notifications page, and KPI/Benchmark cards each behave like separate destinations instead of one guided alert workflow
 - clicking a bell alert can feel like an intermediate stop because the user lands on a highlighted notification row before taking the actual KPI/Benchmark action
 - the Notifications page is mostly an inbox/list, not a triage center that explains what breached, why it matters, and what the next action is
-- alert read state, dismiss state, analytical resolution, and KPI/Benchmark editing are separate concepts, but the UI does not make those differences obvious enough
+- historical alert read state, dismiss state, analytical resolution, and KPI/Benchmark editing are separate concepts, but the current Notifications page should not expose read-state controls for active KPI/Benchmark triage
 - the full Notifications page has filters and pagination, but not a persistent selected-alert detail surface that keeps alert context visible
 
 Recommended product model:
@@ -865,9 +914,9 @@ Recommended product model:
 
 Recommended user journey:
 
-`Bell -> Notifications full-width list with unread highlights -> View KPI/Benchmark`
+`Bell -> Notifications full-width active-alert list -> View KPI/Benchmark`
 
-The bell should open the Notifications center directly. The Notifications page should highlight unread alerts and expose the KPI/Benchmark action on each alert row without a persistent side panel. The KPI/Benchmark page should remain where the user reviews or edits the underlying metric target, threshold, or benchmark.
+The bell should open the Notifications center directly. The Notifications page should show active KPI/Benchmark alert cards with the KPI/Benchmark action on each alert row, without read-state styling or a persistent side panel. The KPI/Benchmark page should remain where the user reviews or edits the underlying metric target, threshold, or benchmark.
 
 ### Target UX Contract
 
@@ -878,12 +927,12 @@ The improved flow should behave as follows:
 - KPI/Benchmark metadata action URLs keep using `highlight` for platform card highlighting, for example `/campaigns/:id/ga4-metrics?tab=kpis&highlight=:kpiId`
 - clicking the top-bar bell opens `/notifications` directly instead of opening a dropdown
 - the top-bar bell indicator is a red dot without numbers, derived from active KPI/Benchmark breach notifications rather than unread count
-- the red dot remains while any KPI/Benchmark remains in breach, even if the notification has been marked read
-- unread alert rows are highlighted in the Notifications list
+- the red dot remains while any KPI/Benchmark remains in breach
+- active alert rows do not use read-state styling, unread subtitles, or `Mark All as Read`
 - clicking a Notifications row selects and highlights it through `/notifications?selected=:notificationId` for legacy selected-link compatibility
 - the Notifications page shows a full-width alert list without a persistent selected-detail side panel
 - each alert row keeps the primary `View KPI` or `View Benchmark` action
-- secondary row actions are `Dismiss alert` and read/unread toggle where appropriate
+- the Notifications page does not expose secondary read/unread or card-level dismiss controls
 - dismissed alerts are clearly described as hidden from the active inbox, not analytically resolved
 - resolved alerts do not appear in the default active-alert view, but can be available in a history/status view if retained by the API
 - deleting a KPI/Benchmark removes the related active alert from bell and Notifications without deleting unrelated alert history
@@ -1076,7 +1125,7 @@ Status: complete for the local code/test scope.
 Scope:
 
 - make bell rows route to `/notifications?selected=:notificationId`
-- keep unread count and popover refresh behavior
+- keep unread count and popover refresh behavior for UX-5 only; later post-UX-9 dot-only/read-state-removal fixes supersede this UI behavior
 - make the dropdown copy/action clear that the user is opening alert details
 - avoid duplicating full triage controls inside the bell dropdown
 - keep the dismiss icon behavior separate from row click behavior
@@ -1085,7 +1134,7 @@ Required tests:
 
 - performance-alert bell row routes to `/notifications?selected=:notificationId`
 - dismiss icon does not trigger row navigation
-- unread count still derives from `/api/notifications`
+- unread count still derives from `/api/notifications` for UX-5 only; later post-UX-9 dot-only/read-state-removal fixes supersede this UI behavior
 
 Root cause fixed:
 
@@ -1392,10 +1441,10 @@ Root cause:
 
 Smallest safe fix:
 
-- keep the existing unread count query and badge in the top navigation
+- keep the existing unread count query and badge in the top navigation for this commit only; later dot-only and read-state-removal commits supersede this behavior
 - remove only the top-bar bell dropdown surface and its dropdown-only mutations
 - make the bell button navigate directly to `/notifications`
-- keep unread highlighting on the Notifications page list, where unread rows already use the left blue border and subtle blue background
+- keep unread highlighting on the Notifications page list for this commit only; later commit `d0953295` removes read-state styling from active alert cards
 - preserve selected-row routing with `/notifications?selected=:notificationId` and legacy `/notifications?highlight=:notificationId` compatibility
 
 Files changed:
@@ -1438,7 +1487,7 @@ Root cause:
 Smallest safe fix:
 
 - derive `isNotificationsPage` from the current route in `client/src/components/layout/navigation.tsx`
-- keep the same unread notification query and badge
+- keep the same unread notification query and badge for this commit only; later dot-only and read-state-removal commits supersede this behavior
 - disable the bell button when the current route is `/notifications` or a Notifications query route
 - render the bell icon green in that active state
 - keep direct `/notifications` navigation unchanged on every other route
@@ -1732,9 +1781,59 @@ Not locally verifiable:
 
 - browser confirmation that an already-open Notifications page and top-bar bell update immediately after deleting a client or campaign from another page
 
+### Post-UX-9 Notifications Read-State UI Removal
+
+Status: implemented and pushed in commit `d0953295`.
+
+Root cause:
+
+- The Notifications page still carried legacy inbox/read-state UI even though KPI/Benchmark alert triage now treats active breaches as the important state.
+- The page still rendered an unread subtitle such as `1 unread notifications`, a `Mark All as Read` button, unread card styling through a blue left border/subtle blue background, read-state filtering logic, and a mark-read mutation when `View KPI` / `View Benchmark` was clicked.
+- Those read-state affordances made active alerts look like message rows and conflicted with the current bell contract, where the red dot represents active KPI/Benchmark breaches rather than unread count.
+
+Smallest safe fix:
+
+- remove the unread subtitle from the Notifications page header
+- remove the `Mark All as Read` page control
+- remove unread-card blue left border/background styling
+- remove local read-state filtering from the Notifications page
+- remove the mark-read mutation from `View KPI` / `View Benchmark`
+- keep the underlying notification read field/API intact to avoid changing storage contracts or unrelated callers
+- preserve active alert visibility, KPI/Benchmark navigation, bell red breach dot behavior, alert lifecycle, KPI/Benchmark calculations, email behavior, and ownership/scoping rules
+
+Files changed:
+
+- `client/src/pages/notifications.tsx`
+- `server/notification-visibility-regression.test.ts`
+
+Validation evidence:
+
+- `npm test -- server/notification-visibility-regression.test.ts` passed: 1 file / 31 tests
+- `npm run check` passed
+- `npm run build` passed after the expected sandbox escalation for Vite/esbuild
+- `git diff --check -- client/src/pages/notifications.tsx server/notification-visibility-regression.test.ts` passed
+- commit `d0953295` staged only the related runtime/test files and preserved unrelated dirty files
+
+Proven locally:
+
+- the Notifications page does not render an unread subtitle
+- the Notifications page does not render `Mark All as Read`
+- active alert cards no longer use read-state blue border/background styling
+- the Notifications page no longer filters by read state
+- `View KPI` / `View Benchmark` no longer mutates notification read state before navigation
+
+Partially reviewed:
+
+- this was a frontend read-state UI removal with focused source-level regression coverage
+- backend read/update routes and storage fields were intentionally left unchanged to avoid side effects for any non-page callers
+
+Not locally verifiable:
+
+- browser confirmation that all supported viewport sizes display the simplified card/header layout as intended
+
 ## Target UX Manual Validation Checklist
 
-This checklist validates the implemented triage journey after UX-2 through UX-9 and the direct bell/full-width list/card-target/filter/action/detail/header/delete-refresh adjustments. The top-bar bell now opens `/notifications` from other pages, shows a small red dot with no number at the bottom corner of the bell icon while any KPI/Benchmark breach is active, keeps its original color and is disabled on the Notifications page, alert cards span the Notifications content width, Notification cards show current value, threshold value, and created date, cards do not show an ambiguous timestamp line, card backgrounds are not clickable, Filters do not expose `Read state`, cards do not expose envelope or `Dismiss` controls, the zero-unread header message is hidden, selected alert rows use `/notifications?selected=:notificationId`, legacy `/notifications?highlight=:notificationId` remains transition-compatible for old links, `View KPI` / `View Benchmark` opens the correct highlighted target card with smooth scrolling, and client/campaign deletion refreshes active Notifications so stale deleted-campaign alerts disappear.
+This checklist validates the implemented triage journey after UX-2 through UX-9 and the direct bell/full-width list/card-target/filter/action/detail/header/delete-refresh/read-state adjustments. The top-bar bell now opens `/notifications` from other pages, shows a small red dot with no number at the bottom corner of the bell icon while any KPI/Benchmark breach is active, keeps its original color and is disabled on the Notifications page, alert cards span the Notifications content width, Notification cards show current value, threshold value, and created date, cards do not show an ambiguous timestamp line, card backgrounds are not clickable, Filters do not expose `Read state`, cards do not expose envelope or `Dismiss` controls, the Notifications page does not expose unread/read-state header text or actions, active alert cards do not use unread blue styling, selected alert rows use `/notifications?selected=:notificationId`, legacy `/notifications?highlight=:notificationId` remains transition-compatible for old links, `View KPI` / `View Benchmark` opens the correct highlighted target card with smooth scrolling, and client/campaign deletion refreshes active Notifications so stale deleted-campaign alerts disappear.
 
 Use a disposable GA4 campaign with known values.
 
@@ -1744,7 +1843,7 @@ Use a disposable GA4 campaign with known values.
 4. Confirm the bell icon keeps its original color and cannot be clicked while you are on the Notifications page.
 5. Confirm there is no right-side `Select an alert` panel.
 6. Confirm the `Active alerts` heading/current-view count is not shown above the cards.
-7. Confirm the header does not show `All notifications are read` when there are no unread notifications.
+7. Confirm the header does not show unread/read-state text such as `All notifications are read` or `1 unread notifications`.
 8. Confirm alert cards span the Notifications content width.
 9. Confirm the Filters section shows Priority, Client, and Date, with no `Read state` filter.
 10. Confirm alert cards show `Current value`, `Threshold value`, and `Created date`.
@@ -1752,26 +1851,29 @@ Use a disposable GA4 campaign with known values.
 12. Click the blank/background area of a KPI/Benchmark alert card and confirm it does not navigate or select the card.
 13. Confirm the alert card does not show an envelope read/unread icon.
 14. Confirm the alert card does not show an `X Dismiss` button.
-15. Confirm unread alert rows are highlighted in the Notifications list.
-16. Click `View KPI` on the row and confirm it preserves the metadata action URL, opens the correct KPI surface, scrolls smoothly, and keeps the exact KPI card highlighted.
-17. Update the KPI name, target, threshold, or current value while it remains breached.
-18. Confirm the Notifications page reflects the edited KPI alert details after the notification query refreshes.
-19. Update the KPI so it no longer breaches.
-20. Confirm the alert disappears from active bell and Notifications views.
-21. Re-breach the same KPI.
-22. Confirm exactly one active alert returns, the bell red dot returns with no number, and the alert is visible in the Notifications list.
-23. Delete the KPI and confirm the related active alert disappears from bell and Notifications without affecting unrelated alerts.
-24. Repeat the same view, edit/update, clear, re-breach, and delete flow for a GA4 Benchmark using `View Benchmark`.
-25. Repeat `View KPI` / `View Benchmark` for campaign-level KPI/Benchmark alerts and confirm the campaign `Campaign KPIs` / `Campaign Benchmarks` tab opens with the exact card highlighted and smooth scrolling.
-26. Create or use a disposable campaign with active KPI/Benchmark alerts, then delete that campaign from the Campaigns page.
-27. Return to Notifications and confirm alerts for the deleted campaign are gone while unrelated alerts remain.
-28. Create or use a disposable client whose campaigns have active KPI/Benchmark alerts, then delete that client from Home.
-29. Return to Notifications and confirm alerts for that client's deleted campaigns are gone while unrelated alerts remain.
-30. Confirm the alert form layout: `Send email notifications` appears on the left, `Alert Frequency` appears on the right, and `Alert Frequency` is disabled until email notifications are selected.
-31. Run or trigger the valid reconciliation path.
-32. Confirm exactly one new active alert appears.
-33. Enable email alerts with a safe recipient in a deployed environment.
-34. Confirm provider acceptance separately from inbox/provider delivery.
+15. Confirm newly created active alert cards do not show a blue vertical unread line or blue unread background.
+16. Confirm the page does not show a `Mark All as Read` action.
+17. Click `View KPI` on the row and confirm it preserves the metadata action URL, opens the correct KPI surface, scrolls smoothly, and keeps the exact KPI card highlighted.
+18. Update the KPI name, target, threshold, or current value while it remains breached.
+19. Confirm the Notifications page reflects the edited KPI alert details after the notification query refreshes.
+20. Update the KPI so it no longer breaches.
+21. Confirm the alert disappears from active bell and Notifications views.
+22. Re-breach the same KPI.
+23. Confirm exactly one active alert returns, the bell red dot returns with no number, and the alert is visible in the Notifications list.
+24. Delete the KPI and confirm the related active alert disappears from bell and Notifications without affecting unrelated alerts.
+25. Repeat the same view, edit/update, clear, re-breach, and delete flow for a GA4 Benchmark using `View Benchmark`.
+26. Repeat `View KPI` / `View Benchmark` for campaign-level KPI/Benchmark alerts and confirm the campaign `Campaign KPIs` / `Campaign Benchmarks` tab opens with the exact card highlighted and smooth scrolling.
+27. Create or use a disposable campaign with active KPI/Benchmark alerts, then delete that campaign from the Campaigns page.
+28. Return to Notifications and confirm alerts for the deleted campaign are gone while unrelated alerts remain.
+29. Create or use a disposable client whose campaigns have active KPI/Benchmark alerts, then delete that client from Home.
+30. Return to Notifications and confirm alerts for that client's deleted campaigns are gone while unrelated alerts remain.
+31. Confirm `Create KPI` is disabled until both `KPI Name` and `Target Value` contain non-empty values.
+32. Confirm `Create Benchmark` is disabled until both `Benchmark Name` and `Benchmark Value` contain non-empty values.
+33. Confirm the alert form layout: when `Send email notifications` is not selected, `Email addresses *` and `Alert Frequency` are hidden; when selected, `Email addresses *` spans the form width with the label next to the input and `Alert Frequency` appears underneath.
+34. Run or trigger the valid reconciliation path.
+35. Confirm exactly one new active alert appears.
+36. Enable email alerts with a safe recipient in a deployed environment.
+37. Follow the `Alert Email Scheduler Production-Readiness Plan` deployed validation steps before claiming executive-critical email delivery is production-ready.
 
 Pass criteria:
 
@@ -1779,20 +1881,20 @@ Pass criteria:
 - no stale resolved alerts remain visible
 - no duplicate active alerts appear for the same GA4 KPI/Benchmark
 - top-bar bell indicator is a small red dot at the bottom corner of the bell icon without a number while any KPI/Benchmark breach is active
-- marking an active alert read does not remove the bell red dot while the KPI/Benchmark still breaches
 - top-bar bell clicks open the Notifications page directly without an intermediate dropdown
 - top-bar bell keeps its original icon color and is disabled when already on the Notifications page
 - the Notifications page does not render the right-side `Select an alert` panel
 - the Notifications page does not render the `Active alerts` heading/current-view count above alert cards
-- the Notifications page does not render `All notifications are read` when there are zero unread notifications
+- the Notifications page does not render unread/read-state header text such as `All notifications are read` or `1 unread notifications`
+- the Notifications page does not render `Mark All as Read`
 - alert cards span the Notifications content width
 - the Notifications Filters section does not render a `Read state` filter
 - KPI/Benchmark alert cards display `Current value`, `Threshold value`, and `Created date`
 - alert cards do not show the ambiguous created-at timestamp
 - alert card backgrounds are not clickable; users navigate through the explicit `View KPI` / `View Benchmark` action only
+- alert cards do not use blue unread-state border/background styling
 - alert cards do not render envelope read/unread controls
 - alert cards do not render `X Dismiss` controls
-- unread alert rows are visually highlighted in the Notifications list
 - alert row selection remains transition-compatible through canonical `selected` routing
 - legacy `highlight` notification URLs remain transition-compatible until their removal is explicitly planned and regression-covered
 - Notifications row `View KPI` / `View Benchmark` actions open the correct campaign, tab, and item
@@ -1804,5 +1906,8 @@ Pass criteria:
 - deleting a campaign removes that campaign's KPI/Benchmark active alerts from Notifications after the notification query refreshes
 - deleting a client removes that client's campaign-scoped KPI/Benchmark active alerts from Notifications after the notification query refreshes
 - client/campaign delete refresh does not remove unrelated alerts
-- Alert Frequency remains email-reminder-only and disabled unless email notifications are selected
-- email status is reported only according to the evidence available
+- `Create KPI` remains disabled until `KPI Name` and `Target Value` are entered
+- `Create Benchmark` remains disabled until `Benchmark Name` and `Benchmark Value` are entered
+- Alert Frequency remains email-reminder-only and is hidden unless email notifications are selected
+- Email addresses and Alert Frequency appear only after `Send email notifications` is selected
+- email status is reported only according to the evidence available, and provider acceptance is not described as delivered email

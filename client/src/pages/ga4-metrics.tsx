@@ -34,6 +34,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct } from "@shared/metric-math";
+import { selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
 
 interface Campaign {
@@ -3039,18 +3040,7 @@ export default function GA4Metrics() {
         return { ...row, revenue: adjustedRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? adjustedRevenue / Number(row.sessions || 0) : 0 };
       });
       const sortedByMetric = [...comparisonRows].sort((a: any, b: any) => Number((b as any)?.[selectedMetric] || 0) - Number((a as any)?.[selectedMetric] || 0));
-      const bestPerforming = sortedByMetric[0] as any;
-      const mostEfficient = [...comparisonRows]
-        .filter((r: any) => Number(r?.sessions || 0) > 0)
-        .sort((a: any, b: any) => Number(b?.conversionRate || 0) - Number(a?.conversionRate || 0))[0] as any;
-      const comparisonRowsWithSessions = [...comparisonRows].filter((r: any) => Number(r?.sessions || 0) > 0);
-      const meaningfulSessionFloor = Math.max(25, Math.ceil(Math.max(...comparisonRowsWithSessions.map((r: any) => Number(r?.sessions || 0)), 0) * 0.1));
-      const needsAttentionPool = comparisonRowsWithSessions.some((r: any) => Number(r?.sessions || 0) >= meaningfulSessionFloor)
-        ? comparisonRowsWithSessions.filter((r: any) => Number(r?.sessions || 0) >= meaningfulSessionFloor)
-        : comparisonRowsWithSessions;
-      const needsAttention = needsAttentionPool
-        .sort((a: any, b: any) => Number(a?.conversionRate || 0) - Number(b?.conversionRate || 0))
-        .find((r: any) => String(r?.name || "") !== String(bestPerforming?.name || "")) as any;
+      const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric);
       const totalMetric = selectedMetric === "conversionRate"
         ? (() => {
             const totalSessions = sortedByMetric.reduce((s: number, c: any) => s + Number(c?.sessions || 0), 0);

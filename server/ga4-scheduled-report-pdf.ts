@@ -2,6 +2,7 @@ import { ga4Service } from "./analytics";
 import { storage } from "./storage";
 import { getReportingDateWindow } from "./utils/reporting-timezone";
 import { computeCpa, computeRoiPercent, normalizeRateToPercent } from "../shared/metric-math";
+import { selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 
 type CampaignFilter = string | string[] | undefined;
 type C3 = [number, number, number];
@@ -901,13 +902,12 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       );
     }
     if (includeBestWorst && rows.length > 0) {
-      const best = [...rows].sort((a: any, b: any) => Number(b?.sessions || 0) - Number(a?.sessions || 0))[0];
-      const efficient = [...rows].filter((row: any) => Number(row?.sessions || 0) > 0).sort((a: any, b: any) => Number(b?.conversionRate || 0) - Number(a?.conversionRate || 0))[0];
-      const lowest = [...rows].sort((a: any, b: any) => Number(a?.sessions || 0) - Number(b?.sessions || 0))[0];
+      const selectedMetric = "sessions";
+      const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(rows, selectedMetric);
       metricCards([
-        ["Best Performing", `${String(best?.name || "").slice(0, 18)} (${formatNumber(best?.sessions || 0)})`],
-        ["Most Efficient", `${String(efficient?.name || "").slice(0, 18)} (${formatPct(efficient?.conversionRate || 0)})`],
-        ["Needs Attention", `${String(lowest?.name || "").slice(0, 18)} (${formatNumber(lowest?.sessions || 0)})`],
+        ["Best Performing", `${String(bestPerforming?.name || "").slice(0, 18)} (${formatNumber(bestPerforming?.sessions || 0)} sessions)`],
+        ["Most Efficient", `${String(mostEfficient?.name || "").slice(0, 18)} (${formatPct(mostEfficient?.conversionRate || 0)})`],
+        ["Needs Attention", `${String(needsAttention?.name || "").slice(0, 18)} (${formatPct(needsAttention?.conversionRate || 0)}, ${formatNumber(needsAttention?.sessions || 0)} sessions)`],
       ], 3, 28);
     }
     if (includeRevenueBreakdown) {

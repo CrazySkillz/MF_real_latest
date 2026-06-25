@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trophy, Zap, AlertTriangle, Info } from "lucide-react";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatPct } from "@shared/metric-math";
+import { selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend,
 } from "recharts";
@@ -180,30 +181,9 @@ export default function GA4AdComparison({
     }));
   }, [chartRows, selectedMetric]);
 
-  const bestPerforming = useMemo(() => {
-    return [...comparisonRows].sort((a, b) => {
-      const av = Number((a as any)[selectedMetric] || 0);
-      const bv = Number((b as any)[selectedMetric] || 0);
-      return bv - av;
-    })[0];
+  const { bestPerforming, mostEfficient, needsAttention } = useMemo(() => {
+    return selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric);
   }, [comparisonRows, selectedMetric]);
-
-  const mostEfficient = useMemo(() => {
-    return [...comparisonRows].filter(c => c.sessions > 0).sort((a, b) => b.conversionRate - a.conversionRate)[0];
-  }, [comparisonRows]);
-
-  const needsAttention = useMemo(() => {
-    const rowsWithSessions = [...comparisonRows].filter(c => c.sessions > 0);
-    const meaningfulSessionFloor = Math.max(25, Math.ceil(Math.max(...rowsWithSessions.map(c => c.sessions), 0) * 0.1));
-    const pool = rowsWithSessions.some(c => c.sessions >= meaningfulSessionFloor)
-      ? rowsWithSessions.filter(c => c.sessions >= meaningfulSessionFloor)
-      : rowsWithSessions;
-    const sorted = pool.sort((a, b) => a.conversionRate - b.conversionRate);
-    // Avoid showing the same campaign as both Best Performing and Needs Attention
-    const candidate = sorted[0];
-    if (candidate && candidate.name === bestPerforming?.name && sorted.length > 1) return sorted[1];
-    return candidate;
-  }, [comparisonRows, bestPerforming]);
 
   const fmtMetricValue = (metric: string, value: number) => {
     if (metric === "revenue") return formatMoney(value);
@@ -293,7 +273,7 @@ export default function GA4AdComparison({
               </CardContent>
             </Card>
           )}
-          {needsAttention && needsAttention.name !== mostEfficient?.name && (
+          {needsAttention && (
             <Card className="border-amber-200 dark:border-amber-800">
               <CardContent className="p-5">
                 <div className="flex items-center gap-2 mb-2">

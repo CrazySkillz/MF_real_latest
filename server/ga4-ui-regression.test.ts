@@ -229,25 +229,29 @@ describe("GA4 UI regression guard", () => {
     expect(pdfAgg).toContain("filteredCampaignRowsByKey.set(key, row);");
   });
 
-  it("keeps GA4 Ad Comparison leader cards on mapped revenue-adjusted rows", () => {
+  it("keeps GA4 Ad Comparison leader cards on one shared adjusted-row selector", () => {
     const adComparison = readClient("pages/ga4-ad-comparison.tsx");
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");
     const allocationStart = adComparison.indexOf("const allocationSummary = useMemo(() => {");
     const comparisonStart = adComparison.indexOf("const comparisonRows = useMemo(() => {", allocationStart);
+    const cardSelectorStart = adComparison.indexOf("selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric)", comparisonStart);
     const allocationSection = adComparison.slice(allocationStart, comparisonStart);
-    const cardsStart = adComparison.indexOf("const bestPerforming = useMemo(() => {", comparisonStart);
-    const formatStart = adComparison.indexOf("const fmtMetricValue = (metric: string, value: number) => {", cardsStart);
-    const cardsSection = adComparison.slice(cardsStart, formatStart);
 
     expect(allocationStart).toBeGreaterThan(-1);
     expect(comparisonStart).toBeGreaterThan(allocationStart);
-    expect(cardsStart).toBeGreaterThan(comparisonStart);
-    expect(formatStart).toBeGreaterThan(cardsStart);
+    expect(cardSelectorStart).toBeGreaterThan(comparisonStart);
     expect(allocationSection).toContain("const mappings = Array.isArray(cfg?.campaignMappings) ? cfg.campaignMappings : [];");
     expect(allocationSection).toContain("const mappedCampaignByValue = new Map<string, string>();");
     expect(allocationSection).toContain("const key = normalizeCampaignKey(mappedCampaignByValue.get(valueKey) || campaignValue);");
-    expect(cardsSection).toContain("return [...comparisonRows].filter(c => c.sessions > 0)");
-    expect(cardsSection).toContain("const rowsWithSessions = [...comparisonRows].filter(c => c.sessions > 0);");
-    expect(cardsSection).not.toContain("[...campaignBreakdownAgg]");
+    expect(adComparison).toContain("selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric)");
+    expect(ga4Metrics).toContain("selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric)");
+    expect(scheduledPdf).toContain("selectGA4AdComparisonLeaderCards(rows, selectedMetric)");
+    expect(scheduledPdf).toContain("const selectedMetric = \"sessions\";");
+    expect(adComparison).not.toContain("needsAttention.name !== mostEfficient?.name");
+    expect(ga4Metrics).not.toContain(".find((r: any) => String(r?.name || \"\") !== String(bestPerforming?.name || \"\"))");
+    expect(scheduledPdf).not.toContain("const lowest = [...rows].sort((a: any, b: any) => Number(a?.sessions || 0) - Number(b?.sessions || 0))[0];");
+    expect(adComparison).not.toContain("[...campaignBreakdownAgg]");
   });
 
   it("keeps GA4 Insights trend history requirements aligned to selected mode", () => {

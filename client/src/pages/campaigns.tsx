@@ -60,6 +60,8 @@ const REPORTING_TIME_ZONE_OPTIONS = [
   "Australia/Sydney",
 ];
 
+const formatReportingTimeZoneOptionLabel = (value: string) => value.replace(/_/g, " ");
+
 const campaignFormSchema = insertCampaignSchema.extend({
   name: z.string().min(1, "Campaign name is required"),
   clientWebsite: z.string().optional(),
@@ -1186,7 +1188,7 @@ export default function Campaigns() {
                           </SelectTrigger>
                           <SelectContent>
                             {REPORTING_TIME_ZONE_OPTIONS.map((tz) => (
-                              <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                              <SelectItem key={tz} value={tz}>{formatReportingTimeZoneOptionLabel(tz)}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -2024,7 +2026,7 @@ export default function Campaigns() {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={editForm.handleSubmit(handleEditSubmit)} className="space-y-4">
+          <form onSubmit={editForm.handleSubmit(handleEditSubmit)} className="space-y-4 overflow-y-auto flex-1 min-h-0 scrollbar-hide px-1">
             <input type="hidden" {...editForm.register("conversionValue")} />
             <input type="hidden" {...editForm.register("startDate")} />
             <input type="hidden" {...editForm.register("endDate")} />
@@ -2071,7 +2073,7 @@ export default function Campaigns() {
                 </SelectTrigger>
                 <SelectContent>
                   {REPORTING_TIME_ZONE_OPTIONS.map((tz) => (
-                    <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                    <SelectItem key={tz} value={tz}>{formatReportingTimeZoneOptionLabel(tz)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

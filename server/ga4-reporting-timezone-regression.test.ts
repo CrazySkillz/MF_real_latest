@@ -18,6 +18,7 @@ describe("GA4 reporting timezone contract", () => {
     expect(index).toContain("ADD COLUMN IF NOT EXISTS reporting_time_zone TEXT NOT NULL DEFAULT 'UTC';");
 
     expect(timezoneUtil).toContain('export const DEFAULT_REPORTING_TIME_ZONE = "UTC";');
+    expect(campaigns).toContain('const formatReportingTimeZoneOptionLabel = (value: string) => value.replace(/_/g, " ");');
     expect(timezoneUtil).toContain("export function normalizeReportingTimeZone(value: any): string");
     expect(timezoneUtil).toContain("new Intl.DateTimeFormat(\"en-US\", { timeZone: tz }).format(new Date(0));");
     expect(routes).toContain('import { getExpectedDailyRefreshAt, getReportingDateWindow, normalizeReportingTimeZone } from "./utils/reporting-timezone";');
@@ -37,6 +38,8 @@ describe("GA4 reporting timezone contract", () => {
     expect(campaigns).toContain('data-testid="select-edit-reporting-time-zone"');
     expect(campaigns).toContain('onValueChange={(value) => editForm.setValue("reportingTimeZone", value, { shouldDirty: true, shouldValidate: true })}');
     expect(campaigns).toContain('DialogContent className="sm:max-w-xl max-h-[90vh] overflow-hidden flex flex-col"');
+    expect(campaigns).toContain('className="space-y-4 overflow-y-auto flex-1 min-h-0 scrollbar-hide px-1"');
+    expect(campaigns).toContain('data-testid="button-save-edit"');
     expect(campaigns).toContain('<input type="hidden" {...editForm.register("conversionValue")} />');
   });
 });

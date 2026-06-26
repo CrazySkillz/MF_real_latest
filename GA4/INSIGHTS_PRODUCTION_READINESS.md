@@ -17,7 +17,7 @@ Reason:
 - the tab contains several different section types with different source windows and confidence levels
 - some sections are exact financial or daily-fact summaries
 - some sections are directional investigation guidance
-- Commit 1 resolved the previously stale `Executive Financials` and `Trends` copy; Commit 2 resolved findings completeness visibility; remaining blockers are `Data Summary` average labeling and report parity validation
+- Commit 1 resolved the previously stale `Executive Financials` and `Trends` copy; Commit 2 resolved findings completeness visibility; Commit 3 resolved `Data Summary` average labeling; the remaining blocker is final report parity validation and production-readiness promotion
 - report output is implemented through separate live-download and scheduled-PDF paths, so report parity must be checked separately
 
 The GA4 `Insights` tab can be used as a future-platform template only after the section-specific rules below are followed. Do not copy the current implementation blindly.
@@ -92,23 +92,28 @@ Template rule:
 
 ### Data Summary
 
-Status: Directional context only; not production-ready as exact executive decision math.
+Status: Ready for current code scope as contextual summary, not a raw source-detail table.
 
 Proven:
 
 - it gives a compact at-a-glance summary from currently available campaign values.
 - financial values use the same `financialRevenue` and `financialSpend` variables as Executive Financials.
+- financial values are shown as totals, not exact per-day averages.
 - channel breakdown is derived from GA4 acquisition breakdown rows.
 
-Current risk:
+Resolved in Commit 3:
 
-- per-day averages divide total values by available GA4 daily-history days.
-- that is reasonable for true daily GA4 facts but can be misleading when revenue includes imported to-date or snapshot-style sources.
+- Data Summary no longer presents revenue or other displayed totals as exact per-day averages.
+- live UI, live-download, and scheduled-PDF Data Summary output use source/window-neutral total labels.
+- the adjacent revenue information finding no longer derives a daily average from mixed-source financial revenue.
+
+Remaining limit:
+
 - channel rows are scaled to match the current top-line totals, so the section is normalized display context rather than raw channel-source truth.
 
 Template rule:
 
-- future platforms should either remove these averages, label them as directional, or compute them only from true daily source rows with matching windows.
+- future platforms should show mixed-source financial values as totals unless every source contributes daily rows with the same window.
 
 ### Insight Tracker Cards
 
@@ -175,7 +180,7 @@ Template rule:
 1. Done in Commit 1: fix `Executive Financials` copy so it states the additive revenue model.
 2. Done in Commit 1: fix `Trends` copy so 7d/30d non-rate metrics are described as rolling totals, while rate metrics are weighted averages.
 3. Done in Commit 2: add a hidden-count indicator when more than 12 findings exist in the live UI and capped report summaries.
-4. Pending Commit 3: rework or relabel `Data Summary` averages so imported snapshot/to-date revenue is not presented as an exact daily average.
+4. Done in Commit 3: rework `Data Summary` labels so imported snapshot/to-date revenue is not presented as an exact daily average.
 5. In progress by commit: add focused regression guards for each item above in the commit that fixes it.
 6. Pending Commit 4: revalidate live-download and scheduled PDF output after those fixes.
 
@@ -233,7 +238,7 @@ Production-readiness status after this commit: still partially production-ready.
 
 ### Commit 3: Data Summary Accuracy
 
-Status: Pending.
+Status: Implemented and locally validated. Pending user validation.
 
 Scope:
 

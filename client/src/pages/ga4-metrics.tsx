@@ -3518,9 +3518,9 @@ export default function GA4Metrics() {
           }
         };
         const primaryDataCards: string[][] = [
-          ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), `~${formatNumber(Math.round(breakdownTotals.sessions / Math.max(insightsRollups?.availableDays || 1, 1)))}/day avg`] as [string, string, string]] : []),
+          ...(breakdownTotals.sessions > 0 ? [["Sessions", formatNumber(breakdownTotals.sessions), "Current GA4 total"] as [string, string, string]] : []),
           ...(breakdownTotals.conversions > 0 ? [["Conversions", formatNumber(breakdownTotals.conversions), breakdownTotals.sessions > 0 ? `${formatPct((breakdownTotals.conversions / breakdownTotals.sessions) * 100)} conversion rate` : ""] as [string, string, string]] : []),
-          ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), `~${formatMoney(financialRevenue / Math.max(insightsRollups?.availableDays || 1, 1))}/day avg`] as [string, string, string]] : []),
+          ...(financialRevenue > 0 ? [["Revenue", formatMoney(financialRevenue), "Total across revenue sources"] as [string, string, string]] : []),
           ...(channelAnalysis?.topSessionChannel ? [["Top Channel", String(channelAnalysis.topSessionChannel.label || ""), `${channelAnalysis.topSessionShare.toFixed(0)}% of sessions · ${channelAnalysis.channelCount} channels`]] : []),
         ];
         const secondaryDataCards: string[][] = [
@@ -4970,12 +4970,11 @@ export default function GA4Metrics() {
 
     // Revenue summary (fires when revenue exists, regardless of KPIs)
     if (Number(financialRevenue || 0) > 0 && availDays >= 7) {
-      const avgDailyRev = Number(financialRevenue) / Math.max(availDays, 1);
       out.push({
         id: "info:revenue_summary",
         severity: "low",
         title: `Revenue: ${formatMoney(Number(financialRevenue))} to date`,
-        description: `Averaging ~${formatMoney(avgDailyRev)}/day over ${availDays} days.${Number(financialSpend) > 0 ? ` ROAS: ${Number(financialROAS).toFixed(2)}x.` : ""}`,
+        description: `Revenue-to-date uses GA4 native revenue plus imported revenue sources.${Number(financialSpend) > 0 ? ` ROAS: ${Number(financialROAS).toFixed(2)}x.` : ""}`,
         recommendation: Number(financialSpend) > 0 && Number(financialROAS) < 1
           ? "Review spend allocation and conversion paths before acting on ROAS."
           : !Number(financialSpend) ? "Add spend data to calculate ROAS and ROI." : undefined,
@@ -8031,7 +8030,7 @@ export default function GA4Metrics() {
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg">Data Summary</CardTitle>
                           <CardDescription>
-                            Campaign performance at a glance ({insightsRollups?.availableDays || 0} days of data)
+                            Campaign performance at a glance (GA4 daily history: {insightsRollups?.availableDays || 0} completed days)
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -8041,7 +8040,7 @@ export default function GA4Metrics() {
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Sessions</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{formatNumber(breakdownTotals.sessions)}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  ~{formatNumber(Math.round(breakdownTotals.sessions / Math.max(insightsRollups?.availableDays || 1, 1)))}/day avg
+                                  Current GA4 total
                                 </p>
                               </div>
                             )}
@@ -8059,7 +8058,7 @@ export default function GA4Metrics() {
                                 <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">Revenue</p>
                                 <p className="text-xl font-bold text-foreground mt-1">{formatMoney(financialRevenue)}</p>
                                 <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                  ~{formatMoney(financialRevenue / Math.max(insightsRollups?.availableDays || 1, 1))}/day avg
+                                  Total across revenue sources
                                 </p>
                               </div>
                             )}

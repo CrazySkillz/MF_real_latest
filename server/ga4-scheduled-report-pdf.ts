@@ -1010,10 +1010,10 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         "Data Summary",
         ["METRIC", "VALUE", "NOTE"],
         [
-          ["Sessions", formatNumber(payload.breakdownTotals.sessions), `~${formatNumber(Math.round(payload.breakdownTotals.sessions / Math.max(payload.insightsRollups.availableDays || 1, 1)))}/day avg`],
+          ["Sessions", formatNumber(payload.breakdownTotals.sessions), "Current GA4 total"],
           ["Users", formatNumber(payload.breakdownTotals.users), ""],
           ["Conversions", formatNumber(payload.breakdownTotals.conversions), ""],
-          ["Revenue", formatMoney(payload.financialRevenue), `~${formatMoney(payload.financialRevenue / Math.max(payload.insightsRollups.availableDays || 1, 1))}/day avg`],
+          ["Revenue", formatMoney(payload.financialRevenue), "Total across revenue sources"],
           ...(payload.financialSpend > 0 ? [["Total Spend", formatMoney(payload.financialSpend), ""]] : []),
           ...(payload.financialSpend > 0 ? [["Profit", formatMoney(payload.financialRevenue - payload.financialSpend), ""]] : []),
           ...(payload.financialSpend > 0 ? [["CPA", formatMoney(payload.financialCPA), ""]] : []),

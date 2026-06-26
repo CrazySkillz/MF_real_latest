@@ -209,6 +209,16 @@ const TRAFFIC_METRICS = new Set(["sessions", "total sessions", "users", "total u
 const CPA_METRICS = new Set(["cpa"]);
 const ENGAGEMENT_METRICS = new Set(["engagementrate", "engagement rate"]);
 
+const buildExecutiveFinancialsDescription = (spendLabels: string[], revenueLabels: string[]) => {
+  const hasSpend = spendLabels.length > 0;
+  const hasRevenue = revenueLabels.length > 0;
+  const revenueText = revenueLabels.join(", ");
+  if (hasSpend && hasRevenue) return `Uses source-backed spend-to-date and total revenue from ${revenueText}.`;
+  if (hasRevenue) return `Uses total revenue from ${revenueText}; no spend source is connected.`;
+  if (hasSpend) return "Uses source-backed spend-to-date; no revenue source is connected.";
+  return "No spend or revenue source is connected.";
+};
+
 export default function GA4Metrics() {
   const [location] = useLocation();
   const search = useSearch();
@@ -2442,6 +2452,10 @@ export default function GA4Metrics() {
     }
     return labels;
   }, [ga4HasRevenueMetric, revenueDisplaySources]);
+  const executiveFinancialsDescription = useMemo(
+    () => buildExecutiveFinancialsDescription(spendSourceLabels, revenueSourceLabels),
+    [spendSourceLabels, revenueSourceLabels]
+  );
   const financialConversions = Number(breakdownTotals.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const revenueSourcesCount = revenueDisplaySources.length + (ga4RevenueForFinancials > 0 ? 1 : 0);
@@ -3320,7 +3334,7 @@ export default function GA4Metrics() {
       renderInsightsFreshness();
       if (includeInsightsSummaryCards) {
         sectionTitle("Executive Financials", C.insights);
-        const financialNoteLines = wrapPdfText("Uses source-backed spend-to-date and total revenue from GA4 native revenue plus imported revenue sources.", CW - 8);
+        const financialNoteLines = wrapPdfText(executiveFinancialsDescription, CW - 8);
         checkPage(financialNoteLines.length * 4.5 + 27);
         doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
         for (const line of financialNoteLines) { doc.text(line, MX + 4, y); y += 4.5; }
@@ -7576,7 +7590,7 @@ export default function GA4Metrics() {
                       <CardHeader>
                         <CardTitle className="text-lg">Executive Financials</CardTitle>
                         <CardDescription>
-                          Uses source-backed spend-to-date and total revenue from GA4 native revenue plus imported revenue sources.
+                          {executiveFinancialsDescription}
                           {(ga4ToDateResp as any)?.startDate ? ` Range: ${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}.` : ""}
                         </CardDescription>
                       </CardHeader>

@@ -33,7 +33,6 @@ describe("GA4 Insights report parity", () => {
     expect(scheduledEnd).toBeGreaterThan(scheduledStart);
 
     const expectedCopy = [
-      "Uses source-backed spend-to-date and total revenue from GA4 native revenue plus imported revenue sources.",
       "Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months.",
       "Current GA4 total",
       "Total across revenue sources",
@@ -48,6 +47,11 @@ describe("GA4 Insights report parity", () => {
       expect(section).not.toContain("financialRevenue / Math.max");
       expect(section).not.toContain("/day avg");
     }
+    expect(page).toContain("if (hasRevenue) return `Uses total revenue from ${revenueText}; no spend source is connected.`;");
+    expect(liveSection).toContain("{executiveFinancialsDescription}");
+    expect(reportSection).toContain("wrapPdfText(executiveFinancialsDescription, CW - 8)");
+    expect(pdf).toContain("buildExecutiveFinancialsDescription(spendSourceLabels, revenueSourceLabels)");
+    expect(scheduledSection).toContain("payload.executiveFinancialsDescription");
   });
 
   it("keeps capped report findings transparent and evidence-aware", () => {

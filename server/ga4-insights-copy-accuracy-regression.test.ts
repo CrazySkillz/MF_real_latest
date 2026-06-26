@@ -9,7 +9,7 @@ const readScheduledPdf = () =>
   readFileSync(join(process.cwd(), "server", "ga4-scheduled-report-pdf.ts"), "utf-8");
 
 describe("GA4 Insights copy accuracy", () => {
-  it("describes Executive Financials as additive GA4 native plus imported revenue", () => {
+  it("describes Executive Financials from the actual connected spend and revenue sources", () => {
     const page = readClient();
     const scheduledPdf = readScheduledPdf();
     const sectionStart = page.indexOf('<CardTitle className="text-lg">Executive Financials</CardTitle>');
@@ -19,7 +19,14 @@ describe("GA4 Insights copy accuracy", () => {
     expect(sectionStart).toBeGreaterThan(-1);
     expect(sectionEnd).toBeGreaterThan(sectionStart);
     expect(page).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
-    expect(section).toContain("Uses source-backed spend-to-date and total revenue from GA4 native revenue plus imported revenue sources.");
+    expect(section).toContain("{executiveFinancialsDescription}");
+    expect(page).toContain("if (hasRevenue) return `Uses total revenue from ${revenueText}; no spend source is connected.`;");
+    expect(page).toContain("if (hasSpend && hasRevenue) return `Uses source-backed spend-to-date and total revenue from ${revenueText}.`;");
+    expect(page).toContain("wrapPdfText(executiveFinancialsDescription, CW - 8)");
+    expect(scheduledPdf).toContain("buildExecutiveFinancialsDescription(spendSourceLabels, revenueSourceLabels)");
+    expect(scheduledPdf).toContain("payload.executiveFinancialsDescription");
+    expect(page).not.toContain("Uses source-backed spend-to-date and total revenue from GA4 native revenue plus imported revenue sources.");
+    expect(scheduledPdf).not.toContain("Uses source-backed spend-to-date and total revenue from GA4 native revenue plus imported revenue sources.");
     expect(page).not.toContain("or imported revenue-to-date when GA4 revenue is missing");
     expect(scheduledPdf).not.toContain("or imported revenue-to-date when GA4 revenue is missing");
   });

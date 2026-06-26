@@ -55,6 +55,16 @@ const INSIGHT_CATEGORY_GROUPS = [
 type InsightCategory = typeof INSIGHT_CATEGORY_GROUPS[number]["key"];
 type InsightConfidence = "High" | "Medium" | "Low";
 
+const buildExecutiveFinancialsDescription = (spendLabels: string[], revenueLabels: string[]) => {
+  const hasSpend = spendLabels.length > 0;
+  const hasRevenue = revenueLabels.length > 0;
+  const revenueText = revenueLabels.join(", ");
+  if (hasSpend && hasRevenue) return `Uses source-backed spend-to-date and total revenue from ${revenueText}.`;
+  if (hasRevenue) return `Uses total revenue from ${revenueText}; no spend source is connected.`;
+  if (hasSpend) return "Uses source-backed spend-to-date; no revenue source is connected.";
+  return "No spend or revenue source is connected.";
+};
+
 const toISODateUTC = (value: any) => {
   if (!value) return null;
   const d = new Date(value);
@@ -456,6 +466,14 @@ async function buildGA4ReportPayload(report: any) {
         spend: null,
         mappingConfig: source.mappingConfig,
       }));
+  const spendSourceLabels = spendDisplaySources.map((source: any) => String(source?.displayName || source?.sourceType || "").trim()).filter(Boolean);
+  const revenueSourceLabels: string[] = [];
+  if (String((ga4ToDate as any)?.revenueMetric || "").trim() || ga4RevenueForFinancials > 0) revenueSourceLabels.push("GA4 native revenue");
+  for (const source of revenueDisplaySources) {
+    const label = String(source?.displayName || source?.sourceType || "Revenue").trim();
+    if (label && !revenueSourceLabels.includes(label)) revenueSourceLabels.push(label);
+  }
+  const executiveFinancialsDescription = buildExecutiveFinancialsDescription(spendSourceLabels, revenueSourceLabels);
 
   const importedCampaignNames = new Set<string>();
   const rawFilter = (campaign as any)?.ga4CampaignFilter;
@@ -605,6 +623,7 @@ async function buildGA4ReportPayload(report: any) {
     financialConversions,
     ga4RevenueForFinancials,
     importedRevenueForFinancials,
+    executiveFinancialsDescription,
     campaignBreakdownAgg,
     campaignBreakdownMatchedExternalRevenue,
     pipelineEntries,
@@ -981,7 +1000,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     doc.text(`Last refreshed: ${formatReportingTimestampLabel(payload.insightsFreshness.lastRefreshedAt, payload.insightsFreshness.reportingTimeZone)}`, MX, y + 10);
     y += 14;
     if (includeSummaryCards) {
-      const financialNoteLines = doc.splitTextToSize("Uses source-backed spend-to-date and total revenue from GA4 native revenue plus imported revenue sources.", CW) as string[];
+      const financialNoteLines = doc.splitTextToSize(String(payload.executiveFinancialsDescription || ""), CW) as string[];
       checkPage(financialNoteLines.length * 4.5 + 6);
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");

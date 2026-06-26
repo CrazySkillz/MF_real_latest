@@ -7591,7 +7591,6 @@ export default function GA4Metrics() {
                         <CardTitle className="text-lg">Executive Financials</CardTitle>
                         <CardDescription>
                           {executiveFinancialsDescription}
-                          {(ga4ToDateResp as any)?.startDate ? ` Range: ${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}.` : ""}
                         </CardDescription>
                       </CardHeader>
                       <CardContent>

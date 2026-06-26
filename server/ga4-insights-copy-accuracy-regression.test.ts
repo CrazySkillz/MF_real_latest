@@ -20,6 +20,7 @@ describe("GA4 Insights copy accuracy", () => {
     expect(sectionEnd).toBeGreaterThan(sectionStart);
     expect(page).toContain("const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;");
     expect(section).toContain("{executiveFinancialsDescription}");
+    expect(section).not.toContain(" Range:");
     expect(page).toContain("if (hasRevenue) return `Uses total revenue from ${revenueText}; no spend source is connected.`;");
     expect(page).toContain("if (hasSpend && hasRevenue) return `Uses source-backed spend-to-date and total revenue from ${revenueText}.`;");
     expect(page).toContain("wrapPdfText(executiveFinancialsDescription, CW - 8)");

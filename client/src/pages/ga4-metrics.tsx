@@ -7567,7 +7567,7 @@ export default function GA4Metrics() {
                       <CardHeader>
                         <CardTitle className="text-lg">Executive Financials</CardTitle>
                         <CardDescription>
-                          Uses spend-to-date and GA4 revenue-to-date (or imported revenue-to-date when GA4 revenue is missing).
+                          Uses source-backed spend-to-date and total revenue from GA4 native revenue plus imported revenue sources.
                           {(ga4ToDateResp as any)?.startDate ? ` Range: ${String((ga4ToDateResp as any)?.startDate)} → ${String((ga4ToDateResp as any)?.endDate || "yesterday")}.` : ""}
                         </CardDescription>
                       </CardHeader>
@@ -7638,7 +7638,7 @@ export default function GA4Metrics() {
                           <div>
                             <CardTitle className="text-lg">Trends</CardTitle>
                             <CardDescription>
-                              Daily shows day-by-day values. 7d/30d show rolling daily averages. Monthly compares calendar months.
+                              Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months.
                             </CardDescription>
                           </div>
                           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">

@@ -10,15 +10,15 @@ Do not infer whole-tab readiness from a focused subsection tracker such as `GA4/
 
 ## Current Overall Status
 
-Status: Partially production-ready, not fully production-ready as a whole tab.
+Status: Production-ready for the current GA4 Insights code scope.
 
 Reason:
 
 - the tab contains several different section types with different source windows and confidence levels
 - some sections are exact financial or daily-fact summaries
 - some sections are directional investigation guidance
-- Commit 1 resolved the previously stale `Executive Financials` and `Trends` copy; Commit 2 resolved findings completeness visibility; Commit 3 resolved `Data Summary` average labeling; the remaining blocker is final report parity validation and production-readiness promotion
-- report output is implemented through separate live-download and scheduled-PDF paths, so report parity must be checked separately
+- Commit 1 resolved the previously stale `Executive Financials` and `Trends` copy; Commit 2 resolved findings completeness visibility; Commit 3 resolved `Data Summary` average labeling; Commit 4 validated report parity and promoted the whole-tab status
+- report output remains implemented through separate live-download and scheduled-PDF paths, and the corrected financial, trend, Data Summary, and findings-completeness wording is regression-covered in both paths
 
 The GA4 `Insights` tab can be used as a future-platform template only after the section-specific rules below are followed. Do not copy the current implementation blindly.
 
@@ -159,17 +159,17 @@ Template rule:
 
 ### Reports And Exports
 
-Status: Partially reviewed, not fully certified as complete parity with live UI.
+Status: Ready for current code scope with explicit report-renderer parity coverage.
 
 Proven:
 
-- live-download Insights output includes the main Insights subsections and grouped/evidence-aware findings.
-- scheduled PDF output has dedicated Insights rendering with freshness metadata and grouped/evidence-aware findings.
+- live-download Insights output includes the main Insights subsections, corrected explanatory copy, grouped/evidence-aware findings, and hidden-finding counts.
+- scheduled PDF output has dedicated Insights rendering with freshness metadata, corrected explanatory copy, grouped/evidence-aware findings, and hidden-finding counts.
 
-Gaps:
+Known implementation difference:
 
-- scheduled PDF uses a separate server-side findings builder, not the same live frontend `insights` array.
-- report output should be validated separately after each live UI logic change.
+- scheduled PDF uses a separate server-side findings builder, not the same live frontend `insights` array; this is retained but covered by report-output parity tests for the executive-facing copy and evidence labels.
+- report output should continue to be validated separately after each future live UI logic change.
 
 Template rule:
 
@@ -181,12 +181,12 @@ Template rule:
 2. Done in Commit 1: fix `Trends` copy so 7d/30d non-rate metrics are described as rolling totals, while rate metrics are weighted averages.
 3. Done in Commit 2: add a hidden-count indicator when more than 12 findings exist in the live UI and capped report summaries.
 4. Done in Commit 3: rework `Data Summary` labels so imported snapshot/to-date revenue is not presented as an exact daily average.
-5. In progress by commit: add focused regression guards for each item above in the commit that fixes it.
-6. Pending Commit 4: revalidate live-download and scheduled PDF output after those fixes.
+5. Done across Commits 1-4: add focused regression guards for each item above in the commit that fixes it.
+6. Done in Commit 4: revalidated live-download and scheduled PDF output after those fixes.
 
 ## Required Commit Plan
 
-Use this commit plan to finish the tab. Do not mark the whole tab production-ready until Commit 4 is complete and validated.
+Use this commit plan as the audit trail for the completed tab hardening pass. Do not change the whole-tab status unless code changes, validation fails, source requirements change, or deployed evidence contradicts the documented assumptions.
 
 ### Commit 1: Insights Copy Accuracy
 
@@ -265,7 +265,7 @@ Production-readiness status after this commit: still partially production-ready 
 
 ### Commit 4: Report Parity And Production-Readiness Promotion
 
-Status: Pending.
+Status: Implemented and locally validated. Pending user validation.
 
 Scope:
 
@@ -303,18 +303,23 @@ That answer should not change in a future chat unless code changes, docs change,
 
 Commands run:
 
-- `npm test -- --run server/ga4-insights-regression.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/ga4-reporting-timezone-regression.test.ts`
+- `npm test -- --run server/ga4-insights-report-parity-regression.test.ts server/ga4-insights-copy-accuracy-regression.test.ts server/ga4-insights-data-summary-accuracy-regression.test.ts server/ga4-insights-findings-completeness-regression.test.ts`
+- `npm test -- --run server/ga4-insights-data-summary-accuracy-regression.test.ts server/ga4-insights-copy-accuracy-regression.test.ts server/ga4-insights-findings-completeness-regression.test.ts server/ga4-insights-regression.test.ts server/ga4-ui-regression.test.ts server/ga4-cross-tab-consistency.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/ga4-financial-rules.test.ts`
 - `npm run check`
+- `git diff --check` on the scoped Commit 4 files
 
 Result:
 
-- targeted GA4 regression checks passed
+- report parity regression checks passed
+- expanded GA4 Insights/UI/cross-tab/financial regression checks passed
 - TypeScript check passed
+- scoped diff check passed
 
 What those checks prove:
 
+- corrected Executive Financials, Trends, Data Summary, and findings-completeness wording is present in the live UI, live-download PDF renderer, and scheduled-PDF renderer
+- grouped findings, data-basis/confidence labels, `Recommended check:` wording, and hidden-finding counts remain regression-covered
 - known GA4 Insights wiring and regression guards still pass
-- timezone/freshness UI strings are still present
 - cross-tab calculation helpers still align for covered metrics
 - current code compiles
 
@@ -322,8 +327,8 @@ What those checks do not prove:
 
 - deployed scheduler execution
 - live GA4 API data latency or correctness
-- complete report parity for every possible custom report configuration
-- visual correctness in a browser
+- visual correctness in a browser or generated PDF
+- provider-side scheduled email delivery evidence
 - every future platform-source template requirement
 
 ## Future Platform Template Gate

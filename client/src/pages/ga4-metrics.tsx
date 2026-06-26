@@ -3320,6 +3320,11 @@ export default function GA4Metrics() {
       renderInsightsFreshness();
       if (includeInsightsSummaryCards) {
         sectionTitle("Executive Financials", C.insights);
+        const financialNoteLines = wrapPdfText("Uses source-backed spend-to-date and total revenue from GA4 native revenue plus imported revenue sources.", CW - 8);
+        checkPage(financialNoteLines.length * 4.5 + 27);
+        doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+        for (const line of financialNoteLines) { doc.text(line, MX + 4, y); y += 4.5; }
+        y += 3;
         checkPage(24);
         const sumW = (CW - 8) / 3;
         for (let i = 0; i < insightSummaryCards.length; i += 3) {
@@ -3396,6 +3401,11 @@ export default function GA4Metrics() {
 
         if (trendChartData.length > 1) {
           sectionTitle("Trends", C.insights);
+          const trendNoteLines = wrapPdfText("Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months.", CW - 8);
+          checkPage(trendNoteLines.length * 4.5 + 77);
+          doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textSec);
+          for (const line of trendNoteLines) { doc.text(line, MX + 4, y); y += 4.5; }
+          y += 3;
           checkPage(74);
           doc.setFillColor(...C.white); doc.setDrawColor(...C.cardBorder);
           doc.roundedRect(MX, y, CW, 44, 3, 3, "FD");

@@ -981,6 +981,16 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     doc.text(`Last refreshed: ${formatReportingTimestampLabel(payload.insightsFreshness.lastRefreshedAt, payload.insightsFreshness.reportingTimeZone)}`, MX, y + 10);
     y += 14;
     if (includeSummaryCards) {
+      const financialNoteLines = doc.splitTextToSize("Uses source-backed spend-to-date and total revenue from GA4 native revenue plus imported revenue sources.", CW) as string[];
+      checkPage(financialNoteLines.length * 4.5 + 6);
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...COLORS.textSec);
+      for (const line of financialNoteLines) {
+        doc.text(line, MX, y);
+        y += 4.5;
+      }
+      y += 3;
       metricCards([
         ["Revenue", formatMoney(payload.financialRevenue)],
         ["Spend", formatMoney(payload.financialSpend)],
@@ -990,6 +1000,16 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       ], 3);
     }
     if (includeTrends) {
+      const trendNoteLines = doc.splitTextToSize("Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months.", CW) as string[];
+      checkPage(trendNoteLines.length * 4.5 + 6);
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...COLORS.textSec);
+      for (const line of trendNoteLines) {
+        doc.text(line, MX, y);
+        y += 4.5;
+      }
+      y += 3;
       const trendRows = payload.insightsRollups.rows.slice(-14).map((row: any) => ({ label: String(row?.date || ""), value: Number(row?.sessions || 0) }));
       drawTrendChart("Trends", trendRows);
       addSimpleTable(

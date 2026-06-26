@@ -45,6 +45,16 @@ const COLORS = {
   barBg: [240, 240, 243] as C3,
 };
 
+const INSIGHT_CATEGORY_GROUPS = [
+  { key: "setup", label: "Data setup issues" },
+  { key: "targets", label: "Targets off track" },
+  { key: "trends", label: "Trend signals" },
+  { key: "finance", label: "Revenue and spend checks" },
+  { key: "context", label: "Informational context" },
+] as const;
+type InsightCategory = typeof INSIGHT_CATEGORY_GROUPS[number]["key"];
+type InsightConfidence = "High" | "Medium" | "Low";
+
 const toISODateUTC = (value: any) => {
   if (!value) return null;
   const d = new Date(value);
@@ -242,7 +252,7 @@ const buildTrendRollups = (dailyRows: any[]) => {
 };
 
 const buildInsightsItems = (payload: any) => {
-  const items: Array<{ severity: "high" | "medium" | "positive" | "info"; title: string; description: string; recommendation?: string }> = [];
+  const items: Array<{ severity: "high" | "medium" | "positive" | "info"; title: string; description: string; recommendation?: string; category: InsightCategory; dataBasis: string; confidence: InsightConfidence }> = [];
   const financialRevenue = Number(payload.financialRevenue || 0);
   const financialSpend = Number(payload.financialSpend || 0);
   const rollups = payload.insightsRollups;
@@ -252,6 +262,9 @@ const buildInsightsItems = (payload: any) => {
       title: "Spend without revenue",
       description: `Spend-to-date is ${payload.formatMoney(financialSpend)}, but revenue-to-date is ${payload.formatMoney(0)}.`,
       recommendation: "Validate revenue tracking and attribution for this campaign before increasing spend.",
+      category: "finance",
+      dataBasis: "Revenue/spend to-date totals",
+      confidence: "High",
     });
   }
   if (rollups.prior7.revenue > 0 && rollups.deltas.revenue7 <= -25) {
@@ -260,6 +273,9 @@ const buildInsightsItems = (payload: any) => {
       title: "Revenue down vs prior 7 days",
       description: `Last 7d revenue ${payload.formatMoney(rollups.last7.revenue)} vs prior 7d ${payload.formatMoney(rollups.prior7.revenue)}.`,
       recommendation: "Check campaign mix, landing pages, and revenue tracking changes across the last week.",
+      category: "trends",
+      dataBasis: "GA4 completed daily history",
+      confidence: "Medium",
     });
   }
   if (rollups.prior7.sessions > 0 && rollups.deltas.sessions7 <= -20) {
@@ -268,6 +284,9 @@ const buildInsightsItems = (payload: any) => {
       title: "Traffic drop detected",
       description: `Last 7d sessions ${payload.formatNumber(rollups.last7.sessions)} vs prior 7d ${payload.formatNumber(rollups.prior7.sessions)}.`,
       recommendation: "Review source and medium mix for the largest acquisition-channel changes.",
+      category: "trends",
+      dataBasis: "GA4 completed daily history",
+      confidence: "Medium",
     });
   }
   if (rollups.prior7.conversions > 0 && rollups.deltas.conversions7 <= -20) {
@@ -276,6 +295,9 @@ const buildInsightsItems = (payload: any) => {
       title: "Conversions down vs prior 7 days",
       description: `Last 7d conversions ${payload.formatNumber(rollups.last7.conversions)} vs prior 7d ${payload.formatNumber(rollups.prior7.conversions)}.`,
       recommendation: "Review conversion-event firing, landing page changes, and traffic quality.",
+      category: "trends",
+      dataBasis: "GA4 completed daily history",
+      confidence: "Medium",
     });
   }
   if (rollups.prior7.revenue > 0 && rollups.deltas.revenue7 >= 20) {
@@ -284,6 +306,9 @@ const buildInsightsItems = (payload: any) => {
       title: "Revenue momentum improving",
       description: `Last 7d revenue ${payload.formatMoney(rollups.last7.revenue)} vs prior 7d ${payload.formatMoney(rollups.prior7.revenue)}.`,
       recommendation: "Check which sources contributed to the improvement before considering careful scaling.",
+      category: "trends",
+      dataBasis: "GA4 completed daily history",
+      confidence: "Medium",
     });
   }
   if (items.length === 0) {
@@ -292,9 +317,24 @@ const buildInsightsItems = (payload: any) => {
       title: "No major anomalies detected",
       description: "Recent GA4 trends are stable relative to the prior comparison window.",
       recommendation: "Continue monitoring the main revenue, traffic, and conversion inputs for this campaign.",
+      category: "context",
+      dataBasis: "Current campaign data",
+      confidence: "Medium",
     });
   }
-  return items.slice(0, 8);
+  return items;
+};
+
+const buildInsightsActionDescription = (availableDays: number) => {
+  const days = Math.max(0, Number(availableDays || 0));
+  const dayLabel = `${days} completed GA4 day${days === 1 ? "" : "s"}`;
+  if (days < 6) {
+    return `Only ${dayLabel} available. Trend and anomaly checks need at least 6 days; setup and KPI/Benchmark checks still run.`;
+  }
+  if (days < 14) {
+    return `${dayLabel} available. Short-window trend checks are active; full 7-day vs prior 7-day analysis starts after 14 days.`;
+  }
+  return `${dayLabel} available. We compare the last 7 days vs the previous 7 days and cross-check KPI/Benchmark performance.`;
 };
 
 async function buildGA4ReportPayload(report: any) {
@@ -984,37 +1024,82 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     }
     if (includeActions) {
       if (!onlyActions) sectionTitle("What to investigate next", COLORS.insights, 16);
-      for (const item of payload.insightsItems.slice(0, 8)) {
-        const sevCol = item.severity === "high" ? COLORS.danger : item.severity === "positive" ? COLORS.success : item.severity === "medium" ? COLORS.warning : COLORS.info;
-        const lines = doc.splitTextToSize(String(item.description || ""), CW - 20) as string[];
-        const recLines = item.recommendation ? doc.splitTextToSize(`Recommended check: ${String(item.recommendation || "")}`, CW - 20) as string[] : [];
-        const height = 18 + lines.length * 4.5 + (recLines.length > 0 ? recLines.length * 4.5 + 4 : 0);
-        checkPage(height + 4);
-        doc.setFillColor(...COLORS.white);
-        doc.setDrawColor(...COLORS.cardBorder);
-        doc.roundedRect(MX, y, CW, height, 3, 3, "FD");
-        doc.setFillColor(...sevCol);
-        doc.roundedRect(MX, y, 3, height, 1, 1, "F");
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(...COLORS.text);
-        doc.text(String(item.title || "").slice(0, 80), MX + 8, y + 8);
-        let lineY = y + 14;
+      const actionLines = doc.splitTextToSize(buildInsightsActionDescription(Number(payload.insightsRollups.availableDays || 0)), CW - 8) as string[];
+      if (actionLines.length > 0) {
+        checkPage(actionLines.length * 4.5 + 6);
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(...COLORS.textSec);
-        for (const line of lines) {
-          doc.text(line, MX + 8, lineY);
-          lineY += 4.5;
+        for (const line of actionLines) {
+          doc.text(line, MX + 4, y);
+          y += 4.5;
         }
-        if (recLines.length > 0) {
-          lineY += 2;
-          for (const line of recLines) {
+        y += 3;
+      }
+      const topInsights = payload.insightsItems.slice(0, 8);
+      const groupedInsights = INSIGHT_CATEGORY_GROUPS.map((group) => ({
+        ...group,
+        items: topInsights.filter((item: any) => item.category === group.key),
+      })).filter((group) => group.items.length > 0);
+      for (const group of groupedInsights) {
+        checkPage(10);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...COLORS.text);
+        doc.text(group.label, MX + 4, y);
+        y += 6;
+        for (const item of group.items) {
+          const sevCol = item.severity === "high" ? COLORS.danger : item.severity === "positive" ? COLORS.success : item.severity === "medium" ? COLORS.warning : COLORS.info;
+          const lines = doc.splitTextToSize(String(item.description || ""), CW - 20) as string[];
+          const meta = [item.dataBasis ? `Basis: ${String(item.dataBasis)}` : "", item.confidence ? `Confidence: ${String(item.confidence)}` : ""].filter(Boolean).join(" | ");
+          const metaLines = meta ? doc.splitTextToSize(meta, CW - 20) as string[] : [];
+          const recLines = item.recommendation ? doc.splitTextToSize(`Recommended check: ${String(item.recommendation || "")}`, CW - 20) as string[] : [];
+          const height = 18 + metaLines.length * 4 + (metaLines.length > 0 ? 2 : 0) + lines.length * 4.5 + (recLines.length > 0 ? recLines.length * 4.5 + 4 : 0);
+          checkPage(height + 4);
+          doc.setFillColor(...COLORS.white);
+          doc.setDrawColor(...COLORS.cardBorder);
+          doc.roundedRect(MX, y, CW, height, 3, 3, "FD");
+          doc.setFillColor(...sevCol);
+          doc.roundedRect(MX, y, 3, height, 1, 1, "F");
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(...COLORS.text);
+          doc.text(String(item.title || "").slice(0, 80), MX + 8, y + 8);
+          let lineY = y + 14;
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(...COLORS.textSec);
+          if (metaLines.length > 0) {
+            doc.setFontSize(7);
+            doc.setTextColor(...COLORS.textTert);
+            for (const line of metaLines) {
+              doc.text(line, MX + 8, lineY);
+              lineY += 4;
+            }
+            lineY += 1;
+            doc.setFontSize(8);
+            doc.setTextColor(...COLORS.textSec);
+          }
+          for (const line of lines) {
             doc.text(line, MX + 8, lineY);
             lineY += 4.5;
           }
+          if (recLines.length > 0) {
+            lineY += 2;
+            for (const line of recLines) {
+              doc.text(line, MX + 8, lineY);
+              lineY += 4.5;
+            }
+          }
+          y += height + 4;
         }
-        y += height + 4;
+      }
+      if (payload.insightsItems.length > topInsights.length) {
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...COLORS.textTert);
+        doc.text(`+ ${payload.insightsItems.length - topInsights.length} more insights`, MX + 4, y + 2);
+        y += 8;
       }
     }
   }

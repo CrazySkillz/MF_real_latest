@@ -17,7 +17,7 @@ Reason:
 - the tab contains several different section types with different source windows and confidence levels
 - some sections are exact financial or daily-fact summaries
 - some sections are directional investigation guidance
-- Commit 1 resolved the previously stale `Executive Financials` and `Trends` copy; remaining blockers are findings completeness visibility, `Data Summary` average labeling, and report parity validation
+- Commit 1 resolved the previously stale `Executive Financials` and `Trends` copy; Commit 2 resolved findings completeness visibility; remaining blockers are `Data Summary` average labeling and report parity validation
 - report output is implemented through separate live-download and scheduled-PDF paths, so report parity must be checked separately
 
 The GA4 `Insights` tab can be used as a future-platform template only after the section-specific rules below are followed. Do not copy the current implementation blindly.
@@ -120,9 +120,10 @@ Proven:
 - `High priority` counts high-severity insight items.
 - `Needs attention` counts medium-severity insight items.
 
-Gap:
+Resolved in Commit 2:
 
-- the live findings list currently renders only the first 12 insights. If more than 12 are generated, the counters can include hidden items without a visible `+ N more` note.
+- the live findings list renders a capped summary and now shows a visible `+ N more insights` note when generated findings exceed the visible list.
+- live-download and scheduled-PDF report outputs also disclose hidden findings when their summaries are capped.
 
 Template rule:
 
@@ -145,7 +146,7 @@ Limits:
 
 - findings are rule-based, not causal.
 - revenue and channel observations can still be GA4-attributed rather than full-funnel imported-revenue attribution.
-- current live UI shows only the first 12 findings.
+- current live UI renders a capped summary and discloses hidden findings with a `+ N more insights` note.
 
 Template rule:
 
@@ -173,7 +174,7 @@ Template rule:
 
 1. Done in Commit 1: fix `Executive Financials` copy so it states the additive revenue model.
 2. Done in Commit 1: fix `Trends` copy so 7d/30d non-rate metrics are described as rolling totals, while rate metrics are weighted averages.
-3. Pending Commit 2: add a hidden-count indicator when more than 12 findings exist, or remove the 12-item cap.
+3. Done in Commit 2: add a hidden-count indicator when more than 12 findings exist in the live UI and capped report summaries.
 4. Pending Commit 3: rework or relabel `Data Summary` averages so imported snapshot/to-date revenue is not presented as an exact daily average.
 5. In progress by commit: add focused regression guards for each item above in the commit that fixes it.
 6. Pending Commit 4: revalidate live-download and scheduled PDF output after those fixes.
@@ -208,7 +209,7 @@ Production-readiness status after this commit: still partially production-ready.
 
 ### Commit 2: Findings Completeness Visibility
 
-Status: Pending.
+Status: Implemented and locally validated. Pending user validation.
 
 Scope:
 

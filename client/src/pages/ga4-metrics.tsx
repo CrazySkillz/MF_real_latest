@@ -4880,8 +4880,8 @@ export default function GA4Metrics() {
       out.push({
         id: "anomaly:not-enough-history",
         severity: "low",
-        title: "Anomaly detection needs more history",
-        description: `Need at least ${INSIGHTS_SHORT_WINDOW_DAYS} days of daily data for anomaly detection. Available days: ${dates.length}.`,
+        title: "Trend signals need more history",
+        description: `This Trend signals section will show anomaly or positive momentum cards after at least ${INSIGHTS_SHORT_WINDOW_DAYS} completed daily rows are available. Available days: ${dates.length}. Full 7-day vs prior 7-day anomaly checks start after ${INSIGHTS_MIN_HISTORY_DAYS} days.`,
       });
     }
 

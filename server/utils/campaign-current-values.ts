@@ -57,7 +57,7 @@ const normalizePropertyIdForMock = (propertyId: string) => {
 
 const isYesopMockProperty = (propertyId: string) => {
   const normalized = normalizePropertyIdForMock(propertyId).toLowerCase();
-  return normalized === "yesop" || normalized === "498536418";
+  return normalized === "yesop";
 };
 
 const parseGA4CampaignFilter = (raw: unknown): string[] => {

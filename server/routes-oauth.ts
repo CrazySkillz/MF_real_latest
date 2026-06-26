@@ -641,7 +641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   const simulateGA4 = (opts: { campaignId: string; propertyId: string; dateRange: string; noRevenue?: boolean; endOffsetDays?: number; ga4CampaignFilter?: string }) => {
-    // IMPORTANT: normalize the propertyId so "yesop" and its numeric form don't produce different datasets.
+    // IMPORTANT: keep explicit "yesop" demo requests deterministic without treating live numeric GA4 property IDs as mock data.
     const pid = normalizePropertyIdForMock(opts.propertyId);
     const days = dateRangeToDays(opts.dateRange);
     const noRevenue = !!opts.noRevenue;
@@ -1102,8 +1102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const isYesopMockProperty = (pid: string) => {
     const v = String(pid || "").trim().toLowerCase();
     const normalized = normalizePropertyIdForMock(v).toLowerCase();
-    // Support both "yesop" (friendly id used in docs/scripts) and the numeric GA4 property id used by the API.
-    return v === "yesop" || normalized === "yesop" || normalized === "498536418";
+    return v === "yesop" || normalized === "yesop";
   };
 
   // ============================================================================

@@ -40,7 +40,7 @@ const normalizePropertyIdForMock = (pid: string) => {
 const isYesopMockProperty = (pid: string) => {
   const v = String(pid || "").trim().toLowerCase();
   const normalized = normalizePropertyIdForMock(v).toLowerCase();
-  return v === "yesop" || normalized === "yesop" || normalized === "498536418";
+  return v === "yesop" || normalized === "yesop";
 };
 
 const isNoRevenueFilter = (raw: any): boolean => {

@@ -1789,6 +1789,8 @@ export default function GA4Metrics() {
   const trendsReportingTimeZoneLabel = formatReportingTimeZoneLabel(trendsReportingTimeZone);
   const trendsDataThroughDate = String(ga4DailyDataThroughDate || ga4ReportDate || "").trim();
   const trendsDataThroughLabel = formatReportingDateLabel(trendsDataThroughDate);
+  const trendsLatestImportedDate = String(ga4ReportDate || "").trim();
+  const trendsLatestImportedDateLabel = trendsLatestImportedDate ? formatReportingDateLabel(trendsLatestImportedDate) : "Not available";
   const trendsLastRefreshValue = Object.prototype.hasOwnProperty.call((ga4DailyResp as any) || {}, "lastCompletedRefreshAt")
     ? (ga4DailyResp as any)?.lastCompletedRefreshAt
     : (ga4DailyResp as any)?.lastUpdated;
@@ -7679,6 +7681,7 @@ export default function GA4Metrics() {
                       <CardContent className="space-y-4">
                         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground/80">
                           <span>Data through <span className="font-medium text-foreground">{trendsDataThroughLabel}</span></span>
+                          <span>Latest imported day <span className="font-medium text-foreground">{trendsLatestImportedDateLabel}</span></span>
                           <span>Reporting timezone <span className="font-medium text-foreground">{trendsReportingTimeZoneLabel}</span></span>
                           <span>Last refreshed <span className="font-medium text-foreground">{trendsLastRefreshedLabel}</span></span>
                           <span>Expected refresh <span className="font-medium text-foreground">{trendsExpectedRefreshLabel}</span></span>

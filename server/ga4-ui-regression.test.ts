@@ -334,7 +334,10 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const trendsReportingTimeZoneLabel = formatReportingTimeZoneLabel(trendsReportingTimeZone);");
     expect(ga4Metrics).not.toContain("const trendsRefreshScheduleTimeZone =");
     expect(ga4Metrics).toContain("const trendsExpectedRefreshLabel = formatReportingTimestampLabel((ga4DailyResp as any)?.expectedRefreshAt, trendsReportingTimeZone);");
+    expect(ga4Metrics).toContain('const trendsLatestImportedDate = String(ga4ReportDate || "").trim();');
+    expect(ga4Metrics).toContain('const trendsLatestImportedDateLabel = trendsLatestImportedDate ? formatReportingDateLabel(trendsLatestImportedDate) : "Not available";');
     expect(ga4Metrics).toContain("Data through <span");
+    expect(ga4Metrics).toContain("Latest imported day");
     expect(ga4Metrics).toContain("Reporting timezone");
     expect(ga4Metrics).toContain("Last refreshed <span");
     expect(ga4Metrics).toContain("Expected refresh <span");

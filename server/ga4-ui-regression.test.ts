@@ -336,7 +336,7 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("const trendsExpectedRefreshLabel = formatReportingTimestampLabel((ga4DailyResp as any)?.expectedRefreshAt, trendsReportingTimeZone);");
     expect(ga4Metrics).toContain('const trendsLatestImportedDate = String(ga4ReportDate || "").trim();');
     expect(ga4Metrics).toContain('const trendsLatestImportedDateLabel = trendsLatestImportedDate ? formatReportingDateLabel(trendsLatestImportedDate) : "Not available";');
-    expect(ga4Metrics).toContain("Data through <span");
+    expect(ga4Metrics).toContain("Completed-day cutoff <span");
     expect(ga4Metrics).toContain("Latest imported day");
     expect(ga4Metrics).toContain("Reporting timezone");
     expect(ga4Metrics).toContain("Last refreshed <span");
@@ -351,7 +351,7 @@ describe("GA4 UI regression guard", () => {
     const pdf = readServer("ga4-scheduled-report-pdf.ts");
 
     expect(ga4Metrics).toContain("const renderInsightsFreshness = () => {");
-    expect(ga4Metrics).toContain("Data through: ${trendsDataThroughLabel}");
+    expect(ga4Metrics).toContain("Completed-day cutoff: ${trendsDataThroughLabel}");
     expect(ga4Metrics).toContain("Reporting timezone: ${trendsReportingTimeZoneLabel}");
     expect(ga4Metrics).toContain("Last refreshed: ${trendsLastRefreshedLabel}");
 
@@ -359,7 +359,7 @@ describe("GA4 UI regression guard", () => {
     expect(pdf).toContain("const reportingWindow = getReportingDateWindow(90, (campaign as any)?.reportingTimeZone);");
     expect(pdf).toContain("insightsFreshness: {");
     expect(pdf).toContain("lastRefreshedAt: lastDailyRefreshAt");
-    expect(pdf).toContain("Data through: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}");
+    expect(pdf).toContain("Completed-day cutoff: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}");
     expect(pdf).toContain("Reporting timezone: ${formatReportingTimeZoneLabel(payload.insightsFreshness.reportingTimeZone)}");
     expect(pdf).toContain("Last refreshed: ${formatReportingTimestampLabel(payload.insightsFreshness.lastRefreshedAt, payload.insightsFreshness.reportingTimeZone)}");
   });

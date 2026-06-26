@@ -3319,7 +3319,7 @@ export default function GA4Metrics() {
         doc.setFontSize(7);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(...C.textSec);
-        doc.text(`Data through: ${trendsDataThroughLabel}`, MX + 2, y + 4);
+        doc.text(`Completed-day cutoff: ${trendsDataThroughLabel}`, MX + 2, y + 4);
         doc.text(`Reporting timezone: ${trendsReportingTimeZoneLabel}`, MX + 68, y + 4);
         doc.text(`Last refreshed: ${trendsLastRefreshedLabel}`, MX + 2, y + 10);
         y += 14;
@@ -7703,7 +7703,7 @@ export default function GA4Metrics() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground/80">
-                          <span>Data through <span className="font-medium text-foreground">{trendsDataThroughLabel}</span></span>
+                          <span>Completed-day cutoff <span className="font-medium text-foreground">{trendsDataThroughLabel}</span></span>
                           <span>Latest imported day <span className="font-medium text-foreground">{trendsLatestImportedDateLabel}</span></span>
                           <span>Reporting timezone <span className="font-medium text-foreground">{trendsReportingTimeZoneLabel}</span></span>
                           <span>Last refreshed <span className="font-medium text-foreground">{trendsLastRefreshedLabel}</span></span>

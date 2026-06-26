@@ -43,6 +43,12 @@ describe("GA4 Insights copy accuracy", () => {
     expect(section).toContain(
       "Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months."
     );
+    expect(section).toContain("Completed-day cutoff");
+    expect(page).toContain("Completed-day cutoff: ${trendsDataThroughLabel}");
+    expect(scheduledPdf).toContain("Completed-day cutoff: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}");
+    expect(section).not.toContain("Data through");
+    expect(page).not.toContain("Data through: ${trendsDataThroughLabel}");
+    expect(scheduledPdf).not.toContain("Data through: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}");
     expect(page).not.toContain("7d/30d show rolling daily averages");
     expect(page).toContain("Non-rate metrics show rolling window totals (sum of last N days)");
     expect(page).toContain("engagementRate is already a weighted average");

@@ -995,7 +995,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.textSec);
-    doc.text(`Data through: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}`, MX, y + 4);
+    doc.text(`Completed-day cutoff: ${formatReportingDateLabel(payload.insightsFreshness.dataThroughDate)}`, MX, y + 4);
     doc.text(`Reporting timezone: ${formatReportingTimeZoneLabel(payload.insightsFreshness.reportingTimeZone)}`, MX + 66, y + 4);
     doc.text(`Last refreshed: ${formatReportingTimestampLabel(payload.insightsFreshness.lastRefreshedAt, payload.insightsFreshness.reportingTimeZone)}`, MX, y + 10);
     y += 14;

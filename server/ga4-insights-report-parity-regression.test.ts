@@ -34,6 +34,7 @@ describe("GA4 Insights report parity", () => {
 
     const expectedCopy = [
       "Daily shows day-by-day values. 7d/30d show rolling totals for non-rate metrics and weighted averages for rates. Monthly compares calendar months.",
+      "Completed-day cutoff",
       "Current GA4 total",
       "Total across revenue sources",
     ];
@@ -43,6 +44,7 @@ describe("GA4 Insights report parity", () => {
         expect(section).toContain(copy);
       }
       expect(section).not.toContain("or imported revenue-to-date when GA4 revenue is missing");
+      expect(section).not.toContain("Data through");
       expect(section).not.toContain("7d/30d show rolling daily averages");
       expect(section).not.toContain("financialRevenue / Math.max");
       expect(section).not.toContain("/day avg");

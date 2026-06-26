@@ -770,26 +770,36 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     doc.roundedRect(MX, chartY, width, height, 3, 3, "FD");
     const values = rows.map((row) => Number(row.value || 0));
     const max = Math.max(...values, 1);
-    const min = Math.min(...values, 0);
-    const innerX = MX + 8;
+    const roughTick = max / 4;
+    const yTickStep = roughTick >= 10 ? Math.ceil(roughTick / 10) * 10 : roughTick >= 1 ? Math.ceil(roughTick) : Math.max(0.1, Math.ceil(roughTick * 10) / 10);
+    const yAxisMax = yTickStep * 4;
+    const innerX = MX + 14;
     const innerY = chartY + 6;
-    const innerW = width - 16;
+    const innerW = width - 22;
     const innerH = height - 14;
-    doc.setDrawColor(...COLORS.divider);
+    const yFor = (value: number) => innerY + innerH - (Number(value || 0) / yAxisMax) * innerH;
+    const xFor = (idx: number) => innerX + (idx * innerW) / Math.max(rows.length - 1, 1);
+    doc.setLineWidth(0.2);
+    for (let tick = 0; tick <= 4; tick++) {
+      const tickValue = tick * yTickStep;
+      const py = yFor(tickValue);
+      doc.setDrawColor(241, 245, 249);
+      doc.line(innerX, py, innerX + innerW, py);
+      doc.setFontSize(5.8);
+      doc.setTextColor(...COLORS.textTert);
+      doc.text(formatNumber(tickValue), innerX - 2, py + 1.4, { align: "right" });
+    }
+    doc.setDrawColor(100, 116, 139);
     doc.line(innerX, innerY + innerH, innerX + innerW, innerY + innerH);
     doc.line(innerX, innerY, innerX, innerY + innerH);
-    doc.setDrawColor(...COLORS.insights);
+    doc.setDrawColor(59, 130, 246);
     doc.setLineWidth(0.8);
     rows.forEach((row, idx) => {
-      const px = innerX + (idx * innerW) / Math.max(rows.length - 1, 1);
-      const normalized = max === min ? 0.5 : (Number(row.value || 0) - min) / (max - min);
-      const py = innerY + innerH - normalized * innerH;
+      const px = xFor(idx);
+      const py = yFor(Number(row.value || 0));
       if (idx > 0) {
         const prev = rows[idx - 1];
-        const prevX = innerX + ((idx - 1) * innerW) / Math.max(rows.length - 1, 1);
-        const prevNorm = max === min ? 0.5 : (Number(prev.value || 0) - min) / (max - min);
-        const prevY = innerY + innerH - prevNorm * innerH;
-        doc.line(prevX, prevY, px, py);
+        doc.line(xFor(idx - 1), yFor(Number(prev.value || 0)), px, py);
       }
     });
     doc.setFontSize(6.5);
@@ -1029,7 +1039,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
         y += 4.5;
       }
       y += 3;
-      const trendRows = payload.insightsRollups.rows.slice(-14).map((row: any) => ({ label: String(row?.date || ""), value: Number(row?.sessions || 0) }));
+      const trendRows = payload.insightsRollups.rows.slice(-14).map((row: any) => ({ label: String(row?.date || "").slice(5), value: Number(row?.sessions || 0) }));
       drawTrendChart("Trends", trendRows);
       addSimpleTable(
         "Trend Table",

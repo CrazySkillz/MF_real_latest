@@ -3425,41 +3425,48 @@ export default function GA4Metrics() {
           doc.roundedRect(MX, y, CW, 44, 3, 3, "FD");
           doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...C.text);
           doc.text(`${trendMetricLabels[trendMetric] || trendMetric} · ${insightsTrendMode === "daily" ? "Daily" : insightsTrendMode === "monthly" ? "Monthly" : insightsTrendMode}`, MX + 6, y + 7);
-          const chartX = MX + 8, chartY = y + 12, chartW = CW - 16, chartH = 24;
+          const chartX = MX + 14, chartY = y + 12, chartW = CW - 22, chartH = 24;
           const vals = trendChartData.map((p) => Number(p.value || 0));
-          const minVal = Math.min(...vals), maxVal = Math.max(...vals);
-          const range = maxVal - minVal || 1;
-          doc.setDrawColor(...C.divider); doc.setLineWidth(0.2);
+          const maxVal = Math.max(...vals, 1);
+          const roughTick = maxVal / 4;
+          const yTickStep = roughTick >= 10 ? Math.ceil(roughTick / 10) * 10 : roughTick >= 1 ? Math.ceil(roughTick) : Math.max(0.1, Math.ceil(roughTick * 10) / 10);
+          const yAxisMax = yTickStep * 4;
+          const yFor = (value: number) => chartY + chartH - (Number(value || 0) / yAxisMax) * chartH;
+          const xFor = (idx: number) => chartX + (idx * chartW) / Math.max(trendChartData.length - 1, 1);
+          doc.setLineWidth(0.2);
+          for (let tick = 0; tick <= 4; tick++) {
+            const tickValue = tick * yTickStep;
+            const py = yFor(tickValue);
+            doc.setDrawColor(241, 245, 249);
+            doc.line(chartX, py, chartX + chartW, py);
+            doc.setFontSize(5.8); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
+            doc.text(trendFmtValue(tickValue), chartX - 2, py + 1.4, { align: "right" });
+          }
+          doc.setDrawColor(100, 116, 139);
           doc.line(chartX, chartY + chartH, chartX + chartW, chartY + chartH);
           doc.line(chartX, chartY, chartX, chartY + chartH);
           if (insightsTrendMode === "monthly") {
             const barW = Math.max(4, chartW / Math.max(trendChartData.length * 1.8, 1));
             trendChartData.forEach((p, idx) => {
               const px = chartX + idx * (chartW / Math.max(trendChartData.length, 1)) + 2;
-              const barH = Math.max(1, ((Number(p.value || 0) - minVal) / range) * (chartH - 2));
-              doc.setFillColor(...C.insights);
+              const barH = Math.max(1, (Number(p.value || 0) / yAxisMax) * chartH);
+              doc.setFillColor(59, 130, 246);
               doc.rect(px, chartY + chartH - barH, barW, barH, "F");
             });
           } else {
-            doc.setDrawColor(...C.insights); doc.setLineWidth(0.8);
+            doc.setDrawColor(59, 130, 246); doc.setLineWidth(0.8);
             trendChartData.forEach((p, idx) => {
-              const px = chartX + (idx * chartW) / Math.max(trendChartData.length - 1, 1);
-              const py = chartY + chartH - ((Number(p.value || 0) - minVal) / range) * (chartH - 2) - 1;
+              const px = xFor(idx);
+              const py = yFor(Number(p.value || 0));
               if (idx > 0) {
                 const prev = trendChartData[idx - 1];
-                const prevX = chartX + ((idx - 1) * chartW) / Math.max(trendChartData.length - 1, 1);
-                const prevY = chartY + chartH - ((Number(prev.value || 0) - minVal) / range) * (chartH - 2) - 1;
-                doc.line(prevX, prevY, px, py);
+                doc.line(xFor(idx - 1), yFor(Number(prev.value || 0)), px, py);
               }
-              doc.setFillColor(...C.insights);
-              doc.circle(px, py, 0.7, "F");
             });
           }
           doc.setFontSize(6.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...C.textTert);
           doc.text(trendChartData[0]?.date || "", chartX, chartY + chartH + 5);
           doc.text(trendChartData[trendChartData.length - 1]?.date || "", chartX + chartW, chartY + chartH + 5, { align: "right" });
-          doc.text(trendFmtValue(maxVal), chartX + chartW, chartY + 1, { align: "right" });
-          doc.text(trendFmtValue(minVal), chartX + chartW, chartY + chartH - 1, { align: "right" });
           y += 50;
 
           const trendRows: string[][] = insightsTrendMode === "daily"

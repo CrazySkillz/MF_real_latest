@@ -54,6 +54,16 @@ describe("GA4 Insights report parity", () => {
     expect(reportSection).toContain("wrapPdfText(executiveFinancialsDescription, CW - 8)");
     expect(pdf).toContain("buildExecutiveFinancialsDescription(spendSourceLabels, revenueSourceLabels)");
     expect(scheduledSection).toContain("payload.executiveFinancialsDescription");
+    expect(reportSection).toContain("const yAxisMax = yTickStep * 4;");
+    expect(reportSection).toContain("doc.setDrawColor(59, 130, 246)");
+    expect(reportSection).toContain("doc.setDrawColor(241, 245, 249)");
+    expect(reportSection).not.toContain("const minVal = Math.min(...vals)");
+    expect(reportSection).not.toContain("doc.circle(px, py, 0.7");
+    expect(pdf).toContain("const yAxisMax = yTickStep * 4;");
+    expect(pdf).toContain("doc.setDrawColor(59, 130, 246)");
+    expect(pdf).toContain("label: String(row?.date || \"\").slice(5)");
+    expect(pdf).not.toContain("const min = Math.min(...values, 0)");
+    expect(pdf).not.toContain("normalized = max === min");
   });
 
   it("keeps capped report findings transparent and evidence-aware", () => {

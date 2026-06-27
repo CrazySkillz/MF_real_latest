@@ -863,6 +863,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async setPrimaryGA4Connection(campaignId: string, connectionId: string): Promise<boolean> {
+    const [targetConnection] = await db
+      .select()
+      .from(ga4Connections)
+      .where(and(
+        eq(ga4Connections.id, connectionId),
+        eq(ga4Connections.campaignId, campaignId),
+        eq(ga4Connections.isActive, true)
+      ));
+    if (!targetConnection) return false;
+
     // First, set all connections for this campaign to non-primary
     await db
       .update(ga4Connections)
@@ -873,7 +883,11 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(ga4Connections)
       .set({ isPrimary: true })
-      .where(eq(ga4Connections.id, connectionId))
+      .where(and(
+        eq(ga4Connections.id, connectionId),
+        eq(ga4Connections.campaignId, campaignId),
+        eq(ga4Connections.isActive, true)
+      ))
       .returning();
 
     return !!updated;

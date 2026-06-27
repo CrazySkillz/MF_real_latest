@@ -892,7 +892,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
     if (includeCampaignBreakdown) {
       addSimpleTable(
         "Campaign Breakdown",
-        ["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "GA4 REVENUE"],
+        ["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "REVENUE"],
         payload.campaignBreakdownAgg.slice(0, 15).map((row: any) => [
           String(row?.name || "(not set)"),
           formatNumber(row?.sessions || 0),

@@ -69,6 +69,17 @@ describe("scheduled report email regression guard", () => {
     expect(source).toContain("return { totals: {} };");
   });
 
+  it("labels GA4 scheduled Campaign Breakdown revenue by the actual mixed-source value", () => {
+    const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
+    const campaignBreakdownBlock = source.slice(
+      source.indexOf('"Campaign Breakdown"'),
+      source.indexOf("payload.campaignBreakdownAgg", source.indexOf('"Campaign Breakdown"'))
+    );
+
+    expect(campaignBreakdownBlock).toContain('["CAMPAIGN", "SESSIONS", "USERS", "CONVERSIONS", "CONV. RATE", "REVENUE"]');
+    expect(campaignBreakdownBlock).not.toContain("GA4 REVENUE");
+  });
+
   it("keeps report test-send aligned with Mailgun HTTP API configuration", () => {
     const schedulerSource = readReportScheduler();
     const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");

@@ -2,432 +2,484 @@
 
 ## Purpose
 
-This file is the production-readiness contract for the GA4 `Ad Comparison` tab.
+This file is the canonical production-readiness source of truth for the GA4 `Ad Comparison` tab.
 
-Use it for:
+Use this file when asked whether GA4 Ad Comparison is robust, accurate, logical, production-ready, or suitable as a template for another platform source such as Meta, Google Ads, LinkedIn, TikTok, Instagram, or a custom integration.
 
-- GA4 Ad Comparison bug fixes
-- GA4 Ad Comparison production-readiness reviews
-- GA4 Ad Comparison report-output reviews
-- template work for equivalent tabs in Meta, Google Ads, LinkedIn, TikTok, Instagram, and future platforms
+Use `GA4/AD_COMPARISON.md` for the functional description of what the tab is and how it should behave.
 
-This file replaces the older descriptive Ad Comparison contract. The old name was too weak because this tab affects executive-facing comparison signals and report output.
+## Durable Future Answer
 
-## Fast Answer For A New Session
+Yes. GA4 Ad Comparison is production-ready for the current GA4 code scope as of the June 27, 2026 post-fix audit, with exactly one deferred validation:
 
-The current GA4 Ad Comparison implementation is a campaign-row comparison view, not true ad-level or creative-level analytics.
+- `Deployed Scheduled/Server PDF Revenue-Provenance Evidence`
 
-The top leader cards are acceptable only when they are understood as GA4 campaign-row signals:
+That deferred validation will be completed after the Mailgun service is properly configured, because the remaining evidence requires a deployed scheduled/test-send PDF attachment or scheduled-email run. Local code and regression validation for scheduled/server PDF revenue-provenance parity have passed; the deferred item is deployed artifact evidence, not a known code blocker.
 
-- `Best Performing`: highest row for the currently selected dropdown metric
-- `Most Efficient`: highest conversion rate among rows with sessions
-- `Needs Attention`: lowest conversion rate among meaningful-volume rows
+Absent later code changes, requirement changes, validation failures, production data evidence that contradicts this file, or a new platform/source being assessed, future chats should answer:
 
-The live tab, ad-hoc GA4 report PDF, and scheduled/server GA4 report PDF must all use the same leader-card selector:
+`Yes. GA4 Ad Comparison is production-ready for the current GA4 code scope, with one deferred validation: deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured. Normal external caveats still apply for live GA4 API processing latency, deployed scheduler execution, and provider-side email delivery evidence.`
 
-- `shared/ga4-ad-comparison-cards.ts`
+This answer certifies only the current GA4 implementation. It does not certify Meta, Google Ads, LinkedIn, TikTok, Instagram, custom-upload, or any future platform implementation.
 
-If a future review finds a separate copied implementation for these leader cards, treat that as a production-readiness defect.
+## Current Scope
 
-## Required Code Anchors
+This audit applies to the current GA4 Ad Comparison implementation for:
 
-Current GA4 implementation files:
+- live UI rendering
+- browser-generated GA4 report PDF output
+- scheduled/server-generated GA4 report PDF output, locally validated with deployed artifact evidence deferred
+- current GA4 campaign/property/source scoping
+- exact campaign-matched imported revenue behavior
+- current campaign-row comparison model
+- current shared leader-card selector
+- current All Campaigns table behavior
 
-- Live tab component: `client/src/pages/ga4-ad-comparison.tsx`
-- GA4 page parent and ad-hoc PDF generation: `client/src/pages/ga4-metrics.tsx`
-- Shared leader-card selector: `shared/ga4-ad-comparison-cards.ts`
-- Scheduled/server PDF generation: `server/ga4-scheduled-report-pdf.ts`
-- Functional leader-card tests: `server/ga4-ad-comparison-card-logic.test.ts`
-- UI/report parity guard: `server/ga4-ui-regression.test.ts`
-- Cross-tab aggregation tests: `server/ga4-cross-tab-consistency.test.ts`
+This audit does not automatically certify:
 
-Supporting GA4 docs:
+- provider-side scheduled email delivery
+- live GA4 API behavior outside what the code and local tests can prove
+- the full lifecycle of every source edit/delete/refresh path outside the Ad Comparison call chain
+- future platform implementations
 
-- `GA4/README.md`
-- `GA4/OVERVIEW.md`
-- `GA4/FINANCIAL_SOURCES.md`
-- `GA4/REFRESH_AND_PROCESSING.md`
-- `GA4/REPORTS.md`
+This audit does not reopen the global GA4 Reports production-readiness status. Reports remains production-ready except for its documented deferred validations. The Ad Comparison scheduled/server PDF item below is aligned with the Mailgun-dependent deployed email/PDF validation path.
 
-## Current User-Facing Meaning
+## Deferred Validation
 
-The tab label is `Ad Comparison`, but the current GA4 implementation compares campaign rows.
+### Deployed Scheduled/Server PDF Revenue-Provenance Evidence
 
-This is intentionally documented because executives could otherwise interpret the cards as ad, ad set, creative, or keyword decisions.
+Status: Deferred until Mailgun is properly configured.
 
-Safe language:
+What is already fixed and locally validated:
 
-- Compare performance across GA4 campaigns
-- Campaign-row comparison
-- Campaigns compared
-- GA4 acquisition breakdown
+- scheduled/server Ad Comparison PDF rendering uses the same revenue-provenance concepts as live/browser output
+- scheduled/server output includes the relevant imported-source provenance concepts from Commit 2
+- local regression tests for scheduled/report output passed
+- shared leader-card selector behavior remains covered
+- typecheck passed
 
-Unsafe language unless the implementation changes:
+What remains deferred:
 
-- Best ad
-- Best creative
-- Creative winner
-- Ad-level winner
-- Paid-media optimization decision based only on GA4 campaign rows
+- trigger a deployed scheduled/test-send GA4 report after Mailgun is configured
+- open the delivered/generated PDF artifact
+- confirm the Ad Comparison section includes the expected revenue-provenance rows from Commit 2
+- confirm the delivered/generated artifact matches the live tab/browser PDF meaning for the same campaign data
+- record the evidence in this file
 
-## Current GA4 Tab Structure
+Why it is deferred:
 
-The current tab contains:
+- local code can prove the render path and regression contract
+- final deployed artifact evidence depends on the deployed email/PDF path and Mailgun configuration
+- provider/API acceptance is not the same as actual delivered attachment evidence
 
-- top leader-card row
-- metric dropdown in the header, right-aligned above the third leader-card column on desktop
-- metric-based ranking
-- comparison chart
-- summary cards
-- `All Campaigns` table
-- `Revenue Breakdown` table
+This is the only remaining Ad Comparison validation item.
 
-The supported dropdown metrics are:
+## Root Cause Analysis And Resolution
 
-- `Sessions`
-- `Users`
-- `Conversions`
-- `Revenue`
-- `Conversion Rate`
+### Prior confusion: readiness scope drift
 
-## Summary Metric Cards
+Root cause:
 
-The first summary card follows the selected dropdown metric.
+Earlier reviews certified narrower slices, especially the shared leader-card selector and imported-revenue row adjustment, while later questions asked about whole-tab production readiness. That created repeated changes in the answer.
 
-Rules:
+Resolution:
 
-- `Revenue` renders as `Total Revenue (All Sources)` and uses the full GA4 plus imported-source financial total.
-- `Conversion Rate` renders as `Overall Conversion Rate`, not `Total Conversion Rate` and not `Avg Conversion Rate`.
-- The `Overall Conversion Rate` value is calculated as total conversions divided by total sessions across the comparison rows.
-- Do not average campaign-row conversion rates for the summary card unless the product explicitly changes the metric definition.
-- `Users` keeps a tooltip because GA4 user counts are non-additive across campaign rows; tooltip copy should use plain readable ASCII text.
+This file now treats production readiness as the whole current GA4 Ad Comparison scope: row eligibility, leader cards, table behavior, revenue provenance, browser PDF, scheduled/server PDF, validation evidence, and external runtime caveats.
 
-## Production Status
+### Commit 1: Scope Source-Created Rows To The Current Campaign
 
-### Proven Locally
+Commit: `f0ea65b1 Scope GA4 Ad Comparison rows to current campaign`
 
-The following are locally proven by code trace and targeted regression tests:
-
-- The live tab leader cards use `shared/ga4-ad-comparison-cards.ts`.
-- The ad-hoc GA4 report PDF path in `client/src/pages/ga4-metrics.tsx` uses the same selector.
-- The scheduled/server GA4 report PDF path in `server/ga4-scheduled-report-pdf.ts` uses the same selector.
-- `Best Performing` follows the selected metric in the live tab and ad-hoc PDF path.
-- Scheduled/server PDF output currently uses `sessions` as the explicit default selected metric because no saved Ad Comparison dropdown metric is persisted in report config.
-- `Most Efficient` ignores zero-session rows and uses conversion rate.
-- `Needs Attention` uses lowest conversion rate among meaningful-volume rows.
-- `Needs Attention` ignores tiny low-signal rows when meaningful-volume rows exist.
-- Exact campaign-matched imported revenue can be included in adjusted comparison rows.
-- Mapped external-revenue rows with zero GA4 sessions can win `Best Performing` when the selected metric is `Revenue`, but they cannot win efficiency cards because efficiency requires sessions.
-- The metric dropdown is visually placed in the tab header before the leader-card row because it controls both the leader cards and chart/table ranking.
-- `Overall Conversion Rate` is the summary label for the weighted conversion-rate calculation, which is total conversions divided by total sessions.
-- The live tab receives imported-source revenue directly from the parent GA4 metrics page; unallocated external revenue is not inferred from `Total Revenue - campaign-row GA4 revenue`.
-- One-cent residuals after exact matched external revenue are suppressed as rounding reconciliation, not shown as `Unallocated External Revenue`.
-- The live `Revenue Breakdown` table shows `GA4 Revenue` from the source-level GA4 financial total, not the sum of rounded comparison rows.
-- Ad Comparison tooltip and helper copy is guarded against mojibake from non-ASCII dash or bullet characters.
+Root cause:
 
-### Partially Reviewed
+The live/ad-hoc Ad Comparison parent path could derive source-created row eligibility from GA4 campaign filters saved on other campaigns in the same client. That allowed exact imported revenue rows to appear under the wrong current campaign scope.
 
-The following are partially reviewed from local code, but not proven end-to-end in a live deployed environment:
+Smallest safe fix:
 
-- live GA4 Data API refresh into `ga4Breakdown`
-- live source refresh into `revenueDisplaySources`
-- deployed scheduled report generation timing
-- email attachment receipt and exact visual output
-- browser rendering for every viewport and every row-count edge case
+- derive source-created row eligibility from the current campaign's saved GA4 campaign filter only
+- preserve exact revenue matching semantics
+- preserve GA4 calculations, KPI/Benchmark behavior, alerts, notifications, scheduler behavior, API ownership, and source/campaign/property scoping
 
-### Not Claimed
+Status: Fixed and validated.
 
-Do not claim the whole Ad Comparison section is fully production-ready unless these are also validated:
+### Commit 2: Add Scheduled PDF Revenue-Provenance Parity
 
-- selected GA4 campaign/property scope is correct in live data
-- current `ga4Breakdown` rows match the saved GA4 campaign scope
-- external revenue sources are active, campaign-scoped, and platform-context scoped
-- source edits/deletes/refreshes recompute comparison rows correctly
-- live report downloads match the visible tab
-- scheduled report PDFs match the latest refreshed values at send time
-- full repo regression state is acceptable, or unrelated failures are documented and accepted
+Commit: `d6ce76fc Align GA4 scheduled Ad Comparison revenue provenance`
 
-## Data Source Contract
+Root cause:
 
-The GA4 Ad Comparison tab is built from these inputs:
+Scheduled/server PDF output adjusted comparison-row revenue but did not fully render the same revenue-provenance meaning as the live tab and browser-generated PDF.
 
-- GA4 campaign-breakdown aggregate rows
-- selected GA4 campaign/property scope from campaign setup
-- normalized GA4 totals from the GA4 page parent
-- active revenue source rows for the same campaign and GA4 platform context
-- saved source mapping metadata for exact campaign-value revenue matching
+Smallest safe fix:
 
-It must not use:
+- extend the scheduled/server Ad Comparison render path with the existing revenue-provenance concepts
+- preserve the shared selector
+- preserve scheduled metric default behavior
+- do not change live layout, scheduler ownership, email delivery semantics, KPI/Benchmark behavior, alerts, or notifications
 
-- unrelated GA4 property data
-- unrelated campaign rows from the same owner
-- unscoped revenue or spend sources
-- guessed external attribution
-- proportional revenue allocation
-- display-only source labels as attribution keys
+Status: Fixed and locally validated. Deployed scheduled/server PDF artifact evidence is deferred until Mailgun is properly configured.
 
-## Normalized Comparison Row Contract
+### Dropdown-controlled All Campaigns table
 
-All visible comparison outputs must be built from normalized comparison rows.
+Commit: `c630cc7b Decouple GA4 Ad Comparison table from metric dropdown`
 
-A normalized comparison row has:
+Root cause:
 
-- `name`
-- `sessions`
-- `users`
-- `conversions`
-- `revenue`
-- `conversionRate`
-- `revenuePerSession`
+The live All Campaigns table and browser PDF All Campaigns table were rendered from the dropdown-sorted row list. After the subtitle was removed, the table still implied dropdown control and row order could follow the selected metric.
 
-The row rules are:
+Smallest safe fix:
 
-- aggregate GA4 breakdown rows by campaign name
-- apply the saved campaign/property scope before rendering
-- scale row metrics only according to existing GA4 parent-page behavior
-- calculate conversion rate as `conversions / sessions * 100`
-- include exact campaign-matched imported revenue in `revenue`
-- never infer or proportionally allocate unmatched external revenue
-- keep unmatched external revenue visible as `Unallocated External Revenue`
-- if imported revenue creates a campaign row that GA4 did not return directly, include that row with zero GA4 sessions/users/conversions unless refreshed GA4 data later supplies those metrics
+- live All Campaigns table renders from stable `comparisonRows`
+- browser PDF All Campaigns table renders from stable `comparisonRows`
+- the metric dropdown continues to control leader cards, chart ranking, and selected-metric summary only
 
-## Exact Revenue Matching Rule
+Status: Fixed and validated.
 
-External revenue may be added to campaign rows only when the source saves real campaign-identifying values that match a normalized campaign row exactly.
+### Leader-card close-rate explainability
 
-Allowed:
+Commit: `b34dce2c Clarify GA4 Ad Comparison card conversion rates`
 
-- exact normalized campaign-value match
-- explicit saved mapping from source campaign value to selected platform campaign value
+Root cause:
 
-Not allowed:
+Leader-card selection already used exact numeric conversion rates, but card details displayed conversion rate to one decimal. Close values such as `34 / 273 = 12.45%` and `25 / 200 = 12.50%` both appeared as `12.5%`, making correct decisions look contradictory.
 
-- proportional allocation by sessions
-- proportional allocation by conversions
-- matching by display label only when a stable campaign identity is available
-- matching to unrelated campaigns in the same account/property
-- matching external revenue into more than one ambiguous row
+Smallest safe fix:
 
-If a revenue amount cannot be matched safely, it must remain visible as `Unallocated External Revenue`.
+- keep selector logic unchanged
+- add a GA4 Ad Comparison card-only two-decimal percent formatter
+- use that formatter in live cards, browser PDF cards, and scheduled/server PDF cards
+- add regression coverage for the exact close-rate case
 
-## Leader Card Contract
+Status: Fixed and validated.
 
-The leader cards must always consume normalized comparison rows after exact imported revenue has been merged.
+### All Campaigns title spacing
 
-The shared selector is:
+Commit: `cbcd956c Tighten GA4 Ad Comparison table spacing`
 
-- `selectGA4AdComparisonLeaderCards(comparisonRows, selectedMetric)` in `shared/ga4-ad-comparison-cards.ts`
+Root cause:
 
-### Best Performing
+After the All Campaigns description line was removed, the card still forced `CardContent className="p-6"`, which reintroduced top padding and left a blank descriptor gap under the title.
 
-Meaning:
+Smallest safe fix:
 
-- highest-ranked normalized comparison row for the current selected dropdown metric
+- keep the optional revenue-provenance description behavior
+- use tighter header padding when that description is absent
+- restore zero top padding on the table content
+- add a regression guard against returning to `p-6`
 
-Rules:
+Status: Fixed and validated.
 
-- changes when the dropdown metric changes
-- can be a zero-session mapped-revenue row when selected metric is `Revenue`
-- must show the selected metric value and conversion rate
-- must not add suffixes such as `(matched external included)` to the campaign label
+## Section Production-Readiness Map
 
-### Most Efficient
+### 1. Entity Definition And User Meaning
 
-Meaning:
+Status: Production-ready for current documented semantics.
 
-- campaign row with the highest conversion rate among rows with sessions
+Proven locally:
 
-Rules:
+- current implementation and docs define the tab as campaign-row comparison
+- docs explicitly prohibit interpreting the output as true ad, creative, ad group, or keyword analytics
 
-- does not change when the selected metric changes
-- excludes zero-session rows
-- uses adjusted row revenue in the detail line
-- must not use stale GA4-native-only revenue after imported revenue is merged
+Production condition:
 
-### Needs Attention
+- keep the campaign-row meaning explicit until the implementation actually supports lower-level ad entities
 
-Meaning:
+### 2. Source Scope And Row Eligibility
 
-- campaign row with the lowest conversion rate among meaningful-volume rows
+Status: Production-ready for current GA4 code scope.
 
-Meaningful-volume rule:
+Proven locally:
 
-- rows must have sessions
-- prefer rows at or above `max(25 sessions, 10% of the largest campaign row's sessions)`
-- if no row meets that floor, fall back to all rows with sessions
+- source-created rows are scoped to the current campaign's saved GA4 campaign filter
+- another same-client campaign's saved GA4 filter does not authorize source-created rows in the current campaign
+- scheduled/server path uses the current campaign's saved GA4 filter
 
-Duplication rule:
+Not locally verifiable:
 
-- avoid duplicating `Best Performing` only when another row is tied for the same lowest conversion rate
-- do not select a materially stronger conversion-rate row just to avoid duplication
-- do not select `Most Efficient` as `Needs Attention` just because the lowest conversion-rate row is also `Best Performing`
+- whether historical deployed production data contains stale/damaged mappings from earlier defects
 
-Display rule:
+### 3. Normalized Comparison Rows
 
-- show conversion rate and sessions from the adjusted normalized row
-- never use pre-merge or stale row values
+Status: Production-ready for current GA4 code scope.
 
-## Report Parity Contract
+Proven locally:
 
-The live tab and all report outputs must use the same normalized rows and the same leader-card selector.
+- comparison outputs consume normalized row values
+- conversion rate is row conversions divided by row sessions
+- zero-session rows can be represented when exact imported revenue creates a source-backed row
+- row normalization runs after current-campaign source scope is enforced
 
-Required parity paths:
+### 4. Exact Imported Revenue Matching
 
-- live tab: `client/src/pages/ga4-ad-comparison.tsx`
-- ad-hoc report PDF: `client/src/pages/ga4-metrics.tsx`
-- scheduled/server report PDF: `server/ga4-scheduled-report-pdf.ts`
+Status: Production-ready for the traced Ad Comparison paths.
 
-Required selector:
+Proven locally:
 
-- `shared/ga4-ad-comparison-cards.ts`
+- exact campaign-matched imported revenue can be included in adjusted comparison rows
+- mapped external-revenue rows with zero GA4 sessions can win `Best Performing` when selected metric is `Revenue`
+- zero-session mapped-revenue rows cannot win efficiency cards because efficiency requires sessions
+- one-cent residuals after exact matched external revenue are treated as rounding reconciliation
+- live unallocated external revenue is based on imported-source residuals, not `Total Revenue - GA4 campaign-row revenue`
 
-Report-specific rule:
+Not locally verifiable:
 
-- the scheduled/server PDF currently uses `sessions` as the explicit default selected metric because scheduled report config does not persist the user's live dropdown selection
-- if report config later persists an Ad Comparison selected metric, scheduled/server PDF must pass that saved value into the same selector
+- deployed customer source data quality
+- existing persisted damaged mappings, if any
 
-Production defect examples:
+### 5. Leader Cards
 
-- live tab uses one selector but PDF uses copied logic
-- scheduled report chooses `Needs Attention` by lowest sessions
-- ad-hoc PDF avoids a `Best Performing` duplicate by selecting a stronger row
-- any report uses stale GA4-only row revenue after exact imported revenue is merged
+Status: Production-ready for current campaign-row semantics.
 
-## All Campaigns Table Contract
+Proven locally:
 
-The `All Campaigns` table includes:
-
-- `Campaign`
-- `Sessions`
-- `Users`
-- `Conversions`
-- `Conv Rate`
-- `Revenue`
-
-Rules:
-
-- sort by the selected metric
-- use adjusted normalized rows
-- revenue means GA4 campaign-row revenue plus exact campaign-matched imported revenue
-- users remain directional because GA4 user counts are not perfectly additive across rows
-- keep the Users tooltip because the same person can appear in more than one row
-- show `Unallocated External Revenue` only for meaningful imported-source revenue that cannot be matched safely
-- compute unallocated external revenue from imported-source revenue minus exact matched external revenue, not from `Total Revenue - GA4 campaign-row revenue`
-- suppress a one-cent matched-source residual as rounding reconciliation instead of showing it as business-significant unallocated revenue
-- show `Total Revenue (All Sources)` as the final summary row
-- summary rows should use blank cells in non-Revenue columns instead of placeholder dashes
-
-## Revenue Breakdown Contract
-
-The `Revenue Breakdown` table shows source provenance, not row attribution.
-
-Columns:
-
-- `Source`
-- `Amount`
-
-Rules:
-
-- `GA4 Revenue` shows the source-level GA4-native financial total passed from the GA4 parent page.
-- `GA4 Revenue` must not be recomputed from the sum of rounded comparison rows.
-- active imported sources show their source amount
-- source rows can include indented per-campaign subsections from saved exact `campaignValueRevenueTotals`
-- subsection rows must use stored exact source values only
-- do not invent or proportionally allocate subsection values
-- do not duplicate a standalone `Unallocated External Revenue` row when that same amount is already represented in source subsections
-- a one-cent difference between rounded campaign rows and source-level totals is not a separate source row
-- `Total Revenue` renders as the final row and must reconcile to source-level GA4 revenue plus imported-source revenue
-
-## Refresh Contract
-
-The current tab has no dedicated Ad Comparison background job.
-
-It refreshes from the same refreshed inputs that power the GA4 page:
-
-1. Overview refresh updates GA4 daily and to-date values.
-2. GA4 campaign breakdown data is refetched.
-3. Revenue source rows are refetched.
-4. Normalized comparison rows are rebuilt.
-5. The live tab and report outputs render from those rows.
-
-Do not add a separate Ad Comparison scheduler unless the product design explicitly changes.
-
-## Production Safety Rule
-
-If the comparison row source, scope, or revenue matching cannot be proven, prefer hiding or gating the affected comparison signal over showing a misleading executive card.
-
-Remove or gate leader cards when:
-
-- campaign/property scope is unknown
-- comparison rows include unrelated campaigns
-- imported revenue is ambiguously matched
-- row metrics are known to be stale but displayed as current
-- live tab and report output cannot be kept in parity
-- the platform does not expose enough entity-level data for a meaningful comparison
-
-For GA4 today, do not remove the cards for card-selection accuracy. The selector is centralized and regression-covered. Continue to label the section as campaign-row comparison rather than true ad-level analytics.
-
-## Regression Tests Required
-
-Required tests for this section:
-
-- `server/ga4-ad-comparison-card-logic.test.ts`
-- `server/ga4-ui-regression.test.ts`
-- relevant report tests if report config or scheduled output changes
-
-Minimum behavior coverage:
-
-- `Best Performing` follows selected metric
+- live tab, browser-generated PDF, and scheduled/server PDF call the shared selector in `shared/ga4-ad-comparison-cards.ts`
+- `Best Performing` follows the selected metric where selected metric state is available
+- scheduled/server PDF uses `sessions` as the explicit default metric because report config does not persist the live dropdown state
 - `Most Efficient` uses highest conversion rate among rows with sessions
 - `Needs Attention` uses lowest conversion rate among meaningful-volume rows
-- `Needs Attention` ignores tiny low-signal rows when meaningful-volume rows exist
-- `Needs Attention` does not choose the most efficient row just to avoid duplication
-- zero-session mapped-revenue rows can be best for `Revenue` but not efficiency cards
-- live tab, ad-hoc PDF, and scheduled PDF use one shared selector
-- metric selector remains in the header before leader cards
-- unallocated external revenue is based on imported-source residuals only
-- `Revenue Breakdown` uses source-level GA4 revenue, not rounded row-sum revenue
-- summary conversion-rate label is `Overall Conversion Rate`
-- Ad Comparison user/tooling copy does not contain mojibake characters
+- low-signal rows are ignored when meaningful-volume rows exist
+- close conversion-rate decisions use exact numeric rates and card details show two-decimal CR
 
-Recommended commands:
+### 6. Metric Selector And Summary Cards
+
+Status: Production-ready for current local code scope.
+
+Proven locally:
+
+- supported metrics are `Sessions`, `Users`, `Conversions`, `Revenue`, and `Conversion Rate`
+- `Revenue` renders as `Total Revenue (All Sources)`
+- `Conversion Rate` renders as `Overall Conversion Rate`
+- overall conversion rate is total conversions divided by total sessions
+- users remain explicitly caveated because GA4 users are non-additive across rows
+- metric dropdown controls leader cards, chart ranking, and selected-metric summary, but not the All Campaigns table order
+
+### 7. All Campaigns Table
+
+Status: Production-ready for current GA4 code scope.
+
+Proven locally:
+
+- table row values come from adjusted normalized rows
+- table order is stable and not controlled by the metric dropdown
+- revenue means GA4 campaign-row revenue plus exact campaign-matched imported revenue
+- unallocated external revenue is computed from imported-source residuals only
+- `Total Revenue (All Sources)` is the final summary row
+- no `Full comparison sorted by ...` subtitle remains
+- no blank descriptor gap remains under the `All Campaigns` title when no provenance description is rendered
+
+### 8. Revenue Breakdown
+
+Status: Production-ready for current GA4 code scope, with deployed scheduled/server PDF artifact evidence deferred.
+
+Proven locally:
+
+- live revenue breakdown uses source-level GA4 revenue rather than rounded comparison-row sums
+- active imported sources can show source amounts
+- exact source campaign-value subtotals can be shown as indented provenance rows
+- one-cent source residuals are not business-significant unallocated revenue
+- scheduled/server PDF revenue-provenance parity code and local regression coverage are in place
+
+Deferred validation:
+
+- deployed scheduled/server PDF attachment must be checked after Mailgun is configured
+
+### 9. Reports And Exports
+
+Status: Production-ready for current GA4 code scope, with deployed scheduled/server PDF artifact evidence deferred.
+
+Proven locally:
+
+- browser-generated PDF uses the current parent-page Ad Comparison model
+- scheduled/server PDF uses the shared leader-card selector
+- scheduled/server PDF adjusts comparison rows with exact imported revenue
+- scheduled/server PDF provenance parity is implemented and locally regression-covered
+
+Not locally verifiable until Mailgun is configured:
+
+- delivered/generated deployed scheduled/server PDF attachment content
+- provider-side email delivery or inbox receipt
+
+### 10. Refresh And Recompute
+
+Status: Production-ready for the current Ad Comparison design, with normal external runtime caveats.
+
+Proven locally:
+
+- current tab has no dedicated Ad Comparison background job
+- Ad Comparison refreshes indirectly from GA4 breakdown and revenue-source inputs
+- no new scheduler is required for the current design
+
+Not locally verifiable:
+
+- live GA4 API processing latency
+- deployed scheduler execution timing
+
+## Proven Locally
+
+The following are proven by code trace and targeted regression tests from the June 27, 2026 post-fix audit:
+
+- current GA4 Ad Comparison is campaign-row comparison, not true ad-level analytics
+- live, browser PDF, and scheduled/server PDF leader cards use the shared selector
+- leader-card selector behavior is covered for selected metric, efficiency, meaningful-volume attention, zero-session revenue rows, and close exact-CR cases
+- browser-generated report output shares the current parent-page Ad Comparison model
+- source-created rows are gated to the current campaign's saved GA4 campaign filter
+- exact campaign-matched imported revenue can be included in adjusted comparison rows
+- unallocated external revenue comes from imported-source residuals only
+- one-cent residuals are treated as rounding reconciliation
+- live/ad-hoc Revenue Breakdown uses source-level GA4 revenue instead of rounded comparison-row sums
+- scheduled/server PDF revenue-provenance parity is implemented and locally covered
+- summary conversion-rate label is `Overall Conversion Rate`
+- card CR details use two-decimal formatting in live, browser PDF, and scheduled/server PDF output
+- All Campaigns is not sorted by the metric dropdown
+- All Campaigns compact-title spacing is guarded
+- the current tab has no dedicated Ad Comparison scheduler
+
+## Deferred Or Not Locally Verifiable
+
+The following cannot be proven from local code alone:
+
+- live GA4 processing latency and provider-side data availability
+- whether deployed customer data currently contains historical stale/damaged source mappings
+- deployed scheduler execution timing
+- deployed scheduled/server PDF attachment content until Mailgun is configured
+- provider/API acceptance becoming actual inbox delivery
+
+Only `Deployed Scheduled/Server PDF Revenue-Provenance Evidence` remains as a deferred Ad Comparison validation item.
+
+## Completed Fix Queue
+
+### Commit 1: Scope Source-Created Rows To The Current Campaign
+
+Status: Complete.
+
+Closed blocker:
+
+- live/ad-hoc source-created row scope could broaden beyond the current campaign
+
+Validation:
 
 ```bash
 npm test -- server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts
 npm run check
 ```
 
-Run full tests when feasible:
+### Commit 2: Add Scheduled PDF Revenue-Provenance Parity
+
+Status: Complete locally. Deployed artifact evidence deferred until Mailgun is properly configured.
+
+Closed code blocker:
+
+- scheduled/server PDF revenue provenance was not in full parity with live/ad-hoc meaning
+
+Validation:
 
 ```bash
-npm test
+npm test -- server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts
+npm test -- server/ga4-cross-tab-consistency.test.ts server/report-email-regression.test.ts
+npm run check
 ```
 
-If full tests fail in unrelated areas, document the failing files and do not claim global production readiness.
+### Commit 3: Update Production-Ready Status After Validation
 
-## Root Cause Lessons From Recent Fix
+Status: This documentation update.
 
-The repeated review miss came from checking only that leader cards referenced `comparisonRows`.
+Required outcome:
 
-That was insufficient because:
+- durable future answer is production-ready for current GA4 code scope
+- closed blockers remain documented as root-cause history
+- deferred deployed scheduled/server PDF evidence is isolated and tied to Mailgun configuration
 
-- card selection edge cases were not executed by tests
-- live UI and report output had copied logic
-- scheduled PDF used `Needs Attention` as lowest sessions instead of lowest conversion rate
-- avoiding a duplicate `Best Performing` row was interpreted too broadly
-- selector placement below the cards made the dropdown look chart-only even though it controls leader cards and chart/table ranking
-- deriving external revenue from total revenue minus rounded GA4 campaign rows created penny-level false unallocated revenue
-- using rounded comparison-row sums in `Revenue Breakdown` made source-level totals appear inconsistent by one cent
-- non-ASCII dash and bullet characters became mojibake in Ad Comparison UI copy
+## Validation Evidence
 
-The durable fix is:
+### Commit 1 / Commit 2 readiness validation
 
-- one shared selector
-- behavioral tests for edge cases
-- UI/report parity guard
-- explicit documentation that these are campaign-row cards
+Commands run during the Ad Comparison fix sequence:
 
-## Template For Other Platforms
+```bash
+npm test -- server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts
+npm test -- server/ga4-cross-tab-consistency.test.ts server/report-email-regression.test.ts
+npm run check
+```
+
+Results recorded during this workstream:
+
+- Ad Comparison selector/UI regression tests passed
+- report/consistency regression tests passed
+- TypeScript check passed
+
+### Dropdown/table independence validation after commit `c630cc7b`
+
+Commands:
+
+```bash
+npm test -- server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts
+npm run check
+npm test -- server/ga4-cross-tab-consistency.test.ts server/report-email-regression.test.ts
+```
+
+Result:
+
+- passed 31 focused selector/UI tests in that run
+- passed typecheck
+- passed 128 report/consistency tests
+- verified live and browser PDF All Campaigns tables render from stable `comparisonRows`, not dropdown-sorted rows
+
+### Card-precision validation after commit `b34dce2c`
+
+Commands:
+
+```bash
+npm test -- server/ga4-ad-comparison-card-logic.test.ts server/ga4-ui-regression.test.ts
+npm run check
+npm test -- server/ga4-cross-tab-consistency.test.ts server/report-email-regression.test.ts
+```
+
+Result:
+
+- passed 32 focused selector/UI tests
+- included the exact close-rate case where `34 / 273 = 12.45%` and `25 / 200 = 12.50%`
+- verified live, browser PDF, and scheduled/server PDF card details use two-decimal CR formatting
+- passed typecheck
+- passed 128 report/consistency tests
+
+### All Campaigns spacing validation after commit `cbcd956c`
+
+Commands:
+
+```bash
+npm test -- server/ga4-ui-regression.test.ts
+npm run check
+git diff --check -- client/src/pages/ga4-ad-comparison.tsx server/ga4-ui-regression.test.ts
+```
+
+Result:
+
+- passed 26 UI regression tests
+- passed typecheck
+- whitespace check passed
+- verified the live All Campaigns card uses compact header/content spacing when the provenance description is absent
+
+## Deferred Validation Procedure
+
+Complete this after Mailgun is properly configured:
+
+1. Generate a deployed scheduled/test-send GA4 report that includes Ad Comparison.
+2. Open the delivered/generated PDF attachment.
+3. Compare Ad Comparison revenue provenance against the live tab and browser-generated PDF for the same campaign data.
+4. Confirm the scheduled/server PDF includes expected Commit 2 provenance, including applicable GA4 revenue, imported source rows, source campaign-value provenance rows, unallocated external revenue when present, and total revenue.
+5. Confirm provider delivery evidence or actual inbox receipt; do not treat raw provider/API acceptance alone as delivery proof.
+6. Update this file with the exact date, campaign/source mix, report ID if available, artifact checked, and result.
+
+## Recommended Non-Blocking Improvements
+
+These are useful future improvements but are not production blockers for current GA4 Ad Comparison:
+
+- consider saving the Ad Comparison selected metric in report config so scheduled reports can use the user's selected metric instead of the documented `sessions` default
+- consider adding a visible `Campaign-row comparison` label if user research shows the `Ad Comparison` tab name is misleading
+- add lifecycle-specific source edit/delete/refresh tests when source lifecycle code is next touched
+- add a lightweight visual smoke check for long campaign names and mobile layout if frontend screenshot tooling is already being used
+
+## Future Platform Template
 
 Use this sequence when refining Meta, Google Ads, LinkedIn, TikTok, Instagram, or another platform's Ad Comparison tab.
 
@@ -456,25 +508,35 @@ Before calculating rows, prove:
 
 ### 3. Build Normalized Rows
 
-Every platform should define a normalized comparison row with stable fields.
+Every platform should define stable normalized comparison rows before cards, charts, tables, and reports render.
 
 Recommended common fields:
 
 - `id` when available
 - `name`
-- `sessions`, `clicks`, or the platform's primary traffic metric
-- `users` only when meaningful for the platform
-- `impressions` when available
-- `conversions`
-- `spend` when available
-- `revenue` when safely attributable
-- `conversionRate`
-- `costPerConversion` when spend exists
-- `roas` when spend and revenue exist
+- sessions, clicks, impressions, or the platform's primary traffic metric
+- conversions
+- spend when available
+- revenue when safely attributable
+- conversion rate or equivalent efficiency metric
+- CPA, ROAS, or ROI when the source supports them
 
-If a metric is unavailable, mark it unavailable rather than filling zero.
+If a metric is unavailable, mark it unavailable instead of filling zero.
 
-### 4. Define Leader Cards From Available Metrics
+### 4. Define Financial Attribution
+
+For each platform, document:
+
+- native revenue meaning
+- imported revenue meaning
+- exact source mapping fields
+- unmatched revenue behavior
+- spend source behavior
+- whether proportional allocation is forbidden or explicitly designed
+
+For GA4, proportional allocation is forbidden.
+
+### 5. Define Leader Cards From Available Metrics
 
 Leader cards must be metric-safe for the source.
 
@@ -484,49 +546,20 @@ GA4 pattern:
 - `Most Efficient`: highest conversion rate among session rows
 - `Needs Attention`: lowest conversion rate among meaningful-volume rows
 
-Paid-media pattern may differ, but must be explicit. For example:
+Paid-media pattern may differ, but must be explicit. Do not copy GA4 session-based logic blindly into paid-media sources if clicks, spend, or impressions are the real source metrics.
 
-- `Best Performing`: selected metric leader
-- `Most Efficient`: lowest CPA among rows with spend and conversions, or highest ROAS when revenue is attributable
-- `Needs Attention`: worst CPA, lowest ROAS, or low conversion rate among meaningful-volume rows
-
-Do not copy GA4 session-based logic blindly into paid-media sources if clicks, spend, or impressions are the real source metrics.
-
-### 5. Define Meaningful Volume
-
-Every platform must define a low-signal filter before showing `Needs Attention`.
-
-Examples:
-
-- GA4: sessions at or above `max(25, 10% of largest row sessions)`
-- paid media: clicks, spend, or impressions at or above a documented floor
-- ecommerce: orders or sessions at or above a documented floor
-
-If no row meets the floor, fall back to the prior all-eligible-row behavior and document it.
-
-### 6. Centralize Shared Card Logic
-
-Do not duplicate leader-card logic across:
-
-- live tab
-- ad-hoc report/download
-- scheduled/server report
-- snapshot JSON
-- tests
-
-Use one shared selector per platform or one generic selector with platform-specific configuration.
-
-### 7. Keep Report Output In Parity
+### 6. Keep Report Output In Parity
 
 For each platform, verify:
 
 - live tab and report output use the same normalized rows
 - leader cards use the same selector
 - table rows use the same row values
+- source provenance is represented consistently
 - report default metric is explicit when live UI state is not saved
 - scheduled reports do not use stale or separately recomputed card logic
 
-### 8. Add Regression Coverage
+### 7. Add Regression Coverage
 
 At minimum, add tests for:
 
@@ -537,37 +570,12 @@ At minimum, add tests for:
 - unmatched revenue/spend stays visible but unallocated
 - report output uses the same selector as the live tab
 - source scoping excludes unrelated campaigns/accounts
+- scheduled/server output matches live/ad-hoc source-provenance meaning
 
-### 9. Document Production Status
+## Stable Response For Future Chats
 
-Each platform doc must separate:
+If asked whether GA4 Ad Comparison is production-ready, answer:
 
-- proven locally
-- partially reviewed
-- not locally verifiable
-- known limitations
-- validation commands
+`Yes. GA4 Ad Comparison is production-ready for the current GA4 code scope, with one deferred validation: deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured. All identified code blockers have been fixed and locally validated. Normal external caveats still apply for live GA4 API processing latency, deployed scheduler execution, and provider-side email delivery evidence.`
 
-Do not claim production readiness from a narrow code trace.
-
-## New-Session Review Checklist
-
-When a new chat session is asked to review Ad Comparison, do this in order:
-
-1. Read `AGENTS.md`.
-2. Read `ARCHITECTURE_USER_JOURNEY.md`.
-3. Read `GA4/README.md`.
-4. Read `GA4_DEVELOPMENT_WORKFLOW.md`.
-5. Read this file.
-6. Trace `client/src/pages/ga4-metrics.tsx` to `client/src/pages/ga4-ad-comparison.tsx`.
-7. Trace normalized row creation and exact imported revenue matching.
-8. Confirm live leader cards call `shared/ga4-ad-comparison-cards.ts`.
-9. Confirm ad-hoc report output calls the same selector.
-10. Confirm scheduled/server PDF output calls the same selector.
-11. Confirm `All Campaigns` unallocated external revenue is based on imported-source residuals only.
-12. Confirm `Revenue Breakdown` uses source-level GA4 revenue and imported source rows.
-13. Confirm the conversion-rate summary label is `Overall Conversion Rate` and the calculation remains total conversions divided by total sessions.
-14. Run focused tests.
-15. State what is proven, partially reviewed, and not locally verifiable.
-
-Do not answer `this section is correct` unless all items in the requested scope have been traced.
+Do not reopen GA4 Reports. Reports is production-ready except for its separately documented deferred validations.

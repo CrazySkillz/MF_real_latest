@@ -84,8 +84,8 @@ Current standard-template output rule:
 - `KPIs` should follow the live KPI order
 - `Benchmarks` should follow the live Benchmark order
 - `Ad Comparison` should follow the live Ad Comparison order
-- `Ad Comparison` report leader cards and chart/table sections should use the same adjusted campaign comparison rows as the live tab, including exact campaign-matched imported revenue and mapped-revenue-created rows
-- `Ad Comparison` report revenue breakdown should match the live provenance contract: source-level GA4 revenue, active imported source rows, and no standalone one-cent rounding residual as unallocated revenue
+- `Ad Comparison` report leader cards and chart sections should use the same adjusted campaign comparison rows as the live tab, including exact campaign-matched imported revenue and mapped-revenue-created rows; leader-card CR details should use the same two-decimal exact-rate formatting as the live tab; `All Campaigns` tables should keep stable campaign-row order and should not be controlled by the metric dropdown
+- `Ad Comparison` report revenue breakdown should match the live provenance contract: source-level GA4 revenue, active imported source rows, and no standalone one-cent rounding residual as unallocated revenue; scheduled/server PDF provenance parity is implemented and locally validated, with deployed attachment evidence deferred until Mailgun is properly configured
 - `Insights` should follow the live Insights order
 - `Insights` report output should include the same daily-history freshness context as the live Trends section: `Data through`, reporting timezone, and last refreshed timestamp
 - downloaded and scheduled `Insights` report output should keep `What to investigate next` aligned with the live section by printing the history-aware intro, grouped findings, data basis, confidence, and `Recommended check:` wording
@@ -330,7 +330,7 @@ Important caveats:
 - the current `Ad Comparison` report output reflects the current GA4 comparison implementation, which is campaign-row comparison rather than true ad/creative-level reporting
 - the shared scheduler and report-link helper still contain legacy LinkedIn-oriented infrastructure details
 - Campaign DeepDive Scheduled Report Visibility is the only report-visibility validation still deferred, and it will be validated when the Campaign DeepDive section is refined
-- Deployed Scheduled Email remains deferred until the Mailgun service is properly configured; local code still preserves the generated-PDF attachment path and provider-acceptance-vs-delivery distinction
+- Deployed Scheduled Email remains deferred until the Mailgun service is properly configured; this includes final deployed evidence that scheduled/server GA4 Ad Comparison PDF attachments contain the expected revenue-provenance rows from Commit 2. Local code still preserves the generated-PDF attachment path and provider-acceptance-vs-delivery distinction
 - provider acceptance alone must not be shown to users as successful delivery when the provider subsequently reports a failed delivery event
 
 ## Report Library Meaning

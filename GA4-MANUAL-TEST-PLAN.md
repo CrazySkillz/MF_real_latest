@@ -931,14 +931,17 @@ Checkpoint after Journey 8:
 
 - [ ] Open the **Ad Comparison** tab
 - [ ] Switch metrics: Sessions, Conversions, Revenue, CR, Users
-- [ ] Ranking cards update per selected metric
-- [ ] Metric dropdown renders below the three summary cards
-- [ ] Best Performing ≠ Needs Attention
-- [ ] Needs Attention does not choose a tiny trivial campaign when a larger weak performer exists
+- [ ] Ranking cards use exact values: Best Performing follows the selected metric, Most Efficient uses highest exact CR among rows with sessions, and Needs Attention uses lowest exact CR among meaningful-volume rows
+- [ ] Metric dropdown renders in the Ad Comparison header and controls leader cards, chart ranking, and selected-metric summary
+- [ ] All Campaigns title sits directly above the table without an empty descriptor gap when no revenue-provenance description is shown
+- [ ] Best Performing may equal Needs Attention when the same campaign is highest for the selected metric but lowest exact CR; validate the card detail CR values instead of forcing distinct campaign names
+- [ ] Needs Attention does not choose a tiny trivial campaign when a larger weak performer exists, and close CR decisions display two decimal places on the cards
 - [ ] Users: tooltip explains that the same person can appear in more than one campaign row, so row totals may be higher than the true number of unique users
 - [ ] If imported revenue exists, Revenue mode surfaces **Total Revenue (All Sources)** explicitly
 - [ ] If a source has exact campaign-value matches to GA4 campaign rows, those matched external amounts are included in the relevant Revenue rows
 - [ ] If some external revenue does not match a GA4 campaign row exactly, it appears as **Unallocated External Revenue**
+- [x] Ad Comparison code fixes are locally validated except for deployed scheduled/server PDF revenue-provenance artifact evidence
+- [ ] Deferred until Mailgun is properly configured: generate a deployed scheduled/test-send GA4 report and confirm the scheduled/server PDF includes the expected Commit 2 Ad Comparison revenue-provenance rows
 - [ ] If **CSV revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
 - [ ] If **Google Sheets revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows
 - [ ] If **HubSpot revenue** is active, verify its top-level source amount appears in `Revenue Breakdown`, any saved per-campaign subsection values are correct, and any exact matches propagate into the correct `All Campaigns` rows

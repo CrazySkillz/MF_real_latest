@@ -21,6 +21,11 @@ export function selectGA4AdComparisonLeaderCards<T extends GA4AdComparisonCardRo
   return { bestPerforming, mostEfficient, needsAttention };
 }
 
+export function formatGA4AdComparisonCardPct(value: number): string {
+  const n = Number(value || 0);
+  return `${Number.isFinite(n) ? n.toFixed(2) : "0.00"}%`;
+}
+
 function selectGA4AdComparisonNeedsAttention<T extends GA4AdComparisonCardRow>(comparisonRows: T[], bestPerforming?: T) {
   const rowsWithSessions = [...comparisonRows].filter(c => c.sessions > 0);
   const meaningfulSessionFloor = Math.max(25, Math.ceil(Math.max(...rowsWithSessions.map(c => c.sessions), 0) * 0.1));

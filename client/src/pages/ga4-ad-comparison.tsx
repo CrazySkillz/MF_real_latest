@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trophy, Zap, AlertTriangle, Info } from "lucide-react";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatPct } from "@shared/metric-math";
-import { selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
+import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend,
 } from "recharts";
@@ -207,6 +207,11 @@ export default function GA4AdComparison({
     return formatNumber(value);
   };
 
+  const fmtCardMetricValue = (metric: string, value: number) => {
+    if (metric === "conversionRate") return formatGA4AdComparisonCardPct(value);
+    return fmtMetricValue(metric, value);
+  };
+
   const totalMetric = useMemo(() => {
     if (selectedMetric === "conversionRate") {
       const totalSessions = sortedByMetric.reduce((s, c) => s + c.sessions, 0);
@@ -284,7 +289,7 @@ export default function GA4AdComparison({
                   {bestPerforming.name}
                 </div>
                 <div className="text-sm text-muted-foreground/70 mt-1">
-                  {fmtMetricValue(selectedMetric, Number((bestPerforming as any)[selectedMetric] || 0))} {METRIC_LABELS[selectedMetric] || selectedMetric} &middot; {formatPct(bestPerforming.conversionRate)} CR
+                  {fmtCardMetricValue(selectedMetric, Number((bestPerforming as any)[selectedMetric] || 0))} {METRIC_LABELS[selectedMetric] || selectedMetric} &middot; {formatGA4AdComparisonCardPct(bestPerforming.conversionRate)} CR
                 </div>
               </CardContent>
             </Card>
@@ -300,7 +305,7 @@ export default function GA4AdComparison({
                   {mostEfficient.name}
                 </div>
                 <div className="text-sm text-muted-foreground/70 mt-1">
-                  {formatPct(mostEfficient.conversionRate)} CR &middot; {formatMoney(mostEfficient.revenue)} revenue
+                  {formatGA4AdComparisonCardPct(mostEfficient.conversionRate)} CR &middot; {formatMoney(mostEfficient.revenue)} revenue
                 </div>
               </CardContent>
             </Card>
@@ -316,7 +321,7 @@ export default function GA4AdComparison({
                   {needsAttention.name}
                 </div>
                 <div className="text-sm text-muted-foreground/70 mt-1">
-                  {formatPct(needsAttention.conversionRate)} CR &middot; {formatNumber(needsAttention.sessions)} sessions
+                  {formatGA4AdComparisonCardPct(needsAttention.conversionRate)} CR &middot; {formatNumber(needsAttention.sessions)} sessions
                 </div>
               </CardContent>
             </Card>

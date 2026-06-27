@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
+import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 
 const row = (name: string, sessions: number, users: number, conversions: number, revenue: number) => ({
   name,
@@ -77,5 +77,22 @@ describe("GA4 Ad Comparison leader-card logic", () => {
     expect(cards.bestPerforming?.name).toBe("mapped external revenue");
     expect(cards.mostEfficient?.name).toBe("tracked GA4 row");
     expect(cards.needsAttention?.name).toBe("tracked GA4 row");
+  });
+
+  it("uses exact conversion rates for close leader-card decisions that round to the same one-decimal label", () => {
+    const rows = [
+      row("yesop_retargeting", 273, 273, 34, 6253.92),
+      row("yesop_paid_social", 200, 200, 25, 4389.14),
+      row("yesop_email_nurture", 192, 192, 24, 3513.33),
+    ];
+
+    const cards = selectGA4AdComparisonLeaderCards(rows, "sessions");
+
+    expect(cards.bestPerforming?.name).toBe("yesop_retargeting");
+    expect(cards.mostEfficient?.name).toBe("yesop_paid_social");
+    expect(cards.needsAttention?.name).toBe("yesop_retargeting");
+    expect(cards.needsAttention?.conversionRate).toBeLessThan(cards.mostEfficient?.conversionRate || 0);
+    expect(formatGA4AdComparisonCardPct(cards.needsAttention?.conversionRate || 0)).toBe("12.45%");
+    expect(formatGA4AdComparisonCardPct(cards.mostEfficient?.conversionRate || 0)).toBe("12.50%");
   });
 });

@@ -2,7 +2,7 @@ import { ga4Service } from "./analytics";
 import { storage } from "./storage";
 import { getReportingDateWindow } from "./utils/reporting-timezone";
 import { computeCpa, computeRoiPercent, normalizeRateToPercent } from "../shared/metric-math";
-import { selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
+import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "../shared/ga4-ad-comparison-cards";
 
 type CampaignFilter = string | string[] | undefined;
 type C3 = [number, number, number];
@@ -999,8 +999,8 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       const { bestPerforming, mostEfficient, needsAttention } = selectGA4AdComparisonLeaderCards(rows, selectedMetric);
       metricCards([
         ["Best Performing", `${String(bestPerforming?.name || "").slice(0, 18)} (${formatNumber(bestPerforming?.sessions || 0)} sessions)`],
-        ["Most Efficient", `${String(mostEfficient?.name || "").slice(0, 18)} (${formatPct(mostEfficient?.conversionRate || 0)})`],
-        ["Needs Attention", `${String(needsAttention?.name || "").slice(0, 18)} (${formatPct(needsAttention?.conversionRate || 0)}, ${formatNumber(needsAttention?.sessions || 0)} sessions)`],
+        ["Most Efficient", `${String(mostEfficient?.name || "").slice(0, 18)} (${formatGA4AdComparisonCardPct(mostEfficient?.conversionRate || 0)})`],
+        ["Needs Attention", `${String(needsAttention?.name || "").slice(0, 18)} (${formatGA4AdComparisonCardPct(needsAttention?.conversionRate || 0)}, ${formatNumber(needsAttention?.sessions || 0)} sessions)`],
       ], 3, 28);
     }
     if (includeRevenueBreakdown) {

@@ -34,7 +34,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useClient } from "@/lib/clientContext";
 import { computeCpa, computeConversionRatePercent, computeProgress, computeRoiPercent, computeRoasPercent, normalizeRateToPercent, formatPct } from "@shared/metric-math";
-import { selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
+import { formatGA4AdComparisonCardPct, selectGA4AdComparisonLeaderCards } from "@shared/ga4-ad-comparison-cards";
 import { isLowerIsBetterKpi, computeEffectiveDeltaPct, classifyKpiBandWithPolicy, computeAttainmentPct, computeAttainmentFillPct, resolveKpiThresholdPolicy, resolveKpiDataSufficiency, computeBenchmarkThresholdResult, resolveBenchmarkDataSufficiency } from "@shared/kpi-math";
 
 interface Campaign {
@@ -3028,6 +3028,10 @@ export default function GA4Metrics() {
         if (metric === "conversionRate") return fP(value);
         return fN(value);
       };
+      const fmtCardMetricValue = (metric: string, value: number) => {
+        if (metric === "conversionRate") return formatGA4AdComparisonCardPct(value);
+        return fmtMetricValue(metric, value);
+      };
       const normalizeCampaignKey = (value: string) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
       const rowCounts = new Map<string, number>();
       const rowNameByKey = new Map<string, string>();
@@ -3097,21 +3101,21 @@ export default function GA4Metrics() {
             {
               title: "BEST PERFORMING",
               name: String(bestPerforming?.name || bestPerforming?.campaign || ""),
-              detail: `${fmtMetricValue(selectedMetric, Number((bestPerforming as any)?.[selectedMetric] || 0))} ${metricLabels[selectedMetric] || selectedMetric} · ${fP(Number(bestPerforming?.conversionRate || 0))} CR`,
+              detail: `${fmtCardMetricValue(selectedMetric, Number((bestPerforming as any)?.[selectedMetric] || 0))} ${metricLabels[selectedMetric] || selectedMetric} - ${formatGA4AdComparisonCardPct(Number(bestPerforming?.conversionRate || 0))} CR`,
               color: C.success,
               x: MX,
             },
             {
               title: "MOST EFFICIENT",
               name: String(mostEfficient?.name || mostEfficient?.campaign || ""),
-              detail: `${fP(Number(mostEfficient?.conversionRate || 0))} CR · ${fC(Number(mostEfficient?.revenue || 0))} revenue`,
+              detail: `${formatGA4AdComparisonCardPct(Number(mostEfficient?.conversionRate || 0))} CR - ${fC(Number(mostEfficient?.revenue || 0))} revenue`,
               color: C.info,
               x: MX + colW + 4,
             },
             {
               title: "NEEDS ATTENTION",
               name: String(needsAttention?.name || needsAttention?.campaign || ""),
-              detail: `${fP(Number(needsAttention?.conversionRate || 0))} CR · ${fN(Number(needsAttention?.sessions || 0))} sessions`,
+              detail: `${formatGA4AdComparisonCardPct(Number(needsAttention?.conversionRate || 0))} CR - ${fN(Number(needsAttention?.sessions || 0))} sessions`,
               color: C.danger,
               x: MX + (colW + 4) * 2,
             },

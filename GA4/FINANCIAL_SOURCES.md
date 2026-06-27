@@ -85,6 +85,8 @@ Important clarification:
 - in the GA4 `Ad Comparison` Revenue Breakdown table, `GA4 Revenue` should use the source-level GA4 financial total, not the sum of rounded comparison rows
 - that subsection should use the stored source values directly and should not be duplicated by a separate standalone unallocated row when the same amount is already represented there
 
+Production-readiness note: GA4 Ad Comparison financial-source behavior is production-ready for the current GA4 code scope. The only deferred validation is deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured; see `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`.
+
 ### Previous-Day Revenue Records
 
 Current UI behavior:

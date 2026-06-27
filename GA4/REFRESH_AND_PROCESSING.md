@@ -317,6 +317,8 @@ It refreshes because:
 - revenue-source inputs refresh
 - the derived comparison view rerenders from those refreshed inputs
 
+Readiness note: GA4 Ad Comparison is production-ready for the current GA4 code scope. The only deferred validation is deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured; see `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`.
+
 ## Insights Refresh
 
 The current `Insights` tab is downstream of:

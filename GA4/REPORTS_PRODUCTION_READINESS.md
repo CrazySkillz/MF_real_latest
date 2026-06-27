@@ -291,7 +291,7 @@ Proven locally:
 
 Partially reviewed:
 
-- Ad Comparison scheduled/server output follows current campaign-row comparison behavior, not true ad/creative-level reporting
+- Ad Comparison scheduled/server output follows the current production-ready GA4 Ad Comparison contract: campaign-row comparison, not true ad/creative-level reporting. Its only Ad Comparison-specific deferred evidence is deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured, tracked in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`.
 - scheduled Insights output uses the supported server sessions trend rather than a persisted live dropdown choice
 
 Not locally verifiable:
@@ -617,7 +617,7 @@ Deferred deployed validation:
 These areas are not current local blockers, but future work should not assume they are fully certified beyond the stated evidence:
 
 - manual snapshot POST has no current GA4 frontend caller, but it also does not preflight GA4 PDF output before inserting
-- GA4 Ad Comparison report output reflects campaign-row comparison, not true ad/creative-level reporting
+- GA4 Ad Comparison report output is production-ready for the current GA4 code scope except for the Mailgun-dependent deployed scheduled/server PDF revenue-provenance evidence tracked in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`; it still reflects campaign-row comparison, not true ad/creative-level reporting
 - scheduled Insights PDF uses the supported server sessions trend rather than persisting the live selected trend metric/mode
 - the Drizzle schema does not express the report-send unique index even though startup DDL creates it
 - legacy report routes were not exhaustively reachability-audited in this GA4 Reports pass

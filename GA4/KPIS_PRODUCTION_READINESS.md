@@ -8,25 +8,24 @@ Use this file when asked whether GA4 KPIs are robust, accurate, logical, product
 
 `GA4/KPIS.md` defines what the KPI tab is supposed to do.
 
-This file defines whether the current implementation is production-ready, what has been proven, what is only partially reviewed, what is not locally verifiable, and the exact fix queue required before the durable answer can change.
+This file defines whether the current implementation is production-ready, what has been proven, what is only partially reviewed, what is not locally verifiable, and the completed fix queue behind the durable answer.
 
 ## Durable Future Answer
 
-As of June 27, 2026, GA4 KPIs are not production-ready yet.
+As of June 27, 2026, GA4 KPIs are production-ready for the current GA4 code scope.
 
-The blocker is not the visible KPI threshold policy. The visible threshold policy has substantial local coverage. The blocker is the end-to-end production lifecycle:
+Commits 1-6 in this file have been implemented, committed, pushed, deployed, and UI validation passed. The GA4 ROAS persisted cleanup script was applied after a matching dry-run:
 
-- persisted GA4 KPI current values
-- scheduler and refresh recompute
-- alert and notification decisions
-- property-scope safety
-- existing damaged persisted data after a forward-path bug
+- pre-apply dry-run: 46 repair candidates and 56 skipped campaign-level reasons
+- apply: 46 persisted ROAS rows updated
+- post-apply dry-run: 0 remaining repair candidates
+- skipped rows were left untouched because they lacked an active GA4 primary property or lacked persisted GA4 daily rows for the current primary property
 
-The durable answer should remain:
+The durable answer is:
 
-`GA4 KPIs are not production-ready yet. The exact blocker queue is in GA4/KPIS_PRODUCTION_READINESS.md.`
+`GA4 KPIs are production-ready for the current GA4 code scope. Remaining caveats are external or deployed-runtime evidence caveats listed in GA4/KPIS_PRODUCTION_READINESS.md, not local GA4 KPI implementation blockers.`
 
-That answer can change to production-ready only after every blocker in `Required Fix Queue` is implemented, locally validated, and this file is updated with completed validation evidence.
+This answer should change only if later code changes, failed validation, contradictory deployed evidence, or changed requirements reopen a KPI path.
 
 This answer should not change merely because:
 
@@ -34,6 +33,7 @@ This answer should not change merely because:
 - `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md` validates metric-aware threshold math
 - the visible KPI cards look correct in the browser
 - one local test suite is green
+- another platform source copies the GA4 KPI pattern without its own source/scope/recompute proof
 
 ## How To Use This File In A New Chat
 
@@ -41,14 +41,31 @@ Read in this order:
 
 1. `Durable Future Answer`
 2. `Current Scope`
-3. `Confirmed Blockers`
-4. `Required Fix Queue`
+3. `Resolved Blockers`
+4. `Completed Fix Queue`
 5. `Validation Evidence`
 6. `Future Platform Template`
 
-Do not answer that GA4 KPIs are production-ready unless this file explicitly says the blocker queue is complete.
+Answer that GA4 KPIs are production-ready for the current GA4 code scope, subject only to the explicit external/deployed caveats in this file.
 
 Do not reopen GA4 Ad Comparison or GA4 Reports when answering KPI readiness unless a KPI code path directly references those sections.
+
+## Future Source Reading Order
+
+Use this order when adapting the GA4 KPI model to Meta, Google Ads, LinkedIn, Google Sheets, or another source:
+
+1. Read `GA4/KPIS.md` for the functional tab contract: visible workflow, metric options, current-value behavior, gating, alerts, delete behavior, and refresh expectations.
+2. Read this file for the whole-tab readiness method: lifecycle paths proven, completed blockers, validation evidence, caveats, and future-platform gates.
+3. Read `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md` only as the historical threshold/scoring appendix.
+4. Create or update a source-specific readiness file for the target platform. Do not treat GA4 evidence as proof that Meta, Google Ads, LinkedIn, Google Sheets, or another source is production-ready.
+
+Stable file roles:
+
+- `GA4/KPIS.md` = what the GA4 KPI tab does
+- `GA4/KPIS_PRODUCTION_READINESS.md` = whether GA4 KPIs are production-ready and how to prove a future source
+- `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md` = historical threshold/scoring slice only
+
+For a future source, prove source identity, account/property/customer scoping, selected campaign/ad set/ad group scope, current-value UI path, persisted recompute path, threshold policy, alert and notification path, scheduler/reprocess path, ownership checks, delete behavior, report consumers, and existing-data cleanup boundary before calling that source's KPIs production-ready.
 
 ## Current Scope
 
@@ -84,7 +101,9 @@ Earlier KPI readiness notes certified narrower slices:
 
 Those files did not fully certify the whole KPI production lifecycle.
 
-The later audit traced the scheduler-persisted current-value path and found a separate defect: GA4 KPI ROAS is displayed as an `x` ratio in the UI and docs, but the GA4 recompute job persists ROAS as a percent. Platform GA4 alert checks read persisted values, so the defect affects alerts, notification visibility, email eligibility, KPI progress history, and downstream consumers that rely on persisted KPI rows.
+The later audit traced the scheduler-persisted current-value path and found a separate defect: GA4 KPI ROAS is displayed as an `x` ratio in the UI and docs, but the GA4 recompute job persisted ROAS as a percent. Platform GA4 alert checks read persisted values, so the defect affected alerts, notification visibility, email eligibility, KPI progress history, and downstream consumers that rely on persisted KPI rows.
+
+That defect and the related property-scope, CPA sufficiency, ROAS copy, shared Benchmark access, and existing-data cleanup blockers have now been fixed through the completed queue below.
 
 This file exists so future reviews do not confuse threshold readiness with whole-tab production readiness.
 
@@ -129,7 +148,7 @@ Important meaning:
 
 ### 1. KPI Tab UI And Creation Flow
 
-Status: Partially reviewed, not production-ready until current-value blockers are fixed.
+Status: Production-ready for the current GA4 code scope.
 
 Proven locally:
 
@@ -139,42 +158,43 @@ Proven locally:
 - visible ROAS values use the GA4 financial ratio model.
 - template tiles expose ROAS as a ratio-style KPI.
 
-Known issue:
+Resolved issue:
 
-- the default ROAS description still says `as a %` in helper text when a description is generated from defaults.
+- the default ROAS description no longer says `as a %` in helper text when a description is generated from defaults.
 
-Remaining validation after fixes:
+Validation completed:
 
-- browser validation for create, edit, delete, alert toggle, email toggle, and deep-link highlight on the GA4 `KPIs` tab.
+- deployed UI validation passed for the completed fix queue.
+- browser validation covered the GA4 `KPIs` tab paths affected by Commits 1-6.
 
 ### 2. KPI Current-Value Calculation
 
-Status: Not production-ready.
+Status: Production-ready for the current GA4 code scope.
 
-Confirmed blocker:
+Resolved blocker:
 
-- `server/ga4-kpi-benchmark-jobs.ts` uses `computeRoasPercent` for GA4 KPI ROAS.
+- Before Commit 1, `server/ga4-kpi-benchmark-jobs.ts` used `computeRoasPercent` for GA4 KPI ROAS.
 - GA4 docs and the visible GA4 page use ROAS as `Revenue / Spend` ratio.
-- Persisted KPI `currentValue` for ROAS is therefore 100 times the intended ratio.
+- Before Commit 1, persisted KPI `currentValue` for ROAS could be 100 times the intended ratio.
 
-Impact:
+Former impact:
 
-- KPI card display can look correct because the UI recomputes live values.
-- persisted KPI rows can be wrong.
-- KPI progress history can be wrong.
-- KPI alert comparisons can be wrong.
-- notification visibility can be wrong.
-- immediate and scheduled KPI alert email eligibility can be wrong.
+- KPI card display could look correct because the UI recomputed live values.
+- persisted KPI rows could be wrong.
+- KPI progress history could be wrong.
+- KPI alert comparisons could be wrong.
+- notification visibility could be wrong.
+- immediate and scheduled KPI alert email eligibility could be wrong.
 
-Additional confirmed issue:
+Additional resolved issue:
 
-- KPI CPA data sufficiency requires conversions but does not require spend.
+- Before Commit 2, KPI CPA data sufficiency required conversions but did not require spend.
 - Benchmark CPA already requires both conversions and spend.
-- KPI CPA can be scored as sufficient with conversions present and zero spend, which can produce a misleading `0` CPA.
+- Before Commit 2, KPI CPA could be scored as sufficient with conversions present and zero spend, which could produce a misleading `0` CPA.
 
 ### 3. KPI Tracker And Threshold Status
 
-Status: Partially production-ready, blocked by current-value defects.
+Status: Production-ready for the current GA4 code scope.
 
 Proven locally:
 
@@ -183,14 +203,14 @@ Proven locally:
 - blocked and insufficient KPIs are intended to be excluded from tracker counts and average progress.
 - focused KPI math tests currently pass.
 
-Not fully proven:
+Resolved validation:
 
-- tracker correctness after the persisted ROAS fix, especially where KPI rows have stale stored current values or history.
-- CPA zero-spend insufficiency because the current KPI sufficiency helper omits CPA from the spend check.
+- tracker correctness was validated after the persisted ROAS fix and ROAS cleanup.
+- CPA zero-spend insufficiency was fixed and covered by focused KPI math tests.
 
 ### 4. KPI Alerts And Notifications
 
-Status: Implementation mostly traced, but not production-ready until persisted current values are correct.
+Status: Production-ready for local and in-app behavior in the current GA4 code scope. Provider delivery evidence remains an external caveat.
 
 Proven locally:
 
@@ -201,9 +221,9 @@ Proven locally:
 - immediate and scheduled email alert paths distinguish send attempts with audit rows.
 - local alert email scheduler, audit, retry, and idempotency tests pass in the targeted suite.
 
-Current blocker:
+Resolved blocker:
 
-- platform GA4 KPI alert checks use persisted `currentValue`; ROAS persisted as percent can suppress true below-threshold alerts or create false above-threshold alerts.
+- platform GA4 KPI alert checks use persisted `currentValue`; persisted ROAS now uses the same ratio semantics as the visible GA4 KPI cards.
 
 Not locally verifiable:
 
@@ -214,7 +234,7 @@ Not locally verifiable:
 
 ### 5. Refresh, Scheduler, And Recompute
 
-Status: Not production-ready until ROAS and property-scope fixes are complete.
+Status: Production-ready for the current GA4 code scope. Deployed scheduler timing remains an external runtime caveat.
 
 Proven locally:
 
@@ -223,15 +243,15 @@ Proven locally:
 - auto-refresh paths call recompute when upstream sources change.
 - KPI create and update call recompute before checking alerts for GA4 platform KPIs.
 
-Current blockers:
+Resolved blockers:
 
-- all of those paths propagate the ROAS percent-vs-ratio persisted value bug.
-- changing the primary GA4 property can leave the frontend selected property on the old property while server recompute uses the new primary property.
-- `setPrimaryGA4Connection` updates the selected connection by ID without requiring that the connection belongs to the campaign whose primary connection is being changed.
+- all recompute paths now persist ROAS as a ratio for GA4 KPI and Benchmark rows.
+- after Set as Primary, the frontend selected property is aligned with the new primary property.
+- `setPrimaryGA4Connection` requires the target connection to belong to the campaign before primary-state mutation.
 
 ### 6. Ownership And Scoping
 
-Status: Partially reviewed.
+Status: Production-ready for the current GA4 KPI code scope.
 
 Proven locally:
 
@@ -240,48 +260,50 @@ Proven locally:
 - current GA4 platform KPI update/delete use `ensureKpiAccess` and verify platform type.
 - storage methods fetch platform KPIs by exact platform and campaign when campaignId is supplied.
 
-Confirmed scoping issue outside the KPI CRUD route itself:
+Resolved scoping issue outside the KPI CRUD route itself:
 
-- GA4 primary-property storage update is not campaign-scoped by target connection.
-- This can corrupt which property server recompute uses for KPI values.
+- GA4 primary-property storage update is now campaign-scoped by target connection.
+- server recompute and visible selected property are aligned after the Set as Primary action.
 
 ### 7. Existing Damaged Data
 
-Status: Bounded cleanup path implemented locally; production row inventory and application are not locally verifiable until the maintenance script is run against the target database.
+Status: Cleanup applied and verified against the target database.
 
 Confirmed damage boundary:
 
 - existing GA4 platform KPI rows with ROAS current values may have persisted percent values.
 - existing auto-created KPI progress rows for GA4 ROAS may also contain percent values.
 
-Implemented cleanup boundary:
+Implemented and applied cleanup boundary:
 
-- `server/ga4-roas-persisted-cleanup.ts` is dry-run by default and must be run with `--apply` only after reviewing the inventory.
+- `server/ga4-roas-persisted-cleanup.ts` is dry-run by default and was run with `--apply` only after the dry-run inventory matched the documented boundary.
 - current GA4 platform ROAS KPI rows are selected only when `platformType = google_analytics` and `metric` or `name` is exactly `ROAS`; they are recomputed from the campaign's current primary GA4 property, latest persisted GA4 daily date, active GA4-context imported revenue, and active spend records.
 - historical KPI progress rows are eligible only when `notes` exactly matches `auto:ga4_daily:YYYY-MM-DD` and the campaign has exactly one active GA4 property, because the old progress rows did not persist `propertyId`.
 - eligible KPI progress rows are recomputed from persisted source inputs for that exact auto date, including rolling averages and trend direction.
 - rows without a strict auto note, without persisted source inputs, or with ambiguous historical property scope are left unchanged and reported as skipped.
 
-Required cleanup principle:
+Completed cleanup principle:
 
 - fix the forward path first.
 - do not blindly divide all historical ROAS rows by 100.
-- correct only rows whose GA4 source boundary is proven, such as GA4 platform ROAS KPI rows and auto GA4 daily progress rows where the source data can be recomputed exactly.
-- if exact historical source inputs cannot be proven for a row, document it as legacy suspect data instead of inventing allocation.
+- corrected only rows whose GA4 source boundary was proven, such as GA4 platform ROAS KPI rows and auto GA4 daily progress rows where the source data could be recomputed exactly.
+- skipped rows were left untouched where exact source inputs could not be proven.
 
-## Confirmed Blockers
+## Resolved Blockers
 
-### KPI-1: GA4 persisted ROAS uses percent instead of ratio
+All blockers below were resolved by Commits 1-6, deployed, UI-validated, and followed by the applied ROAS persisted cleanup.
+
+### KPI-1: GA4 persisted ROAS used percent instead of ratio
 
 Root cause:
 
-- `server/ga4-kpi-benchmark-jobs.ts` computes ROAS with `computeRoasPercent`.
+- `server/ga4-kpi-benchmark-jobs.ts` computed ROAS with `computeRoasPercent`.
 
 Expected:
 
 - GA4 KPI ROAS current value must be `Revenue / Spend`, rounded for display and storage as a ratio.
 
-Impact:
+Former impact:
 
 - persisted current value
 - KPI progress history
@@ -290,79 +312,106 @@ Impact:
 - immediate email eligibility
 - scheduled email eligibility
 
-### KPI-2: KPI CPA sufficiency omits spend
+Resolved by:
+
+- Commit 1 fixed the forward persisted ROAS calculation.
+- Commit 6 applied the bounded cleanup to existing safely identifiable GA4 ROAS rows.
+
+### KPI-2: KPI CPA sufficiency omitted spend
 
 Root cause:
 
-- `resolveKpiDataSufficiency` checks CPA conversions but does not check CPA spend.
+- `resolveKpiDataSufficiency` checked CPA conversions but did not check CPA spend.
 
 Expected:
 
 - CPA KPIs need both conversions and spend before scoring.
 
-Impact:
+Former impact:
 
-- zero-spend CPA KPIs can be scored instead of marked insufficient.
+- zero-spend CPA KPIs could be scored instead of marked insufficient.
 
-### KPI-3: GA4 primary-property storage update is not campaign-scoped by target connection
+Resolved by:
+
+- Commit 2 fixed KPI CPA spend sufficiency.
+
+### KPI-3: GA4 primary-property storage update was not campaign-scoped by target connection
 
 Root cause:
 
-- `setPrimaryGA4Connection(campaignId, connectionId)` clears primary connections by campaign but updates the target connection by ID only.
+- `setPrimaryGA4Connection(campaignId, connectionId)` cleared primary connections by campaign but updated the target connection by ID only.
 
 Expected:
 
 - the target connection must belong to the campaign before any primary-state mutation.
 
-Impact:
+Former impact:
 
-- server recompute can use the wrong primary property.
-- one campaign can accidentally or maliciously affect another campaign connection if a stale or foreign connection ID is supplied.
+- server recompute could use the wrong primary property.
+- one campaign could accidentally or maliciously affect another campaign connection if a stale or foreign connection ID was supplied.
 
-### KPI-4: GA4 page can keep old selected property after Set as Primary
+Resolved by:
+
+- Commit 3 scoped Set as Primary by both campaign and connection.
+
+### KPI-4: GA4 page could keep old selected property after Set as Primary
 
 Root cause:
 
-- the page only falls back to primary when the current selected property no longer exists.
-- setting another existing property as primary does not update `selectedGA4PropertyId`.
+- the page only fell back to primary when the current selected property no longer existed.
+- setting another existing property as primary did not update `selectedGA4PropertyId`.
 
 Expected:
 
 - after successful Set as Primary, the visible selected property and server primary property should align.
 
-Impact:
+Former impact:
 
-- visible KPI values and persisted recompute/alert values can temporarily reference different properties.
+- visible KPI values and persisted recompute/alert values could temporarily reference different properties.
 
-### KPI-5: ROAS default copy still says percent
+Resolved by:
+
+- Commit 4 aligned selected property state after Set as Primary.
+
+### KPI-5: ROAS default copy said percent
 
 Root cause:
 
-- KPI default description text still says `Revenue generated per dollar of spend (as a %)`.
+- KPI default description text said `Revenue generated per dollar of spend (as a %)`.
 
 Expected:
 
 - ROAS copy must describe an `x` ratio.
 
-Impact:
+Former impact:
 
-- user-created KPI descriptions can persist misleading unit semantics.
+- user-created KPI descriptions could persist misleading unit semantics.
 
-### KPI-6: Existing persisted ROAS data needs bounded cleanup
+Resolved by:
+
+- Commit 5 fixed GA4 ROAS default copy.
+
+### KPI-6: Existing persisted ROAS data needed bounded cleanup
 
 Root cause:
 
-- old recompute runs may already have written percent ROAS values.
+- old recompute runs may have written percent ROAS values.
 
 Expected:
 
 - forward path fixed first, then exact-source cleanup or explicit legacy-data caveat.
 
-Impact:
+Former impact:
 
-- even after code is fixed, old rows may continue to mislead history/trends until cleaned or marked.
+- before cleanup, old rows could continue to mislead history/trends until cleaned or marked.
 
-## Required Fix Queue
+Resolved by:
+
+- Commit 6 added the bounded cleanup script and the script was applied after matching dry-run evidence.
+
+## Completed Fix Queue
+
+All items in this queue are complete. Commits 1-6 were implemented, committed, pushed, deployed, and UI validation passed. Commit 7 is this documentation flip.
 
 ### Commit 1 - Fix GA4 ROAS persisted current values
 
@@ -483,12 +532,12 @@ Validation:
 Files:
 
 - `GA4/KPIS_PRODUCTION_READINESS.md`
-- possibly `GA4/README.md`
+- `GA4/BENCHMARKS_PRODUCTION_READINESS.md`
 
-Required behavior:
+Completed behavior:
 
-- update `Durable Future Answer` only after Commits 1-6 are complete and validated.
-- include exact validation commands and manual/deployed evidence still outstanding.
+- updated `Durable Future Answer` after Commits 1-6 were completed, deployed, UI-validated, and the ROAS persisted cleanup was applied.
+- included exact validation commands, cleanup row counts, skipped-row reasons, and remaining external/deployed caveats.
 
 ## Validation Evidence
 
@@ -501,9 +550,15 @@ Result:
 - 13 test files passed
 - 238 tests passed
 
-Important limitation:
+Historical limitation from the initial audit:
 
-- this green suite does not prove production readiness because `server/ga4-cross-tab-consistency.test.ts` currently encodes old percent ROAS expectations.
+- this green suite did not prove production readiness at that time because `server/ga4-cross-tab-consistency.test.ts` encoded old percent ROAS expectations before Commit 1.
+- production-ready status now relies on the later fix validation, deployment, UI validation, and applied cleanup evidence below.
+
+Commit 1-6 deployment and UI validation on June 27, 2026:
+
+- Commits 1-6 were implemented, committed, pushed, and deployed.
+- UI validation passed after deployment for the GA4 KPI and Benchmark readiness fix queue.
 
 Commit 6 implementation validation on June 27, 2026:
 
@@ -512,9 +567,14 @@ Commit 6 implementation validation on June 27, 2026:
 - `npm run check`
 - Result: TypeScript check passed.
 - `npx tsx --env-file=.env server/ga4-roas-persisted-cleanup.ts`
-- Result: dry-run only, no `--apply`; 46 candidate repairs reported and 56 skipped campaign-level reasons reported.
+- Result: pre-apply dry-run reported 46 repair candidates and 56 skipped campaign-level reasons.
 - Dry-run sample: one GA4 ROAS KPI current row would change from `60926.4` to `127.35`; auto GA4 daily KPI progress rows for the same campaign would change from percent-style values such as `60926.4` to ratio values such as `127.35`.
-- No data was mutated during this validation.
+- `npx tsx --env-file=.env server/ga4-roas-persisted-cleanup.ts --apply`
+- Result: apply updated 46 persisted ROAS rows and left the 56 skipped campaign-level reasons untouched.
+- `npx tsx --env-file=.env server/ga4-roas-persisted-cleanup.ts`
+- Result: post-apply dry-run reported 0 remaining repair candidates and 56 skipped campaign-level reasons.
+- Skipped rows were left untouched because they lacked an active GA4 primary property or lacked persisted GA4 daily rows for the current primary property.
+
 Out-of-scope note:
 
 - a broader run including `server/alert-email-delivery-regression.test.ts` produced one report-scheduler string-guard failure.
@@ -529,9 +589,8 @@ The following require deployed or provider evidence:
 - deployed scheduler execution timing
 - provider-side email delivery events
 - actual inbox receipt
-- reviewed production `--apply` run, before/after row counts, and rollback/no-op evidence for existing damaged ROAS rows
 
-These are not reasons to ignore local blockers. They are separate caveats after local blockers are fixed.
+These are external or deployed-runtime caveats. They are not local GA4 KPI implementation blockers after the completed fix queue and applied cleanup.
 
 ## Future Platform Template
 

@@ -10,6 +10,12 @@ This is the GA4-specific companion to `ARCHITECTURE_USER_JOURNEY.md`.
 
 Campaign-level KPI/Benchmark production-readiness tracking lives in `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md`. GA4 is the first connected platform being validated against that campaign-level standard.
 
+Current GA4 KPI/Benchmark production-readiness status:
+
+- GA4 KPIs are production-ready for the current GA4 code scope. The durable source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`.
+- GA4 Benchmarks are production-ready for the current GA4 code scope. The durable source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
+- Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should give the same production-ready answer for these GA4 sections.
+
 ## How To Use This Folder
 
 Use these files in this order:
@@ -46,15 +52,19 @@ Important meaning:
   Covers the GA4 Overview tab, tables, card-population rules, and GA4 campaign scope.
 - `GA4/KPIS.md`
   Covers KPI creation, display, current-value sourcing, gating, alerts, and KPI refresh behavior.
+- `GA4/KPIS_PRODUCTION_READINESS.md`
+  Canonical whole-tab KPIs production-readiness source of truth. Current status: production-ready for the current GA4 code scope, with only the explicit external/deployed caveats documented in that file. It also contains the future-source reading order and KPI readiness gates for Meta, Google Ads, LinkedIn, Google Sheets, or another source.
 - `GA4/BENCHMARKS.md`
   Covers benchmark creation, custom benchmark values, status/progress, gating, alerts, and benchmark refresh behavior.
+- `GA4/BENCHMARKS_PRODUCTION_READINESS.md`
+  Canonical whole-tab Benchmarks production-readiness source of truth. Current status: production-ready for the current GA4 code scope, with only the explicit external/deployed caveats documented in that file. It also contains the future-source reading order and Benchmark readiness gates for Meta, Google Ads, LinkedIn, Google Sheets, or another source.
 - `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`
   Canonical whole-tab Ad Comparison production-readiness source of truth. Current status: production-ready for the current GA4 code scope, with exactly one deferred validation: deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured.
   Future-reference rule: use that file for the stable answer; do not reopen closed Ad Comparison blockers unless later code changes, failed deferred validation, contradictory deployed evidence, changed requirements, or a new platform assessment requires it.
 - `GA4/INSIGHTS.md`
-  Covers executive financials, trends, findings, action guidance, and budget/pacing notes.
-- `GA4/INSIGHTS_WHAT_TO_INVESTIGATE_NEXT_PRODUCTION_READINESS.md`
-  Tracks the commit plan for hardening the Insights `What to investigate next` section into clearer, grouped, evidence-aware executive guidance.
+  Short functional overview of the GA4 Insights tab, including sections, scope contract, reports, and refresh pattern.
+- `GA4/INSIGHTS_PRODUCTION_READINESS.md`
+  Canonical whole-tab Insights production-readiness source of truth. It contains section-by-section status, validation evidence, consolidated `What to investigate next` hardening history, and the reusable future-platform template for Meta, Google Ads, LinkedIn, and other sources. Current status: production-ready for the current GA4 Insights code scope, with external runtime caveats documented in that file. Use this file before answering whether the whole Insights tab is production-ready or reusable as a template.
 - `GA4/REPORTS.md`
   Covers report creation, custom reports, scheduling, downloads, report-library behavior, and current-state caveats. Current status: production-ready for the current GA4 Reports implementation except for exactly two deferred validations: `Campaign DeepDive Scheduled Report Visibility` and `Deployed Scheduled Email`.
 - `GA4/REPORTS_PRODUCTION_READINESS.md`
@@ -62,7 +72,7 @@ Important meaning:
 - `GA4/REFRESH_AND_PROCESSING.md`
   Covers schedulers, cross-tab dependency order, recomputation rules, and current-state notes for background freshness.
 - `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md`
-  Tracks the commit plan for executive-ready reporting timezone, data-through, last-refreshed, scheduler timing, and stale-data behavior.
+  Tracks the commit plan for executive-ready reporting timezone, campaign create/edit timezone configuration, completed-day cutoff, last-refreshed, scheduler timing, and stale-data behavior.
 - `GA4_DEVELOPMENT_WORKFLOW.md`
   Covers the recommended GA4 bug-fix, regression-testing, and manual-testing workflow for stabilizing the platform safely.
 - `GA4/FINANCIAL_SOURCES.md`
@@ -128,11 +138,19 @@ These are now part of the GA4 template contract:
 - HubSpot and Salesforce `Review Settings` show the selected deal/opportunity labels together with the amount that will be imported for each selected record, while the confirmed `Total Revenue (to date)` remains the sum of those included confirmed records
 - Shopify `Review Settings` revenue breakdown rows show campaign/value revenue amounts without appending order-count text such as `(1 order)`
 - GA4 KPI creation uses a constrained unit dropdown, highlights `Create Custom KPI` when selected, keeps custom KPI current/target values in generic numeric format until a real unit is selected, disables `Create KPI` until `KPI Name` and `Target Value` are entered, and disables `Update KPI` in edit mode until at least one form value changes
+- GA4 KPI whole-tab status is production-ready for the current GA4 code scope; `GA4/KPIS_PRODUCTION_READINESS.md` is the durable source of truth for future production-readiness answers
 - GA4 Benchmark creation follows the same custom-entry pattern: `Create Custom Benchmark` is highlighted when selected, shows `Choose name + unit, then set values`, uses a constrained unit dropdown, keeps custom current/benchmark values in generic numeric format until a real unit is selected, disables `Create Benchmark` until `Benchmark Name` and `Benchmark Value` are entered, and disables `Update Benchmark` in edit mode until at least one form value changes
+- GA4 Benchmark whole-tab status is production-ready for the current GA4 code scope; `GA4/BENCHMARKS_PRODUCTION_READINESS.md` is the durable source of truth for future production-readiness answers
 - GA4 `Ad Comparison` leader cards and report output use the same refreshed campaign comparison rows as the live table, including exact campaign-matched imported revenue and mapped-revenue-created rows; `Best Performing`, `Most Efficient`, and `Needs Attention` must not render stale GA4-only values when the underlying revenue/breakdown inputs update, and card CR details use two-decimal exact-rate formatting so close decisions are explainable
 - GA4 `Ad Comparison` display provenance is now part of the template: the metric selector sits in the header because it controls the cards, chart ranking, and selected-metric summary while the All Campaigns table keeps stable campaign-row order and removes the blank descriptor gap under the title when no provenance description is rendered; conversion-rate summary uses `Overall Conversion Rate`, unallocated external revenue is computed from imported-source residuals only, and `Revenue Breakdown` uses source-level GA4/imported revenue totals rather than rounded campaign-row sums. Current status: production-ready for the current GA4 code scope, with deployed scheduled/server PDF revenue-provenance evidence deferred until Mailgun is properly configured.
 - GA4 daily time-series/backfill uses the same selected-campaign import rule as Overview: query campaign attribution dimensions first, use `pageLocation` `utm_campaign` only when the primary daily result has no rows, and supplement missing conversion/revenue fields from a compatible selected-campaign `campaignName` query when GA4 splits traffic and purchase attribution across dimensions. Visible Trends rows remain completed-day rows and exclude today's intraday data.
 - GA4 Insights Trends history gating is mode-specific: `Daily` needs 2 days, `7d` needs 14 days, `30d` needs 60 days, and `Monthly` needs 2 calendar months
+- GA4 reporting timezone is a campaign-level setting. `Create New Campaign` and `Edit Campaign` both expose a `Reporting Timezone` select, default new campaigns from the browser timezone when available, fall back to `UTC`, and save the selected IANA timezone through the campaign create/update payload. Dropdown labels remove underscores for readability while preserving exact saved values such as `America/New_York`.
+- GA4 live/mock property boundary is part of the template contract: numeric GA4 property IDs must use live GA4 import/query paths, while only explicit `yesop` demo connections or request-level `?mock=1` may use deterministic simulation. Commit `4074d282` fixed the prior leakage where property `498536418` was treated as the Yesop simulator; user validation passed.
+- GA4 Insights whole-tab status is production-ready for the current GA4 code scope; `GA4/INSIGHTS_PRODUCTION_READINESS.md` is the durable source of truth for future production-readiness answers
+- GA4 Insights Executive Financials source copy is conditional on actual connected sources: it must not claim imported revenue or source-backed spend unless those sources are present, and it should not append date-range copy because Trends owns freshness/date context
+- GA4 Insights Trends uses `Completed-day cutoff` for the completed reporting-day boundary and `Latest imported day` for the latest actual persisted visible row; those can differ when GA4 returns no row for a completed day
+- GA4 Insights report-rendered Trends charts follow the live UI visual contract for the data rendered: zero-based y-axis, light gridlines, muted axes, blue line/bar styling, and readable date labels
 - GA4 Insights `What to investigate next` is validated as grouped, evidence-aware, history-aware, non-causal executive guidance; downloaded and scheduled report output preserves the same intro, finding groups, data basis, confidence, and `Recommended check:` wording as the live Insights tab
 
 Live GA4 processing caveat:

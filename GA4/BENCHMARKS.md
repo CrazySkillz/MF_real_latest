@@ -4,6 +4,14 @@
 
 This file defines the GA4 `Benchmarks` tab, benchmark creation flow, progress rules, gating, alerts, and refresh behavior.
 
+## Production Readiness Status
+
+As of June 27, 2026, the GA4 `Benchmarks` tab is production-ready for the current GA4 code scope.
+
+The durable source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`. Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should continue to answer that GA4 Benchmarks are production-ready for the current GA4 code scope.
+
+For future platforms, use this file only as the functional Benchmark tab contract. Use `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the reusable production-readiness audit gates and source-specific proof requirements.
+
 ## Benchmark Tab Structure
 
 The GA4 `Benchmarks` tab contains:
@@ -244,8 +252,6 @@ Important meaning:
 
 ## Current-State Note
 
-The current implementation is broadly aligned, with these caveats:
+The GA4 `Benchmarks` tab is production-ready for the current GA4 code scope. The implementation remains intentionally split between live page rendering, persisted Benchmark rows/history, background GA4 jobs, and alert reconciliation, but that split is covered by the production-readiness evidence in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
 
-- live page display uses current GA4-backed values
-- stored benchmark `currentValue` and history are refreshed by GA4 background jobs
-- benchmark recomputation after refresh is present
+External/provider caveats, future-platform reuse requirements, and the exact completed fix queue are documented in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.

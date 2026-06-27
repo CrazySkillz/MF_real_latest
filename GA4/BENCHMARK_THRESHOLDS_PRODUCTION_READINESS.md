@@ -1,10 +1,37 @@
-# GA4 Benchmark Thresholds Production Readiness
+# GA4 Benchmark Thresholds Historical Readiness Record
+
+> HISTORICAL THRESHOLD-SLICE RECORD ONLY.
+> Do not use this file to answer whether the GA4 `Benchmarks` tab is production-ready.
+> Use `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the durable whole-tab production-readiness answer.
+> Current durable whole-tab answer: GA4 Benchmarks are production-ready for the current GA4 code scope.
 
 ## Purpose
 
-This file tracks the plan and implementation status for refining GA4 Benchmark performance thresholds so benchmark scoring is reliable enough for executive use.
+This file preserves the completed GA4 Benchmark threshold/scoring policy evidence for future reference and future-platform replication.
 
-This is a documentation/status file. Behavior changes live in the implementation commits listed below.
+It is not the canonical whole-tab readiness source. `GA4/BENCHMARKS.md` defines what the tab does, and `GA4/BENCHMARKS_PRODUCTION_READINESS.md` defines whether the whole GA4 Benchmark tab is production-ready.
+
+## Root Cause Of Documentation Confusion
+
+The confusion came from having three Benchmark files with overlapping readiness language:
+
+- `GA4/BENCHMARKS.md` is the functional contract for what the tab does.
+- `GA4/BENCHMARKS_PRODUCTION_READINESS.md` is the canonical whole-tab production-readiness source of truth.
+- this file is only the historical threshold/scoring slice record.
+
+This file must not override, narrow, or reopen the durable whole-tab production-ready answer in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
+
+## How To Reuse This Threshold Slice For A New Source
+
+Use this file only after reading `GA4/BENCHMARKS.md` and `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
+
+For Meta, Google Ads, LinkedIn, Google Sheets, or another future source:
+
+- copy the metric-aware threshold policy categories only when the target source has the same metric meaning and unit semantics
+- prove lower-is-better behavior, low-volume handling, invalid-target handling, and insufficient-data handling in the target platform's own readiness file
+- prove the target platform's current-value UI path, persisted recompute path, scheduler path, alerts, ownership checks, delete behavior, shared evaluated-route access, report consumers, and existing-data cleanup separately
+
+Do not use this file as proof that any future platform's Benchmarks are production-ready.
 
 ## Original Root Cause
 
@@ -59,7 +86,7 @@ Examples:
 - Executive Summary and report paths contained their own benchmark status logic, so benchmark status could drift as fixes were made to only one surface.
 - The background benchmark job computed variance and rating separately from live card status, so daily history/rating semantics needed to be documented as distinct from live benchmark status.
 
-## Production-Ready Target Behavior
+## Threshold-Slice Target Behavior
 
 Benchmark scoring should use metric-aware tolerance while preserving the current user journey:
 
@@ -85,7 +112,7 @@ The intended model is:
 - keep a separate `Behind` threshold for material misses
 - classify misses between `On Track` tolerance and `Behind` threshold as `Needs Attention`
 
-## Proposed Benchmark Threshold Policy
+## Benchmark Threshold Policy Record
 
 ### 1. Count Benchmarks
 
@@ -407,13 +434,13 @@ Status:
 - Documentation updated to replace fixed `90% / 70%` GA4 Benchmark wording with the implemented metric-aware threshold model.
 - Documentation review checked against `shared/kpi-math.ts`, `client/src/pages/ga4-metrics.tsx`, downstream report/Executive Summary alignment from commit `c93911dd`, and the focused benchmark regression tests.
 - Marketing-readable validation examples were added for count, rate, revenue, ROAS, ROI, CPA, and custom lower-is-better benchmarks.
-- Full live manual validation of every GA4 benchmark type remains pending.
+- Whole-tab deployed UI validation is recorded in `GA4/BENCHMARKS_PRODUCTION_READINESS.md`; exhaustive manual examples for every benchmark type remain useful future-platform evidence, not a GA4 Benchmark production blocker.
 - Campaign-level Benchmark manual validation is deferred until the campaign-level section is refined.
-- `GA4/README.md` was intentionally not touched because it already has unrelated dirty changes and the required Commit 5 details are covered in `GA4/BENCHMARKS.md` and this readiness file.
+- `GA4/README.md` now points future readers to `GA4/BENCHMARKS_PRODUCTION_READINESS.md` for the durable production-ready answer.
 
-## Acceptance Criteria
+## Threshold-Slice Acceptance Criteria
 
-The benchmark threshold implementation is not production-ready until all of these are true:
+The GA4 Benchmark threshold/scoring slice is complete for the current GA4 code scope. The completed implementation satisfies these criteria:
 
 - Benchmark grid status and executive snapshot counts always match.
 - Count benchmarks do not over-penalize one-unit misses on normal benchmark values.
@@ -425,7 +452,7 @@ The benchmark threshold implementation is not production-ready until all of thes
 - Reports, Executive Summary, scheduler output, and background benchmark history do not use a conflicting threshold model.
 - Tests cover each benchmark type and edge case listed above.
 
-## Proven, Partially Reviewed, And Unverified
+## Threshold-Slice Evidence And Notes
 
 Proven from local code:
 
@@ -439,14 +466,14 @@ Proven from local code:
 - GA4 background benchmark `performanceRating` is documented as a historical variance bucket, not the live `On Track` / `Needs Attention` / `Behind` status.
 - `GA4/BENCHMARKS.md` now documents the metric-aware model and marketing-readable validation examples.
 
-Partially reviewed:
+Historical partial-review notes:
 
 - Scheduled Campaign DeepDive report output includes benchmark risk wording, but live scheduled email/PDF behavior has not been validated for this benchmark threshold change.
 - Live GA4 UI behavior with each benchmark type has not yet been manually validated end to end.
 - Campaign-level Benchmark manual validation is deferred until the campaign-level section is refined.
 - Other platform pages also contain similar benchmark thresholds; they are intentionally out of scope for the first GA4-specific plan unless a later implementation step explicitly broadens scope.
 
-Not locally verified:
+External or future-platform validation notes:
 
 - Live executive behavior with real mixed benchmark sets.
 - Downloaded report PDF output with live benchmark rows.

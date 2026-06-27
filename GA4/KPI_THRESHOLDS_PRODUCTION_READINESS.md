@@ -1,14 +1,41 @@
-# GA4 KPI Thresholds Production Readiness
+# GA4 KPI Thresholds Historical Readiness Record
+
+> HISTORICAL THRESHOLD-SLICE RECORD ONLY.
+> Do not use this file to answer whether the GA4 `KPIs` tab is production-ready.
+> Use `GA4/KPIS_PRODUCTION_READINESS.md` for the durable whole-tab production-readiness answer.
+> Current durable whole-tab answer: GA4 KPIs are production-ready for the current GA4 code scope.
 
 ## Purpose
 
-This file tracks the plan to refine KPI performance thresholds so GA4 KPI scoring is reliable enough for marketing executives.
+This file preserves the completed GA4 KPI threshold/scoring policy evidence for future reference and future-platform replication.
 
-This is a planning file only. It does not change current behavior.
+It is not the canonical whole-tab readiness source. `GA4/KPIS.md` defines what the tab does, and `GA4/KPIS_PRODUCTION_READINESS.md` defines whether the whole GA4 KPI tab is production-ready.
 
-## Current Root Cause
+## Root Cause Of Documentation Confusion
 
-The GA4 KPI tracker currently uses one fixed tolerance for all KPI types:
+The confusion came from having three KPI files with overlapping readiness language:
+
+- `GA4/KPIS.md` is the functional contract for what the tab does.
+- `GA4/KPIS_PRODUCTION_READINESS.md` is the canonical whole-tab production-readiness source of truth.
+- this file is only the historical threshold/scoring slice record.
+
+This file must not override, narrow, or reopen the durable whole-tab production-ready answer in `GA4/KPIS_PRODUCTION_READINESS.md`.
+
+## How To Reuse This Threshold Slice For A New Source
+
+Use this file only after reading `GA4/KPIS.md` and `GA4/KPIS_PRODUCTION_READINESS.md`.
+
+For Meta, Google Ads, LinkedIn, Google Sheets, or another future source:
+
+- copy the metric-aware threshold policy categories only when the target source has the same metric meaning and unit semantics
+- prove lower-is-better behavior, low-volume handling, invalid-target handling, and insufficient-data handling in the target platform's own readiness file
+- prove the target platform's current-value UI path, persisted recompute path, scheduler path, alerts, ownership checks, delete behavior, report consumers, and existing-data cleanup separately
+
+Do not use this file as proof that any future platform's KPIs are production-ready.
+
+## Original Root Cause
+
+The GA4 KPI tracker originally used one fixed tolerance for all KPI types:
 
 - `Above Target`: more than `+5%` better than target
 - `On Track`: within `+/-5%` of target
@@ -27,13 +54,13 @@ The implementation path is:
   - `computeAttainmentPct`
   - `isLowerIsBetterKpi`
 
-The current helper correctly handles lower-is-better KPIs such as `CPA` by flipping the direction before banding.
+The helper already handled lower-is-better KPIs such as `CPA` by flipping the direction before banding.
 
-The weakness is that the same `+/-5%` tolerance is applied to counts, revenue, rates, ratios, and costs.
+The weakness was that the same `+/-5%` tolerance was applied to counts, revenue, rates, ratios, and costs.
 
-## Why The Current Model Is Not Production-Perfect
+## Why The Original Fixed-Band Model Was Not Production-Perfect
 
-The current model is simple and coherent, but not robust enough as the only executive KPI health signal.
+The original model was simple and coherent, but not robust enough as the only executive KPI health signal.
 
 Examples:
 
@@ -43,7 +70,7 @@ Examples:
 - `Revenue` target `100000`, current `95000` is exactly `5%` below and stays `On Track`; this may be acceptable, but the rule should be explicit and metric-aware.
 - `CPA` direction is handled, but the tolerance is still generic and may be too strict or too loose depending on spend and conversion volume.
 
-## Production-Ready Target Behavior
+## Threshold-Slice Target Behavior
 
 KPI scoring should use metric-aware tolerance while preserving the existing user journey:
 
@@ -62,7 +89,7 @@ The intended model is:
 - make tolerance policy depend on metric type, unit, and data sufficiency
 - avoid hard-coded UI-only rules that can drift from reports or Executive Summary
 
-## Proposed Threshold Policy
+## Threshold Policy Record
 
 ### 1. Count KPIs
 
@@ -270,7 +297,7 @@ Commit 3 status as of June 22, 2026:
 - Implemented in `shared/kpi-math.ts`, `client/src/pages/ga4-metrics.tsx`, `server/kpi-math.test.ts`, and `server/ga4-kpi-benchmark-summary-regression.test.ts`.
 - Automated validation passed with `npm test -- server/kpi-math.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/ga4-cross-tab-consistency.test.ts` and `npm run check`.
 - Proven locally: insufficient sessions, conversions, and spend are excluded from GA4 KPI tracker scoring and card progress.
-- Not locally verified: browser/manual edge validation on a live GA4 campaign with zero sessions, zero conversions, or zero spend.
+- External or future-platform validation notes: browser/manual edge validation on a live GA4 campaign with zero sessions, zero conversions, or zero spend.
 - Validation note: manual/live UI validation is optional for Commit 3 because the implemented gating only blocks exact unavailable denominators; broader statistical sufficiency thresholds are not defined or implemented yet.
 
 ### Commit 4 - Align Reports And Executive Surfaces
@@ -303,8 +330,9 @@ Commit 4 status as of June 22, 2026:
 - Implemented in `client/src/pages/executive-summary.tsx`, `client/src/pages/reports.tsx`, `server/executive-summary-regression.test.ts`, `server/custom-report-regression.test.ts`, and `server/ga4-kpi-benchmark-summary-regression.test.ts`.
 - Automated validation passed with `npm test -- server/kpi-math.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/executive-summary-regression.test.ts server/custom-report-regression.test.ts`, `npm test -- server/ga4-cross-tab-consistency.test.ts`, and `npm run check`.
 - Proven locally: Executive Summary KPI Progress and campaign-scoped Custom Report KPI status no longer use fixed `5%` or `95-105%` status checks.
-- Partially reviewed: scheduled Campaign DeepDive report rendering was traced and did not emit `Above Target` / `On Track` / `Below Target` KPI status bands in the current path, so no scheduler code was changed.
-- Not locally verified: browser UI rendering, downloaded PDF inspection, and scheduled email output with live campaign data.
+- Historical partial-review notes: scheduled Campaign DeepDive report rendering was traced and did not emit `Above Target` / `On Track` / `Below Target` KPI status bands in the current path, so no scheduler code was changed.
+- Manual validation note: Executive Summary KPI Progress not validated on this campaign because the section is hidden when no mapped campaign-level KPI rows are available.
+- External or future-platform validation notes: browser UI rendering, downloaded PDF inspection, and scheduled email output with live campaign data.
 
 ### Commit 5 - Documentation And Manual Validation
 
@@ -342,11 +370,11 @@ Commit 5 status as of June 22, 2026:
 - `GA4/README.md` was not edited in this commit because it already had unrelated dirty worktree changes.
 - Automated validation passed with `npm test -- server/kpi-math.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/executive-summary-regression.test.ts server/custom-report-regression.test.ts` and `npm run check`.
 - Proven locally: the GA4 KPI doc no longer describes active KPI status as fixed `+/-5%`; it documents metric-aware count, rate, revenue/currency, ratio, lower-is-better, blocked, and insufficient-data behavior with validation examples.
-- Not locally verified: manual browser validation for count, rate, revenue, ROAS/ROI, CPA, and custom KPI examples.
+- External or future-platform validation notes: manual browser validation for count, rate, revenue, ROAS/ROI, CPA, and custom KPI examples.
 
-## Acceptance Criteria
+## Threshold-Slice Acceptance Criteria
 
-The implementation is not production-ready until all of these are true:
+The GA4 KPI threshold/scoring slice is complete for the current GA4 code scope. The completed implementation satisfies these criteria:
 
 - KPI grid status and executive snapshot counts always match.
 - Count KPIs do not over-penalize one-unit misses on normal targets.
@@ -358,7 +386,7 @@ The implementation is not production-ready until all of these are true:
 - Reports and Executive Summary do not use a conflicting threshold model.
 - Tests cover each KPI type and edge case listed above.
 
-## Proven, Partially Reviewed, And Unverified
+## Threshold-Slice Evidence And Notes
 
 Proven from local code:
 
@@ -367,12 +395,12 @@ Proven from local code:
 - Blocked and insufficient-data KPIs are excluded from KPI summary scoring.
 - `Avg. Progress` uses bounded fill percentage.
 
-Partially reviewed:
+Historical partial-review notes:
 
 - Scheduled Campaign DeepDive report rendering was traced for conflicting KPI status-band output, but no live scheduled PDF/email send was run.
 - Broader campaign-level KPI tabs outside the GA4 and traced Campaign DeepDive surfaces were not refactored as part of this GA4 threshold sequence.
 
-Not locally verified:
+External or future-platform validation notes:
 
 - Live executive behavior with real mixed KPI sets.
 - Downloaded report PDF inspection with live KPI rows.

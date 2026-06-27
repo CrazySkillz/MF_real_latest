@@ -4,6 +4,8 @@
 
 This file defines the GA4 `Reports` tab and the current report-creation, download, scheduling, and report-output model.
 
+Production-readiness status: GA4 Reports is production-ready for the current code implementation. The only deferred validations are `Campaign DeepDive Scheduled Report Visibility`, which will be validated when the Campaign DeepDive section is refined, and `Deployed Scheduled Email`, which will be validated after the Mailgun service is properly configured. The durable readiness decision lives in `GA4/REPORTS_PRODUCTION_READINESS.md`.
+
 ## Reports Tab Structure
 
 The current GA4 `Reports` tab contains:
@@ -294,9 +296,9 @@ Important meaning:
 
 ## Current-State Note
 
-The current implementation is only partially aligned with that ideal.
+The current GA4 Reports implementation is production-ready for the current code implementation. The only deferred validations are `Campaign DeepDive Scheduled Report Visibility` and `Deployed Scheduled Email`.
 
-Aligned:
+Aligned and production-ready:
 
 - ad hoc GA4 downloads are rendered client-side from live GA4 page state
 - once the tab inputs are refreshed, on-demand GA4 downloads reflect the refreshed values
@@ -320,15 +322,15 @@ Aligned:
 - platform report test-send verifies Mailgun delivery status when the provider exposes events and returns failure when the provider later rejects the accepted message
 - scheduled send events keep one audit/idempotency row per `reportId + scheduledKey`; successful rows must not display stale errors from earlier failed email audit rows
 - a stale failed scheduled send with no `sentAt` can retry once after the underlying provider issue is fixed; if that retry fails, it is marked as a retry failure and does not loop every scheduler tick
-- GA4 report template validation passed across targeted report regression tests, TypeScript check, production build, GA4 report test-send/PDF delivery, and direct snapshot PDF output; scheduled-report validation is pending the planned Reports scheduler refinement
+- GA4 report validation passed across targeted report regression tests, TypeScript check, production build, GA4 report test-send/PDF delivery, direct snapshot PDF output, deployed GA4 unscheduled report download, deployed scheduled Overview revenue-label output, and deployed GA4 scheduled report create/edit/delete
 
 Important caveats:
 
 - saved report configurations do not have their own recompute job
 - the current `Ad Comparison` report output reflects the current GA4 comparison implementation, which is campaign-row comparison rather than true ad/creative-level reporting
 - the shared scheduler and report-link helper still contain legacy LinkedIn-oriented infrastructure details
-- scheduled GA4 report output should not be used as deployed validation evidence until the Reports scheduler refinement is complete
-- email delivery timing/provider behavior still depends on scheduler execution and runtime email infrastructure, but the GA4 attachment path is no longer intentionally header-only for standard templates or `Custom`
+- Campaign DeepDive Scheduled Report Visibility is the only report-visibility validation still deferred, and it will be validated when the Campaign DeepDive section is refined
+- Deployed Scheduled Email remains deferred until the Mailgun service is properly configured; local code still preserves the generated-PDF attachment path and provider-acceptance-vs-delivery distinction
 - provider acceptance alone must not be shown to users as successful delivery when the provider subsequently reports a failed delivery event
 
 ## Report Library Meaning

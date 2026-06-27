@@ -55,7 +55,9 @@ Important meaning:
 - `GA4/INSIGHTS_WHAT_TO_INVESTIGATE_NEXT_PRODUCTION_READINESS.md`
   Tracks the commit plan for hardening the Insights `What to investigate next` section into clearer, grouped, evidence-aware executive guidance.
 - `GA4/REPORTS.md`
-  Covers report creation, custom reports, scheduling, downloads, report-library behavior, and current-state caveats.
+  Covers report creation, custom reports, scheduling, downloads, report-library behavior, and current-state caveats. Current status: production-ready for the current GA4 Reports implementation except for exactly two deferred validations: `Campaign DeepDive Scheduled Report Visibility` and `Deployed Scheduled Email`.
+- `GA4/REPORTS_PRODUCTION_READINESS.md`
+  Canonical whole-tab Reports production-readiness source of truth. Use this file before answering whether the Reports section is production-ready; the stable answer is yes, with only `Campaign DeepDive Scheduled Report Visibility` deferred until Campaign DeepDive refinement and `Deployed Scheduled Email` deferred until Mailgun is properly configured.
 - `GA4/REFRESH_AND_PROCESSING.md`
   Covers schedulers, cross-tab dependency order, recomputation rules, and current-state notes for background freshness.
 - `GA4/REPORTING_TIMEZONE_PRODUCTION_READINESS.md`

@@ -221,6 +221,7 @@ Future development must fit into this pattern.
 
 GA4 Reports is the required layout and interaction template for connected-platform Reports tabs unless a user explicitly approves a different design.
 
+GA4 Reports production-readiness status is tracked in `GA4/REPORTS_PRODUCTION_READINESS.md`; the Reports section is production-ready for the current implementation except for exactly two deferred validations: `Campaign DeepDive Scheduled Report Visibility` and `Deployed Scheduled Email`.
 Any connected-platform Reports implementation, including Custom Integration, must preserve this standard pattern:
 
 - report cards use the GA4 summary-card layout with title, optional description, report type pill, schedule/last-sent/created metadata, and Download/Edit/Delete actions

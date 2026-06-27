@@ -3,7 +3,6 @@ import {
   computeCpa,
   computeConversionRatePercent,
   computeRoiPercent,
-  computeRoasPercent,
   normalizeRateToPercent,
 } from "../shared/metric-math";
 import {
@@ -17,13 +16,14 @@ import {
 
 // --- Inlined from ga4-kpi-benchmark-jobs.ts (avoids importing heavy storage/analytics modules) ---
 const round2 = (n: number) => Number((Number.isFinite(n) ? n : 0).toFixed(2));
+const computeRoasRatio = (revenue: number, spend: number) => spend > 0 ? revenue / spend : 0;
 
 function computeKpiValue(metricOrName: string, inputs: {
   users: number; sessions: number; pageviews: number; conversions: number;
   ga4Revenue: number; importedRevenue: number; spend: number; engagementRate: number;
 }) {
   const m = String(metricOrName || "").trim().toLowerCase();
-  const revenue = inputs.ga4Revenue > 0 ? inputs.ga4Revenue : inputs.importedRevenue;
+  const revenue = inputs.ga4Revenue + inputs.importedRevenue;
   if (m === "revenue") return round2(revenue);
   if (m === "total conversions" || m === "conversions") return Math.round(inputs.conversions || 0);
   if (m === "total sessions" || m === "sessions") return Math.round(inputs.sessions || 0);
@@ -31,7 +31,7 @@ function computeKpiValue(metricOrName: string, inputs: {
   if (m === "pageviews") return Math.round(inputs.pageviews || 0);
   if (m === "conversion rate" || m === "conversionrate") return round2(computeConversionRatePercent(inputs.conversions, inputs.sessions));
   if (m === "engagement rate" || m === "engagementrate") return round2(normalizeRateToPercent(inputs.engagementRate));
-  if (m === "roas") return round2(computeRoasPercent(revenue, inputs.spend));
+  if (m === "roas") return round2(computeRoasRatio(revenue, inputs.spend));
   if (m === "roi") return round2(computeRoiPercent(revenue, inputs.spend));
   if (m === "cpa") return round2(computeCpa(inputs.spend, inputs.conversions));
   return 0;
@@ -66,11 +66,11 @@ const PROFILES = {
 
 // Pre-computed expected values (manually verified)
 const EXPECTED: Record<string, { cr: number; roas: number; roi: number; cpa: number; er: number }> = {
-  "yesop-brand": { cr: (38 / 750) * 100, roas: (2850 / 950) * 100, roi: ((2850 - 950) / 950) * 100, cpa: 950 / 38, er: 62 },
-  "yesop-prospecting": { cr: (18 / 420) * 100, roas: (1350 / 680) * 100, roi: ((1350 - 680) / 680) * 100, cpa: 680 / 18, er: 54 },
-  "yesop-retargeting": { cr: (22 / 260) * 100, roas: (1650 / 410) * 100, roi: ((1650 - 410) / 410) * 100, cpa: 410 / 22, er: 74 },
-  "yesop-email": { cr: (12 / 180) * 100, roas: (900 / 150) * 100, roi: ((900 - 150) / 150) * 100, cpa: 150 / 12, er: 67 },
-  "yesop-social": { cr: (15 / 375) * 100, roas: (1125 / 750) * 100, roi: ((1125 - 750) / 750) * 100, cpa: 750 / 15, er: 58 },
+  "yesop-brand": { cr: (38 / 750) * 100, roas: 2850 / 950, roi: ((2850 - 950) / 950) * 100, cpa: 950 / 38, er: 62 },
+  "yesop-prospecting": { cr: (18 / 420) * 100, roas: 1350 / 680, roi: ((1350 - 680) / 680) * 100, cpa: 680 / 18, er: 54 },
+  "yesop-retargeting": { cr: (22 / 260) * 100, roas: 1650 / 410, roi: ((1650 - 410) / 410) * 100, cpa: 410 / 22, er: 74 },
+  "yesop-email": { cr: (12 / 180) * 100, roas: 900 / 150, roi: ((900 - 150) / 150) * 100, cpa: 150 / 12, er: 67 },
+  "yesop-social": { cr: (15 / 375) * 100, roas: 1125 / 750, roi: ((1125 - 750) / 750) * 100, cpa: 750 / 15, er: 58 },
 };
 
 const NEAR_TARGET_BAND_PCT = 5;
@@ -122,8 +122,8 @@ describe("Overview tab computations — all 5 yesop profiles", () => {
         expect(computeConversionRatePercent(p.conversions, p.sessions)).toBeCloseTo(exp.cr, 2);
       });
 
-      it("ROAS = (revenue/spend)*100", () => {
-        expect(computeRoasPercent(p.revenue, p.spend)).toBeCloseTo(exp.roas, 2);
+      it("ROAS = revenue/spend ratio", () => {
+        expect(computeRoasRatio(p.revenue, p.spend)).toBeCloseTo(exp.roas, 2);
       });
 
       it("ROI = ((revenue-spend)/spend)*100", () => {
@@ -162,9 +162,10 @@ describe("KPI tab: scheduler computeKpiValue matches client formulas", () => {
     });
   }
 
-  it("prefers ga4Revenue over importedRevenue", () => {
+  it("adds ga4Revenue and importedRevenue", () => {
     const inputs = { ...toSchedulerInputs(PROFILES["yesop-brand"]), ga4Revenue: 2850, importedRevenue: 500 };
-    expect(computeKpiValue("Revenue", inputs)).toBeCloseTo(2850, 2);
+    expect(computeKpiValue("Revenue", inputs)).toBeCloseTo(3350, 2);
+    expect(computeKpiValue("ROAS", inputs)).toBeCloseTo(3350 / 950, 2);
   });
 
   it("falls back to importedRevenue when ga4Revenue=0", () => {
@@ -189,7 +190,7 @@ describe("KPI tab: scheduler computeKpiValue matches client formulas", () => {
 // 4. KPI progress: band classification and attainment scenarios
 // =============================================================
 describe("KPI tab: progress scenarios (band, attainment, bar color)", () => {
-  // yesop-brand: revenue=2850, ROAS=300, CPA=25
+  // yesop-brand: revenue=2850, ROAS=3, CPA=25
 
   it("Revenue KPI at 80% of target => below band, ~81% attainment, red bar", () => {
     const target = 3500;
@@ -208,8 +209,8 @@ describe("KPI tab: progress scenarios (band, attainment, bar color)", () => {
   });
 
   it("ROAS KPI exceeding target => above band, 120% attainment, green bar", () => {
-    const target = 250;
-    const current = 300;
+    const target = 2.5;
+    const current = 3;
     const lowerIsBetter = false;
     const delta = computeEffectiveDeltaPct({ current, target, lowerIsBetter });
     const band = classifyKpiBand({ effectiveDeltaPct: delta!, nearTargetBandPct: NEAR_TARGET_BAND_PCT });
@@ -394,7 +395,7 @@ describe("Cross-tab consistency: values must match across Overview/KPIs/Benchmar
   });
 
   it("ROAS: Overview = KPI current = Benchmark current", () => {
-    const overviewRoas = computeRoasPercent(p.revenue, p.spend);
+    const overviewRoas = computeRoasRatio(p.revenue, p.spend);
     const kpiRoas = computeKpiValue("ROAS", inputs);
     expect(kpiRoas).toBeCloseTo(overviewRoas, 1);
   });
@@ -447,7 +448,7 @@ if (process.env.PRINT_TEST_VECTORS === "1") {
     Object.entries(EXPECTED).map(([id, exp]) => ({
       profile: id,
       "CR%": exp.cr.toFixed(2),
-      "ROAS%": exp.roas.toFixed(2),
+      "ROASx": exp.roas.toFixed(2),
       "ROI%": exp.roi.toFixed(2),
       CPA: exp.cpa.toFixed(2),
       "ER%": exp.er.toFixed(2),

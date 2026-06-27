@@ -21,4 +21,9 @@ describe("shared alert evaluation contract", () => {
     expect(evaluateAlertThreshold({ currentValue: "10.004", thresholdValue: "10", condition: "equals" }).triggered).toBe(true);
     expect(evaluateAlertThreshold({ currentValue: "10.02", thresholdValue: "10", condition: "equals" }).triggered).toBe(false);
   });
+
+  it("evaluates ROAS alert thresholds as ratio values, not percent-scaled values", () => {
+    expect(evaluateAlertThreshold({ currentValue: "2.5", thresholdValue: "3.0", condition: "below" }).triggered).toBe(true);
+    expect(evaluateAlertThreshold({ currentValue: "250", thresholdValue: "3.0", condition: "below" }).triggered).toBe(false);
+  });
 });

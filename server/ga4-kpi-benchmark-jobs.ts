@@ -1,6 +1,6 @@
 import { storage } from "./storage";
 import { ga4Service } from "./analytics";
-import { computeCpa, computeConversionRatePercent, computeRoiPercent, computeRoasPercent, normalizeRateToPercent } from "../shared/metric-math";
+import { computeCpa, computeConversionRatePercent, computeRoiPercent, normalizeRateToPercent } from "../shared/metric-math";
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 
 const isoDateUTC = (d: Date) => d.toISOString().slice(0, 10);
@@ -108,6 +108,12 @@ const toRecordedAtUtc = (yyyyMmDd: string) => new Date(`${yyyyMmDd}T23:59:59.000
 
 const round2 = (n: number) => Number((Number.isFinite(n) ? n : 0).toFixed(2));
 
+const computeRoasRatio = (revenue: number, spend: number) => {
+  const r = Number.isFinite(revenue) ? revenue : 0;
+  const s = Number.isFinite(spend) ? spend : 0;
+  return s > 0 ? r / s : 0;
+};
+
 export function computeKpiValue(metricOrName: string, inputs: {
   users: number;
   sessions: number;
@@ -128,7 +134,7 @@ export function computeKpiValue(metricOrName: string, inputs: {
   if (m === "pageviews") return Math.round(inputs.pageviews || 0);
   if (m === "conversion rate" || m === "conversionrate") return round2(computeConversionRatePercent(inputs.conversions, inputs.sessions));
   if (m === "engagement rate" || m === "engagementrate") return round2(normalizeRateToPercent(inputs.engagementRate));
-  if (m === "roas") return round2(computeRoasPercent(revenue, inputs.spend));
+  if (m === "roas") return round2(computeRoasRatio(revenue, inputs.spend));
   if (m === "roi") return round2(computeRoiPercent(revenue, inputs.spend));
   if (m === "cpa") return round2(computeCpa(inputs.spend, inputs.conversions));
 

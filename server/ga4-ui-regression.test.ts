@@ -318,6 +318,9 @@ describe("GA4 UI regression guard", () => {
     expect(browserPdfTableStart).toBeGreaterThan(-1);
     expect(browserPdfTableEnd).toBeGreaterThan(browserPdfTableStart);
     expect(tableSection).not.toContain("Full comparison sorted by");
+    expect(tableSection).toContain("<CardHeader className={revenueModeWithImportedSources ? undefined : \"pb-3\"}>");
+    expect(tableSection).toContain("<CardContent className=\"px-6 pb-6 pt-0\">");
+    expect(tableSection).not.toContain("<CardContent className=\"p-6\">");
     expect(tableSection).toContain("{comparisonRows.map((c, idx) => {");
     expect(tableSection).not.toContain("{sortedByMetric.map((c, idx) => {");
     expect(browserPdfTableSection).toContain("for (let i = 0; i < comparisonRows.length; i++)");

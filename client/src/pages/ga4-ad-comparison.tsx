@@ -390,7 +390,7 @@ export default function GA4AdComparison({
 
       {/* Full comparison table */}
       <Card>
-        <CardHeader>
+        <CardHeader className={revenueModeWithImportedSources ? undefined : "pb-3"}>
           <CardTitle className="text-lg">All Campaigns</CardTitle>
           {revenueModeWithImportedSources && (
             <CardDescription>
@@ -398,7 +398,7 @@ export default function GA4AdComparison({
             </CardDescription>
           )}
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="px-6 pb-6 pt-0">
           <div className="overflow-hidden border rounded-md">
             <div className="max-h-[480px] overflow-y-auto">
               <table className="w-full text-sm table-fixed">

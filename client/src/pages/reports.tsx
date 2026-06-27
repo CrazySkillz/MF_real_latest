@@ -205,6 +205,59 @@ const scheduleDayOfWeekToInt = (value: string) => ({
   saturday: 6,
 }[value.toLowerCase()] ?? 1);
 
+const scheduleDayOfWeekFromInt = (value: unknown) => ([
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+][Number(value)] || "monday");
+
+const parseBackendReportConfiguration = (value: unknown): any => {
+  if (!value) return {};
+  if (typeof value === "object") return value;
+  try {
+    return JSON.parse(String(value));
+  } catch {
+    return {};
+  }
+};
+
+const backendScheduledReportToStoredReport = (report: any, campaignName?: string): StoredReport => {
+  const config = parseBackendReportConfiguration(report?.configuration);
+  const frequency = String(report?.scheduleFrequency || "daily").toLowerCase();
+  const scheduleDay = frequency === "weekly"
+    ? scheduleDayOfWeekFromInt(report?.scheduleDayOfWeek)
+    : frequency === "monthly"
+      ? Number(report?.scheduleDayOfMonth) === 0 ? "last" : String(report?.scheduleDayOfMonth || "1")
+      : frequency === "quarterly"
+        ? String(report?.quarterTiming || "end")
+        : "monday";
+  return {
+    id: `backend:${String(report?.id || "")}`,
+    name: String(report?.name || "Scheduled report"),
+    type: String(config?.reportType || "custom"),
+    description: report?.description || undefined,
+    status: String(report?.status || "").toLowerCase() === "paused" || report?.scheduleEnabled === false ? "Paused" : "Scheduled",
+    campaignId: String(report?.campaignId || "") || undefined,
+    campaignName,
+    generatedAt: new Date(report?.createdAt || report?.updatedAt || Date.now()),
+    format: "PDF",
+    selectedMetrics: Array.isArray(config?.selectedMetrics) ? config.selectedMetrics : undefined,
+    selectedSections: Array.isArray(config?.selectedSections) ? config.selectedSections : undefined,
+    backendReportId: String(report?.id || ""),
+    backendPlatformType: CAMPAIGN_DEEPDIVE_REPORT_PLATFORM,
+    schedule: {
+      frequency,
+      day: scheduleDay,
+      time: String(report?.scheduleTime || "09:00"),
+      recipients: Array.isArray(report?.scheduleRecipients) ? report.scheduleRecipients : [],
+    },
+  };
+};
+
 const getDefaultScheduleDayForFrequency = (frequency: string) => {
   if (frequency === "weekly") return "monday";
   if (frequency === "monthly") return "1";
@@ -301,6 +354,18 @@ export default function Reports() {
   const { data: liveCampaignBenchmarks = [], refetch: refetchCampaignBenchmarks } = useQuery<any[]>({
     queryKey: [`/api/campaigns/${campaignContextId}/benchmarks`],
     enabled: !!campaignContextId,
+  });
+
+  const { data: backendScheduledReports = [], refetch: refetchBackendScheduledReports } = useQuery<any[]>({
+    queryKey: [`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports`, campaignContextId],
+    queryFn: async () => {
+      const response = await fetch(`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports?campaignId=${encodeURIComponent(campaignContextId)}`, { credentials: "include" });
+      if (!response.ok) return [];
+      const json = await response.json().catch(() => []);
+      return Array.isArray(json) ? json : [];
+    },
+    enabled: !!campaignContextId,
+    refetchOnWindowFocus: true,
   });
 
   const campaignExecutiveSummary = liveCampaignExecutiveSummary;
@@ -624,6 +689,14 @@ export default function Reports() {
     }
   };
 
+  const backendScheduledStoredReports = campaignContextId
+    ? backendScheduledReports
+        .filter((report: any) => report?.scheduleEnabled || String(report?.status || "").toLowerCase() === "paused")
+        .map((report: any) => backendScheduledReportToStoredReport(report, campaignFinancialContext?.name))
+    : [];
+  const backendScheduledReportIds = new Set(backendScheduledStoredReports.map(report => report.backendReportId).filter(Boolean));
+  const storedReportsForEdit = [...allStoredReports, ...backendScheduledStoredReports];
+
   const openEditReport = (report: StoredReport) => {
     const nextSelectedCampaigns = report.campaignId ? [report.campaignId] : (campaignContextId ? [campaignContextId] : []);
     const nextSelectedSections = Array.isArray(report.selectedSections)
@@ -674,7 +747,7 @@ export default function Reports() {
 
     try {
       const existingReport = editingReportId
-        ? allStoredReports.find((report) => report.id === editingReportId)
+        ? storedReportsForEdit.find((report) => report.id === editingReportId)
         : undefined;
       const backendReportId = existingReport?.backendReportId;
       const backendPlatformType = existingReport?.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM;
@@ -714,6 +787,7 @@ export default function Reports() {
     // Refresh the reports list
     const allReports = reportStorage.getReports();
     setAllStoredReports(allReports);
+    if (campaignContextId) refetchBackendScheduledReports();
     
     setShowCreateDialog(false);
     resetForm();
@@ -731,6 +805,7 @@ export default function Reports() {
       }
       reportStorage.deleteReport(reportPendingDelete.id);
       setAllStoredReports(reportStorage.getReports());
+      if (campaignContextId) refetchBackendScheduledReports();
       setReportPendingDelete(null);
     } catch (error: any) {
       setReportSaveError(error?.message || "Failed to delete report");
@@ -743,6 +818,7 @@ export default function Reports() {
       if (report.backendReportId) await disableBackendScheduledReport(report.backendReportId, report.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM);
       reportStorage.updateReport(report.id, { status: "Paused" });
       setAllStoredReports(reportStorage.getReports());
+      if (campaignContextId) refetchBackendScheduledReports();
     } catch (error: any) {
       setReportSaveError(error?.message || "Failed to pause scheduled report");
     }
@@ -780,14 +856,21 @@ export default function Reports() {
         backendPlatformType: report.backendPlatformType || CAMPAIGN_DEEPDIVE_REPORT_PLATFORM,
       });
       setAllStoredReports(reportStorage.getReports());
+      if (campaignContextId) refetchBackendScheduledReports();
     } catch (error: any) {
       setReportSaveError(error?.message || "Failed to resume scheduled report");
     }
   };
 
-  const visibleStoredReports = campaignContextId
+  const localVisibleReports = campaignContextId
     ? allStoredReports.filter(report => report.campaignId === campaignContextId)
     : allStoredReports;
+  const visibleStoredReports = campaignContextId
+    ? [
+        ...localVisibleReports.filter(report => !report.backendReportId || !backendScheduledReportIds.has(report.backendReportId)),
+        ...backendScheduledStoredReports,
+      ]
+    : localVisibleReports;
 
   // Filter reports for All Reports tab
   const filteredReports = visibleStoredReports.filter(report => {

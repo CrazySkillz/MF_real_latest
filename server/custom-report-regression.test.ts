@@ -249,6 +249,24 @@ describe("campaign Custom Report regression guard", () => {
     expect(scheduler).toContain("buildCampaignDeepDiveScheduledPdfAttachment");
   });
 
+  it("renders backend scheduled Campaign DeepDive reports without localStorage records", () => {
+    const reports = readFileSync(join(process.cwd(), "client/src/pages/reports.tsx"), "utf-8");
+
+    expect(reports).toContain("const backendScheduledReportToStoredReport =");
+    expect(reports).toContain('queryKey: [`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports`, campaignContextId],');
+    expect(reports).toContain('fetch(`/api/platforms/${CAMPAIGN_DEEPDIVE_REPORT_PLATFORM}/reports?campaignId=${encodeURIComponent(campaignContextId)}`, { credentials: "include" })');
+    expect(reports).toContain('id: `backend:${String(report?.id || "")}`');
+    expect(reports).toContain('backendReportId: String(report?.id || "")');
+    expect(reports).toContain("const backendScheduledStoredReports = campaignContextId");
+    expect(reports).toContain('.filter((report: any) => report?.scheduleEnabled || String(report?.status || "").toLowerCase() === "paused")');
+    expect(reports).toContain("const backendScheduledReportIds = new Set");
+    expect(reports).toContain("const storedReportsForEdit = [...allStoredReports, ...backendScheduledStoredReports];");
+    expect(reports).toContain("storedReportsForEdit.find((report) => report.id === editingReportId)");
+    expect(reports).toContain("...localVisibleReports.filter(report => !report.backendReportId || !backendScheduledReportIds.has(report.backendReportId)),");
+    expect(reports).toContain("...backendScheduledStoredReports,");
+    expect(reports).toContain("if (campaignContextId) refetchBackendScheduledReports();");
+  });
+
   it("renders scheduled Campaign DeepDive PDFs with selected section body content", () => {
     const scheduler = readFileSync(join(process.cwd(), "server/report-scheduler.ts"), "utf-8");
 

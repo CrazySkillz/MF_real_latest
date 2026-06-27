@@ -109,6 +109,7 @@ const normalizeCustomReportConfig = (cfg: any = {}) => ({
 });
 
 const normalizeCampaignKey = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+const REVENUE_ALLOCATION_RESIDUAL_THRESHOLD = 0.01;
 
 const parseMappingConfig = (value: any) => {
   if (typeof value === "string") {
@@ -576,6 +577,15 @@ async function buildGA4ReportPayload(report: any) {
     }
   }
 
+  const sourceRevenueBreakdowns = new Map<string, any[]>(
+    revenueDisplaySources.map((source: any) => {
+      const cfg = parseMappingConfig(source?.mappingConfig);
+      const totals = Array.isArray(cfg?.campaignValueRevenueTotals)
+        ? cfg.campaignValueRevenueTotals.filter((item: any) => Number(item?.revenue || 0) > 0)
+        : [];
+      return [String(source?.sourceId || ""), totals];
+    })
+  );
   const pipelineEntries = revenueSources
     .filter((source: any) => source?.isActive !== false)
     .map((source: any) => {
@@ -626,6 +636,7 @@ async function buildGA4ReportPayload(report: any) {
     executiveFinancialsDescription,
     campaignBreakdownAgg,
     campaignBreakdownMatchedExternalRevenue,
+    sourceRevenueBreakdowns,
     pipelineEntries,
     insightsRollups,
     insightsFreshness: {
@@ -948,6 +959,12 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       const adjustedRevenue = Number((Number(row?.revenue || 0) + Number(payload.campaignBreakdownMatchedExternalRevenue.get(String(row?.name || "")) || 0)).toFixed(2));
       return { ...row, revenue: adjustedRevenue, revenuePerSession: Number(row?.sessions || 0) > 0 ? adjustedRevenue / Number(row?.sessions || 0) : 0 };
     });
+    const matchedExternalRevenue = Array.from(payload.campaignBreakdownMatchedExternalRevenue.values()).reduce((sum: number, value: any) => sum + Number(value || 0), 0);
+    let unallocatedExternalRevenue = Math.max(0, Number((payload.importedRevenueForFinancials - matchedExternalRevenue).toFixed(2)));
+    if (matchedExternalRevenue > 0 && unallocatedExternalRevenue <= REVENUE_ALLOCATION_RESIDUAL_THRESHOLD) {
+      unallocatedExternalRevenue = 0;
+    }
+    const tableRevenueSummaryVisible = payload.importedRevenueForFinancials > 0 || matchedExternalRevenue > 0 || unallocatedExternalRevenue > 0;
     if (includeSummary) {
       metricCards([
         ["Campaigns", formatNumber(rows.length)],
@@ -956,16 +973,23 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       ], 3);
     }
     if (includeAllCampaigns) {
+      const allCampaignRows = rows.slice(0, 20).map((row: any) => [
+        String(row?.name || "(not set)"),
+        formatNumber(row?.sessions || 0),
+        formatNumber(row?.conversions || 0),
+        formatPct(row?.conversionRate || 0),
+        formatMoney(Number(row?.revenue || 0)),
+      ]);
+      if (tableRevenueSummaryVisible && unallocatedExternalRevenue > 0) {
+        allCampaignRows.push(["Unallocated External Revenue", "", "", "", formatMoney(unallocatedExternalRevenue)]);
+      }
+      if (tableRevenueSummaryVisible) {
+        allCampaignRows.push(["Total Revenue (All Sources)", "", "", "", formatMoney(payload.financialRevenue > 0 ? payload.financialRevenue : payload.ga4RevenueForFinancials)]);
+      }
       addSimpleTable(
         "All Campaigns",
         ["CAMPAIGN", "SESSIONS", "CONV", "CR", "REVENUE"],
-        rows.slice(0, 20).map((row: any) => [
-          String(row?.name || "(not set)"),
-          formatNumber(row?.sessions || 0),
-          formatNumber(row?.conversions || 0),
-          formatPct(row?.conversionRate || 0),
-          formatMoney(Number(row?.revenue || 0)),
-        ]),
+        allCampaignRows,
         [72, 24, 20, 20, 48],
         COLORS.ads
       );
@@ -980,13 +1004,25 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
       ], 3, 28);
     }
     if (includeRevenueBreakdown) {
+      const revenueBreakdownRows = [
+        ...(payload.ga4RevenueForFinancials > 0 ? [["GA4 Revenue", formatMoney(payload.ga4RevenueForFinancials)]] : []),
+        ...payload.revenueDisplaySources
+          .filter((source: any) => source?.revenue != null && Number(source?.revenue || 0) > 0)
+          .flatMap((source: any) => [
+            [String(source?.displayName || source?.sourceType || "Revenue"), formatMoney(Number(source?.revenue || 0))],
+            ...(payload.sourceRevenueBreakdowns.get(String(source?.sourceId || "")) || []).map((item: any) => [
+              `  ${String(item?.campaignValue || "")}`,
+              formatMoney(Number(item?.revenue || 0)),
+            ]),
+          ]),
+      ];
+      if (payload.financialRevenue > 0 || revenueBreakdownRows.length > 0) {
+        revenueBreakdownRows.push(["Total Revenue", formatMoney(payload.financialRevenue)]);
+      }
       addSimpleTable(
         "Revenue Breakdown",
         ["SOURCE", "AMOUNT"],
-        [
-          ...(payload.ga4RevenueForFinancials > 0 ? [["GA4 Revenue", formatMoney(payload.ga4RevenueForFinancials)]] : []),
-          ...payload.revenueDisplaySources.map((source: any) => [String(source?.displayName || source?.sourceType || "Revenue"), formatMoney(Number(source?.revenue || 0))]),
-        ],
+        revenueBreakdownRows,
         [120, 64],
         COLORS.ads
       );

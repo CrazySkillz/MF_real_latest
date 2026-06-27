@@ -80,6 +80,25 @@ describe("scheduled report email regression guard", () => {
     expect(campaignBreakdownBlock).not.toContain("GA4 REVENUE");
   });
 
+  it("keeps GA4 scheduled Ad Comparison revenue provenance aligned with live output", () => {
+    const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
+    const payloadStart = source.indexOf("const sourceRevenueBreakdowns = new Map<string, any[]>");
+    const adsStart = source.indexOf("if (sections.ads)");
+    const adsEnd = source.indexOf("if (sections.insights)", adsStart);
+    const adsSection = source.slice(adsStart, adsEnd);
+
+    expect(payloadStart).toBeGreaterThan(-1);
+    expect(adsStart).toBeGreaterThan(-1);
+    expect(adsEnd).toBeGreaterThan(adsStart);
+    expect(source.slice(payloadStart, source.indexOf("const pipelineEntries", payloadStart))).toContain("campaignValueRevenueTotals");
+    expect(adsSection).toContain("let unallocatedExternalRevenue = Math.max(0, Number((payload.importedRevenueForFinancials - matchedExternalRevenue).toFixed(2)));");
+    expect(adsSection).toContain("REVENUE_ALLOCATION_RESIDUAL_THRESHOLD");
+    expect(adsSection).toContain('allCampaignRows.push(["Unallocated External Revenue", "", "", "", formatMoney(unallocatedExternalRevenue)])');
+    expect(adsSection).toContain('allCampaignRows.push(["Total Revenue (All Sources)", "", "", "", formatMoney(payload.financialRevenue > 0 ? payload.financialRevenue : payload.ga4RevenueForFinancials)])');
+    expect(adsSection).toContain("payload.sourceRevenueBreakdowns.get(String(source?.sourceId || \"\"))");
+    expect(adsSection).toContain('revenueBreakdownRows.push(["Total Revenue", formatMoney(payload.financialRevenue)])');
+  });
+
   it("keeps report test-send aligned with Mailgun HTTP API configuration", () => {
     const schedulerSource = readReportScheduler();
     const routesSource = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");

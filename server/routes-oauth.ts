@@ -24484,6 +24484,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaignId = String(req.params.id || "").trim();
       const sessionId = String((req.query as any)?.session || "").trim();
 
+      const ok = await ensureCampaignAccess(req as any, res as any, campaignId);
+      if (!ok) return;
+
       const benchmarks = await storage.getCampaignBenchmarks(campaignId);
 
       // Resolve which LinkedIn import session to evaluate against.

@@ -191,4 +191,27 @@ describe("GA4 Benchmark regression guard", () => {
     expect(ga4JobsFile).toContain("not the live");
     expect(ga4JobsFile).toContain("on_track / needs_attention / behind benchmark status");
   });
+
+  it("guards the shared evaluated Benchmark route before reading campaign Benchmarks", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+    const firstRouteStart = routesFile.indexOf('app.get("/api/campaigns/:id/benchmarks/evaluated"');
+    const sharedRouteStart = routesFile.indexOf('app.get("/api/campaigns/:id/benchmarks/evaluated"', firstRouteStart + 1);
+    const sharedRouteEnd = routesFile.indexOf('app.post("/api/campaigns/:id/benchmarks"', sharedRouteStart);
+    const sharedRoute = routesFile.slice(sharedRouteStart, sharedRouteEnd);
+
+    expect(firstRouteStart).toBeGreaterThan(-1);
+    expect(sharedRouteStart).toBeGreaterThan(firstRouteStart);
+    expect(sharedRouteEnd).toBeGreaterThan(sharedRouteStart);
+    expect(sharedRoute).toContain("const ok = await ensureCampaignAccess(req as any, res as any, campaignId);");
+    expect(sharedRoute.indexOf("ensureCampaignAccess")).toBeLessThan(sharedRoute.indexOf("storage.getCampaignBenchmarks(campaignId)"));
+    expect(sharedRoute).toContain("return res.json({");
+    expect(sharedRoute).toContain("success: true,");
+    expect(sharedRoute).toContain("campaignId,");
+    expect(sharedRoute).toContain("sessionIdUsed:");
+    expect(sharedRoute).toContain("hasRevenueTracking,");
+    expect(sharedRoute).toContain("benchmarks: evaluated,");
+  });
 });

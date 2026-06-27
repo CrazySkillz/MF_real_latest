@@ -510,4 +510,24 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).not.toContain('window.scrollTo({ top, behavior: "auto" });');
     expect(ga4Metrics).not.toContain('setHighlightedItemId(""), 3000');
   });
+
+  it("keeps the selected GA4 property aligned after Set as Primary", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const actionStart = ga4Metrics.indexOf("data-testid={`action-set-primary-${connection.id}`}");
+    const handlerStart = ga4Metrics.lastIndexOf("onClick={async () => {", actionStart);
+    const handler = ga4Metrics.slice(handlerStart, actionStart);
+
+    expect(actionStart).toBeGreaterThan(-1);
+    expect(handlerStart).toBeGreaterThan(-1);
+    expect(handler).toContain('const nextPrimaryPropertyId = String(connection.propertyId || "");');
+    expect(handler).toContain("setSelectedGA4PropertyId(nextPrimaryPropertyId);");
+    expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-daily"], exact: false });');
+    expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics"], exact: false });');
+    expect(handler).toContain('queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-breakdown"], exact: false });');
+    expect(handler).toContain('queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`], exact: false });');
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-daily", GA4_DAILY_LOOKBACK_DAYS, selectedGA4PropertyId]');
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics", dateRange, selectedGA4PropertyId]');
+    expect(ga4Metrics).toContain('queryKey: ["/api/campaigns", campaignId, "ga4-breakdown", dateRange, selectedGA4PropertyId]');
+    expect(ga4Metrics).toContain("queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`, selectedGA4PropertyId, dateRange]");
+  });
 });

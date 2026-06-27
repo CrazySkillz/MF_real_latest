@@ -5549,8 +5549,16 @@ export default function GA4Metrics() {
                                       { method: 'PUT' }
                                     );
                                     if (response.ok) {
+                                      const nextPrimaryPropertyId = String(connection.propertyId || "");
+                                      if (nextPrimaryPropertyId) {
+                                        setSelectedGA4PropertyId(nextPrimaryPropertyId);
+                                      }
                                       queryClient.invalidateQueries({ queryKey: ["/api/ga4/check-connection", campaignId] });
                                       queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-connections"] });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-daily"], exact: false });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-diagnostics"], exact: false });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/campaigns", campaignId, "ga4-breakdown"], exact: false });
+                                      queryClient.invalidateQueries({ queryKey: [`/api/campaigns/${campaignId}/ga4-to-date`], exact: false });
                                       toast({ title: "Primary property updated" });
                                     }
                                   } catch (error) {

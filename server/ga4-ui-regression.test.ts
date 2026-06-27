@@ -219,6 +219,10 @@ describe("GA4 UI regression guard", () => {
     expect(clientAgg).toContain("filteredRows.push(row);");
     expect(clientAgg).toContain("filteredRowsByKey.set(key, row);");
     expect(ga4Metrics).toContain("[ga4Breakdown, importedGA4CampaignNames, breakdownTotals, revenueDisplaySources]");
+    expect(ga4Metrics).toContain("for (const f of selectedGa4CampaignFilterList)");
+    expect(ga4Metrics).toContain("}, [selectedGa4CampaignFilterList]);");
+    expect(ga4Metrics).not.toContain("const { data: allCampaigns }");
+    expect(clientAgg).not.toContain("for (const c of (allCampaigns || []))");
 
     expect(pdfStart).toBeGreaterThan(-1);
     expect(pdfMatchStart).toBeGreaterThan(pdfStart);

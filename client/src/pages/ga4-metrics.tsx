@@ -1301,21 +1301,6 @@ export default function GA4Metrics() {
     enabled: !!campaignId,
   });
 
-  // Fetch all campaigns for this client — used to filter Ad Comparison tab to only imported campaigns
-  const { data: allCampaigns } = useQuery<Campaign[]>({
-    queryKey: ["/api/campaigns", { clientId: (campaign as any)?.clientId }],
-    queryFn: async () => {
-      const cid = (campaign as any)?.clientId;
-      const url = cid
-        ? `/api/campaigns?clientId=${encodeURIComponent(cid)}`
-        : "/api/campaigns";
-      const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch campaigns");
-      return res.json();
-    },
-    enabled: !!campaign,
-  });
-
   // Helper functions for KPI display
   const campaignCurrency = String((campaign as any)?.currency || "USD");
   const formatMoney = (n: number) => {
@@ -5080,20 +5065,17 @@ export default function GA4Metrics() {
     return `${dayLabel} available. We compare the last 7 days vs the previous 7 days and cross-check KPI/Benchmark performance.`;
   }, [insightsRollups?.availableDays]);
 
-  // Collect GA4 campaign names from all imported campaigns (for filtering Ad Comparison)
+  // Collect GA4 campaign names from the current campaign's saved GA4 scope.
   const normalizeCampaignKey = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
 
   const importedGA4CampaignNames = useMemo(() => {
     const names = new Set<string>();
-    for (const c of (allCampaigns || [])) {
-      const filters = parseStoredGa4CampaignFilter((c as any)?.ga4CampaignFilter);
-      for (const f of filters) {
-        const key = normalizeCampaignKey(f);
-        if (key) names.add(key);
-      }
+    for (const f of selectedGa4CampaignFilterList) {
+      const key = normalizeCampaignKey(f);
+      if (key) names.add(key);
     }
     return names;
-  }, [allCampaigns]);
+  }, [selectedGa4CampaignFilterList]);
 
   // Aggregate breakdown rows by campaign name for Campaign Performance & Ad Comparison
   const campaignBreakdownAgg = useMemo(() => {

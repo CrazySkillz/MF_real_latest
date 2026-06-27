@@ -8,6 +8,19 @@ Use this file when asked whether GA4 Ad Comparison is robust, accurate, logical,
 
 Use `GA4/AD_COMPARISON.md` for the functional description of what the tab is and how it should behave.
 
+## Future-Reference Rule
+
+The settled production-readiness answer for GA4 Ad Comparison is production-ready for the current GA4 code scope, with exactly one deferred validation: `Deployed Scheduled/Server PDF Revenue-Provenance Evidence`.
+
+Future audits must not reopen closed Ad Comparison blockers from this file unless one of these conditions is true:
+
+- Ad Comparison code, report rendering, scheduled/server PDF generation, source scoping, or calculation logic changed after this audit
+- the deferred validation fails when Mailgun is properly configured
+- deployed production evidence contradicts the local validation recorded here
+- product requirements change or a new platform implementation is being assessed
+
+If none of those conditions applies, the answer must remain the stable answer documented below.
+
 ## Durable Future Answer
 
 Yes. GA4 Ad Comparison is production-ready for the current GA4 code scope as of the June 27, 2026 post-fix audit, with exactly one deferred validation:
@@ -381,7 +394,7 @@ npm run check
 
 ### Commit 3: Update Production-Ready Status After Validation
 
-Status: This documentation update.
+Status: Complete. This documentation update records the settled production-ready answer with the single Mailgun-dependent deferred validation isolated.
 
 Required outcome:
 

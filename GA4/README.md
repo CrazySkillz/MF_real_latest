@@ -50,6 +50,7 @@ Important meaning:
   Covers benchmark creation, custom benchmark values, status/progress, gating, alerts, and benchmark refresh behavior.
 - `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`
   Canonical whole-tab Ad Comparison production-readiness source of truth. Current status: production-ready for the current GA4 code scope, with exactly one deferred validation: deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured.
+  Future-reference rule: use that file for the stable answer; do not reopen closed Ad Comparison blockers unless later code changes, failed deferred validation, contradictory deployed evidence, changed requirements, or a new platform assessment requires it.
 - `GA4/INSIGHTS.md`
   Covers executive financials, trends, findings, action guidance, and budget/pacing notes.
 - `GA4/INSIGHTS_WHAT_TO_INVESTIGATE_NEXT_PRODUCTION_READINESS.md`

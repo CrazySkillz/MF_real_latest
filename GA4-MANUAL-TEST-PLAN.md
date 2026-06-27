@@ -14,6 +14,12 @@ Important:
 - treat exact mock numbers as reference values, not absolute truth, unless the campaign state is clean
 - if a campaign already has prior `Run Refresh` history or added sources, prioritize directional correctness over exact sample numbers
 
+Ad Comparison status for future reference:
+
+- GA4 Ad Comparison is production-ready for the current GA4 code scope
+- the only deferred validation is deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured
+- do not treat that deferred evidence item as a known code blocker; use `GA4/AD_COMPARISON_PRODUCTION_READINESS.md` as the source of truth
+
 ## Purpose
 Use this plan to:
 

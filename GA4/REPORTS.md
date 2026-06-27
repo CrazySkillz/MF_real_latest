@@ -5,6 +5,7 @@
 This file defines the GA4 `Reports` tab and the current report-creation, download, scheduling, and report-output model.
 
 Production-readiness status: GA4 Reports is production-ready for the current code implementation. The only deferred validations are `Campaign DeepDive Scheduled Report Visibility`, which will be validated when the Campaign DeepDive section is refined, and `Deployed Scheduled Email`, which will be validated after the Mailgun service is properly configured. The durable readiness decision lives in `GA4/REPORTS_PRODUCTION_READINESS.md`.
+Ad Comparison report-output note: the GA4 Ad Comparison section is production-ready for the current GA4 code scope. Its only deferred validation is deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured, tracked in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`.
 
 ## Reports Tab Structure
 

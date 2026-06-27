@@ -10,6 +10,8 @@ Current durable answer:
 
 `GA4 Ad Comparison is production-ready for the current GA4 code scope, with one deferred validation: deployed scheduled/server PDF revenue-provenance evidence after Mailgun is properly configured.`
 
+Future-reference rule: this functional document follows the readiness certification in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`. Treat the tab as production-ready except for that one Mailgun-dependent deployed scheduled/server PDF validation unless the readiness file is changed by a later audit, the deferred validation fails, deployed evidence contradicts it, product requirements change, or a new platform implementation is being assessed.
+
 ## Document Ownership
 
 The Ad Comparison documentation is intentionally split into two files:

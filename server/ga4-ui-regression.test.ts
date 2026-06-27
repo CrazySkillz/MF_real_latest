@@ -134,6 +134,18 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).not.toContain("const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue, ga4BreakdownTotals.revenue);");
   });
 
+  it("keeps GA4 Overview financial totals on the to-date source before fallback", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+
+    expect(ga4Metrics).toContain("const ga4FinancialTotalsSource = hasToDateOverviewTotals");
+    expect(ga4Metrics).toContain("? ga4ToDateOverviewTotals");
+    expect(ga4Metrics).toContain(": hasDailyOverviewTotals ? dailySummedTotals : ga4BreakdownTotals;");
+    expect(ga4Metrics).toContain("const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);");
+    expect(ga4Metrics).toContain("const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);");
+    expect(ga4Metrics).not.toContain("const ga4RevenueForFinancials = Number(breakdownTotals.revenue || 0);");
+    expect(ga4Metrics).not.toContain("const financialConversions = Number(breakdownTotals.conversions || 0);");
+  });
+
   it("waits for GA4 breakdown totals before rendering Overview Summary numbers", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
     const summaryStart = ga4Metrics.indexOf("{/* Summary Cards */}");

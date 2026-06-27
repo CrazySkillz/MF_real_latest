@@ -2449,7 +2449,10 @@ export default function GA4Metrics() {
 
   const importedRevenueForFinancials = Number((importedRevenueToDateResp as any)?.totalRevenue || 0);
   const ga4RevenueMetricName = String((ga4ToDateResp as any)?.revenueMetric || "").trim();
-  const ga4RevenueForFinancials = Number(breakdownTotals.revenue || 0);
+  const ga4FinancialTotalsSource = hasToDateOverviewTotals
+    ? ga4ToDateOverviewTotals
+    : hasDailyOverviewTotals ? dailySummedTotals : ga4BreakdownTotals;
+  const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);
   const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials > 0;
   // GA4 page: Total Revenue = GA4 native revenue + any imported revenue (manual, CSV, Sheets, CRM).
   // This matches what executives expect: the full revenue picture for this campaign.
@@ -2467,7 +2470,7 @@ export default function GA4Metrics() {
     () => buildExecutiveFinancialsDescription(spendSourceLabels, revenueSourceLabels),
     [spendSourceLabels, revenueSourceLabels]
   );
-  const financialConversions = Number(breakdownTotals.conversions || 0);
+  const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);
   const financialSpend = Number(totalSpendForFinancials || 0);
   const revenueSourcesCount = revenueDisplaySources.length + (ga4RevenueForFinancials > 0 ? 1 : 0);
   const spendSourcesCount = spendDisplaySources.length;

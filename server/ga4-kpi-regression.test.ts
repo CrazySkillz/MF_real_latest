@@ -68,6 +68,28 @@ describe("GA4 KPI regression guard", () => {
     expect(unitSection).not.toContain("<Input");
   });
 
+  it("keeps GA4 ROAS default descriptions aligned to ratio units", () => {
+    const ga4MetricsFile = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),
+      "utf-8"
+    );
+    const kpiDefaultStart = ga4MetricsFile.indexOf("const getDefaultKpiDescription =");
+    const kpiDefaultEnd = ga4MetricsFile.indexOf("const calculateKPIValueFromSources", kpiDefaultStart);
+    const benchmarkDefaultStart = ga4MetricsFile.indexOf("const getDefaultBenchmarkDescription =");
+    const benchmarkDefaultEnd = ga4MetricsFile.indexOf("const formatNumberWhileTyping", benchmarkDefaultStart);
+    const kpiDefaultSection = ga4MetricsFile.slice(kpiDefaultStart, kpiDefaultEnd);
+    const benchmarkDefaultSection = ga4MetricsFile.slice(benchmarkDefaultStart, benchmarkDefaultEnd);
+
+    expect(kpiDefaultStart).toBeGreaterThan(-1);
+    expect(kpiDefaultEnd).toBeGreaterThan(kpiDefaultStart);
+    expect(benchmarkDefaultStart).toBeGreaterThan(-1);
+    expect(benchmarkDefaultEnd).toBeGreaterThan(benchmarkDefaultStart);
+    expect(kpiDefaultSection).toContain('return "Revenue generated per dollar of spend as an x ratio";');
+    expect(benchmarkDefaultSection).toContain('return "Revenue generated per dollar of spend as an x ratio";');
+    expect(kpiDefaultSection).not.toContain("as a %");
+    expect(benchmarkDefaultSection).not.toContain("as a %");
+  });
+
   it("renders the GA4 Benchmark unit field as a constrained dropdown", () => {
     const ga4MetricsFile = readFileSync(
       join(process.cwd(), "client", "src", "pages", "ga4-metrics.tsx"),

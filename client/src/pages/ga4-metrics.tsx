@@ -588,7 +588,7 @@ export default function GA4Metrics() {
     const n = String(name || "").trim();
     switch (n) {
       case "ROAS":
-        return "Revenue generated per dollar of spend (as a %)";
+        return "Revenue generated per dollar of spend as an x ratio";
       case "ROI":
         return "Return relative to spend (revenue-based ROI)";
       case "CPA":
@@ -1193,7 +1193,7 @@ export default function GA4Metrics() {
   const getDefaultBenchmarkDescription = (metricKey: string): string => {
     switch (String(metricKey || "")) {
       case "roas":
-        return "Revenue generated per dollar of spend (as a %)";
+        return "Revenue generated per dollar of spend as an x ratio";
       case "roi":
         return "Return relative to spend (revenue-based ROI)";
       case "cpa":

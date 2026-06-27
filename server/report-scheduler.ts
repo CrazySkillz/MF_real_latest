@@ -21,7 +21,7 @@ interface ReportWithCampaign extends LinkedInReport {
   platformType: string;
 }
 
-const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram', 'tiktok', 'google_sheets', 'custom-integration'];
+const SCHEDULED_REPORT_PLATFORM_TYPES = ['linkedin', 'google_analytics', 'google_ads', 'instagram', 'tiktok', 'google_sheets', 'custom-integration', 'campaign_deepdive'];
 
 // Monitoring metrics for scheduler health
 const schedulerMetrics = {
@@ -1958,78 +1958,12 @@ export async function checkScheduledReports(): Promise<void> {
     console.log('[Report Scheduler] Checking for due scheduled reports...');
     const now = new Date();
 
-    // Get all active reports with schedules - try both storage methods
-    let allReports: any[] = [];
-
-    try {
-      // Try LinkedIn-specific reports first
-      const linkedInReports = await storage.getLinkedInReports();
-      allReports = allReports.concat(linkedInReports);
-      console.log(`[Report Scheduler] Found ${linkedInReports.length} LinkedIn reports`);
-    } catch (error) {
-      console.log('[Report Scheduler] No LinkedIn reports found');
-    }
-
-    try {
-      // Also check platform reports (LinkedIn)
-      const platformReports = await storage.getPlatformReports('linkedin');
-      allReports = allReports.concat(platformReports);
-      console.log(`[Report Scheduler] Found ${platformReports.length} LinkedIn platform reports`);
-    } catch (error) {
-      console.log('[Report Scheduler] No LinkedIn platform reports found');
-    }
-
-    try {
-      // Check GA4 platform reports
-      const ga4Reports = await storage.getPlatformReports('google_analytics');
-      allReports = allReports.concat(ga4Reports);
-      console.log(`[Report Scheduler] Found ${ga4Reports.length} GA4 platform reports`);
-    } catch (error) {
-      console.log('[Report Scheduler] No GA4 platform reports found');
-    }
-
-    try {
-      const googleAdsReports = await storage.getPlatformReports('google_ads');
-      allReports = allReports.concat(googleAdsReports);
-      console.log(`[Report Scheduler] Found ${googleAdsReports.length} Google Ads platform reports`);
-    } catch (error) {
-      console.log('[Report Scheduler] No Google Ads platform reports found');
-    }
-
-    try {
-      const instagramReports = await storage.getPlatformReports('instagram');
-      allReports = allReports.concat(instagramReports);
-      console.log(`[Report Scheduler] Found ${instagramReports.length} Instagram platform reports`);
-    } catch (error) {
-      console.log('[Report Scheduler] No Instagram platform reports found');
-    }
-
-    try {
-      const tiktokReports = await storage.getPlatformReports('tiktok');
-      allReports = allReports.concat(tiktokReports);
-      console.log(`[Report Scheduler] Found ${tiktokReports.length} TikTok platform reports`);
-    } catch (error) {
-      console.log('[Report Scheduler] No TikTok platform reports found');
-    }
-
-    try {
-      const googleSheetsReports = await storage.getPlatformReports('google_sheets');
-      allReports = allReports.concat(googleSheetsReports);
-      console.log(`[Report Scheduler] Found ${googleSheetsReports.length} Google Sheets platform reports`);
-    } catch (error) {
-      console.log('[Report Scheduler] No Google Sheets platform reports found');
-    }
-
-    try {
-      const customIntegrationReports = await storage.getPlatformReports('custom-integration');
-      allReports = allReports.concat(customIntegrationReports);
-      console.log(`[Report Scheduler] Found ${customIntegrationReports.length} Custom Integration platform reports`);
-    } catch (error) {
-      console.log('[Report Scheduler] No Custom Integration platform reports found');
-    }
+    // Fetch campaign-scoped and platform-level scheduled rows from shared report storage explicitly.
+    const allReports = await storage.getScheduledPlatformReports([...SCHEDULED_REPORT_PLATFORM_TYPES]);
+    console.log(`[Report Scheduler] Found ${allReports.length} scheduled platform report rows`);
 
     if (allReports.length === 0) {
-      console.log('[Report Scheduler] No reports found in either storage');
+      console.log('[Report Scheduler] No scheduled platform reports found');
       return;
     }
 

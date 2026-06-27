@@ -291,6 +291,7 @@ export interface IStorage {
 
   // Platform Reports
   getPlatformReports(platformType: string, campaignId?: string): Promise<LinkedInReport[]>;
+  getScheduledPlatformReports(platformTypes?: string[]): Promise<LinkedInReport[]>;
   createPlatformReport(report: any): Promise<LinkedInReport>;
   updatePlatformReport(id: string, report: any): Promise<LinkedInReport | undefined>;
   deletePlatformReport(id: string): Promise<boolean>;
@@ -3228,6 +3229,25 @@ export class DatabaseStorage implements IStorage {
         .where(and(inArray(linkedinReports.platformType, platformTypes), isNull(linkedinReports.campaignId)))
         .orderBy(linkedinReports.createdAt);
     }
+  }
+
+  async getScheduledPlatformReports(platformTypes: string[] = []): Promise<LinkedInReport[]> {
+    const expandedPlatformTypes = platformTypes.flatMap((platformType) => (
+      platformType === "custom-integration" || platformType === "custom_integration"
+        ? ["custom-integration", "custom_integration"]
+        : [platformType]
+    )).filter(Boolean);
+    const filters = [
+      eq(linkedinReports.scheduleEnabled, true),
+      eq(linkedinReports.status, "active"),
+    ];
+    if (expandedPlatformTypes.length > 0) {
+      filters.push(inArray(linkedinReports.platformType, expandedPlatformTypes));
+    }
+    return await db.select()
+      .from(linkedinReports)
+      .where(and(...filters))
+      .orderBy(linkedinReports.createdAt);
   }
 
   async createPlatformReport(report: any): Promise<LinkedInReport> {

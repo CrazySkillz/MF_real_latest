@@ -295,6 +295,28 @@ describe("GA4 UI regression guard", () => {
     expect(pdfBreakdownSection).toContain('{ label: "GA4 Revenue", amount: fC(ga4RevenueForFinancials) }');
   });
 
+  it("keeps GA4 Ad Comparison All Campaigns independent from the metric dropdown", () => {
+    const adComparison = readClient("pages/ga4-ad-comparison.tsx");
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const tableStart = adComparison.indexOf("{/* Full comparison table */}");
+    const breakdownStart = adComparison.indexOf("{/* Revenue Breakdown sub-table */}", tableStart);
+    const tableSection = adComparison.slice(tableStart, breakdownStart);
+    const browserPdfTableStart = ga4Metrics.indexOf("// All Campaigns table");
+    const browserPdfTableEnd = ga4Metrics.indexOf("if (tableRevenueSummaryVisible && unallocatedExternalRevenue > 0)", browserPdfTableStart);
+    const browserPdfTableSection = ga4Metrics.slice(browserPdfTableStart, browserPdfTableEnd);
+
+    expect(tableStart).toBeGreaterThan(-1);
+    expect(breakdownStart).toBeGreaterThan(tableStart);
+    expect(browserPdfTableStart).toBeGreaterThan(-1);
+    expect(browserPdfTableEnd).toBeGreaterThan(browserPdfTableStart);
+    expect(tableSection).not.toContain("Full comparison sorted by");
+    expect(tableSection).toContain("{comparisonRows.map((c, idx) => {");
+    expect(tableSection).not.toContain("{sortedByMetric.map((c, idx) => {");
+    expect(browserPdfTableSection).toContain("for (let i = 0; i < comparisonRows.length; i++)");
+    expect(browserPdfTableSection).toContain("const r = comparisonRows[i] as any;");
+    expect(browserPdfTableSection).not.toContain("const r = sortedByMetric[i] as any;");
+  });
+
   it("keeps GA4 Ad Comparison summary labels and tooltips readable", () => {
     const adComparison = readClient("pages/ga4-ad-comparison.tsx");
     const summaryStart = adComparison.indexOf("const summaryMetricLabel =");

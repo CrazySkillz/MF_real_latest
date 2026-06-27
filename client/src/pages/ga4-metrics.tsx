@@ -3207,9 +3207,9 @@ export default function GA4Metrics() {
           doc.text("REVENUE", colXs[5], y + 5.5);
           doc.text("CR", colXs[6], y + 5.5);
           y += 10;
-          for (let i = 0; i < sortedByMetric.length; i++) {
+          for (let i = 0; i < comparisonRows.length; i++) {
             checkPage(9);
-            const r = sortedByMetric[i] as any;
+            const r = comparisonRows[i] as any;
             const s = Number(r?.sessions || 0), u = Number(r?.users || 0);
             const cv = Number(r?.conversions || 0), rv = Number(r?.revenue || 0);
             const rate = s > 0 ? (cv / s) * 100 : 0;

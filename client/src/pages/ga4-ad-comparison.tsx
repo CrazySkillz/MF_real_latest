@@ -387,10 +387,11 @@ export default function GA4AdComparison({
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">All Campaigns</CardTitle>
-          <CardDescription>
-            Full comparison sorted by {METRIC_LABELS[selectedMetric] || selectedMetric}
-            {revenueModeWithImportedSources ? " - exact matched external revenue is added to campaign rows; unmatched external revenue stays separate" : ""}
-          </CardDescription>
+          {revenueModeWithImportedSources && (
+            <CardDescription>
+              Exact matched external revenue is added to campaign rows; unmatched external revenue stays separate.
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent className="p-6">
           <div className="overflow-hidden border rounded-md">
@@ -420,9 +421,9 @@ export default function GA4AdComparison({
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedByMetric.map((c, idx) => {
+                  {comparisonRows.map((c, idx) => {
                     const isTop = idx === 0;
-                    const isBottom = idx === sortedByMetric.length - 1 && sortedByMetric.length > 1;
+                    const isBottom = idx === comparisonRows.length - 1 && comparisonRows.length > 1;
                     return (
                       <tr
                         key={c.name || idx}

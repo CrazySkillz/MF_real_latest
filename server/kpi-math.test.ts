@@ -156,6 +156,17 @@ describe("kpi math (shared)", () => {
       sufficient: false,
       code: "insufficient_conversions",
     });
+    expect(resolveKpiDataSufficiency({ metric: "CPA", conversions: 0, spend: 0 })).toMatchObject({
+      sufficient: false,
+      code: "insufficient_conversions",
+    });
+  });
+
+  it("marks CPA insufficient when spend is unavailable", () => {
+    expect(resolveKpiDataSufficiency({ metric: "CPA", conversions: 1, spend: 0 })).toMatchObject({
+      sufficient: false,
+      code: "insufficient_spend",
+    });
     expect(resolveKpiDataSufficiency({ metric: "CPA", conversions: 1, spend: 100 })).toMatchObject({ sufficient: true });
   });
 

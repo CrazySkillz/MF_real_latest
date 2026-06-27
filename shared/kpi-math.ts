@@ -344,7 +344,7 @@ export function resolveKpiDataSufficiency(opts: {
     return { sufficient: false, code: "insufficient_conversions", reason: "Needs conversions before this KPI can be scored." };
   }
 
-  if (keys.some((key) => key === "roas" || key === "roi") && spend < minSpend) {
+  if (keys.some((key) => key === "cpa" || key === "roas" || key === "roi" || key.includes("costperacquisition")) && spend < minSpend) {
     return { sufficient: false, code: "insufficient_spend", reason: "Needs spend before this KPI can be scored." };
   }
 

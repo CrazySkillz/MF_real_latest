@@ -34,6 +34,10 @@ Ad hoc download behavior:
 - unscheduled GA4 platform reports are download-only and are not listed as saved Standard Reports
 - saved report rows represent scheduled or explicitly saved backend report configurations, not every PDF the user generated once
 
+Edit behavior:
+
+- editing a saved GA4 platform report opens the saved values, shows `Update Report`, and keeps `Update Report` disabled until a report field changes
+
 Delete behavior:
 
 - deleting a saved report should remove only that report record

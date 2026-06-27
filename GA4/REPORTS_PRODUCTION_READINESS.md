@@ -19,6 +19,7 @@ GA4 Reports is production-ready for the locally verifiable current code scope as
 - `2782dc80` Make Campaign DeepDive Scheduled Report Visibility Backend-Authoritative
 - `64eb35c3` Make Scheduler Discovery Explicit And Regression-Covered
 - `33426ae0` Resolve GA4 Unscheduled Report Library Product Contract
+- `d83b0245` Disable Unchanged GA4 Report Updates
 
 No known locally verifiable GA4 Reports blocker remains from the 2026-06-27 audit queue.
 
@@ -30,6 +31,7 @@ What this means:
 - Scheduled report snapshots and `lastSentAt` are no longer created from Mailgun API acceptance alone when delivery confirmation is available.
 - Scheduler discovery is explicit through scheduled platform report storage and covers GA4, Campaign DeepDive, and supported source-backed report rows.
 - Campaign DeepDive scheduled reports are visible and manageable from backend report rows, not only browser `localStorage` cards.
+- GA4 saved report edit mode keeps `Update Report` disabled until a report field changes.
 
 This answer should stay the same in future chats unless one of these changes:
 
@@ -45,10 +47,12 @@ External caveats that still cannot be proven from local code alone:
 - live GA4 API processing latency
 - real deployed scheduler execution timing
 - real provider delivery events and inbox receipt for scheduled report emails
+- deployed Campaign DeepDive scheduled-report UI validation, which will be validated when the Campaign DeepDive section is refined
+- deployed scheduled-email validation, which will be validated after the Mailgun service is properly configured
 - production database index state and existing production report-row damage
 - visual PDF fidelity across every deployed browser/PDF reader
 
-If the question is about deployed scheduled-email receipt, production database condition, or live GA4 provider behavior, those require deployed/runtime evidence. If the question is about the current local code contract and the audited GA4 Reports implementation, GA4 Reports should be answered as production-ready.
+If the question is about deployed Campaign DeepDive scheduled-report UI validation, deployed scheduled-email receipt, production database condition, or live GA4 provider behavior, those require the specific deferred runtime evidence above. If the question is about the current local code contract and the audited GA4 Reports implementation, GA4 Reports should be answered as production-ready.
 
 ## How To Use This File In A New Chat
 
@@ -184,6 +188,7 @@ Current logic:
 - backend create/list require `campaignId`
 - update/delete use `ensurePlatformReportAccess`
 - update/delete reject platform mismatches
+- GA4 edit mode stores the initial report form signature and disables `Update Report` while the current signature is unchanged
 - delete returns success only when a row is actually deleted
 - scheduler discovery uses `storage.getScheduledPlatformReports([...SCHEDULED_REPORT_PLATFORM_TYPES])` instead of relying on the legacy `getLinkedInReports()` broad-table behavior
 
@@ -192,6 +197,7 @@ Proven locally:
 - campaign ownership guard exists before report list/create/update/delete
 - report platform mismatch returns not found
 - report campaign/platform ownership cannot be changed through the platform patch route
+- saved GA4 platform report edit mode keeps `Update Report` disabled until a report field changes
 - delete success is based on the actual storage delete result
 - scheduled report discovery is explicit and regression-covered for `google_analytics`, `campaign_deepdive`, and supported source-backed platforms
 - scheduler deduplicates report rows by report ID before due checks
@@ -352,6 +358,7 @@ Partially reviewed:
 Not locally verifiable:
 
 - deployed scheduler execution timing
+- deployed scheduled-email validation after the Mailgun service is properly configured
 - Mailgun event availability in the deployed account
 - real recipient inbox receipt
 - production DB index state
@@ -411,6 +418,7 @@ Proven locally:
 Not locally verifiable:
 
 - deployed scheduled email receipt
+- deployed Campaign DeepDive scheduled-report UI validation; this will be validated when the Campaign DeepDive section is refined
 - whether existing production scheduled Campaign DeepDive records were previously orphaned from localStorage cards and need cleanup
 
 Future-platform template rule:
@@ -535,7 +543,23 @@ Validation:
 
 - code trace confirmed scheduled saves use backend mutation and unscheduled flow downloads immediately
 - `GA4/REPORTS.md` now documents GA4 ad hoc reports as download-only
+- deployed UI validation confirmed GA4 unscheduled report generation downloads immediately without creating a saved report card
 - `git diff --cached --check`
+
+### Additional Fix: Disable Unchanged GA4 Report Updates
+
+Commit: `d83b0245 Disable unchanged GA4 report updates`
+
+Resolved root cause:
+
+- GA4 report edit mode prefilled saved report values but did not retain an initial form signature
+- the modal button only checked required fields and pending mutation state, so `Update Report` was enabled before any actual change
+
+Validation:
+
+- `git diff --check -- client/src/pages/ga4-metrics.tsx`
+- `npm run check`
+- deployed UI validation confirmed GA4 scheduled report create/edit/delete works and `Update Report` is disabled until a report field changes
 
 ## Product-Contract Decision Queue
 
@@ -573,6 +597,20 @@ The following items are locally proven and should not be reopened unless relevan
 15. Campaign-scoped Campaign DeepDive Reports pages do not seed global/demo reports.
 16. Campaign DeepDive scheduled report management is backend-authoritative for active/paused backend scheduled rows.
 17. GA4 platform ad hoc reports are explicitly download-only and are not documented as saved Standard Reports rows.
+18. GA4 saved report edit mode disables `Update Report` until a report field changes.
+
+## Deployed UI Validation Evidence
+
+Reported validated after the Render deployment of the 2026-06-27 Reports fix series:
+
+1. GA4 Unscheduled Report: `Generate & Download Report` downloads immediately and does not create a saved report card.
+2. GA4 Scheduled Overview Revenue Label: scheduled/saved Overview report output uses `Revenue` for Campaign Breakdown.
+3. GA4 Scheduled Report Creation/Edit/Delete: scheduled report cards can be created, edited, and deleted; edit mode keeps `Update Report` disabled until a report field changes.
+
+Deferred deployed validation:
+
+4. Campaign DeepDive Scheduled Report Visibility will be validated when the Campaign DeepDive section is refined.
+5. Deployed Scheduled Email will be validated after the Mailgun service is properly configured.
 
 ## Partially Reviewed / Keep Watching
 
@@ -590,6 +628,8 @@ These areas are not current local blockers, but future work should not assume th
 The following cannot be proven from local code alone:
 
 - real deployed scheduled email receipt
+- deployed scheduled-email validation after the Mailgun service is properly configured
+- deployed Campaign DeepDive scheduled-report UI validation after the Campaign DeepDive section is refined
 - Mailgun provider event availability in the deployed account
 - real inbox delivery
 - deployed scheduler timing
@@ -607,12 +647,14 @@ Locally run on 2026-06-27 during the Reports production-readiness fix series:
 - `npm run check`
 - `git diff --check` for each touched code/test/doc file group
 - `git diff --cached --check` for the docs-only GA4 ad hoc report contract commit
+- `git diff --check -- client/src/pages/ga4-metrics.tsx` for the unchanged-update fix
 
 Result:
 
 - targeted Reports regression tests passed: 48 tests across `server/report-email-regression.test.ts` and `server/custom-report-regression.test.ts`
 - TypeScript passed via `npm run check`
 - whitespace/diff checks passed for committed fix scopes
+- GA4 report edit-mode TypeScript checks passed after the unchanged-update fix
 
 These checks prove:
 
@@ -621,17 +663,22 @@ These checks prove:
 - backend scheduled Campaign DeepDive report rows are visible without localStorage records
 - scheduler discovery is explicit and regression-covered for GA4, Campaign DeepDive, and supported source-backed report rows
 - GA4 ad hoc report behavior is intentionally documented as download-only
+- GA4 saved report edit mode disables `Update Report` until a report field changes
 - existing report email and Campaign DeepDive custom report regression guards still pass
 
 These checks do not prove:
 
 - real deployed scheduled email receipt
+- deployed scheduled-email validation after the Mailgun service is properly configured
+- deployed Campaign DeepDive scheduled-report UI validation after the Campaign DeepDive section is refined
 - Mailgun provider event availability in the deployed account
 - real recipient inbox receipt
 - deployed scheduler timing
 - production database index state
 - production report-row cleanup needs
 - live GA4 API processing latency
+
+Deployed UI validation now proves GA4 Unscheduled Report, GA4 Scheduled Overview Revenue Label, and GA4 Scheduled Report Creation/Edit/Delete for the deployed code state. Campaign DeepDive Scheduled Report Visibility remains deferred to Campaign DeepDive refinement, and Deployed Scheduled Email remains deferred until Mailgun is properly configured.
 
 ## Future Platform Template
 

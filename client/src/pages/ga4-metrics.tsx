@@ -70,6 +70,29 @@ const VALID_GA4_TABS = ["overview", "kpis", "benchmarks", "campaigns", "insights
 const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";
 const REVENUE_ALLOCATION_RESIDUAL_THRESHOLD = 0.01;
 
+const normalizeReportRecipients = (value: string) =>
+  value.split(",").map((email) => email.trim()).filter(Boolean).sort();
+
+const getGA4ReportFormSignature = (values: {
+  name: string;
+  description: string;
+  reportType: string;
+  configuration: any;
+  scheduleEnabled: boolean;
+  scheduleFrequency: string;
+  scheduleDayOfWeek: string;
+  scheduleDayOfMonth: string;
+  quarterTiming: string;
+  scheduleTime: string;
+  emailRecipients: string;
+  status: string;
+}) => JSON.stringify({
+  ...values,
+  name: values.name.trim(),
+  description: values.description.trim(),
+  emailRecipients: normalizeReportRecipients(values.emailRecipients),
+});
+
 const normalizeClientReportingTimeZone = (value: any) => {
   const tz = String(value || "").trim();
   if (!tz) return DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE;
@@ -299,6 +322,7 @@ export default function GA4Metrics() {
   const [showGA4ReportModal, setShowGA4ReportModal] = useState(false);
   const [ga4ReportModalStep, setGa4ReportModalStep] = useState<"standard" | "custom">("standard");
   const [editingGA4ReportId, setEditingGA4ReportId] = useState<string | null>(null);
+  const [ga4ReportEditInitialSignature, setGa4ReportEditInitialSignature] = useState<string | null>(null);
   const [deleteGA4ReportId, setDeleteGA4ReportId] = useState<string | null>(null);
   const [expandedCustomReportSections, setExpandedCustomReportSections] = useState<Record<string, boolean>>({});
   // Ad Comparison tab state
@@ -807,6 +831,7 @@ export default function GA4Metrics() {
       queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/reports", campaignId] });
       setShowGA4ReportModal(false);
       setEditingGA4ReportId(null);
+      setGa4ReportEditInitialSignature(null);
       toast({ title: "Report saved" });
     },
     onError: (err: any) => {
@@ -830,6 +855,7 @@ export default function GA4Metrics() {
       queryClient.invalidateQueries({ queryKey: ["/api/platforms/google_analytics/reports", campaignId] });
       setShowGA4ReportModal(false);
       setEditingGA4ReportId(null);
+      setGa4ReportEditInitialSignature(null);
       toast({ title: "Report updated" });
     },
     onError: (err: any) => {
@@ -5282,6 +5308,13 @@ export default function GA4Metrics() {
   const isBenchmarkEditUnchanged = Boolean(editingBenchmark) && (!benchmarkEditInitialValues || areBenchmarkFormValuesEqual(newBenchmark, benchmarkEditInitialValues));
   const isBenchmarkCreateRequiredFieldsMissing = !editingBenchmark && (!String(newBenchmark.name || "").trim() || !String(newBenchmark.benchmarkValue || "").trim());
   const isBenchmarkSubmitDisabled = createBenchmarkMutation.isPending || updateBenchmarkMutation.isPending || isBenchmarkEditUnchanged || isBenchmarkCreateRequiredFieldsMissing;
+  const ga4ReportFormSignature = getGA4ReportFormSignature(ga4ReportForm);
+  const isGA4ReportEditUnchanged = Boolean(editingGA4ReportId) && (!ga4ReportEditInitialSignature || ga4ReportFormSignature === ga4ReportEditInitialSignature);
+  const isGA4ReportSubmitDisabled = !ga4ReportForm.name
+    || !ga4ReportForm.reportType
+    || createGA4ReportMutation.isPending
+    || updateGA4ReportMutation.isPending
+    || isGA4ReportEditUnchanged;
 
   if (campaignLoading) {
     return (
@@ -7398,6 +7431,7 @@ export default function GA4Metrics() {
                         className="gap-2"
                         onClick={() => {
                           setEditingGA4ReportId(null);
+                          setGa4ReportEditInitialSignature(null);
                           setGa4ReportModalStep("standard");
                           setGa4ReportForm({
                             name: "",
@@ -7501,7 +7535,7 @@ export default function GA4Metrics() {
                                       const emailRecipientsString = r.scheduleRecipients && Array.isArray(r.scheduleRecipients)
                                         ? r.scheduleRecipients.join(', ')
                                         : '';
-                                      setGa4ReportForm({
+                                      const nextReportForm = {
                                         name: String(r.name || ""),
                                         description: String(r.description || ""),
                                         reportType: String(r.reportType || "overview"),
@@ -7514,7 +7548,9 @@ export default function GA4Metrics() {
                                         scheduleTime: cfg?.scheduleTime || from24HourTo12Hour(r.scheduleTime) || "9:00 AM",
                                         emailRecipients: emailRecipientsString,
                                         status: r.status || "active",
-                                      });
+                                      };
+                                      setGa4ReportForm(nextReportForm);
+                                      setGa4ReportEditInitialSignature(getGA4ReportFormSignature(nextReportForm));
                                       setGa4ReportFormErrors({});
                                       setShowGA4ReportModal(true);
                                     }}
@@ -8831,7 +8867,10 @@ export default function GA4Metrics() {
         open={showGA4ReportModal}
         onOpenChange={(open) => {
           setShowGA4ReportModal(open);
-          if (!open) setEditingGA4ReportId(null);
+          if (!open) {
+            setEditingGA4ReportId(null);
+            setGa4ReportEditInitialSignature(null);
+          }
         }}
       >
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -9506,6 +9545,7 @@ export default function GA4Metrics() {
                   setShowGA4ReportModal(false);
                   setGa4ReportModalStep("standard");
                   setEditingGA4ReportId(null);
+                  setGa4ReportEditInitialSignature(null);
                   setGa4ReportForm({
                     name: "",
                     description: "",
@@ -9529,7 +9569,7 @@ export default function GA4Metrics() {
 
               <div className="flex items-center gap-2">
                 <Button
-                  disabled={!ga4ReportForm.name || !ga4ReportForm.reportType || createGA4ReportMutation.isPending || updateGA4ReportMutation.isPending}
+                  disabled={isGA4ReportSubmitDisabled}
                   onClick={async () => {
                     if (ga4ReportForm.scheduleEnabled) {
                       // Scheduled report: validate, save to library

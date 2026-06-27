@@ -29,6 +29,11 @@ The current list shows:
 - last sent date when available
 - created date
 
+Ad hoc download behavior:
+
+- unscheduled GA4 platform reports are download-only and are not listed as saved Standard Reports
+- saved report rows represent scheduled or explicitly saved backend report configurations, not every PDF the user generated once
+
 Delete behavior:
 
 - deleting a saved report should remove only that report record
@@ -41,8 +46,8 @@ Delete behavior:
 2. user clicks `Create Report`
 3. the modal opens as a fresh create form and must not reuse values from the last edited report
 4. the modal offers report type and tab selection from the campaign-scoped builder
-5. if the user is creating a new unscheduled report, the flow presents a `Download Report` action and the saved generated report appears under `Standard Reports`
-6. if the user enables `Schedule Automated Report`, the flow presents a `Schedule Report` action and the saved scheduled report appears under `Scheduled Reports`
+5. if the user is creating a new unscheduled GA4 platform report, the flow presents `Generate & Download Report`, downloads the PDF immediately, and does not create a saved report-library row
+6. if the user enables `Schedule Automated Report`, the flow presents a `Schedule Report` action and creates a saved scheduled report row in the GA4 report list
 
 ## Standard Reports
 
@@ -187,9 +192,9 @@ Both standard and custom reports support:
 
 Current behavior:
 
-- creating a new unscheduled report surfaces a `Generate & Download report` link/action so the user can download it immediately
-- those ad hoc downloads do not necessarily create a persistent library entry
-- existing saved reports can also be downloaded again
+- creating a new unscheduled GA4 platform report surfaces a `Generate & Download Report` action so the user can download it immediately
+- GA4 platform ad hoc downloads do not create a persistent backend library entry or Standard Reports card
+- existing saved report configurations can also be downloaded again from latest page state
 - custom-report generation should require at least one selected section before download
 - the modal should remain open if generation fails so the user can correct the issue
 

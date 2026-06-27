@@ -9,7 +9,7 @@ import { DateTime } from "luxon";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { aggregateCampaignMetrics } from "./scheduler";
 import { computeBenchmarkThresholdResult } from "../shared/kpi-math";
-import { waitForMailgunDelivery } from "./utils/mailgun-delivery";
+import { mapMailgunDeliveryToAlertEmailStatus, waitForMailgunDelivery } from "./utils/mailgun-delivery";
 
 /**
  * Report Scheduler - Automated Email Reports
@@ -53,9 +53,16 @@ async function getLatestReportEmailError(reportId: string): Promise<string> {
   return error ? `${provider ? `${provider}: ` : ""}${error}` : "";
 }
 
-async function getLatestReportEmailAudit(reportId: string, success: boolean): Promise<{ provider: string; error: string; providerResponseId: string }> {
+async function getLatestReportEmailAudit(reportId: string, success: boolean): Promise<{ id: string; provider: string; error: string; providerResponseId: string; deliveryStatus: string }> {
   const rows = await db
-    .select({ provider: emailAlertEvents.provider, error: emailAlertEvents.error, metadata: emailAlertEvents.metadata })
+    .select({
+      id: emailAlertEvents.id,
+      provider: emailAlertEvents.provider,
+      error: emailAlertEvents.error,
+      metadata: emailAlertEvents.metadata,
+      providerResponseId: emailAlertEvents.providerResponseId,
+      deliveryStatus: emailAlertEvents.deliveryStatus,
+    })
     .from(emailAlertEvents)
     .where(and(
       eq(emailAlertEvents.kind, "report"),
@@ -67,17 +74,60 @@ async function getLatestReportEmailAudit(reportId: string, success: boolean): Pr
     .limit(1)
     .catch(() => []);
   const row = rows[0] as any;
-  let providerResponseId = "";
-  try {
-    providerResponseId = String(JSON.parse(String(row?.metadata || "{}"))?.providerResponseId || "").trim();
-  } catch {
-    providerResponseId = "";
+  let providerResponseId = String(row?.providerResponseId || "").trim();
+  if (!providerResponseId) {
+    try {
+      providerResponseId = String(JSON.parse(String(row?.metadata || "{}"))?.providerResponseId || "").trim();
+    } catch {
+      providerResponseId = "";
+    }
   }
   return {
+    id: String(row?.id || "").trim(),
     provider: String(row?.provider || "").trim(),
     error: String(row?.error || "").trim(),
     providerResponseId,
+    deliveryStatus: String(row?.deliveryStatus || "").trim(),
   };
+}
+
+async function confirmScheduledReportEmailDelivery(reportId: string): Promise<{ sent: boolean; status: "sent" | "failed" | "pending_delivery"; error: string }> {
+  const audit = await getLatestReportEmailAudit(reportId, true);
+  if (audit.provider !== "mailgun-api") return { sent: true, status: "sent", error: "" };
+
+  const delivery = await waitForMailgunDelivery(audit.providerResponseId);
+  const deliveryStatus = delivery.status === "not_checked"
+    ? "pending_delivery"
+    : mapMailgunDeliveryToAlertEmailStatus(delivery.status);
+  const error = delivery.status === "failed"
+    ? `Mailgun delivery failed: ${delivery.error || "unknown error"}`
+    : delivery.status === "delivered"
+      ? ""
+      : "Mailgun accepted the email, but delivery was not confirmed yet";
+
+  if (audit.id) {
+    const updates: any = {
+      deliveryStatus,
+      providerResponseId: audit.providerResponseId || null,
+      metadata: JSON.stringify({
+        providerResponseId: audit.providerResponseId,
+        mailgunDeliveryStatus: delivery.status,
+        mailgunDeliveryError: delivery.error,
+      }),
+    };
+    if (delivery.status === "delivered") updates.deliveredAt = new Date();
+    if (delivery.status === "failed") {
+      updates.failedAt = new Date();
+      updates.error = error;
+    }
+    await db.update(emailAlertEvents)
+      .set(updates)
+      .where(eq(emailAlertEvents.id, audit.id))
+      .catch(() => { });
+  }
+
+  if (delivery.status === "delivered") return { sent: true, status: "sent", error: "" };
+  return { sent: false, status: delivery.status === "failed" ? "failed" : "pending_delivery", error };
 }
 
 function coercePdfBufferFromDoc(doc: any): Buffer | null {
@@ -2194,12 +2244,21 @@ export async function checkScheduledReports(): Promise<void> {
       }
 
       // Send email with retry mechanism (with PDF attachment when possible)
-      const sent = await sendReportEmailWithRetry(report, recipients, {
+      let sent = await sendReportEmailWithRetry(report, recipients, {
         windowStart,
         windowEnd,
         campaignName,
         attachment: pdfBuffer ? { filename: `${snapshotPayload.reportName.replace(/\s+/g, "_")}_${windowEnd}.pdf`, content: pdfBuffer } : null,
       });
+      let sendEventStatus: "sent" | "failed" | "pending_delivery" = sent ? "sent" : "failed";
+      let deliveryError = "";
+      if (sent) {
+        const deliveryConfirmation = await confirmScheduledReportEmailDelivery(snapshotPayload.reportId);
+        sent = deliveryConfirmation.sent;
+        sendEventStatus = deliveryConfirmation.status;
+        deliveryError = deliveryConfirmation.error;
+      }
+
 
       const [snap] = sent
         ? await db
@@ -2219,14 +2278,14 @@ export async function checkScheduledReports(): Promise<void> {
         : [];
 
       // Update metrics
-      const emailError = sent ? "" : await getLatestReportEmailError(snapshotPayload.reportId);
+      const emailError = sent ? "" : (deliveryError || await getLatestReportEmailError(snapshotPayload.reportId));
       const sendError = emailError || "Email send failed after retries";
-      const persistedSendError = retryingFailedSend ? `Retry failed after previous failure: ${sendError}` : sendError;
+      const persistedSendError = retryingFailedSend && sendEventStatus === "failed" ? `Retry failed after previous failure: ${sendError}` : sendError;
 
       if (sent) {
         schedulerMetrics.totalSent++;
         schedulerMetrics.lastSuccessTime = new Date();
-      } else {
+      } else if (sendEventStatus === "failed") {
         schedulerMetrics.totalFailed++;
         schedulerMetrics.lastErrorTime = new Date();
         schedulerMetrics.lastError = persistedSendError;
@@ -2235,7 +2294,7 @@ export async function checkScheduledReports(): Promise<void> {
       await db
         .update(reportSendEvents)
         .set({
-          status: sent ? "sent" : "failed",
+          status: sendEventStatus,
           error: sent ? null : persistedSendError,
           sentAt: sent ? new Date() : null,
           snapshotId: (snap as any)?.id ? String((snap as any).id) : null,

@@ -50,7 +50,7 @@ describe("scheduled report email regression guard", () => {
 
   it("creates scheduled report snapshots only after a successful send", () => {
     const source = readReportScheduler();
-    const sendIndex = source.indexOf("const sent = await sendReportEmailWithRetry");
+    const sendIndex = source.indexOf("let sent = await sendReportEmailWithRetry");
     const snapshotInsertIndex = source.indexOf(".insert(reportSnapshots)", sendIndex);
     const sendEventUpdateIndex = source.indexOf(".update(reportSendEvents)", snapshotInsertIndex);
 
@@ -186,6 +186,26 @@ describe("scheduled report email regression guard", () => {
     expect(schedulerSource).toContain("Mailgun accepted the email, but delivery was not confirmed yet");
     expect(routesSource).toContain("deliveryStatus: result.deliveryStatus");
     expect(routesSource).not.toContain("Test report email sent successfully! Check your inbox.");
+  });
+
+  it("does not create scheduled Mailgun snapshots until delivery is confirmed", () => {
+    const source = readReportScheduler();
+    const confirmationBlock = source.slice(
+      source.indexOf("async function confirmScheduledReportEmailDelivery"),
+      source.indexOf("function coercePdfBufferFromDoc")
+    );
+    const sendIndex = source.indexOf("let sent = await sendReportEmailWithRetry");
+    const deliveryConfirmIndex = source.indexOf("const deliveryConfirmation = await confirmScheduledReportEmailDelivery", sendIndex);
+    const snapshotInsertIndex = source.indexOf(".insert(reportSnapshots)", deliveryConfirmIndex);
+
+    expect(confirmationBlock).toContain('audit.provider !== "mailgun-api"');
+    expect(confirmationBlock).toContain("waitForMailgunDelivery(audit.providerResponseId)");
+    expect(confirmationBlock).toContain('delivery.status === "delivered"');
+    expect(confirmationBlock).toContain('"pending_delivery"');
+    expect(sendIndex).toBeGreaterThan(-1);
+    expect(deliveryConfirmIndex).toBeGreaterThan(sendIndex);
+    expect(snapshotInsertIndex).toBeGreaterThan(deliveryConfirmIndex);
+    expect(source).toContain("status: sendEventStatus");
   });
 
   it("keeps report test-send fail-closed for missing campaign ownership", () => {

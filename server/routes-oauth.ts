@@ -1290,6 +1290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       await recalcCampaignSpend(campaignId);
+      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
       res.json({ success: true, deactivatedSourceIds, deactivatedCount: deactivatedSourceIds.length, skippedGroups });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to cleanup Google Sheets spend duplicates" });
@@ -1340,6 +1341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch {
         // ignore
       }
+      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to remove spend sources" });
@@ -2474,6 +2476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // (Revenue totals only consider active sources, but deleting rows makes behavior deterministic.)
         await storage.deleteRevenueRecordsBySource(sid);
       }
+      await recomputeCampaignDerivedValues(campaignId, { platformContext });
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to remove revenue sources" });
@@ -2601,6 +2604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      await recomputeCampaignDerivedValues(campaignId, { platformContext: sourcePlatformContext });
       res.json({ success: true, revenueTrackingDisabled: activeRemaining.length === 0 });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message || "Failed to delete revenue source" });
@@ -2638,6 +2642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteSpendSource(sourceId);
       await storage.deleteSpendRecordsBySource(sourceId);
       await recalcCampaignSpend(campaignId);
+      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
       if (deletingSheetsConnectionId) {
         const remainingSpendSources = await storage.getSpendSources(campaignId).catch(() => [] as any[]);
         const stillUsed = (Array.isArray(remainingSpendSources) ? remainingSpendSources : []).some((s: any) => {
@@ -2799,11 +2804,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Enterprise-grade: whenever a source-of-truth input (revenue / conversion value) changes,
   // recompute all dependent derived values (KPIs + alerts) immediately.
-  const recomputeCampaignDerivedValues = async (campaignId: string) => {
+  const isGA4RevenuePlatformContext = (platformContext?: string | null) =>
+    String(platformContext || "ga4").trim().toLowerCase() === "ga4";
+
+  const recomputeGA4KPIAndBenchmarkValues = async (campaignId: string, logPrefix: string) => {
+    try {
+      await runGA4DailyKPIAndBenchmarkJobs({ campaignId });
+    } catch (e) {
+      console.warn(`[${logPrefix}] GA4 KPI/Benchmark recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
+    }
+  };
+
+  const recomputeCampaignDerivedValues = async (campaignId: string, opts: { platformContext?: string | null } = {}) => {
     try {
       await refreshKPIsForCampaign(campaignId);
     } catch (e) {
       console.warn(`[Revenue Update] KPI recompute failed for campaign ${campaignId}:`, (e as any)?.message || e);
+    }
+    if (isGA4RevenuePlatformContext(opts.platformContext)) {
+      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Revenue Update");
     }
     try {
       await checkPerformanceAlerts();
@@ -2811,7 +2830,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.warn(`[Revenue Update] Alert check failed after revenue update for campaign ${campaignId}:`, (e as any)?.message || e);
     }
   };
-
   // When "revenue to date" is the source of truth for LinkedIn, we must clear any previously computed
   // session-level conversion value; otherwise some endpoints may incorrectly prefer stale sessionCv.
   const clearLatestLinkedInImportSessionConversionValue = async (campaignId: string) => {
@@ -2972,7 +2990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ]);
       }
       // Ensure all derived values are recomputed BEFORE responding so clients refetching onSuccess see correct values.
-      await recomputeCampaignDerivedValues(campaignId);
+      await recomputeCampaignDerivedValues(campaignId, { platformContext });
 
       res.json({
         success: true,
@@ -3306,7 +3324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // ignore
           }
           await setLatestLinkedInImportSessionConversionValue(campaignId, Number(convValue.toFixed(2)).toFixed(2));
-          await recomputeCampaignDerivedValues(campaignId);
+          await recomputeCampaignDerivedValues(campaignId, { platformContext });
           res.json({
             success: true,
             sourceId: source.id,
@@ -3383,7 +3401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             await storage.createRevenueRecords(revenueRecordsToInsert);
           }
-          await recomputeCampaignDerivedValues(campaignId);
+          await recomputeCampaignDerivedValues(campaignId, { platformContext });
           res.json({
             success: true,
             sourceId: source.id,
@@ -3857,7 +3875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await setLatestLinkedInImportSessionConversionValue(campaignId, convValue.toFixed(2));
 
         // Ensure dependent metrics recompute immediately (enterprise-grade freshness).
-        await recomputeCampaignDerivedValues(campaignId);
+        await recomputeCampaignDerivedValues(campaignId, { platformContext });
 
         return res.json({
           success: true,
@@ -3936,7 +3954,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Ensure KPIs/alerts are recomputed before returning so the UI refetch sees correct values.
-      await recomputeCampaignDerivedValues(campaignId);
+      await recomputeCampaignDerivedValues(campaignId, { platformContext });
       res.json({
         success: true,
         mode: "revenue_to_date",
@@ -4117,6 +4135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Recalculate campaign.spend from all active sources
       try {
         await recalcCampaignSpend(campaignId);
+        await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
       } catch (e: any) {
         console.warn("[Manual Spend] Failed to recalculate campaign.spend:", e?.message);
       }
@@ -4363,6 +4382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }] as any);
 
       await recalcCampaignSpend(campaignId);
+      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
 
       res.json({
         success: true,
@@ -4655,6 +4675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await recalcCampaignSpend(campaignId);
+      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
 
       res.json({
         success: true,
@@ -5023,6 +5044,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await recalcCampaignSpend(campaignId);
+      await recomputeGA4KPIAndBenchmarkValues(campaignId, "Spend Update");
 
       res.json({
         success: true,
@@ -14875,7 +14897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.warn("[Salesforce Save Mappings] Failed to write conversion-value revenue source:", e);
         }
 
-        await recomputeCampaignDerivedValues(campaignId);
+        await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });
 
         return res.json({
           success: true,
@@ -15179,7 +15201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.
-      await recomputeCampaignDerivedValues(campaignId);
+      await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });
 
       res.json({
         success: true,
@@ -16411,7 +16433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await setLatestLinkedInImportSessionConversionValue(campaignId, convValue.toFixed(2));
 
           // Ensure dependent metrics recompute immediately.
-          await recomputeCampaignDerivedValues(campaignId);
+          await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });
 
           return res.json({
             success: true,
@@ -16505,7 +16527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.
-      await recomputeCampaignDerivedValues(campaignId);
+      await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });
 
       res.json({
         success: true,
@@ -31232,7 +31254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Ensure KPIs/alerts are recomputed BEFORE responding so immediate refetch sees correct values.
-      await recomputeCampaignDerivedValues(campaignId);
+      await recomputeCampaignDerivedValues(campaignId, { platformContext: platformCtx });
 
       res.json({
         success: true,

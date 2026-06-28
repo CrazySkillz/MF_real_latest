@@ -20,17 +20,17 @@ As of June 28, 2026, GA4 KPIs are **not production-ready** for the current GA4 c
 
 The June 27, 2026 production-ready statement is retracted for the current code scope. That statement proved a narrower fix queue around ROAS ratio semantics, CPA sufficiency, primary-property scoping, ROAS copy, and bounded ROAS cleanup. It did not prove the complete GA4 KPI value inventory, downstream propagation matrix, source lifecycle matrix, fallback branches, negative cases, and report/alert consumers required by `PRODUCTION_READINESS.md`.
 
-Current local blockers:
+Current local blockers and certification gates:
 
-- persisted GA4 KPI financial values can use a different revenue/spend source window than the visible KPI tab
-- GA4 revenue/spend source add/edit/delete lifecycle paths do not all prove immediate GA4 KPI recompute before alert checks
+- persisted GA4 KPI financial source windows have a forward fix from Current Commit 1, but final certification has not been rerun
+- GA4 revenue/spend source add/edit/delete route recompute has a forward fix from Current Commit 2, but the final source lifecycle matrix remains a certification gate
 - custom or unknown GA4 KPI rows can be overwritten to `0` by the GA4 recompute job
 - duplicate active GA4 KPI rows for the same campaign and metric do not prove the documented latest-row-wins alert behavior
 - scheduled/server GA4 reports read persisted KPI rows and must be included as direct downstream consumers
 
 The current answer is:
 
-`GA4 KPIs are not production-ready for the current GA4 code scope. The section has proven visible formula and threshold slices, but persisted recompute, source lifecycle, custom KPI, duplicate-alert, and scheduled-report paths remain blocked or partially reviewed. Do not call GA4 KPIs production-ready until the current fix queue and evidence gates in this file are complete.`
+`GA4 KPIs are not production-ready for the current GA4 code scope. The section has forward fixes for persisted financial source windows and source lifecycle route recompute, but custom KPI, duplicate-alert, scheduled-report, existing-data, and final certification paths remain blocked or partially reviewed. Do not call GA4 KPIs production-ready until the current fix queue and evidence gates in this file are complete.`
 
 This status should change only after:
 
@@ -248,7 +248,7 @@ Not locally verifiable:
 
 ### 5. Refresh, Scheduler, And Recompute
 
-Status: Not production-ready. Daily, on-demand, auto-refresh, and KPI create/update recompute calls exist, but source lifecycle recompute coverage and persisted financial source windows are blocked. Deployed scheduler timing remains an external runtime caveat.
+Status: Not production-ready. Daily, on-demand, auto-refresh, KPI create/update recompute, persisted financial source-window recompute, and source mutation route recompute now have forward-path fixes, but custom KPI, duplicate-alert, scheduled-report, existing-data, and final certification paths remain blocked or partially reviewed. Deployed scheduler timing remains an external runtime caveat.
 
 Proven locally:
 
@@ -328,7 +328,7 @@ Required evidence before closure:
 - regression test where a current-day GA4-context revenue record changes persisted Revenue, ROAS, and ROI
 - proof that GA4 native completed-day windows remain unchanged while imported financial source windows match the visible KPI tab contract
 
-### KPI-BLOCKER-2: GA4 source lifecycle recompute is incomplete
+### KPI-BLOCKER-2: GA4 source lifecycle recompute route coverage needed completion
 
 Root cause:
 
@@ -343,7 +343,14 @@ Affected paths:
 - alert checks immediately after source changes
 - frontend refetches after source mutations
 
-Required evidence before closure:
+Implementation status:
+
+- Current Commit 2 implements the forward route fix in `server/routes-oauth.ts`.
+- GA4 revenue source add/edit/delete routes now pass platform context into the recompute helper so GA4-context mutations run the existing GA4 KPI/Benchmark recompute job before the helper-level alert check.
+- GA4 spend source add/edit/delete routes now run the existing GA4 KPI/Benchmark recompute job after campaign spend totals are recalculated or cleared.
+- `server/ga4-source-lifecycle-recompute-regression.test.ts` guards the route ordering and platform-context propagation.
+
+Required evidence before final certification:
 
 - source lifecycle matrix covering add, edit, delete, refresh, scheduler, source modal/list display, totals recompute, persisted KPI recompute, alerts, notifications, and reports
 - route-level or integration-style regression tests proving GA4 KPI recompute happens before alert checks where the route promises immediate correctness
@@ -574,6 +581,14 @@ Validation:
 - scheduled alert checks read the corrected persisted values
 
 ### Current Commit 2 - Make GA4 source lifecycle recompute complete
+
+Implementation status:
+
+- forward-path route fix implemented and validated for GA4 source add/edit/delete recompute ordering
+- validation passed: `npm test -- server/ga4-source-lifecycle-recompute-regression.test.ts`
+- validation passed: `npm test -- server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-benchmark-roas-regression.test.ts`
+- validation passed: `npm run check`
+- this does not certify GA4 KPIs as production-ready because Commits 3-6 and final certification remain incomplete
 
 Files expected:
 
@@ -832,17 +847,18 @@ Completed behavior:
 Current validation status:
 
 - Current Commit 1 forward-path code and focused tests have been implemented for persisted GA4 KPI financial source windows
-- remaining runtime fixes from Current Commits 2-6 have not been implemented yet
+- remaining runtime fixes from Current Commits 3-6 have not been implemented yet
 - no final production-readiness certification pass has been run yet
 - the historical June 27 tests remain useful regression coverage for ROAS ratio, CPA sufficiency, alert URL/visibility, and email gating, but they do not prove current GA4 KPI production readiness
 
-Current covered path after Commit 1:
+Current covered paths after Commits 1-2:
 
 - current-day imported revenue/spend records in persisted GA4 KPI recompute are covered by `server/ga4-kpi-financial-window-regression.test.ts`
+- GA4 source lifecycle route recompute ordering and platform-context propagation are covered by `server/ga4-source-lifecycle-recompute-regression.test.ts`
 
 Current uncovered paths that must be covered before certification:
 
-- GA4 revenue/spend source add/edit/delete lifecycle recompute order
+- full GA4 source lifecycle matrix beyond the route-order guard, including source modal/list display, scheduler/provider refresh, notifications, and report consumers
 - custom/unknown GA4 KPI recompute preservation
 - duplicate GA4 KPI campaign+metric latest-row-wins alert handling
 - scheduled/server GA4 report consumption of persisted KPI values

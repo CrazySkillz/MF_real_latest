@@ -22,12 +22,13 @@ Current GA4 tab production-readiness status:
 Use these files in this order:
 
 1. `GA4/README.md`
-2. `GA4/REFRESH_AND_PROCESSING.md`
-3. `GA4_DEVELOPMENT_WORKFLOW.md` for GA4 stabilization, fix sequencing, regression checks, and testing workflow
-4. the specific tab doc you are changing
-5. `GA4/OVERVIEW.md` when the work touches Overview behavior, card/table meaning, or GA4 scope
-6. `GA4/OVERVIEW_PRODUCTION_READINESS.md` when the work asks whether Overview is production-ready or when using Overview as a template for Meta, Google Ads, LinkedIn, or another source
-7. `GA4/FINANCIAL_SOURCES.md` if the work touches revenue, spend, `Latest Day Revenue`, `Latest Day Spend`, `Profit`, `ROAS`, `ROI`, `CPA`, source modal provenance, or imported values
+2. `../PRODUCTION_READINESS.md` for production-readiness audits, analytics-sensitive feature refinement, and section/source certification work
+3. `GA4/REFRESH_AND_PROCESSING.md`
+4. `GA4_DEVELOPMENT_WORKFLOW.md` for GA4 stabilization, fix sequencing, regression checks, and testing workflow
+5. the specific tab doc you are changing
+6. `GA4/OVERVIEW.md` when the work touches Overview behavior, card/table meaning, or GA4 scope
+7. `GA4/OVERVIEW_PRODUCTION_READINESS.md` when the work asks whether Overview is production-ready or when using Overview as a template for Meta, Google Ads, LinkedIn, or another source
+8. `GA4/FINANCIAL_SOURCES.md` if the work touches revenue, spend, `Latest Day Revenue`, `Latest Day Spend`, `Profit`, `ROAS`, `ROI`, `CPA`, source modal provenance, or imported values
 
 ## Canonical GA4 Journey
 
@@ -50,6 +51,8 @@ Important meaning:
 
 ## Doc Map
 
+- `../PRODUCTION_READINESS.md`
+  Root-level mandatory production-readiness checklist. Use it before GA4 section-specific readiness docs when auditing, refining, or certifying any GA4 section or future source template.
 - `GA4/OVERVIEW.md`
   Covers the GA4 Overview tab, tables, card-population rules, and GA4 campaign scope.
 - `GA4/OVERVIEW_PRODUCTION_READINESS.md`

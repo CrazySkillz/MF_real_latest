@@ -18,32 +18,32 @@ This file defines whether the current implementation is production-ready, what h
 
 As of June 28, 2026, GA4 KPIs are **not production-ready** for the current GA4 code scope.
 
-The June 27, 2026 production-ready statement is retracted for the current code scope. That statement proved a narrower fix queue around ROAS ratio semantics, CPA sufficiency, primary-property scoping, ROAS copy, and bounded ROAS cleanup. It did not prove the complete GA4 KPI value inventory, downstream propagation matrix, source lifecycle matrix, fallback branches, negative cases, and report/alert consumers required by `PRODUCTION_READINESS.md`.
+Current Commits 0-6 have been implemented and locally validated. Those fixes make GA4 KPIs eligible for a production-readiness certification pass, but the Current Commit 7 pass does not certify production readiness because several required paths remain partially reviewed or not locally verifiable from local code and tests alone.
 
-Current local blockers and certification gates:
+Certification result:
 
-- persisted GA4 KPI financial source windows have a forward fix from Current Commit 1, but final certification has not been rerun
-- GA4 revenue/spend source add/edit/delete route recompute has a forward fix from Current Commit 2, but the final source lifecycle matrix remains a certification gate
-- custom or unknown GA4 KPI row preservation has a forward fix from Current Commit 3, but existing zero-overwrite inventory and final certification remain gates
-- duplicate active GA4 KPI rows for the same campaign and metric have a forward fix from Current Commit 4, but final alert/notification certification remains a gate
-- scheduled/server GA4 reports read persisted KPI rows and must be included as direct downstream consumers
+- completed local fixes: persisted financial source windows, source lifecycle recompute, custom/unsupported KPI row preservation, duplicate-alert latest-row handling, scheduled/test/manual report consumer fail-closed guards, and damaged-data inventory/cleanup boundaries
+- not locally completed: deployed database dry-run/apply evidence for the current damaged-data script
+- partially reviewed: direct historical snapshot PDF download path that uses the shared server PDF builder but intentionally does not run a recompute preflight on read/download
+- not locally verifiable: live GA4 provider behavior, deployed scheduler timing, provider-side email delivery events, and actual inbox receipt
+- not yet performed in this current queue: post-fix UI validation against the GA4 KPI tab and report UI flows
 
 The current answer is:
 
-`GA4 KPIs are not production-ready for the current GA4 code scope. The section has forward fixes for persisted financial source windows, source lifecycle route recompute, custom/unsupported KPI row preservation, and duplicate-alert latest-row handling, but scheduled-report, existing-data, and final certification paths remain blocked or partially reviewed. Do not call GA4 KPIs production-ready until the current fix queue and evidence gates in this file are complete.`
+`GA4 KPIs are not production-ready for the current GA4 code scope. Current Commits 0-6 are implemented, committed, and locally validated, so the section is eligible for certification review. The Current Commit 7 certification pass does not certify production readiness because post-fix UI validation, deployed damaged-data inventory/apply evidence, direct historical snapshot PDF read semantics, and deployed/provider scheduler/email behavior remain partially reviewed or not locally verifiable. Do not call GA4 KPIs production-ready until those paths are proven or explicitly excluded by product decision.`
 
 This status should change only after:
 
-- each current blocker has a minimal code fix
-- each fix has regression coverage for the exact value path and negative case
-- any existing damaged data has a read-only inventory and a bounded cleanup or explicit legacy-data caveat
-- the full `PRODUCTION_READINESS.md` checklist is rerun against the implemented code, not the planned fix queue
+- the current damaged-data inventory script is run in dry-run mode against the target database and any `--apply` run is reviewed with before/after evidence
+- post-fix UI validation covers GA4 KPI create/edit/delete, visible current values, source mutation recompute, alerts/notifications, and KPI report paths
+- direct historical snapshot PDF download semantics are either fixed to prove fresh KPI values without unwanted side effects or documented as intentionally historical/non-fresh output
+- deployed scheduler and provider/email behavior are validated or kept as explicit external caveats
 - this document is updated from current evidence, not from prior readiness claims
 
 Necessary certification rule:
 
-- completing the current fix queue makes GA4 KPIs eligible for production-readiness certification; it does not by itself make them production-ready
-- the final answer must remain `not production-ready` unless the final certification pass proves the complete current value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, and test coverage from current code
+- completing the local fix queue makes GA4 KPIs eligible for production-readiness certification; it does not by itself make them production-ready
+- the final answer must remain `not production-ready` unless the final certification pass proves the complete current value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, and test coverage from current code and validation evidence
 
 ## How To Use This File In A New Chat
 
@@ -51,12 +51,12 @@ Read in this order:
 
 1. `Current Status`
 2. `Current Scope`
-3. `Current Blockers`
+3. `Current Certification Gaps And Completed Local Fixes`
 4. `Current Fix Queue`
 5. `Validation Evidence And Gaps`
 6. `Future Platform Template`
 
-Answer that GA4 KPIs are not production-ready for the current GA4 code scope until the current blocker queue is implemented and validated.
+Answer that GA4 KPIs are not production-ready for the current GA4 code scope. Current local fixes are implemented and validated, but final certification remains blocked by the explicit certification gates in this file.
 
 Do not reopen GA4 Overview, Benchmarks, Ad Comparison, Insights, or Reports unless a KPI value path directly depends on them. Scheduled/server GA4 reports are a direct downstream KPI consumer because they read persisted GA4 KPI rows.
 
@@ -154,11 +154,118 @@ Important meaning:
 - a correct visible KPI card does not prove scheduler, notification, or email correctness
 - a green threshold test does not prove current-value provenance correctness
 
+## Current Commit 7 Certification Pass
+
+Root cause of the remaining certification failure:
+
+- Earlier readiness updates treated completed fixes as equivalent to certification.
+- The Current Commit 7 pass reran the root `PRODUCTION_READINESS.md` standard and found that local tests prove the narrow fixed code paths, but they do not prove deployed data state, provider delivery, deployed scheduler execution, post-fix UI behavior, or direct historical snapshot PDF freshness semantics.
+- Therefore the correct status is not production-ready, with completed local fixes and explicit remaining validation/certification gates.
+
+### Complete GA4 KPI Value Inventory
+
+| Value / surface | Source path | Formula / semantics | Scope and window | Downstream consumers | Current evidence status |
+| --- | --- | --- | --- | --- | --- |
+| KPI grid row count and tracker `Total KPIs` | GA4 KPI list query -> platform KPI rows | Count of GA4 KPI rows in current campaign/platform scope | Campaign + `google_analytics`; current saved rows | KPI tab UI, executive snapshot | Partially reviewed; route access and frontend invalidation traced, post-fix UI validation not run |
+| `Above Target`, `On Track`, `Below Target`, `Avg. Progress` | KPI rows -> shared KPI math/status policy | Metric-aware progress, tolerance, blocked/insufficient exclusions | Campaign + visible KPI rows | KPI tracker, executive interpretation | Partially reviewed; shared math tests exist, not rerun as a full UI certification pass in this queue |
+| Standard GA4 KPI current values: Users, Sessions, Pageviews, Conversions | GA4 daily/to-date metrics -> visible UI and persisted recompute job | Count totals, rounded as counts | Selected campaign, primary/selected GA4 property, GA4 campaign filter, completed GA4 reporting date | KPI cards, progress history, alerts, notifications, reports | Partially reviewed; persisted recompute path covered by GA4 KPI regression tests, live provider behavior not locally verifiable |
+| Revenue | GA4 native revenue + active GA4-context imported revenue | `ga4Revenue + importedRevenue` | Native GA4 window stays completed reporting date; imported revenue window is `1900-01-01` through current UTC date | KPI card, tracker, progress, alerts, scheduled/server reports | Proven locally for persisted source-window regression; visible UI not post-fix UI validated |
+| ROAS | Revenue / active spend | Ratio `x`, not percent | Same campaign/source windows as Revenue and Spend | KPI card, progress, alerts, notification/email, reports | Proven locally for ratio semantics and financial source-window forward path; deployed data state not proven |
+| ROI | `(Revenue - Spend) / Spend * 100` | Percent | Same campaign/source windows as Revenue and Spend | KPI card, progress, alerts, notification/email, reports | Proven locally for financial source-window forward path; deployed data state not proven |
+| CPA | Spend / conversions | Currency cost per conversion; insufficient when spend or conversions are missing | Spend through current UTC date, conversions through GA4 completed reporting date | KPI card, tracker, progress, alerts, reports | Partially reviewed; historical sufficiency tests and current financial-window test cover key paths |
+| Conversion Rate | Conversions / sessions | Percent with zero-session guard | GA4 completed reporting date/to-date scope | KPI card, tracker, alerts, reports | Partially reviewed; covered by shared/GA4 regression suite, not provider-validated |
+| Engagement Rate | GA4 engagement rate normalized to percent | Percent | GA4 completed reporting date/to-date scope | KPI card, tracker, alerts, reports | Partially reviewed; covered by formula path, not provider-validated |
+| Custom or unsupported KPI rows | Saved `kpis.currentValue` | Manual/unsupported value is preserved; no guessed recompute | Campaign + `google_analytics`; no automatic current-value formula | KPI card, alerts if enabled, reports | Proven locally for forward recompute preservation; prior zero-overwrite damage not repairable without original value |
+| KPI progress history | Recompute job -> `kpi_progress` rows | Daily point, rolling averages, trend direction | Auto GA4 daily rows with `auto:ga4_daily:YYYY-MM-DD` notes | Trends, alerts, downstream summaries | Partially reviewed; standard forward paths covered, deployed historical data not inventoried locally |
+| Active KPI notifications | Alert check -> notification row metadata keyed by KPI ID | One active GA4 in-app alert per unresolved breach; older duplicate KPI alerts resolved/suppressed | Campaign, KPI ID, latest duplicate row per campaign+metric/name | Bell, Notifications center, action URL | Proven locally for duplicate forward path and cleanup boundary; deployed existing notification state not inventoried locally |
+| KPI alert emails and audit rows | Alert monitoring -> email send claim/audit | Provider acceptance is not confirmed delivery; duplicate GA4 KPI IDs suppressed before claim/send | Campaign, KPI ID, frequency window, recipients | Email provider, audit retry path | Partially reviewed; local audit/retry/idempotency covered, provider delivery not locally verifiable |
+| Scheduled/test/manual GA4 report KPI tables | GA4 report scheduler/PDF builder -> persisted platform KPI rows | Persisted KPI `currentValue` and `targetValue`; fail closed on preflight/PDF/KPI-read failures for covered creation/send paths | Campaign + report config; preflight recompute before send/test/manual snapshot creation | PDF attachments, report sends, manual snapshots | Proven locally for scheduled/test/manual guards by source regression tests; direct historical snapshot PDF download remains partially reviewed |
+| Damaged-data inventory | `server/ga4-kpi-damaged-data-cleanup.ts` | Dry-run inventory; bounded apply only for proven financial drift and duplicate notifications | Target database, optional campaign filter | Data cleanup decision, certification evidence | Locally covered by regression tests; no target database dry-run/apply run in this queue |
+
+### End-To-End Trace Matrix
+
+| Path | Source -> storage -> API/UI -> downstream trace | Evidence status |
+| --- | --- | --- |
+| KPI create | UI create -> platform KPI route with campaign access -> storage create -> GA4 recompute for GA4 rows -> alert check -> frontend query invalidation | Partially reviewed; route/source guards covered, post-fix UI validation not run |
+| KPI edit | UI update -> `ensureKpiAccess` + platform check -> storage update -> GA4 recompute when GA4 campaign row -> alert check -> query invalidation | Partially reviewed; route behavior traced, post-fix UI validation not run |
+| KPI delete | UI delete -> `ensureKpiAccess` + platform check -> storage delete/cascade -> notification visibility refresh | Partially reviewed; access/delete mechanics traced, full destructive UI validation not run |
+| Daily/on-demand recompute | GA4 daily/on-demand refresh -> `runGA4DailyKPIAndBenchmarkJobs` -> `storage.updateKPI` -> progress history -> alert checks | Proven locally for fixed financial windows and custom preservation; live provider/deployed scheduler not locally verifiable |
+| Source add/edit/delete recompute | GA4 revenue/spend route -> source mutation/recalc -> GA4 KPI/Benchmark recompute -> alert check -> response/frontend refresh | Proven locally by route-order regression guards; source modal/list UI display not post-fix validated |
+| Alerts/notifications | Persisted `kpis.currentValue` -> `checkPerformanceAlerts`/immediate email path -> latest-row guard -> notification/email audit | Proven locally for duplicate latest-row behavior; provider delivery external |
+| Scheduled/test/manual reports | Report preflight -> GA4 recompute result check -> PDF builder -> KPI rows from storage -> send/snapshot creation | Proven locally for covered send/test/manual creation paths; direct existing snapshot PDF download is partially reviewed |
+| Existing damaged data | Read-only inventory -> candidate/skip classification -> explicit `--apply` only for proven boundaries | Proven locally for script behavior; target database not inventoried/applied locally |
+
+### Downstream Propagation Matrix
+
+| Downstream consumer | KPI value used | Propagation rule | Status |
+| --- | --- | --- | --- |
+| KPI tab cards/grid | Visible/current KPI values and saved KPI rows | Render campaign-scoped GA4 KPIs and current-vs-target state | Partially reviewed; no current post-fix UI validation |
+| KPI tracker summary | KPI card status/progress | Aggregate counts and average progress after insufficiency/blocking policy | Partially reviewed; shared tests exist, no full UI certification pass |
+| KPI progress/history | Persisted recompute value | Auto point only for computable GA4 KPI metrics | Proven locally for custom skip and financial window fixed paths |
+| In-app notification bell/center | Persisted KPI breach state | Latest GA4 duplicate row wins; older duplicate notifications resolved/suppressed | Proven locally by duplicate-alert regression and cleanup boundary test |
+| Immediate/scheduled KPI emails | Persisted KPI breach state | Latest GA4 duplicate row must be sendable before claim/send; provider acceptance is not delivery | Partially reviewed; local email paths covered, provider delivery external |
+| Scheduled/test/manual GA4 report PDFs | Persisted `platformKPIs` rows | Preflight recompute must process target campaign; PDF unavailable fails closed for covered creation/send paths | Proven locally for covered paths |
+| Direct historical snapshot PDF download | Shared PDF builder reads current persisted KPI rows | No recompute preflight on read/download to avoid extra side effects | Partially reviewed; product decision or narrow fix still required before certification |
+| GA4 Insights and other related consumers | KPI/Benchmark context where used | Not reopened in this KPI-only queue except direct report dependencies | Not locally verifiable in this queue |
+| Existing-data cleanup | Persisted KPI rows, notifications, email audit rows | Dry-run inventory first; mutate only exact proven candidate boundaries | Locally covered script behavior; deployed data not inspected |
+
+### Source Lifecycle Matrix
+
+| Lifecycle path | Current local status |
+| --- | --- |
+| KPI add/create | Partially reviewed; API route and recompute side effects traced, post-fix UI validation not run |
+| KPI edit/update | Partially reviewed; API route and recompute side effects traced, post-fix UI validation not run |
+| KPI delete | Partially reviewed; access guard and notification visibility behavior traced, post-fix UI validation not run |
+| Revenue source add/edit/delete | Proven locally for GA4 recompute ordering via route guard tests; source modal/list UI not post-fix validated |
+| Spend source add/edit/delete | Proven locally for GA4 recompute ordering via route guard tests; source modal/list UI not post-fix validated |
+| Scheduler refresh | Proven locally for recompute call paths and formulas; deployed scheduler timing not locally verifiable |
+| Manual/on-demand refresh | Partially reviewed through shared recompute coverage; live provider response not locally verifiable |
+| Alerts/notifications | Proven locally for latest-row duplicate guard; provider delivery external |
+| Reports | Proven locally for scheduled/test/manual report creation/send guards; direct snapshot PDF read path partially reviewed |
+| Existing damaged data | Locally covered inventory/cleanup script behavior; deployed dry-run/apply evidence missing |
+
+### Negative-Case Matrix
+
+| Negative case | Expected behavior | Evidence status |
+| --- | --- | --- |
+| Current-day imported revenue/spend changes after yesterday | Persisted financial KPI values include current UTC source totals | Proven locally by financial-window regression |
+| Zero or missing spend for CPA/ROAS/ROI | Avoid misleading financial ratios where sufficiency rules require inputs | Partially reviewed through math/regression coverage |
+| Unsupported/custom GA4 KPI metric | Do not overwrite current value to guessed `0`; do not create auto progress point | Proven locally by custom preservation regression |
+| Duplicate active GA4 KPI rows for same campaign+metric/name | Only latest row can create/preserve active alert/email eligibility | Proven locally by duplicate-alert regression |
+| Older duplicate active notification exists | Inventory/apply can mark notification resolved/superseded without hard delete | Proven locally by damaged-data cleanup regression |
+| Existing custom row currently `0` | Inventory only; leave unchanged because original manual value is unproven | Proven locally by cleanup boundary regression |
+| Access-token GA4 campaign in cleanup | Skip financial cleanup because live provider totals may be involved | Proven locally by cleanup boundary regression |
+| Report preflight recompute fails or skips campaign | Scheduled/test/manual report path fails closed before artifact/send/snapshot | Proven locally by report-consumer regression |
+| KPI rows cannot be loaded for a KPI-section PDF | KPI-section PDF generation fails closed | Proven locally by report-consumer regression |
+| Direct historical snapshot PDF download | No recompute preflight currently runs on read/download | Partially reviewed; certification gap |
+
+### Test Coverage Matrix
+
+| Coverage area | Test evidence |
+| --- | --- |
+| Persisted financial source windows | `server/ga4-kpi-financial-window-regression.test.ts` |
+| GA4 source lifecycle recompute ordering | `server/ga4-source-lifecycle-recompute-regression.test.ts` |
+| Custom/unsupported KPI preservation | `server/ga4-kpi-custom-preservation-regression.test.ts` |
+| Duplicate latest-row alert behavior | `server/ga4-kpi-duplicate-alert-regression.test.ts` |
+| Scheduled/server report KPI consumers | `server/ga4-kpi-report-consumer-regression.test.ts` |
+| Existing damaged-data inventory/cleanup boundaries | `server/ga4-kpi-damaged-data-cleanup-regression.test.ts` |
+| Existing GA4 KPI/financial/math regressions | `server/ga4-kpi-benchmark-summary-regression.test.ts`, `server/ga4-kpi-benchmark-roas-regression.test.ts`, `server/ga4-kpi-regression.test.ts`, `server/ga4-financial-rules.test.ts` |
+| Type/contract safety | `npm run check` |
+
+### Documentation Alignment Check
+
+| Document | Alignment status |
+| --- | --- |
+| `GA4/KPIS.md` | Updated in Current Commit 7 to retract the stale June 27 production-ready claim and defer readiness status to this file |
+| `GA4/KPIS_PRODUCTION_READINESS.md` | Updated in Current Commit 7 with final certification result, matrices, evidence, and remaining gates |
+| `GA4/REFRESH_AND_PROCESSING.md` | Already aligned in Current Commit 5 for fail-closed GA4 report preflight behavior |
+| `PRODUCTION_READINESS.md` | Already contains the reusable anti-overclaim/certification requirement; not touched in Current Commit 7 |
+
 ## Current Production-Readiness Map
 
 ### 1. KPI Tab UI And Creation Flow
 
-Status: Partially reviewed. The visible GA4 KPI create/edit/delete UI flow is locally traced, but create/update side effects still depend on blocked persisted recompute paths.
+Status: Partially reviewed. The visible GA4 KPI create/edit/delete UI flow is locally traced, and current route/recompute side effects have targeted coverage, but post-fix UI validation has not been run for the current queue.
 
 Proven locally:
 
@@ -179,7 +286,7 @@ Historical validation:
 
 ### 2. KPI Current-Value Calculation
 
-Status: Not production-ready. Standard visible formulas, persisted financial source windows, and custom/unsupported KPI preservation now have forward-path fixes, but duplicate-alert, scheduled-report, existing-data, and final certification paths remain blocked or partially reviewed.
+Status: Partially reviewed. Standard formulas, persisted financial source windows, custom/unsupported preservation, duplicate-alert behavior, scheduled/manual report consumer guards, and damaged-data inventory boundaries now have local fixes and targeted tests; production-ready certification remains blocked by UI, deployed-data, direct snapshot PDF, and provider/deployed validation gates.
 
 Resolved blocker:
 
@@ -220,7 +327,7 @@ Resolved validation:
 
 ### 4. KPI Alerts And Notifications
 
-Status: Not production-ready for current local code. In-app alert URL and visibility mechanics are partially proven, but alert decisions consume persisted `currentValue` and duplicate campaign+metric handling is blocked. Provider delivery evidence remains an external caveat.
+Status: Partially reviewed. In-app alert URL, visibility mechanics, duplicate latest-row guard, and local email audit/retry paths have targeted coverage. Provider delivery evidence and deployed existing alert/audit state remain external or data-validation gates.
 
 Proven locally:
 
@@ -235,9 +342,9 @@ Historical resolved blocker:
 
 - platform GA4 KPI alert checks use persisted `currentValue`; persisted ROAS now uses the same ratio semantics as the visible GA4 KPI cards.
 
-Current blocker:
+Current certification gaps:
 
-- persisted `currentValue` can still be stale or wrong when duplicate campaign+metric rows, scheduled/server report consumers, or existing damaged rows are not handled correctly.
+- deployed persisted `currentValue` rows remain unproven until the Current Commit 6 damaged-data script is dry-run/applied against the target database where appropriate.
 
 Not locally verifiable:
 
@@ -248,7 +355,7 @@ Not locally verifiable:
 
 ### 5. Refresh, Scheduler, And Recompute
 
-Status: Not production-ready. Daily, on-demand, auto-refresh, KPI create/update recompute, persisted financial source-window recompute, source mutation route recompute, and custom/unsupported KPI row preservation now have forward-path fixes, but duplicate-alert, scheduled-report, existing-data, and final certification paths remain blocked or partially reviewed. Deployed scheduler timing remains an external runtime caveat.
+Status: Partially reviewed. Daily, on-demand, auto-refresh, KPI create/update recompute, persisted financial source-window recompute, source mutation route recompute, custom/unsupported preservation, duplicate-alert handling, report guards, and damaged-data inventory now have local forward fixes or guard coverage. Deployed scheduler timing and post-fix UI validation remain certification gates.
 
 Proven locally:
 
@@ -265,7 +372,7 @@ Historical resolved blockers:
 
 ### 6. Ownership And Scoping
 
-Status: Partially reviewed. Platform KPI CRUD ownership/scoping is locally traced; source lifecycle paths and downstream persisted consumers remain outside that proof.
+Status: Partially reviewed. Platform KPI CRUD ownership/scoping is locally traced; GA4 source lifecycle route ordering and scheduled/test/manual report consumers now have targeted coverage, but source modal/list UI display and deployed/provider paths remain unproven.
 
 Proven locally:
 
@@ -313,133 +420,99 @@ Current Commit 6 cleanup boundary:
 - Email audit rows are inventoried but retained with `duplicate_email_audit_retained`; retry/send paths now suppress superseded GA4 KPI IDs, but historical audit evidence is not rewritten.
 - Apply mode requires `--apply`; no local database apply has been run in this commit.
 
-## Current Blockers
+## Current Certification Gaps And Completed Local Fixes
 
-These blockers are current local implementation blockers. They supersede the older production-ready status and must be fixed before the GA4 KPIs tab can be certified again.
+The current local fix queue is implemented. The remaining items below are certification gaps, deployed/provider validation gates, or product-decision gaps, not newly identified broad refactor requests.
 
-### KPI-BLOCKER-1: Persisted financial source window can diverge from visible KPI values
-
-Root cause:
-
-- the visible GA4 KPI tab reads imported revenue and spend through today's active source records
-- `server/ga4-kpi-benchmark-jobs.ts` sums imported revenue and spend only through the GA4 job report date, which usually defaults to yesterday
-
-Affected paths:
-
-- persisted `kpis.currentValue` for Revenue, ROAS, ROI, and CPA
-- KPI progress history and rolling averages
-- in-app alert decisions and notification visibility
-- immediate and scheduled KPI alert email eligibility
-- scheduled/server GA4 report KPI rows
-
-Required evidence before closure:
-
-- regression test where a current-day spend record changes persisted ROAS, ROI, and CPA
-- regression test where a current-day GA4-context revenue record changes persisted Revenue, ROAS, and ROI
-- proof that GA4 native completed-day windows remain unchanged while imported financial source windows match the visible KPI tab contract
-
-### KPI-BLOCKER-2: GA4 source lifecycle recompute route coverage needed completion
+### CERT-GAP-1: Post-fix UI validation has not been run for the current queue
 
 Root cause:
 
-- the shared `recomputeCampaignDerivedValues` helper refreshes LinkedIn KPI rows and alert checks, not GA4 KPI rows
-- several GA4 revenue source paths call that helper before returning
-- several GA4 spend source paths recalculate campaign spend but do not prove immediate GA4 KPI recompute and alert reconciliation
+- Local source tests cover route/order/formula guards, but they do not exercise the browser UI after Current Commits 1-6.
 
 Affected paths:
 
-- revenue source add/edit/delete
-- spend source add/edit/delete
-- alert checks immediately after source changes
-- frontend refetches after source mutations
+- GA4 KPI create/edit/delete UI
+- visible KPI current values and tracker summary
+- source add/edit/delete flows that should trigger KPI refetch/recompute
+- visible notification state after duplicate or resolved alerts
+- report UI/test-send/manual snapshot paths where available
 
-Implementation status:
+Required evidence before certification:
 
-- Current Commit 2 implements the forward route fix in `server/routes-oauth.ts`.
-- GA4 revenue source add/edit/delete routes now pass platform context into the recompute helper so GA4-context mutations run the existing GA4 KPI/Benchmark recompute job before the helper-level alert check.
-- GA4 spend source add/edit/delete routes now run the existing GA4 KPI/Benchmark recompute job after campaign spend totals are recalculated or cleared.
-- `server/ga4-source-lifecycle-recompute-regression.test.ts` guards the route ordering and platform-context propagation.
+- browser validation against the current code after Commits 1-7
+- screenshot or written result for the exact UI flows exercised
+- confirmation that no stale loading/empty/report states mask KPI value failures
 
-Required evidence before final certification:
-
-- source lifecycle matrix covering add, edit, delete, refresh, scheduler, source modal/list display, totals recompute, persisted KPI recompute, alerts, notifications, and reports
-- route-level or integration-style regression tests proving GA4 KPI recompute happens before alert checks where the route promises immediate correctness
-
-### KPI-BLOCKER-3: Custom or unknown GA4 KPI rows needed zero-overwrite preservation
+### CERT-GAP-2: Deployed damaged-data inventory and optional apply have not been run for the current blocker set
 
 Root cause:
 
-- `computeKpiValue` returns `0` for an unknown metric or custom KPI name
-- the GA4 KPI recompute job writes that value back to `kpis.currentValue` and can create progress history from the guessed zero
+- Current Commit 6 adds `server/ga4-kpi-damaged-data-cleanup.ts`, but no target database dry-run or apply evidence was produced in this local commit queue.
 
 Affected paths:
 
-- GA4 custom KPI tile rows
-- legacy GA4 KPI rows with names or metrics outside the standard template set
-- alerts, notifications, emails, history, and scheduled reports for those rows
+- persisted `kpis.currentValue` rows affected by financial source-window drift
+- active in-app notifications tied to superseded duplicate GA4 KPI rows
+- unproven custom zero rows that must remain unchanged unless external evidence proves the original value
+- email audit rows that are inventoried but retained
 
-Implementation status:
+Required evidence before certification:
 
-- Current Commit 3 implements the forward recompute fix in `server/ga4-kpi-benchmark-jobs.ts`.
-- Standard GA4 KPI templates still recompute through the existing formula path.
-- Unsupported/custom GA4 KPI rows are skipped by the shared recompute job before `currentValue` updates and auto progress-history writes.
-- `server/ga4-kpi-custom-preservation-regression.test.ts` proves blank-metric custom rows and `__custom__` marker rows are not overwritten or given guessed-zero progress points.
+- dry-run command against the target database
+- candidate count, skipped count, sample row IDs, source windows, and reason codes
+- reviewed `--apply` only for exact proven candidates, if any
+- post-apply dry-run with no remaining candidates for the applied boundary
 
-Required evidence before final certification:
-
-- existing damaged-data inventory for any custom/unknown GA4 KPI rows previously overwritten to `0`
-- alert/report consumer certification remains covered by the duplicate-alert, scheduled-report, and final certification gates below
-
-### KPI-BLOCKER-4: Duplicate GA4 KPI latest-row-wins alert behavior needed a forward fix
+### CERT-GAP-3: Direct historical snapshot PDF download semantics remain partially reviewed
 
 Root cause:
 
-- current in-app alert dedupe is keyed by `kpiId`
-- `GA4/KPIS.md` requires duplicate active GA4 KPIs for the same campaign and metric to use the latest row and avoid competing alerts
+- Current Commit 5 fail-closes scheduled send, test-send, manual snapshot creation, and KPI-section PDF row loading.
+- The direct `/api/report-snapshots/:snapshotId/pdf` read/download path still uses the shared server PDF builder but intentionally does not run GA4 KPI/Benchmark recompute preflight on read/download to avoid extra alert/recompute side effects.
 
 Affected paths:
 
-- alert creation and resolution
-- notification listing and visible alert dedupe
-- immediate and scheduled email eligibility
+- direct historical snapshot PDF downloads for reports that include GA4 KPI rows
+- any user expectation that a downloaded historical snapshot PDF is either immutable historical output or freshly recomputed output
 
-Required evidence before closure:
+Required evidence or product decision before certification:
 
-- regression test with two active GA4 KPI rows for the same campaign and metric
-- proof only the latest row can create or keep the active breach alert
-- proof older duplicate alerts are resolved or suppressed without deleting KPI history
+- decide whether direct snapshot PDF downloads should be immutable historical artifacts or fresh regenerated artifacts
+- if fresh, add a narrow fail-closed preflight that does not create unwanted alert/send side effects
+- if historical, store/render the snapshot's own KPI values instead of current persisted KPI rows, or explicitly document the historical limitation
 
-Implementation status:
-
-- Current Commit 4 implements the forward fix in `server/kpi-scheduler.ts`, `server/services/alert-monitoring.ts`, and `server/utils/ga4-kpi-alert-dedupe.ts`.
-- The scheduler builds a GA4 `campaign + metric/name` latest-row map from loaded KPI rows and resolves older duplicate in-app alerts as `superseded` before current-value resolution or alert creation.
-- Immediate email, retry sendability, and scheduled email scans reject older duplicate GA4 KPI rows before threshold evaluation, audit claims, or email sends.
-- `server/ga4-kpi-duplicate-alert-regression.test.ts` proves latest-row selection for same-campaign duplicates, campaign isolation when the latest row is absent, pre-alert scheduler suppression, pre-claim immediate/retry email suppression, scheduled email suppression, and unchanged `kpiId` notification dedupe anchors.
-
-Remaining evidence before final certification:
-
-- existing production/development data still needs a read-only inventory for older duplicate notification and email-audit state before any cleanup decision
-- this forward fix does not close scheduled/server report consumer certification or the final `PRODUCTION_READINESS.md` checklist pass
-
-### KPI-BLOCKER-5: Scheduled/server report consumers were under-scoped
+### CERT-GAP-4: Deployed/provider behavior is not locally verifiable
 
 Root cause:
 
-- browser-generated GA4 reports use live frontend KPI values
-- scheduled/server GA4 reports read persisted `platformKPIs` rows and therefore depend on persisted recompute correctness
-- the previous readiness document treated Reports as out of scope unless reopened, but this is a direct downstream KPI value path
+- Local tests cannot prove live GA4 provider responses, deployed scheduler timing, provider delivery events, or inbox receipt.
 
 Affected paths:
 
-- scheduled GA4 PDF KPI tables
-- report scheduler pre-send recompute
-- report snapshot/audit values that represent KPI current values
+- live GA4 API/token-refresh behavior
+- deployed daily/auto-refresh scheduler execution
+- email provider acceptance vs confirmed delivery
+- actual inbox receipt
 
-Required evidence before closure:
+Required evidence before certification:
 
-- tests or trace proving scheduled/server reports use corrected persisted KPI values after recompute
-- negative-case coverage where recompute fails or skips unsupported/custom KPI rows without producing misleading report values
+- deployed scheduler run evidence or controlled job execution logs
+- provider/API acceptance evidence separated from confirmed delivery evidence
+- provider delivery events or real inbox validation where delivery is claimed
 
+### Completed Local Fixes In The Current Queue
+
+| Commit | Local result | Validation evidence |
+| --- | --- | --- |
+| Current Commit 0 | Retracted stale readiness claim and created the current fix queue | Documentation-only review |
+| Current Commit 1 | Persisted financial source windows now align with visible GA4 KPI source-backed financial window | `server/ga4-kpi-financial-window-regression.test.ts` |
+| Current Commit 2 | GA4 revenue/spend source mutation paths now trigger GA4 KPI recompute before alert checks where immediate correctness is promised | `server/ga4-source-lifecycle-recompute-regression.test.ts` |
+| Current Commit 3 | Custom/unsupported GA4 KPI rows are preserved during recompute and do not receive guessed-zero progress points | `server/ga4-kpi-custom-preservation-regression.test.ts` |
+| Current Commit 4 | Duplicate GA4 KPI alert/email eligibility uses latest row per campaign+metric/name | `server/ga4-kpi-duplicate-alert-regression.test.ts` |
+| Current Commit 5 | Scheduled/test/manual GA4 report KPI consumers fail closed on recompute/PDF/KPI-load failures | `server/ga4-kpi-report-consumer-regression.test.ts` |
+| Current Commit 6 | Existing damaged-data inventory and bounded cleanup script separates proven candidates from unproven skipped rows | `server/ga4-kpi-damaged-data-cleanup-regression.test.ts` |
+| Current Commit 7 | Final documentation certification pass updates status, matrices, evidence, and stale functional-doc readiness claim | Documentation diff plus targeted regression suite and `npm run check` |
 ## Historical Resolved Blockers
 
 The historical blockers below were resolved by the June 27, 2026 Commits 1-6, deployed, UI-validated, and followed by the applied ROAS persisted cleanup. They remain useful background, but they do not certify the current GA4 KPI tab.
@@ -587,7 +660,7 @@ Validation:
 Implementation status:
 
 - forward-path fix implemented and validated for persisted GA4 KPI financial source windows
-- this does not certify GA4 KPIs as production-ready because Commits 2-6 and final certification remain incomplete
+- this fix alone did not certify GA4 KPIs as production-ready; Current Commit 7 records the final certification result
 
 Files expected:
 
@@ -616,7 +689,7 @@ Implementation status:
 - validation passed: `npm test -- server/ga4-source-lifecycle-recompute-regression.test.ts`
 - validation passed: `npm test -- server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-benchmark-roas-regression.test.ts`
 - validation passed: `npm run check`
-- this does not certify GA4 KPIs as production-ready because Commits 3-6 and final certification remain incomplete
+- this fix alone did not certify GA4 KPIs as production-ready; Current Commit 7 records the final certification result
 
 Files expected:
 
@@ -641,7 +714,7 @@ Implementation status:
 
 - forward-path recompute preservation implemented and validated for custom/unsupported GA4 KPI rows
 - validation passed: `npm test -- server/ga4-kpi-custom-preservation-regression.test.ts`
-- this does not certify GA4 KPIs as production-ready because Commits 4-6 and final certification remain incomplete
+- this fix alone did not certify GA4 KPIs as production-ready; Current Commit 7 records the final certification result
 
 Files expected:
 
@@ -764,6 +837,13 @@ Validation:
 - all targeted regression tests from Commits 1-6 pass
 - `npm run check` passes
 - production-readiness answer cites current evidence and does not rely on the June 27 historical claim
+
+Implementation status:
+
+- Current Commit 7 updates this file with the final certification result from current evidence.
+- Current Commit 7 updates `GA4/KPIS.md` to remove the stale June 27 production-ready statement.
+- The certification result is not production-ready, not because the local fix queue is incomplete, but because UI validation, deployed damaged-data inventory/apply evidence, direct historical snapshot PDF semantics, and deployed/provider behavior remain unproven or partially reviewed.
+- The complete value inventory, end-to-end trace matrix, downstream propagation matrix, source lifecycle matrix, negative-case matrix, test coverage matrix, and documentation alignment check are recorded in `Current Commit 7 Certification Pass`.
 
 ## Historical Completed Fix Queue
 
@@ -897,25 +977,39 @@ Completed behavior:
 
 ## Validation Evidence And Gaps
 
-Current validation status:
+Current local validation status after Current Commits 1-7:
 
-- Current Commit 1 forward-path code and focused tests have been implemented for persisted GA4 KPI financial source windows
-- remaining runtime fixes from Current Commits 5-6 have not been implemented yet
-- no final production-readiness certification pass has been run yet
-- the historical June 27 tests remain useful regression coverage for ROAS ratio, CPA sufficiency, alert URL/visibility, and email gating, but they do not prove current GA4 KPI production readiness
+- Current Commit 1 forward-path code and focused tests have been implemented for persisted GA4 KPI financial source windows.
+- Current Commit 2 source lifecycle route-order coverage has been implemented for GA4 revenue/spend mutation paths that affect KPI inputs.
+- Current Commit 3 custom/unsupported KPI preservation has been implemented for the shared GA4 recompute job.
+- Current Commit 4 duplicate active GA4 KPI latest-row alert/email eligibility has been implemented for scheduler, immediate email, retry, and scheduled email paths.
+- Current Commit 5 scheduled/test/manual GA4 report KPI consumer fail-closed guards have been implemented.
+- Current Commit 6 existing damaged-data inventory and bounded cleanup script has been implemented.
+- Current Commit 7 documentation now reflects the current certification result and no longer relies on the June 27 historical claim.
 
-Current covered paths after Commits 1-4:
+Current local automated validation run during Current Commit 7:
 
-- current-day imported revenue/spend records in persisted GA4 KPI recompute are covered by `server/ga4-kpi-financial-window-regression.test.ts`
-- GA4 source lifecycle route recompute ordering and platform-context propagation are covered by `server/ga4-source-lifecycle-recompute-regression.test.ts`
-- custom/unsupported GA4 KPI row recompute preservation is covered by `server/ga4-kpi-custom-preservation-regression.test.ts`
-- duplicate GA4 KPI latest-row-wins alert eligibility is covered by `server/ga4-kpi-duplicate-alert-regression.test.ts`
+- `npm test -- server/ga4-kpi-financial-window-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-kpi-damaged-data-cleanup-regression.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/ga4-kpi-benchmark-roas-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-financial-rules.test.ts`
+- Result: 10 test files passed, 50 tests passed.
+- `npm run check`
+- Result: TypeScript check passed.
 
-Current uncovered paths that must be covered before certification:
+Current covered paths after Commits 1-7:
 
-- full GA4 source lifecycle matrix beyond the route-order guard, including source modal/list display, scheduler/provider refresh, notifications, and report consumers
-- scheduled/server GA4 report consumption of persisted KPI values
-- existing damaged-data boundaries for the current blockers
+- current-day imported revenue/spend records in persisted GA4 KPI recompute are covered by `server/ga4-kpi-financial-window-regression.test.ts`.
+- GA4 source lifecycle route recompute ordering and platform-context propagation are covered by `server/ga4-source-lifecycle-recompute-regression.test.ts`.
+- custom/unsupported GA4 KPI row recompute preservation is covered by `server/ga4-kpi-custom-preservation-regression.test.ts`.
+- duplicate GA4 KPI latest-row-wins alert eligibility is covered by `server/ga4-kpi-duplicate-alert-regression.test.ts`.
+- scheduled/test/manual GA4 report KPI consumer fail-closed guards are covered by `server/ga4-kpi-report-consumer-regression.test.ts`.
+- damaged-data inventory, explicit `--apply`, proven candidate boundaries, and skip reason behavior are covered by `server/ga4-kpi-damaged-data-cleanup-regression.test.ts`.
+
+Current uncovered or not-finalized paths before certification:
+
+- post-fix UI validation for GA4 KPI create/edit/delete, visible current values, source mutation refresh, alerts/notifications, and report UI paths.
+- target database dry-run/apply evidence for `server/ga4-kpi-damaged-data-cleanup.ts`.
+- direct historical snapshot PDF read/download semantics for GA4 KPI rows.
+- live GA4 provider behavior, deployed scheduler execution, provider email delivery events, and actual inbox receipt.
+- GA4 Insights or other related non-report consumers that may read KPI context were not reopened in this KPI-only fix queue and must not be treated as proven.
 
 Historical validation run during the June 27, 2026 audit:
 
@@ -923,50 +1017,39 @@ Historical validation run during the June 27, 2026 audit:
 
 Result:
 
-- 13 test files passed
-- 238 tests passed
+- 13 test files passed.
+- 238 tests passed.
 
 Historical limitation from the initial audit:
 
-- this green suite did not prove production readiness at that time because `server/ga4-cross-tab-consistency.test.ts` encoded old percent ROAS expectations before Commit 1.
+- this green suite did not prove production readiness at that time because `server/ga4-cross-tab-consistency.test.ts` encoded old percent ROAS expectations before the later fix.
 - the historical June 27 status relied on later fix validation, deployment, UI validation, and applied cleanup evidence, but the June 28 audit found additional unproven paths that now block certification.
 
 Commit 1-6 deployment and UI validation on June 27, 2026:
 
-- Commits 1-6 were implemented, committed, pushed, and deployed.
-- UI validation passed after deployment for the GA4 KPI and Benchmark readiness fix queue.
-
-Commit 6 implementation validation on June 27, 2026:
-
-- `npm test -- server/ga4-kpi-benchmark-roas-regression.test.ts server/ga4-kpi-regression.test.ts server/ga4-benchmark-regression.test.ts`
-- Result: 3 test files passed, 27 tests passed.
-- `npm run check`
-- Result: TypeScript check passed.
-- `npx tsx --env-file=.env server/ga4-roas-persisted-cleanup.ts`
-- Result: pre-apply dry-run reported 46 repair candidates and 56 skipped campaign-level reasons.
-- Dry-run sample: one GA4 ROAS KPI current row would change from `60926.4` to `127.35`; auto GA4 daily KPI progress rows for the same campaign would change from percent-style values such as `60926.4` to ratio values such as `127.35`.
-- `npx tsx --env-file=.env server/ga4-roas-persisted-cleanup.ts --apply`
-- Result: apply updated 46 persisted ROAS rows and left the 56 skipped campaign-level reasons untouched.
-- `npx tsx --env-file=.env server/ga4-roas-persisted-cleanup.ts`
-- Result: post-apply dry-run reported 0 remaining repair candidates and 56 skipped campaign-level reasons.
-- Skipped rows were left untouched because they lacked an active GA4 primary property or lacked persisted GA4 daily rows for the current primary property.
+- Historical Commits 1-6 were implemented, committed, pushed, and deployed for the narrower June 27 bug set.
+- Historical UI validation passed after deployment for the narrower GA4 KPI and Benchmark readiness fix queue.
+- This is not evidence for the June 28 Current Commits 1-7 queue.
 
 Out-of-scope note:
 
-- a broader run including `server/alert-email-delivery-regression.test.ts` produced one report-scheduler string-guard failure.
-- Reports are not broadly in GA4 KPI scope, but scheduled/server GA4 report KPI rows are direct downstream consumers and must be covered by the current fix queue.
+- broader report infrastructure remains outside this KPI-only certification except where reports directly consume GA4 KPI values.
+- scheduled/test/manual GA4 report KPI consumers are locally covered; direct historical snapshot PDF downloads remain a certification gap.
 
 ## Not Locally Verifiable
 
-The following require deployed or provider evidence:
+The following require manual, deployed, database, or provider evidence:
 
+- post-fix GA4 KPI UI validation for create/edit/delete, visible current values, source mutation refresh, alerts/notifications, and report UI paths
+- target-database dry-run/apply evidence for `server/ga4-kpi-damaged-data-cleanup.ts`
+- direct historical snapshot PDF semantics after product decision or narrow fix
 - live GA4 API token refresh behavior
 - live GA4 processing latency
 - deployed scheduler execution timing
 - provider-side email delivery events
 - actual inbox receipt
 
-These are external or deployed-runtime caveats. They do not override the current local implementation blockers listed above.
+These external, manual, or deployed-runtime caveats do not override the local fixes, but they prevent a production-ready certification until they are validated or explicitly excluded by product decision.
 
 ## Future Platform Template
 

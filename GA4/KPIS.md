@@ -6,9 +6,9 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 ## Production Readiness Status
 
-As of June 27, 2026, the GA4 `KPIs` tab is production-ready for the current GA4 code scope.
+As of June 28, 2026, the GA4 `KPIs` tab is not production-ready for the current GA4 code scope.
 
-The durable source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`. Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should continue to answer that GA4 KPIs are production-ready for the current GA4 code scope.
+The durable source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`. Current local fixes make GA4 KPIs eligible for certification, but the production-readiness answer must remain not production-ready unless the complete current value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, and validation evidence are covered from current code.
 
 For future platforms, use this file only as the functional KPI tab contract. Use `GA4/KPIS_PRODUCTION_READINESS.md` for the reusable production-readiness audit gates and source-specific proof requirements.
 
@@ -275,6 +275,6 @@ Important meaning:
 
 ## Current-State Note
 
-The GA4 `KPIs` tab is production-ready for the current GA4 code scope. The implementation remains intentionally split between live page rendering, persisted KPI rows/history, background GA4 jobs, and alert reconciliation, but that split is covered by the production-readiness evidence in `GA4/KPIS_PRODUCTION_READINESS.md`.
+The GA4 `KPIs` tab is not production-ready for the current GA4 code scope. The implementation remains intentionally split between live page rendering, persisted KPI rows/history, background GA4 jobs, and alert reconciliation; current local fixes are documented in `GA4/KPIS_PRODUCTION_READINESS.md`, but final certification remains blocked by the explicit evidence gates in that file.
 
 External/provider caveats, future-platform reuse requirements, and the exact completed fix queue are documented in `GA4/KPIS_PRODUCTION_READINESS.md`.

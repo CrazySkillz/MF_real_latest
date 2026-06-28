@@ -43,6 +43,8 @@ Important clarification:
 - campaign creation does not permanently populate these cards with one-time imported values
 - during campaign setup, the system stores the GA4 property and campaign selection/filter for this app campaign
 - after that, the Overview tab fetches current GA4 data for that saved scope and computes the cards from those query results
+- the GA4 daily scheduler persists completed-day daily facts, but it is not the only Overview fetch path
+- `Landing Pages` and `Conversion Events` are row-level live GA4 Data API views for the selected property, saved campaign scope, and selected Overview date range; they are not populated by allocating persisted daily totals into rows
 - for live GA4 properties, current tagged traffic may appear in `pageLocation` URLs before GA4 campaign attribution dimensions populate; the Overview query path may therefore use `pageLocation` `utm_campaign` as a fallback only when the primary campaign-dimension scoped result is empty
 - for Measurement Protocol or freshly tagged traffic, GA4 can expose selected-campaign traffic through `pageLocation` `utm_campaign` while exposing conversions and native revenue through `campaignName`; the Overview import path may supplement only missing `Conversions` and GA4-native `Revenue` from a compatible `campaignName` conversion/revenue query without changing the traffic totals
 - new live GA4 events appear in Overview only after GA4 has processed them and the page query refetches; page load/window focus can refetch immediately, and the to-date/breakdown queries also refetch periodically while the page is open
@@ -273,6 +275,7 @@ Important meaning:
 - it is not a rollup across unrelated campaigns in the property
 - it uses the same selected GA4 Overview date range as the nearby Summary, Campaign Breakdown, and current performance sections, not the app campaign's start/created date
 - revenue is intentionally not shown in `Landing Pages`; page-level rows remain traffic and conversion context only
+- numeric live or live-test GA4 property IDs use the live GA4 Data API path; zero row-level conversions are correct when GA4 returns zero conversions for the exact landing-page/source/medium grain
 - when GA4 returns primary landing-page traffic rows or same-scope `pageLocation` traffic-fallback rows with missing conversion values, conversions may be supplemented from conversion-prioritized same-scope `pageLocation` UTM rows only by exact `Landing page + Source/Medium` match
 - campaign-level conversions and campaign-matched imported revenue are not allocated into landing-page rows unless a future source provides real landing-page-level identifiers that can be matched safely
 - if GA4 cannot provide an exact row-level conversion match, `Conversions` and `Conv. rate` can correctly remain zero for that row
@@ -311,6 +314,7 @@ Current code-path meaning:
 - production table population uses the real GA4 query path, not a mock-refresh design
 - numeric GA4 property IDs must not be classified as the Yesop simulator; Overview values for live or mock-live numeric properties should come from the GA4 live import/query path plus persisted selected-campaign daily facts, not a deterministic simulation baseline
 - `Landing Pages` and `Conversion Events` now use the selected GA4 Overview date range; explicit API `startDate` remains a compatibility override for callers that intentionally request it
+- `Landing Pages` and `Conversion Events` are not reconstructed from scheduler-populated `ga4_daily_metrics`; they fetch row-level GA4 views directly and use exact-match fallback supplementation only when GA4 returns compatible row-level values
 - when attribution dimensions are empty or partial for fresh live traffic, table queries may fall back to same-scope `pageLocation` `utm_campaign`; landing page source/medium and conversion-event counts can then be supplemented only by exact row-level match
 
 Important meaning:
@@ -344,6 +348,7 @@ Landing Pages:
 
 - confirm rows populate for the same GA4 property, selected Overview date range, and campaign scope
 - confirm `Source/Medium`, `Sessions`, `Users`, `Conversions`, and `Conv. rate` look coherent for that scope, including the case where primary campaign dimensions are empty and rows come from `pageLocation` UTM traffic fallback
+- confirm row-level `Conversions = 0` is accepted only when GA4 itself returns zero for the exact landing-page/source/medium grain, not because campaign-level conversions failed to allocate into page rows
 - confirm campaign-only imported revenue is not allocated into landing-page rows
 - confirm page rows are not unexpectedly mixing unrelated campaigns due to bad GA4 campaign tagging/filtering
 

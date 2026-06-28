@@ -160,6 +160,8 @@ The GA4 analytics page has live query refetches in addition to the background sc
 - `/api/campaigns/:id/ga4-landing-pages` and `/api/campaigns/:id/ga4-conversion-events` use the selected GA4 Overview date range and refetch on page load/reconnect for the selected property and saved GA4 campaign scope
 - `/ga4-daily` reads persisted daily rows first; if the selected campaign/property has no stored rows for the requested window, it attempts an on-demand Data API backfill, persists the rows, and returns the stored result
 - if persisted selected-campaign daily rows already have traffic but no conversions or native revenue, `/ga4-daily` may self-repair them by rerunning the same selected-campaign daily import and upserting only when the refetch recovers conversion or revenue values
+- `Landing Pages` and `Conversion Events` are not reconstructed from `ga4_daily_metrics`; they fetch row-level GA4 Data API views directly and use exact-match fallback supplementation only when GA4 returns compatible row-level values
+- numeric live or live-test GA4 property IDs can correctly show row-level `Conversions = 0` when GA4 returns zero conversions for the exact table grain; production properties with conversion-bearing rows should populate through the same live API path
 
 Important timing:
 

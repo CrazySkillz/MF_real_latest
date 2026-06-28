@@ -788,11 +788,13 @@ Inputs:
 Current logic:
 
 - rows use the selected Overview date range.
+- rows are fetched through the live `/ga4-landing-pages` GA4 Data API path for numeric property IDs, not reconstructed from scheduler-populated `ga4_daily_metrics`.
 - revenue is intentionally not shown.
 - imported campaign revenue is not allocated into landing-page rows.
 - source/medium can be derived from tagged `pageLocation` fallback rows when attribution dimensions are empty.
 - when primary landing-page rows or same-scope `pageLocation` traffic-fallback rows have traffic but missing conversion/revenue values, conversion-prioritized same-scope `pageLocation` UTM rows may supplement conversions only by exact `Landing page + Source + Medium` match.
 - unmatched fallback rows are not added and campaign-level conversions are not allocated into landing-page rows.
+- zero row-level conversions are valid only when GA4 returns zero for the exact landing-page/source/medium grain.
 - row-level Users values are directional and are not expected to reconcile exactly to the top Users card.
 
 Proven locally:
@@ -833,11 +835,13 @@ Inputs:
 Current logic:
 
 - rows use the selected Overview date range.
+- rows are fetched through the live `/ga4-conversion-events` GA4 Data API path for numeric property IDs, not reconstructed from scheduler-populated `ga4_daily_metrics`.
 - revenue is intentionally not shown.
 - imported campaign revenue is not allocated into event rows.
 - when primary event rows have event counts/users but missing conversion/revenue values, conversion-prioritized same-scope `pageLocation` UTM rows may supplement conversions only by exact `Event` name match.
 - rows that already have conversions/revenue are not overwritten by fallback rows.
 - unmatched fallback rows are not added and campaign-level conversions are not allocated into event rows.
+- zero row-level conversions are valid only when GA4 returns zero for the exact event grain.
 - row-level Users values are directional and are not expected to reconcile exactly to the top Users card.
 
 Proven locally:

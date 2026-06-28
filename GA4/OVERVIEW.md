@@ -247,6 +247,7 @@ Important clarification:
 
 - the visible column label is `Revenue`, not `GA4 Revenue`, because the value can include exact campaign-matched imported revenue
 - `Campaign Breakdown` revenue starts with GA4 revenue attributed to each GA4 campaign row
+- Campaign Breakdown row `Sessions`, `Users`, `Conversions`, and GA4-native `Revenue` remain the raw GA4 breakdown row values returned for the selected property and saved campaign scope; they are not scaled to Summary card totals
 - exact campaign-matched imported revenue may be added only when a source saves real campaign-value mappings that match a GA4 campaign row
 - it is not a proportional allocation of imported external revenue
 - campaign financial cards and campaign-breakdown revenue should not be treated as interchangeable numbers
@@ -272,7 +273,7 @@ Important meaning:
 - it is not a rollup across unrelated campaigns in the property
 - it uses the same selected GA4 Overview date range as the nearby Summary, Campaign Breakdown, and current performance sections, not the app campaign's start/created date
 - revenue is intentionally not shown in `Landing Pages`; page-level rows remain traffic and conversion context only
-- when GA4 returns primary landing-page traffic rows with missing conversion values, conversions may be supplemented from same-scope `pageLocation` UTM rows only by exact `Landing page + Source/Medium` match
+- when GA4 returns primary landing-page traffic rows with missing conversion values, conversions may be supplemented from conversion-prioritized same-scope `pageLocation` UTM rows only by exact `Landing page + Source/Medium` match
 - campaign-level conversions and campaign-matched imported revenue are not allocated into landing-page rows unless a future source provides real landing-page-level identifiers that can be matched safely
 - if GA4 cannot provide an exact row-level conversion match, `Conversions` and `Conv. rate` can correctly remain zero for that row
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
@@ -293,7 +294,7 @@ Important meaning:
 
 - revenue is intentionally not shown in `Conversion Events`; event rows remain conversion-volume context only
 - it uses the same selected GA4 Overview date range as the nearby Summary, Campaign Breakdown, and current performance sections, not the app campaign's start/created date
-- when GA4 returns primary event rows with missing conversion values, conversions may be supplemented from same-scope `pageLocation` UTM rows only by exact `Event` name match
+- when GA4 returns primary event rows with missing conversion values, conversions may be supplemented from conversion-prioritized same-scope `pageLocation` UTM rows only by exact `Event` name match; rows that already have conversions or revenue are not overwritten
 - campaign-matched imported revenue is not allocated into event rows unless a future source provides real event-level identifiers that can be matched safely
 - if GA4 cannot provide an exact event-level conversion match, `Conversions` can correctly remain zero for that row
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total

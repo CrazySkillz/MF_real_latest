@@ -281,7 +281,11 @@ describe("GA4 UI regression guard", () => {
     expect(clientAgg).toContain('const name = String(mappedCampaignByValue.get(valueKey) || item?.campaignValue || "").trim();');
     expect(clientAgg).toContain("filteredRows.push(row);");
     expect(clientAgg).toContain("filteredRowsByKey.set(key, row);");
-    expect(ga4Metrics).toContain("[ga4Breakdown, importedGA4CampaignNames, breakdownTotals, revenueDisplaySources]");
+    expect(ga4Metrics).toContain("[ga4Breakdown, importedGA4CampaignNames, revenueDisplaySources]");
+    expect(clientAgg).not.toContain("scaleIntsExactly");
+    expect(clientAgg).not.toContain("breakdownTotals.sessions");
+    expect(clientAgg).not.toContain("breakdownTotals.conversions");
+    expect(clientAgg).not.toContain("revScale");
     expect(ga4Metrics).toContain("for (const f of selectedGa4CampaignFilterList)");
     expect(ga4Metrics).toContain("}, [selectedGa4CampaignFilterList]);");
     expect(ga4Metrics).not.toContain("const { data: allCampaigns }");
@@ -294,6 +298,8 @@ describe("GA4 UI regression guard", () => {
     expect(pdfAgg).toContain('const name = String(mappedCampaignByValue.get(valueKey) || item?.campaignValue || "").trim();');
     expect(pdfAgg).toContain("filteredCampaignRows.push(row);");
     expect(pdfAgg).toContain("filteredCampaignRowsByKey.set(key, row);");
+    expect(pdfAgg).not.toContain("revenueScale");
+    expect(pdfAgg).not.toContain("breakdownTotals.revenue / rawTotalRevenue");
   });
 
   it("keeps GA4 Ad Comparison leader cards on one shared adjusted-row selector", () => {

@@ -491,6 +491,79 @@ describe("GA4 campaign value picker", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("uses conversion-prioritized pageLocation rows when supplementing zero-conversion landing page traffic", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
+      const isPageLocationFallback = dimensions.includes("pageLocation") && JSON.stringify(body?.dimensionFilter || {}).includes("pageLocation");
+      const orderMetric = String(body?.orderBys?.[0]?.metric?.metricName || "");
+      const requestedLimit = Number(body?.limit || 0);
+      const isConversionSupplement = isPageLocationFallback && orderMetric === "conversions" && requestedLimit === 10000;
+
+      return {
+        ok: true,
+        json: async () => ({
+          rows: isPageLocationFallback
+            ? isConversionSupplement
+              ? [
+                  {
+                    dimensionValues: [
+                      { value: "https://example.com/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" },
+                    ],
+                    metricValues: [{ value: "0" }, { value: "0" }, { value: "39" }, { value: "7068.9" }],
+                  },
+                  {
+                    dimensionValues: [
+                      { value: "https://example.com/other?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" },
+                    ],
+                    metricValues: [{ value: "0" }, { value: "0" }, { value: "99" }, { value: "990" }],
+                  },
+                ]
+              : [
+                  {
+                    dimensionValues: [
+                      { value: "https://example.com/pricing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" },
+                    ],
+                    metricValues: [{ value: "161" }, { value: "161" }, { value: "0" }, { value: "0" }],
+                  },
+                ]
+            : [
+                {
+                  dimensionValues: [{ value: "/landing" }, { value: "facebook" }, { value: "paid_social" }],
+                  metricValues: [{ value: "318" }, { value: "318" }, { value: "0" }, { value: "0" }],
+                },
+                {
+                  dimensionValues: [{ value: "/pricing" }, { value: "facebook" }, { value: "paid_social" }],
+                  metricValues: [{ value: "161" }, { value: "161" }, { value: "0" }, { value: "0" }],
+                },
+              ],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const storage = {
+      getGA4Connection: vi.fn(async () => ({
+        id: "conn-1",
+        propertyId: "properties/123",
+        accessToken: "token",
+        method: "access_token",
+      })),
+    };
+
+    const result = await ga4Service.getLandingPagesReport("campaign-1", storage, "90daysAgo", "123", 50, "summer_sale");
+
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows[0]).toMatchObject({ landingPage: "/landing", source: "facebook", medium: "paid_social", sessions: 318, users: 318, conversions: 39, revenue: 7068.9 });
+    expect(result.rows[1]).toMatchObject({ landingPage: "/pricing", source: "facebook", medium: "paid_social", sessions: 161, users: 161, conversions: 0, revenue: 0 });
+    expect(result.totals).toMatchObject({ sessions: 479, users: 479, conversions: 39, revenue: 7068.9 });
+
+    const fallbackBodies = fetchMock.mock.calls
+      .map(([, init]) => JSON.parse(String((init as any)?.body || "{}")))
+      .filter((body) => (body?.dimensions || []).some((d: any) => d?.name === "pageLocation"));
+    expect(fallbackBodies[0]?.orderBys?.[0]?.metric?.metricName).toBe("conversions");
+    expect(fallbackBodies[0]?.limit).toBe(10000);
+  });
   it("supplements conversion event conversions from same-scope pageLocation rows by exact event name", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
@@ -517,7 +590,7 @@ describe("GA4 campaign value picker", () => {
             : [
                 {
                   dimensionValues: [{ value: "purchase" }],
-                  metricValues: [{ value: "0" }, { value: "39" }, { value: "30" }, { value: "0" }],
+                  metricValues: [{ value: "7" }, { value: "39" }, { value: "30" }, { value: "700" }],
                 },
                 {
                   dimensionValues: [{ value: "sign_up" }],
@@ -541,9 +614,13 @@ describe("GA4 campaign value picker", () => {
     const result = await ga4Service.getConversionEventsReport("campaign-1", storage, "90daysAgo", "123", 200, "summer_sale");
 
     expect(result.rows).toHaveLength(2);
-    expect(result.rows[0]).toMatchObject({ eventName: "purchase", eventCount: 39, users: 30, conversions: 39, revenue: 7068.9 });
+    expect(result.rows[0]).toMatchObject({ eventName: "purchase", eventCount: 39, users: 30, conversions: 7, revenue: 700 });
     expect(result.rows[1]).toMatchObject({ eventName: "sign_up", eventCount: 10, users: 8, conversions: 6, revenue: 100 });
-    expect(result.totals).toMatchObject({ eventCount: 49, users: 38, conversions: 45, revenue: 7168.9 });
+    expect(result.totals).toMatchObject({ eventCount: 49, users: 38, conversions: 13, revenue: 800 });
+    const fallbackBodies = fetchMock.mock.calls
+      .map(([, init]) => JSON.parse(String((init as any)?.body || "{}")))
+      .filter((body) => JSON.stringify(body?.dimensionFilter || {}).includes("pageLocation"));
+    expect(fallbackBodies[0]?.limit).toBe(10000);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

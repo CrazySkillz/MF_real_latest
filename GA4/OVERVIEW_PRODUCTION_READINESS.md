@@ -91,6 +91,7 @@ This readiness file does not automatically certify:
 
 Earlier Overview readiness statements were too broad for the evidence available at the time.
 
+This was a process failure, not just an implementation failure. Future Overview readiness answers must not repeat the stable production-ready answer unless the exact value path being questioned is covered by this file's evidence. If a new Overview bug is found, the affected path must immediately be treated as unproven until the root cause, missing test coverage, and documentation are fixed.
 The main mismatch was scope:
 
 - prior work proved important Overview-adjacent fixes, including GA4 campaign discovery, live `pageLocation` UTM fallback, removal of synthetic imported GA4 revenue writes, and Campaign DeepDive aggregate parity
@@ -123,6 +124,7 @@ GA4 Overview must preserve:
 
 Do not change calculations, attribution, source ownership, scheduler behavior, alert behavior, notification behavior, report behavior, or response shapes unless a traced root cause proves a bug in that exact path.
 
+Before saying an Overview value is correct, prove the query dimensions, filters, ordering, limits, fallback query shape, merge keys, exact-match rules, negative cases, and downstream consumers for that value. The Landing Pages conversion issue proved that an exact-match merge test was not enough when the fallback query could fail to retrieve conversion-bearing rows.
 Do not use wider refactors for future Overview fixes. The completed financial-source fix was intentionally limited to a narrow frontend source-selection correction plus regression coverage.
 
 ## Data Path Summary
@@ -642,6 +644,7 @@ Inputs:
 Current logic:
 
 - rows are scoped to the selected GA4 campaign values.
+- row `Sessions`, `Users`, `Conversions`, and GA4-native `Revenue` preserve the raw GA4 breakdown row values returned for the selected property and saved campaign scope; they are not scaled to Summary card totals.
 - the visible revenue column label is `Revenue`, not `GA4 Revenue`, because exact campaign-matched imported revenue may be included.
 - imported revenue is added only when source campaign mappings match GA4 campaign rows exactly.
 - imported revenue is not proportionally allocated.
@@ -651,6 +654,7 @@ Proven locally:
 
 - exact campaign-matched imported revenue behavior is regression-covered
 - selected campaign filters are parsed and applied
+- regression coverage guards against rescaling Campaign Breakdown row values to Summary card totals
 - report label work confirms `Revenue` is the correct executive-facing label when the value can include imported revenue
 
 Partially reviewed:
@@ -687,7 +691,7 @@ Current logic:
 - revenue is intentionally not shown.
 - imported campaign revenue is not allocated into landing-page rows.
 - source/medium can be derived from tagged `pageLocation` fallback rows when attribution dimensions are empty.
-- when primary landing-page rows have traffic but no conversion/revenue values, same-scope `pageLocation` UTM rows may supplement conversions only by exact `Landing page + Source + Medium` match.
+- when primary landing-page rows have traffic but missing conversion/revenue values, conversion-prioritized same-scope `pageLocation` UTM rows may supplement conversions only by exact `Landing page + Source + Medium` match.
 - unmatched fallback rows are not added and campaign-level conversions are not allocated into landing-page rows.
 - row-level Users values are directional and are not expected to reconcile exactly to the top Users card.
 
@@ -696,6 +700,7 @@ Proven locally:
 - regression coverage guards selected date-range query usage
 - regression coverage guards absence of revenue columns
 - regression coverage guards exact-key `pageLocation` conversion supplementation without campaign-level allocation
+- regression coverage guards conversion-prioritized Landing Pages fallback queries so conversion-bearing rows are not hidden by session ordering or UI table limits
 - GA4 service code keeps fallback scoped to selected campaign values
 
 Partially reviewed:
@@ -730,7 +735,8 @@ Current logic:
 - rows use the selected Overview date range.
 - revenue is intentionally not shown.
 - imported campaign revenue is not allocated into event rows.
-- when primary event rows have event counts/users but no conversion/revenue values, same-scope `pageLocation` UTM rows may supplement conversions only by exact `Event` name match.
+- when primary event rows have event counts/users but missing conversion/revenue values, conversion-prioritized same-scope `pageLocation` UTM rows may supplement conversions only by exact `Event` name match.
+- rows that already have conversions/revenue are not overwritten by fallback rows.
 - unmatched fallback rows are not added and campaign-level conversions are not allocated into event rows.
 - row-level Users values are directional and are not expected to reconcile exactly to the top Users card.
 
@@ -739,6 +745,8 @@ Proven locally:
 - regression coverage guards selected date-range query usage
 - regression coverage guards absence of revenue columns
 - regression coverage guards exact-key `pageLocation` conversion supplementation without campaign-level allocation
+- regression coverage guards row-level Conversion Events supplementation when only some primary rows are missing conversions/revenue
+- regression coverage guards conversion-prioritized Conversion Events fallback queries so conversion-bearing event rows are not hidden by UI table limits
 - GA4 service code keeps fallback scoped to selected campaign values
 
 Partially reviewed:
@@ -907,10 +915,41 @@ The following Overview-related work is already complete and should not be reopen
 8. Corrected Campaign Breakdown revenue labeling where exact campaign-matched imported revenue can be included.
 9. Kept Pipeline Proxy separate from confirmed revenue and performance calculations.
 10. Added exact-key Landing Pages conversion supplementation from same-scope `pageLocation` UTM rows without allocating campaign-level conversions into page rows.
-11. Added exact-key Conversion Events conversion supplementation from same-scope `pageLocation` UTM rows without allocating campaign-level conversions into event rows.
-12. Aligned Summary `Conversions`, Insights CPA, KPI creation fallback, and scheduled/server report Summary values to the relevant Overview source model.
+11. Prioritized conversion-bearing same-scope `pageLocation` rows when supplementing Landing Pages, so conversion rows are not missed by session ordering or UI table limits.
+12. Added exact-key Conversion Events conversion supplementation from same-scope `pageLocation` UTM rows without allocating campaign-level conversions into event rows.
+13. Aligned Summary `Conversions`, Insights CPA, KPI creation fallback, and scheduled/server report Summary values to the relevant Overview source model.
+14. Stopped Campaign Breakdown UI and scheduled/server PDF output from scaling GA4 row values to Summary card totals; row metrics now preserve the selected-property GA4 breakdown response.
+15. Made Conversion Events supplementation row-level and conversion-prioritized so rows missing conversions can be filled by exact event match without overwriting rows that already have GA4 conversions/revenue.
 
 ## Validation Evidence
+
+Latest local validation run for the completed Campaign Breakdown and Conversion Events source-path hardening:
+
+- command: `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts`
+- result: passed, 2 files, 45 tests
+- command: `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts server/ga4-financial-rules.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/ga4-insights-report-parity-regression.test.ts`
+- result: passed, 6 files, 74 tests
+- command: `npm run check`
+- result: passed
+
+What the validation proves:
+
+- Campaign Breakdown live UI aggregation no longer rescales row Sessions, Users, Conversions, or GA4-native Revenue to Summary card totals.
+- scheduled/server GA4 PDF Campaign Breakdown aggregation no longer rescales row GA4-native Revenue to Summary card totals.
+- Conversion Events supplementation is row-level: rows that already have conversions/revenue are preserved, rows missing conversions can be filled by exact event-name match, unmatched fallback rows are not added, and the fallback query uses a widened conversion-prioritized limit.
+
+Latest local validation run for the completed Landing Pages conversion-prioritized supplement:
+
+- command: `npm test -- server/ga4-filter.test.ts`
+- result: passed, 1 file, 15 tests
+- command: `npm test -- server/ga4-ui-regression.test.ts`
+- result: passed, 1 file, 30 tests
+
+What the validation proves:
+
+- Landing Pages conversion supplementation uses a conversion-prioritized same-scope `pageLocation` fallback query when primary landing-page traffic rows have missing conversions.
+- exact landing-page/source/medium matching is still required.
+- unmatched fallback rows are not added and campaign-level conversions are not allocated into page rows.
 
 Latest local validation run for the completed Overview metric propagation hardening:
 

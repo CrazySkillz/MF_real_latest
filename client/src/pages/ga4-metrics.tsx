@@ -5092,7 +5092,6 @@ export default function GA4Metrics() {
   const campaignBreakdownAgg = useMemo(() => {
     const rows = Array.isArray(ga4Breakdown?.rows) ? ga4Breakdown.rows : [];
     const byName = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
-    let rawTotalSessions = 0, rawTotalUsers = 0, rawTotalConversions = 0, rawTotalRevenue = 0;
     for (const r of rows) {
       const name = String((r as any)?.campaign || "(not set)").trim();
       const existing = byName.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
@@ -5104,27 +5103,8 @@ export default function GA4Metrics() {
       existing.users += u;
       existing.conversions += c;
       existing.revenue += rev;
-      rawTotalSessions += s;
-      rawTotalUsers += u;
-      rawTotalConversions += c;
-      rawTotalRevenue += rev;
       byName.set(name, existing);
     }
-    const scaleIntsExactly = (items: Array<{ value: number }>, target: number) => {
-      const safeTarget = Math.max(0, Math.round(Number(target || 0)));
-      const total = items.reduce((sum, item) => sum + Math.max(0, Number(item.value || 0)), 0);
-      if (total <= 0) return items.map(() => 0);
-      const raw = items.map((item) => (Math.max(0, Number(item.value || 0)) * safeTarget) / total);
-      const base = raw.map((value) => Math.floor(value));
-      let remainder = safeTarget - base.reduce((sum, value) => sum + value, 0);
-      const order = raw
-        .map((value, index) => ({ index, frac: value - base[index] }))
-        .sort((a, b) => b.frac - a.frac);
-      for (let i = 0; i < order.length && remainder > 0; i += 1, remainder -= 1) {
-        base[order[i].index] += 1;
-      }
-      return base;
-    };
 
     const filteredRows = Array.from(byName.values())
       .filter(c => importedGA4CampaignNames.size === 0 || importedGA4CampaignNames.has(normalizeCampaignKey(c.name)));
@@ -5157,29 +5137,24 @@ export default function GA4Metrics() {
       }
     }
 
-    const scaledSessions = scaleIntsExactly(filteredRows.map(c => ({ value: c.sessions })), breakdownTotals.sessions);
-    const scaledUsers = scaleIntsExactly(filteredRows.map(c => ({ value: c.users })), breakdownTotals.users);
-    const scaledConversions = scaleIntsExactly(filteredRows.map(c => ({ value: c.conversions })), breakdownTotals.conversions);
-    const revScale = rawTotalRevenue > 0 ? breakdownTotals.revenue / rawTotalRevenue : 1;
-
     return filteredRows
-      .map((c, index) => {
-        const nextSessions = scaledSessions[index] || 0;
-        const nextUsers = scaledUsers[index] || 0;
-        const nextConversions = scaledConversions[index] || 0;
-        const scaledRevenue = Number((c.revenue * revScale).toFixed(2));
+      .map((c) => {
+        const sessions = Number(c.sessions || 0);
+        const users = Number(c.users || 0);
+        const conversions = Number(c.conversions || 0);
+        const revenue = Number(Number(c.revenue || 0).toFixed(2));
         return {
           ...c,
-          sessions: nextSessions,
-          conversions: nextConversions,
-          revenue: scaledRevenue,
-          users: nextUsers,
-          conversionRate: nextSessions > 0 ? (nextConversions / nextSessions) * 100 : 0,
-          revenuePerSession: nextSessions > 0 ? scaledRevenue / nextSessions : 0,
+          sessions,
+          conversions,
+          revenue,
+          users,
+          conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+          revenuePerSession: sessions > 0 ? revenue / sessions : 0,
         };
       })
       .sort((a, b) => b.sessions - a.sessions);
-  }, [ga4Breakdown, importedGA4CampaignNames, breakdownTotals, revenueDisplaySources]);
+  }, [ga4Breakdown, importedGA4CampaignNames, revenueDisplaySources]);
 
   const campaignBreakdownMatchedExternalRevenue = useMemo(() => {
     const rowNameByKey = new Map<string, string>();

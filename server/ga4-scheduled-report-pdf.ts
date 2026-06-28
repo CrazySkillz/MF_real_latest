@@ -546,7 +546,6 @@ async function buildGA4ReportPayload(report: any) {
   }
 
   const byCampaign = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
-  let rawTotalRevenue = 0;
   for (const row of Array.isArray((breakdown as any)?.rows) ? (breakdown as any).rows : []) {
     const name = String((row as any)?.campaign || "(not set)").trim();
     const current = byCampaign.get(name) || { name, sessions: 0, users: 0, conversions: 0, revenue: 0 };
@@ -554,10 +553,8 @@ async function buildGA4ReportPayload(report: any) {
     current.users += Number((row as any)?.users || 0);
     current.conversions += Number((row as any)?.conversions || 0);
     current.revenue += Number((row as any)?.revenue || 0);
-    rawTotalRevenue += Number((row as any)?.revenue || 0);
     byCampaign.set(name, current);
   }
-  const revenueScale = rawTotalRevenue > 0 ? breakdownTotals.revenue / rawTotalRevenue : 1;
   const filteredCampaignRows = Array.from(byCampaign.values())
     .filter((row) => importedCampaignNames.size === 0 || importedCampaignNames.has(normalizeCampaignKey(row.name)));
   const filteredCampaignRowsByKey = new Map<string, { name: string; sessions: number; users: number; conversions: number; revenue: number }>();
@@ -589,7 +586,7 @@ async function buildGA4ReportPayload(report: any) {
   }
   const campaignBreakdownAgg = filteredCampaignRows
     .map((row) => {
-      const revenue = Number((row.revenue * revenueScale).toFixed(2));
+      const revenue = Number(Number(row.revenue || 0).toFixed(2));
       const sessions = Number(row.sessions || 0);
       const conversions = Number(row.conversions || 0);
       return {

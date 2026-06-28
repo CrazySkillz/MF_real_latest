@@ -981,9 +981,9 @@ For each add/edit/delete action above, validate all related revenue surfaces:
 - [ ] Overview `Total Revenue` card equals GA4 native revenue plus all active imported revenue sources
 - [ ] Overview revenue source rows/microcopy show the correct source amount and do not duplicate edited sources
 - [ ] Overview `Campaign Breakdown` uses the column label `Revenue` and includes exact campaign-matched imported revenue only when saved source campaign values match GA4 campaign rows
-- [ ] Overview `Landing Pages` uses the column label `GA4 Revenue`; values remain GA4-native (`totalRevenue` / fallback `purchaseRevenue`) and do not receive campaign-only imported revenue
-- [ ] Overview `Conversion Events` uses the column label `GA4 Revenue`; values remain GA4-native (`totalRevenue` / fallback `purchaseRevenue`) and do not receive campaign-only imported revenue
-- [ ] Overview top `Users` card remains the deduplicated overall GA4 user total for the selected scope
+- [ ] Overview `Landing Pages` has no revenue column; campaign-only imported revenue is not allocated into landing-page rows, and missing row conversions are supplemented only by exact landing page + source/medium matches when available
+- [ ] Overview `Conversion Events` has no revenue column; campaign-only imported revenue is not allocated into event rows, and missing row conversions are supplemented only by exact event-name matches when available
+- [ ] Overview top `Users` card follows the same coherent selected-campaign source hierarchy as the other Summary cards; daily facts can use summed daily users, while to-date totals use the GA4 to-date user count
 - [ ] Overview table `Users` values are treated as row-level directional counts and are not expected to sum or reconcile exactly to the top `Users` card
 - [ ] KPIs tab: Revenue KPI current value matches Overview `Total Revenue`
 - [ ] KPIs tab: ROAS and ROI KPI current values use Overview all-source revenue as the numerator

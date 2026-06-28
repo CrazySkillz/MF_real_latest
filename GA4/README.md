@@ -16,7 +16,7 @@ Current GA4 tab production-readiness status:
 - GA4 KPIs are production-ready for the current GA4 code scope. The durable source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`.
 - GA4 Benchmarks are production-ready for the current GA4 code scope. The durable source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
 - Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should give the same production-ready answer for these GA4 sections.
-- Anti-overclaim rule: do not repeat any GA4 production-ready answer from this README unless the requested value path is covered by the relevant readiness evidence. If a new bug is found, mark that path unproven until root cause, tests, and docs are updated.
+- Mandatory anti-overclaim rule: do not repeat any GA4 production-ready answer from this README unless the requested value path's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current readiness evidence. If a new bug is found, mark that path unproven until root cause, tests, and docs are updated.
 
 ## How To Use This Folder
 

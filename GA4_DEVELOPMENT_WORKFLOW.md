@@ -314,6 +314,11 @@ The GA4 section should be treated as production-ready only when:
 - shared calculations remain stable across tabs
 - refresh/recompute behavior is trustworthy
 - report outputs reflect the refreshed state correctly
+- every fetched table/card metric path has proved its query dimensions, filters, ordering, limits, fallback query shape, merge keys, exact-match behavior, negative cases, and downstream propagation
+
+Anti-overclaim rule for GA4:
+
+A previous GA4 production-ready statement must not be repeated unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by documented evidence. If a bug is found after a readiness claim, treat the affected value path as unproven, update the fix queue, add regression coverage for the missed failure mode, and update the readiness docs before restoring the production-ready answer.
 
 Current Overview status: GA4 Overview is production-ready for the current GA4 code scope. The durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`; use its `Future Platform Template` and `Future Platform Readiness Checklist` when refining Meta, Google Ads, LinkedIn, or another source.
 

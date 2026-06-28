@@ -1,5 +1,9 @@
 # Campaign-Level KPI/Benchmark Production Ready Tracker
 
+## Mandatory Anti-Overclaim Rule
+
+Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
+
 ## Purpose
 
 Track the remaining production-readiness work for campaign-level KPIs and Benchmarks.

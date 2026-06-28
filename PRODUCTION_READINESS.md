@@ -1,5 +1,10 @@
 # Production Readiness Checklist
 
+
+## Mandatory Anti-Overclaim Rule
+
+Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
+
 ## 1. Purpose
 
 This document is the mandatory reusable production-readiness checklist for this repository.
@@ -44,6 +49,11 @@ If no section-specific production-readiness doc exists, create or update one onl
 
 - If you cannot produce the complete value inventory and downstream propagation matrix, you must not call the section production-ready.
 - A passing test suite is not enough. Only claim readiness if the test suite covers the traced value paths or you explicitly list uncovered paths as not locally verifiable.
+- A previous readiness claim is not evidence. Re-verify the actual current code path before repeating it.
+- If a new bug is found after a production-ready claim, immediately mark the affected value path as unproven until the root cause and missing coverage are fixed.
+- For every fetched metric path, prove query dimensions, filters, ordering, limits, fallback query shape, merge keys, exact-match rules, negative cases, and downstream consumers before calling it ready.
+- Do not describe a path as production-ready when coverage proves only a happy path or only one fallback shape.
+- Do not use "overclaimed readiness" as an explanation without adding a concrete prevention rule, regression test, and documentation update.
 - Do not infer readiness from adjacent sections.
 - Do not infer scheduler safety from UI safety.
 - Do not infer delete safety from add or edit safety.
@@ -379,7 +389,11 @@ Constraints:
 Mandatory readiness rules:
 - If you cannot produce the complete value inventory and downstream propagation matrix, you must not call the section production-ready.
 - A passing test suite is not enough. Only claim readiness if the test suite covers the traced value paths or you explicitly list uncovered paths as not locally verifiable.
-
+- A previous readiness claim is not evidence. Re-verify the actual current code path before repeating it.
+- If a new bug is found after a production-ready claim, mark the affected path unproven until the root cause, missing coverage, and documentation are fixed.
+- For every fetched metric path, prove query dimensions, filters, ordering, limits, fallback query shape, merge keys, exact-match rules, negative cases, and downstream consumers before calling it ready.
+- Do not describe a path as production-ready when coverage proves only a happy path or only one fallback shape.
+- Do not use "overclaimed readiness" as an explanation without adding a concrete prevention rule, regression test, and documentation update.
 Audit requirements:
 1. Build a complete value inventory for every visible and downstream value in [TAB/SECTION].
    Include cards, tables, row-level columns, modals, source provenance, filters, date-range labels, report values, KPI/Benchmark values, Insights values, Ad Comparison/platform comparison values, Campaign DeepDive values, alerts, notifications, scheduler snapshots, exports, empty states, zero states, unavailable states, and loading/stale states.

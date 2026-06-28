@@ -80,6 +80,15 @@ Do not imply it is safe.
 Do not collapse broad production-readiness work into only the next small fix.
 The next small fix can be narrow, but the status report must be complete for the stated scope.
 
+Mandatory anti-overclaim rule:
+
+- a previous production-ready statement is not evidence
+- a passing test suite is not evidence for paths the tests do not cover
+- never repeat a production-ready answer unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence
+- if a later bug is found after a readiness claim, immediately lower the affected path to unproven until the root cause, query shape, ordering, limits, merge keys, fallback behavior, downstream propagation, and negative cases are traced
+- do not repeat that a claim was overbroad as a substitute for adding stronger guards, tests, and documentation
+- never call a section production-ready when any visible or downstream value path in scope is only assumed, sampled, or partially traced
+
 ## Trustworthy Work Standard
 
 Trust must be earned by evidence, not broad claims.

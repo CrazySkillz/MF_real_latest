@@ -1,5 +1,9 @@
 # GA4 KPI/Benchmark Alerts And Notifications Production Readiness
 
+## Mandatory Anti-Overclaim Rule
+
+Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
+
 ## Purpose
 
 Track the work required to make GA4 KPI and Benchmark alerts and notifications production-ready.
@@ -12,13 +16,27 @@ This file is the authoritative tracker for GA4 KPI/Benchmark alert and notificat
 
 ## Authoritative Readiness Statement
 
-- GA4 KPI/Benchmark alerts and notifications are not production-ready at Commit 1.
-- After Commits 2 through 8 in this file are implemented, their required validation passes, and final evidence is recorded here, the GA4 KPI alerts, GA4 KPI notifications, GA4 Benchmark alerts, and GA4 Benchmark notifications sections can be marked production-ready.
+- As of June 27, 2026, GA4 KPIs and GA4 Benchmarks are production-ready for the current GA4 code scope. The durable whole-tab sources of truth are `GA4/KPIS_PRODUCTION_READINESS.md` and `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
+- GA4 KPI/Benchmark alerts and notifications were not production-ready at Commit 1; that statement is historical and does not describe the current GA4 KPI/Benchmark section status.
+- After Commits 2 through 8 in this file were implemented, their required validation passed, and final evidence was recorded here, the GA4 KPI alerts, GA4 KPI notifications, GA4 Benchmark alerts, and GA4 Benchmark notifications sections became locally code-ready by this document's criteria.
 - As of Commit 8, the locally verifiable GA4 KPI/Benchmark alert and notification implementation is production-ready by this document's code-readiness criteria.
 - The current implementation template also includes the post-Commit-8 alignment fixes documented below: alert frequency UI scope/layout, GA4 alert email full-width address row and conditional frequency visibility, create-button required-field gates, all-row GA4 KPI reconciliation, query-only action URL handling, bell-to-Notifications routing, edit/delete notification refresh, simplified Notification cards, authoritative action URL enrichment, persistent smooth KPI/Benchmark target highlighting, simplified Notifications filters, card actions limited to explicit KPI/Benchmark navigation, card-level alert detail values, removal of Notifications read-state UI, and client/campaign delete notification refresh.
-- The alert email scheduler is not production-ready for executive-critical email delivery as of the 2026-06-25 audit. In-app alert visibility remains locally code-ready, but executive-critical email readiness requires the planned alert email scheduler commits below: atomic send idempotency, cadence-aligned reminders, delivery-status semantics, bounded retry/backoff, and deployed delivery evidence.
+- Provider-side alert email delivery remains an external/deployed evidence caveat: local scheduler and send-attempt wiring are code-ready, but no response should claim real email delivery unless provider delivery events or actual inbox receipt are recorded for the target environment.
 - This file is the implementation and validation template for applying the same alert/notification lifecycle to other connected-platform sources, including Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration.
 - Other connected-platform sources are not production-ready from GA4 evidence alone. Each source must copy the proven GA4 lifecycle and pass the same lifecycle matrix with source-specific evidence before its KPI/Benchmark alert and notification behavior can be marked production-ready.
+
+## New Source Template Reading Order
+
+For a new chat or a new source such as Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, or Custom Integration, use this file in this order:
+
+1. Read `Production-Ready Acceptance Criteria` to understand the required GA4 behavior contract.
+2. Read `Lifecycle Matrix` to map each KPI and Benchmark lifecycle path onto the target source.
+3. Read `Post-Commit-8 Implementation Alignment` to copy the current UI, action URL, notification refresh, and required-field gate contracts that were added after the original alert commits.
+4. Read `Alert Email Scheduler Production-Readiness Plan` before changing or validating executive email delivery behavior.
+5. Read `Cross-Platform Template Rules` as the implementation checklist for the target source.
+6. Read `Target UX Manual Validation Checklist` only after tracing the target source's actual UI/API path; do not invent a manual validation path for legacy or unreachable routes.
+
+For each target source, create source-specific proof for: current-value resolution, in-app alert lifecycle, email scheduler lifecycle, create/edit/delete refresh behavior, campaign/client ownership, action URLs, notification visibility, form required-field gates, and regression coverage. GA4 proof is the template, not proof that another source is production-ready.
 
 ## Root Cause Analysis
 
@@ -353,7 +371,7 @@ Validation note:
 
 ## Post-Commit-8 Implementation Alignment
 
-Status: complete for the locally committed implementation through `82f0695a`.
+Status: complete for the locally committed implementation through `bbf12340`.
 
 These follow-up commits are part of the current GA4 alert/notification implementation and must be treated as part of the template before applying the lifecycle to Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, Custom Integration, or any other connected-platform source.
 
@@ -417,6 +435,23 @@ Template requirement:
 
 - future platform alert forms should hide both `Email addresses *` and `Alert Frequency` until email notifications are selected
 - `Alert Frequency` remains email-reminder-only and must not imply repeated in-app notification rows
+
+### Commit `bbf12340`: Create Form Required-Field Gates
+
+Runtime behavior:
+
+- `Create KPI` is disabled until `KPI Name` and `Target Value` are both non-empty
+- `Create Benchmark` is disabled until `Benchmark Name` and `Benchmark Value` are both non-empty
+- edit-submit behavior still uses the existing unchanged-form guard for `Update KPI` and `Update Benchmark`
+- submit-handler validation remains a fallback, not the primary UX for missing create-required fields
+- no KPI/Benchmark math, alert evaluation, notification visibility, API payload, email scheduler, or report email behavior changed
+
+Template requirement:
+
+- future platform KPI create forms should disable `Create KPI` until the source's KPI name and target value fields are non-empty
+- future platform Benchmark create forms should disable `Create Benchmark` until the source's Benchmark name and Benchmark value fields are non-empty
+- keep edit-mode unchanged-form guards separate from create-mode required-field guards
+- keep server/API validation as fallback protection, not the only user-facing required-field gate
 
 ### Commit `4bbffd53`: GA4 KPI Alert Reconciliation Completeness
 
@@ -529,7 +564,7 @@ Proven locally:
 - Commit `75c38529` aligned the earlier GA4 KPI/Benchmark alert form layout, superseded by the current `60aa0d41` and `82f0695a` email-control visibility contract
 - Commit `60aa0d41` makes GA4 KPI/Benchmark email address controls use a full-width label/input row and places `Alert Frequency` underneath the email address row
 - Commit `82f0695a` hides both `Email addresses *` and `Alert Frequency` until `Send email notifications` is selected
-- Current GA4 create-submit required-field gating is regression-covered: `Create KPI` is gated by `KPI Name` plus `Target Value`, and `Create Benchmark` is gated by `Benchmark Name` plus `Benchmark Value`
+- Commit `bbf12340` makes GA4 create-submit required-field gating regression-covered: `Create KPI` is gated by `KPI Name` plus `Target Value`, and `Create Benchmark` is gated by `Benchmark Name` plus `Benchmark Value`
 - Commit `4bbffd53` makes GA4 KPI alert reconciliation consider all KPI rows so valid active alerts are not incorrectly superseded by campaign/metric dedupe and disabled stale alerts can be cleared
 - Commit `99415fe6` adds visible GA4 KPI/Benchmark card highlighting for alert action URLs
 - Commit `12bcf04b` makes the GA4 page react to query-only `tab`/`highlight` changes through URL search state
@@ -560,7 +595,7 @@ Production-ready conclusion:
 
 ## Alert Email Scheduler Production-Readiness Plan
 
-Status: planned; not implemented by this documentation update.
+Status: locally implemented through EMAIL-7; provider delivery confirmation remains environment-specific external evidence.
 
 Scope:
 
@@ -580,7 +615,7 @@ Out of scope for this plan:
 
 ### 2026-06-25 Email Scheduler Root Cause Analysis
 
-The alert email scheduler is not production-ready for executive-critical delivery because the current implementation proves email attempt wiring, not end-to-end reliable delivery.
+At the 2026-06-25 audit, the alert email scheduler was not production-ready for executive-critical delivery because the implementation proved email attempt wiring, not end-to-end reliable delivery. Later EMAIL-7 evidence made the scheduler locally code-ready; provider delivery events or inbox receipt remain external evidence before claiming a real email was delivered.
 
 Confirmed causes:
 

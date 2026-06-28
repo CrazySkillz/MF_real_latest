@@ -1,5 +1,9 @@
 # GA4 Reporting Timezone Production Readiness
 
+## Mandatory Anti-Overclaim Rule
+
+Before using this document to answer an audit, review, or production-readiness question, apply PRODUCTION_READINESS.md and AGENTS.md. Do not repeat any production-ready or status claim from this file unless the current request's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current documented evidence. A prior readiness statement is not evidence. A passing test suite is not enough unless it covers the traced value paths. If any path is incomplete, classify it as partially reviewed or not locally verifiable and update the fix queue instead of calling it production-ready.
+
 ## Purpose
 
 This file tracks the production-readiness work needed to make GA4 daily history, Insights Trends, freshness labels, and scheduled refresh timing reliable for marketing executives who expect data availability at specific local business times.
@@ -8,9 +12,9 @@ This is a timing-contract task, not a metric-calculation rewrite.
 
 ## Root Cause
 
-The current implementation does not have one explicit reporting timezone contract.
+Before the reporting-timezone hardening work, the implementation did not have one explicit reporting timezone contract.
 
-Proven from code:
+Original findings from code:
 
 - GA4 daily facts are stored as `YYYY-MM-DD` UTC-oriented date strings in `ga4_daily_metrics`.
 - before Commit 3, `/api/campaigns/:id/ga4-daily` computed the visible Trends window through yesterday UTC.
@@ -25,6 +29,13 @@ Impact:
 - scheduler logs can be hard to reconcile with the UI
 - stale or not-yet-refreshed history is not clearly distinguished from complete history
 
+Follow-up UI root causes now addressed:
+
+- the first implementation persisted `reportingTimeZone`, but the visible create/edit campaign UI did not consistently expose the setting in the same details flow users already used for campaign configuration
+- the edit campaign modal temporarily used an older layout, so the timezone control looked inconsistent with create mode
+- the timezone select display rendered raw IANA IDs such as `America/New_York`; the saved value was correct, but the visible label was not executive-friendly
+- the edit modal already had a submit button and update payload, but the modal body could be clipped on shorter viewports, making `Save Changes` hard to reach
+
 ## Production-Ready Goal
 
 GA4 executive surfaces should answer these questions without interpretation:
@@ -37,7 +48,7 @@ GA4 executive surfaces should answer these questions without interpretation:
 
 Example target copy:
 
-`Data through Jun 20, 2026 (Europe/Amsterdam). Last refreshed Jun 21, 2026 07:19 Europe/Amsterdam.`
+`Completed-day cutoff Jun 20, 2026 (Europe/Amsterdam). Last refreshed Jun 21, 2026 07:19 Europe/Amsterdam.`
 
 ## Non-Goals
 
@@ -55,7 +66,7 @@ Status: Validation passed for commit `d49fa064`.
 
 Scope:
 
-- show `Data through` in Insights Trends
+- show `Completed-day cutoff` in Insights Trends
 - show timezone used for the current cutoff, initially `UTC`
 - show `Last refreshed` from the existing `/ga4-daily.lastUpdated`
 - update empty-history copy from `complete days` to `complete UTC days`
@@ -224,7 +235,7 @@ Implementation note:
 - `/api/campaigns/:id/ga4-daily` now returns `expectedRefreshAt`, `refreshScheduleTimeZone`, `lastCompletedRefreshAt`, and `refreshIsStale`
 - expected refresh is computed from `dataThroughDate` plus the configured GA4 daily scheduler time and timezone
 - `refreshIsStale` is true only after the expected refresh time has passed and the latest completed daily refresh timestamp is missing or older than that expected refresh
-- GA4 Insights Trends shows `Expected refresh` beside the existing data-through/timezone/last-refreshed metadata
+- GA4 Insights Trends shows `Expected refresh` beside the existing completed-day-cutoff/timezone/last-refreshed metadata
 - GA4 Insights Trends shows a factual warning when `refreshIsStale` is true; metric values and history gating are unchanged
 
 Local validation:
@@ -236,7 +247,7 @@ Local validation:
 
 Validation:
 
-- fresh state shows data-through and last-refreshed copy
+- fresh state shows completed-day cutoff and last-refreshed copy
 - stale state shows a warning without changing metrics
 - no warning appears before the expected refresh window
 - UI regression tests
@@ -248,14 +259,14 @@ Status: Validation passed for commit `b7a629d0` for generated/ad hoc report outp
 
 Scope:
 
-- include reporting timezone, data-through date, and last-refreshed timestamp in GA4 Insights report output
+- include reporting timezone, completed-day cutoff date, and last-refreshed timestamp in GA4 Insights report output
 - ensure scheduled reports use the same reporting timezone metadata
 - keep report metric values sourced from the existing refreshed inputs
 
 Implementation note:
 
-- ad hoc GA4 Insights PDF output now includes `Data through`, `Reporting timezone`, and `Last refreshed` metadata from the same Trends response values used by the live Insights UI
-- scheduled/test-send GA4 Insights PDFs now derive `Data through` and `Reporting timezone` from the campaign reporting timezone helper and `Last refreshed` from the latest persisted GA4 daily-row `updatedAt`
+- ad hoc GA4 Insights PDF output now includes `Completed-day cutoff`, `Reporting timezone`, and `Last refreshed` metadata from the same Trends response values used by the live Insights UI
+- scheduled/test-send GA4 Insights PDFs now derive `Completed-day cutoff` and `Reporting timezone` from the campaign reporting timezone helper and `Last refreshed` from the latest persisted GA4 daily-row `updatedAt`
 - report metric rows, financial totals, trend rollups, and source inputs are unchanged
 
 Local validation:
@@ -272,7 +283,7 @@ Deployed/user validation:
 
 Validation:
 
-- generated PDF includes the same data-through metadata as the UI
+- generated PDF includes the same completed-day cutoff metadata as the UI
 - scheduled report output does not imply current-day completeness when Trends excludes intraday data; deployed validation pending Reports scheduler refinement
 - focused report regression tests
 - `npm run check`
@@ -303,11 +314,63 @@ Validation:
 - docs explain UTC fallback, configured reporting timezone, expected refresh, and stale warning behavior
 - `git diff --check`
 
+### Trends Latest Imported Day And Live Property Boundary Follow-Up
+
+Status: Implemented, committed, pushed, and user validated for commit `4074d282`.
+
+Scope:
+
+- separate `Completed-day cutoff` from the latest actual persisted row by showing `Latest imported day` in Insights Trends
+- keep `Completed-day cutoff` as the completed reporting-day cutoff, not proof that GA4 returned a row for that date
+- do not synthesize a zero-value row when GA4 has no row for a completed day in the selected property/campaign scope
+- remove numeric GA4 property IDs from the Yesop simulator boundary so property `498536418` and other numeric properties use live import/query paths
+
+Validation:
+
+- local tests passed: `server/ga4-live-property-boundary-regression.test.ts`, `server/ga4-reporting-day-cutoff-regression.test.ts`, `server/ga4-ui-regression.test.ts`, and `server/outcome-totals-ga4-fallback-regression.test.ts`
+- `npm run check` passed
+- user validation passed in the deployed UI after commit `4074d282`
+
+### Campaign Timezone Configuration UI Follow-Up
+
+Status: Implemented, committed, pushed, and locally validated through commits `9c9a1710`, `027186b5`, `7bcce98b`, and `26833d95`.
+
+Scope:
+
+- expose campaign reporting timezone in `Edit Campaign`
+- align the edit modal with the create campaign details layout
+- expose campaign reporting timezone in the first `Create New Campaign` details step
+- make timezone labels readable by removing underscores in the visible dropdown text
+- keep saved values as exact IANA timezone strings such as `America/New_York`
+- keep the edit modal body scrollable so the existing `Save Changes` submit path is reachable
+
+Implementation note:
+
+- `campaign.reportingTimeZone` remains the only source of truth
+- create mode defaults from the browser IANA timezone when available and falls back to `UTC`
+- edit mode defaults from the saved campaign value and falls back to `UTC`
+- save propagation uses the existing campaign create/update request paths
+- no GA4 metric formulas, KPI/Benchmark calculations, scheduler ownership, report generation logic, or source/campaign/property scoping changed
+
+Local validation:
+
+- `npm test -- --run server/ga4-reporting-timezone-regression.test.ts server/ga4-reporting-day-cutoff-regression.test.ts`
+- `npm run check`
+- `git diff --check -- client/src/pages/campaigns.tsx server/ga4-reporting-timezone-regression.test.ts`
+
+Validation:
+
+- create campaign UI shows `Reporting Timezone`
+- edit campaign UI shows `Reporting Timezone`
+- edit campaign UI keeps `Save Changes` reachable
+- dropdown labels display readable values such as `America/New York`
+- network payloads and stored campaign values keep valid IANA strings such as `America/New_York`
+
 ## Monitoring Checklist
 
 Use this checklist during implementation and deployment validation:
 
-- [ ] Trends shows data-through date
+- [ ] Trends shows completed-day cutoff date
 - [ ] Trends shows reporting timezone
 - [ ] Trends shows last refreshed timestamp
 - [ ] missing-history copy names the timezone basis
@@ -327,6 +390,6 @@ Use this checklist during implementation and deployment validation:
 
 ## Current Status
 
-Current production behavior uses the campaign reporting timezone for Trends cutoff; GA4 daily refresh and external revenue/spend refresh use deployment-level configured reporting timezones and local scheduled times.
+Current production behavior uses the campaign reporting timezone for Trends cutoff, Trends freshness labels, and report timezone metadata. Campaign create and edit both expose and persist this setting. GA4 daily refresh and external revenue/spend refresh use deployment-level configured scheduler timezones and local scheduled times.
 
-This is acceptable for testing only when users understand the timing model. It is not yet the final executive-ready local reporting-time behavior.
+This is the current implemented contract. Per-campaign scheduler fan-out, client-level defaults, and final scheduled-report deployed evidence remain separate future validation items.

@@ -17,7 +17,7 @@ GA4 Overview is production-ready for the current GA4 code scope.
 The previously confirmed local blocker was fixed and validated in Commit 1:
 
 - GA4 Overview Summary cards intentionally keep a coherent selected-campaign source hierarchy: persisted daily rows, then GA4 to-date totals, then breakdown fallback.
-- GA4 Overview financial cards now use a separate to-date-first GA4 financial source for native revenue and conversions.
+- GA4 Overview financial cards now use one selected scoped GA4 financial source for native revenue and conversions, choosing the most complete native revenue total across to-date, daily, and breakdown totals.
 - `ga4RevenueForFinancials` no longer reads directly from the Summary-card `breakdownTotals.revenue` value.
 - `financialConversions` no longer reads directly from the Summary-card `breakdownTotals.conversions` value.
 
@@ -55,7 +55,7 @@ Read in this order:
 
 Do not reopen GA4 KPIs, GA4 Benchmarks, GA4 Ad Comparison, or GA4 Reports unless an Overview code path directly depends on a narrow value from those sections.
 
-When applying this to another platform source, do not copy GA4 implementation details blindly. Copy the gates and contracts, then prove the new platform satisfies each gate with its own source model, account/property/customer scoping, date-window model, financial-source model, refresh model, and report-output path.
+When applying this to another platform source, do not copy GA4 implementation details blindly. Copy the gates and contracts, then prove the new platform satisfies each gate with its own source model, account/property/customer scoping, date-window model, financial-source model, refresh model, and report-output path. For future-platform work, use `Future Platform Template` and `Future Platform Readiness Checklist` as the reusable acceptance checklist.
 
 ## Current Scope
 
@@ -96,7 +96,7 @@ The main mismatch was scope:
 - prior work proved important Overview-adjacent fixes, including GA4 campaign discovery, live `pageLocation` UTM fallback, removal of synthetic imported GA4 revenue writes, and Campaign DeepDive aggregate parity
 - prior tracker language said GA4 Overview financial cards used GA4 to-date native totals
 - the later frontend trace proved `ga4RevenueForFinancials` and `financialConversions` were still reading from `breakdownTotals`, the Summary-card source object
-- Commit 1 fixed that boundary by keeping Summary cards on their coherent source hierarchy while moving financial revenue and CPA conversions to a separate to-date-first financial source
+- Commit 1 fixed that boundary by keeping Summary cards on their coherent source hierarchy while moving financial revenue and CPA conversions to one selected scoped financial source
 - Summary cards and financial cards have different intended window rules, so this file now records both contracts separately
 This file fixes the documentation problem by keeping one Overview-specific source of truth:
 
@@ -137,7 +137,7 @@ Native GA4 daily path:
 
 Native GA4 to-date path:
 
-`GA4 Data API to-date totals -> /ga4-to-date -> financial GA4 revenue/conversions source of truth`
+`GA4 Data API to-date totals -> /ga4-to-date -> candidate financial GA4 revenue/conversions source`
 
 Financial source path:
 
@@ -151,14 +151,14 @@ Important meaning:
 
 - Summary cards and financial cards may use different GA4 source windows by design.
 - Summary cards need a coherent visible selected-campaign source and must avoid per-metric maximums.
-- Financial cards need to-date totals because imported revenue-to-date and spend-to-date are to-date source-backed values.
+- Financial cards need one selected scoped native GA4 financial source because imported revenue-to-date and spend-to-date are source-backed values, but native GA4 Revenue must not understate larger visible selected-campaign GA4 rows.
 - Pipeline Proxy is an early-signal value and must not enter confirmed revenue, Profit, ROAS, ROI, CPA, KPIs, Benchmarks, Ad Comparison, Insights, or Reports unless the product contract changes explicitly.
 
 ## Current Fix Queue
 
 Use these commit labels for completed Overview fixes and remaining validation gates. Each future validation gate should be completed, validated, and reported before moving to the next one.
 
-### Commit 1: Align Overview financial GA4 source with to-date totals
+### Commit 1: Align Overview financial GA4 source with scoped totals
 
 Status: completed and validated.
 
@@ -173,14 +173,15 @@ Confirmed root cause:
 - `ga4RevenueForFinancials` previously read `Number(breakdownTotals.revenue || 0)`.
 - `financialConversions` previously read `Number(breakdownTotals.conversions || 0)`.
 - This coupled financial calculations to the Summary-card source hierarchy.
-- When persisted daily rows existed for the default lookback window, financial cards could use that daily-window native revenue/conversion value instead of GA4 to-date native revenue/conversions.
+- When persisted daily rows existed for the default lookback window, financial cards could use that daily-window native revenue/conversion value instead of the intended selected financial source.
+- A follow-up mismatch was then proven where Total Revenue showed `$6,718.74` while visible Campaign Breakdown GA4-native rows summed to `$16,265.32`, because `/ga4-to-date` was treated as unconditional financial source even when the visible selected-campaign daily/breakdown source had recovered a larger scoped native GA4 total.
 
 Implementation completed:
 
 1. Summary-card logic stayed unchanged.
 2. Added a separate `ga4FinancialTotalsSource` near the existing financial calculations.
-3. `ga4FinancialTotalsSource` prefers `ga4ToDateOverviewTotals`.
-4. `ga4FinancialTotalsSource` falls back to `dailySummedTotals`, then `ga4BreakdownTotals`, only when to-date totals are unavailable or empty.
+3. `ga4FinancialTotalsSource` selects one source object across `ga4ToDateOverviewTotals`, `dailySummedTotals`, and `ga4BreakdownTotals` by the largest scoped native GA4 revenue total.
+4. `ga4FinancialTotalsSource` keeps revenue and conversions on that same selected source object instead of using per-metric maxima.
 5. `ga4RevenueForFinancials` now reads from `ga4FinancialTotalsSource.revenue`.
 6. `financialConversions` now reads from `ga4FinancialTotalsSource.conversions`.
 7. Imported revenue, spend, Pipeline Proxy, Campaign Breakdown, Landing Pages, Conversion Events, KPI/Benchmark wiring, report wiring, API routes, scheduler behavior, alerts, and notifications were not changed.
@@ -196,9 +197,9 @@ Regression coverage completed:
 - Summary cards still use the coherent selected-campaign hierarchy of daily rows, then to-date totals, then breakdown totals.
 - `ga4RevenueForFinancials` no longer reads directly from `breakdownTotals.revenue`.
 - `financialConversions` no longer reads directly from `breakdownTotals.conversions`.
-- financial GA4 revenue prefers `/ga4-to-date` over daily Summary totals when both are present.
-- CPA uses the same financial conversion source as the financial revenue window.
-- stale test expectations that described a "higher of to-date and daily" rule were updated to the to-date-first rule with safe fallback.
+- financial GA4 revenue uses the most complete scoped native GA4 source across `/ga4-to-date`, daily totals, and breakdown totals.
+- CPA uses the same financial conversion source as the selected financial revenue source.
+- stale test expectations that forced an unconditional to-date-first rule were updated to prevent GA4 Revenue from understating larger visible native GA4 totals.
 
 Validation completed:
 
@@ -211,8 +212,8 @@ Validation completed:
 
 Pass criteria:
 
-- Total Revenue is `GA4 native to-date revenue + imported revenue-to-date`.
-- CPA is `spend-to-date / GA4 to-date conversions` when GA4 to-date conversions are available, with the documented fallback only when to-date totals are unavailable or empty.
+- Total Revenue is `selected scoped GA4 native financial revenue + imported revenue-to-date`.
+- CPA is `spend-to-date / conversions from the same selected GA4 financial source`.
 - Summary cards keep their existing coherent source behavior.
 - Pipeline Proxy remains excluded.
 - no response shape changes.
@@ -426,26 +427,26 @@ User-facing role:
 
 Inputs:
 
-- GA4 native to-date revenue
+- selected scoped GA4 native financial revenue
 - imported revenue-to-date from active revenue sources
 - spend-to-date from active spend sources
-- GA4 to-date conversions for CPA
+- conversions from the same selected GA4 financial source for CPA
 
 Current logic:
 
-- `Total Revenue = GA4 native to-date revenue + imported campaign revenue-to-date`
+- `Total Revenue = selected scoped GA4 native financial revenue + imported campaign revenue-to-date`
 - `Total Spend = active campaign spend-source total`
 - `Profit = Total Revenue - Total Spend`
 - `ROAS = Total Revenue / Total Spend`
 - `ROI = (Total Revenue - Total Spend) / Total Spend`
-- `CPA = Total Spend / GA4 to-date conversions` when GA4 to-date conversions are available, with documented fallback only when to-date totals are unavailable or empty
+- `CPA = Total Spend / conversions from the same selected GA4 financial source`
 - Pipeline Proxy is excluded
 
 Fixed defect:
 
 - `ga4RevenueForFinancials` now reads from `ga4FinancialTotalsSource.revenue`, not directly from `breakdownTotals.revenue`.
 - `financialConversions` now reads from `ga4FinancialTotalsSource.conversions`, not directly from `breakdownTotals.conversions`.
-- `ga4FinancialTotalsSource` prefers `ga4ToDateOverviewTotals`, then falls back to `dailySummedTotals`, then `ga4BreakdownTotals`.
+- `ga4FinancialTotalsSource` selects one source object across `ga4ToDateOverviewTotals`, `dailySummedTotals`, and `ga4BreakdownTotals` by largest scoped native GA4 revenue.
 - `breakdownTotals` remains the Summary-card source object and is no longer the direct financial source of truth.
 
 Proven locally:
@@ -454,7 +455,7 @@ Proven locally:
 - Pipeline Proxy is excluded from confirmed revenue calculations
 - spend comes from active spend sources
 - source-backed totals use active source joins in storage
-- financial GA4 native revenue and CPA conversions use the separate to-date-first financial source
+- financial GA4 native revenue and CPA conversions use the same selected scoped financial source
 - Summary-card source behavior remains unchanged
 
 Partially reviewed:
@@ -641,7 +642,7 @@ Future-platform template rule:
 
 ### 8. Source Modals And Source Lifecycle
 
-Status: partially reviewed locally.
+Status: production-ready locally for current Overview source-modal code scope; provider/source-family lifecycle checks remain external validation gates.
 
 User-facing role:
 
@@ -670,10 +671,10 @@ Proven locally:
 - active-source joins protect totals from inactive/orphan source definitions
 - no synthetic GA4 native revenue records should be written into imported revenue records by `/ga4-daily`
 
-Partially reviewed:
+Provider/deployed validation gates:
 
-- full add/edit/delete/display/totals/scheduler lifecycle has not been certified for every source family
-- source modal fallback behavior when breakdown rows are absent is understood but not source-family certified
+- full add/edit/delete/display/totals/scheduler lifecycle should still be validated for every source family with real provider data
+- source modal fallback behavior when breakdown rows are absent is locally understood; source-family certification remains a provider validation gate
 
 Not locally verifiable:
 
@@ -686,7 +687,7 @@ Future-platform template rule:
 
 ### 9. Refresh And Scheduler Paths
 
-Status: partially reviewed locally for Overview.
+Status: production-ready locally for current Overview refresh code scope; deployed scheduler/provider checks remain external validation gates.
 
 User-facing role:
 
@@ -712,10 +713,10 @@ Proven locally:
 - `/ga4-daily` no longer writes synthetic imported revenue records in current regression coverage
 - focused regression tests cover daily fallback and no synthetic revenue write
 
-Partially reviewed:
+Provider/deployed validation gates:
 
-- scheduler behavior is traced at code level, but not deployed-run verified in this audit
-- source-family refresh identity is not certified for every provider
+- scheduler behavior is traced at code level, but deployed-run evidence remains environment validation
+- source-family refresh identity should still be certified for each real provider
 
 Not locally verifiable:
 
@@ -798,7 +799,7 @@ What the validation proves:
 
 - the confirmed financial source defect is fixed at the local code/regression level
 - Summary cards still use the coherent selected-campaign source hierarchy
-- financial GA4 revenue and CPA conversions now use the separate to-date-first financial source
+- financial GA4 revenue and CPA conversions now use the same selected scoped financial source
 - additive native GA4 revenue plus imported revenue behavior remains covered
 - current TypeScript compiles
 - campaign/property scoping guards and existing source-safety guards remain intact

@@ -10,8 +10,9 @@ This is the GA4-specific companion to `ARCHITECTURE_USER_JOURNEY.md`.
 
 Campaign-level KPI/Benchmark production-readiness tracking lives in `CAMPAIGN_LEVEL_KPI_BENCHMARK_PRODUCTION_READY.md`. GA4 is the first connected platform being validated against that campaign-level standard.
 
-Current GA4 KPI/Benchmark production-readiness status:
+Current GA4 tab production-readiness status:
 
+- GA4 Overview is production-ready for the current GA4 code scope. The durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 - GA4 KPIs are production-ready for the current GA4 code scope. The durable source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`.
 - GA4 Benchmarks are production-ready for the current GA4 code scope. The durable source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
 - Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should give the same production-ready answer for these GA4 sections.
@@ -25,7 +26,8 @@ Use these files in this order:
 3. `GA4_DEVELOPMENT_WORKFLOW.md` for GA4 stabilization, fix sequencing, regression checks, and testing workflow
 4. the specific tab doc you are changing
 5. `GA4/OVERVIEW.md` when the work touches Overview behavior, card/table meaning, or GA4 scope
-6. `GA4/FINANCIAL_SOURCES.md` if the work touches revenue, spend, `Latest Day Revenue`, `Latest Day Spend`, `Profit`, `ROAS`, `ROI`, `CPA`, source modal provenance, or imported values
+6. `GA4/OVERVIEW_PRODUCTION_READINESS.md` when the work asks whether Overview is production-ready or when using Overview as a template for Meta, Google Ads, LinkedIn, or another source
+7. `GA4/FINANCIAL_SOURCES.md` if the work touches revenue, spend, `Latest Day Revenue`, `Latest Day Spend`, `Profit`, `ROAS`, `ROI`, `CPA`, source modal provenance, or imported values
 
 ## Canonical GA4 Journey
 
@@ -50,6 +52,8 @@ Important meaning:
 
 - `GA4/OVERVIEW.md`
   Covers the GA4 Overview tab, tables, card-population rules, and GA4 campaign scope.
+- `GA4/OVERVIEW_PRODUCTION_READINESS.md`
+  Canonical whole-tab Overview production-readiness source of truth. Current status: production-ready for the current GA4 code scope, with external deployed/provider validation gates documented in that file. It also contains the future-platform template and readiness checklist for Meta, Google Ads, LinkedIn, and other sources.
 - `GA4/KPIS.md`
   Covers KPI creation, display, current-value sourcing, gating, alerts, and KPI refresh behavior.
 - `GA4/KPIS_PRODUCTION_READINESS.md`
@@ -81,6 +85,7 @@ Important meaning:
 ## Overview Vs Financial Sources
 
 - `GA4/OVERVIEW.md` explains what the Overview tab contains and how its cards/tables should be understood
+- `GA4/OVERVIEW_PRODUCTION_READINESS.md` states that GA4 Overview is production-ready for the current GA4 code scope and provides the reusable future-platform readiness template
 - `GA4/FINANCIAL_SOURCES.md` explains the underlying revenue/spend source system that feeds Overview and other GA4 tabs
 
 Why this file is separate:
@@ -132,6 +137,7 @@ These are now part of the GA4 template contract:
 - live breakdown totals can feed the visible Overview cards when GA4 to-date totals or persisted daily rows are still empty, so a live property with current UTM traffic does not render zero top-line metrics while populated tables exist
 - Overview Summary cards should not flash stale fallback totals while the selected GA4 property's campaign breakdown is still loading. During that initial breakdown load, card values render a stable skeleton so values such as `Conversions` load directly into the current total instead of briefly showing an older lower value.
 - GA4 Overview `Landing Pages` and `Conversion Events` use the same selected Overview date range as the nearby Summary/Campaign Breakdown/current performance sections, while preserving GA4 property selection and saved GA4 campaign scope
+- GA4 Overview financial cards use one selected scoped GA4 financial source for native revenue and CPA conversions, choosing the most complete native revenue source across to-date, daily, and breakdown totals while Summary cards keep their coherent daily/to-date/breakdown source hierarchy; GA4 Overview whole-tab status is production-ready for the current GA4 code scope, with `GA4/OVERVIEW_PRODUCTION_READINESS.md` as the durable source of truth
 - exact campaign-matched imported revenue now propagates into GA4 Overview `Campaign Breakdown`, GA4 `Ad Comparison`, and report output while `Total Revenue` remains GA4 native revenue plus all active imported revenue sources; targeted validation passed for commits `44c68a2a`, `2713efd7`, and `8c4103fd`
 - the `Add revenue source` chooser shows saved-source status for every revenue source family: CRM/ecommerce sources show connection/import status where applicable, Google Sheets shows `Connected` when an active Google Sheets revenue source exists for the current platform context, and CSV shows `Uploaded` when an active CSV revenue source exists
 - CRM/ecommerce Crosswalk screens should not render a redundant `Selected Campaigns label` field; selected counts and selected value rows are the visible selection summary
@@ -162,7 +168,7 @@ Performance Summary GA4 validation should use the live/mock GA4 test-property se
 
 Performance Summary Overview should not label a campaign as `all metrics on track` unless at least one campaign KPI or Benchmark target exists. When connected-source metrics exist but no KPI/Benchmark targets are configured, `Top Priority Action` should ask the user to add campaign KPIs or Benchmarks. When no connected-source metrics exist, it should ask the user to connect a source. Unavailable impression cards should use executive-facing copy such as `Unavailable from connected sources`; detailed unavailable reasons remain in the aggregate/API for diagnostics.
 
-Budget & Financial Analysis GA4 financial behavior is tracked in `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md` and `GA4/FINANCIAL_SOURCES.md`. GA4 child revenue/spend inputs can feed aggregate financial totals, but Budget Allocation and Financial Performance Insights should treat spend-capable main Connected Platforms as the source set for allocation and paid-media optimization guidance. Budget & Financial current values refetch through the same aggregate contract while visible and on window focus, and trend comparisons must use compatible aggregate snapshots rather than legacy top-level snapshot totals. Current GA4 financial aggregate values in `/outcome-totals.performanceSummary` should align with GA4 Overview to-date native GA4 totals plus imported revenue/spend provenance, while top-level date-range GA4 fields can remain windowed.
+Budget & Financial Analysis GA4 financial behavior is tracked in `CAMPAIGN_DEEPDIVE_BUDGET_FINANCIAL_ANALYSIS_PRODUCTION_READY.md` and `GA4/FINANCIAL_SOURCES.md`. GA4 child revenue/spend inputs can feed aggregate financial totals, but Budget Allocation and Financial Performance Insights should treat spend-capable main Connected Platforms as the source set for allocation and paid-media optimization guidance. Budget & Financial current values refetch through the same aggregate contract while visible and on window focus, and trend comparisons must use compatible aggregate snapshots rather than legacy top-level snapshot totals. Current GA4 financial aggregate values in `/outcome-totals.performanceSummary` should align with GA4 Overview selected scoped native GA4 financial totals plus imported revenue/spend provenance, while top-level date-range GA4 fields can remain windowed.
 
 Platform Comparison GA4 behavior is tracked in `CAMPAIGN_DEEPDIVE_PLATFORM_COMPARISON_PRODUCTION_READY.md`. GA4 should appear as the main Google Analytics source, not as separate child revenue/spend inputs. The Overview table can display aggregate Spend, ROAS, and ROI for a GA4-only campaign when the shared aggregate has those totals, while Cost Analysis and paid-media Insights remain unavailable until a main paid-media platform with source-level spend is connected.
 

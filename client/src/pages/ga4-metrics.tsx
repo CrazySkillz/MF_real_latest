@@ -2449,9 +2449,15 @@ export default function GA4Metrics() {
 
   const importedRevenueForFinancials = Number((importedRevenueToDateResp as any)?.totalRevenue || 0);
   const ga4RevenueMetricName = String((ga4ToDateResp as any)?.revenueMetric || "").trim();
-  const ga4FinancialTotalsSource = hasToDateOverviewTotals
-    ? ga4ToDateOverviewTotals
-    : hasDailyOverviewTotals ? dailySummedTotals : ga4BreakdownTotals;
+  // Keep GA4 Revenue from understating larger scoped GA4 totals used by visible rows.
+  // Revenue and conversions must come from one source object, not per-metric maxima.
+  const ga4FinancialTotalsSource = [
+    ga4ToDateOverviewTotals,
+    dailySummedTotals,
+    ga4BreakdownTotals,
+  ].reduce((best, current) => (
+    Number(current.revenue || 0) > Number(best.revenue || 0) ? current : best
+  ), ga4ToDateOverviewTotals);
   const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);
   const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials > 0;
   // GA4 page: Total Revenue = GA4 native revenue + any imported revenue (manual, CSV, Sheets, CRM).

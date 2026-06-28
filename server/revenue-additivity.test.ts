@@ -17,13 +17,13 @@ function computeFinancialRevenue(opts: {
   ga4RevenueFromToDate: number;
   dailySummedRevenue: number;
   importedRevenueToDate: number;
-  hasToDateFinancialTotals?: boolean;
   breakdownRevenue?: number;
 }) {
-  const hasToDateFinancialTotals = opts.hasToDateFinancialTotals ?? (opts.ga4RevenueFromToDate > 0);
-  const ga4RevenueForFinancials = hasToDateFinancialTotals
-    ? opts.ga4RevenueFromToDate
-    : opts.dailySummedRevenue || opts.breakdownRevenue || 0;
+  const ga4RevenueForFinancials = Math.max(
+    opts.ga4RevenueFromToDate,
+    opts.dailySummedRevenue,
+    opts.breakdownRevenue || 0
+  );
   const importedRevenueForFinancials = opts.importedRevenueToDate;
   // CORRECT: additive - GA4 native + imported
   return ga4RevenueForFinancials + importedRevenueForFinancials;
@@ -72,24 +72,23 @@ describe("Revenue Additivity", () => {
       expect(result).toBe(10000);
     });
 
-    it("uses ga4-to-date before daily summed for GA4 portion", () => {
+    it("uses the most complete scoped GA4 revenue source for GA4 portion", () => {
       const result = computeFinancialRevenue({
         ga4RevenueFromToDate: 200000,
-        dailySummedRevenue: 250000, // daily sum is higher but is not the financial source of truth
-        importedRevenueToDate: 10000,
-        hasToDateFinancialTotals: true,
-      });
-      expect(result).toBe(210000); // GA4 to-date + imported
-    });
-
-    it("falls back to daily GA4 revenue only when to-date totals are empty", () => {
-      const result = computeFinancialRevenue({
-        ga4RevenueFromToDate: 0,
         dailySummedRevenue: 250000,
         importedRevenueToDate: 10000,
-        hasToDateFinancialTotals: false,
       });
-      expect(result).toBe(260000); // daily fallback + imported
+      expect(result).toBe(260000); // larger scoped GA4 source + imported
+    });
+
+    it("uses breakdown GA4 revenue when it is the recovered larger source", () => {
+      const result = computeFinancialRevenue({
+        ga4RevenueFromToDate: 0,
+        dailySummedRevenue: 0,
+        breakdownRevenue: 250000,
+        importedRevenueToDate: 10000,
+      });
+      expect(result).toBe(260000); // breakdown recovery + imported
     });
 
     it("accumulates multiple imported sources", () => {

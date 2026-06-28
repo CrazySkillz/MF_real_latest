@@ -4,6 +4,8 @@
 
 This file defines the GA4 `Overview` tab and the GA4-specific scope rules that feed the rest of the GA4 experience.
 
+Production-readiness status lives in `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Current status: GA4 Overview is production-ready for the current GA4 code scope. Use that readiness file for the stable future answer and for the reusable Meta/Google Ads/LinkedIn/future-platform template.
+
 ## Overview Structure
 
 The platform-level GA4 `Overview` tab contains:
@@ -42,6 +44,8 @@ Important clarification:
 - during campaign setup, the system stores the GA4 property and campaign selection/filter for this app campaign
 - after that, the Overview tab fetches current GA4 data for that saved scope and computes the cards from those query results
 - for live GA4 properties, current tagged traffic may appear in `pageLocation` URLs before GA4 campaign attribution dimensions populate; the Overview query path may therefore use `pageLocation` `utm_campaign` as a fallback only when the primary campaign-dimension scoped result is empty
+- for Measurement Protocol or freshly tagged traffic, GA4 can expose selected-campaign traffic through `pageLocation` `utm_campaign` while exposing conversions and native revenue through `campaignName`; the Overview import path may supplement only missing `Conversions` and GA4-native `Revenue` from a compatible `campaignName` conversion/revenue query without changing the traffic totals
+- new live GA4 events appear in Overview only after GA4 has processed them and the page query refetches; page load/window focus can refetch immediately, and the to-date/breakdown queries also refetch periodically while the page is open
 
 ## Source-Of-Truth Hierarchy
 
@@ -58,6 +62,7 @@ Important meaning:
 - queries and normalized records are the real inputs
 - the cards are the presentation layer for those recomputed results
 - GA4 Data API values can change after already-sent events are processed by Google; the app should display the latest refetched values rather than treating the first observed value as final
+- Overview current/to-date values may update before `Insights -> Trends`, because Trends waits for persisted completed-day daily rows while Overview can use current to-date and breakdown query results
 
 ## Fetched Vs Derived Values
 
@@ -116,16 +121,19 @@ Important meaning:
 - these are GA4-native campaign metrics
 - they are scoped to the GA4 property and GA4 campaign filter selected for this app campaign
 - they are not populated from imported revenue or spend sources
+- Summary cards should keep a coherent selected-campaign GA4 source instead of taking per-metric maximum values across daily, to-date, and breakdown endpoints
+- when persisted selected-campaign daily facts exist, the Summary cards use those daily facts for `Sessions`, `Users`, `Conversions`, GA4-native `Revenue`, and derived `Conv. Rate`; if daily facts are unavailable, the cards fall back to selected-campaign to-date totals, then selected-campaign breakdown totals
+- selected-campaign daily facts may combine `pageLocation` UTM traffic with `campaignName` conversion/revenue supplementation only for missing conversion/revenue fields; sessions, users, pageviews, and engagement remain from the traffic query
 - when live `pageLocation` UTM fallback is needed, visible card totals may also use populated GA4 breakdown totals so the top cards do not remain zero while scoped live table rows already exist
 - on initial page load or browser refresh, Summary card values should not briefly render stale fallback totals while the selected GA4 property's campaign breakdown query is still loading; show a stable skeleton for the card values until the breakdown-backed totals are ready
 
 Important `Users` rule:
 
-- the top `Users` card represents the overall deduplicated GA4 user total for the selected campaign scope
-- it should be treated as the best overall unique-user number on the Overview page
-- it is not additive across dates, which is why the implementation prefers the GA4 to-date user total over the summed GA4 daily rows
+- the top `Users` card follows the same coherent selected-campaign GA4 source as the other Summary cards
+- when persisted daily facts are the selected source, `Users` is the sum of GA4 daily `totalUsers` rows for the selected campaign scope, not a cross-day deduplicated user count
+- when to-date totals are the selected source, `Users` is the GA4 to-date user count for the selected campaign scope
 - the top `Users` card may show a short clarification tooltip:
-  `Deduplicated GA4 users for the selected campaign scope.`
+  `GA4 users for the selected campaign scope.`
 
 ### Financial Cards
 
@@ -142,7 +150,8 @@ Visible layout:
 High-level rule:
 
 - `Total Revenue` is additive:
-  `Total Revenue = GA4-native revenue + imported campaign revenue`
+  `Total Revenue = selected scoped GA4-native financial revenue + imported campaign revenue`
+- GA4-native financial revenue is selected from the scoped GA4 to-date, daily, and breakdown totals by the most complete native revenue total; revenue and CPA conversions must come from that same selected GA4 source object
 - `Pipeline Proxy`, when configured from HubSpot or Salesforce, is a separate early-signal card and is not included in `Total Revenue`
 - spend cards come only from explicit spend sources attached to the campaign
 - GA4 itself does not provide spend for this page's spend cards
@@ -246,7 +255,7 @@ Important clarification:
 
 ### Landing Pages
 
-`Landing Pages` should be understood as a cumulative view for the GA4 property and GA4 campaign selection configured for this app campaign.
+`Landing Pages` should be understood as a selected-date-range view for the GA4 property and GA4 campaign selection configured for this app campaign.
 
 Columns:
 
@@ -261,6 +270,7 @@ Important meaning:
 
 - it can reflect multiple GA4 campaign values if those values were intentionally selected for this one app campaign
 - it is not a rollup across unrelated campaigns in the property
+- it uses the same selected GA4 Overview date range as the nearby Summary, Campaign Breakdown, and current performance sections, not the app campaign's start/created date
 - revenue is intentionally not shown in `Landing Pages`; page-level rows remain traffic and conversion context only
 - campaign-matched imported revenue is not allocated into landing-page rows unless a future source provides real landing-page-level identifiers that can be matched safely
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
@@ -268,7 +278,7 @@ Important meaning:
 
 ### Conversion Events
 
-`Conversion Events` follows the same scope rule as `Landing Pages`.
+`Conversion Events` follows the same scope and selected-date-range rule as `Landing Pages`.
 
 Columns:
 
@@ -280,6 +290,7 @@ Columns:
 Important meaning:
 
 - revenue is intentionally not shown in `Conversion Events`; event rows remain conversion-volume context only
+- it uses the same selected GA4 Overview date range as the nearby Summary, Campaign Breakdown, and current performance sections, not the app campaign's start/created date
 - campaign-matched imported revenue is not allocated into event rows unless a future source provides real event-level identifiers that can be matched safely
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
 - the same person can appear in more than one conversion-event row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
@@ -293,6 +304,8 @@ Current code-path meaning:
 - in test mode, these tables can render from simulated GA4 responses
 - in production mode, they are intended to render from real GA4-backed query paths for the selected GA4 property and the campaign's saved GA4 campaign scope
 - production table population uses the real GA4 query path, not a mock-refresh design
+- numeric GA4 property IDs must not be classified as the Yesop simulator; Overview values for live or mock-live numeric properties should come from the GA4 live import/query path plus persisted selected-campaign daily facts, not a deterministic simulation baseline
+- `Landing Pages` and `Conversion Events` now use the selected GA4 Overview date range; explicit API `startDate` remains a compatibility override for callers that intentionally request it
 - when attribution dimensions are empty for fresh live traffic, table queries may fall back to `pageLocation` `utm_campaign`; landing page source and medium can then be derived from the same tagged URL
 
 Important meaning:
@@ -300,15 +313,21 @@ Important meaning:
 - these tables should populate and update accurately in production if GA4 connection, property selection, campaign scoping, and GA4 tagging are correct
 - if a table looks wrong in production, the likely problem is scoping, tagging, or upstream GA4 data quality, not that the UI is inherently test-only
 
-## Overview Tables Production-Readiness Checklist
+## Overview Tables Deployed Validation Checklist
 
-Use this checklist after the full GA4 manual-user-journey pass is complete.
+GA4 Overview production-readiness is certified in `GA4/OVERVIEW_PRODUCTION_READINESS.md` for the current GA4 code scope. Use this checklist for deployed/provider validation against real GA4 properties and real source data; these checks are validation gates, not known local code blockers.
 
 Connection and scope:
 
 - confirm the campaign has a valid GA4 access-token connection
 - confirm the correct GA4 property is selected
 - confirm the campaign's saved GA4 campaign filter/scope is correct
+
+Summary cards:
+
+- confirm `Sessions`, `Users`, `Conversions`, `Conv. Rate`, and GA4-native `Total Revenue` match the selected GA4 property and saved campaign values across the processed date range used by the Overview import
+- confirm Measurement Protocol or freshly tagged traffic that appears under `pageLocation` `utm_campaign` can still show matching selected-campaign conversions/native revenue when GA4 exposes purchase attribution under `campaignName`
+- confirm the cards keep one coherent selected-campaign source and do not combine per-metric maximum values from incompatible daily, to-date, and breakdown windows
 
 Campaign Breakdown:
 
@@ -318,14 +337,14 @@ Campaign Breakdown:
 
 Landing Pages:
 
-- confirm rows populate for the same GA4 property and campaign scope
+- confirm rows populate for the same GA4 property, selected Overview date range, and campaign scope
 - confirm `Source/Medium`, `Sessions`, `Users`, `Conversions`, and `Conv. rate` look coherent for that scope
 - confirm campaign-only imported revenue is not allocated into landing-page rows
 - confirm page rows are not unexpectedly mixing unrelated campaigns due to bad GA4 campaign tagging/filtering
 
 Conversion Events:
 
-- confirm rows populate for the same GA4 property and campaign scope
+- confirm rows populate for the same GA4 property, selected Overview date range, and campaign scope
 - confirm `Conversions`, `Event count`, and `Users` are coherent with GA4 event tracking for that scope
 - confirm campaign-only imported revenue is not allocated into conversion-event rows
 - confirm conversion-event naming and totals reflect real GA4 configuration rather than stale or misconfigured events

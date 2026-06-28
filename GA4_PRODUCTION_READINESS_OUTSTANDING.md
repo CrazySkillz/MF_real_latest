@@ -21,6 +21,12 @@ None currently listed from the production-readiness scan. Continue with the requ
 
 ## Latest Readiness Review
 
+Overview-specific update on 2026-06-28:
+
+- GA4 Overview is production-ready for the current GA4 code scope.
+- The durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
+- Remaining Overview caveats are deployed/provider validation gates, not known local code blockers.
+
 Reviewed on 2026-05-10:
 
 - GA4 readiness docs still list no known production blockers.
@@ -30,12 +36,13 @@ Reviewed on 2026-05-10:
 
 Current conclusion:
 
+- GA4 Overview is production-ready for the current GA4 code scope.
 - GA4 is ready for final real-account validation.
 - This does not replace the required deployed validation against live GA4, scheduler, revenue/spend sources, and scheduled report delivery.
 
 ## Required Production Validation
 
-1. Complete real GA4 validation against a live GA4 property:
+1. Complete real GA4 validation against a live GA4 property. This is deployed/provider evidence, not a known local Overview code blocker:
    - campaign creation
    - OAuth connect
    - property selection

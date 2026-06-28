@@ -18,6 +18,33 @@ User expectation:
 - users should not need to reselect or manually type GA4 campaign values after property selection when the selected property exposes real UTM campaign values through GA4 dimensions or tagged page URLs
 - GA4 Data API values can change after Google finishes processing already-sent events, so a later refetch can show higher values even when no new seed script run occurred
 
+## Campaign Reporting Timezone Configuration
+
+The campaign reporting timezone is the source of truth for completed-day GA4 history in Insights Trends.
+
+Current behavior:
+
+- `Create New Campaign` exposes `Reporting Timezone` in the first details step
+- new campaigns default to the browser IANA timezone when available, then fall back to `UTC`
+- `Edit Campaign` exposes the same field and persists changes through the campaign update payload when `Save Changes` is clicked
+- dropdown labels remove underscores for readability while preserving exact IANA timezone values in storage and API payloads
+- changing the campaign reporting timezone affects the Trends completed-day cutoff, freshness labels, and report timezone metadata
+- changing the campaign reporting timezone does not change the saved GA4 property, selected GA4 campaign values, source/campaign/property scoping, or KPI/Benchmark metric formulas
+
+The GA4 daily scheduler still uses deployment-level `GA4_DAILY_REFRESH_TIME_ZONE` to decide when the daily refresh job runs. That scheduler timezone and the per-campaign reporting timezone are related timing controls, but they are not the same setting.
+
+## Live Vs Mock GA4 Property Boundary
+
+Only explicit demo/mock selectors should use deterministic GA4 simulation.
+
+Current behavior:
+
+- stored GA4 property ID `yesop` is the seeded demo property and may use deterministic simulation
+- request-level `?mock=1` may force simulation for supported test flows
+- numeric GA4 property IDs, including the mock-live validation property `498536418`, must use the live GA4 connection/import/query path
+- live numeric properties must not receive a simulated Yesop baseline in Overview, Insights Trends, KPI/Benchmark current values, or campaign current-value refreshes
+- deployed validation for commit `4074d282` passed after confirming numeric property responses no longer expose `isSimulated: true` or `simulationReason`
+
 ## Cross-Tab Refresh Dependency Order
 
 The required GA4 platform pattern is:
@@ -37,6 +64,7 @@ Important meaning:
 - `KPIs`, `Benchmarks`, `Ad Comparison`, and `Insights` are downstream analytics layers
 - `Reports` is the output layer
 - because GA4 campaign scope feeds the entire chain, post-setup campaign-scope edits are not currently exposed in the GA4 analytics page
+- GA4 Overview is production-ready for the current GA4 code scope; deployed scheduler/provider refresh evidence remains an external validation gate, not a known local Overview blocker. See `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
 
 ## GA4 Scope Changes
 
@@ -75,11 +103,13 @@ Runtime cadence:
 
 - the scheduler starts from the server startup background-scheduler block, about 5 seconds after the server begins listening
 - it schedules one daily run at `GA4_DAILY_REFRESH_HOUR:GA4_DAILY_REFRESH_MINUTE` in `GA4_DAILY_REFRESH_TIME_ZONE`, defaulting to `03:00 UTC`
+- `GA4_DAILY_REFRESH_TIME_ZONE` is a deployment-level scheduler setting, not a per-campaign UI setting
 - `GA4_DAILY_REFRESH_RUN_ON_STARTUP` controls the best-effort startup run and defaults to `true`
 - scheduler logs include the next UTC run time, local reporting-time label, timezone, and expected `dataThroughDate`
 - an in-process overlap guard skips a second GA4 daily pipeline if one is already running
 - it fetches a lookback window controlled by `GA4_DAILY_LOOKBACK_DAYS`, defaulting to `90` days and bounded between `7` and `365`
 - daily facts are persisted by date; the Trends endpoint returns only completed daily rows through the campaign reporting timezone's latest completed day, so current-day intraday data is not a visible Trends history row
+- the Trends UI separates the completed-day cutoff from the latest imported row; if GA4 returns no row for a completed day, the app does not invent a zero row for that date
 
 ## Live GA4 UTM And Measurement Protocol Behavior
 
@@ -93,7 +123,8 @@ Required app behavior:
 
 - campaign setup should discover selectable UTM campaign values from all three levels, preserving the existing campaign-values response shape
 - Overview should query the saved GA4 campaign scope through campaign dimensions first, then use `pageLocation` `utm_campaign` fallback only when primary scoped results are empty
-- GA4 daily time-series/backfill should follow the same rule: query `sessionCampaignName` first, then use `pageLocation` `utm_campaign` fallback only when the primary daily result returns no rows
+- GA4 to-date totals should preserve traffic, pageview, and engagement totals from the selected-campaign traffic query, and supplement only missing conversions/native revenue from a compatible selected-campaign `campaignName` conversion/revenue query when GA4 exposes purchase attribution there
+- GA4 daily time-series/backfill should query `sessionCampaignName` first, use `pageLocation` `utm_campaign` fallback only when the primary daily result returns no rows, and supplement only missing daily conversions/native revenue from a compatible selected-campaign `campaignName` conversion/revenue query
 - fallback behavior must stay scoped to the selected campaign values and must not broaden to unrelated property traffic
 - live breakdown totals may be used as a visible-card fallback when to-date or persisted daily totals are still empty
 
@@ -126,7 +157,9 @@ The GA4 analytics page has live query refetches in addition to the background sc
 
 - `/api/campaigns/:id/ga4-daily` refetches on page load, browser focus/reconnect, and every 5 minutes while the page is open
 - `/api/campaigns/:id/ga4-to-date` and `/api/campaigns/:id/ga4-breakdown` refetch on page load, browser focus/reconnect, and every 10 minutes while the page is open
+- `/api/campaigns/:id/ga4-landing-pages` and `/api/campaigns/:id/ga4-conversion-events` use the selected GA4 Overview date range and refetch on page load/reconnect for the selected property and saved GA4 campaign scope
 - `/ga4-daily` reads persisted daily rows first; if the selected campaign/property has no stored rows for the requested window, it attempts an on-demand Data API backfill, persists the rows, and returns the stored result
+- if persisted selected-campaign daily rows already have traffic but no conversions or native revenue, `/ga4-daily` may self-repair them by rerunning the same selected-campaign daily import and upserting only when the refetch recovers conversion or revenue values
 
 Important timing:
 

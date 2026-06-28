@@ -30,7 +30,7 @@ Campaign-level KPI/Benchmark production-readiness is tracked separately in `CAMP
 
 ## Current Status
 
-The tracked May 2026 GA4 report-template blockers are complete. GA4 can be used as the implementation template for report routes, scheduled report handling, source-backed PDF generation, direct snapshot PDF output, and report email safety, provided future integrations copy the proven GA4 patterns rather than introducing parallel report, scheduler, source, or visibility paths.
+The tracked May 2026 GA4 report-template blockers are complete. GA4 Overview is production-ready for the current GA4 code scope; the durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`. GA4 can be used as the implementation template for Overview, report routes, scheduled report handling, source-backed PDF generation, direct snapshot PDF output, and report email safety, provided future integrations copy the proven GA4 patterns rather than introducing parallel report, scheduler, source, or visibility paths.
 
 This status does not close the newer findings below. Later shared report/source infrastructure changes can affect GA4 even when the visible GA4 page is not directly edited.
 
@@ -38,12 +38,14 @@ This status does not close the newer findings below. Later shared report/source 
 
 - [x] Commit 1 `eb50b64f` - refreshed stale source-backed report regression guards and fixed the confirmed scheduler discovery gap for `custom-integration` platform reports.
 - [x] Commit 2 `cedd01cb` - removed the orphan `/api/campaigns/:id/ga4-daily` synthetic imported-revenue write while preserving native `ga4_daily_metrics` backfill.
-- [x] Commit 3 `5b5f147d` - aligned `/api/campaigns/:id/outcome-totals.performanceSummary` GA4 financial inputs with GA4 Overview to-date native GA4 totals while preserving the top-level date-range GA4 response.
+- [x] Commit 3 `5b5f147d` - aligned `/api/campaigns/:id/outcome-totals.performanceSummary` GA4 financial inputs with the GA4 Overview selected scoped native GA4 financial source while preserving the top-level date-range GA4 response.
 - [x] Commit 4 `690b3962` - cleaned up the three proven orphan `ga4_daily_metrics` synthetic revenue records with an exact-ID guarded migration.
 - [x] Commit 5 `3c7d7955` - fixed the real-property GA4 campaign picker so it checks GA4 manual UTM campaign dimensions when generic GA4 campaign dimensions return only placeholders such as `(direct)`.
 - [x] Commit 6 `c2ffc62e` - fixed the real-property GA4 campaign picker fallback so it extracts `utm_campaign` from GA4 `pageLocation` rows when GA4 attribution dimensions have not populated yet.
 - [x] Commit 7 `2b31ed29` / `bdfa50f7` / `57267c01` - fixed the live real-property GA4 Overview and table zero-metrics path by reusing the selected UTM campaign scope from `pageLocation` when GA4 campaign attribution dimensions and complete-day rows are empty, then carrying those live breakdown totals into the visible Overview cards.
 - [x] Commit 8 `b4c845af` - fixed GA4 Insights Trends history gating so `Daily`, `7d`, `30d`, and `Monthly` show mode-specific history requirements instead of the old shared 2-day message.
+- [x] Overview Commit 1 `f1e684ce` plus follow-up - aligned GA4 Overview financial native revenue and CPA conversions to one selected scoped financial source that cannot understate larger visible native GA4 totals, while preserving Summary-card daily/to-date/breakdown behavior.
+- [x] Overview Commit 2 `7e4cd063` - added `GA4/OVERVIEW_PRODUCTION_READINESS.md` as the canonical Overview production-readiness and future-platform template document, with current status production-ready for the GA4 code scope.
 
 Validation completed:
 
@@ -51,6 +53,7 @@ Validation completed:
 - `npm run check` passed after Commits 1 through 7
 - focused GA4 campaign-picker and UTM-scope regressions passed for Commits 5, 6, and 7
 - focused GA4 UI regression coverage was added for Commit 8; full local check was not rerun for Commit 8 after the unrelated working-tree rewrite
+- Overview Commit 1 validation passed: focused Overview/additivity tests passed, broader targeted GA4 Overview/financial/source-safety subset passed, and `npm run check` passed
 
 Not locally verified:
 
@@ -287,11 +290,11 @@ Validation:
 
 ## Next Step
 
-No parity follow-up commit is currently needed. Future GA4 production-readiness work should be selected from the unverified areas below only after a separate trace or deployed validation proves a specific issue.
+No local GA4 Overview follow-up commit is currently needed. GA4 Overview is production-ready for the current GA4 code scope per `GA4/OVERVIEW_PRODUCTION_READINESS.md`. Future GA4 production-readiness work should be selected from the validation gates below only after a separate trace or deployed validation proves a specific issue.
 
 ## Current Unverified Areas
 
-Do not mark GA4 fully production-ready until these are separately traced or validated:
+The following are deployed/provider or production-data validation gates for broader GA4 confidence. They do not reopen GA4 Overview local code readiness unless they produce a specific code or data defect:
 
 - full add/edit/delete/scheduler/display/totals/cleanup lifecycle for each GA4 revenue source family: Shopify, HubSpot, Salesforce, Google Sheets, CSV, and legacy Manual
 - full add/edit/delete/scheduler/display/totals/cleanup lifecycle for each GA4 spend source family: Google Sheets, CSV, LinkedIn Ads, Meta, Google Ads, and legacy Manual

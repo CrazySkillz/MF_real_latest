@@ -284,6 +284,7 @@ Important caveat:
 Mock-live GA4 seed-script caveat:
 
 - a script that sends Measurement Protocol events to a real GA4 property is useful for live campaign picker, Overview, table, and current-metric validation
+- numeric GA4 property IDs, including mock-live validation properties, must use live GA4 import/query paths; only explicit `yesop` demo connections or request-level `?mock=1` should use deterministic simulation
 - GA4 processes Measurement Protocol events asynchronously, so app values can increase later without rerunning the script
 - repeat same-day script runs add more current events, but they do not create multiple persisted daily-history rows for Trends
 - to validate Insights Trends, run controlled data on separate UTC days or use a confirmed daily-backfill path; expected minimums are 2 days for `Daily`, 14 days for `7d`, 60 days for `30d`, and 2 calendar months for `Monthly`
@@ -313,6 +314,8 @@ The GA4 section should be treated as production-ready only when:
 - shared calculations remain stable across tabs
 - refresh/recompute behavior is trustworthy
 - report outputs reflect the refreshed state correctly
+
+Current Overview status: GA4 Overview is production-ready for the current GA4 code scope. The durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`; use its `Future Platform Template` and `Future Platform Readiness Checklist` when refining Meta, Google Ads, LinkedIn, or another source.
 
 ## Delete Flow Validation
 

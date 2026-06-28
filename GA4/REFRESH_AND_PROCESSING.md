@@ -381,7 +381,7 @@ Instead:
 
 - ad hoc GA4 reports use live refreshed page state at generation time
 - scheduled/server-generated reports use saved config plus shared report-generation infrastructure
-- scheduled/server-generated GA4 reports run a best-effort campaign KPI/Benchmark recompute before PDF generation
+- scheduled/server-generated GA4 reports fail closed unless the campaign KPI/Benchmark recompute runs for the target campaign before PDF generation
 - platform report test-send uses the same email-provider compatibility rule as scheduled delivery, including Mailgun HTTP API when `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are configured
 - scheduled/test-send report emails must attach the generated PDF and keep the email body plain and transactional; the PDF is the report artifact
 
@@ -390,7 +390,7 @@ Important meaning:
 - `Reports` is a downstream output layer
 - reports should render from refreshed GA4 tab inputs
 - reports must not become a competing source of truth for campaign metrics
-- report delivery continues even if the best-effort pre-send recompute logs a warning
+- report delivery and manual snapshot creation must not continue when GA4 KPI/Benchmark preflight recompute fails or skips the target campaign
 - scheduled reports must be saved with at least one non-empty recipient before the scheduler can process them
 - scheduled report delivery must verify the campaign still exists before snapshot creation, GA4 recompute, PDF generation, email sending, or report send-bookkeeping updates
 - if a campaign-scoped scheduled report points to a missing campaign, the scheduler should mark that scheduled send as skipped/failed and not send the report

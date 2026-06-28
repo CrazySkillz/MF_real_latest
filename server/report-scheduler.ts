@@ -222,13 +222,28 @@ function customIntegrationSourceScopeMatchesReport(rowScope: any, reportScope: a
 
 function platformRequiresSourceBackedReportOutput(platformType: any): boolean {
   const normalized = String(platformType || "").trim().toLowerCase();
-  return normalized === "instagram" || normalized === "tiktok" || normalized === "google_sheets" || normalized === "custom-integration" || normalized === "custom_integration";
+  return normalized === "google_analytics" || normalized === "instagram" || normalized === "tiktok" || normalized === "google_sheets" || normalized === "custom-integration" || normalized === "custom_integration";
 }
 
 function sourceBackedReportOutputUnavailableMessage(platformType: any): string {
   const normalized = String(platformType || "").trim().toLowerCase();
-  const label = normalized === "tiktok" ? "TikTok" : normalized === "google_sheets" ? "Google Sheets" : normalized === "custom-integration" || normalized === "custom_integration" ? "Custom Integration" : "Instagram";
+  const label = normalized === "google_analytics" ? "GA4" : normalized === "tiktok" ? "TikTok" : normalized === "google_sheets" ? "Google Sheets" : normalized === "custom-integration" || normalized === "custom_integration" ? "Custom Integration" : "Instagram";
   return `${label} source-backed PDF output unavailable`;
+}
+
+export async function preflightGA4ReportKPIConsumers(report: any, date?: string, opts?: { suppressAlerts?: boolean }): Promise<{ ok: boolean; error?: string }> {
+  if (String((report as any)?.platformType || "").trim().toLowerCase() !== "google_analytics") return { ok: true };
+  const campaignId = String((report as any)?.campaignId || "").trim();
+  if (!campaignId) return { ok: false, error: "GA4 report campaign is missing" };
+  try {
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, ...(date ? { date } : {}), ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) });
+    if (Number((result as any)?.campaignsProcessed || 0) <= 0) {
+      return { ok: false, error: "GA4 KPI/Benchmark recompute skipped target campaign" };
+    }
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || "GA4 KPI/Benchmark recompute before report failed" };
+  }
 }
 
 const CUSTOM_INTEGRATION_REPORT_METRICS = [
@@ -2150,12 +2165,16 @@ export async function checkScheduledReports(): Promise<void> {
         ...(snapshotPlatformType === "google_ads" ? { configuration: parseReportConfiguration((report as any).configuration) } : {}),
       };
 
-      if (snapshotPayload.platformType === "google_analytics" && snapshotPayload.campaignId) {
-        try {
-          await runGA4DailyKPIAndBenchmarkJobs({ campaignId: String(snapshotPayload.campaignId), date: windowEnd });
-        } catch (e: any) {
-          console.warn("[Report Scheduler] GA4 KPI/Benchmark recompute before report failed:", e?.message || e);
-        }
+      const ga4Preflight = await preflightGA4ReportKPIConsumers(report, windowEnd);
+      if (!ga4Preflight.ok) {
+        const error = `${ga4Preflight.error}; skipped scheduled report`;
+        console.warn(`[Report Scheduler] ${error}: report=${report.id}, campaign=${(report as any).campaignId || "none"}`);
+        await db
+          .update(reportSendEvents)
+          .set({ status: "failed", error } as any)
+          .where(and(eq(reportSendEvents.reportId, String((report as any).id)), eq(reportSendEvents.scheduledKey, due.scheduledKey)))
+          .catch(() => { });
+        continue;
       }
 
       const pdfBuffer = await buildPdfAttachmentForReport({
@@ -2390,6 +2409,11 @@ export async function sendTestReport(reportId: string): Promise<{ success: boole
       campaignName = (c as any)?.name || null;
     } catch {
       return { success: false, message: "Campaign lookup failed; test report skipped", recipients };
+    }
+
+    const ga4Preflight = await preflightGA4ReportKPIConsumers(report, windowEnd, { suppressAlerts: true });
+    if (!ga4Preflight.ok) {
+      return { success: false, message: `${ga4Preflight.error}; test report skipped`, recipients };
     }
 
     const pdfBuffer = await buildPdfAttachmentForReport({

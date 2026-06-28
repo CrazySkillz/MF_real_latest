@@ -108,6 +108,25 @@ const normalizeCustomReportConfig = (cfg: any = {}) => ({
   selectedBenchmarkIds: Array.isArray(cfg?.selectedBenchmarkIds) ? cfg.selectedBenchmarkIds.map(String) : [],
 });
 
+const parseReportConfiguration = (configuration: any): Record<string, any> => {
+  if (typeof configuration === "string") {
+    try {
+      return JSON.parse(configuration || "{}") || {};
+    } catch {
+      return {};
+    }
+  }
+  return typeof configuration === "object" && configuration ? configuration : {};
+};
+
+const reportIncludesKPISection = (report: any): boolean => {
+  const reportType = String(report?.reportType || "overview").toLowerCase();
+  if (reportType === "kpis") return true;
+  if (reportType !== "custom") return false;
+  const cfg = normalizeCustomReportConfig(parseReportConfiguration(report?.configuration));
+  return Boolean(cfg.sections?.kpis || cfg.subsections?.kpis?.items || cfg.selectedKpiIds.length > 0);
+};
+
 const normalizeCampaignKey = (value: any) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
 const REVENUE_ALLOCATION_RESIDUAL_THRESHOLD = 0.01;
 
@@ -370,6 +389,9 @@ async function buildGA4ReportPayload(report: any) {
   const benchmarkStorage = storage as typeof storage & {
     getPlatformBenchmarks(platformType: string, campaignId?: string): Promise<any[]>;
   };
+  const loadPlatformKPIs = reportIncludesKPISection(report)
+    ? storage.getPlatformKPIs("google_analytics", campaignId)
+    : storage.getPlatformKPIs("google_analytics", campaignId).catch(() => [] as any[]);
 
   const [metrics, breakdown, landingPages, conversionEvents, timeSeries, revenueSources, spendSources, revenueBreakdown, spendBreakdown, platformKPIs, benchmarks] = await Promise.all([
     ga4Service.getMetricsWithAutoRefresh(campaignId, storage, REPORT_LOOKBACK_RANGE, propertyId, campaignFilter).catch((e) => { logPartFailure("metrics", e); return {} as any; }),
@@ -381,7 +403,7 @@ async function buildGA4ReportPayload(report: any) {
     storage.getSpendSources(campaignId).catch(() => [] as any[]),
     storage.getRevenueBreakdownBySource(campaignId, startDate, endDate, "ga4").catch(() => [] as any[]),
     storage.getSpendBreakdownBySource(campaignId, startDate, endDate).catch(() => [] as any[]),
-    storage.getPlatformKPIs("google_analytics", campaignId).catch(() => [] as any[]),
+    loadPlatformKPIs,
     benchmarkStorage.getPlatformBenchmarks("google_analytics", campaignId).catch(() => [] as any[]),
   ]);
 
@@ -711,7 +733,7 @@ export async function buildGA4ScheduledPdfAttachment(_args: {
   const doc = new jsPDF();
   const payload = await buildGA4ReportPayload(report);
   const reportType = String(report?.reportType || "overview").toLowerCase();
-  const rawCfg = typeof report?.configuration === "string" ? JSON.parse(report.configuration || "{}") : (report?.configuration || {});
+  const rawCfg = parseReportConfiguration(report?.configuration);
   const cfg = normalizeCustomReportConfig(rawCfg);
   const sections = reportType === "custom"
     ? cfg.sections

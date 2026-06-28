@@ -693,12 +693,15 @@ Required behavior:
 - scheduled/server GA4 reports use corrected persisted KPI values after recompute
 - report preflight recompute does not write misleading values for unsupported/custom rows
 - failed recompute does not create a report artifact that implies unverified KPI values are fresh
+- manual GA4 report snapshots are not inserted unless GA4 preflight recompute and PDF generation succeed
+- GA4 KPI-section PDF generation fails closed when persisted KPI rows cannot be read
 
 Validation:
 
 - scheduled GA4 KPI report includes corrected persisted ROAS, ROI, CPA, and Revenue after current-day source inputs
 - custom KPI rows are preserved or explicitly marked according to documented semantics
 - report snapshot/audit state is consistent with send success/failure behavior already required by report safety rules
+- source regression coverage must prove scheduled send, test-send, manual snapshot, and KPI-section PDF builder fail-closed guards before this commit can be treated as locally covered
 
 ### Current Commit 6 - Existing damaged-data inventory and bounded cleanup plan
 

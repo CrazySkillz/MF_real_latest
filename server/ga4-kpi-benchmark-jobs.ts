@@ -209,7 +209,7 @@ export function computeBenchmarkRating(variancePct: number) {
   return "poor";
 }
 
-export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: string; date?: string }) {
+export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: string; date?: string; suppressAlerts?: boolean }) {
   const date = String(opts?.date || reportDateUTC()).trim();
   const campaigns = opts?.campaignId
     ? [await storage.getCampaign(String(opts.campaignId)).catch(() => undefined)].filter(Boolean) as any[]
@@ -470,7 +470,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
     }
   }
 
-  if (opts?.campaignId && processed > 0) {
+  if (opts?.campaignId && processed > 0 && !opts?.suppressAlerts) {
     try {
       const { checkPerformanceAlerts } = await import("./kpi-scheduler.js");
       await checkPerformanceAlerts();

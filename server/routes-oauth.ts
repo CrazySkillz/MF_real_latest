@@ -25462,8 +25462,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const sourceBackedReportPlatform = String(payload.platformType || "").trim().toLowerCase();
-      if (sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets" || sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration") {
-        const { buildPdfAttachmentForReport } = await import("./report-scheduler.js");
+      if (sourceBackedReportPlatform === "google_analytics" || sourceBackedReportPlatform === "instagram" || sourceBackedReportPlatform === "tiktok" || sourceBackedReportPlatform === "google_sheets" || sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration") {
+        const { buildPdfAttachmentForReport, preflightGA4ReportKPIConsumers } = await import("./report-scheduler.js");
+        const ga4Preflight = await preflightGA4ReportKPIConsumers(existing, windowEnd, { suppressAlerts: true });
+        if (!ga4Preflight.ok) {
+          return res.status(422).json({ success: false, error: `${ga4Preflight.error}; snapshot not created` });
+        }
         const buf = await buildPdfAttachmentForReport({
           report: existing,
           windowStart,
@@ -25472,7 +25476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isTest: true,
         });
         if (!buf) {
-          const label = sourceBackedReportPlatform === "tiktok" ? "TikTok" : sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram";
+          const label = sourceBackedReportPlatform === "google_analytics" ? "GA4" : sourceBackedReportPlatform === "tiktok" ? "TikTok" : sourceBackedReportPlatform === "google_sheets" ? "Google Sheets" : sourceBackedReportPlatform === "custom-integration" || sourceBackedReportPlatform === "custom_integration" ? "Custom Integration" : "Instagram";
           return res.status(422).json({ success: false, error: `${label} source-backed PDF output unavailable; snapshot not created` });
         }
       }

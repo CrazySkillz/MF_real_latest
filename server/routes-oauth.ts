@@ -10131,6 +10131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dateRange = String(req.query.dateRange || '90days');
       const propertyId = req.query.propertyId ? String(req.query.propertyId) : undefined;
       const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10) || 50, 1), 500);
+      const includeDiagnostics = ['1', 'true', 'yes'].includes(String((req.query as any)?.diagnostics || (req.query as any)?.debug || '').toLowerCase());
       const forceMock = String((req.query as any)?.mock || '').toLowerCase() === '1' || String((req.query as any)?.mock || '').toLowerCase() === 'true';
       const requestedPropertyId = propertyId ? String(propertyId) : '';
       const shouldSimulate = forceMock || isYesopMockProperty(requestedPropertyId);
@@ -10203,7 +10204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const result = await ga4Service.getLandingPagesReport(campaignId, storage, ga4DateRange, propertyId, limit, campaignFilter);
+      const result = await ga4Service.getLandingPagesReport(campaignId, storage, ga4DateRange, propertyId, limit, campaignFilter, includeDiagnostics);
       res.json({ success: true, dateRange, ...result, lastUpdated: new Date().toISOString() });
     } catch (error: any) {
       console.error('[GA4 Landing Pages] Error:', error);

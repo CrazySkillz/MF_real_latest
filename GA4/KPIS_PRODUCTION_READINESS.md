@@ -549,6 +549,11 @@ Validation:
 
 ### Current Commit 1 - Align persisted GA4 KPI financial source windows
 
+Implementation status:
+
+- forward-path fix implemented and validated for persisted GA4 KPI financial source windows
+- this does not certify GA4 KPIs as production-ready because Commits 2-6 and final certification remain incomplete
+
 Files expected:
 
 - `server/ga4-kpi-benchmark-jobs.ts`
@@ -826,13 +831,17 @@ Completed behavior:
 
 Current validation status:
 
-- no runtime code fixes from the current fix queue have been implemented yet
-- no targeted tests for the current blockers have been run yet
+- Current Commit 1 forward-path code and focused tests have been implemented for persisted GA4 KPI financial source windows
+- remaining runtime fixes from Current Commits 2-6 have not been implemented yet
+- no final production-readiness certification pass has been run yet
 - the historical June 27 tests remain useful regression coverage for ROAS ratio, CPA sufficiency, alert URL/visibility, and email gating, but they do not prove current GA4 KPI production readiness
+
+Current covered path after Commit 1:
+
+- current-day imported revenue/spend records in persisted GA4 KPI recompute are covered by `server/ga4-kpi-financial-window-regression.test.ts`
 
 Current uncovered paths that must be covered before certification:
 
-- current-day imported revenue/spend records in persisted GA4 KPI recompute
 - GA4 revenue/spend source add/edit/delete lifecycle recompute order
 - custom/unknown GA4 KPI recompute preservation
 - duplicate GA4 KPI campaign+metric latest-row-wins alert handling

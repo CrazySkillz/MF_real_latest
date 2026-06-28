@@ -4,6 +4,12 @@ import { computeCpa, computeConversionRatePercent, computeRoiPercent, normalizeR
 import { refreshCampaignCurrentValuesForCampaign } from "./utils/campaign-current-values";
 
 const isoDateUTC = (d: Date) => d.toISOString().slice(0, 10);
+const GA4_KPI_FINANCIAL_SOURCE_START_DATE = "1900-01-01";
+
+export const getGA4KPIFinancialSourceWindow = (now: Date = new Date()) => ({
+  startDate: GA4_KPI_FINANCIAL_SOURCE_START_DATE,
+  endDate: isoDateUTC(now),
+});
 
 const reportDateUTC = () => {
   const now = new Date();
@@ -324,11 +330,14 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         }
       }
 
-      // Imported revenue-to-date is stored as a single snapshot record dated "yesterday (UTC)". 
-      // Summing from a wide range yields the same number.
-      const importedRevenueTotals = await storage.getRevenueTotalForRange(campaignId, "2000-01-01", date).catch(() => ({ totalRevenue: 0 }));
-      // Use actual spend records (not the denormalized campaign.spend field which can be stale)
-      const spendTotalResult = await storage.getSpendTotalForRange(campaignId, "2000-01-01", date).catch(() => ({ totalSpend: 0 }));
+      const financialSourceWindow = getGA4KPIFinancialSourceWindow();
+      const importedRevenueTotals = await storage
+        .getRevenueTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate, "ga4")
+        .catch(() => ({ totalRevenue: 0 }));
+      // Use actual spend records (not the denormalized campaign.spend field which can be stale).
+      const spendTotalResult = await storage
+        .getSpendTotalForRange(campaignId, financialSourceWindow.startDate, financialSourceWindow.endDate)
+        .catch(() => ({ totalSpend: 0 }));
       const spendToDate = Number((spendTotalResult as any)?.totalSpend || 0) || 0;
 
       const inputs = {

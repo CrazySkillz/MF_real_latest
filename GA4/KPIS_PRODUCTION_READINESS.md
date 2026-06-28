@@ -281,7 +281,7 @@ Resolved scoping issue outside the KPI CRUD route itself:
 
 ### 7. Existing Damaged Data
 
-Status: Partially reviewed. The prior ROAS cleanup was applied for a narrower historical bug boundary; a new read-only inventory is required for the current blockers before any cleanup is proposed.
+Status: Partially reviewed. The prior ROAS cleanup was applied for a narrower historical bug boundary. Current Commit 6 adds a new read-only inventory and bounded cleanup script for the current blockers, but deployed data has not been inventoried or mutated locally.
 
 Confirmed damage boundary:
 
@@ -302,6 +302,16 @@ Completed cleanup principle:
 - do not blindly divide all historical ROAS rows by 100.
 - corrected only rows whose GA4 source boundary was proven, such as GA4 platform ROAS KPI rows and auto GA4 daily progress rows where the source data could be recomputed exactly.
 - skipped rows were left untouched where exact source inputs could not be proven.
+
+Current Commit 6 cleanup boundary:
+
+- `server/ga4-kpi-damaged-data-cleanup.ts` defaults to dry-run and prints candidate count, skipped count, sample row IDs, source windows, and reason codes.
+- `financial_source_window_drift` candidates are eligible for apply only when the current GA4 KPI row matches the old financial source-window formula exactly and differs from the new formula, with campaign, primary property, latest persisted GA4 date, source windows, and KPI identity proven.
+- access-token GA4 campaigns are skipped for financial cleanup with `financial_live_ga4_totals_not_local` because the forward job may use live GA4 totals and the cleanup script must not fetch or mutate live-provider state.
+- `custom_zero_overwrite` rows are inventoried only; rows are left unchanged with `custom_zero_previous_value_unproven` because the previous custom user-entered value is not recoverable from current persisted state.
+- `duplicate_notification_state` candidates are active performance-alert notifications tied to superseded GA4 KPI duplicate rows; apply mode marks those notifications read/resolved with `resolvedReason = superseded` without deleting KPI or notification history.
+- Email audit rows are inventoried but retained with `duplicate_email_audit_retained`; retry/send paths now suppress superseded GA4 KPI IDs, but historical audit evidence is not rewritten.
+- Apply mode requires `--apply`; no local database apply has been run in this commit.
 
 ## Current Blockers
 
@@ -707,8 +717,8 @@ Validation:
 
 Files expected:
 
-- a dry-run cleanup/inventory script only if exact damaged boundaries can be proven
-- focused cleanup boundary regression test
+- `server/ga4-kpi-damaged-data-cleanup.ts`
+- `server/ga4-kpi-damaged-data-cleanup-regression.test.ts`
 - this readiness file
 
 Required behavior:
@@ -723,6 +733,14 @@ Validation:
 - dry-run output includes candidate count, skipped count, sample row IDs, source windows, and reason codes
 - apply mode requires explicit flag
 - post-apply dry-run reports no remaining candidates for the proven boundary
+
+Implementation status:
+
+- Added `server/ga4-kpi-damaged-data-cleanup.ts` as the current damaged-data inventory and bounded cleanup script.
+- Dry-run is the default mode. `--apply` is required before any mutation.
+- Proven apply boundaries are limited to `financial_source_window_drift` KPI current rows that match the old formula exactly and `duplicate_notification_state` active in-app notifications tied to superseded GA4 KPI duplicate rows.
+- Unproven custom zero rows, access-token live GA4 financial rows, malformed/ambiguous financial rows, and duplicate email audit rows are left unchanged with explicit skip reason codes.
+- Local validation covers the cleanup boundaries and output contract; no deployed database inventory or apply has been run.
 
 ### Current Commit 7 - Final certification documentation update
 

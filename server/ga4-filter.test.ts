@@ -620,51 +620,6 @@ describe("GA4 campaign value picker", () => {
     expect(fallbackBodies[1]?.limit).toBe(10000);
   });
 
-  it("returns landing page GA4 diagnostics when requested", async () => {
-    const fetchMock = vi.fn(async (_url: string, init: any) => {
-      const body = JSON.parse(String(init?.body || "{}"));
-      const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
-      const isPageLocationFallback = dimensions.includes("pageLocation") && JSON.stringify(body?.dimensionFilter || {}).includes("pageLocation");
-
-      return {
-        ok: true,
-        json: async () => ({
-          rows: isPageLocationFallback
-            ? [{
-                dimensionValues: [
-                  { value: "https://example.com/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" },
-                ],
-                metricValues: [{ value: "0" }, { value: "0" }, { value: "4" }, { value: "120" }],
-              }]
-            : [{
-                dimensionValues: [{ value: "/landing" }, { value: "facebook" }, { value: "paid_social" }],
-                metricValues: [{ value: "318" }, { value: "318" }, { value: "0" }, { value: "0" }],
-              }],
-        }),
-      } as any;
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const storage = {
-      getGA4Connection: vi.fn(async () => ({
-        id: "conn-1",
-        propertyId: "properties/123",
-        accessToken: "token",
-        method: "access_token",
-      })),
-    };
-
-    const result = await ga4Service.getLandingPagesReport("campaign-1", storage, "90daysAgo", "123", 50, "summer_sale", true);
-
-    expect(result.rows[0]).toMatchObject({ landingPage: "/landing", source: "facebook", medium: "paid_social", conversions: 4, revenue: 120 });
-    expect(result.meta.diagnostics?.campaignFilterValues).toEqual(["summer_sale"]);
-    expect(result.meta.diagnostics?.runs.map((run: any) => run.label)).toEqual(["primaryLandingPages", "pageLocationConversionFallback"]);
-    expect(result.meta.diagnostics?.runs[0].request.dimensions.map((d: any) => d.name)).toEqual(["landingPagePlusQueryString", "sessionSource", "sessionMedium"]);
-    expect(result.meta.diagnostics?.runs[1].request.orderBys[0].metric.metricName).toBe("conversions");
-    expect(result.meta.diagnostics?.runs[1].rawRowsSample[0].dimensionValues[0].value).toContain("utm_campaign=summer_sale");
-    expect(result.meta.diagnostics?.runs[1].parsedRowsSample[0]).toMatchObject({ landingPage: "/landing", source: "facebook", medium: "paid_social", conversions: 4 });
-    expect(result.meta.diagnostics?.merge).toMatchObject({ baseRows: 1, supplementRows: 1, changed: true });
-  });
 
   it("supplements conversion event conversions from same-scope pageLocation rows by exact event name", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {

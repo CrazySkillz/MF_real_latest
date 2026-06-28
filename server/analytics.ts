@@ -149,14 +149,13 @@ export class GoogleAnalytics4Service {
     dateRange = '30daysAgo',
     propertyId?: string,
     limit: number = 50,
-    campaignFilter?: CampaignFilter,
-    includeDiagnostics = false
+    campaignFilter?: CampaignFilter
   ): Promise<{
     propertyId: string;
     revenueMetric: 'totalRevenue' | 'purchaseRevenue';
     rows: Array<{ landingPage: string; source: string; medium: string; sessions: number; users: number; conversions: number; revenue: number }>;
     totals: { sessions: number; users: number; conversions: number; revenue: number };
-    meta: { usersAreNonAdditive: boolean; diagnostics?: any };
+    meta: { usersAreNonAdditive: boolean };
   }> {
     const connection = await storage.getGA4Connection(campaignId, propertyId);
     if (!connection) throw new Error('NO_GA4_CONNECTION');
@@ -171,12 +170,6 @@ export class GoogleAnalytics4Service {
     const pageLocationCampaignFilter = this.buildUtmCampaignPageLocationFilter(campaignFilter);
     const dims = [{ name: 'landingPagePlusQueryString' }, { name: 'sessionSource' }, { name: 'sessionMedium' }];
     const pageLocationDims = [{ name: 'pageLocation' }];
-    const diagnostics = includeDiagnostics ? {
-      dateRange,
-      campaignFilterValues: this.normalizeCampaignFilter(campaignFilter),
-      runs: [] as any[],
-      merge: null as any,
-    } : null;
 
     const run = async (
       accessToken: string,
@@ -184,8 +177,7 @@ export class GoogleAnalytics4Service {
       scopeFilter: any = campaignDimensionFilter,
       dimensions: Array<{ name: string }> = dims,
       reportLimit: number = limit,
-      orderMetric: 'sessions' | 'conversions' = 'sessions',
-      diagnosticLabel = 'primary'
+      orderMetric: 'sessions' | 'conversions' = 'sessions'
     ) => {
       const requestBody = {
         dateRanges: [{ startDate: dateRange, endDate: 'today' }],
@@ -202,25 +194,9 @@ export class GoogleAnalytics4Service {
       });
       if (!resp.ok) {
         const txt = await resp.text();
-        diagnostics?.runs.push({
-          label: diagnosticLabel,
-          revenueMetric,
-          ok: false,
-          request: requestBody,
-          error: txt.slice(0, 2000),
-        });
         throw new Error(txt);
       }
       const json = await resp.json().catch(() => ({} as any));
-      diagnostics?.runs.push({
-        label: diagnosticLabel,
-        revenueMetric,
-        ok: true,
-        request: requestBody,
-        rowCount: Number(json?.rowCount || json?.rows?.length || 0),
-        rowsReturned: Array.isArray(json?.rows) ? json.rows.length : 0,
-        rawRowsSample: Array.isArray(json?.rows) ? json.rows.slice(0, 200) : [],
-      });
       return json;
     };
 
@@ -276,23 +252,18 @@ export class GoogleAnalytics4Service {
       scopeFilter: any,
       parseUtmFromPageLocation = false,
       reportLimit: number = limit,
-      orderMetric: 'sessions' | 'conversions' = 'sessions',
-      diagnosticLabel = 'primary'
+      orderMetric: 'sessions' | 'conversions' = 'sessions'
     ) => {
       try {
-        const json = await run(accessToken, 'totalRevenue', scopeFilter, parseUtmFromPageLocation ? pageLocationDims : dims, reportLimit, orderMetric, diagnosticLabel);
+        const json = await run(accessToken, 'totalRevenue', scopeFilter, parseUtmFromPageLocation ? pageLocationDims : dims, reportLimit, orderMetric);
         const parsed = parseRows(json, 'totalRevenue', parseUtmFromPageLocation);
-        const lastRun = diagnostics ? diagnostics.runs[diagnostics.runs.length - 1] : null;
-        if (lastRun?.label === diagnosticLabel && lastRun?.ok) lastRun.parsedRowsSample = parsed.rows.slice(0, 200);
         return parsed;
       } catch (e: any) {
         const msg = String(e?.message || e || '');
         // Some properties don't allow totalRevenue; try purchaseRevenue.
         if (msg.toLowerCase().includes('totalrevenue') || msg.toLowerCase().includes('metric') || msg.toLowerCase().includes('invalid')) {
-          const json2 = await run(accessToken, 'purchaseRevenue', scopeFilter, parseUtmFromPageLocation ? pageLocationDims : dims, reportLimit, orderMetric, diagnosticLabel);
+          const json2 = await run(accessToken, 'purchaseRevenue', scopeFilter, parseUtmFromPageLocation ? pageLocationDims : dims, reportLimit, orderMetric);
           const parsed = parseRows(json2, 'purchaseRevenue', parseUtmFromPageLocation);
-          const lastRun = diagnostics ? diagnostics.runs[diagnostics.runs.length - 1] : null;
-          if (lastRun?.label === diagnosticLabel && lastRun?.ok) lastRun.parsedRowsSample = parsed.rows.slice(0, 200);
           return parsed;
         }
         throw e;
@@ -326,23 +297,13 @@ export class GoogleAnalytics4Service {
         });
       }
       let changed = false;
-      const matchedSupplementRows: any[] = [];
       const rows = (base.rows || []).map((row: any) => {
         if (rowHasConversionRevenue(row)) return row;
         const match = supplementByKey.get(rowKey(row));
         if (!match || (match.conversions <= 0 && match.revenue <= 0)) return row;
         changed = true;
-        matchedSupplementRows.push({ key: rowKey(row), baseRow: row, supplement: match });
         return { ...row, conversions: match.conversions, revenue: Number(match.revenue.toFixed(2)) };
       });
-      if (diagnostics) {
-        diagnostics.merge = {
-          baseRows: Array.isArray(base?.rows) ? base.rows.length : 0,
-          supplementRows: Array.isArray(supplement?.rows) ? supplement.rows.length : 0,
-          matchedSupplementRows,
-          changed,
-        };
-      }
       if (!changed) return base;
       return {
         ...base,
@@ -358,23 +319,23 @@ export class GoogleAnalytics4Service {
 
     const supplementFromConversionFallback = async (accessToken: string, base: any) => {
       if (!pageLocationCampaignFilter || !hasMissingConversionRevenueTrafficRows(base)) return base;
-      const conversionRes = await fetchRows(accessToken, pageLocationCampaignFilter, true, 10000, 'conversions', 'pageLocationConversionFallback').catch(() => null);
+      const conversionRes = await fetchRows(accessToken, pageLocationCampaignFilter, true, 10000, 'conversions').catch(() => null);
       if (!conversionRes || isEmptyResult(conversionRes)) return base;
       return supplementMissingConversionRows(base, conversionRes);
     };
 
     const tryFetch = async (accessToken: string) => {
-      const res = await fetchRows(accessToken, campaignDimensionFilter, false, limit, 'sessions', 'primaryLandingPages');
+      const res = await fetchRows(accessToken, campaignDimensionFilter, false, limit, 'sessions');
       if (!pageLocationCampaignFilter) return res;
       if (!isEmptyResult(res)) return supplementFromConversionFallback(accessToken, res);
-      const utmRes = await fetchRows(accessToken, pageLocationCampaignFilter, true, limit, 'sessions', 'pageLocationTrafficFallback').catch(() => null);
+      const utmRes = await fetchRows(accessToken, pageLocationCampaignFilter, true, limit, 'sessions').catch(() => null);
       if (!utmRes || isEmptyResult(utmRes)) return res;
       return supplementFromConversionFallback(accessToken, utmRes);
     };
 
     try {
       const res = await tryFetch(String(connection.accessToken));
-      return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true, ...(diagnostics ? { diagnostics } : {}) } };
+      return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true } };
     } catch (e: any) {
       const msg = String(e?.message || '');
       if (isAuthErrorText(msg) && connection.refreshToken) {
@@ -389,7 +350,7 @@ export class GoogleAnalytics4Service {
           expiresAt: new Date(Date.now() + (refresh.expires_in * 1000)),
         });
         const res = await tryFetch(refresh.access_token);
-        return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true, ...(diagnostics ? { diagnostics } : {}) } };
+        return { propertyId: normalizedPropertyId, ...res, meta: { usersAreNonAdditive: true } };
       }
       throw e;
     }

@@ -447,7 +447,7 @@ Correct only the GA4 Landing Pages service response in `server/analytics.ts` for
 
 Confirmed root cause:
 
-- deployed diagnostics for `/api/campaigns/:id/ga4-landing-pages?diagnostics=1` showed `primaryLandingPages` returned `rowCount: 0` for the saved `sessionCampaignName` filter.
+- temporary deployed diagnostics for `/api/campaigns/:id/ga4-landing-pages?diagnostics=1` showed `primaryLandingPages` returned `rowCount: 0` for the saved `sessionCampaignName` filter.
 - the API response still returned six Landing Pages rows because the service fell back to same-scope `pageLocation` traffic rows ordered by `sessions`.
 - that primary-empty branch returned the traffic fallback rows directly and did not run the conversion-prioritized `pageLocation` supplement against those fallback rows.
 - the previous regression coverage covered primary landing-page rows with missing conversions, but not the primary-empty plus `pageLocation` traffic-fallback branch.
@@ -472,7 +472,7 @@ Files changed:
 Validation completed:
 
 - `npm test -- server/ga4-filter.test.ts`
-  - result: passed, 1 file, 17 tests
+  - result: passed, 1 file, 16 tests
 - `npm test -- server/ga4-ui-regression.test.ts`
   - result: passed, 1 file, 30 tests
 - `npm run check`
@@ -485,6 +485,52 @@ Pass criteria:
 - no campaign-level conversion allocation is introduced.
 - no response shape changes.
 - no source lifecycle, scheduler, alert, notification, KPI, Benchmark, Ad Comparison, Insights, or Reports behavior changes.
+
+### Follow-up: Remove temporary Landing Pages diagnostics
+
+Status: completed after deployed validation.
+
+Cleanup scope:
+
+Remove the temporary `diagnostics=1` support from `/api/campaigns/:id/ga4-landing-pages` after it proved the deployed live-test behavior. Keep the production GA4 query path, exact-key fallback supplement, and regression coverage.
+
+Deployed validation result:
+
+- property `542352127` is a live GA4 test property, not the deterministic `yesop` simulator.
+- the deployed diagnostic run showed `primaryLandingPages` returned zero rows, `pageLocationTrafficFallback` returned six rows, and `pageLocationConversionFallback` returned six rows.
+- the conversion fallback rows for that live test property had `Conversions = 0` and `Revenue = 0` for the exact landing-page/source/medium keys.
+- therefore visible Landing Pages `Conversions = 0` and `Conv. rate = 0.0%` are correct for that live test property data.
+- production properties with real conversion-bearing GA4 rows should populate from the same live GA4 Data API path; the app must not allocate campaign-level conversions into Landing Pages rows when GA4 does not return exact row-level conversion values.
+
+Implementation completed:
+
+1. Removed the endpoint query flag and service response diagnostics payload.
+2. Removed the diagnostic-only regression test.
+3. Kept the production fallback conversion supplement and its regression test.
+4. Kept the normal `meta: { usersAreNonAdditive: true }` response shape for Landing Pages.
+
+Files changed:
+
+- `server/analytics.ts`
+- `server/routes-oauth.ts`
+- `server/ga4-filter.test.ts`
+- `GA4/OVERVIEW_PRODUCTION_READINESS.md`
+
+Validation completed:
+
+- `npm test -- server/ga4-filter.test.ts`
+  - result: passed, 1 file, 16 tests
+- `npm test -- server/ga4-ui-regression.test.ts`
+  - result: passed, 1 file, 30 tests
+- `npm run check`
+  - result: passed
+
+Pass criteria:
+
+- production Landing Pages no longer exposes temporary raw diagnostics.
+- live GA4 Data API values remain the source of truth for numeric properties.
+- exact row-level conversion supplementation remains covered.
+- zero row-level conversions remain valid when GA4 returns zero for the exact Landing page + Source + Medium grain.
 
 ## Section Production-Readiness Map
 
@@ -995,7 +1041,7 @@ What the validation proves:
 Latest local validation run for the completed Landing Pages conversion-prioritized supplement:
 
 - command: `npm test -- server/ga4-filter.test.ts`
-- result: passed, 1 file, 17 tests
+- result: passed, 1 file, 16 tests
 - command: `npm test -- server/ga4-ui-regression.test.ts`
 - result: passed, 1 file, 30 tests
 

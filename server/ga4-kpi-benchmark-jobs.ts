@@ -120,6 +120,27 @@ const computeRoasRatio = (revenue: number, spend: number) => {
   return s > 0 ? r / s : 0;
 };
 
+export function isComputableGA4KpiMetric(metricOrName: string) {
+  const m = String(metricOrName || "").trim().toLowerCase();
+  return (
+    m === "revenue" ||
+    m === "total conversions" ||
+    m === "conversions" ||
+    m === "total sessions" ||
+    m === "sessions" ||
+    m === "total users" ||
+    m === "users" ||
+    m === "pageviews" ||
+    m === "conversion rate" ||
+    m === "conversionrate" ||
+    m === "engagement rate" ||
+    m === "engagementrate" ||
+    m === "roas" ||
+    m === "roi" ||
+    m === "cpa"
+  );
+}
+
 export function computeKpiValue(metricOrName: string, inputs: {
   users: number;
   sessions: number;
@@ -358,6 +379,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         if (!kpiId) continue;
 
         const metricOrName = String((kpi as any)?.metric || (kpi as any)?.name || "");
+        if (!isComputableGA4KpiMetric(metricOrName)) continue;
+
         const valueNum = computeKpiValue(metricOrName, inputs);
         // Always refresh stored currentValue so same-day persisted GA4 daily rows update what alert checks read,
         // even if we skip writing another history point for the same date.

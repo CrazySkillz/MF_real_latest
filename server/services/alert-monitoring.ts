@@ -4,6 +4,7 @@ import { eq, and, sql, lte } from "drizzle-orm";
 import { emailService } from "./email-service.js";
 import { evaluateAlertCondition, parseAlertNumber as parseSharedAlertNumber } from "../utils/alert-evaluation";
 import { resolveCampaignCurrentValueForAlert } from "../utils/campaign-current-values";
+import { getGA4KPIDuplicateKey, getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "../utils/ga4-kpi-alert-dedupe";
 import { ALERT_EMAIL_MAX_ATTEMPTS, claimAlertEmailSend, type AlertEmailSendClaim } from "../utils/alert-email-audit";
 
 interface AlertCheck {
@@ -54,6 +55,20 @@ class AlertMonitoringService {
     return parseSharedAlertNumber(value);
   }
 
+  private async isLatestGA4KPIAlertCandidate(kpi: any): Promise<boolean> {
+    const duplicateKey = getGA4KPIDuplicateKey(kpi);
+    if (!duplicateKey) return true;
+    const campaignId = String((kpi as any)?.campaignId || "").trim();
+    if (!campaignId) return true;
+
+    const campaignGA4KPIs = await db
+      .select()
+      .from(kpis)
+      .where(and(eq(kpis.campaignId, campaignId), eq(kpis.platformType, "google_analytics")));
+    const latestGA4KpiIdsByDuplicateKey = getLatestGA4KPIIdsByDuplicateKey(campaignGA4KPIs);
+    return isLatestGA4KPIForDuplicateKey(kpi, latestGA4KpiIdsByDuplicateKey);
+  }
+
   private async getExistingCampaignName(campaignId: unknown, requireClient = false): Promise<string | null> {
     const id = String(campaignId || '').trim();
     if (!id) return null;
@@ -90,6 +105,7 @@ class AlertMonitoringService {
   async sendImmediateKPIAlertIfNeeded(kpiId: string, retryClaim?: ExistingAlertEmailClaim): Promise<boolean> {
     const [rawKpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
     if (!rawKpi || !rawKpi.alertsEnabled || !rawKpi.emailNotifications || !rawKpi.emailRecipients) return false;
+    if (!(await this.isLatestGA4KPIAlertCandidate(rawKpi))) return false;
     const kpi = await resolveCampaignCurrentValueForAlert(rawKpi);
     const campaignName = await this.getExistingCampaignName((kpi as any).campaignId, Boolean(retryClaim));
     if (!campaignName) return false;
@@ -249,6 +265,7 @@ class AlertMonitoringService {
   private async isKPIAlertRetryStillSendable(kpiId: string): Promise<boolean> {
     const [rawKpi] = await db.select().from(kpis).where(eq(kpis.id, kpiId));
     if (!rawKpi || !rawKpi.alertsEnabled || !rawKpi.emailNotifications || !rawKpi.emailRecipients) return false;
+    if (!(await this.isLatestGA4KPIAlertCandidate(rawKpi))) return false;
     const kpi = await resolveCampaignCurrentValueForAlert(rawKpi);
     const campaignName = await this.getExistingCampaignName((kpi as any).campaignId, true);
     if (!campaignName) return false;
@@ -337,10 +354,17 @@ class AlertMonitoringService {
         .from(kpis)
         .where(and(eq(kpis.alertsEnabled, true), eq(kpis.emailNotifications, true)));
 
+      const allGA4KPIsForDuplicateCheck = await db
+        .select()
+        .from(kpis)
+        .where(eq(kpis.platformType, "google_analytics"));
+      const latestGA4KpiIdsByDuplicateKey = getLatestGA4KPIIdsByDuplicateKey(allGA4KPIsForDuplicateCheck);
+
       let alertsSent = 0;
       const campaignMetricCache = new Map<string, Promise<any>>();
 
       for (const rawKpi of kpisToCheck) {
+        if (!isLatestGA4KPIForDuplicateKey(rawKpi, latestGA4KpiIdsByDuplicateKey)) continue;
         const kpi = await resolveCampaignCurrentValueForAlert(rawKpi, campaignMetricCache);
         // Skip if no email recipients configured
         if (!kpi.emailRecipients) continue;

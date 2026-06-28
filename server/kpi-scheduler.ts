@@ -12,6 +12,7 @@ import {
 } from "./kpi-notifications";
 import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";
+import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 
 /**
  * KPI Scheduler - Daily Jobs
@@ -240,11 +241,16 @@ export async function checkPerformanceAlerts(): Promise<void> {
       .from(kpis);
 
     const activeKPIs = activeKPIsRaw;
+    const latestGA4KpiIdsByDuplicateKey = getLatestGA4KPIIdsByDuplicateKey(activeKPIsRaw);
 
     console.log(`[KPI Scheduler] Found ${activeKPIs.length} active KPIs with alerts enabled`);
 
     const campaignMetricCache = new Map<string, Promise<any>>();
     for (const rawKpi of activeKPIs) {
+      if (!isLatestGA4KPIForDuplicateKey(rawKpi, latestGA4KpiIdsByDuplicateKey)) {
+        await resolveKPIAlerts(String((rawKpi as any).id), 'superseded');
+        continue;
+      }
       const kpi = await resolveCampaignCurrentValueForAlert(rawKpi, campaignMetricCache);
       const platformType = String((kpi as any)?.platformType || "").trim().toLowerCase();
       const usesSingleActiveAlert = platformType === "google_analytics" || !platformType || platformType === "campaign";

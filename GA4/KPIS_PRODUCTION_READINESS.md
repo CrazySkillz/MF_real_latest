@@ -25,12 +25,12 @@ Current local blockers and certification gates:
 - persisted GA4 KPI financial source windows have a forward fix from Current Commit 1, but final certification has not been rerun
 - GA4 revenue/spend source add/edit/delete route recompute has a forward fix from Current Commit 2, but the final source lifecycle matrix remains a certification gate
 - custom or unknown GA4 KPI row preservation has a forward fix from Current Commit 3, but existing zero-overwrite inventory and final certification remain gates
-- duplicate active GA4 KPI rows for the same campaign and metric do not prove the documented latest-row-wins alert behavior
+- duplicate active GA4 KPI rows for the same campaign and metric have a forward fix from Current Commit 4, but final alert/notification certification remains a gate
 - scheduled/server GA4 reports read persisted KPI rows and must be included as direct downstream consumers
 
 The current answer is:
 
-`GA4 KPIs are not production-ready for the current GA4 code scope. The section has forward fixes for persisted financial source windows, source lifecycle route recompute, and custom/unsupported KPI row preservation, but duplicate-alert, scheduled-report, existing-data, and final certification paths remain blocked or partially reviewed. Do not call GA4 KPIs production-ready until the current fix queue and evidence gates in this file are complete.`
+`GA4 KPIs are not production-ready for the current GA4 code scope. The section has forward fixes for persisted financial source windows, source lifecycle route recompute, custom/unsupported KPI row preservation, and duplicate-alert latest-row handling, but scheduled-report, existing-data, and final certification paths remain blocked or partially reviewed. Do not call GA4 KPIs production-ready until the current fix queue and evidence gates in this file are complete.`
 
 This status should change only after:
 
@@ -380,7 +380,7 @@ Required evidence before final certification:
 - existing damaged-data inventory for any custom/unknown GA4 KPI rows previously overwritten to `0`
 - alert/report consumer certification remains covered by the duplicate-alert, scheduled-report, and final certification gates below
 
-### KPI-BLOCKER-4: Duplicate GA4 KPI latest-row-wins alert behavior is unproven
+### KPI-BLOCKER-4: Duplicate GA4 KPI latest-row-wins alert behavior needed a forward fix
 
 Root cause:
 
@@ -398,6 +398,18 @@ Required evidence before closure:
 - regression test with two active GA4 KPI rows for the same campaign and metric
 - proof only the latest row can create or keep the active breach alert
 - proof older duplicate alerts are resolved or suppressed without deleting KPI history
+
+Implementation status:
+
+- Current Commit 4 implements the forward fix in `server/kpi-scheduler.ts`, `server/services/alert-monitoring.ts`, and `server/utils/ga4-kpi-alert-dedupe.ts`.
+- The scheduler builds a GA4 `campaign + metric/name` latest-row map from loaded KPI rows and resolves older duplicate in-app alerts as `superseded` before current-value resolution or alert creation.
+- Immediate email, retry sendability, and scheduled email scans reject older duplicate GA4 KPI rows before threshold evaluation, audit claims, or email sends.
+- `server/ga4-kpi-duplicate-alert-regression.test.ts` proves latest-row selection for same-campaign duplicates, campaign isolation when the latest row is absent, pre-alert scheduler suppression, pre-claim immediate/retry email suppression, scheduled email suppression, and unchanged `kpiId` notification dedupe anchors.
+
+Remaining evidence before final certification:
+
+- existing production/development data still needs a read-only inventory for older duplicate notification and email-audit state before any cleanup decision
+- this forward fix does not close scheduled/server report consumer certification or the final `PRODUCTION_READINESS.md` checklist pass
 
 ### KPI-BLOCKER-5: Scheduled/server report consumers were under-scoped
 
@@ -642,11 +654,13 @@ Validation:
 
 ### Current Commit 4 - Enforce duplicate GA4 KPI latest-row-wins alert behavior
 
-Files expected:
+Files changed:
 
 - `server/kpi-scheduler.ts`
-- `server/kpi-notifications.ts` if notification resolution needs a narrow change
-- focused duplicate KPI alert regression test
+- `server/services/alert-monitoring.ts`
+- `server/utils/ga4-kpi-alert-dedupe.ts`
+- `server/ga4-kpi-duplicate-alert-regression.test.ts`
+- `GA4/KPIS_PRODUCTION_READINESS.md`
 
 Required behavior:
 
@@ -654,11 +668,17 @@ Required behavior:
 - older duplicate rows cannot create competing active alerts
 - existing older duplicate alerts are resolved or suppressed without hard-deleting KPI or notification history
 
+Implementation status:
+
+- Implemented in Current Commit 4 as a forward-path fix.
+- In-app alert checks resolve older duplicate GA4 KPI rows as `superseded` before `createKPIAlert` can run.
+- Immediate email, retry, and scheduled email paths suppress older duplicate GA4 KPI rows before alert-send claims or sends.
+- Notification creation/list dedupe remains scoped to `kpiId`; older duplicates are prevented upstream instead of changing notification response shape.
+
 Validation:
 
-- two active same-campaign same-metric GA4 KPI rows produce at most one active alert for the latest row
-- deleting the latest row does not expose unrelated campaign alerts
-- notification list dedupe remains campaign and KPI scoped
+- `npm test -- server/ga4-kpi-duplicate-alert-regression.test.ts` passed locally.
+- The regression covers two active same-campaign same-metric GA4 KPI rows, latest-row eligibility, same-campaign fallback after the latest row is absent, campaign isolation, scheduler suppression ordering, email suppression ordering, and unchanged notification dedupe anchors.
 
 ### Current Commit 5 - Cover scheduled/server report KPI consumers
 
@@ -859,20 +879,20 @@ Completed behavior:
 Current validation status:
 
 - Current Commit 1 forward-path code and focused tests have been implemented for persisted GA4 KPI financial source windows
-- remaining runtime fixes from Current Commits 4-6 have not been implemented yet
+- remaining runtime fixes from Current Commits 5-6 have not been implemented yet
 - no final production-readiness certification pass has been run yet
 - the historical June 27 tests remain useful regression coverage for ROAS ratio, CPA sufficiency, alert URL/visibility, and email gating, but they do not prove current GA4 KPI production readiness
 
-Current covered paths after Commits 1-3:
+Current covered paths after Commits 1-4:
 
 - current-day imported revenue/spend records in persisted GA4 KPI recompute are covered by `server/ga4-kpi-financial-window-regression.test.ts`
 - GA4 source lifecycle route recompute ordering and platform-context propagation are covered by `server/ga4-source-lifecycle-recompute-regression.test.ts`
 - custom/unsupported GA4 KPI row recompute preservation is covered by `server/ga4-kpi-custom-preservation-regression.test.ts`
+- duplicate GA4 KPI latest-row-wins alert eligibility is covered by `server/ga4-kpi-duplicate-alert-regression.test.ts`
 
 Current uncovered paths that must be covered before certification:
 
 - full GA4 source lifecycle matrix beyond the route-order guard, including source modal/list display, scheduler/provider refresh, notifications, and report consumers
-- duplicate GA4 KPI campaign+metric latest-row-wins alert handling
 - scheduled/server GA4 report consumption of persisted KPI values
 - existing damaged-data boundaries for the current blockers
 

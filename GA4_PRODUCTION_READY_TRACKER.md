@@ -46,6 +46,7 @@ This status does not close the newer findings below. Later shared report/source 
 - [x] Commit 8 `b4c845af` - fixed GA4 Insights Trends history gating so `Daily`, `7d`, `30d`, and `Monthly` show mode-specific history requirements instead of the old shared 2-day message.
 - [x] Overview Commit 1 `f1e684ce` plus follow-up - aligned GA4 Overview financial native revenue and CPA conversions to one selected scoped financial source that cannot understate larger visible native GA4 totals, while preserving Summary-card daily/to-date/breakdown behavior.
 - [x] Overview Commit 2 `7e4cd063` - added `GA4/OVERVIEW_PRODUCTION_READINESS.md` as the canonical Overview production-readiness and future-platform template document, with current status production-ready for the GA4 code scope.
+- [x] Overview Landing Pages follow-up - supplemented missing row conversions from same-scope `pageLocation` UTM rows only by exact landing-page/source/medium match, without allocating campaign-level conversions into page rows.
 
 Validation completed:
 
@@ -54,6 +55,7 @@ Validation completed:
 - focused GA4 campaign-picker and UTM-scope regressions passed for Commits 5, 6, and 7
 - focused GA4 UI regression coverage was added for Commit 8; full local check was not rerun for Commit 8 after the unrelated working-tree rewrite
 - Overview financial propagation validation passed: focused Overview/additivity/report tests passed, broader targeted GA4 Overview/financial/source/report subset passed, and `npm run check` passed
+- Overview Landing Pages exact-key conversion supplement validation passed: focused endpoint/UI tests passed, broader GA4 Overview/report subset passed, and `npm run check` passed
 
 Not locally verified:
 
@@ -222,10 +224,10 @@ Status: completed and pushed in `5b5f147d`; production-like numeric parity passe
 
 Evidence:
 
-- GA4 Overview computes financial revenue from `ga4-to-date` native revenue plus imported revenue-to-date.
+- GA4 Overview computes financial revenue from the selected scoped GA4 native financial source plus imported revenue-to-date.
 - `/api/campaigns/:id/outcome-totals` initially built GA4 aggregate values from date-range acquisition breakdown and only fell back to persisted daily rows when live values were missing.
 - Campaign DeepDive consumers use `/outcome-totals.performanceSummary`.
-- Confirmed drift boundary: Campaign DeepDive current financial values read `performanceSummary`, while GA4 Overview financial cards use `/ga4-to-date` native GA4 revenue plus imported revenue-to-date.
+- Confirmed drift boundary: Campaign DeepDive current financial values read `performanceSummary`, while GA4 Overview financial cards use the selected scoped GA4 native financial source plus imported revenue-to-date.
 
 Implementation strategy:
 
@@ -248,7 +250,7 @@ Implementation strategy:
 Implementation completed:
 
 - top-level `/outcome-totals.ga4` remains the existing date-range response
-- `performanceSummary` now receives separate `financialGa4Totals` and `financialWebAnalytics` values aligned to the same GA4 to-date native totals used by GA4 Overview financial cards
+- `performanceSummary` now receives separate `financialGa4Totals` and `financialWebAnalytics` values aligned to the same selected scoped GA4 native financial source used by GA4 Overview financial cards
 - historical trend comparison logic was not changed
 
 Validation:

@@ -272,7 +272,9 @@ Important meaning:
 - it is not a rollup across unrelated campaigns in the property
 - it uses the same selected GA4 Overview date range as the nearby Summary, Campaign Breakdown, and current performance sections, not the app campaign's start/created date
 - revenue is intentionally not shown in `Landing Pages`; page-level rows remain traffic and conversion context only
-- campaign-matched imported revenue is not allocated into landing-page rows unless a future source provides real landing-page-level identifiers that can be matched safely
+- when GA4 returns primary landing-page traffic rows with missing conversion values, conversions may be supplemented from same-scope `pageLocation` UTM rows only by exact `Landing page + Source/Medium` match
+- campaign-level conversions and campaign-matched imported revenue are not allocated into landing-page rows unless a future source provides real landing-page-level identifiers that can be matched safely
+- if GA4 cannot provide an exact row-level conversion match, `Conversions` and `Conv. rate` can correctly remain zero for that row
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
 - the same person can appear on more than one landing-page row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
 

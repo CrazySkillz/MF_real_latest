@@ -322,6 +322,48 @@ Pass criteria:
 - any cleanup plan has a proven source/campaign/record boundary before a migration is written
 - CRM, ecommerce, CSV, Google Sheets, Manual, and ad-platform rows are not touched unless individually proven damaged
 
+### Commit 5: Landing Pages exact-key conversion supplement
+
+Status: completed and locally validated.
+
+Fix scope:
+
+Correct only the GA4 Landing Pages service response in `server/analytics.ts` for the case where primary landing-page rows have traffic but no conversion/revenue values while the same selected campaign scope has compatible `pageLocation` UTM rows with row-level conversion values.
+
+Confirmed root cause:
+
+- `/api/campaigns/:id/ga4-landing-pages` calls `getLandingPagesReport`.
+- The service queried `landingPagePlusQueryString + sessionSource + sessionMedium` first.
+- The existing `pageLocation` UTM fallback ran only when the primary result was empty.
+- For fresh or Measurement Protocol-style GA4 data, the primary result can contain landing-page traffic rows while conversions are exposed only through same-scope `pageLocation` UTM rows.
+- The service returned the traffic rows as-is, so visible `Conversions` and `Conv. rate` could show zero even when a row-level `pageLocation` match existed.
+
+Implementation completed:
+
+1. Primary landing-page traffic rows remain the base table.
+2. If those rows already contain conversion/revenue values, behavior is unchanged.
+3. If primary rows contain traffic but no conversion/revenue values, the service queries the existing same-scope `pageLocation` UTM fallback.
+4. Fallback conversion/revenue values are merged only when `Landing page + Source + Medium` match exactly.
+5. Unmatched fallback rows are not added to the table and campaign-level conversions are not allocated into page rows.
+6. Frontend table rendering, imported revenue behavior, Summary cards, Campaign Breakdown, Conversion Events, KPI/Benchmark wiring, reports, scheduler behavior, alerts, and notifications were not changed.
+
+Validation completed:
+
+- `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts`
+  - result: passed, 2 files, 41 tests
+- `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts server/report-email-regression.test.ts server/ga4-insights-report-parity-regression.test.ts`
+  - result: passed, 5 files, 77 tests
+- `npm run check`
+  - result: passed
+
+Pass criteria:
+
+- Landing Pages can recover exact row-level conversions when GA4 exposes them through same-scope `pageLocation` UTM rows.
+- Landing Pages still leaves row conversions at zero when no exact row-level match exists.
+- no campaign-level conversion allocation is introduced.
+- no response shape changes.
+- no source lifecycle, scheduler, alert, notification, KPI, Benchmark, Ad Comparison, Insights, or Reports behavior changes.
+
 ## Section Production-Readiness Map
 
 ### 1. Campaign, Client, Property, And Source Scope
@@ -579,12 +621,15 @@ Current logic:
 - revenue is intentionally not shown.
 - imported campaign revenue is not allocated into landing-page rows.
 - source/medium can be derived from tagged `pageLocation` fallback rows when attribution dimensions are empty.
+- when primary landing-page rows have traffic but no conversion/revenue values, same-scope `pageLocation` UTM rows may supplement conversions only by exact `Landing page + Source + Medium` match.
+- unmatched fallback rows are not added and campaign-level conversions are not allocated into landing-page rows.
 - row-level Users values are directional and are not expected to reconcile exactly to the top Users card.
 
 Proven locally:
 
 - regression coverage guards selected date-range query usage
 - regression coverage guards absence of revenue columns
+- regression coverage guards exact-key `pageLocation` conversion supplementation without campaign-level allocation
 - GA4 service code keeps fallback scoped to selected campaign values
 
 Partially reviewed:
@@ -790,8 +835,24 @@ The following Overview-related work is already complete and should not be reopen
 7. Kept imported revenue out of Landing Pages and Conversion Events.
 8. Corrected Campaign Breakdown revenue labeling where exact campaign-matched imported revenue can be included.
 9. Kept Pipeline Proxy separate from confirmed revenue and performance calculations.
+10. Added exact-key Landing Pages conversion supplementation from same-scope `pageLocation` UTM rows without allocating campaign-level conversions into page rows.
 
 ## Validation Evidence
+
+Latest local validation run for the completed Landing Pages exact-key conversion supplement:
+
+- command: `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts`
+- result: passed, 2 files, 41 tests
+- command: `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts server/report-email-regression.test.ts server/ga4-insights-report-parity-regression.test.ts`
+- result: passed, 5 files, 77 tests
+- command: `npm run check`
+- result: passed
+
+What the validation proves:
+
+- Landing Pages uses exact `Landing page + Source + Medium` matching when supplementing missing conversions from same-scope `pageLocation` UTM rows
+- Landing Pages does not add unmatched fallback rows or allocate campaign-level conversions into page rows
+- existing Overview UI regression guards still pass
 
 Latest local validation run for the completed Overview financial-source fix:
 

@@ -428,6 +428,68 @@ describe("GA4 campaign value picker", () => {
       revenue: 879.83,
     });
   });
+  it("supplements landing page conversions from same-scope pageLocation rows by exact page/source key", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
+      const isPageLocationFallback = dimensions.includes("pageLocation") && JSON.stringify(body?.dimensionFilter || {}).includes("pageLocation");
+
+      return {
+        ok: true,
+        json: async () => ({
+          rows: isPageLocationFallback
+            ? [
+                {
+                  dimensionValues: [
+                    { value: "https://example.com/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" },
+                  ],
+                  metricValues: [{ value: "318" }, { value: "318" }, { value: "39" }, { value: "7068.9" }],
+                },
+                {
+                  dimensionValues: [
+                    { value: "https://example.com/pricing?utm_source=google&utm_medium=display&utm_campaign=summer_sale" },
+                  ],
+                  metricValues: [{ value: "151" }, { value: "151" }, { value: "6" }, { value: "100" }],
+                },
+                {
+                  dimensionValues: [
+                    { value: "https://example.com/other?utm_source=google&utm_medium=display&utm_campaign=summer_sale" },
+                  ],
+                  metricValues: [{ value: "10" }, { value: "10" }, { value: "99" }, { value: "990" }],
+                },
+              ]
+            : [
+                {
+                  dimensionValues: [{ value: "/landing" }, { value: "facebook" }, { value: "paid_social" }],
+                  metricValues: [{ value: "318" }, { value: "318" }, { value: "0" }, { value: "0" }],
+                },
+                {
+                  dimensionValues: [{ value: "/pricing" }, { value: "google" }, { value: "display" }],
+                  metricValues: [{ value: "151" }, { value: "151" }, { value: "0" }, { value: "0" }],
+                },
+              ],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const storage = {
+      getGA4Connection: vi.fn(async () => ({
+        id: "conn-1",
+        propertyId: "properties/123",
+        accessToken: "token",
+        method: "access_token",
+      })),
+    };
+
+    const result = await ga4Service.getLandingPagesReport("campaign-1", storage, "90daysAgo", "123", 200, "summer_sale");
+
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows[0]).toMatchObject({ landingPage: "/landing", source: "facebook", medium: "paid_social", sessions: 318, users: 318, conversions: 39, revenue: 7068.9 });
+    expect(result.rows[1]).toMatchObject({ landingPage: "/pricing", source: "google", medium: "display", sessions: 151, users: 151, conversions: 6, revenue: 100 });
+    expect(result.totals).toMatchObject({ sessions: 469, users: 469, conversions: 45, revenue: 7168.9 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });
 
 

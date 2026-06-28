@@ -2372,14 +2372,24 @@ export default function GA4Metrics() {
     const ids = Array.isArray(spendToDateResp?.sourceIds) ? spendToDateResp.sourceIds : [];
     return !!activeSpendSource || ids.length > 0;
   }, [activeSpendSource, spendToDateResp?.sourceIds]);
+  const ga4RevenueMetricName = String((ga4ToDateResp as any)?.revenueMetric || "").trim();
+  // Keep GA4 Revenue from understating larger scoped GA4 totals used by visible rows.
+  // Revenue and conversions must come from one source object, not per-metric maxima.
+  const ga4FinancialTotalsSource = [
+    ga4ToDateOverviewTotals,
+    dailySummedTotals,
+    ga4BreakdownTotals,
+  ].reduce((best, current) => (
+    Number(current.revenue || 0) > Number(best.revenue || 0) ? current : best
+  ), ga4ToDateOverviewTotals);
+  const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);
+  const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials > 0;
+
   const revenueMetricAvailable = useMemo(() => {
-    const ga4RevenueMetric = String((ga4ToDateResp as any)?.totals?.revenueMetric || "").trim();
-    const ga4RevenueValue = Number((ga4ToDateResp as any)?.totals?.revenue || 0);
-    // Revenue metric is only "available" if there's an actual revenue source with data,
-    // OR GA4 reports a revenue metric AND has non-zero revenue. A simulation returning
-    // revenueMetric="totalRevenue" with revenue=0 should NOT enable revenue-dependent KPIs.
-    return !!activeRevenueSource || (!!ga4RevenueMetric && ga4RevenueValue > 0) || breakdownTotals.revenue > 0;
-  }, [activeRevenueSource, ga4ToDateResp, breakdownTotals.revenue]);
+    // Revenue-dependent KPIs, Benchmarks, and Insights must follow the same GA4
+    // financial source used by Total Revenue, not only the Summary-card source.
+    return !!activeRevenueSource || ga4HasRevenueMetric;
+  }, [activeRevenueSource, ga4HasRevenueMetric]);
 
   const getMissingDependenciesForMetric = (metricKey: string) => {
     const key = String(metricKey || "").trim();
@@ -2448,18 +2458,6 @@ export default function GA4Metrics() {
   const usingAutoLinkedInSpend = false;
 
   const importedRevenueForFinancials = Number((importedRevenueToDateResp as any)?.totalRevenue || 0);
-  const ga4RevenueMetricName = String((ga4ToDateResp as any)?.revenueMetric || "").trim();
-  // Keep GA4 Revenue from understating larger scoped GA4 totals used by visible rows.
-  // Revenue and conversions must come from one source object, not per-metric maxima.
-  const ga4FinancialTotalsSource = [
-    ga4ToDateOverviewTotals,
-    dailySummedTotals,
-    ga4BreakdownTotals,
-  ].reduce((best, current) => (
-    Number(current.revenue || 0) > Number(best.revenue || 0) ? current : best
-  ), ga4ToDateOverviewTotals);
-  const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);
-  const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials > 0;
   // GA4 page: Total Revenue = GA4 native revenue + any imported revenue (manual, CSV, Sheets, CRM).
   // This matches what executives expect: the full revenue picture for this campaign.
   const financialRevenue = ga4RevenueForFinancials + importedRevenueForFinancials;

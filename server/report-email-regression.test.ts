@@ -80,6 +80,20 @@ describe("scheduled report email regression guard", () => {
     expect(campaignBreakdownBlock).not.toContain("GA4 REVENUE");
   });
 
+  it("keeps GA4 scheduled Total Revenue on the selected scoped financial source", () => {
+    const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
+
+    expect(source).toContain("const breakdownFinancialTotals = {");
+    expect(source).toContain("const ga4ToDateFinancialTotals = {");
+    expect(source).toContain("const ga4FinancialTotalsSource = [");
+    expect(source).toContain("ga4ToDateFinancialTotals,");
+    expect(source).toContain("dailySummedTotals,");
+    expect(source).toContain("breakdownFinancialTotals,");
+    expect(source).toContain("const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);");
+    expect(source).toContain("const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);");
+    expect(source).not.toContain("const ga4RevenueForFinancials = Math.max(Number((ga4ToDate as any)?.totals?.revenue || 0), Number(dailySummedTotals.revenue || 0));");
+    expect(source).not.toContain("const financialConversions = Math.max(Number((ga4ToDate as any)?.totals?.conversions || 0), Number(dailySummedTotals.conversions || 0));");
+  });
   it("keeps GA4 scheduled Ad Comparison revenue provenance aligned with live output", () => {
     const source = readFileSync(GA4_SCHEDULED_PDF_FILE, "utf-8");
     const payloadStart = source.indexOf("const sourceRevenueBreakdowns = new Map<string, any[]>");

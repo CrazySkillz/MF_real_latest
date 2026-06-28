@@ -744,22 +744,29 @@ Consumers:
 - Ad Comparison
 - Insights
 - browser-generated report output
-- Campaign DeepDive aggregate values through `/outcome-totals.performanceSummary`
+- scheduled/server GA4 report PDF output where it renders GA4 Overview-originated Total Revenue
 
 Current logic:
 
 - many downstream UI paths consume `financialRevenue`, `financialConversions`, or `ga4RevenueForFinancials`.
-- Commit 1 corrected those Overview-originated values without reopening independent KPI, Benchmark, Ad Comparison, Insights, or Reports readiness.
+- revenue-availability gates for KPIs, Benchmarks, and Insights use `ga4HasRevenueMetric`, which is derived from the same selected GA4 financial source used by Total Revenue.
+- browser-generated and scheduled/server GA4 report output use the selected scoped GA4 financial source for Total Revenue and CPA conversions.
+- Commit 1 corrected those Overview-originated values without reopening independent KPI, Benchmark, Ad Comparison, Insights, or Reports readiness beyond this value-propagation path.
 
 Proven locally:
 
-- Campaign DeepDive aggregate parity was previously validated against GA4 Overview financial values for a production-like campaign
+- KPIs read `financialRevenue` for Revenue, ROAS, and ROI live values and creation prefill; the availability gate now follows `ga4HasRevenueMetric`.
+- Benchmarks read `financialRevenue` for revenue/financial current values; the availability gate now follows `ga4HasRevenueMetric`.
+- Ad Comparison receives `totalRevenue={financialRevenue}` and `ga4RevenueTotal={ga4RevenueForFinancials}`; its browser and scheduled report output use those same totals for all-source revenue and source provenance.
+- Insights executive cards, data summary, and financial integrity checks read `financialRevenue`; the availability gate now follows `ga4HasRevenueMetric`.
+- Browser-generated and scheduled/server GA4 Reports read the selected scoped GA4 financial source for Total Revenue and CPA conversions.
+- Campaign DeepDive aggregate/report parity remains a separate aggregate route concern and was not broadened by this Overview propagation fix.
 - Reports readiness separately covers scheduled/server report output labels and delivery caveats
 - KPI and Benchmark readiness is separate and should not be reopened unless the corrected Overview financial value changes their input contract
 
 Partially reviewed:
 
-- browser-generated report output reads the same frontend variables; deployed/manual visual parity can be checked separately when needed
+- deployed/manual visual parity can be checked separately when needed
 
 Not locally verifiable:
 

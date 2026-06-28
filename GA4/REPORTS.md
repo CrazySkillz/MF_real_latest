@@ -86,9 +86,10 @@ Current standard-template output rule:
 - `Benchmarks` should follow the live Benchmark order
 - `Ad Comparison` should follow the live Ad Comparison order
 - `Ad Comparison` report leader cards and chart sections should use the same adjusted campaign comparison rows as the live tab, including exact campaign-matched imported revenue and mapped-revenue-created rows; leader-card CR details should use the same two-decimal exact-rate formatting as the live tab; `All Campaigns` tables should keep stable campaign-row order and should not be controlled by the metric dropdown
-- `Ad Comparison` report revenue breakdown should match the live provenance contract: source-level GA4 revenue, active imported source rows, and no standalone one-cent rounding residual as unallocated revenue; scheduled/server PDF provenance parity is implemented and locally validated, with deployed attachment evidence deferred until Mailgun is properly configured
+- `Ad Comparison` report revenue breakdown should match the live provenance contract: source-level GA4 revenue, active imported source rows, and no standalone one-cent rounding residual as unallocated revenue; scheduled/server PDF provenance parity is implemented and locally validated, and Total Revenue uses the same selected scoped GA4 financial source as Overview, with deployed attachment evidence deferred until Mailgun is properly configured
 - `Insights` should follow the live Insights order
-- `Insights` report output should include the same daily-history freshness context as the live Trends section: `Data through`, reporting timezone, and last refreshed timestamp
+- `Insights` report output should include the report-supported Trends freshness context: `Completed-day cutoff`, reporting timezone, and last refreshed timestamp. The live Trends UI additionally shows `Latest imported day`; report output should not be documented as showing that label unless the report renderer is explicitly extended.
+- `Insights` report Trends charts should use the same visual chart contract as the live UI for the data rendered: zero-based y-axis, light gridlines, muted axes, blue line/bar styling, and readable date labels such as `MM-DD` for daily/rolling charts. Scheduled/server output currently renders its supported sessions trend rather than a persisted live dropdown selection.
 - downloaded and scheduled `Insights` report output should keep `What to investigate next` aligned with the live section by printing the history-aware intro, grouped findings, data basis, confidence, and `Recommended check:` wording
 
 ## Custom Report
@@ -130,7 +131,7 @@ Important meaning:
 - custom reports store report configuration, not frozen analytics values
 - actual report values should come from refreshed GA4 tab inputs when the report is generated or sent
 - Campaign DeepDive Custom Report opens the Reports builder with campaign context and should read current campaign aggregate values from `/outcome-totals`
-- Campaign DeepDive report output should read current financial values from `/outcome-totals.performanceSummary`; for GA4, those current financial values should align with GA4 Overview to-date native revenue plus imported revenue/spend provenance
+- Campaign DeepDive report output reads current financial values from `/outcome-totals.performanceSummary`; Campaign DeepDive aggregate parity is tracked separately from GA4 Overview browser/scheduled report output and should not be used to reopen the GA4 Overview tab unless a specific aggregate defect is traced
 - campaign-scoped Reports pages should show `Back to main Campaign Overview` and link to `/campaigns/<campaignId>`
 - campaign-scoped Reports pages should show only reports whose saved `campaignId` matches the active campaign across Standard Reports, Scheduled Reports, All Reports, report type filters, and result counts; campaign-scoped pages should not seed global/demo reports
 - for GA4-only Campaign DeepDive Custom Reports, selectable metrics should be limited to available GA4/web outcome metrics; paid-media metrics stay hidden until a connected main paid-media source supplies them

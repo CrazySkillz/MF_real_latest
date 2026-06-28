@@ -144,8 +144,15 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("Number(current.revenue || 0) > Number(best.revenue || 0) ? current : best");
     expect(ga4Metrics).toContain("), ga4ToDateOverviewTotals);");
     expect(ga4Metrics).toContain("const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);");
+    expect(ga4Metrics).toContain("const ga4HasRevenueMetric = !!ga4RevenueMetricName || ga4RevenueForFinancials > 0;");
+    expect(ga4Metrics.indexOf("const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);")).toBeLessThan(
+      ga4Metrics.indexOf("const revenueMetricAvailable = useMemo(() => {")
+    );
+    expect(ga4Metrics).toContain("return !!activeRevenueSource || ga4HasRevenueMetric;");
+    expect(ga4Metrics).toContain("}, [activeRevenueSource, ga4HasRevenueMetric]);");
     expect(ga4Metrics).toContain("const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);");
     expect(ga4Metrics).not.toContain("const ga4RevenueForFinancials = Number(breakdownTotals.revenue || 0);");
+    expect(ga4Metrics).not.toContain("return !!activeRevenueSource || (!!ga4RevenueMetric && ga4RevenueValue > 0) || breakdownTotals.revenue > 0;");
     expect(ga4Metrics).not.toContain("const financialConversions = Number(breakdownTotals.conversions || 0);");
   });
 

@@ -53,7 +53,7 @@ Validation completed:
 - `npm run check` passed after Commits 1 through 7
 - focused GA4 campaign-picker and UTM-scope regressions passed for Commits 5, 6, and 7
 - focused GA4 UI regression coverage was added for Commit 8; full local check was not rerun for Commit 8 after the unrelated working-tree rewrite
-- Overview Commit 1 validation passed: focused Overview/additivity tests passed, broader targeted GA4 Overview/financial/source-safety subset passed, and `npm run check` passed
+- Overview financial propagation validation passed: focused Overview/additivity/report tests passed, broader targeted GA4 Overview/financial/source/report subset passed, and `npm run check` passed
 
 Not locally verified:
 
@@ -191,13 +191,13 @@ Evidence:
 - `/api/campaigns/:id/ga4-daily` can create `revenue_records` with `revenueSourceId: 'ga4_daily_metrics'`.
 - Normal imported revenue totals and breakdowns use `storage.getRevenueTotalForRange` and `storage.getRevenueBreakdownBySource`, which inner join `revenue_records` to active `revenue_sources`.
 - No matching active `revenue_sources` row for synthetic source ID `ga4_daily_metrics` was proven in the code trace.
-- Current visible GA4 Total Revenue uses `ga4-to-date` native GA4 revenue plus imported revenue-to-date, so this path may be orphaned legacy data rather than visible card logic.
+- Current visible GA4 Total Revenue uses the selected scoped GA4 native financial source plus imported revenue-to-date, so this path may be orphaned legacy data rather than visible card logic.
 
 Implementation strategy:
 
 1. Trace current callers of `/api/campaigns/:id/ga4-daily` and confirm whether the revenue-record insertion is still needed.
 2. Check whether any production or seeded data contains `revenue_records.revenue_source_id = 'ga4_daily_metrics'`.
-3. If the rows are not consumed by any supported visible/API path, remove the write from the backfill path and add a regression guard that GA4 native revenue remains sourced from `ga4_daily_metrics` / `ga4-to-date`, not synthetic imported revenue records.
+3. If the rows are not consumed by any supported visible/API path, remove the write from the backfill path and add a regression guard that GA4 native revenue remains sourced from the selected scoped GA4 financial source, not synthetic imported revenue records.
 4. If the rows are consumed by a legacy path, replace the string-literal source ID with a proper campaign-scoped revenue source or migrate the consumer to the GA4 native revenue path. Do not invent imported revenue provenance for GA4 native revenue.
 5. If existing orphan rows are present, prepare a separate cleanup plan:
    - read-only inventory first

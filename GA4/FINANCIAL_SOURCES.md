@@ -813,7 +813,7 @@ Important meaning:
 - the card is never the source of truth
 - source definitions plus normalized records are the source of truth
 - recomputation must happen after add, edit, delete, and eligible auto-refresh operations
-- downstream KPI, benchmark, ad comparison, insights, and report values must use the recomputed financial state
+- downstream KPI, benchmark, ad comparison, insights, and report values must use the recomputed financial state; revenue-availability gates must follow the same selected GA4 financial source as `Total Revenue`, not a separate Summary-card revenue fallback
 - source-preview, save, scheduler, materialization, API, and card reads must preserve the same critical source fields before a financial number is trusted
 - for revenue, spend, scheduler, source-preview, or source-provenance fixes, apply the analytics source checklist in `GA4_DEVELOPMENT_WORKFLOW.md` before editing code
 

@@ -433,10 +433,39 @@ async function buildGA4ReportPayload(report: any) {
     users: Number((ga4ToDate as any)?.totals?.users || 0) || Number(dailySummedTotals.users || 0),
   };
 
+  const breakdownFinancialRows = Array.isArray((breakdown as any)?.rows) ? (breakdown as any).rows : [];
+  const breakdownFinancialSummed = breakdownFinancialRows.reduce(
+    (acc: { sessions: number; users: number; conversions: number; revenue: number }, row: any) => ({
+      sessions: acc.sessions + (Number(row?.sessions || 0) || 0),
+      users: acc.users + (Number(row?.users || 0) || 0),
+      conversions: acc.conversions + (Number(row?.conversions || 0) || 0),
+      revenue: acc.revenue + (Number(row?.revenue || 0) || 0),
+    }),
+    { sessions: 0, users: 0, conversions: 0, revenue: 0 }
+  );
+  const breakdownFinancialTotals = {
+    sessions: Number((breakdown as any)?.totals?.sessions || (breakdown as any)?.totals?.sessionsRaw || 0) || breakdownFinancialSummed.sessions,
+    users: Number((breakdown as any)?.totals?.users || 0) || breakdownFinancialSummed.users,
+    conversions: Number((breakdown as any)?.totals?.conversions || 0) || breakdownFinancialSummed.conversions,
+    revenue: Number((Number((breakdown as any)?.totals?.revenue || 0) || breakdownFinancialSummed.revenue).toFixed(2)),
+  };
+  const ga4ToDateFinancialTotals = {
+    sessions: Number((ga4ToDate as any)?.totals?.sessions || 0),
+    users: Number((ga4ToDate as any)?.totals?.users || 0),
+    conversions: Number((ga4ToDate as any)?.totals?.conversions || 0),
+    revenue: Number((ga4ToDate as any)?.totals?.revenue || 0),
+  };
+  const ga4FinancialTotalsSource = [
+    ga4ToDateFinancialTotals,
+    dailySummedTotals,
+    breakdownFinancialTotals,
+  ].reduce((best, current) => (
+    Number(current.revenue || 0) > Number(best.revenue || 0) ? current : best
+  ), ga4ToDateFinancialTotals);
   const importedRevenueForFinancials = Number(revenueBreakdown.reduce((sum: number, row: any) => sum + Number(row?.revenue || 0), 0).toFixed(2));
-  const ga4RevenueForFinancials = Math.max(Number((ga4ToDate as any)?.totals?.revenue || 0), Number(dailySummedTotals.revenue || 0));
+  const ga4RevenueForFinancials = Number(ga4FinancialTotalsSource.revenue || 0);
   const financialRevenue = Number((ga4RevenueForFinancials + importedRevenueForFinancials).toFixed(2));
-  const financialConversions = Math.max(Number((ga4ToDate as any)?.totals?.conversions || 0), Number(dailySummedTotals.conversions || 0));
+  const financialConversions = Number(ga4FinancialTotalsSource.conversions || 0);
   const financialSpend = Number(spendBreakdown.reduce((sum: number, row: any) => sum + Number(row?.spend || 0), 0).toFixed(2));
   const financialROAS = financialSpend > 0 ? financialRevenue / financialSpend : 0;
   const financialROI = computeRoiPercent(financialRevenue, financialSpend);

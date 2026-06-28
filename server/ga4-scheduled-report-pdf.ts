@@ -426,12 +426,23 @@ async function buildGA4ReportPayload(report: any) {
   dailySummedTotals.revenue = Number(dailySummedTotals.revenue.toFixed(2));
   dailySummedTotals.engagementRate = dailySummedTotals.sessions > 0 ? dailySummedTotals.engagedSessions / dailySummedTotals.sessions : 0;
 
-  const breakdownTotals = {
-    sessions: Math.max(Number((ga4ToDate as any)?.totals?.sessions || 0), Number(dailySummedTotals.sessions || 0)),
-    conversions: Math.max(Number((ga4ToDate as any)?.totals?.conversions || 0), Number(dailySummedTotals.conversions || 0)),
-    revenue: Math.max(Number((ga4ToDate as any)?.totals?.revenue || 0), Number(dailySummedTotals.revenue || 0)),
-    users: Number((ga4ToDate as any)?.totals?.users || 0) || Number(dailySummedTotals.users || 0),
+  const ga4ToDateOverviewTotals = {
+    sessions: Number((ga4ToDate as any)?.totals?.sessions || 0),
+    conversions: Number((ga4ToDate as any)?.totals?.conversions || 0),
+    revenue: Number((ga4ToDate as any)?.totals?.revenue || 0),
+    users: Number((ga4ToDate as any)?.totals?.users || 0),
   };
+  const hasDailyOverviewTotals =
+    dailySummedTotals.sessions > 0 ||
+    dailySummedTotals.users > 0 ||
+    dailySummedTotals.conversions > 0 ||
+    dailySummedTotals.revenue > 0 ||
+    dailySummedTotals.pageviews > 0;
+  const hasToDateOverviewTotals =
+    ga4ToDateOverviewTotals.sessions > 0 ||
+    ga4ToDateOverviewTotals.users > 0 ||
+    ga4ToDateOverviewTotals.conversions > 0 ||
+    ga4ToDateOverviewTotals.revenue > 0;
 
   const breakdownFinancialRows = Array.isArray((breakdown as any)?.rows) ? (breakdown as any).rows : [];
   const breakdownFinancialSummed = breakdownFinancialRows.reduce(
@@ -448,6 +459,15 @@ async function buildGA4ReportPayload(report: any) {
     users: Number((breakdown as any)?.totals?.users || 0) || breakdownFinancialSummed.users,
     conversions: Number((breakdown as any)?.totals?.conversions || 0) || breakdownFinancialSummed.conversions,
     revenue: Number((Number((breakdown as any)?.totals?.revenue || 0) || breakdownFinancialSummed.revenue).toFixed(2)),
+  };
+  const overviewTotalsSource = hasDailyOverviewTotals
+    ? dailySummedTotals
+    : hasToDateOverviewTotals ? ga4ToDateOverviewTotals : breakdownFinancialTotals;
+  const breakdownTotals = {
+    sessions: Number(overviewTotalsSource.sessions || 0),
+    conversions: Number(overviewTotalsSource.conversions || 0),
+    revenue: Number(overviewTotalsSource.revenue || 0),
+    users: Number(overviewTotalsSource.users || 0),
   };
   const ga4ToDateFinancialTotals = {
     sessions: Number((ga4ToDate as any)?.totals?.sessions || 0),

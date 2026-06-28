@@ -250,6 +250,72 @@ Pass criteria:
 
 - future chats can answer Overview readiness by reading this file without reopening unrelated GA4 sections.
 - the answer separates proven local readiness from deployed/provider validation.
+
+### Follow-up: Align remaining Overview metric propagation paths
+
+Status: completed and validated locally.
+
+Fix scope:
+
+Correct only proven Overview-originated value propagation gaps found during the post-Landing-Pages review.
+
+Confirmed root cause:
+
+- prior readiness checks proved the financial-source selection fix and the Landing Pages exact-key fix, but they did not line-by-line compare every visible Overview formula and downstream consumer formula against the intended source model.
+- the Summary `Conversions` card could render `financialConversions`, even though Summary `Sessions`, `Users`, and `Conv. Rate` use the coherent Summary source hierarchy.
+- Insights live Data Summary and browser-generated Insights report CPA could divide `financialSpend` by `breakdownTotals.conversions` instead of using the Overview `financialCPA` value derived from the selected financial conversion source.
+- `Conversion Events` used same-scope `pageLocation` fallback only when the primary event query was empty, not when primary event rows existed with event counts/users but missing conversions/revenue.
+- scheduled/server GA4 PDF payload generation rebuilt Overview Summary totals with per-metric daily/to-date maxima, so scheduled report output could diverge from the Overview coherent source hierarchy.
+- KPI creation fallback recalculated the initial stored value with `financialConversions` for every template; CPA needs financial conversions, but `Total Conversions` and `Conversion Rate` must use the Summary conversion source.
+
+Implementation completed:
+
+1. Summary `Conversions` now renders `breakdownTotals.conversions || ga4Metrics?.conversions`, matching Summary `Conv. Rate` and KPI `Total Conversions` live values.
+2. Insights live Data Summary and browser-generated report CPA now render `financialCPA` and gate on `financialConversions` plus spend availability.
+3. `getConversionEventsReport` now supplements missing conversion/revenue fields from same-scope `pageLocation` UTM rows only by exact `eventName` match; unmatched fallback rows are not added.
+4. scheduled/server GA4 PDF Summary totals now use the same coherent source order as the Overview UI: daily rows, then GA4 to-date totals, then breakdown totals.
+5. KPI create fallback now uses financial conversions only for CPA; `Total Conversions` and `Conversion Rate` use the Summary conversion source.
+
+Files changed:
+
+- `client/src/pages/ga4-metrics.tsx`
+- `server/analytics.ts`
+- `server/ga4-scheduled-report-pdf.ts`
+- `server/ga4-filter.test.ts`
+- `server/ga4-ui-regression.test.ts`
+- `GA4/OVERVIEW.md`
+- `GA4/OVERVIEW_PRODUCTION_READINESS.md`
+- `GA4/README.md`
+- `GA4_PRODUCTION_READY_TRACKER.md`
+
+Regression coverage completed:
+
+- Summary `Conversions` is guarded against using `financialConversions`.
+- Insights CPA is guarded against `financialSpend / breakdownTotals.conversions` drift.
+- KPI create fallback is guarded so only CPA uses `financialConversions`.
+- scheduled/server GA4 PDF Summary totals are guarded against per-metric `Math.max` drift.
+- Conversion Events exact-key supplementation is covered with same-scope `pageLocation` fallback rows and unmatched fallback rows that must not be added.
+
+Validation completed:
+
+- `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts`
+  - result: passed, 2 files, 44 tests
+- `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts server/report-email-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/ga4-financial-rules.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/source-safety-regression.test.ts server/spend-source-additivity.test.ts`
+  - result: passed, 11 files, 204 tests
+- `npm run check`
+  - result: passed
+- `git diff --check -- client/src/pages/ga4-metrics.tsx server/analytics.ts server/ga4-scheduled-report-pdf.ts server/ga4-filter.test.ts server/ga4-ui-regression.test.ts GA4/OVERVIEW.md GA4/OVERVIEW_PRODUCTION_READINESS.md GA4/README.md GA4_PRODUCTION_READY_TRACKER.md`
+  - result: passed
+
+Pass criteria:
+
+- Overview Summary values use one coherent source hierarchy.
+- Overview financial values use one selected scoped financial source.
+- CPA uses the financial conversion source consistently in Overview, Insights, KPI/Benchmark financial paths, and report output.
+- `Total Conversions` and `Conversion Rate` use Summary conversions, not CPA conversions.
+- table row supplements require exact row-level matches and never allocate campaign-level conversions or imported revenue.
+- browser-generated and scheduled/server GA4 report output do not diverge from the relevant Overview value model.
+
 ### Commit 3: Real source-family lifecycle validation
 
 Status: validation gate, not a confirmed code bug.
@@ -664,12 +730,15 @@ Current logic:
 - rows use the selected Overview date range.
 - revenue is intentionally not shown.
 - imported campaign revenue is not allocated into event rows.
+- when primary event rows have event counts/users but no conversion/revenue values, same-scope `pageLocation` UTM rows may supplement conversions only by exact `Event` name match.
+- unmatched fallback rows are not added and campaign-level conversions are not allocated into event rows.
 - row-level Users values are directional and are not expected to reconcile exactly to the top Users card.
 
 Proven locally:
 
 - regression coverage guards selected date-range query usage
 - regression coverage guards absence of revenue columns
+- regression coverage guards exact-key `pageLocation` conversion supplementation without campaign-level allocation
 - GA4 service code keeps fallback scoped to selected campaign values
 
 Partially reviewed:
@@ -793,18 +862,20 @@ Consumers:
 
 Current logic:
 
-- many downstream UI paths consume `financialRevenue`, `financialConversions`, or `ga4RevenueForFinancials`.
+- Summary `Conversions`, KPI `Total Conversions`, and Conversion Rate paths use the coherent Summary source hierarchy.
+- CPA paths use `financialConversions` and `financialCPA`, which are derived from the selected GA4 financial source used by Total Revenue.
+- many downstream UI paths consume `financialRevenue`, `financialConversions`, `financialCPA`, or `ga4RevenueForFinancials`.
 - revenue-availability gates for KPIs, Benchmarks, and Insights use `ga4HasRevenueMetric`, which is derived from the same selected GA4 financial source used by Total Revenue.
-- browser-generated and scheduled/server GA4 report output use the selected scoped GA4 financial source for Total Revenue and CPA conversions.
-- Commit 1 corrected those Overview-originated values without reopening independent KPI, Benchmark, Ad Comparison, Insights, or Reports readiness beyond this value-propagation path.
+- browser-generated and scheduled/server GA4 report output use the relevant Overview source model for Summary values, Total Revenue, and CPA conversions.
+- Commit 1 and the follow-up propagation hardening corrected those Overview-originated values without reopening independent KPI, Benchmark, Ad Comparison, Insights, or Reports readiness beyond this value-propagation path.
 
 Proven locally:
 
-- KPIs read `financialRevenue` for Revenue, ROAS, and ROI live values and creation prefill; the availability gate now follows `ga4HasRevenueMetric`.
-- Benchmarks read `financialRevenue` for revenue/financial current values; the availability gate now follows `ga4HasRevenueMetric`.
+- KPIs read `financialRevenue` for Revenue, ROAS, and ROI live values; KPI creation prefill/fallback uses Summary conversions for `Total Conversions` and `Conversion Rate`, and financial conversions only for CPA.
+- Benchmarks read `financialRevenue`/`financialCPA` for revenue/financial current values; the availability gate now follows `ga4HasRevenueMetric`.
 - Ad Comparison receives `totalRevenue={financialRevenue}` and `ga4RevenueTotal={ga4RevenueForFinancials}`; its browser and scheduled report output use those same totals for all-source revenue and source provenance.
-- Insights executive cards, data summary, and financial integrity checks read `financialRevenue`; the availability gate now follows `ga4HasRevenueMetric`.
-- Browser-generated and scheduled/server GA4 Reports read the selected scoped GA4 financial source for Total Revenue and CPA conversions.
+- Insights executive cards, data summary, and financial integrity checks read `financialRevenue`; Insights CPA uses `financialCPA`, not `financialSpend / breakdownTotals.conversions`.
+- Browser-generated and scheduled/server GA4 Reports read the selected scoped GA4 financial source for Total Revenue and CPA conversions, and scheduled/server GA4 report Summary totals use the same coherent source hierarchy as the Overview UI.
 - Campaign DeepDive aggregate/report parity remains a separate aggregate route concern and was not broadened by this Overview propagation fix.
 - Reports readiness separately covers scheduled/server report output labels and delivery caveats
 - KPI and Benchmark readiness is separate and should not be reopened unless the corrected Overview financial value changes their input contract
@@ -836,9 +907,29 @@ The following Overview-related work is already complete and should not be reopen
 8. Corrected Campaign Breakdown revenue labeling where exact campaign-matched imported revenue can be included.
 9. Kept Pipeline Proxy separate from confirmed revenue and performance calculations.
 10. Added exact-key Landing Pages conversion supplementation from same-scope `pageLocation` UTM rows without allocating campaign-level conversions into page rows.
+11. Added exact-key Conversion Events conversion supplementation from same-scope `pageLocation` UTM rows without allocating campaign-level conversions into event rows.
+12. Aligned Summary `Conversions`, Insights CPA, KPI creation fallback, and scheduled/server report Summary values to the relevant Overview source model.
 
 ## Validation Evidence
 
+Latest local validation run for the completed Overview metric propagation hardening:
+
+- command: `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts`
+- result: passed, 2 files, 44 tests
+- command: `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts server/revenue-additivity.test.ts server/report-email-regression.test.ts server/ga4-insights-report-parity-regression.test.ts server/outcome-totals-ga4-fallback-regression.test.ts server/ga4-financial-rules.test.ts server/latest-day-revenue-regression.test.ts server/latest-day-spend-regression.test.ts server/source-safety-regression.test.ts server/spend-source-additivity.test.ts`
+- result: passed, 11 files, 204 tests
+- command: `npm run check`
+- result: passed
+- command: `git diff --check -- client/src/pages/ga4-metrics.tsx server/analytics.ts server/ga4-scheduled-report-pdf.ts server/ga4-filter.test.ts server/ga4-ui-regression.test.ts GA4/OVERVIEW.md GA4/OVERVIEW_PRODUCTION_READINESS.md GA4/README.md GA4_PRODUCTION_READY_TRACKER.md`
+- result: passed
+
+What the validation proves:
+
+- Summary `Conversions` uses the Summary source hierarchy, not `financialConversions`.
+- Conversion Events exact-key supplementation works without adding unmatched fallback rows.
+- KPI creation fallback uses financial conversions only for CPA.
+- Insights CPA uses `financialCPA` instead of recomputing from Summary conversions.
+- scheduled/server GA4 report Summary totals use the same coherent source hierarchy as the Overview UI.
 Latest local validation run for the completed Landing Pages exact-key conversion supplement:
 
 - command: `npm test -- server/ga4-filter.test.ts server/ga4-ui-regression.test.ts`

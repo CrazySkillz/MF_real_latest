@@ -293,7 +293,9 @@ Important meaning:
 
 - revenue is intentionally not shown in `Conversion Events`; event rows remain conversion-volume context only
 - it uses the same selected GA4 Overview date range as the nearby Summary, Campaign Breakdown, and current performance sections, not the app campaign's start/created date
+- when GA4 returns primary event rows with missing conversion values, conversions may be supplemented from same-scope `pageLocation` UTM rows only by exact `Event` name match
 - campaign-matched imported revenue is not allocated into event rows unless a future source provides real event-level identifiers that can be matched safely
+- if GA4 cannot provide an exact event-level conversion match, `Conversions` can correctly remain zero for that row
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
 - the same person can appear in more than one conversion-event row, so row `Users` values are directional and are not expected to sum or reconcile exactly to the top `Users` card
 
@@ -308,7 +310,7 @@ Current code-path meaning:
 - production table population uses the real GA4 query path, not a mock-refresh design
 - numeric GA4 property IDs must not be classified as the Yesop simulator; Overview values for live or mock-live numeric properties should come from the GA4 live import/query path plus persisted selected-campaign daily facts, not a deterministic simulation baseline
 - `Landing Pages` and `Conversion Events` now use the selected GA4 Overview date range; explicit API `startDate` remains a compatibility override for callers that intentionally request it
-- when attribution dimensions are empty for fresh live traffic, table queries may fall back to `pageLocation` `utm_campaign`; landing page source and medium can then be derived from the same tagged URL
+- when attribution dimensions are empty or partial for fresh live traffic, table queries may fall back to same-scope `pageLocation` `utm_campaign`; landing page source/medium and conversion-event counts can then be supplemented only by exact row-level match
 
 Important meaning:
 

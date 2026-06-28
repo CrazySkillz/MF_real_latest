@@ -426,12 +426,51 @@ export class GoogleAnalytics4Service {
     const isEmptyResult = (res: any) =>
       !Array.isArray(res?.rows) || res.rows.length === 0 ||
       ((Number(res?.totals?.conversions || 0) + Number(res?.totals?.eventCount || 0) + Number(res?.totals?.users || 0) + Number(res?.totals?.revenue || 0)) <= 0);
+    const hasEventRows = (res: any) =>
+      Array.isArray(res?.rows) && res.rows.some((r: any) => Number(r?.eventCount || 0) > 0 || Number(r?.users || 0) > 0);
+    const hasConversionRevenueRows = (res: any) =>
+      Array.isArray(res?.rows) && res.rows.some((r: any) => Number(r?.conversions || 0) > 0 || Number(r?.revenue || 0) > 0);
+    const eventKey = (row: any) => String(row?.eventName || '').trim().toLowerCase();
+    const supplementMissingConversionRows = (base: any, supplement: any) => {
+      if (!hasEventRows(base) || hasConversionRevenueRows(base) || !hasConversionRevenueRows(supplement)) return base;
+      const supplementByKey = new Map<string, { conversions: number; revenue: number }>();
+      for (const row of supplement.rows || []) {
+        const key = eventKey(row);
+        if (!key) continue;
+        const current = supplementByKey.get(key) || { conversions: 0, revenue: 0 };
+        supplementByKey.set(key, {
+          conversions: current.conversions + (Number(row?.conversions || 0) || 0),
+          revenue: current.revenue + (Number(row?.revenue || 0) || 0),
+        });
+      }
+      let changed = false;
+      const rows = (base.rows || []).map((row: any) => {
+        const match = supplementByKey.get(eventKey(row));
+        if (!match || (match.conversions <= 0 && match.revenue <= 0)) return row;
+        changed = true;
+        return { ...row, conversions: match.conversions, revenue: Number(match.revenue.toFixed(2)) };
+      });
+      if (!changed) return base;
+      return {
+        ...base,
+        revenueMetric: supplement.revenueMetric || base.revenueMetric,
+        rows,
+        totals: {
+          ...base.totals,
+          conversions: rows.reduce((sum: number, row: any) => sum + (Number(row?.conversions || 0) || 0), 0),
+          revenue: Number(rows.reduce((sum: number, row: any) => sum + (Number(row?.revenue || 0) || 0), 0).toFixed(2)),
+        },
+      };
+    };
 
     const tryFetch = async (accessToken: string) => {
       const res = await fetchRows(accessToken, campaignDimensionFilter);
-      if (!isEmptyResult(res) || !pageLocationCampaignFilter) return res;
+      if (!pageLocationCampaignFilter) return res;
+      if (!isEmptyResult(res) && hasConversionRevenueRows(res)) return res;
       const utmRes = await fetchRows(accessToken, pageLocationCampaignFilter).catch(() => null);
-      return utmRes && !isEmptyResult(utmRes) ? utmRes : res;
+      if (!utmRes || isEmptyResult(utmRes)) return res;
+      if (!isEmptyResult(res)) return supplementMissingConversionRows(res, utmRes);
+      return utmRes;
     };
 
     try {

@@ -661,20 +661,20 @@ export default function GA4Metrics() {
   // Create KPI mutation
   const createKPIMutation = useMutation({
     mutationFn: async (data: KPIFormData) => {
-      // Store an initial snapshot currentValue (optional), but ensure it matches the GA4 Overview logic:
-      // GA4 Breakdown totals + Spend totals (+ LinkedIn spend fallback).
+      // Store an initial snapshot currentValue, matching the GA4 Overview source model.
       let calculatedValue = "0.00";
       if (selectedKPITemplate && !(selectedKPITemplate as any)?._isCustom) {
         try {
-          calculatedValue = calculateKPIValueFromSources(selectedKPITemplate.name, {
-            // Use the same daily sources as the GA4 Overview:
-            // - GA4 daily: sessions/users/conversions/revenue
-            // - Imported revenue daily: only if GA4 revenue is 0
-            // - Spend daily: imported spend only (no LinkedIn fallback in daily mode)
-            revenue: Number(financialRevenue || 0),
-            conversions: Number(financialConversions || 0),
-            sessions: Number(breakdownTotals.sessions || 0),
-            users: Number(breakdownTotals.users || 0),
+          const templateName = selectedKPITemplate.name;
+          const useLifetimeRevenue = templateName === "Revenue" || templateName === "ROAS" || templateName === "ROI";
+          const useLifetimeConversions = templateName === "CPA";
+          calculatedValue = calculateKPIValueFromSources(templateName, {
+            revenue: useLifetimeRevenue ? Number(financialRevenue || 0) : Number(breakdownTotals.revenue || 0),
+            conversions: useLifetimeConversions
+              ? Number(financialConversions || 0)
+              : Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0),
+            sessions: Number(breakdownTotals.sessions || ga4Metrics?.sessions || 0),
+            users: Number(breakdownTotals.users || ga4Metrics?.users || 0),
             engagementRate: overviewEngagementRate,
             spend: Number(financialSpend || 0),
           });
@@ -3580,7 +3580,7 @@ export default function GA4Metrics() {
           ...(financialSpend > 0 ? [["Total Spend", formatMoney(financialSpend), ""] as [string, string, string]] : []),
           ...(financialRevenue > 0 && financialSpend > 0 ? [["Profit", formatMoney(financialRevenue - financialSpend), ""] as [string, string, string]] : []),
           ...(financialROAS > 0 ? [["ROAS", `${financialROAS.toFixed(2)}x`, ""] as [string, string, string]] : []),
-          ...(breakdownTotals.conversions > 0 && financialSpend > 0 ? [["CPA", formatMoney(financialSpend / breakdownTotals.conversions), ""] as [string, string, string]] : []),
+          ...(financialConversions > 0 && financialSpend > 0 ? [["CPA", formatMoney(financialCPA), ""] as [string, string, string]] : []),
         ];
         if (primaryDataCards.length > 0) renderInsightDataCards(primaryDataCards, 4);
         if (secondaryDataCards.length > 0) renderInsightDataCards(secondaryDataCards, 4);
@@ -5683,7 +5683,7 @@ export default function GA4Metrics() {
                           <CardContent className="p-5">
                             <p className="text-sm font-medium text-muted-foreground/70">Conversions</p>
                             <p className="text-2xl font-bold text-foreground mt-1">
-                              {renderSummaryValue(formatNumber(financialConversions || 0))}
+                              {renderSummaryValue(formatNumber(breakdownTotals.conversions || ga4Metrics?.conversions || 0))}
                             </p>
                           </CardContent>
                         </Card>
@@ -8163,10 +8163,10 @@ export default function GA4Metrics() {
                                   </p>
                                 </div>
                               )}
-                              {breakdownTotals.conversions > 0 && (
+                              {financialConversions > 0 && (
                                 <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3">
                                   <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">CPA</p>
-                                  <p className="text-xl font-bold text-foreground mt-1">{formatMoney(financialSpend / breakdownTotals.conversions)}</p>
+                                  <p className="text-xl font-bold text-foreground mt-1">{formatMoney(financialCPA)}</p>
                                 </div>
                               )}
                             </div>

@@ -47,6 +47,7 @@ This status does not close the newer findings below. Later shared report/source 
 - [x] Overview Commit 1 `f1e684ce` plus follow-up - aligned GA4 Overview financial native revenue and CPA conversions to one selected scoped financial source that cannot understate larger visible native GA4 totals, while preserving Summary-card daily/to-date/breakdown behavior.
 - [x] Overview Commit 2 `7e4cd063` - added `GA4/OVERVIEW_PRODUCTION_READINESS.md` as the canonical Overview production-readiness and future-platform template document, with current status production-ready for the GA4 code scope.
 - [x] Overview Landing Pages follow-up - supplemented missing row conversions from same-scope `pageLocation` UTM rows only by exact landing-page/source/medium match, without allocating campaign-level conversions into page rows.
+- [x] Overview metric propagation follow-up - aligned Summary `Conversions`, Conversion Events exact-key supplementation, KPI create fallback values, Insights CPA, and scheduled/server GA4 report Summary totals to the relevant Overview source model.
 
 Validation completed:
 
@@ -56,6 +57,7 @@ Validation completed:
 - focused GA4 UI regression coverage was added for Commit 8; full local check was not rerun for Commit 8 after the unrelated working-tree rewrite
 - Overview financial propagation validation passed: focused Overview/additivity/report tests passed, broader targeted GA4 Overview/financial/source/report subset passed, and `npm run check` passed
 - Overview Landing Pages exact-key conversion supplement validation passed: focused endpoint/UI tests passed, broader GA4 Overview/report subset passed, and `npm run check` passed
+- Overview metric propagation validation passed: focused endpoint/UI suite passed with 44 tests, broader GA4 Overview/financial/report subset passed with 204 tests, `npm run check` passed, and targeted `git diff --check` passed
 
 Not locally verified:
 

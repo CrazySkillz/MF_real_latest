@@ -121,6 +121,7 @@ describe("GA4 UI regression guard", () => {
 
   it("keeps GA4 Overview totals on one coherent source before falling back to breakdown totals", () => {
     const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const scheduledPdf = readServer("ga4-scheduled-report-pdf.ts");
 
     expect(ga4Metrics).toContain("const ga4BreakdownTotals = useMemo(() => {");
     expect(ga4Metrics).toContain("const hasDailyOverviewTotals =");
@@ -132,6 +133,12 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("revenue: Number(overviewTotalsSource.revenue || 0)");
     expect(ga4Metrics).not.toContain("Math.max(Number((ga4ToDateResp as any)?.totals?.sessions || 0), dailySummedTotals.sessions, ga4BreakdownTotals.sessions)");
     expect(ga4Metrics).not.toContain("const ga4RevenueForFinancials = Math.max(ga4RevenueFromToDate, dailySummedTotals.revenue, ga4BreakdownTotals.revenue);");
+
+    expect(scheduledPdf).toContain("const overviewTotalsSource = hasDailyOverviewTotals");
+    expect(scheduledPdf).toContain(": hasToDateOverviewTotals ? ga4ToDateOverviewTotals : breakdownFinancialTotals;");
+    expect(scheduledPdf).toContain("sessions: Number(overviewTotalsSource.sessions || 0)");
+    expect(scheduledPdf).toContain("conversions: Number(overviewTotalsSource.conversions || 0)");
+    expect(scheduledPdf).not.toContain("sessions: Math.max(Number((ga4ToDate as any)?.totals?.sessions || 0), Number(dailySummedTotals.sessions || 0))");
   });
 
   it("keeps GA4 Overview financial totals on one complete scoped source", () => {
@@ -170,8 +177,42 @@ describe("GA4 UI regression guard", () => {
     expect(ga4Metrics).toContain("!ga4Breakdown &&");
     expect(ga4Metrics).toContain("breakdownLoading;");
     expect(ga4Metrics).toContain("const renderSummaryValue = (value: string) => ga4SummaryTotalsInitializing");
-    expect(summarySection).toContain("formatNumber(financialConversions || 0)");
-    expect(summarySection).toContain("renderSummaryValue(formatNumber(financialConversions || 0))");
+    expect(summarySection).toContain("renderSummaryValue(formatNumber(breakdownTotals.conversions || ga4Metrics?.conversions || 0))");
+    expect(summarySection).not.toContain("renderSummaryValue(formatNumber(financialConversions || 0))");
+  });
+
+  it("keeps KPI create fallback aligned to Overview conversion sources", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const createStart = ga4Metrics.indexOf("// Store an initial snapshot currentValue, matching the GA4 Overview source model.");
+    const createEnd = ga4Metrics.indexOf("const response = await fetch(`/api/platforms/google_analytics/kpis`", createStart);
+    const createSection = ga4Metrics.slice(createStart, createEnd);
+
+    expect(createStart).toBeGreaterThan(-1);
+    expect(createEnd).toBeGreaterThan(createStart);
+    expect(createSection).toContain("const useLifetimeConversions = templateName === \"CPA\";");
+    expect(createSection).toContain("? Number(financialConversions || 0)");
+    expect(createSection).toContain(": Number(breakdownTotals.conversions || ga4Metrics?.conversions || 0)");
+    expect(createSection).not.toContain("conversions: Number(financialConversions || 0),");
+  });
+
+  it("keeps Insights CPA aligned to Overview financial conversions", () => {
+    const ga4Metrics = readClient("pages/ga4-metrics.tsx");
+    const browserReportStart = ga4Metrics.indexOf("if (includeInsightsDataSummary && (breakdownTotals.sessions > 0 || financialRevenue > 0))");
+    const browserReportEnd = ga4Metrics.indexOf("if (!includeInsightsActions)", browserReportStart);
+    const browserReportSection = ga4Metrics.slice(browserReportStart, browserReportEnd);
+    const liveStart = ga4Metrics.indexOf("{/* Data Summary");
+    const liveEnd = ga4Metrics.indexOf("<div className=\"grid gap-4 md:grid-cols-3\">", liveStart);
+    const liveSection = ga4Metrics.slice(liveStart, liveEnd);
+
+    expect(browserReportStart).toBeGreaterThan(-1);
+    expect(browserReportEnd).toBeGreaterThan(browserReportStart);
+    expect(liveStart).toBeGreaterThan(-1);
+    expect(liveEnd).toBeGreaterThan(liveStart);
+    expect(browserReportSection).toContain("financialConversions > 0 && financialSpend > 0");
+    expect(browserReportSection).toContain("formatMoney(financialCPA)");
+    expect(liveSection).toContain("financialConversions > 0");
+    expect(liveSection).toContain("formatMoney(financialCPA)");
+    expect(ga4Metrics).not.toContain("financialSpend / breakdownTotals.conversions");
   });
 
   it("keeps GA4 Overview detail tables traffic-focused without revenue columns", () => {

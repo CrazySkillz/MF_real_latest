@@ -68,6 +68,23 @@ const BENCHMARK_DESC_MAX = 200;
 const KPI_DESC_MAX = 200;
 const VALID_GA4_TABS = ["overview", "kpis", "benchmarks", "campaigns", "insights", "reports"] as const;
 const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";
+
+const formatKpiTolerancePolicyLabel = (policy?: ReturnType<typeof resolveKpiThresholdPolicy> | null) => {
+  if (!policy) return "metric-aware";
+  const tolerancePctStr = formatPct(Number(policy.nearTargetBandPct || 0)).replace("%", "");
+  const absoluteTolerance = Number(policy.absoluteTolerance || 0);
+  const absoluteToleranceStr = Number.isFinite(absoluteTolerance) && absoluteTolerance > 0
+    ? ` / ${absoluteTolerance.toLocaleString(undefined, { maximumFractionDigits: 2 })}${policy.kind === "rate" ? " pts" : ""}`
+    : "";
+  return `${tolerancePctStr}%${absoluteToleranceStr} ${policy.kind}`;
+};
+
+const summarizeKpiToleranceLabels = (labels: string[]) => {
+  if (labels.length === 0) return "metric-aware tolerance";
+  if (labels.length === 1) return `${labels[0]} tolerance`;
+  if (labels.length <= 2) return `${labels.join("; ")} tolerances`;
+  return `${labels.slice(0, 2).join("; ")} +${labels.length - 2} more`;
+};
 const REVENUE_ALLOCATION_RESIDUAL_THRESHOLD = 0.01;
 
 const normalizeReportRecipients = (value: string) =>
@@ -2583,7 +2600,7 @@ export default function GA4Metrics() {
           ? "bg-blue-500"
           : "bg-red-500";
 
-    return { band, effectiveDeltaPct: effectiveDeltaPctVal, attainmentPct: attainmentPct ?? 0, fillPct, progressColor, lowerIsBetter };
+    return { band, effectiveDeltaPct: effectiveDeltaPctVal, attainmentPct: attainmentPct ?? 0, fillPct, progressColor, lowerIsBetter, policy };
   };
 
   const computeBenchmarkProgress = (benchmark: any) => {
@@ -4050,6 +4067,7 @@ export default function GA4Metrics() {
     let blocked = 0;
     let insufficient = 0;
     let sumPct = 0;
+    const toleranceLabels = new Set<string>();
 
     for (const kpi of items) {
       const metricKey = String((kpi as any)?.metric || (kpi as any)?.name || "");
@@ -4070,13 +4088,19 @@ export default function GA4Metrics() {
       // Avg. Progress should reflect bounded progress toward target, not be inflated above 100%
       // by over-performing KPIs.
       sumPct += p.fillPct;
+      toleranceLabels.add(formatKpiTolerancePolicyLabel(p.policy));
       if (p.band === "above") above += 1;
       else if (p.band === "near") near += 1;
       else below += 1;
     }
 
     const avgPct = scored > 0 ? sumPct / scored : 0;
-    return { total: items.length, scored, above, near, below, blocked, insufficient, avgPct };
+    const toleranceLabelList = Array.from(toleranceLabels);
+    const toleranceSummary = summarizeKpiToleranceLabels(toleranceLabelList);
+    const toleranceTitle = toleranceLabelList.length > 0
+      ? `Scored KPI tolerances: ${toleranceLabelList.join("; ")}`
+      : "No scored KPI tolerance available";
+    return { total: items.length, scored, above, near, below, blocked, insufficient, avgPct, toleranceSummary, toleranceTitle };
     // computeKpiProgress depends on live values; include the main value inputs so the tracker updates correctly.
   }, [platformKPIs, breakdownTotals, ga4Metrics, dailySummedTotals, financialSpend, financialRevenue, financialROI, financialCPA, financialConversions, spendMetricAvailable, revenueMetricAvailable]);
 
@@ -6359,10 +6383,10 @@ export default function GA4Metrics() {
                               <Card>
                                 <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
-                                    <div>
+                                    <div className="min-w-0 pr-2">
                                       <p className="text-sm text-muted-foreground/70">Above Target</p>
                                       <p className="text-2xl font-bold text-green-600">{kpiTracker.above}</p>
-                                      <p className="text-xs text-muted-foreground">better than target tolerance</p>
+                                      <p className="text-xs leading-snug text-muted-foreground" title={kpiTracker.toleranceTitle}>better than {kpiTracker.toleranceSummary}</p>
                                     </div>
                                     <TrendingUp className="w-8 h-8 text-green-500" />
                                   </div>
@@ -6371,10 +6395,10 @@ export default function GA4Metrics() {
                               <Card>
                                 <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
-                                    <div>
+                                    <div className="min-w-0 pr-2">
                                       <p className="text-sm text-muted-foreground/70">On Track</p>
                                       <p className="text-2xl font-bold text-blue-600">{kpiTracker.near}</p>
-                                      <p className="text-xs text-muted-foreground">within metric-aware tolerance</p>
+                                      <p className="text-xs leading-snug text-muted-foreground" title={kpiTracker.toleranceTitle}>within {kpiTracker.toleranceSummary}</p>
                                     </div>
                                     <CheckCircle2 className="w-8 h-8 text-blue-500" />
                                   </div>
@@ -6383,10 +6407,10 @@ export default function GA4Metrics() {
                               <Card>
                                 <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
-                                    <div>
+                                    <div className="min-w-0 pr-2">
                                       <p className="text-sm text-muted-foreground/70">Below Target</p>
                                       <p className="text-2xl font-bold text-red-600">{kpiTracker.below}</p>
-                                      <p className="text-xs text-muted-foreground">outside target tolerance</p>
+                                      <p className="text-xs leading-snug text-muted-foreground" title={kpiTracker.toleranceTitle}>outside {kpiTracker.toleranceSummary}</p>
                                     </div>
                                     <AlertCircle className="w-8 h-8 text-red-500" />
                                   </div>
@@ -6609,12 +6633,14 @@ export default function GA4Metrics() {
                                           <div className="mt-2 text-xs text-muted-foreground/70">
                                             {(() => {
                                               if (Math.abs(p.effectiveDeltaPct) < 0.0001) return "At target";
-                                              if (p.band === "near") return "On track";
+                                              const toleranceLabel = `${formatKpiTolerancePolicyLabel(p.policy)} tolerance`;
+                                              if (p.band === "near") return `On track (within ${toleranceLabel})`;
                                               const abs = Math.abs(p.effectiveDeltaPct);
                                               const absStr = formatPct(abs).replace("%", "");
+
                                               return p.effectiveDeltaPct > 0
-                                                ? `${absStr}% above target`
-                                                : `${absStr}% below target`;
+                                                ? `${absStr}% above target (outside ${toleranceLabel})`
+                                                : `${absStr}% below target (outside ${toleranceLabel})`;
                                             })()}
                                           </div>
                                         )}

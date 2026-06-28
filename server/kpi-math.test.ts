@@ -92,6 +92,14 @@ describe("kpi math (shared)", () => {
     expect(classifyKpiBandWithPolicy({ current: 9, target: 10, lowerIsBetter: false, policy })).toBe("near");
   });
 
+  it("keeps larger Total Users misses outside the count tolerance below target", () => {
+    const policy = resolveKpiThresholdPolicy({ metric: "Total Users", unit: "count", target: 820, current: 769 });
+
+    expect(policy).toMatchObject({ kind: "count", nearTargetBandPct: 5, absoluteTolerance: 41 });
+    expect(classifyKpiBandWithPolicy({ current: 779, target: 820, lowerIsBetter: false, policy })).toBe("near");
+    expect(classifyKpiBandWithPolicy({ current: 769, target: 820, lowerIsBetter: false, policy })).toBe("below");
+  });
+
   it("requires exact performance for tiny count targets", () => {
     const policy = resolveKpiThresholdPolicy({ metric: "Conversions", unit: "count", target: 1, current: 0 });
 

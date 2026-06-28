@@ -45,6 +45,7 @@ Important meaning:
 
 - KPI card progress bars and the KPI executive snapshot should use the same status-color scheme
 - visual status should not drift from the underlying KPI band classification
+- performance tracker status-card copy should include the active scored KPI tolerance amounts, such as `5.0% / 41 count tolerance`; when multiple scored KPI tolerances exist, the visible summary may combine them and the hover/title copy should expose the full scored-tolerance list
 
 ## KPI Creation Journey
 
@@ -96,6 +97,8 @@ Validation examples:
 
 - `Conversions` target `10`, current `9` should be `On Track`
 - `Conversions` target `1`, current `0` should be `Below Target`
+- `Total Users` target `820`, current `779` should be `On Track` because it is within the `5%` / `41` user count tolerance
+- `Total Users` target `820`, current `769` should be `Below Target` because it is `51` users / `6.2%` below target and outside the `5%` / `41` user count tolerance
 - `Conversion Rate` target `5%`, current `4.8%` should be `On Track` when sessions are available
 - `Conversion Rate` with no sessions should show `Insufficient data` instead of a target status
 - `Revenue` target `100000`, current `95000` should be `On Track`
@@ -222,6 +225,7 @@ Expected behavior:
 - KPIs with alerts enabled show a warning indicator on the KPI card
 - breached KPIs show a red pulsing circle indicator on the KPI card
 - breached KPI alerts should appear in the bell icon and notifications center
+- enabled KPI alerts should not appear in the bell icon or main Notifications page unless the alert condition is currently breached; once the KPI no longer breaches, stale `performance-alert` rows should be hidden/resolved instead of remaining visible
 - bell and Notifications `View KPI` navigation should always open the correct campaign, the `KPIs` tab, and the exact KPI card
 - if the user is already on the same GA4 campaign page, the URL change must still switch to the correct KPI tab/item instead of staying on the previously open tab
 - email delivery is optional

@@ -29,7 +29,14 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
     expect(ga4MetricsFile).not.toContain("within ±5% of target");
     expect(ga4MetricsFile).not.toContain("more than +5% above target");
     expect(ga4MetricsFile).not.toContain("more than −5% below target");
-    expect(ga4MetricsFile).toContain("within metric-aware tolerance");
+    expect(ga4MetricsFile).toContain("formatKpiTolerancePolicyLabel");
+    expect(ga4MetricsFile).toContain("summarizeKpiToleranceLabels");
+    expect(ga4MetricsFile).toContain("toleranceLabels.add(formatKpiTolerancePolicyLabel(p.policy));");
+    expect(ga4MetricsFile).toContain("title={kpiTracker.toleranceTitle}");
+    expect(ga4MetricsFile).toContain("better than {kpiTracker.toleranceSummary}");
+    expect(ga4MetricsFile).toContain("within {kpiTracker.toleranceSummary}");
+    expect(ga4MetricsFile).toContain("outside {kpiTracker.toleranceSummary}");
+    expect(ga4MetricsFile).toContain("outside ${toleranceLabel}");
   });
 
   it("keeps KPI card status text aligned with metric-aware bands", () => {
@@ -38,9 +45,9 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
       "utf-8"
     );
 
-    expect(ga4MetricsFile).toContain('if (p.band === "near") return "On track";');
-    expect(ga4MetricsFile.indexOf('if (p.band === "near") return "On track";')).toBeLessThan(
-      ga4MetricsFile.indexOf('`${absStr}% below target`')
+    expect(ga4MetricsFile).toContain('if (p.band === "near") return `On track (within ${toleranceLabel})`;');
+    expect(ga4MetricsFile.indexOf('if (p.band === "near") return `On track (within ${toleranceLabel})`;')).toBeLessThan(
+      ga4MetricsFile.indexOf('`${absStr}% below target (outside ${toleranceLabel})`')
     );
   });
 
@@ -95,6 +102,7 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
 
     expect(kpisDoc).toContain("bounded to `0%` to `100%` per KPI");
     expect(kpisDoc).toContain("Metric-aware threshold policy:");
+    expect(kpisDoc).toContain("performance tracker status-card copy should include the active scored KPI tolerance amounts");
     expect(kpisDoc).toContain("count KPIs such as `Conversions`, `Users`, and `Sessions` use count-aware tolerance");
     expect(kpisDoc).toContain("rate KPIs such as `Conversion Rate` and `Engagement Rate` use relative tolerance");
     expect(kpisDoc).toContain("lower-is-better cost KPIs such as `CPA`, `CPC`, `CPM`, and `CPL` invert the direction");

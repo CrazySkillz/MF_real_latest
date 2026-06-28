@@ -46,6 +46,33 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain("&& await isAlertRowBreached(benchmark)");
   });
 
+  it("backs the bell and Notifications page with breached performance alerts only", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+    const navigationFile = readFileSync(
+      join(process.cwd(), "client", "src", "components", "layout", "navigation.tsx"),
+      "utf-8"
+    );
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+    const kpisDoc = readFileSync(
+      join(process.cwd(), "GA4", "KPIS.md"),
+      "utf-8"
+    );
+
+    expect(routesFile).toContain("if (isPerformanceAlert && !(await isAlertRowBreached(kpi))) return null;");
+    expect(routesFile).toContain("if (isPerformanceAlert && !(await isAlertRowBreached(benchmark))) return null;");
+    expect(navigationFile).toContain('queryKey: ["/api/notifications"]');
+    expect(navigationFile).toContain('if (notification.type !== "performance-alert") return false;');
+    expect(notificationsPage).toContain('queryKey: ["/api/notifications"]');
+    expect(notificationsPage).toContain('data-testid="notifications-active-alerts-list"');
+    expect(kpisDoc).toContain("enabled KPI alerts should not appear in the bell icon or main Notifications page unless the alert condition is currently breached");
+  });
+
   it("deduplicates visible performance alerts by linked KPI or Benchmark", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),

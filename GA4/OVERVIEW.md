@@ -273,7 +273,7 @@ Important meaning:
 - it is not a rollup across unrelated campaigns in the property
 - it uses the same selected GA4 Overview date range as the nearby Summary, Campaign Breakdown, and current performance sections, not the app campaign's start/created date
 - revenue is intentionally not shown in `Landing Pages`; page-level rows remain traffic and conversion context only
-- when GA4 returns primary landing-page traffic rows with missing conversion values, conversions may be supplemented from conversion-prioritized same-scope `pageLocation` UTM rows only by exact `Landing page + Source/Medium` match
+- when GA4 returns primary landing-page traffic rows or same-scope `pageLocation` traffic-fallback rows with missing conversion values, conversions may be supplemented from conversion-prioritized same-scope `pageLocation` UTM rows only by exact `Landing page + Source/Medium` match
 - campaign-level conversions and campaign-matched imported revenue are not allocated into landing-page rows unless a future source provides real landing-page-level identifiers that can be matched safely
 - if GA4 cannot provide an exact row-level conversion match, `Conversions` and `Conv. rate` can correctly remain zero for that row
 - `Users` in this table is a row-level GA4 breakdown value, not a deduplicated page-level total
@@ -343,7 +343,7 @@ Campaign Breakdown:
 Landing Pages:
 
 - confirm rows populate for the same GA4 property, selected Overview date range, and campaign scope
-- confirm `Source/Medium`, `Sessions`, `Users`, `Conversions`, and `Conv. rate` look coherent for that scope
+- confirm `Source/Medium`, `Sessions`, `Users`, `Conversions`, and `Conv. rate` look coherent for that scope, including the case where primary campaign dimensions are empty and rows come from `pageLocation` UTM traffic fallback
 - confirm campaign-only imported revenue is not allocated into landing-page rows
 - confirm page rows are not unexpectedly mixing unrelated campaigns due to bad GA4 campaign tagging/filtering
 

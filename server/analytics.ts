@@ -356,16 +356,20 @@ export class GoogleAnalytics4Service {
       };
     };
 
+    const supplementFromConversionFallback = async (accessToken: string, base: any) => {
+      if (!pageLocationCampaignFilter || !hasMissingConversionRevenueTrafficRows(base)) return base;
+      const conversionRes = await fetchRows(accessToken, pageLocationCampaignFilter, true, 10000, 'conversions', 'pageLocationConversionFallback').catch(() => null);
+      if (!conversionRes || isEmptyResult(conversionRes)) return base;
+      return supplementMissingConversionRows(base, conversionRes);
+    };
+
     const tryFetch = async (accessToken: string) => {
       const res = await fetchRows(accessToken, campaignDimensionFilter, false, limit, 'sessions', 'primaryLandingPages');
       if (!pageLocationCampaignFilter) return res;
-      if (!isEmptyResult(res) && !hasMissingConversionRevenueTrafficRows(res)) return res;
-      const utmRes = !isEmptyResult(res)
-        ? await fetchRows(accessToken, pageLocationCampaignFilter, true, 10000, 'conversions', 'pageLocationConversionFallback').catch(() => null)
-        : await fetchRows(accessToken, pageLocationCampaignFilter, true, limit, 'sessions', 'pageLocationTrafficFallback').catch(() => null);
+      if (!isEmptyResult(res)) return supplementFromConversionFallback(accessToken, res);
+      const utmRes = await fetchRows(accessToken, pageLocationCampaignFilter, true, limit, 'sessions', 'pageLocationTrafficFallback').catch(() => null);
       if (!utmRes || isEmptyResult(utmRes)) return res;
-      if (!isEmptyResult(res)) return supplementMissingConversionRows(res, utmRes);
-      return utmRes;
+      return supplementFromConversionFallback(accessToken, utmRes);
     };
 
     try {

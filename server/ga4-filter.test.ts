@@ -564,6 +564,62 @@ describe("GA4 campaign value picker", () => {
     expect(fallbackBodies[0]?.orderBys?.[0]?.metric?.metricName).toBe("conversions");
     expect(fallbackBodies[0]?.limit).toBe(10000);
   });
+  it("supplements pageLocation traffic fallback rows with conversion-prioritized pageLocation rows", async () => {
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(String(init?.body || "{}"));
+      const dimensions = (body?.dimensions || []).map((d: any) => d?.name);
+      const isPageLocationFallback = dimensions.includes("pageLocation") && JSON.stringify(body?.dimensionFilter || {}).includes("pageLocation");
+      const orderMetric = String(body?.orderBys?.[0]?.metric?.metricName || "");
+
+      return {
+        ok: true,
+        json: async () => ({
+          rows: isPageLocationFallback
+            ? orderMetric === "conversions"
+              ? [
+                  {
+                    dimensionValues: [
+                      { value: "https://example.com/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" },
+                    ],
+                    metricValues: [{ value: "0" }, { value: "0" }, { value: "39" }, { value: "7068.9" }],
+                  },
+                ]
+              : [
+                  {
+                    dimensionValues: [
+                      { value: "https://example.com/landing?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale" },
+                    ],
+                    metricValues: [{ value: "318" }, { value: "318" }, { value: "0" }, { value: "0" }],
+                  },
+                ]
+            : [],
+        }),
+      } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const storage = {
+      getGA4Connection: vi.fn(async () => ({
+        id: "conn-1",
+        propertyId: "properties/123",
+        accessToken: "token",
+        method: "access_token",
+      })),
+    };
+
+    const result = await ga4Service.getLandingPagesReport("campaign-1", storage, "90daysAgo", "123", 50, "summer_sale");
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({ landingPage: "/landing", source: "facebook", medium: "paid_social", sessions: 318, users: 318, conversions: 39, revenue: 7068.9 });
+    expect(result.totals).toMatchObject({ sessions: 318, users: 318, conversions: 39, revenue: 7068.9 });
+
+    const fallbackBodies = fetchMock.mock.calls
+      .map(([, init]) => JSON.parse(String((init as any)?.body || "{}")))
+      .filter((body) => (body?.dimensions || []).some((d: any) => d?.name === "pageLocation"));
+    expect(fallbackBodies.map((body) => body?.orderBys?.[0]?.metric?.metricName)).toEqual(["sessions", "conversions"]);
+    expect(fallbackBodies[1]?.limit).toBe(10000);
+  });
+
   it("returns landing page GA4 diagnostics when requested", async () => {
     const fetchMock = vi.fn(async (_url: string, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));

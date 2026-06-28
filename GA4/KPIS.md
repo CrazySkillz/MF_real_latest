@@ -45,7 +45,7 @@ Important meaning:
 
 - KPI card progress bars and the KPI executive snapshot should use the same status-color scheme
 - visual status should not drift from the underlying KPI band classification
-- performance tracker status-card copy should include the active scored KPI tolerance amounts, such as `5.0% / 41 count tolerance`; when multiple scored KPI tolerances exist, the visible summary may combine them and the hover/title copy should expose the full scored-tolerance list
+- performance tracker status-card copy should stay readable for mixed KPI types: use plain language such as `each KPI's tolerance` in the compact cards and avoid exposing implementation details such as derived count amounts or per-metric tolerance lists; individual KPI cards should show only the row-level tolerance percentage, such as `outside 5% tolerance`
 
 ## KPI Creation Journey
 
@@ -97,8 +97,8 @@ Validation examples:
 
 - `Conversions` target `10`, current `9` should be `On Track`
 - `Conversions` target `1`, current `0` should be `Below Target`
-- `Total Users` target `820`, current `779` should be `On Track` because it is within the `5%` / `41` user count tolerance
-- `Total Users` target `820`, current `769` should be `Below Target` because it is `51` users / `6.2%` below target and outside the `5%` / `41` user count tolerance
+- `Total Users` target `820`, current `779` should be `On Track` because it is within the `5%` tolerance
+- `Total Users` target `820`, current `769` should be `Below Target` because it is `6.2%` below target and outside the `5%` tolerance
 - `Conversion Rate` target `5%`, current `4.8%` should be `On Track` when sessions are available
 - `Conversion Rate` with no sessions should show `Insufficient data` instead of a target status
 - `Revenue` target `100000`, current `95000` should be `On Track`

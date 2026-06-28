@@ -32,7 +32,12 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
     expect(ga4MetricsFile).toContain("formatKpiTolerancePolicyLabel");
     expect(ga4MetricsFile).toContain("summarizeKpiToleranceLabels");
     expect(ga4MetricsFile).toContain("toleranceLabels.add(formatKpiTolerancePolicyLabel(p.policy));");
-    expect(ga4MetricsFile).toContain("title={kpiTracker.toleranceTitle}");
+    expect(ga4MetricsFile).toContain("return \"each KPI's tolerance\";");
+    expect(ga4MetricsFile).not.toContain("formatKpiCountToleranceUnitLabel");
+    expect(ga4MetricsFile).not.toContain("absoluteTolerance.toLocaleString");
+    expect(ga4MetricsFile).not.toContain("formatKpiToleranceTrackerDetail");
+    expect(ga4MetricsFile).not.toContain("Scored KPI tolerances");
+    expect(ga4MetricsFile).toContain("Different KPI types can use different tolerances.");
     expect(ga4MetricsFile).toContain("better than {kpiTracker.toleranceSummary}");
     expect(ga4MetricsFile).toContain("within {kpiTracker.toleranceSummary}");
     expect(ga4MetricsFile).toContain("outside {kpiTracker.toleranceSummary}");
@@ -102,7 +107,11 @@ describe("GA4 KPI and Benchmark summary regression guard", () => {
 
     expect(kpisDoc).toContain("bounded to `0%` to `100%` per KPI");
     expect(kpisDoc).toContain("Metric-aware threshold policy:");
-    expect(kpisDoc).toContain("performance tracker status-card copy should include the active scored KPI tolerance amounts");
+    expect(kpisDoc).toContain("performance tracker status-card copy should stay readable for mixed KPI types");
+    expect(kpisDoc).toContain("each KPI's tolerance");
+    expect(kpisDoc).toContain("outside 5% tolerance");
+    expect(kpisDoc).not.toContain("41 users");
+    expect(kpisDoc).not.toContain("41 count");
     expect(kpisDoc).toContain("count KPIs such as `Conversions`, `Users`, and `Sessions` use count-aware tolerance");
     expect(kpisDoc).toContain("rate KPIs such as `Conversion Rate` and `Engagement Rate` use relative tolerance");
     expect(kpisDoc).toContain("lower-is-better cost KPIs such as `CPA`, `CPC`, `CPM`, and `CPL` invert the direction");

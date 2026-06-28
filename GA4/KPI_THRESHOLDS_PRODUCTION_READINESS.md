@@ -119,8 +119,8 @@ Draft policy:
 
 Concrete large-count example:
 
-- `Total Users` target `820`, current `779` is `On Track` because the `41` user miss is exactly within the `5%` count tolerance
-- `Total Users` target `820`, current `769` is `Below Target` because the `51` user / `6.2%` miss is outside the `5%` count tolerance
+- `Total Users` target `820`, current `779` is `On Track` because it is exactly within the `5%` count tolerance
+- `Total Users` target `820`, current `769` is `Below Target` because the `6.2%` miss is outside the `5%` count tolerance
 
 Above-target logic should mirror the same tolerance in the positive direction.
 

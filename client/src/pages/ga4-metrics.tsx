@@ -70,20 +70,15 @@ const VALID_GA4_TABS = ["overview", "kpis", "benchmarks", "campaigns", "insights
 const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";
 
 const formatKpiTolerancePolicyLabel = (policy?: ReturnType<typeof resolveKpiThresholdPolicy> | null) => {
-  if (!policy) return "metric-aware";
-  const tolerancePctStr = formatPct(Number(policy.nearTargetBandPct || 0)).replace("%", "");
-  const absoluteTolerance = Number(policy.absoluteTolerance || 0);
-  const absoluteToleranceStr = Number.isFinite(absoluteTolerance) && absoluteTolerance > 0
-    ? ` / ${absoluteTolerance.toLocaleString(undefined, { maximumFractionDigits: 2 })}${policy.kind === "rate" ? " pts" : ""}`
-    : "";
-  return `${tolerancePctStr}%${absoluteToleranceStr} ${policy.kind}`;
+  if (!policy) return "metric-specific";
+  return formatPct(Number(policy.nearTargetBandPct || 0));
 };
 
+
 const summarizeKpiToleranceLabels = (labels: string[]) => {
-  if (labels.length === 0) return "metric-aware tolerance";
+  if (labels.length === 0) return "each KPI's tolerance";
   if (labels.length === 1) return `${labels[0]} tolerance`;
-  if (labels.length <= 2) return `${labels.join("; ")} tolerances`;
-  return `${labels.slice(0, 2).join("; ")} +${labels.length - 2} more`;
+  return "each KPI's tolerance";
 };
 const REVENUE_ALLOCATION_RESIDUAL_THRESHOLD = 0.01;
 
@@ -4097,8 +4092,8 @@ export default function GA4Metrics() {
     const avgPct = scored > 0 ? sumPct / scored : 0;
     const toleranceLabelList = Array.from(toleranceLabels);
     const toleranceSummary = summarizeKpiToleranceLabels(toleranceLabelList);
-    const toleranceTitle = toleranceLabelList.length > 0
-      ? `Scored KPI tolerances: ${toleranceLabelList.join("; ")}`
+    const toleranceTitle = scored > 0
+      ? "Different KPI types can use different tolerances."
       : "No scored KPI tolerance available";
     return { total: items.length, scored, above, near, below, blocked, insufficient, avgPct, toleranceSummary, toleranceTitle };
     // computeKpiProgress depends on live values; include the main value inputs so the tracker updates correctly.

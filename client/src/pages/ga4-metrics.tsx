@@ -68,6 +68,21 @@ const BENCHMARK_DESC_MAX = 200;
 const KPI_DESC_MAX = 200;
 const VALID_GA4_TABS = ["overview", "kpis", "benchmarks", "campaigns", "insights", "reports"] as const;
 const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";
+const DEFAULT_KPI_ALERT_SCHEDULE_HOUR = "09";
+const DEFAULT_KPI_ALERT_SCHEDULE_DAY = "monday";
+const KPI_ALERT_HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => {
+  const value = String(hour).padStart(2, "0");
+  return { value, label: `${value}:00 UTC` };
+});
+const KPI_ALERT_DAY_OPTIONS = [
+  { value: "monday", label: "Monday" },
+  { value: "tuesday", label: "Tuesday" },
+  { value: "wednesday", label: "Wednesday" },
+  { value: "thursday", label: "Thursday" },
+  { value: "friday", label: "Friday" },
+  { value: "saturday", label: "Saturday" },
+  { value: "sunday", label: "Sunday" },
+];
 
 const formatKpiTolerancePolicyLabel = (policy?: ReturnType<typeof resolveKpiThresholdPolicy> | null) => {
   if (!policy) return "metric-specific";
@@ -162,6 +177,8 @@ const kpiFormSchema = z.object({
   alertThreshold: z.string().optional(),
   alertCondition: z.enum(["below", "above", "equals"]).default("below"),
   alertFrequency: z.enum(["immediate", "daily", "weekly"]).default("immediate"),
+  alertScheduleHour: z.string().default(DEFAULT_KPI_ALERT_SCHEDULE_HOUR),
+  alertScheduleDayOfWeek: z.string().default(DEFAULT_KPI_ALERT_SCHEDULE_DAY),
   emailNotifications: z.boolean().default(false),
   emailRecipients: z.string().optional(),
 });
@@ -170,7 +187,7 @@ type KPIFormData = z.infer<typeof kpiFormSchema>;
 
 const KPI_FORM_COMPARE_FIELDS: Array<keyof KPIFormData> = [
   "name", "metric", "description", "unit", "currentValue", "targetValue", "priority", "targetDate",
-  "alertsEnabled", "alertThreshold", "alertCondition", "alertFrequency", "emailNotifications", "emailRecipients",
+  "alertsEnabled", "alertThreshold", "alertCondition", "alertFrequency", "alertScheduleHour", "alertScheduleDayOfWeek", "emailNotifications", "emailRecipients",
 ];
 
 const normalizeKpiFormCompareValue = (value: unknown) => String(value ?? "").trim();
@@ -494,6 +511,8 @@ export default function GA4Metrics() {
       alertThreshold: "",
       alertCondition: "below",
       alertFrequency: "immediate",
+      alertScheduleHour: DEFAULT_KPI_ALERT_SCHEDULE_HOUR,
+      alertScheduleDayOfWeek: DEFAULT_KPI_ALERT_SCHEDULE_DAY,
       emailNotifications: false,
       emailRecipients: "",
     },
@@ -511,9 +530,53 @@ export default function GA4Metrics() {
     alertThreshold: "",
     alertCondition: "below",
     alertFrequency: "immediate",
+    alertScheduleHour: DEFAULT_KPI_ALERT_SCHEDULE_HOUR,
+    alertScheduleDayOfWeek: DEFAULT_KPI_ALERT_SCHEDULE_DAY,
     emailNotifications: false,
     emailRecipients: "",
   });
+  const getKpiAlertScheduleFormValues = (kpi: any): Pick<KPIFormData, "alertScheduleHour" | "alertScheduleDayOfWeek"> => {
+    const schedule = kpi?.calculationConfig?.alertEmailSchedule;
+    const hour = Number(schedule?.hour);
+    const hourValue = Number.isInteger(hour) && hour >= 0 && hour <= 23
+      ? String(hour).padStart(2, "0")
+      : DEFAULT_KPI_ALERT_SCHEDULE_HOUR;
+    const rawDay = String(schedule?.dayOfWeek || "").toLowerCase();
+    const dayValue = KPI_ALERT_DAY_OPTIONS.some((option) => option.value === rawDay)
+      ? rawDay
+      : DEFAULT_KPI_ALERT_SCHEDULE_DAY;
+    return { alertScheduleHour: hourValue, alertScheduleDayOfWeek: dayValue };
+  };
+
+  const buildKpiAlertScheduleCalculationConfig = (baseConfig: any, values: KPIFormData) => {
+    const base = baseConfig && typeof baseConfig === "object" && !Array.isArray(baseConfig) ? { ...baseConfig } : {};
+    const hadSchedule = Object.prototype.hasOwnProperty.call(base, "alertEmailSchedule");
+    delete (base as any).alertEmailSchedule;
+
+    if (values.emailNotifications && (values.alertFrequency === "daily" || values.alertFrequency === "weekly")) {
+      const parsedHour = Number.parseInt(String(values.alertScheduleHour || DEFAULT_KPI_ALERT_SCHEDULE_HOUR), 10);
+      const hour = Number.isInteger(parsedHour) && parsedHour >= 0 && parsedHour <= 23 ? parsedHour : Number(DEFAULT_KPI_ALERT_SCHEDULE_HOUR);
+      const schedule: Record<string, unknown> = { frequency: values.alertFrequency, hour };
+      if (values.alertFrequency === "weekly") {
+        const day = KPI_ALERT_DAY_OPTIONS.some((option) => option.value === values.alertScheduleDayOfWeek)
+          ? values.alertScheduleDayOfWeek
+          : DEFAULT_KPI_ALERT_SCHEDULE_DAY;
+        schedule.dayOfWeek = day;
+      }
+      return { ...base, alertEmailSchedule: schedule };
+    }
+
+    if (Object.keys(base).length > 0) return base;
+    return hadSchedule ? null : undefined;
+  };
+
+  const buildKpiRequestPayload = (values: KPIFormData, baseConfig?: any) => {
+    const { alertScheduleHour, alertScheduleDayOfWeek, ...apiValues } = values;
+    const calculationConfig = buildKpiAlertScheduleCalculationConfig(baseConfig, values);
+    return typeof calculationConfig === "undefined"
+      ? apiValues
+      : { ...apiValues, calculationConfig };
+  };
   const getKpiTemplateForEdit = (kpi: any) => {
     const values = [kpi?.metric, kpi?.name].map((v) => String(v || "").trim().toLowerCase()).filter(Boolean);
     const templates = [
@@ -700,7 +763,7 @@ export default function GA4Metrics() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          ...data,
+          ...buildKpiRequestPayload(data),
           campaignId, // Scope KPI to this MimoSaaS campaign
           // Prefer the user-visible current value (prefilled live when selecting a template).
           // Fallback to the computed value if for any reason the field is empty.
@@ -740,7 +803,7 @@ export default function GA4Metrics() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          ...payload.data,
+          ...buildKpiRequestPayload(payload.data, editingKPI?.calculationConfig),
           campaignId,
           currentValue: stripNumberFormatting((payload.data as any)?.currentValue),
           targetValue: stripNumberFormatting((payload.data as any)?.targetValue),
@@ -6564,6 +6627,7 @@ export default function GA4Metrics() {
                                                   alertThreshold: kpi?.alertThreshold ? formatNumberByUnit(String(kpi.alertThreshold), String(kpi?.unit || "%")) : "",
                                                   alertCondition: (kpi?.alertCondition || "below") as any,
                                                   alertFrequency: (kpi?.alertFrequency || "daily") as any,
+                                                  ...getKpiAlertScheduleFormValues(kpi),
                                                   emailNotifications: Boolean(kpi?.emailNotifications ?? false),
                                                   emailRecipients: String(kpi?.emailRecipients || ""),
                                                 };
@@ -8810,6 +8874,69 @@ export default function GA4Metrics() {
                               This setting controls how often reminder emails are sent while the KPI is still breaching
                             </p>
                           </div>
+                          {kpiForm.watch("alertFrequency") === "daily" && (
+                            <div className="space-y-2">
+                              <Label htmlFor="kpi-alert-schedule-hour">Send Hour (UTC)</Label>
+                              <Select
+                                value={kpiForm.watch("alertScheduleHour") || DEFAULT_KPI_ALERT_SCHEDULE_HOUR}
+                                onValueChange={(v) => kpiForm.setValue("alertScheduleHour", v)}
+                                disabled={!kpiForm.watch("emailNotifications")}
+                              >
+                                <SelectTrigger id="kpi-alert-schedule-hour">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {KPI_ALERT_HOUR_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-muted-foreground/70">
+                                Daily reminders are checked during the selected UTC hour while the KPI is still breaching
+                              </p>
+                            </div>
+                          )}
+                          {kpiForm.watch("alertFrequency") === "weekly" && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="kpi-alert-schedule-day">Send Day</Label>
+                                <Select
+                                  value={kpiForm.watch("alertScheduleDayOfWeek") || DEFAULT_KPI_ALERT_SCHEDULE_DAY}
+                                  onValueChange={(v) => kpiForm.setValue("alertScheduleDayOfWeek", v)}
+                                  disabled={!kpiForm.watch("emailNotifications")}
+                                >
+                                  <SelectTrigger id="kpi-alert-schedule-day">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {KPI_ALERT_DAY_OPTIONS.map((option) => (
+                                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="kpi-alert-schedule-weekly-hour">Send Hour (UTC)</Label>
+                                <Select
+                                  value={kpiForm.watch("alertScheduleHour") || DEFAULT_KPI_ALERT_SCHEDULE_HOUR}
+                                  onValueChange={(v) => kpiForm.setValue("alertScheduleHour", v)}
+                                  disabled={!kpiForm.watch("emailNotifications")}
+                                >
+                                  <SelectTrigger id="kpi-alert-schedule-weekly-hour">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {KPI_ALERT_HOUR_OPTIONS.map((option) => (
+                                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <p className="sm:col-span-2 text-xs text-muted-foreground/70">
+                                Weekly reminders are checked on the selected UTC day and hour while the KPI is still breaching
+                              </p>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>

@@ -75,6 +75,61 @@ export function normalizeAlertEmailFrequency(value: unknown): AlertEmailFrequenc
   return "daily";
 }
 
+type AlertEmailScheduledFrequency = Exclude<AlertEmailFrequency, "immediate">;
+
+export type AlertEmailScheduleConfig = {
+  frequency: AlertEmailScheduledFrequency;
+  hour: number;
+  dayOfWeek?: string;
+};
+
+const ALERT_EMAIL_DAY_INDEX: Record<string, number> = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+};
+
+export function getAlertEmailScheduleConfig(calculationConfig: unknown): AlertEmailScheduleConfig | null {
+  if (!calculationConfig || typeof calculationConfig !== "object" || Array.isArray(calculationConfig)) return null;
+  const schedule = (calculationConfig as any).alertEmailSchedule;
+  if (!schedule || typeof schedule !== "object" || Array.isArray(schedule)) return null;
+
+  const rawFrequency = String((schedule as any).frequency || "").trim().toLowerCase();
+  if (rawFrequency !== "daily" && rawFrequency !== "weekly") return null;
+  const frequency = rawFrequency as AlertEmailScheduledFrequency;
+
+  const hour = Number((schedule as any).hour);
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return null;
+
+  if (frequency === "weekly") {
+    const dayOfWeek = String((schedule as any).dayOfWeek || "").trim().toLowerCase();
+    if (!(dayOfWeek in ALERT_EMAIL_DAY_INDEX)) return null;
+    return { frequency, hour, dayOfWeek };
+  }
+
+  return { frequency, hour };
+}
+
+export function isAlertEmailScheduleDue(
+  calculationConfig: unknown,
+  frequency: unknown,
+  now: Date = new Date(),
+): boolean {
+  const normalizedFrequency = normalizeAlertEmailFrequency(frequency);
+  if (normalizedFrequency === "immediate") return true;
+
+  const schedule = getAlertEmailScheduleConfig(calculationConfig);
+  if (!schedule || schedule.frequency !== normalizedFrequency) return true;
+  if (now.getUTCHours() !== schedule.hour) return false;
+  if (normalizedFrequency === "weekly") {
+    return now.getUTCDay() === ALERT_EMAIL_DAY_INDEX[String(schedule.dayOfWeek || "")];
+  }
+  return true;
+}
 function alertEmailFrequencyWindowMs(frequency: AlertEmailFrequency): number {
   if (frequency === "immediate") return 60 * 60 * 1000;
   if (frequency === "weekly") return 7 * 24 * 60 * 60 * 1000;

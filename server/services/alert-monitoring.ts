@@ -5,7 +5,7 @@ import { emailService } from "./email-service.js";
 import { evaluateAlertCondition, parseAlertNumber as parseSharedAlertNumber } from "../utils/alert-evaluation";
 import { resolveCampaignCurrentValueForAlert } from "../utils/campaign-current-values";
 import { getGA4KPIDuplicateKey, getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "../utils/ga4-kpi-alert-dedupe";
-import { ALERT_EMAIL_MAX_ATTEMPTS, claimAlertEmailSend, type AlertEmailSendClaim } from "../utils/alert-email-audit";
+import { ALERT_EMAIL_MAX_ATTEMPTS, claimAlertEmailSend, isAlertEmailScheduleDue, type AlertEmailSendClaim } from "../utils/alert-email-audit";
 
 interface AlertCheck {
   id: string;
@@ -116,6 +116,7 @@ class AlertMonitoringService {
       frequency === 'weekly' ? 24 * 7 :
       24;
     if (!retryClaim && this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) return false;
+    if (!retryClaim && !isAlertEmailScheduleDue((kpi as any).calculationConfig, frequency)) return false;
 
     const currentValue = this.parseAlertNumber(kpi.currentValue);
     const thresholdValue = this.parseAlertNumber(kpi.alertThreshold);
@@ -382,6 +383,7 @@ class AlertMonitoringService {
           console.log(`Throttling alert for KPI ${kpi.name} (last sent: ${kpi.lastAlertSent})`);
           continue;
         }
+        if (!isAlertEmailScheduleDue((kpi as any).calculationConfig, frequency)) continue;
 
         const currentValue = this.parseAlertNumber(kpi.currentValue);
         const thresholdValue = this.parseAlertNumber(kpi.alertThreshold);

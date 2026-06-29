@@ -5,6 +5,8 @@ import {
   buildAlertEmailDedupeKey,
   claimAlertEmailSend,
   getAlertEmailFrequencyWindowStart,
+  getAlertEmailScheduleConfig,
+  isAlertEmailScheduleDue,
   type AlertEmailClaimInsert,
 } from "./utils/alert-email-audit";
 
@@ -39,6 +41,20 @@ describe("alert email idempotency regression guard", () => {
       frequency: "immediate",
       now,
     })).toBe("alert-email:kpi:kpi-1:immediate:2026-06-25T10:00:00.000Z");
+  });
+
+  it("honors optional UTC schedule metadata for KPI alert emails", () => {
+    const dailyConfig = { alertEmailSchedule: { frequency: "daily", hour: 9 } };
+    const weeklyConfig = { alertEmailSchedule: { frequency: "weekly", hour: "16", dayOfWeek: "monday" } };
+
+    expect(isAlertEmailScheduleDue(undefined, "daily", new Date("2026-06-29T08:00:00.000Z"))).toBe(true);
+    expect(isAlertEmailScheduleDue(dailyConfig, "daily", new Date("2026-06-29T09:15:00.000Z"))).toBe(true);
+    expect(isAlertEmailScheduleDue(dailyConfig, "daily", new Date("2026-06-29T08:59:00.000Z"))).toBe(false);
+    expect(getAlertEmailScheduleConfig(weeklyConfig)).toEqual({ frequency: "weekly", hour: 16, dayOfWeek: "monday" });
+    expect(isAlertEmailScheduleDue(weeklyConfig, "weekly", new Date("2026-06-29T16:30:00.000Z"))).toBe(true);
+    expect(isAlertEmailScheduleDue(weeklyConfig, "weekly", new Date("2026-06-30T16:30:00.000Z"))).toBe(false);
+    expect(isAlertEmailScheduleDue(weeklyConfig, "weekly", new Date("2026-06-29T15:30:00.000Z"))).toBe(false);
+    expect(isAlertEmailScheduleDue(weeklyConfig, "daily", new Date("2026-06-29T15:30:00.000Z"))).toBe(true);
   });
 
   it("allows one KPI send claim and skips a duplicate in the same frequency window", async () => {
@@ -110,7 +126,7 @@ describe("alert email idempotency regression guard", () => {
   it("claims before provider sends and keeps lastAlertSent as a compatibility mirror", () => {
     const alertMonitoring = source("server/services/alert-monitoring.ts");
 
-    expect(alertMonitoring).toContain('claimAlertEmailSend, type AlertEmailSendClaim');
+    expect(alertMonitoring).toContain('claimAlertEmailSend, isAlertEmailScheduleDue, type AlertEmailSendClaim');
     expect(alertMonitoring.match(/await this\.claimAlertEmailWindow\(/g) || []).toHaveLength(4);
     expect(alertMonitoring.match(/auditEventId: claim\.auditEventId/g) || []).toHaveLength(4);
     expect(alertMonitoring.match(/dedupeKey: claim\.dedupeKey/g) || []).toHaveLength(4);

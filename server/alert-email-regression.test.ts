@@ -58,6 +58,13 @@ describe("alert email regression guard", () => {
     expect(sendIndex).toBeGreaterThan(parseIndex);
   });
 
+  it("honors scheduled KPI alert email delivery metadata before sending", () => {
+    const source = readAlertMonitoring();
+
+    expect(source).toContain("isAlertEmailScheduleDue");
+    expect(source.match(/isAlertEmailScheduleDue\(\(kpi as any\)\.calculationConfig, frequency\)/g) || []).toHaveLength(2);
+  });
+
   it("awaits immediate email checks after KPI and Benchmark create/update routes", () => {
     const routes = readRoutes();
 

@@ -560,6 +560,13 @@ describe("GA4 UI regression guard", () => {
     expect(benchmarkSection).toContain("disabled={!newBenchmark.emailNotifications}");
     expect(benchmarkSection).toContain("This setting controls how often reminder emails are sent while the Benchmark is still breaching");
     expect(kpiSection).toContain('disabled={!kpiForm.watch("emailNotifications")}');
+    expect(kpiSection).toContain('kpiForm.watch("alertFrequency") === "daily"');
+    expect(kpiSection).toContain('htmlFor="kpi-alert-schedule-hour"');
+    expect(kpiSection).toContain('kpiForm.watch("alertFrequency") === "weekly"');
+    expect(kpiSection).toContain('htmlFor="kpi-alert-schedule-day"');
+    expect(kpiSection).toContain('htmlFor="kpi-alert-schedule-weekly-hour"');
+    expect(kpiSection).toContain("Daily reminders are checked during the selected UTC hour while the KPI is still breaching");
+    expect(kpiSection).toContain("Weekly reminders are checked on the selected UTC day and hour while the KPI is still breaching");
     expect(kpiSection).toContain("This setting controls how often reminder emails are sent while the KPI is still breaching");
   });
 

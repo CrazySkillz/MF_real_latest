@@ -5249,7 +5249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (isYesopMockProperty(propertyId)) {
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
-        const sim = simulateGA4({ campaignId, propertyId, dateRange: "30days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
+        const sim = simulateGA4({ campaignId, propertyId, dateRange: "90days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });
         const simRows = Array.isArray((sim as any)?.timeSeries) ? (sim as any).timeSeries : [];
         let simEngagementTotal = 0;
         for (const r of simRows) {

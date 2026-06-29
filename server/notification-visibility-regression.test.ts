@@ -20,13 +20,16 @@ describe("notification visibility regression guard", () => {
       "utf-8"
     );
 
-    expect(routesFile).toContain('const isPerformanceAlert = String(n.type || "") === "performance-alert";');
+    expect(routesFile).toContain('const isPerformanceAlert = isPerformanceAlertNotification(n, meta);');
+    expect(routesFile).toContain('if (String(meta?.alertType || "").trim().toLowerCase() === "performance-alert") return true;');
+    expect(routesFile).toContain(String.raw`return /\b(kpi|benchmark)\s+alert\b/i.test(String(n?.title || "")) && Boolean(meta?.kpiId || meta?.benchmarkId);`);
     expect(routesFile).toContain('if (!kpi || String((kpi as any).campaignId || "") !== String(n.campaignId || "")) return null;');
     expect(routesFile).toContain('if (!benchmark || String((benchmark as any).campaignId || "") !== String(n.campaignId || "")) return null;');
     expect(routesFile).toContain("if (isPerformanceAlert) return null;");
-    expect(routesFile).toContain('if (String((n as any)?.type || "") !== "performance-alert") return n;');
+    expect(routesFile).toContain('if (!isPerformanceAlert) return n;');
     expect(routesFile).toContain("const kpi = await storage.getKPI(String(meta.kpiId)).catch(() => undefined as any);");
     expect(routesFile).toContain("const benchmark = await storage.getBenchmark(String(meta.benchmarkId)).catch(() => undefined as any);");
+    expect(routesFile).toContain('if (!(await isLatestGA4NotificationKPI(kpi))) return null;');
     expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");');
     expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, resolvedBenchmark, "benchmark");');
   });
@@ -43,8 +46,8 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain("const isResolvedAlertRowBreached = (resolved: any): boolean => {");
     expect(routesFile).toContain("if (isGA4NotificationPlatform(resolved?.platformType) && resolved?.__ga4NotificationSourceVerified === false) return false;");
     expect(routesFile).toContain("if (!(await isLatestGA4NotificationKPI(kpi))) return null;");
-    expect(routesFile).toContain("if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedKpi)) return null;");
-    expect(routesFile).toContain("if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedBenchmark)) return null;");
+    expect(routesFile).toContain("if (!isResolvedAlertRowBreached(resolvedKpi)) return null;");
+    expect(routesFile).toContain("if (!isResolvedAlertRowBreached(resolvedBenchmark)) return null;");
   });
 
   it("enriches Notifications alert values from resolved GA4 KPI source inputs", () => {
@@ -88,8 +91,8 @@ describe("notification visibility regression guard", () => {
       "utf-8"
     );
 
-    expect(routesFile).toContain("if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedKpi)) return null;");
-    expect(routesFile).toContain("if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedBenchmark)) return null;");
+    expect(routesFile).toContain("if (!isResolvedAlertRowBreached(resolvedKpi)) return null;");
+    expect(routesFile).toContain("if (!isResolvedAlertRowBreached(resolvedBenchmark)) return null;");
     expect(navigationFile).toContain('queryKey: ["/api/notifications"]');
     expect(navigationFile).toContain('if (notification.type !== "performance-alert") return false;');
     expect(notificationsPage).toContain('queryKey: ["/api/notifications"]');

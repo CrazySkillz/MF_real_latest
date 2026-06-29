@@ -5188,6 +5188,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const meta = notificationMetadata(n?.metadata);
     return !!meta?.dismissedAt || !!meta?.resolved;
   };
+  const isPerformanceAlertNotification = (n: any, meta: any): boolean => {
+    if (String(n?.type || "").trim().toLowerCase() === "performance-alert") return true;
+    if (String(meta?.alertType || "").trim().toLowerCase() === "performance-alert") return true;
+    return /\b(kpi|benchmark)\s+alert\b/i.test(String(n?.title || "")) && Boolean(meta?.kpiId || meta?.benchmarkId);
+  };
   const parseNotificationNumber = (value: any): number => {
     const n = parseFloat(String(value ?? "").replace(/,/g, "").replace(/[^\d.-]/g, ""));
     return Number.isFinite(n) ? n : NaN;
@@ -5349,8 +5354,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return isLatestGA4KPIForDuplicateKey(kpi, latestIdsByKey);
   };
   const visiblePerformanceAlertKey = (n: any): string | null => {
-    if (String(n?.type || "") !== "performance-alert") return null;
     const meta = notificationMetadata(n?.metadata);
+    if (!isPerformanceAlertNotification(n, meta)) return null;
     if (meta?.kpiId) return `kpi:${String(meta.kpiId)}`;
     if (meta?.benchmarkId) return `benchmark:${String(meta.benchmarkId)}`;
     return null;
@@ -5404,27 +5409,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const scopedRows = await Promise.all(visible.map(async (n: any) => {
           try {
             const meta = notificationMetadata(n.metadata);
-            const isPerformanceAlert = String(n.type || "") === "performance-alert";
+            const isPerformanceAlert = isPerformanceAlertNotification(n, meta);
             if (meta?.kpiId) {
               const { kpis } = await import("../shared/schema");
               const [kpi] = await db.select().from(kpis).where(eq((kpis as any).id, String(meta.kpiId))).limit(1);
               if (!kpi || String((kpi as any).campaignId || "") !== String(n.campaignId || "")) return null;
+              if (!isPerformanceAlert) return n;
               if (!(await isLatestGA4NotificationKPI(kpi))) return null;
               const resolvedKpi = await resolveNotificationAlertRow(kpi);
-              if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedKpi)) return null;
+              if (!isResolvedAlertRowBreached(resolvedKpi)) return null;
               return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");
             }
             if (meta?.benchmarkId) {
               const { benchmarks } = await import("../shared/schema");
               const [benchmark] = await db.select().from(benchmarks).where(eq((benchmarks as any).id, String(meta.benchmarkId))).limit(1);
               if (!benchmark || String((benchmark as any).campaignId || "") !== String(n.campaignId || "")) return null;
+              if (!isPerformanceAlert) return n;
               const resolvedBenchmark = await resolveNotificationAlertRow(benchmark);
-              if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedBenchmark)) return null;
+              if (!isResolvedAlertRowBreached(resolvedBenchmark)) return null;
               return enrichPerformanceAlertNotification(n, resolvedBenchmark, "benchmark");
             }
             if (isPerformanceAlert) return null;
           } catch {
-            if (String(n.type || "") === "performance-alert") return null;
+            if (isPerformanceAlertNotification(n, notificationMetadata(n?.metadata))) return null;
           }
           return n;
         }));
@@ -5445,8 +5452,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allNotifications = await storage.getNotifications().catch(() => [] as any[]);
       const fallbackRows = await Promise.all((Array.isArray(allNotifications) ? allNotifications : []).map(async (n: any) => {
         if (!ownedIds.includes(String((n as any)?.campaignId || "")) || isNotificationDismissed(n)) return null;
-        if (String((n as any)?.type || "") !== "performance-alert") return n;
         const meta = notificationMetadata((n as any)?.metadata);
+        const isPerformanceAlert = isPerformanceAlertNotification(n, meta);
+        if (!isPerformanceAlert) return n;
         if (meta?.kpiId) {
           const kpi = await storage.getKPI(String(meta.kpiId)).catch(() => undefined as any);
           if (!kpi || String((kpi as any).campaignId || "") !== String((n as any).campaignId || "")) return null;

@@ -1709,6 +1709,41 @@ Not locally verifiable:
 
 - browser/deployed confirmation that the exact affected GA4 KPI alert row now shows the refreshed current value immediately after navigating to Notifications
 
+### Post-UX-9 Notifications Source-Backed Current-Value API Fix
+
+Status: implemented locally; deployment/browser confirmation still required.
+
+Root cause:
+
+- The prior Notifications current-value freshness fix made the Notifications page refetch `/api/notifications`, which fixed the client cache path but did not fix stale values returned by the API.
+- `/api/notifications` enriched active KPI/Benchmark alert metadata from the linked persisted row's `currentValue`.
+- GA4 KPI cards render computable KPI values from the live GA4/source-backed value path, including persisted GA4 daily metrics plus GA4 financial revenue/spend source totals.
+- Result: after revenue/spend or GA4 source values changed, the GA4 KPI card could show the updated value while the Notifications page refetched successfully but still displayed the stale persisted KPI alert `metadata.currentValue`.
+
+Smallest safe fix:
+
+- keep the existing `/api/notifications` route, ownership checks, duplicate suppression, alert threshold math, email behavior, scheduler behavior, and storage contracts unchanged
+- resolve linked KPI/Benchmark rows once for the notification response and use that resolved row for both breach visibility and response metadata enrichment
+- for computable GA4 KPI/Benchmark rows only, derive the response-time current value read-only from the existing GA4 KPI compute helper, stored GA4 daily metrics, and the existing GA4 financial source window
+- fail back to the previously resolved row when campaign/property/source data is missing, so the notification API does not invent zero values from absent source data
+
+Files changed:
+
+- `server/routes-oauth.ts`
+- `server/notification-visibility-regression.test.ts`
+- `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
+
+Validation evidence:
+
+- `npm test -- server/notification-visibility-regression.test.ts` passed: 1 file / 35 tests
+- `npm test -- server/notification-visibility-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-evaluation.test.ts server/benchmark-alert-lifecycle-regression.test.ts` passed: 4 files / 47 tests
+- `npm run check` passed
+
+Not locally verifiable:
+
+- browser/deployed confirmation that the exact affected GA4 KPI alert row now shows the same refreshed current value as the GA4 KPI card after the source value changes
+- live GA4 API availability and deployed Render data state
+
 ### Post-UX-9 Notifications Filter And Card Action Simplification
 
 Status: implemented and pushed in commit `70bf59ea`.

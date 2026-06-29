@@ -27,8 +27,8 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain('if (String((n as any)?.type || "") !== "performance-alert") return n;');
     expect(routesFile).toContain("const kpi = await storage.getKPI(String(meta.kpiId)).catch(() => undefined as any);");
     expect(routesFile).toContain("const benchmark = await storage.getBenchmark(String(meta.benchmarkId)).catch(() => undefined as any);");
-    expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, kpi, "kpi");');
-    expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, benchmark, "benchmark");');
+    expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");');
+    expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, resolvedBenchmark, "benchmark");');
   });
 
   it("hides performance alert notifications when the linked row no longer breaches", () => {
@@ -38,12 +38,27 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(routesFile).toContain('import { resolveCampaignCurrentValueForAlert } from "./utils/campaign-current-values";');
-    expect(routesFile).toContain("const isAlertRowBreached = async (row: any): Promise<boolean> => {");
+    expect(routesFile).toContain("const resolveNotificationAlertRow = async (row: any): Promise<any> => {");
     expect(routesFile).toContain("const resolved = await resolveCampaignCurrentValueForAlert(row);");
-    expect(routesFile).toContain("if (isPerformanceAlert && !(await isAlertRowBreached(kpi))) return null;");
-    expect(routesFile).toContain("if (isPerformanceAlert && !(await isAlertRowBreached(benchmark))) return null;");
-    expect(routesFile).toContain("&& await isAlertRowBreached(kpi)");
-    expect(routesFile).toContain("&& await isAlertRowBreached(benchmark)");
+    expect(routesFile).toContain("const isResolvedAlertRowBreached = (resolved: any): boolean => {");
+    expect(routesFile).toContain("if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedKpi)) return null;");
+    expect(routesFile).toContain("if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedBenchmark)) return null;");
+  });
+
+  it("enriches Notifications alert values from resolved GA4 KPI source inputs", () => {
+    const routesFile = readFileSync(
+      join(process.cwd(), "server", "routes-oauth.ts"),
+      "utf-8"
+    );
+
+    expect(routesFile).toContain('import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";');
+    expect(routesFile).toContain('if (platform !== "google_analytics" || !campaignId || !isComputableGA4KpiMetric(metricOrName)) return resolved;');
+    expect(routesFile).toContain("const financialWindow = getGA4KPIFinancialSourceWindow();");
+    expect(routesFile).toContain('const importedRevenue = await storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
+    expect(routesFile).toContain("if (sourceRows.length === 0 && importedRevenueValue === 0 && spendValue === 0) return resolved;");
+    expect(routesFile).toContain("const currentValue = computeKpiValue(metricOrName, {");
+    expect(routesFile).toContain("return { ...resolved, currentValue: String(currentValue) };");
+    expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");');
   });
 
   it("backs the bell and Notifications page with breached performance alerts only", () => {
@@ -64,8 +79,8 @@ describe("notification visibility regression guard", () => {
       "utf-8"
     );
 
-    expect(routesFile).toContain("if (isPerformanceAlert && !(await isAlertRowBreached(kpi))) return null;");
-    expect(routesFile).toContain("if (isPerformanceAlert && !(await isAlertRowBreached(benchmark))) return null;");
+    expect(routesFile).toContain("if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedKpi)) return null;");
+    expect(routesFile).toContain("if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedBenchmark)) return null;");
     expect(navigationFile).toContain('queryKey: ["/api/notifications"]');
     expect(navigationFile).toContain('if (notification.type !== "performance-alert") return false;');
     expect(notificationsPage).toContain('queryKey: ["/api/notifications"]');

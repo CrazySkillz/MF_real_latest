@@ -6,7 +6,7 @@ import { insertCampaignSchema, insertMetricSchema, insertIntegrationSchema, inse
 import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
-import { runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
+import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
 import multer from "multer";
 import { parseCsvText } from "./utils/csv";
 import type { ParsedMetrics } from "./services/pdf-parser";
@@ -5185,8 +5185,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const n = parseFloat(String(value ?? "").replace(/,/g, "").replace(/[^\d.-]/g, ""));
     return Number.isFinite(n) ? n : NaN;
   };
-  const isAlertRowBreached = async (row: any): Promise<boolean> => {
+  const notificationDateUTC = (date: Date) =>
+    `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+  const notificationCampaignStartDate = (campaign: any) => {
+    const raw = campaign?.startDate || campaign?.createdAt || null;
+    if (!raw) return "2000-01-01";
+    const date = new Date(raw);
+    if (!Number.isFinite(date.getTime())) return "2000-01-01";
+    return notificationDateUTC(date);
+  };
+  const resolveNotificationAlertRow = async (row: any): Promise<any> => {
     const resolved = await resolveCampaignCurrentValueForAlert(row);
+    const platform = String(resolved?.platformType || "").trim().toLowerCase();
+    const campaignId = String(resolved?.campaignId || "").trim();
+    const metricOrName = String(resolved?.metric || resolved?.name || "").trim();
+    if (platform !== "google_analytics" || !campaignId || !isComputableGA4KpiMetric(metricOrName)) return resolved;
+
+    try {
+      const campaign = await storage.getCampaign(campaignId).catch(() => undefined as any);
+      const connections = await storage.getGA4Connections(campaignId).catch(() => [] as any[]);
+      const primary = (Array.isArray(connections) ? connections : []).find((c: any) => c?.isPrimary) || (Array.isArray(connections) ? connections : [])[0];
+      const propertyId = String(primary?.propertyId || "").trim();
+      if (!campaign || !propertyId) return resolved;
+
+      const reportEnd = new Date();
+      reportEnd.setUTCDate(reportEnd.getUTCDate() - 1);
+      const endDate = notificationDateUTC(reportEnd);
+      const startDate = notificationCampaignStartDate(campaign);
+      const rows = await storage.getGA4DailyMetrics(campaignId, propertyId, startDate, endDate).catch(() => [] as any[]);
+      const sourceRows = Array.isArray(rows) ? rows : [];
+      const latest = sourceRows.length > 0 ? sourceRows[sourceRows.length - 1] : await storage.getLatestGA4DailyMetric(campaignId, propertyId).catch(() => null as any);
+      const totals = sourceRows.reduce((acc: any, r: any) => ({
+        users: acc.users + (Number(r?.users || 0) || 0),
+        sessions: acc.sessions + (Number(r?.sessions || 0) || 0),
+        pageviews: acc.pageviews + (Number(r?.pageviews || 0) || 0),
+        conversions: acc.conversions + (Number(r?.conversions || 0) || 0),
+        ga4Revenue: acc.ga4Revenue + (Number(r?.revenue || 0) || 0),
+      }), { users: 0, sessions: 0, pageviews: 0, conversions: 0, ga4Revenue: 0 });
+      const financialWindow = getGA4KPIFinancialSourceWindow();
+      const importedRevenue = await storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => ({ totalRevenue: 0 }));
+      const spend = await storage.getSpendTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate).catch(() => ({ totalSpend: 0 }));
+      const importedRevenueValue = Number((importedRevenue as any)?.totalRevenue || 0) || 0;
+      const spendValue = Number((spend as any)?.totalSpend || 0) || 0;
+      if (sourceRows.length === 0 && importedRevenueValue === 0 && spendValue === 0) return resolved;
+      const currentValue = computeKpiValue(metricOrName, {
+        users: totals.users,
+        sessions: totals.sessions,
+        pageviews: totals.pageviews,
+        conversions: totals.conversions,
+        ga4Revenue: totals.ga4Revenue,
+        importedRevenue: importedRevenueValue,
+        spend: spendValue,
+        engagementRate: Number((latest as any)?.engagementRate || 0) || 0,
+      });
+      return { ...resolved, currentValue: String(currentValue) };
+    } catch {
+      return resolved;
+    }
+  };
+  const isResolvedAlertRowBreached = (resolved: any): boolean => {
     if (!resolved?.alertsEnabled || resolved?.alertThreshold === null || typeof resolved?.alertThreshold === "undefined") return false;
     const current = parseNotificationNumber(resolved?.currentValue);
     const threshold = parseNotificationNumber(resolved?.alertThreshold);
@@ -5256,15 +5313,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const { kpis } = await import("../shared/schema");
               const [kpi] = await db.select().from(kpis).where(eq((kpis as any).id, String(meta.kpiId))).limit(1);
               if (!kpi || String((kpi as any).campaignId || "") !== String(n.campaignId || "")) return null;
-              if (isPerformanceAlert && !(await isAlertRowBreached(kpi))) return null;
-              if (kpi) return enrichPerformanceAlertNotification(n, kpi, "kpi");
+              const resolvedKpi = await resolveNotificationAlertRow(kpi);
+              if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedKpi)) return null;
+              return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");
             }
             if (meta?.benchmarkId) {
               const { benchmarks } = await import("../shared/schema");
               const [benchmark] = await db.select().from(benchmarks).where(eq((benchmarks as any).id, String(meta.benchmarkId))).limit(1);
               if (!benchmark || String((benchmark as any).campaignId || "") !== String(n.campaignId || "")) return null;
-              if (isPerformanceAlert && !(await isAlertRowBreached(benchmark))) return null;
-              if (benchmark) return enrichPerformanceAlertNotification(n, benchmark, "benchmark");
+              const resolvedBenchmark = await resolveNotificationAlertRow(benchmark);
+              if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedBenchmark)) return null;
+              return enrichPerformanceAlertNotification(n, resolvedBenchmark, "benchmark");
             }
             if (isPerformanceAlert) return null;
           } catch {
@@ -5293,14 +5352,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const meta = notificationMetadata((n as any)?.metadata);
         if (meta?.kpiId) {
           const kpi = await storage.getKPI(String(meta.kpiId)).catch(() => undefined as any);
-          return !!kpi && String((kpi as any).campaignId || "") === String((n as any).campaignId || "") && await isAlertRowBreached(kpi)
-            ? enrichPerformanceAlertNotification(n, kpi, "kpi")
+          if (!kpi || String((kpi as any).campaignId || "") !== String((n as any).campaignId || "")) return null;
+          const resolvedKpi = await resolveNotificationAlertRow(kpi);
+          return isResolvedAlertRowBreached(resolvedKpi)
+            ? enrichPerformanceAlertNotification(n, resolvedKpi, "kpi")
             : null;
         }
         if (meta?.benchmarkId) {
           const benchmark = await storage.getBenchmark(String(meta.benchmarkId)).catch(() => undefined as any);
-          return !!benchmark && String((benchmark as any).campaignId || "") === String((n as any).campaignId || "") && await isAlertRowBreached(benchmark)
-            ? enrichPerformanceAlertNotification(n, benchmark, "benchmark")
+          if (!benchmark || String((benchmark as any).campaignId || "") !== String((n as any).campaignId || "")) return null;
+          const resolvedBenchmark = await resolveNotificationAlertRow(benchmark);
+          return isResolvedAlertRowBreached(resolvedBenchmark)
+            ? enrichPerformanceAlertNotification(n, resolvedBenchmark, "benchmark")
             : null;
         }
         return null;

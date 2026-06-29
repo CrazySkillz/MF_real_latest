@@ -251,88 +251,90 @@ class EmailService {
     try {
       const domain = process.env.MAILGUN_DOMAIN;
       const apiKey = process.env.MAILGUN_API_KEY;
-      const region = process.env.MAILGUN_REGION || 'us'; // 'us' or 'eu'
-      const baseUrl = region === 'eu' 
+      const region = (process.env.MAILGUN_REGION || 'us').trim().toLowerCase(); // 'us' or 'eu'
+      const regionsToTry = region === 'eu' ? ['eu', 'us'] : ['us', 'eu'];
+      const baseUrlForRegion = (candidate: string) => candidate === 'eu'
         ? 'https://api.eu.mailgun.net/v3'
         : 'https://api.mailgun.net/v3';
 
       const recipients = this.normalizeRecipients(options.to);
       const textBody = options.text || this.stripHtml(options.html);
+      const authHeader = `Basic ${Buffer.from(`api:${apiKey}`).toString('base64')}`;
 
-      // If attachments exist, use multipart/form-data (Mailgun requires multipart for attachments).
-      if (Array.isArray(options.attachments) && options.attachments.length > 0) {
-        console.log(`[Email Service] Mailgun API: sending multipart with ${options.attachments.length} attachment(s)`);
-        const fd = new FormData();
-        fd.append('from', from);
-        for (const recipient of recipients) fd.append('to', recipient);
-        fd.append('subject', options.subject);
-        fd.append('html', options.html);
-        fd.append('text', textBody);
-        fd.append('o:tracking', 'no');
-        fd.append('o:tracking-clicks', 'no');
-        fd.append('o:tracking-opens', 'no');
+      const sendRequest = async (candidateRegion: string): Promise<Response> => {
+        const baseUrl = baseUrlForRegion(candidateRegion);
+        if (Array.isArray(options.attachments) && options.attachments.length > 0) {
+          console.log(`[Email Service] Mailgun API (${candidateRegion}): sending multipart with ${options.attachments.length} attachment(s)`);
+          const fd = new FormData();
+          fd.append('from', from);
+          for (const recipient of recipients) fd.append('to', recipient);
+          fd.append('subject', options.subject);
+          fd.append('html', options.html);
+          fd.append('text', textBody);
+          fd.append('o:tracking', 'no');
+          fd.append('o:tracking-clicks', 'no');
+          fd.append('o:tracking-opens', 'no');
 
-        for (const att of options.attachments) {
-          const type = att.contentType || 'application/octet-stream';
-          const blob = new Blob([att.content], { type });
-          console.log(`[Email Service] Mailgun API attachment: ${att.filename} bytes=${att.content?.length || 0} type=${type}`);
-          fd.append('attachment', blob, att.filename);
+          for (const att of options.attachments) {
+            const type = att.contentType || 'application/octet-stream';
+            const blob = new Blob([att.content], { type });
+            console.log(`[Email Service] Mailgun API attachment: ${att.filename} bytes=${att.content?.length || 0} type=${type}`);
+            fd.append('attachment', blob, att.filename);
+          }
+
+          return fetch(`${baseUrl}/${domain}/messages`, {
+            method: 'POST',
+            headers: { 'Authorization': authHeader },
+            body: fd as any,
+          });
         }
 
-        const response = await fetch(`${baseUrl}/${domain}/messages`, {
+        const formData = new URLSearchParams();
+        formData.append('from', from);
+        for (const recipient of recipients) formData.append('to', recipient);
+        formData.append('subject', options.subject);
+        formData.append('html', options.html);
+        formData.append('text', textBody);
+        formData.append('o:tracking', 'no');
+        formData.append('o:tracking-clicks', 'no');
+        formData.append('o:tracking-opens', 'no');
+
+        return fetch(`${baseUrl}/${domain}/messages`, {
           method: 'POST',
           headers: {
-            'Authorization': `Basic ${Buffer.from(`api:${apiKey}`).toString('base64')}`,
+            'Authorization': authHeader,
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: fd as any
+          body: formData.toString(),
         });
+      };
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('[Email Service] Mailgun HTTP API error:', response.status, errorText);
-          return { success: false, error: errorText };
+      let lastError = '';
+      for (let attempt = 0; attempt < regionsToTry.length; attempt++) {
+        const candidateRegion = regionsToTry[attempt];
+        const response = await sendRequest(candidateRegion);
+        if (response.ok) {
+          const result = await response.json();
+          console.log(`[Email Service] Email accepted by Mailgun HTTP API (${candidateRegion}):`, result.id);
+          return { success: true, id: result?.id ? String(result.id) : undefined };
         }
 
-        const result = await response.json();
-        console.log(`[Email Service] ✅ Email sent via Mailgun HTTP API:`, result.id);
-        return { success: true, id: result?.id ? String(result.id) : undefined };
-      }
-
-      // No attachments: use x-www-form-urlencoded (simple + reliable).
-      const formData = new URLSearchParams();
-      formData.append('from', from);
-      for (const recipient of recipients) formData.append('to', recipient);
-      formData.append('subject', options.subject);
-      formData.append('html', options.html);
-      formData.append('text', textBody);
-      formData.append('o:tracking', 'no');
-      formData.append('o:tracking-clicks', 'no');
-      formData.append('o:tracking-opens', 'no');
-
-      const response = await fetch(`${baseUrl}/${domain}/messages`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${Buffer.from(`api:${apiKey}`).toString('base64')}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: formData.toString()
-      });
-
-      if (!response.ok) {
         const errorText = await response.text();
-        console.error('[Email Service] Mailgun HTTP API error:', response.status, errorText);
-        return { success: false, error: errorText };
+        lastError = `Mailgun ${candidateRegion} API ${response.status}: ${errorText}`;
+        console.error('[Email Service] Mailgun HTTP API error:', lastError);
+        const authLikeFailure = response.status === 401 || response.status === 403;
+        if (!authLikeFailure || attempt === regionsToTry.length - 1) {
+          return { success: false, error: lastError };
+        }
+        console.warn(`[Email Service] Mailgun ${candidateRegion} API rejected the request; trying ${regionsToTry[attempt + 1]} region before failing.`);
       }
 
-      const result = await response.json();
-      console.log(`[Email Service] ✅ Email sent via Mailgun HTTP API:`, result.id);
-      return { success: true, id: result?.id ? String(result.id) : undefined };
+      return { success: false, error: lastError || 'Mailgun API request failed' };
     } catch (error) {
-      console.error('[Email Service] ❌ Mailgun HTTP API error:', error);
+      console.error('[Email Service] Mailgun HTTP API error:', error);
       return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
-
   async sendAlertEmail(
     recipients: string | string[],
     data: AlertEmailData,

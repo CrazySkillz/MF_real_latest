@@ -38,6 +38,15 @@ describe("alert email regression guard", () => {
     expect(source).not.toContain("This is an automated alert from MetricMind");
   });
 
+  it("tries the alternate Mailgun API region only after auth or forbidden failures", () => {
+    const source = readEmailService();
+
+    expect(source).toContain("const regionsToTry = region === 'eu' ? ['eu', 'us'] : ['us', 'eu'];");
+    expect(source).toContain("const authLikeFailure = response.status === 401 || response.status === 403;");
+    expect(source).toContain("if (!authLikeFailure || attempt === regionsToTry.length - 1)");
+    expect(source).toContain("Mailgun ${candidateRegion} API rejected the request; trying ${regionsToTry[attempt + 1]} region before failing.");
+    expect(source).toContain("Mailgun ${candidateRegion} API ${response.status}: ${errorText}");
+  });
   it("uses resolved campaign current values for immediate and scheduled email alert checks", () => {
     const source = readAlertMonitoring();
 

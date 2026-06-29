@@ -55,7 +55,9 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain('if (platform !== "google_analytics" || !campaignId || !isComputableGA4KpiMetric(metricOrName)) return resolved;');
     expect(routesFile).toContain("const financialWindow = getGA4KPIFinancialSourceWindow();");
     expect(routesFile).toContain('const importedRevenue = await storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
-    expect(routesFile).toContain("if (sourceRows.length === 0 && importedRevenueValue === 0 && spendValue === 0) return resolved;");
+    expect(routesFile).toContain('const sim = simulateGA4({ campaignId, propertyId, dateRange: "30days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });');
+    expect(routesFile).toContain("const live = await ga4Service.getTotalsWithRevenue(");
+    expect(routesFile).toContain("if (!hasGA4SourceInput && !hasFinancialSourceInput && importedRevenueValue === 0 && spendValue === 0) return resolved;");
     expect(routesFile).toContain("const currentValue = computeKpiValue(metricOrName, {");
     expect(routesFile).toContain("return { ...resolved, currentValue: String(currentValue) };");
     expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");');

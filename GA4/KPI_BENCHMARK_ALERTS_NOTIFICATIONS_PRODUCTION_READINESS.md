@@ -1744,6 +1744,41 @@ Not locally verifiable:
 - browser/deployed confirmation that the exact affected GA4 KPI alert row now shows the same refreshed current value as the GA4 KPI card after the source value changes
 - live GA4 API availability and deployed Render data state
 
+### Post-UX-9 Notifications GA4 Native To-Date Parity Fix
+
+Status: implemented locally; deployment/browser confirmation still required.
+
+Root cause:
+
+- The source-backed Notifications API fix corrected the stale persisted-row path, but it only recomputed GA4 KPI current values from stored GA4 daily rows plus imported revenue/spend sources.
+- The GA4 KPI card's `Revenue` value can include GA4-native to-date revenue from `/api/campaigns/:id/ga4-to-date`; for Yesop/mock GA4 campaigns, that route also adds the existing mock GA4 baseline before imported revenue.
+- Result: a GA4 Revenue KPI card could show imported revenue plus GA4-native/mock revenue, while the Notifications card still showed only the imported revenue component, such as `9,224.77`.
+
+Smallest safe fix:
+
+- keep the existing `/api/notifications` route, ownership checks, duplicate suppression, alert threshold math, email behavior, scheduler behavior, and storage contracts unchanged
+- keep notification enrichment read-only; do not write KPI rows, notification rows, scheduler state, or email state while rendering Notifications
+- for Yesop/mock GA4 properties, include the same existing mock to-date baseline used by the GA4 to-date route before adding imported revenue/spend sources
+- for live OAuth GA4 properties, attempt the existing `ga4Service.getTotalsWithRevenue` to-date read and fall back to stored daily rows if the live read fails
+- keep the missing-source guard fail-closed, but treat real zero-value GA4 or financial sources as valid source input instead of inventing missing data
+
+Files changed:
+
+- `server/routes-oauth.ts`
+- `server/notification-visibility-regression.test.ts`
+- `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
+
+Validation evidence:
+
+- `npm test -- server/notification-visibility-regression.test.ts` passed: 1 file / 35 tests
+- `npm test -- server/notification-visibility-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-evaluation.test.ts server/benchmark-alert-lifecycle-regression.test.ts` passed: 4 files / 47 tests
+- `npm run check` passed
+
+Not locally verifiable:
+
+- browser/deployed confirmation that the exact affected `ga4_mock` Revenue alert now displays the same current value as the GA4 KPI card
+- live Render deployment state and production browser cache state
+
 ### Post-UX-9 Notifications Filter And Card Action Simplification
 
 Status: implemented and pushed in commit `70bf59ea`.

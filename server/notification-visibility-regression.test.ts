@@ -73,6 +73,18 @@ describe("notification visibility regression guard", () => {
     expect(kpisDoc).toContain("enabled KPI alerts should not appear in the bell icon or main Notifications page unless the alert condition is currently breached");
   });
 
+  it("refetches the Notifications page on mount so alert detail values do not use stale cache", () => {
+    const notificationsPage = readFileSync(
+      join(process.cwd(), "client", "src", "pages", "notifications.tsx"),
+      "utf-8"
+    );
+
+    expect(notificationsPage).toContain('queryKey: ["/api/notifications"]');
+    expect(notificationsPage).toContain("staleTime: 0,");
+    expect(notificationsPage).toContain('refetchOnMount: "always",');
+    expect(notificationsPage).toContain("refetchOnWindowFocus: true,");
+  });
+
   it("deduplicates visible performance alerts by linked KPI or Benchmark", () => {
     const routesFile = readFileSync(
       join(process.cwd(), "server", "routes-oauth.ts"),

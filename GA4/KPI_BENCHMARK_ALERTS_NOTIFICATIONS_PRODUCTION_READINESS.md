@@ -16,11 +16,11 @@ This file is the authoritative tracker for GA4 KPI/Benchmark alert and notificat
 
 ## Authoritative Readiness Statement
 
-- As of June 27, 2026, GA4 KPIs and GA4 Benchmarks are production-ready for the current GA4 code scope. The durable whole-tab sources of truth are `GA4/KPIS_PRODUCTION_READINESS.md` and `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
+- Whole-tab readiness status must come from the durable tab-specific sources of truth: `GA4/KPIS_PRODUCTION_READINESS.md` and `GA4/BENCHMARKS_PRODUCTION_READINESS.md`. This alert/notification tracker must not be used to infer GA4 KPI whole-tab production readiness.
 - GA4 KPI/Benchmark alerts and notifications were not production-ready at Commit 1; that statement is historical and does not describe the current GA4 KPI/Benchmark section status.
 - After Commits 2 through 8 in this file were implemented, their required validation passed, and final evidence was recorded here, the GA4 KPI alerts, GA4 KPI notifications, GA4 Benchmark alerts, and GA4 Benchmark notifications sections became locally code-ready by this document's criteria.
 - As of Commit 8, the locally verifiable GA4 KPI/Benchmark alert and notification implementation is production-ready by this document's code-readiness criteria.
-- The current implementation template also includes the post-Commit-8 alignment fixes documented below: alert frequency UI scope/layout, GA4 alert email full-width address row and conditional frequency visibility, create-button required-field gates, all-row GA4 KPI reconciliation, query-only action URL handling, bell-to-Notifications routing, edit/delete notification refresh, simplified Notification cards, authoritative action URL enrichment, persistent smooth KPI/Benchmark target highlighting, simplified Notifications filters, card actions limited to explicit KPI/Benchmark navigation, card-level alert detail values, removal of Notifications read-state UI, and client/campaign delete notification refresh.
+- The current implementation template also includes the post-Commit-8 alignment fixes documented below: alert frequency UI scope/layout, GA4 alert email full-width address row and conditional frequency visibility, create-button required-field gates, all-row GA4 KPI reconciliation, query-only action URL handling, bell-to-Notifications routing, edit/delete notification refresh, simplified Notification cards, authoritative action URL enrichment, persistent smooth KPI/Benchmark target highlighting, simplified Notifications filters, card actions limited to explicit KPI/Benchmark navigation, card-level alert detail values, removal of Notifications read-state UI, breach-only bell/Notifications visibility, and client/campaign delete notification refresh.
 - Provider-side alert email delivery remains an external/deployed evidence caveat: local scheduler and send-attempt wiring are code-ready, but no response should claim real email delivery unless provider delivery events or actual inbox receipt are recorded for the target environment.
 - This file is the implementation and validation template for applying the same alert/notification lifecycle to other connected-platform sources, including Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration.
 - Other connected-platform sources are not production-ready from GA4 evidence alone. Each source must copy the proven GA4 lifecycle and pass the same lifecycle matrix with source-specific evidence before its KPI/Benchmark alert and notification behavior can be marked production-ready.
@@ -58,11 +58,13 @@ Commits 2 through 8 made the GA4 alert lifecycle deterministic, regression-cover
 GA4 KPI and Benchmark alerts and notifications are production-ready only when all of these are true:
 
 - creating a breached alert-enabled GA4 KPI creates exactly one visible in-app alert
+- creating or keeping an alert-enabled GA4 KPI that is not currently breached creates no visible bell or Notifications alert
 - updating a GA4 KPI into breach creates exactly one visible in-app alert
 - clearing a GA4 KPI breach resolves/hides the active alert without deleting history
 - disabling GA4 KPI alerts or clearing the threshold resolves/hides the active alert
 - deleting a GA4 KPI hides related alert notifications without hard-deleting unrelated history
 - creating a breached alert-enabled GA4 Benchmark creates exactly one visible in-app alert
+- creating or keeping an alert-enabled GA4 Benchmark that is not currently breached creates no visible bell or Notifications alert
 - updating a GA4 Benchmark into breach creates exactly one visible in-app alert
 - clearing a GA4 Benchmark breach resolves/hides the active alert without deleting history
 - disabling GA4 Benchmark alerts or clearing the threshold resolves/hides the active alert
@@ -76,6 +78,7 @@ GA4 KPI and Benchmark alerts and notifications are production-ready only when al
 - GA4 Benchmark alert metadata action URLs open `/campaigns/:id/ga4-metrics?tab=benchmarks&highlight=:benchmarkId`
 - completed triage bell behavior opens `/notifications` directly; selected row routes still use `/notifications?selected=:notificationId`, legacy `/notifications?highlight=:notificationId` remains transition-compatible, and KPI/Benchmark action URLs continue to use platform-card `highlight`
 - the top-bar bell shows a red dot only, with no number, while at least one active KPI/Benchmark breach notification is visible
+- the bell and Notifications page derive visible performance alerts from `/api/notifications`; an enabled KPI/Benchmark alert is not visible there unless the linked row is currently breached
 - the Notifications page Filters section does not expose `Read state`
 - Notification cards do not expose per-card read/unread envelope controls or `Dismiss` controls
 - Notification cards display `Current value`, `Threshold value`, and `Created date` for KPI/Benchmark alerts using the active notification response
@@ -1673,6 +1676,38 @@ Not locally verifiable:
 
 - browser-rendered confirmation that every supported viewport feels smooth during the click-through transition
 - deployed/manual confirmation that the specific production rows in a user's environment have current metadata after API enrichment
+
+### Post-UX-9 Notifications Current-Value Freshness Fix
+
+Status: implemented.
+
+Root cause:
+
+- The Notifications page queried `/api/notifications` without overriding the global React Query default `staleTime: Infinity`.
+- `/api/notifications` already enriches active KPI/Benchmark alert metadata from the linked row when it is fetched, but opening the Notifications page could reuse cached alert metadata instead of fetching current server state.
+- Result: a GA4 KPI card could show an updated current value after revenue/spend/source recompute while the Notifications page still displayed the previous `metadata.currentValue` until another refetch happened.
+
+Smallest safe fix:
+
+- keep alert evaluation, notification visibility, email behavior, scheduler behavior, API ownership/scoping, and KPI/Benchmark calculations unchanged
+- make the Notifications page `/api/notifications` query stale immediately with `staleTime: 0`
+- force a server refetch on Notifications page mount and window focus so visible alert detail values come from the current enriched response
+- add a focused regression guard for the Notifications page query options
+
+Files changed:
+
+- `client/src/pages/notifications.tsx`
+- `server/notification-visibility-regression.test.ts`
+- `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
+
+Validation evidence:
+
+- `npm test -- server/notification-visibility-regression.test.ts` passed: 1 file / 34 tests
+- `npm run check` passed
+
+Not locally verifiable:
+
+- browser/deployed confirmation that the exact affected GA4 KPI alert row now shows the refreshed current value immediately after navigating to Notifications
 
 ### Post-UX-9 Notifications Filter And Card Action Simplification
 

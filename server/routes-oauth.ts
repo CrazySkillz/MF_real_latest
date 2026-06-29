@@ -7,6 +7,7 @@ import { z } from "zod";
 import { ga4Service } from "./analytics";
 import { realGA4Client } from "./real-ga4-client";
 import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";
+import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";
 import multer from "multer";
 import { parseCsvText } from "./utils/csv";
 import type { ParsedMetrics } from "./services/pdf-parser";
@@ -5311,8 +5312,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasFinancialSourceInput = (Array.isArray((importedRevenue as any)?.sourceIds) && (importedRevenue as any).sourceIds.length > 0)
         || (Array.isArray((spend as any)?.sourceIds) && (spend as any).sourceIds.length > 0);
       if (!hasGA4SourceInput && !hasFinancialSourceInput && importedRevenueValue === 0 && spendValue === 0) return resolved;
-      // Do not replace a persisted GA4 KPI with imported-only revenue/spend when native GA4 input is unavailable.
-      if (!hasGA4SourceInput) return resolved;
+      // Do not show a source-backed GA4 alert from stale persisted data when native GA4 input is unavailable.
+      if (!hasGA4SourceInput) return { ...resolved, __ga4NotificationSourceVerified: false };
       const currentValue = computeKpiValue(metricOrName, {
         users: ga4Inputs.users,
         sessions: ga4Inputs.sessions,
@@ -5329,6 +5330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
   const isResolvedAlertRowBreached = (resolved: any): boolean => {
+    if (isGA4NotificationPlatform(resolved?.platformType) && resolved?.__ga4NotificationSourceVerified === false) return false;
     if (!resolved?.alertsEnabled || resolved?.alertThreshold === null || typeof resolved?.alertThreshold === "undefined") return false;
     const current = parseNotificationNumber(resolved?.currentValue);
     const threshold = parseNotificationNumber(resolved?.alertThreshold);
@@ -5337,6 +5339,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (condition === "above") return current > threshold;
     if (condition === "equals") return Math.abs(current - threshold) < 0.01;
     return current < threshold;
+  };
+  const isLatestGA4NotificationKPI = async (kpi: any): Promise<boolean> => {
+    if (!isGA4NotificationPlatform(kpi?.platformType)) return true;
+    const campaignId = String(kpi?.campaignId || "").trim();
+    if (!campaignId) return true;
+    const rows = await storage.getPlatformKPIs("google_analytics", campaignId).catch(() => [] as any[]);
+    const latestIdsByKey = getLatestGA4KPIIdsByDuplicateKey(Array.isArray(rows) ? rows : []);
+    return isLatestGA4KPIForDuplicateKey(kpi, latestIdsByKey);
   };
   const visiblePerformanceAlertKey = (n: any): string | null => {
     if (String(n?.type || "") !== "performance-alert") return null;
@@ -5399,6 +5409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const { kpis } = await import("../shared/schema");
               const [kpi] = await db.select().from(kpis).where(eq((kpis as any).id, String(meta.kpiId))).limit(1);
               if (!kpi || String((kpi as any).campaignId || "") !== String(n.campaignId || "")) return null;
+              if (!(await isLatestGA4NotificationKPI(kpi))) return null;
               const resolvedKpi = await resolveNotificationAlertRow(kpi);
               if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedKpi)) return null;
               return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");
@@ -5439,6 +5450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (meta?.kpiId) {
           const kpi = await storage.getKPI(String(meta.kpiId)).catch(() => undefined as any);
           if (!kpi || String((kpi as any).campaignId || "") !== String((n as any).campaignId || "")) return null;
+          if (!(await isLatestGA4NotificationKPI(kpi))) return null;
           const resolvedKpi = await resolveNotificationAlertRow(kpi);
           return isResolvedAlertRowBreached(resolvedKpi)
             ? enrichPerformanceAlertNotification(n, resolvedKpi, "kpi")

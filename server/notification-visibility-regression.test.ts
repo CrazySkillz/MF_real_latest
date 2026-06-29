@@ -41,6 +41,8 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain("const resolveNotificationAlertRow = async (row: any): Promise<any> => {");
     expect(routesFile).toContain("const resolved = await resolveCampaignCurrentValueForAlert(row);");
     expect(routesFile).toContain("const isResolvedAlertRowBreached = (resolved: any): boolean => {");
+    expect(routesFile).toContain("if (isGA4NotificationPlatform(resolved?.platformType) && resolved?.__ga4NotificationSourceVerified === false) return false;");
+    expect(routesFile).toContain("if (!(await isLatestGA4NotificationKPI(kpi))) return null;");
     expect(routesFile).toContain("if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedKpi)) return null;");
     expect(routesFile).toContain("if (isPerformanceAlert && !isResolvedAlertRowBreached(resolvedBenchmark)) return null;");
   });
@@ -52,6 +54,7 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(routesFile).toContain('import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";');
+    expect(routesFile).toContain('import { getLatestGA4KPIIdsByDuplicateKey, isLatestGA4KPIForDuplicateKey } from "./utils/ga4-kpi-alert-dedupe";');
     expect(routesFile).toContain('const metricOrName = [resolved?.metric, resolved?.name]');
     expect(routesFile).toContain('if (!isGA4NotificationPlatform(platform) || !campaignId || !metricOrName) return resolved;');
     expect(routesFile).toContain("const financialWindow = getGA4KPIFinancialSourceWindow();");
@@ -61,7 +64,7 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain("const refresh = await ga4Service.refreshAccessToken(");
     expect(routesFile).toContain("await storage.updateGA4ConnectionTokens(connection.id, {");
     expect(routesFile).toContain("if (!hasGA4SourceInput && !hasFinancialSourceInput && importedRevenueValue === 0 && spendValue === 0) return resolved;");
-    expect(routesFile).toContain("if (!hasGA4SourceInput) return resolved;");
+    expect(routesFile).toContain("if (!hasGA4SourceInput) return { ...resolved, __ga4NotificationSourceVerified: false };");
     expect(routesFile).toContain("const currentValue = computeKpiValue(metricOrName, {");
     expect(routesFile).toContain("return { ...resolved, currentValue: String(currentValue) };");
     expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");');

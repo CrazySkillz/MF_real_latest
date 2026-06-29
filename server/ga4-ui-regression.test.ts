@@ -565,8 +565,13 @@ describe("GA4 UI regression guard", () => {
     expect(kpiSection).toContain('kpiForm.watch("alertFrequency") === "weekly"');
     expect(kpiSection).toContain('htmlFor="kpi-alert-schedule-day"');
     expect(kpiSection).toContain('htmlFor="kpi-alert-schedule-weekly-hour"');
-    expect(kpiSection).toContain("Daily reminders are checked during the selected UTC hour while the KPI is still breaching");
-    expect(kpiSection).toContain("Weekly reminders are checked on the selected UTC day and hour while the KPI is still breaching");
+    expect(kpiSection).toContain("Send Hour ({kpiAlertScheduleTimeZoneLabel})");
+    expect(kpiSection).toContain("kpiAlertHourOptions.map((option) => (");
+    expect(kpiSection).not.toContain("Send Hour (UTC)");
+    expect(kpiSection).not.toContain("selected UTC hour");
+    expect(kpiSection).not.toContain("selected UTC day and hour");
+    expect(kpiSection).toContain("Daily reminders are checked during the selected local hour while the KPI is still breaching");
+    expect(kpiSection).toContain("Weekly reminders are checked on the selected local day and hour while the KPI is still breaching");
     expect(kpiSection).toContain("This setting controls how often reminder emails are sent while the KPI is still breaching");
   });
 

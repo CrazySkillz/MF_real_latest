@@ -81,6 +81,7 @@ export type AlertEmailScheduleConfig = {
   frequency: AlertEmailScheduledFrequency;
   hour: number;
   dayOfWeek?: string;
+  timeZone?: string;
 };
 
 const ALERT_EMAIL_DAY_INDEX: Record<string, number> = {
@@ -92,6 +93,38 @@ const ALERT_EMAIL_DAY_INDEX: Record<string, number> = {
   friday: 5,
   saturday: 6,
 };
+
+function normalizeAlertEmailScheduleTimeZone(value: unknown): string | undefined {
+  const timeZone = String(value || "").trim();
+  if (!timeZone) return undefined;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone }).format(new Date(0));
+    return timeZone;
+  } catch {
+    return undefined;
+  }
+}
+
+function getAlertEmailScheduleDateParts(now: Date, timeZone?: string): { hour: number; dayOfWeek: number } {
+  if (!timeZone) return { hour: now.getUTCHours(), dayOfWeek: now.getUTCDay() };
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      weekday: "long",
+      hour: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(now);
+    const hour = Number(parts.find((part) => part.type === "hour")?.value);
+    const weekday = String(parts.find((part) => part.type === "weekday")?.value || "").toLowerCase();
+    const dayOfWeek = ALERT_EMAIL_DAY_INDEX[weekday];
+    if (Number.isInteger(hour) && hour >= 0 && hour <= 23 && typeof dayOfWeek === "number") {
+      return { hour, dayOfWeek };
+    }
+  } catch {
+    // Fall through to UTC compatibility behavior.
+  }
+  return { hour: now.getUTCHours(), dayOfWeek: now.getUTCDay() };
+}
 
 export function getAlertEmailScheduleConfig(calculationConfig: unknown): AlertEmailScheduleConfig | null {
   if (!calculationConfig || typeof calculationConfig !== "object" || Array.isArray(calculationConfig)) return null;
@@ -105,13 +138,15 @@ export function getAlertEmailScheduleConfig(calculationConfig: unknown): AlertEm
   const hour = Number((schedule as any).hour);
   if (!Number.isInteger(hour) || hour < 0 || hour > 23) return null;
 
+  const timeZone = normalizeAlertEmailScheduleTimeZone((schedule as any).timeZone);
+
   if (frequency === "weekly") {
     const dayOfWeek = String((schedule as any).dayOfWeek || "").trim().toLowerCase();
     if (!(dayOfWeek in ALERT_EMAIL_DAY_INDEX)) return null;
-    return { frequency, hour, dayOfWeek };
+    return { frequency, hour, dayOfWeek, ...(timeZone ? { timeZone } : {}) };
   }
 
-  return { frequency, hour };
+  return { frequency, hour, ...(timeZone ? { timeZone } : {}) };
 }
 
 export function isAlertEmailScheduleDue(
@@ -124,12 +159,14 @@ export function isAlertEmailScheduleDue(
 
   const schedule = getAlertEmailScheduleConfig(calculationConfig);
   if (!schedule || schedule.frequency !== normalizedFrequency) return true;
-  if (now.getUTCHours() !== schedule.hour) return false;
+  const scheduledNow = getAlertEmailScheduleDateParts(now, schedule.timeZone);
+  if (scheduledNow.hour !== schedule.hour) return false;
   if (normalizedFrequency === "weekly") {
-    return now.getUTCDay() === ALERT_EMAIL_DAY_INDEX[String(schedule.dayOfWeek || "")];
+    return scheduledNow.dayOfWeek === ALERT_EMAIL_DAY_INDEX[String(schedule.dayOfWeek || "")];
   }
   return true;
 }
+
 function alertEmailFrequencyWindowMs(frequency: AlertEmailFrequency): number {
   if (frequency === "immediate") return 60 * 60 * 1000;
   if (frequency === "weekly") return 7 * 24 * 60 * 60 * 1000;

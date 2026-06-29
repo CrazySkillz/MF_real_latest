@@ -43,17 +43,20 @@ describe("alert email idempotency regression guard", () => {
     })).toBe("alert-email:kpi:kpi-1:immediate:2026-06-25T10:00:00.000Z");
   });
 
-  it("honors optional UTC schedule metadata for KPI alert emails", () => {
-    const dailyConfig = { alertEmailSchedule: { frequency: "daily", hour: 9 } };
-    const weeklyConfig = { alertEmailSchedule: { frequency: "weekly", hour: "16", dayOfWeek: "monday" } };
+  it("honors optional local timezone schedule metadata for KPI alert emails", () => {
+    const legacyDailyConfig = { alertEmailSchedule: { frequency: "daily", hour: 9 } };
+    const dailyConfig = { alertEmailSchedule: { frequency: "daily", hour: 9, timeZone: "Europe/Amsterdam" } };
+    const weeklyConfig = { alertEmailSchedule: { frequency: "weekly", hour: "16", dayOfWeek: "monday", timeZone: "Europe/Amsterdam" } };
 
     expect(isAlertEmailScheduleDue(undefined, "daily", new Date("2026-06-29T08:00:00.000Z"))).toBe(true);
-    expect(isAlertEmailScheduleDue(dailyConfig, "daily", new Date("2026-06-29T09:15:00.000Z"))).toBe(true);
-    expect(isAlertEmailScheduleDue(dailyConfig, "daily", new Date("2026-06-29T08:59:00.000Z"))).toBe(false);
-    expect(getAlertEmailScheduleConfig(weeklyConfig)).toEqual({ frequency: "weekly", hour: 16, dayOfWeek: "monday" });
-    expect(isAlertEmailScheduleDue(weeklyConfig, "weekly", new Date("2026-06-29T16:30:00.000Z"))).toBe(true);
-    expect(isAlertEmailScheduleDue(weeklyConfig, "weekly", new Date("2026-06-30T16:30:00.000Z"))).toBe(false);
-    expect(isAlertEmailScheduleDue(weeklyConfig, "weekly", new Date("2026-06-29T15:30:00.000Z"))).toBe(false);
+    expect(isAlertEmailScheduleDue(legacyDailyConfig, "daily", new Date("2026-06-29T09:15:00.000Z"))).toBe(true);
+    expect(isAlertEmailScheduleDue(legacyDailyConfig, "daily", new Date("2026-06-29T08:59:00.000Z"))).toBe(false);
+    expect(isAlertEmailScheduleDue(dailyConfig, "daily", new Date("2026-06-29T07:15:00.000Z"))).toBe(true);
+    expect(isAlertEmailScheduleDue(dailyConfig, "daily", new Date("2026-06-29T06:59:00.000Z"))).toBe(false);
+    expect(getAlertEmailScheduleConfig(weeklyConfig)).toEqual({ frequency: "weekly", hour: 16, dayOfWeek: "monday", timeZone: "Europe/Amsterdam" });
+    expect(isAlertEmailScheduleDue(weeklyConfig, "weekly", new Date("2026-06-29T14:30:00.000Z"))).toBe(true);
+    expect(isAlertEmailScheduleDue(weeklyConfig, "weekly", new Date("2026-06-30T14:30:00.000Z"))).toBe(false);
+    expect(isAlertEmailScheduleDue(weeklyConfig, "weekly", new Date("2026-06-29T13:30:00.000Z"))).toBe(false);
     expect(isAlertEmailScheduleDue(weeklyConfig, "daily", new Date("2026-06-29T15:30:00.000Z"))).toBe(true);
   });
 

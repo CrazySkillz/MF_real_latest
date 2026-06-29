@@ -70,9 +70,9 @@ const VALID_GA4_TABS = ["overview", "kpis", "benchmarks", "campaigns", "insights
 const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";
 const DEFAULT_KPI_ALERT_SCHEDULE_HOUR = "09";
 const DEFAULT_KPI_ALERT_SCHEDULE_DAY = "monday";
-const KPI_ALERT_HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => {
+const getKpiAlertHourOptions = (timeZoneLabel: string) => Array.from({ length: 24 }, (_, hour) => {
   const value = String(hour).padStart(2, "0");
-  return { value, label: `${value}:00 UTC` };
+  return { value, label: `${value}:00 ${timeZoneLabel}` };
 });
 const KPI_ALERT_DAY_OPTIONS = [
   { value: "monday", label: "Monday" },
@@ -377,11 +377,17 @@ export default function GA4Metrics() {
     status: "active" as const,
   });
   const [ga4ReportFormErrors, setGa4ReportFormErrors] = useState<{ emailRecipients?: string }>({});
-  // Timezone helpers for report scheduling
-  const [userTimeZone, setUserTimeZone] = useState('');
+  // Timezone helpers for report scheduling and alert reminder scheduling.
+  const getBrowserTimeZone = () => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    } catch {
+      return "";
+    }
+  };
+  const [userTimeZone, setUserTimeZone] = useState(getBrowserTimeZone);
   useEffect(() => {
-    const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    setUserTimeZone(detectedTimeZone);
+    setUserTimeZone(getBrowserTimeZone());
   }, []);
   const getTimeZoneDisplay = () => {
     if (!userTimeZone) return '';
@@ -393,6 +399,12 @@ export default function GA4Metrics() {
       return timeZonePart?.value || userTimeZone;
     } catch { return userTimeZone; }
   };
+  const kpiAlertScheduleTimeZone = normalizeClientReportingTimeZone(userTimeZone || DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE);
+  const kpiAlertScheduleTimeZoneLabel = kpiAlertScheduleTimeZone || DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE;
+  const kpiAlertHourOptions = useMemo(
+    () => getKpiAlertHourOptions(kpiAlertScheduleTimeZoneLabel),
+    [kpiAlertScheduleTimeZoneLabel],
+  );
   const getOrdinalSuffix = (day: number) => {
     if (day > 3 && day < 21) return 'th';
     switch (day % 10) { case 1: return 'st'; case 2: return 'nd'; case 3: return 'rd'; default: return 'th'; }
@@ -556,7 +568,7 @@ export default function GA4Metrics() {
     if (values.emailNotifications && (values.alertFrequency === "daily" || values.alertFrequency === "weekly")) {
       const parsedHour = Number.parseInt(String(values.alertScheduleHour || DEFAULT_KPI_ALERT_SCHEDULE_HOUR), 10);
       const hour = Number.isInteger(parsedHour) && parsedHour >= 0 && parsedHour <= 23 ? parsedHour : Number(DEFAULT_KPI_ALERT_SCHEDULE_HOUR);
-      const schedule: Record<string, unknown> = { frequency: values.alertFrequency, hour };
+      const schedule: Record<string, unknown> = { frequency: values.alertFrequency, hour, timeZone: kpiAlertScheduleTimeZone };
       if (values.alertFrequency === "weekly") {
         const day = KPI_ALERT_DAY_OPTIONS.some((option) => option.value === values.alertScheduleDayOfWeek)
           ? values.alertScheduleDayOfWeek
@@ -8876,7 +8888,7 @@ export default function GA4Metrics() {
                           </div>
                           {kpiForm.watch("alertFrequency") === "daily" && (
                             <div className="space-y-2">
-                              <Label htmlFor="kpi-alert-schedule-hour">Send Hour (UTC)</Label>
+                              <Label htmlFor="kpi-alert-schedule-hour">Send Hour ({kpiAlertScheduleTimeZoneLabel})</Label>
                               <Select
                                 value={kpiForm.watch("alertScheduleHour") || DEFAULT_KPI_ALERT_SCHEDULE_HOUR}
                                 onValueChange={(v) => kpiForm.setValue("alertScheduleHour", v)}
@@ -8886,13 +8898,13 @@ export default function GA4Metrics() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {KPI_ALERT_HOUR_OPTIONS.map((option) => (
+                                  {kpiAlertHourOptions.map((option) => (
                                     <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                               <p className="text-xs text-muted-foreground/70">
-                                Daily reminders are checked during the selected UTC hour while the KPI is still breaching
+                                Daily reminders are checked during the selected local hour while the KPI is still breaching
                               </p>
                             </div>
                           )}
@@ -8916,7 +8928,7 @@ export default function GA4Metrics() {
                                 </Select>
                               </div>
                               <div className="space-y-2">
-                                <Label htmlFor="kpi-alert-schedule-weekly-hour">Send Hour (UTC)</Label>
+                                <Label htmlFor="kpi-alert-schedule-weekly-hour">Send Hour ({kpiAlertScheduleTimeZoneLabel})</Label>
                                 <Select
                                   value={kpiForm.watch("alertScheduleHour") || DEFAULT_KPI_ALERT_SCHEDULE_HOUR}
                                   onValueChange={(v) => kpiForm.setValue("alertScheduleHour", v)}
@@ -8926,14 +8938,14 @@ export default function GA4Metrics() {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {KPI_ALERT_HOUR_OPTIONS.map((option) => (
+                                    {kpiAlertHourOptions.map((option) => (
                                       <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
                               </div>
                               <p className="sm:col-span-2 text-xs text-muted-foreground/70">
-                                Weekly reminders are checked on the selected UTC day and hour while the KPI is still breaching
+                                Weekly reminders are checked on the selected local day and hour while the KPI is still breaching
                               </p>
                             </div>
                           )}

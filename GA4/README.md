@@ -62,6 +62,10 @@ Important meaning:
   Covers KPI creation, display, current-value sourcing, gating, alerts, and KPI refresh behavior.
 - `GA4/KPIS_PRODUCTION_READINESS.md`
   Canonical whole-tab KPIs production-readiness source of truth. Current status: production-ready for the current GA4 code scope. Current local fixes, user-confirmed deployed UI validation, target-database damaged-data dry-run, direct GA4 snapshot PDF deployed validation, GA4 daily scheduler timing validation, immediate alert email validation, and scheduled GA4 report/provider validation are complete. It also contains the future-source reading order and KPI readiness gates for Meta, Google Ads, LinkedIn, Google Sheets, or another source.
+- `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md`
+  KPI threshold/scoring policy template and historical slice record. Use it after `GA4/KPIS_PRODUCTION_READINESS.md` when refining KPI scoring for Meta, Google Ads, LinkedIn, Google Sheets, or another source; it is not whole-tab readiness proof by itself.
+- `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
+  KPI/Benchmark alert, notification, email-audit, action URL, bell, and Notifications lifecycle template. Use it after the tab-specific readiness doc when refining KPI alert/notification behavior for another source; GA4 evidence is a template, not proof for the target source.
 - `GA4/BENCHMARKS.md`
   Covers benchmark creation, custom benchmark values, status/progress, gating, alerts, and benchmark refresh behavior.
 - `GA4/BENCHMARKS_PRODUCTION_READINESS.md`

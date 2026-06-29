@@ -6,7 +6,7 @@ Before using this document to answer an audit, review, or production-readiness q
 > HISTORICAL THRESHOLD-SLICE RECORD ONLY.
 > Do not use this file to answer whether the GA4 `KPIs` tab is production-ready.
 > Use `GA4/KPIS_PRODUCTION_READINESS.md` for the durable whole-tab production-readiness answer.
-> Current durable whole-tab answer: GA4 KPIs are production-ready for the current GA4 code scope.
+> Current durable whole-tab answer: GA4 KPIs are production-ready for the current GA4 code scope as certified in `GA4/KPIS_PRODUCTION_READINESS.md`. Absent later GA4 KPI code changes, provider/config changes, failed validation, contradictory deployed evidence, newly reported bugs, or changed requirements, that remains the stable answer in future chats.
 
 ## Purpose
 
@@ -35,6 +35,8 @@ For Meta, Google Ads, LinkedIn, Google Sheets, or another future source:
 - prove the target platform's current-value UI path, persisted recompute path, scheduler path, alerts, ownership checks, delete behavior, report consumers, and existing-data cleanup separately
 
 Do not use this file as proof that any future platform's KPIs are production-ready.
+
+For future-platform KPI refinement, this threshold policy is reusable as a template only after `GA4/KPIS.md` and `GA4/KPIS_PRODUCTION_READINESS.md` are read. Pair it with `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md` when the target source includes KPI alerts, notification visibility, or email reminders.
 
 ## Original Root Cause
 
@@ -121,6 +123,11 @@ Concrete large-count example:
 
 - `Total Users` target `820`, current `779` is `On Track` because it is exactly within the `5%` count tolerance
 - `Total Users` target `820`, current `769` is `Below Target` because the `6.2%` miss is outside the `5%` count tolerance
+
+UI display rule:
+
+- Compact performance tracker cards should describe mixed KPI tolerance rules as `each KPI's tolerance`; do not expose derived absolute count amounts such as `41 users` or `41 count` in tracker-card copy.
+- Individual KPI cards should show the row-level percentage tolerance, such as `outside 5% tolerance`; the internal absolute count tolerance remains implementation detail for classification, not compact UI copy.
 
 Above-target logic should mirror the same tolerance in the positive direction.
 

@@ -9,6 +9,7 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 As of June 29, 2026, the GA4 `KPIs` tab is production-ready for the current GA4 code scope.
 
 The durable source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`. Current local fixes, user-confirmed deployed UI validation, target-database damaged-data dry-run evidence, deployed/user-validated direct GA4 snapshot PDF preflight, deployed/user-validated GA4 daily scheduler timing, immediate alert email validation, and scheduled GA4 report/provider validation are complete for the current code scope. Future providers, source mixes, platforms, or code changes require a fresh readiness pass.
+Absent later GA4 KPI code changes, provider/config changes, failed validation, contradictory deployed evidence, newly reported bugs, or changed requirements, future sessions should continue to confirm this GA4 KPI section as production-ready for the current GA4 code scope after reading `GA4/KPIS_PRODUCTION_READINESS.md`.
 
 For future platforms, use this file only as the functional KPI tab contract. Use `GA4/KPIS_PRODUCTION_READINESS.md` for the reusable production-readiness audit gates and source-specific proof requirements.
 

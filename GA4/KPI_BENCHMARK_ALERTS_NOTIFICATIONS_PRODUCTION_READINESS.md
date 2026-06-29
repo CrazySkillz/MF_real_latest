@@ -20,8 +20,9 @@ This file is the authoritative tracker for GA4 KPI/Benchmark alert and notificat
 - GA4 KPI/Benchmark alerts and notifications were not production-ready at Commit 1; that statement is historical and does not describe the current GA4 KPI/Benchmark section status.
 - After Commits 2 through 8 in this file were implemented, their required validation passed, and final evidence was recorded here, the GA4 KPI alerts, GA4 KPI notifications, GA4 Benchmark alerts, and GA4 Benchmark notifications sections became locally code-ready by this document's criteria.
 - As of Commit 8, the locally verifiable GA4 KPI/Benchmark alert and notification implementation is production-ready by this document's code-readiness criteria.
-- The current implementation template also includes the post-Commit-8 alignment fixes documented below: alert frequency UI scope/layout, GA4 alert email full-width address row and conditional frequency visibility, create-button required-field gates, all-row GA4 KPI reconciliation, query-only action URL handling, bell-to-Notifications routing, edit/delete notification refresh, simplified Notification cards, authoritative action URL enrichment, persistent smooth KPI/Benchmark target highlighting, simplified Notifications filters, card actions limited to explicit KPI/Benchmark navigation, card-level alert detail values, removal of Notifications read-state UI, breach-only bell/Notifications visibility, and client/campaign delete notification refresh.
-- Provider-side alert email delivery remains an external/deployed evidence caveat: local scheduler and send-attempt wiring are code-ready, but no response should claim real email delivery unless provider delivery events or actual inbox receipt are recorded for the target environment.
+- The current implementation template also includes the post-Commit-8 alignment fixes documented below: alert frequency UI scope/layout, GA4 alert email full-width address row and conditional frequency visibility, create-button required-field gates, all-row GA4 KPI reconciliation, query-only action URL handling, bell-to-Notifications routing, edit/delete notification refresh, simplified Notification cards, authoritative action URL enrichment, persistent smooth KPI/Benchmark target highlighting, simplified Notifications filters, card actions limited to explicit KPI/Benchmark navigation, card-level alert detail values, removal of Notifications read-state UI, breach-only bell/Notifications visibility, GA4 financial notification source parity, and client/campaign delete notification refresh.
+- For the GA4 KPI whole-tab certification, the provider/deployed evidence recorded in `GA4/KPIS_PRODUCTION_READINESS.md` closes the current GA4 KPI provider gate: immediate KPI alert email receipt, scheduled report Mailgun HTTP API acceptance, scheduled report inbox receipt, and current KPI values in the received report were user-confirmed on June 29, 2026. This evidence does not certify GA4 Benchmark email delivery or any future source.
+- Provider-side email delivery remains claim-specific for each target environment: no response should claim real email delivery for Benchmarks, another platform, another source mix, or a changed provider configuration unless provider delivery events or actual inbox receipt are recorded for that target.
 - This file is the implementation and validation template for applying the same alert/notification lifecycle to other connected-platform sources, including Meta, Google Ads, LinkedIn, Instagram, TikTok, Google Sheets, and Custom Integration.
 - Other connected-platform sources are not production-ready from GA4 evidence alone. Each source must copy the proven GA4 lifecycle and pass the same lifecycle matrix with source-specific evidence before its KPI/Benchmark alert and notification behavior can be marked production-ready.
 
@@ -44,7 +45,7 @@ Initial alert readiness was not proven end to end because alert truth was split 
 
 - in-app KPI alert creation resolved stale alerts, but Benchmark alert creation did not have equivalent resolve-on-clear behavior
 - in-app checks could use connected-platform current-value resolution while email checks still read persisted `currentValue`
-- notification visibility re-checked raw stored rows instead of the exact resolved value path used by alert creation
+- notification visibility re-checked raw stored rows, and later a narrower GA4 financial value path, instead of the exact resolved value path used by the live KPI card and alert creation
 - some create/update routes awaited alert reconciliation, while others returned before async alert checks finished
 - GA4 KPI/Benchmark frontend mutations refreshed their KPI/Benchmark lists but did not consistently refresh `/api/notifications`
 - bell navigation could rewrite non-GA4 action URLs and needed to preserve valid GA4 deep-links
@@ -213,7 +214,7 @@ Validation completed:
 Manual validation requirement:
 
 - manual validation is not required for Commit 4 acceptance because the changed behavior is backend email alert current-value selection and threshold evaluation, which is covered by the focused regression tests above
-- deployed provider delivery, provider delivery events, and actual inbox receipt remain not locally verifiable and belong to the final deployed evidence pass, not Commit 4 local acceptance
+- deployed provider delivery, provider delivery events, and actual inbox receipt were not part of Commit 4 local acceptance; GA4 KPI current certification evidence is recorded later in `GA4/KPIS_PRODUCTION_READINESS.md`, while future Benchmark/source/provider claims still need target-specific evidence
 
 ### Commit 5: GA4 Route And UI Synchronization
 
@@ -618,7 +619,7 @@ Out of scope for this plan:
 
 ### 2026-06-25 Email Scheduler Root Cause Analysis
 
-At the 2026-06-25 audit, the alert email scheduler was not production-ready for executive-critical delivery because the implementation proved email attempt wiring, not end-to-end reliable delivery. Later EMAIL-7 evidence made the scheduler locally code-ready; provider delivery events or inbox receipt remain external evidence before claiming a real email was delivered.
+At the 2026-06-25 audit, the alert email scheduler was not production-ready for executive-critical delivery because the implementation proved email attempt wiring, not end-to-end reliable delivery. Later EMAIL-7 evidence made the scheduler locally code-ready. GA4 KPI current certification evidence is recorded in `GA4/KPIS_PRODUCTION_READINESS.md`; provider delivery events or inbox receipt remain required before claiming real email delivery for Benchmarks, future sources, or changed provider configurations.
 
 Confirmed causes:
 
@@ -630,7 +631,7 @@ Confirmed causes:
 - dedupe depends on `lastAlertSent`, which is updated after a send attempt succeeds; overlapping scheduler runs or multiple server instances can pass the throttle check before either one updates the row.
 - `email_alert_events` records audit rows, but it does not currently provide an atomic send claim, frequency-window dedupe key, delivery status lifecycle, retry schedule, or dead-letter state for alert emails.
 - there is no bounded retry/backoff plan for provider failures, delivery failures, or transient network errors.
-- deployed provider delivery, provider delivery events, and actual inbox receipt remain unverified for alert emails.
+- deployed provider delivery, provider delivery events, and actual inbox receipt were later recorded for the current GA4 KPI certification in `GA4/KPIS_PRODUCTION_READINESS.md`; they remain unverified for Benchmarks, future sources, or changed provider configurations until target-specific evidence is recorded.
 
 ### Email Scheduler Implementation Rules
 
@@ -1816,6 +1817,43 @@ Not locally verifiable:
 - browser/deployed confirmation that the exact existing `ga4_mock` Revenue alert row now refreshes without creating a new alert
 - live Render deployment state and production browser cache state
 
+### Post-UX-9 Notifications Financial-Source Parity Fix
+
+Status: implemented, pushed, deployed, and user-validated on June 29, 2026.
+
+Root cause:
+
+- The earlier current-value fixes made `/api/notifications` refetch and resolve GA4 KPI values instead of reusing stale metadata, but financial KPI visibility could still use a narrower value source than the live GA4 KPI card.
+- The GA4 KPI card's Revenue value uses the selected GA4 financial model: the highest coherent selected-campaign GA4 native revenue candidate plus active imported revenue.
+- The Notifications resolver could still decide an existing Revenue alert from a lower/imported-only value, so an alert with threshold `below 12,000` remained visible even while the KPI card showed `$18,771.34` and no longer breached.
+
+Smallest safe fix:
+
+- keep the existing `/api/notifications` route, ownership checks, duplicate suppression, alert threshold math, email behavior, scheduler behavior, storage contracts, and KPI calculations unchanged
+- for GA4 financial KPI aliases (`Revenue`, `Total Revenue`, `ROAS`, `ROI`, and `CPA`), choose the same GA4 financial candidate model used by the KPI card before evaluating notification visibility
+- hide the notification when the recomputed value no longer breaches the threshold
+- fail closed for GA4 notification visibility if the source cannot be verified, rather than showing a stale active alert
+- no new alert is required; existing active alerts are re-evaluated on `/api/notifications` refetch
+
+Files changed:
+
+- `server/routes-oauth.ts`
+- `server/notification-visibility-regression.test.ts`
+
+Validation evidence:
+
+- commit `0f1be173` aligned the mock notification alert window
+- commit `3ed67320` aligned GA4 notification financial alert values
+- `npm test -- server/notification-visibility-regression.test.ts server/ga4-kpi-duplicate-alert-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-evaluation.test.ts` passed: 4 files / 44 tests
+- `npm run check` passed
+- `npm run build` passed when Vite/esbuild could spawn normally
+- deployed UI validation was user-confirmed: the exact stale non-breached GA4 Revenue alert disappeared from Notifications/bell without creating a new alert
+
+Remaining caveats:
+
+- GA4 KPI current certification provider evidence and damaged-data dry-run evidence are recorded in `GA4/KPIS_PRODUCTION_READINESS.md`
+- Benchmark, future-source, or changed-provider email delivery still requires provider delivery events or actual inbox receipt before claiming real email delivery
+
 ### Post-UX-9 Notifications Filter And Card Action Simplification
 
 Status: implemented and pushed in commit `70bf59ea`.
@@ -2010,7 +2048,7 @@ Not locally verifiable:
 
 ## Target UX Manual Validation Checklist
 
-This checklist validates the implemented triage journey after UX-2 through UX-9 and the direct bell/full-width list/card-target/filter/action/detail/header/delete-refresh/read-state adjustments. The top-bar bell now opens `/notifications` from other pages, shows a small red dot with no number at the bottom corner of the bell icon while any KPI/Benchmark breach is active, keeps its original color and is disabled on the Notifications page, alert cards span the Notifications content width, Notification cards show current value, threshold value, and created date, cards do not show an ambiguous timestamp line, card backgrounds are not clickable, Filters do not expose `Read state`, cards do not expose envelope or `Dismiss` controls, the Notifications page does not expose unread/read-state header text or actions, active alert cards do not use unread blue styling, selected alert rows use `/notifications?selected=:notificationId`, legacy `/notifications?highlight=:notificationId` remains transition-compatible for old links, `View KPI` / `View Benchmark` opens the correct highlighted target card with smooth scrolling, and client/campaign deletion refreshes active Notifications so stale deleted-campaign alerts disappear.
+This checklist validates the implemented triage journey after UX-2 through UX-9 and the direct bell/full-width list/card-target/filter/action/detail/header/delete-refresh/read-state adjustments. The top-bar bell now opens `/notifications` from other pages, shows a small red dot with no number at the bottom corner of the bell icon while any KPI/Benchmark breach is active, keeps its original color and is disabled on the Notifications page, alert cards span the Notifications content width, Notification cards show current value, threshold value, and created date, cards do not show an ambiguous timestamp line, card backgrounds are not clickable, Filters do not expose `Read state`, cards do not expose envelope or `Dismiss` controls, the Notifications page does not expose unread/read-state header text or actions, active alert cards do not use unread blue styling, selected alert rows use `/notifications?selected=:notificationId`, legacy `/notifications?highlight=:notificationId` remains transition-compatible for old links, `View KPI` / `View Benchmark` opens the correct highlighted target card with smooth scrolling, client/campaign deletion refreshes active Notifications so stale deleted-campaign alerts disappear, and GA4 financial KPI alerts disappear when the live KPI card no longer breaches.
 
 Use a disposable GA4 campaign with known values.
 
@@ -2049,8 +2087,9 @@ Use a disposable GA4 campaign with known values.
 33. Confirm the alert form layout: when `Send email notifications` is not selected, `Email addresses *` and `Alert Frequency` are hidden; when selected, `Email addresses *` spans the form width with the label next to the input and `Alert Frequency` appears underneath.
 34. Run or trigger the valid reconciliation path.
 35. Confirm exactly one new active alert appears.
-36. Enable email alerts with a safe recipient in a deployed environment.
-37. Follow the `Alert Email Scheduler Production-Readiness Plan` deployed validation steps before claiming executive-critical email delivery is production-ready.
+36. For a GA4 Revenue KPI whose card current value is above a `below` threshold, confirm no stale row appears in the bell or Notifications page after `/api/notifications` refetches.
+37. Enable email alerts with a safe recipient in a deployed environment.
+38. Follow the `Alert Email Scheduler Production-Readiness Plan` deployed validation steps before claiming executive-critical email delivery is production-ready.
 
 Pass criteria:
 

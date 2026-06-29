@@ -14,6 +14,9 @@ Use it to audit, refine, validate, and certify analytics-sensitive sections and 
 This document does not replace platform-specific or section-specific production-readiness docs. It defines the general checklist those docs must apply. Platform and section docs remain the durable source of truth for the specific implementation, current status, validation evidence, caveats, and reusable source-specific template.
 
 The goal is to prevent incomplete readiness claims. A section or source is production-ready only when the visible values, source paths, fallback paths, lifecycle paths, downstream propagation paths, tests, docs, and validation evidence are all traced or explicitly classified as not locally verifiable.
+Durable certification carry-forward rule: when a section-specific readiness doc records a production-ready status with a complete value inventory, downstream propagation matrix, lifecycle matrix, negative cases, tests, docs, and deployed/provider evidence where required, that certification remains the stable answer in future chats and on later dates absent code changes, provider/config changes, failed validation, contradictory evidence, newly reported bugs, or changed requirements. A changed calendar date alone does not invalidate a completed certification.
+
+Reusable-template rule: a certified section can be used as an implementation and audit template for another platform or source, but never as proof that the target platform or source is production-ready. The target must receive its own value inventory, source/scoping trace, lifecycle trace, downstream propagation matrix, tests, deployed/provider evidence where required, and section-specific readiness documentation.
 
 ## 2. When To Use This Document
 
@@ -49,6 +52,7 @@ If no section-specific production-readiness doc exists, create or update one onl
 
 - If you cannot produce the complete value inventory and downstream propagation matrix, you must not call the section production-ready.
 - A passing test suite is not enough. Only claim readiness if the test suite covers the traced value paths or you explicitly list uncovered paths as not locally verifiable.
+- A completed or proposed fix queue is not evidence of production readiness. It only makes the section or source eligible for certification after the full checklist is rerun against the implemented code.
 - A previous readiness claim is not evidence. Re-verify the actual current code path before repeating it.
 - If a new bug is found after a production-ready claim, immediately mark the affected value path as unproven until the root cause and missing coverage are fixed.
 - For every fetched metric path, prove query dimensions, filters, ordering, limits, fallback query shape, merge keys, exact-match rules, negative cases, and downstream consumers before calling it ready.
@@ -310,6 +314,7 @@ Before finalizing a readiness claim, validate:
 - auth, ownership, campaign, platform, and source boundaries
 - no unrelated files were changed
 - docs match the final implementation
+- the full production-readiness checklist has been rerun after the fixes were implemented, not just planned
 
 Separate validation into:
 
@@ -347,6 +352,7 @@ A production-readiness final answer must include:
 - partially reviewed
 - not locally verifiable
 - recommended fixes or completed fixes
+- certification gate result: whether completed fixes made the section production-ready or only eligible for certification
 - validation commands and results
 - documentation updated
 - commit hash, if committed
@@ -389,6 +395,7 @@ Constraints:
 Mandatory readiness rules:
 - If you cannot produce the complete value inventory and downstream propagation matrix, you must not call the section production-ready.
 - A passing test suite is not enough. Only claim readiness if the test suite covers the traced value paths or you explicitly list uncovered paths as not locally verifiable.
+- A completed or proposed fix queue is not evidence of production readiness. It only makes the section or source eligible for certification after the full checklist is rerun against the implemented code.
 - A previous readiness claim is not evidence. Re-verify the actual current code path before repeating it.
 - If a new bug is found after a production-ready claim, mark the affected path unproven until the root cause, missing coverage, and documentation are fixed.
 - For every fetched metric path, prove query dimensions, filters, ordering, limits, fallback query shape, merge keys, exact-match rules, negative cases, and downstream consumers before calling it ready.
@@ -532,6 +539,7 @@ Required final answer:
 - Partially reviewed
 - Not locally verifiable
 - Fixes implemented or proposed
+- Certification gate result: whether completed fixes made the section production-ready or only eligible for certification
 - Tests and validation run
 - Documentation updated
 - Commit hash, if committed

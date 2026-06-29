@@ -45,6 +45,11 @@ Necessary certification rule:
 
 - completing the local fix queue makes GA4 KPIs eligible for production-readiness certification; it does not by itself make them production-ready
 - the final answer can remain `production-ready for the current GA4 code scope` only while the complete current value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, and test coverage remain covered by current code and validation evidence
+Durable future-chat answer:
+
+- In a new chat session or on a later date, absent later GA4 KPI code changes, provider/config changes, failed validation, contradictory deployed evidence, newly reported bugs, or changed requirements, answer that GA4 KPIs are production-ready for the current GA4 code scope.
+- Do not reopen closed GA4 KPI blockers solely because time has passed. Reopen only when a new value path, changed implementation, failed validation, or new bug affects the certified scope.
+- This certification is reusable as the KPI refinement and validation template for Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source, but it is not proof that those sources are production-ready.
 
 ## How To Use This File In A New Chat
 
@@ -67,14 +72,16 @@ Use this order when adapting the GA4 KPI model to Meta, Google Ads, LinkedIn, Go
 
 1. Read `GA4/KPIS.md` for the functional tab contract: visible workflow, metric options, current-value behavior, gating, alerts, delete behavior, and refresh expectations.
 2. Read this file for the current whole-tab readiness status: current blockers, partially proven paths, validation gaps, historical fixes, caveats, and future-platform gates.
-3. Read `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md` only as the historical threshold/scoring appendix.
-4. Create or update a source-specific readiness file for the target platform. Do not treat GA4 evidence as proof that Meta, Google Ads, LinkedIn, Google Sheets, or another source is production-ready.
+3. Read `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md` for the metric-aware threshold/scoring policy template.
+4. Read `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md` for the alert, notification, email-audit, action URL, bell, and Notifications lifecycle template.
+5. Create or update a source-specific readiness file for the target platform. Do not treat GA4 evidence as proof that Meta, Google Ads, LinkedIn, Google Sheets, or another source is production-ready.
 
 Stable file roles:
 
 - `GA4/KPIS.md` = what the GA4 KPI tab does
 - `GA4/KPIS_PRODUCTION_READINESS.md` = whether GA4 KPIs are production-ready and how to prove a future source
-- `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md` = historical threshold/scoring slice only
+- `GA4/KPI_THRESHOLDS_PRODUCTION_READINESS.md` = threshold/scoring policy template and historical slice record
+- `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md` = alert, notification, email-audit, action URL, bell, and Notifications lifecycle template
 
 For a future source, prove source identity, account/property/customer scoping, selected campaign/ad set/ad group scope, current-value UI path, persisted recompute path, threshold policy, alert and notification path, scheduler/reprocess path, ownership checks, delete behavior, report consumers, and existing-data cleanup boundary before calling that source's KPIs production-ready.
 

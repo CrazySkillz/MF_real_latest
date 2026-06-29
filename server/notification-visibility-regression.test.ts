@@ -52,12 +52,16 @@ describe("notification visibility regression guard", () => {
     );
 
     expect(routesFile).toContain('import { computeKpiValue, getGA4KPIFinancialSourceWindow, isComputableGA4KpiMetric, runGA4DailyKPIAndBenchmarkJobs } from "./ga4-kpi-benchmark-jobs";');
-    expect(routesFile).toContain('if (platform !== "google_analytics" || !campaignId || !isComputableGA4KpiMetric(metricOrName)) return resolved;');
+    expect(routesFile).toContain('const metricOrName = [resolved?.metric, resolved?.name]');
+    expect(routesFile).toContain('if (!isGA4NotificationPlatform(platform) || !campaignId || !metricOrName) return resolved;');
     expect(routesFile).toContain("const financialWindow = getGA4KPIFinancialSourceWindow();");
     expect(routesFile).toContain('const importedRevenue = await storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
     expect(routesFile).toContain('const sim = simulateGA4({ campaignId, propertyId, dateRange: "30days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });');
-    expect(routesFile).toContain("const live = await ga4Service.getTotalsWithRevenue(");
+    expect(routesFile).toContain("const attempt = async (token: string) =>");
+    expect(routesFile).toContain("const refresh = await ga4Service.refreshAccessToken(");
+    expect(routesFile).toContain("await storage.updateGA4ConnectionTokens(connection.id, {");
     expect(routesFile).toContain("if (!hasGA4SourceInput && !hasFinancialSourceInput && importedRevenueValue === 0 && spendValue === 0) return resolved;");
+    expect(routesFile).toContain("if (!hasGA4SourceInput) return resolved;");
     expect(routesFile).toContain("const currentValue = computeKpiValue(metricOrName, {");
     expect(routesFile).toContain("return { ...resolved, currentValue: String(currentValue) };");
     expect(routesFile).toContain('return enrichPerformanceAlertNotification(n, resolvedKpi, "kpi");');
@@ -534,7 +538,7 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain('const enrichPerformanceAlertNotification = (n: any, row: any, itemType: "kpi" | "benchmark") => {');
     expect(routesFile).toContain('const notificationActionUrl = (row: any, itemType: "kpi" | "benchmark"): string => {');
     expect(routesFile).toContain('const tab = itemType === "benchmark" ? "benchmarks" : "kpis";');
-    expect(routesFile).toContain('if (platform === "google_analytics") return `/campaigns/${campaignId}/ga4-metrics?tab=${tab}&highlight=${id}`;');
+    expect(routesFile).toContain('if (isGA4NotificationPlatform(platform)) return `/campaigns/${campaignId}/ga4-metrics?tab=${tab}&highlight=${id}`;');
     expect(routesFile).toContain('if (!platform || platform === "campaign") return `/campaigns/${campaignId}?tab=${tab}&highlight=${id}#${tab}`;');
     expect(routesFile).toContain('const itemLabel = itemType === "benchmark" ? "Benchmark" : "KPI";');
     expect(routesFile).toContain("itemName: row?.name,");
@@ -557,7 +561,7 @@ describe("notification visibility regression guard", () => {
     expect(labelStart).toBeGreaterThan(-1);
     expect(labelEnd).toBeGreaterThan(labelStart);
     expect(labelSection).toContain("if (!p || p === 'campaign') return 'Campaign-level';");
-    expect(labelSection).toContain("if (p === 'google_analytics') return 'GA4';");
+    expect(labelSection).toContain("if (isGA4NotificationPlatform(platformType)) return 'GA4';");
     expect(routesFile).toContain('title: `${platformLabel} ${itemLabel} Alert: ${row?.name}`');
   });
 

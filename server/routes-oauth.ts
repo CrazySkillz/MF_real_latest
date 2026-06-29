@@ -5128,10 +5128,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const escaped = String(sheetName).replace(/'/g, "''");
     return `'${escaped}'!`;
   };
+  const normalizeNotificationKey = (value: unknown): string =>
+    String(value || '').trim().toLowerCase().replace(/[\s_-]+/g, "");
+  const isGA4NotificationPlatform = (value: unknown): boolean => {
+    const p = normalizeNotificationKey(value);
+    return p === "googleanalytics" || p === "ga4";
+  };
   const notificationPlatformLabel = (platformType?: string | null): string => {
     const p = String(platformType || '').trim().toLowerCase();
     if (!p || p === 'campaign') return 'Campaign-level';
-    if (p === 'google_analytics') return 'GA4';
+    if (isGA4NotificationPlatform(platformType)) return 'GA4';
     if (p === 'google_ads') return 'Google Ads';
     if (p === 'google_sheets') return 'Google Sheets';
     if (p === 'linkedin') return 'LinkedIn';
@@ -5148,7 +5154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const platform = String(row?.platformType || "").trim().toLowerCase();
     const tab = itemType === "benchmark" ? "benchmarks" : "kpis";
     if (!campaignId || !id) return "/notifications";
-    if (platform === "google_analytics") return `/campaigns/${campaignId}/ga4-metrics?tab=${tab}&highlight=${id}`;
+    if (isGA4NotificationPlatform(platform)) return `/campaigns/${campaignId}/ga4-metrics?tab=${tab}&highlight=${id}`;
     if (platform === "linkedin") return `/campaigns/${campaignId}/linkedin-analytics?tab=${tab}&highlight=${id}`;
     if (!platform || platform === "campaign") return `/campaigns/${campaignId}?tab=${tab}&highlight=${id}#${tab}`;
     return itemType === "kpi"
@@ -5198,8 +5204,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const resolved = await resolveCampaignCurrentValueForAlert(row);
     const platform = String(resolved?.platformType || "").trim().toLowerCase();
     const campaignId = String(resolved?.campaignId || "").trim();
-    const metricOrName = String(resolved?.metric || resolved?.name || "").trim();
-    if (platform !== "google_analytics" || !campaignId || !isComputableGA4KpiMetric(metricOrName)) return resolved;
+    const metricOrName = [resolved?.metric, resolved?.name]
+      .map((value) => String(value || "").trim())
+      .find((value) => isComputableGA4KpiMetric(value)) || "";
+    if (!isGA4NotificationPlatform(platform) || !campaignId || !metricOrName) return resolved;
 
     try {
       const campaign = await storage.getCampaign(campaignId).catch(() => undefined as any);
@@ -5253,8 +5261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         const connection = await storage.getGA4Connection(campaignId, propertyId).catch(() => null as any) || primary;
         if (connection?.method === "access_token" && connection?.accessToken) {
-          try {
-            const live = await ga4Service.getTotalsWithRevenue(String(connection.propertyId || propertyId), String(connection.accessToken), startDate, endDate, parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter));
+          const assignLiveTotals = (live: any) => {
             ga4Inputs = {
               users: Math.round(Number(live?.totals?.users || 0) || 0),
               sessions: Math.round(Number(live?.totals?.sessions || 0) || 0),
@@ -5264,7 +5271,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
               engagementRate: Number(live?.totals?.engagementRate || ga4Inputs.engagementRate) || 0,
             };
             hasGA4SourceInput = true;
-          } catch {
+          };
+          const attempt = async (token: string) =>
+            ga4Service.getTotalsWithRevenue(String(connection.propertyId || propertyId), token, startDate, endDate, parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter));
+          try {
+            assignLiveTotals(await attempt(String(connection.accessToken)));
+          } catch (e: any) {
+            const msg = String(e?.message || "");
+            const isAuth =
+              msg.includes('"code": 401') ||
+              msg.toLowerCase().includes("unauthenticated") ||
+              msg.toLowerCase().includes("invalid authentication credentials") ||
+              msg.toLowerCase().includes("request had invalid authentication credentials") ||
+              msg.toLowerCase().includes("invalid_grant") ||
+              msg.includes("401") ||
+              msg.includes("403");
+            if (isAuth && connection?.refreshToken && connection?.id) {
+              const refresh = await ga4Service.refreshAccessToken(
+                String(connection.refreshToken),
+                connection.clientId || undefined,
+                connection.clientSecret || undefined
+              );
+              await storage.updateGA4ConnectionTokens(connection.id, {
+                accessToken: refresh.access_token,
+                refreshToken: String(connection.refreshToken),
+                expiresAt: new Date(Date.now() + refresh.expires_in * 1000),
+              });
+              assignLiveTotals(await attempt(String(refresh.access_token)));
+            }
             // Keep the stored daily-row fallback for notification rendering only.
           }
         }
@@ -5277,6 +5311,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasFinancialSourceInput = (Array.isArray((importedRevenue as any)?.sourceIds) && (importedRevenue as any).sourceIds.length > 0)
         || (Array.isArray((spend as any)?.sourceIds) && (spend as any).sourceIds.length > 0);
       if (!hasGA4SourceInput && !hasFinancialSourceInput && importedRevenueValue === 0 && spendValue === 0) return resolved;
+      // Do not replace a persisted GA4 KPI with imported-only revenue/spend when native GA4 input is unavailable.
+      if (!hasGA4SourceInput) return resolved;
       const currentValue = computeKpiValue(metricOrName, {
         users: ga4Inputs.users,
         sessions: ga4Inputs.sessions,

@@ -63,6 +63,11 @@ describe("notification visibility regression guard", () => {
     expect(routesFile).toContain("const financialWindow = getGA4KPIFinancialSourceWindow();");
     expect(routesFile).toContain('const importedRevenue = await storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4")');
     expect(routesFile).toContain('const sim = simulateGA4({ campaignId, propertyId, dateRange: "90days", noRevenue, ga4CampaignFilter: (campaign as any)?.ga4CampaignFilter });');
+    expect(routesFile).toContain('const usesGA4FinancialSource = ["revenue", "totalrevenue", "roas", "roi", "cpa"].includes(financialMetricKey);');
+    expect(routesFile).toContain("let ga4FinancialInputs = { ...ga4Inputs };");
+    expect(routesFile).toContain('ga4Service.getAcquisitionBreakdown(campaignId, storage, "90daysAgo", propertyId, 2000');
+    expect(routesFile).toContain("const kpiInputs = usesGA4FinancialSource ? ga4FinancialInputs : ga4Inputs;");
+    expect(routesFile).toContain("return { ...resolved, __ga4NotificationSourceVerified: false };");
     expect(routesFile).toContain("const attempt = async (token: string) =>");
     expect(routesFile).toContain("const refresh = await ga4Service.refreshAccessToken(");
     expect(routesFile).toContain("await storage.updateGA4ConnectionTokens(connection.id, {");

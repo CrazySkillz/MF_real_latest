@@ -5246,6 +5246,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         engagementRate: Number((latest as any)?.engagementRate || 0) || 0,
       };
       let hasGA4SourceInput = sourceRows.length > 0;
+      const financialMetricKey = normalizeNotificationKey(metricOrName);
+      const usesGA4FinancialSource = ["revenue", "totalrevenue", "roas", "roi", "cpa"].includes(financialMetricKey);
+      let ga4FinancialInputs = { ...ga4Inputs };
+      const applyGA4FinancialCandidate = (candidate: any) => {
+        if (!usesGA4FinancialSource) return;
+        const candidateRevenue = Number(candidate?.revenue || candidate?.ga4Revenue || 0) || 0;
+        if (candidateRevenue > Number(ga4FinancialInputs.ga4Revenue || 0)) {
+          ga4FinancialInputs = {
+            users: Math.round(Number(candidate?.users || ga4FinancialInputs.users || 0) || 0),
+            sessions: Math.round(Number(candidate?.sessions || candidate?.sessionsRaw || ga4FinancialInputs.sessions || 0) || 0),
+            pageviews: Math.round(Number(candidate?.pageviews || ga4FinancialInputs.pageviews || 0) || 0),
+            conversions: Math.round(Number(candidate?.conversions || ga4FinancialInputs.conversions || 0) || 0),
+            ga4Revenue: Number(candidateRevenue.toFixed(2)),
+            engagementRate: Number(candidate?.engagementRate || ga4FinancialInputs.engagementRate || 0) || 0,
+          };
+          hasGA4SourceInput = true;
+        }
+      };
+      applyGA4FinancialCandidate(ga4Inputs);
 
       if (isYesopMockProperty(propertyId)) {
         const noRevenue = isNoRevenueFilter((campaign as any)?.ga4CampaignFilter);
@@ -5261,6 +5280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           simEngagementTotal += Number(r?.engagementRate || 0) || 0;
         }
         ga4Inputs.ga4Revenue = Number((ga4Inputs.ga4Revenue || 0).toFixed(2));
+        applyGA4FinancialCandidate(ga4Inputs);
         const engagementDays = simRows.length + sourceRows.length;
         ga4Inputs.engagementRate = engagementDays > 0 ? (simEngagementTotal + storedEngagementTotal) / engagementDays : ga4Inputs.engagementRate;
         hasGA4SourceInput = hasGA4SourceInput || simRows.length > 0;
@@ -5277,6 +5297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               engagementRate: Number(live?.totals?.engagementRate || ga4Inputs.engagementRate) || 0,
             };
             hasGA4SourceInput = true;
+            applyGA4FinancialCandidate(ga4Inputs);
           };
           const attempt = async (token: string) =>
             ga4Service.getTotalsWithRevenue(String(connection.propertyId || propertyId), token, startDate, endDate, parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter));
@@ -5308,6 +5329,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Keep the stored daily-row fallback for notification rendering only.
           }
         }
+        try {
+          const breakdown = await ga4Service.getAcquisitionBreakdown(campaignId, storage, "90daysAgo", propertyId, 2000, parseGA4CampaignFilter((campaign as any)?.ga4CampaignFilter));
+          applyGA4FinancialCandidate((breakdown as any)?.totals || {});
+        } catch {
+          // Keep the already-resolved GA4 source if the breakdown endpoint is unavailable.
+        }
       }
       const financialWindow = getGA4KPIFinancialSourceWindow();
       const importedRevenue = await storage.getRevenueTotalForRange(campaignId, financialWindow.startDate, financialWindow.endDate, "ga4").catch(() => ({ totalRevenue: 0 }));
@@ -5319,19 +5346,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!hasGA4SourceInput && !hasFinancialSourceInput && importedRevenueValue === 0 && spendValue === 0) return resolved;
       // Do not show a source-backed GA4 alert from stale persisted data when native GA4 input is unavailable.
       if (!hasGA4SourceInput) return { ...resolved, __ga4NotificationSourceVerified: false };
+      const kpiInputs = usesGA4FinancialSource ? ga4FinancialInputs : ga4Inputs;
       const currentValue = computeKpiValue(metricOrName, {
-        users: ga4Inputs.users,
-        sessions: ga4Inputs.sessions,
-        pageviews: ga4Inputs.pageviews,
-        conversions: ga4Inputs.conversions,
-        ga4Revenue: ga4Inputs.ga4Revenue,
+        users: kpiInputs.users,
+        sessions: kpiInputs.sessions,
+        pageviews: kpiInputs.pageviews,
+        conversions: kpiInputs.conversions,
+        ga4Revenue: kpiInputs.ga4Revenue,
         importedRevenue: importedRevenueValue,
         spend: spendValue,
-        engagementRate: ga4Inputs.engagementRate,
+        engagementRate: kpiInputs.engagementRate,
       });
       return { ...resolved, currentValue: String(currentValue) };
     } catch {
-      return resolved;
+      return { ...resolved, __ga4NotificationSourceVerified: false };
     }
   };
   const isResolvedAlertRowBreached = (resolved: any): boolean => {

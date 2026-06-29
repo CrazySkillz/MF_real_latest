@@ -1779,6 +1779,43 @@ Not locally verifiable:
 - browser/deployed confirmation that the exact affected `ga4_mock` Revenue alert now displays the same current value as the GA4 KPI card
 - live Render deployment state and production browser cache state
 
+### Post-UX-9 Notifications Revenue Metric Alias Fix
+
+Status: implemented locally; deployment/browser confirmation still required.
+
+Root cause:
+
+- Existing GA4 Revenue KPI rows can carry a legacy/internal metric key such as `totalRevenue` or `Total Revenue` while the visible row name remains `Revenue`.
+- The Notifications response resolver checked `row.metric` before `row.name`, then called `isComputableGA4KpiMetric(metricOrName)`.
+- `isComputableGA4KpiMetric` and `computeKpiValue` accepted `revenue`, but did not accept the equivalent GA4 revenue aliases `totalRevenue` / `Total Revenue`.
+- Result: an existing GA4 Revenue alert could bypass the source-backed notification resolver and continue rendering the stored notification/KPI current value, such as `9,224.77`, even after `/api/notifications` refetched.
+
+Smallest safe fix:
+
+- normalize GA4 KPI metric names in the shared GA4 KPI compute helper by removing spaces, underscores, and hyphens before classification/calculation
+- treat `Revenue`, `revenue`, `Total Revenue`, and `totalRevenue` as the same GA4 KPI current-value metric
+- preserve unsupported/custom KPI behavior; unsupported metrics still return non-computable and are not overwritten
+- add `Cache-Control: no-store` to `/api/notifications` so existing alert rows are re-enriched from the current linked row on fetch
+- no new alert should be required; existing active alerts should update after the deployed API returns the refreshed enriched metadata and the browser refetches `/api/notifications`
+
+Files changed:
+
+- `server/ga4-kpi-benchmark-jobs.ts`
+- `server/routes-oauth.ts`
+- `server/ga4-kpi-custom-preservation-regression.test.ts`
+- `GA4/KPI_BENCHMARK_ALERTS_NOTIFICATIONS_PRODUCTION_READINESS.md`
+
+Validation evidence:
+
+- `npm test -- server/ga4-kpi-custom-preservation-regression.test.ts server/notification-visibility-regression.test.ts` passed: 2 files / 37 tests
+- `npm test -- server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-financial-window-regression.test.ts server/notification-visibility-regression.test.ts server/campaign-alert-current-value-regression.test.ts server/alert-evaluation.test.ts server/benchmark-alert-lifecycle-regression.test.ts` passed: 6 files / 51 tests
+- `npm run check` passed
+
+Not locally verifiable:
+
+- browser/deployed confirmation that the exact existing `ga4_mock` Revenue alert row now refreshes without creating a new alert
+- live Render deployment state and production browser cache state
+
 ### Post-UX-9 Notifications Filter And Card Action Simplification
 
 Status: implemented and pushed in commit `70bf59ea`.

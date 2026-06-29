@@ -39,6 +39,7 @@ vi.mock("./kpi-scheduler.js", () => ({ checkPerformanceAlerts: checkPerformanceA
 vi.mock("./benchmark-notifications.js", () => ({ checkBenchmarkPerformanceAlerts: checkBenchmarkPerformanceAlertsMock }));
 
 import {
+  computeKpiValue,
   isComputableGA4KpiMetric,
   runGA4DailyKPIAndBenchmarkJobs,
 } from "./ga4-kpi-benchmark-jobs";
@@ -98,6 +99,9 @@ describe("GA4 custom KPI recompute preservation", () => {
 
   it("classifies only supported GA4 KPI metrics as recomputable", () => {
     expect(isComputableGA4KpiMetric("Revenue")).toBe(true);
+    expect(isComputableGA4KpiMetric("Total Revenue")).toBe(true);
+    expect(isComputableGA4KpiMetric("totalRevenue")).toBe(true);
+    expect(computeKpiValue("totalRevenue", { users: 0, sessions: 0, pageviews: 0, conversions: 0, ga4Revenue: 700, importedRevenue: 300, spend: 0, engagementRate: 0 })).toBe(1000);
     expect(isComputableGA4KpiMetric("conversionRate")).toBe(true);
     expect(isComputableGA4KpiMetric("ROAS")).toBe(true);
     expect(isComputableGA4KpiMetric("Qualified Pipeline")).toBe(false);

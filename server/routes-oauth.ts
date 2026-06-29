@@ -5335,6 +5335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Notifications routes
   app.get("/api/notifications", async (req, res) => {
     try {
+      res.setHeader("Cache-Control", "no-store");
       const actorId = getActorId(req as any);
       if (!actorId) {
         return res.status(401).json({ success: false, message: "Your session expired. Please refresh and try again." });

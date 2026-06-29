@@ -120,20 +120,22 @@ const computeRoasRatio = (revenue: number, spend: number) => {
   return s > 0 ? r / s : 0;
 };
 
+const normalizeGA4KpiMetricName = (metricOrName: string) =>
+  String(metricOrName || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+
 export function isComputableGA4KpiMetric(metricOrName: string) {
-  const m = String(metricOrName || "").trim().toLowerCase();
+  const m = normalizeGA4KpiMetricName(metricOrName);
   return (
     m === "revenue" ||
-    m === "total conversions" ||
+    m === "totalrevenue" ||
+    m === "totalconversions" ||
     m === "conversions" ||
-    m === "total sessions" ||
+    m === "totalsessions" ||
     m === "sessions" ||
-    m === "total users" ||
+    m === "totalusers" ||
     m === "users" ||
     m === "pageviews" ||
-    m === "conversion rate" ||
     m === "conversionrate" ||
-    m === "engagement rate" ||
     m === "engagementrate" ||
     m === "roas" ||
     m === "roi" ||
@@ -151,16 +153,16 @@ export function computeKpiValue(metricOrName: string, inputs: {
   spend: number;
   engagementRate: number; // 0..1
 }) {
-  const m = String(metricOrName || "").trim().toLowerCase();
+  const m = normalizeGA4KpiMetricName(metricOrName);
   const revenue = inputs.ga4Revenue + inputs.importedRevenue;
 
-  if (m === "revenue") return round2(revenue);
-  if (m === "total conversions" || m === "conversions") return Math.round(inputs.conversions || 0);
-  if (m === "total sessions" || m === "sessions") return Math.round(inputs.sessions || 0);
-  if (m === "total users" || m === "users") return Math.round(inputs.users || 0);
+  if (m === "revenue" || m === "totalrevenue") return round2(revenue);
+  if (m === "totalconversions" || m === "conversions") return Math.round(inputs.conversions || 0);
+  if (m === "totalsessions" || m === "sessions") return Math.round(inputs.sessions || 0);
+  if (m === "totalusers" || m === "users") return Math.round(inputs.users || 0);
   if (m === "pageviews") return Math.round(inputs.pageviews || 0);
-  if (m === "conversion rate" || m === "conversionrate") return round2(computeConversionRatePercent(inputs.conversions, inputs.sessions));
-  if (m === "engagement rate" || m === "engagementrate") return round2(normalizeRateToPercent(inputs.engagementRate));
+  if (m === "conversionrate") return round2(computeConversionRatePercent(inputs.conversions, inputs.sessions));
+  if (m === "engagementrate") return round2(normalizeRateToPercent(inputs.engagementRate));
   if (m === "roas") return round2(computeRoasRatio(revenue, inputs.spend));
   if (m === "roi") return round2(computeRoiPercent(revenue, inputs.spend));
   if (m === "cpa") return round2(computeCpa(inputs.spend, inputs.conversions));

@@ -589,7 +589,7 @@ The following items are locally proven and should not be reopened unless relevan
 2. GA4 platform report update/delete reject platform mismatches.
 3. GA4 platform report update cannot change campaign or platform ownership through patch payloads.
 4. Report delete status reflects actual row deletion.
-5. Direct snapshot JSON/PDF routes verify report access plus snapshot/report campaign-platform consistency, and direct GA4 snapshot PDF regeneration runs suppress-alert GA4 KPI/Benchmark preflight before the shared PDF builder reads KPI rows.
+5. Direct snapshot JSON/PDF routes verify report access plus snapshot/report campaign-platform consistency, and direct GA4 snapshot PDF regeneration runs suppress-alert GA4 KPI/Benchmark preflight before the shared PDF builder reads KPI rows; deployed validation passed after commit `4d3a3838`.
 6. GA4 scheduled/test-send PDFs use a GA4-specific server builder and refuse generic fallback.
 7. GA4 scheduled/test-send Overview Campaign Breakdown uses `REVENUE`, not `GA4 REVENUE`.
 8. Scheduled report emails require a generated PDF attachment.
@@ -606,16 +606,17 @@ The following items are locally proven and should not be reopened unless relevan
 
 ## Deployed UI Validation Evidence
 
-Reported validated after the Render deployment of the 2026-06-27 Reports fix series:
+Reported validated after the Render deployment of the 2026-06-27 Reports fix series and the June 29, 2026 direct GA4 snapshot PDF follow-up:
 
 1. GA4 Unscheduled Report: `Generate & Download Report` downloads immediately and does not create a saved report card.
 2. GA4 Scheduled Overview Revenue Label: scheduled/saved Overview report output uses `Revenue` for Campaign Breakdown.
 3. GA4 Scheduled Report Creation/Edit/Delete: scheduled report cards can be created, edited, and deleted; edit mode keeps `Update Report` disabled until a report field changes.
+4. Direct GA4 Snapshot PDF: after commit `4d3a3838` deployed, direct snapshot PDF download validation passed with latest KPI values or fail-closed behavior rather than stale output.
 
 Deferred deployed validation:
 
-4. Campaign DeepDive Scheduled Report Visibility will be validated when the Campaign DeepDive section is refined.
-5. Deployed Scheduled Email will be validated after the Mailgun service is properly configured.
+5. Campaign DeepDive Scheduled Report Visibility will be validated when the Campaign DeepDive section is refined.
+6. Deployed Scheduled Email will be validated after the Mailgun service is properly configured.
 
 ## Partially Reviewed / Keep Watching
 

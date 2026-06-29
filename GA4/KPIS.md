@@ -8,7 +8,7 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 As of June 29, 2026, the GA4 `KPIs` tab is not production-ready for the current GA4 code scope.
 
-The durable source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`. Current local fixes, user-confirmed deployed UI validation, target-database damaged-data dry-run evidence, and the local direct GA4 snapshot PDF preflight fix make GA4 KPIs eligible for the next certification step, but the production-readiness answer must remain not production-ready unless the complete current value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, scheduler/provider caveats, deploy validation for later follow-ups, and validation evidence are covered from current code and deployed evidence.
+The durable source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`. Current local fixes, user-confirmed deployed UI validation, target-database damaged-data dry-run evidence, and deployed/user-validated direct GA4 snapshot PDF preflight make GA4 KPIs eligible for the next certification step, but the production-readiness answer must remain not production-ready unless the complete current value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, scheduler/provider caveats, and validation evidence are covered from current code and deployed evidence.
 
 For future platforms, use this file only as the functional KPI tab contract. Use `GA4/KPIS_PRODUCTION_READINESS.md` for the reusable production-readiness audit gates and source-specific proof requirements.
 

@@ -13,7 +13,7 @@ Campaign-level KPI/Benchmark production-readiness tracking lives in `CAMPAIGN_LE
 Current GA4 tab production-readiness status:
 
 - GA4 Overview is production-ready for the current GA4 code scope. The durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
-- GA4 KPIs are not production-ready for the current GA4 code scope. Current local fixes, user-confirmed deployed UI validation, GA4 Revenue notification financial-source visibility validation, and target-database damaged-data dry-run are complete; final certification is still blocked by the explicit snapshot, scheduler, and provider evidence gates in `GA4/KPIS_PRODUCTION_READINESS.md`.
+- GA4 KPIs are not production-ready for the current GA4 code scope. Current local fixes, user-confirmed deployed UI validation, GA4 Revenue notification financial-source visibility validation, target-database damaged-data dry-run, and direct GA4 snapshot PDF deployed validation are complete; final certification is still blocked by the explicit scheduler and provider evidence gates in `GA4/KPIS_PRODUCTION_READINESS.md`.
 - GA4 Benchmarks are production-ready for the current GA4 code scope. The durable source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
 - Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should use the tab-specific readiness doc for each GA4 section and must not infer KPI production readiness from Overview or Benchmark readiness.
 - Mandatory anti-overclaim rule: do not repeat any GA4 production-ready answer from this README unless the requested value path's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current readiness evidence. If a new bug is found, mark that path unproven until root cause, tests, and docs are updated.
@@ -61,7 +61,7 @@ Important meaning:
 - `GA4/KPIS.md`
   Covers KPI creation, display, current-value sourcing, gating, alerts, and KPI refresh behavior.
 - `GA4/KPIS_PRODUCTION_READINESS.md`
-  Canonical whole-tab KPIs production-readiness source of truth. Current status: not production-ready for the current GA4 code scope. Current local fixes, user-confirmed deployed UI validation, target-database damaged-data dry-run, and the local direct GA4 snapshot PDF preflight fix are complete, but deployed scheduler evidence, provider/email caveats, and deploy validation for later follow-ups remain documented in that file. It also contains the future-source reading order and KPI readiness gates for Meta, Google Ads, LinkedIn, Google Sheets, or another source.
+  Canonical whole-tab KPIs production-readiness source of truth. Current status: not production-ready for the current GA4 code scope. Current local fixes, user-confirmed deployed UI validation, target-database damaged-data dry-run, and direct GA4 snapshot PDF deployed validation are complete, but deployed scheduler evidence and provider/email caveats remain documented in that file. It also contains the future-source reading order and KPI readiness gates for Meta, Google Ads, LinkedIn, Google Sheets, or another source.
 - `GA4/BENCHMARKS.md`
   Covers benchmark creation, custom benchmark values, status/progress, gating, alerts, and benchmark refresh behavior.
 - `GA4/BENCHMARKS_PRODUCTION_READINESS.md`

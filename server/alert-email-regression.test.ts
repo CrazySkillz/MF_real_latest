@@ -49,17 +49,23 @@ describe("alert email regression guard", () => {
     expect(source).toContain("const benchmark = await resolveCampaignCurrentValueForAlert(rawBenchmark, campaignMetricCache);");
   });
 
-  it("keeps invalid values fail-closed and throttling before email sends", () => {
+  it("keeps invalid values fail-closed and uses audit claims, not lastAlertSent, for immediate sends", () => {
     const source = readAlertMonitoring();
+    const kpiImmediate = source.slice(source.indexOf("async sendImmediateKPIAlertIfNeeded"), source.indexOf("async sendImmediateBenchmarkAlertIfNeeded"));
+    const benchmarkImmediate = source.slice(source.indexOf("async sendImmediateBenchmarkAlertIfNeeded"), source.indexOf("private async markAlertEmailRetrySkipped"));
 
     expect(source).toContain("if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) return false;");
     expect(source).toContain("if (!Number.isFinite(currentValue) || !Number.isFinite(thresholdValue)) continue;");
-    const throttleIndex = source.indexOf("if (!retryClaim && this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) return false;");
-    const parseIndex = source.indexOf("const currentValue = this.parseAlertNumber(kpi.currentValue);");
-    const sendIndex = source.indexOf("const emailSent = await emailService.sendAlertEmail(recipients, {");
-    expect(throttleIndex).toBeGreaterThan(-1);
-    expect(parseIndex).toBeGreaterThan(throttleIndex);
-    expect(sendIndex).toBeGreaterThan(parseIndex);
+    expect(kpiImmediate).not.toContain("shouldThrottleAlert(kpi.lastAlertSent");
+    expect(benchmarkImmediate).not.toContain("shouldThrottleAlert(benchmark.lastAlertSent");
+    expect(source).toContain("if (this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) {");
+    expect(source).toContain("if (this.shouldThrottleAlert(benchmark.lastAlertSent, frequencyHours)) {");
+    const parseIndex = kpiImmediate.indexOf("const currentValue = this.parseAlertNumber(kpi.currentValue);");
+    const claimIndex = kpiImmediate.indexOf("const claim = retryClaim || await this.claimAlertEmailWindow({");
+    const sendIndex = kpiImmediate.indexOf("const emailSent = await emailService.sendAlertEmail(recipients, {");
+    expect(parseIndex).toBeGreaterThan(-1);
+    expect(claimIndex).toBeGreaterThan(parseIndex);
+    expect(sendIndex).toBeGreaterThan(claimIndex);
   });
 
   it("honors scheduled KPI alert email delivery metadata before sending", () => {

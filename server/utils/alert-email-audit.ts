@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { and, eq, inArray } from "drizzle-orm";
 import { emailAlertEvents } from "../../shared/schema.js";
+import { createHash } from "crypto";
 
 export const ALERT_EMAIL_DELIVERY_STATUSES = [
   "pending",
@@ -186,13 +187,21 @@ export function buildAlertEmailDedupeKey(args: {
   itemType: AlertEmailItemType;
   itemId: string;
   frequency: unknown;
+  recipients?: string[];
+  sender?: string;
   now?: Date;
 }): string {
   const itemType = args.itemType === "benchmark" ? "benchmark" : "kpi";
   const itemId = String(args.itemId || "").trim();
   const frequency = normalizeAlertEmailFrequency(args.frequency);
   const windowStart = getAlertEmailFrequencyWindowStart(frequency, args.now);
-  return `alert-email:${itemType}:${itemId}:${frequency}:${windowStart.toISOString()}`;
+  const recipients = Array.isArray(args.recipients)
+    ? args.recipients.map((recipient) => String(recipient || "").trim().toLowerCase()).filter(Boolean).sort()
+    : [];
+  const sender = String(args.sender || "").trim().toLowerCase();
+  const scope = [sender, recipients.join(",")].filter(Boolean).join("|");
+  const scopeSuffix = scope ? `:${createHash("sha1").update(scope).digest("hex").slice(0, 12)}` : "";
+  return `alert-email:${itemType}:${itemId}:${frequency}:${windowStart.toISOString()}${scopeSuffix}`;
 }
 
 async function insertAlertEmailClaimRow(values: AlertEmailClaimInsertValues): Promise<{ id: string } | null> {
@@ -241,6 +250,7 @@ export async function claimAlertEmailSend(
     itemId: string;
     frequency: unknown;
     recipients: string[];
+    sender?: string;
     subject: string;
     campaignId?: string;
     campaignName?: string;
@@ -255,6 +265,8 @@ export async function claimAlertEmailSend(
     itemType: args.itemType,
     itemId: args.itemId,
     frequency,
+    recipients: args.recipients,
+    sender: args.sender,
     now,
   });
 

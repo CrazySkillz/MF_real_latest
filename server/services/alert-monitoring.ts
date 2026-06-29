@@ -98,6 +98,7 @@ class AlertMonitoringService {
       subject: `Alert email send claim: ${String(args.itemName || args.itemType)}`,
       campaignId: String(args.campaignId || "").trim() || undefined,
       campaignName: args.campaignName,
+      sender: String(process.env.EMAIL_FROM_ADDRESS || '').trim() || 'alerts@mimo.app',
     });
     return claim.claimed ? claim : null;
   }
@@ -111,11 +112,6 @@ class AlertMonitoringService {
     if (!campaignName) return false;
 
     const frequency = (kpi.alertFrequency || 'daily') as any;
-    const frequencyHours =
-      frequency === 'immediate' ? 1 :
-      frequency === 'weekly' ? 24 * 7 :
-      24;
-    if (!retryClaim && this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) return false;
     if (!retryClaim && !isAlertEmailScheduleDue((kpi as any).calculationConfig, frequency)) return false;
 
     const currentValue = this.parseAlertNumber(kpi.currentValue);
@@ -182,11 +178,6 @@ class AlertMonitoringService {
     if (!campaignName) return false;
 
     const frequency = (benchmark.alertFrequency || 'daily') as any;
-    const frequencyHours =
-      frequency === 'immediate' ? 1 :
-      frequency === 'weekly' ? 24 * 7 :
-      24;
-    if (!retryClaim && this.shouldThrottleAlert(benchmark.lastAlertSent, frequencyHours)) return false;
 
     const currentValue = this.parseAlertNumber(benchmark.currentValue);
     const thresholdValue = this.parseAlertNumber(benchmark.alertThreshold);

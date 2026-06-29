@@ -60,6 +60,41 @@ describe("alert email idempotency regression guard", () => {
     expect(isAlertEmailScheduleDue(weeklyConfig, "daily", new Date("2026-06-29T15:30:00.000Z"))).toBe(true);
   });
 
+  it("scopes alert email dedupe keys to sender and recipients", () => {
+    const now = new Date("2026-06-25T10:34:12.000Z");
+    const base = {
+      itemType: "kpi" as const,
+      itemId: "kpi-1",
+      frequency: "immediate",
+      now,
+    };
+
+    const scoped = buildAlertEmailDedupeKey({
+      ...base,
+      recipients: ["Exec@Example.com", "ops@example.com"],
+      sender: "alerts@mimo.app",
+    });
+    const sameScope = buildAlertEmailDedupeKey({
+      ...base,
+      recipients: ["ops@example.com", "exec@example.com"],
+      sender: "ALERTS@MIMO.APP",
+    });
+    const differentSender = buildAlertEmailDedupeKey({
+      ...base,
+      recipients: ["exec@example.com", "ops@example.com"],
+      sender: "alerts@metricmind.app",
+    });
+    const differentRecipient = buildAlertEmailDedupeKey({
+      ...base,
+      recipients: ["exec@example.com"],
+      sender: "alerts@mimo.app",
+    });
+
+    expect(scoped).toBe(sameScope);
+    expect(scoped).not.toBe(buildAlertEmailDedupeKey(base));
+    expect(scoped).not.toBe(differentSender);
+    expect(scoped).not.toBe(differentRecipient);
+  });
   it("allows one KPI send claim and skips a duplicate in the same frequency window", async () => {
     const insertClaim = inMemoryClaimInsert();
     const args = {

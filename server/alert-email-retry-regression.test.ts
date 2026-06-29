@@ -114,8 +114,7 @@ describe("alert email retry regression guard", () => {
     const alertMonitoring = source("server/services/alert-monitoring.ts");
 
     expect(alertMonitoring).toContain("const claim = retryClaim || await this.claimAlertEmailWindow({");
-    expect(alertMonitoring).toContain("if (!retryClaim && this.shouldThrottleAlert(kpi.lastAlertSent, frequencyHours)) return false;");
-    expect(alertMonitoring).toContain("if (!retryClaim && this.shouldThrottleAlert(benchmark.lastAlertSent, frequencyHours)) return false;");
+    expect(alertMonitoring).toContain("const claim = retryClaim || await this.claimAlertEmailWindow({");
     expect(alertMonitoring).toContain("if (!retryClaim) {");
     expect(alertMonitoring).toContain("const retries = await this.processDueAlertEmailRetries();");
   });

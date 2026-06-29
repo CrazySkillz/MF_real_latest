@@ -104,6 +104,10 @@ class EmailService {
     return (process.env.EMAIL_PROVIDER || autoProvider || 'smtp').trim().toLowerCase();
   }
 
+  private getFromAddress(): string {
+    return String(process.env.EMAIL_FROM_ADDRESS || '').trim() || 'alerts@mimo.app';
+  }
+
   private initializeTransporter() {
     // Auto-detect provider if EMAIL_PROVIDER isn't explicitly set (prevents "configured but not used" confusion).
     const emailProvider = this.getConfiguredProvider();
@@ -164,7 +168,7 @@ class EmailService {
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
-    const from = process.env.EMAIL_FROM_ADDRESS || 'alerts@metricmind.app';
+    const from = this.getFromAddress();
     const recipients = this.normalizeRecipients(options.to);
     const toText = recipients.join(', ');
     if (recipients.length === 0) {

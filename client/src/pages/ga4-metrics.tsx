@@ -70,9 +70,9 @@ const VALID_GA4_TABS = ["overview", "kpis", "benchmarks", "campaigns", "insights
 const DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE = "UTC";
 const DEFAULT_KPI_ALERT_SCHEDULE_HOUR = "09";
 const DEFAULT_KPI_ALERT_SCHEDULE_DAY = "monday";
-const getKpiAlertHourOptions = (timeZoneLabel: string) => Array.from({ length: 24 }, (_, hour) => {
+const getKpiAlertHourOptions = () => Array.from({ length: 24 }, (_, hour) => {
   const value = String(hour).padStart(2, "0");
-  return { value, label: `${value}:00 ${timeZoneLabel}` };
+  return { value, label: `${value}:00` };
 });
 const KPI_ALERT_DAY_OPTIONS = [
   { value: "monday", label: "Monday" },
@@ -401,10 +401,7 @@ export default function GA4Metrics() {
   };
   const kpiAlertScheduleTimeZone = normalizeClientReportingTimeZone(userTimeZone || DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE);
   const kpiAlertScheduleTimeZoneLabel = kpiAlertScheduleTimeZone || DEFAULT_GA4_TRENDS_REPORTING_TIME_ZONE;
-  const kpiAlertHourOptions = useMemo(
-    () => getKpiAlertHourOptions(kpiAlertScheduleTimeZoneLabel),
-    [kpiAlertScheduleTimeZoneLabel],
-  );
+  const kpiAlertHourOptions = useMemo(() => getKpiAlertHourOptions(), []);
   const getOrdinalSuffix = (day: number) => {
     if (day > 3 && day < 21) return 'th';
     switch (day % 10) { case 1: return 'st'; case 2: return 'nd'; case 3: return 'rd'; default: return 'th'; }
@@ -8888,7 +8885,7 @@ export default function GA4Metrics() {
                           </div>
                           {kpiForm.watch("alertFrequency") === "daily" && (
                             <div className="space-y-2">
-                              <Label htmlFor="kpi-alert-schedule-hour">Send Hour ({kpiAlertScheduleTimeZoneLabel})</Label>
+                              <Label htmlFor="kpi-alert-schedule-hour">{kpiAlertScheduleTimeZoneLabel}</Label>
                               <Select
                                 value={kpiForm.watch("alertScheduleHour") || DEFAULT_KPI_ALERT_SCHEDULE_HOUR}
                                 onValueChange={(v) => kpiForm.setValue("alertScheduleHour", v)}
@@ -8928,7 +8925,7 @@ export default function GA4Metrics() {
                                 </Select>
                               </div>
                               <div className="space-y-2">
-                                <Label htmlFor="kpi-alert-schedule-weekly-hour">Send Hour ({kpiAlertScheduleTimeZoneLabel})</Label>
+                                <Label htmlFor="kpi-alert-schedule-weekly-hour">{kpiAlertScheduleTimeZoneLabel}</Label>
                                 <Select
                                   value={kpiForm.watch("alertScheduleHour") || DEFAULT_KPI_ALERT_SCHEDULE_HOUR}
                                   onValueChange={(v) => kpiForm.setValue("alertScheduleHour", v)}

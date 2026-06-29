@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { and, eq, inArray } from "drizzle-orm";
 import { emailAlertEvents } from "../../shared/schema.js";
 
 export const ALERT_EMAIL_DELIVERY_STATUSES = [
@@ -205,7 +206,33 @@ async function insertAlertEmailClaimRow(values: AlertEmailClaimInsertValues): Pr
       console.warn("[Alert Email Audit] Failed to claim alert email send:", error?.message || error);
       return [];
     });
-  return inserted?.[0] ? { id: String(inserted[0].id) } : null;
+  if (inserted?.[0]) return { id: String(inserted[0].id) };
+
+  const dedupeKey = String(values.dedupeKey || "").trim();
+  if (!dedupeKey || !dedupeKey.includes(":immediate:")) return null;
+  const reclaimableStatuses = ["failed", "skipped", "retry_scheduled"];
+  const reclaimed = await db
+    .update(emailAlertEvents)
+    .set({
+      ...values,
+      deliveryStatus: "sending",
+      provider: "pending",
+      success: false,
+      nextAttemptAt: null,
+      failedAt: null,
+      error: null,
+      lastAttemptAt: new Date(),
+    } as any)
+    .where(and(
+      eq(emailAlertEvents.dedupeKey, dedupeKey),
+      inArray(emailAlertEvents.deliveryStatus, reclaimableStatuses),
+    ))
+    .returning({ id: emailAlertEvents.id })
+    .catch((error: any) => {
+      console.warn("[Alert Email Audit] Failed to reclaim failed alert email send claim:", error?.message || error);
+      return [];
+    });
+  return reclaimed?.[0] ? { id: String(reclaimed[0].id) } : null;
 }
 
 export async function claimAlertEmailSend(

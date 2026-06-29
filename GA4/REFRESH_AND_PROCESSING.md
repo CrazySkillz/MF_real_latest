@@ -201,6 +201,7 @@ Local/server time checks:
 
 - local development: compare `Get-Date` with `Get-Date -AsUTC` in PowerShell
 - deployed logs: trust application log lines that include both UTC and configured timezone, such as `Next scheduled run at ... timezone=UTC`
+- June 29, 2026 deployed validation: Render GA4 daily scheduler timing passed with `GA4_DAILY_REFRESH_RUN_ON_STARTUP=false`, `GA4_DAILY_REFRESH_TIME_ZONE=UTC`, a controlled near-future `GA4_DAILY_REFRESH_HOUR` / `GA4_DAILY_REFRESH_MINUTE`, and scheduled-run logs showing `trigger=scheduled`
 - a log timestamp shown by the hosting console is not proof that the app timezone is wrong unless it conflicts with the app's own `timezone=...` field
 
 GA4 daily scheduled-refresh validation:
@@ -214,6 +215,10 @@ GA4 daily scheduled-refresh validation:
    - `[GA4 Daily] Pipeline starting (trigger=scheduled)`
    - `[GA4 Daily] Pipeline done (trigger=scheduled, elapsedSeconds=...)`
 5. In Insights Trends, confirm `Last refreshed` is at or after `Expected refresh` and no stale warning appears.
+
+Current deployed evidence:
+
+- June 29, 2026: the controlled Render validation passed for the scheduled GA4 daily path. This proves the GA4 daily scheduler timing path, not scheduled report sending or provider/email delivery.
 
 GA4 daily startup-refresh validation:
 

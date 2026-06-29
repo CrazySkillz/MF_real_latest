@@ -18,7 +18,7 @@ This file defines whether the current implementation is production-ready, what h
 
 As of June 29, 2026, GA4 KPIs are **not production-ready** for the current GA4 code scope.
 
-Current Commits 0-7 have been implemented, locally validated, committed, pushed, deployed, and user-validated through the GA4 KPI UI flow listed below. The later GA4 Revenue notification visibility bug was fixed in commits `0f1be173` and `3ed67320` and user-validated on the deployed app on June 29, 2026. The follow-up direct GA4 snapshot PDF fix was committed as `4d3a3838`, pushed, deployed, and user-validated on June 29, 2026; direct GA4 snapshot PDF downloads now run a suppress-alert GA4 KPI/Benchmark preflight before regenerating PDFs with latest KPI values. These fixes make GA4 KPIs eligible for the next certification step, but they do not certify production readiness because deployed scheduler and provider-delivery evidence remains partially reviewed or not locally verifiable.
+Current Commits 0-7 have been implemented, locally validated, committed, pushed, deployed, and user-validated through the GA4 KPI UI flow listed below. The later GA4 Revenue notification visibility bug was fixed in commits `0f1be173` and `3ed67320` and user-validated on the deployed app on June 29, 2026. The follow-up direct GA4 snapshot PDF fix was committed as `4d3a3838`, pushed, deployed, and user-validated on June 29, 2026; direct GA4 snapshot PDF downloads now run a suppress-alert GA4 KPI/Benchmark preflight before regenerating PDFs with latest KPI values. The deployed GA4 daily scheduler was also user-validated on June 29, 2026 with `GA4_DAILY_REFRESH_RUN_ON_STARTUP=false` and a controlled near-future scheduled UTC run. These fixes make GA4 KPIs eligible for the next certification step, but they do not certify production readiness because scheduled GA4 report execution and provider-delivery evidence remains partially reviewed or not locally verifiable.
 
 Certification result:
 
@@ -26,15 +26,16 @@ Certification result:
 - deployed UI validation completed by user: GA4 KPIs tab open/render, existing KPI values, create/edit/delete KPI, GA4 revenue/spend source mutation with KPI value and alert refresh, Notifications/bell state, and GA4 KPI report send/manual snapshot where available
 - target database damaged-data dry-run completed on June 29, 2026: 0 candidates, 9 skipped rows, 0 applied, no `--apply` needed from this output
 - deployed/user-validated on June 29, 2026: direct GA4 snapshot PDF download after commit `4d3a3838` uses the suppress-alert GA4 KPI/Benchmark preflight before the shared PDF builder reads current KPI rows, and the deployed validation passed
-- not locally verifiable: live GA4 provider behavior, deployed scheduler timing, provider-side email delivery events, and actual inbox receipt
+- deployed/user-validated on June 29, 2026: GA4 daily scheduler execution timing passed on Render using `GA4_DAILY_REFRESH_RUN_ON_STARTUP=false`, `GA4_DAILY_REFRESH_TIME_ZONE=UTC`, and a controlled near-future `GA4_DAILY_REFRESH_HOUR` / `GA4_DAILY_REFRESH_MINUTE`; the scheduled run showed `trigger=scheduled` rather than startup-only execution
+- not locally verifiable: live GA4 provider behavior beyond the validated scheduler run, scheduled GA4 report execution, provider-side email delivery events, and actual inbox receipt
 
 The current answer is:
 
-`GA4 KPIs are not production-ready for the current GA4 code scope. Current Commits 0-7, the follow-up GA4 notification financial-source visibility fix, and the direct GA4 snapshot PDF preflight fix are implemented, committed, pushed, locally validated, deployed, and user-validated for the listed UI flows. The target-database damaged-data inventory dry-run completed with 0 candidates and 9 skipped rows, so no apply command should be run from this output. Do not call GA4 KPIs production-ready until deployed/provider scheduler/email caveats are proven, explicitly kept as external caveats by final certification, or excluded by product decision.`
+`GA4 KPIs are not production-ready for the current GA4 code scope. Current Commits 0-7, the follow-up GA4 notification financial-source visibility fix, the direct GA4 snapshot PDF preflight fix, and the deployed GA4 daily scheduler timing validation are complete. The target-database damaged-data inventory dry-run completed with 0 candidates and 9 skipped rows, so no apply command should be run from this output. Do not call GA4 KPIs production-ready until scheduled GA4 report execution and provider/email caveats are proven, explicitly kept as external caveats by final certification, or excluded by product decision.`
 
 This status should change only after:
 
-- deployed scheduler and provider/email behavior are validated or kept as explicit external caveats
+- scheduled GA4 report execution and provider/email behavior are validated or kept as explicit external caveats
 - this document is updated from current evidence, not from prior readiness claims
 
 Necessary certification rule:
@@ -53,7 +54,7 @@ Read in this order:
 5. `Validation Evidence And Gaps`
 6. `Future Platform Template`
 
-Answer that GA4 KPIs are not production-ready for the current GA4 code scope. Current local fixes, user-confirmed deployed UI validation, target damaged-data dry-run, and deployed/user-validated direct GA4 snapshot PDF preflight are complete, but final certification remains blocked by the explicit deployed scheduler and provider evidence gates in this file.
+Answer that GA4 KPIs are not production-ready for the current GA4 code scope. Current local fixes, user-confirmed deployed UI validation, target damaged-data dry-run, deployed/user-validated direct GA4 snapshot PDF preflight, and deployed/user-validated GA4 daily scheduler timing are complete, but final certification remains blocked by the explicit scheduled GA4 report execution and provider evidence gates in this file.
 
 Do not reopen GA4 Overview, Benchmarks, Ad Comparison, Insights, or Reports unless a KPI value path directly depends on them. Scheduled/server GA4 reports are a direct downstream KPI consumer because they read persisted GA4 KPI rows.
 
@@ -156,7 +157,7 @@ Important meaning:
 Root cause of the remaining certification failure:
 
 - Earlier readiness updates treated completed fixes as equivalent to certification.
-- The Current Commit 7 pass reran the root `PRODUCTION_READINESS.md` standard and found that local tests proved the narrow fixed code paths, but did not yet prove deployed UI behavior, target database state, provider delivery, deployed scheduler execution, or the then-unfixed direct historical snapshot PDF freshness semantics. Deployed UI validation, target database dry-run evidence, and direct GA4 snapshot PDF deployed validation after commit `4d3a3838` have since been added. Provider delivery and deployed scheduler execution remain caveats.
+- The Current Commit 7 pass reran the root `PRODUCTION_READINESS.md` standard and found that local tests proved the narrow fixed code paths, but did not yet prove deployed UI behavior, target database state, provider delivery, the then-unvalidated GA4 daily scheduler execution, or the then-unfixed direct historical snapshot PDF freshness semantics. Deployed UI validation, target database dry-run evidence, direct GA4 snapshot PDF deployed validation after commit `4d3a3838`, and deployed GA4 daily scheduler timing evidence have since been added. Scheduled GA4 report execution and provider delivery remain caveats.
 - Therefore the correct status is not production-ready, with completed local fixes and explicit remaining validation/certification gates.
 
 ### Complete GA4 KPI Value Inventory
@@ -186,7 +187,7 @@ Root cause of the remaining certification failure:
 | KPI create | UI create -> platform KPI route with campaign access -> storage create -> GA4 recompute for GA4 rows -> alert check -> frontend query invalidation | Route/source guards covered; user-confirmed deployed UI validation passed |
 | KPI edit | UI update -> `ensureKpiAccess` + platform check -> storage update -> GA4 recompute when GA4 campaign row -> alert check -> query invalidation | Route behavior traced; user-confirmed deployed UI validation passed |
 | KPI delete | UI delete -> `ensureKpiAccess` + platform check -> storage delete/cascade -> notification visibility refresh | Access/delete mechanics traced; user-confirmed deployed UI validation passed |
-| Daily/on-demand recompute | GA4 daily/on-demand refresh -> `runGA4DailyKPIAndBenchmarkJobs` -> `storage.updateKPI` -> progress history -> alert checks | Proven locally for fixed financial windows and custom preservation; live provider/deployed scheduler not locally verifiable |
+| Daily/on-demand recompute | GA4 daily/on-demand refresh -> `runGA4DailyKPIAndBenchmarkJobs` -> `storage.updateKPI` -> progress history -> alert checks | Proven locally for fixed financial windows and custom preservation; deployed GA4 daily scheduler timing user-validated with `trigger=scheduled`; live provider behavior beyond that run remains external |
 | Source add/edit/delete recompute | GA4 revenue/spend route -> source mutation/recalc -> GA4 KPI/Benchmark recompute -> alert check -> response/frontend refresh | Proven locally by route-order regression guards; user-confirmed deployed source mutation validation passed for KPI values and alert refresh |
 | Alerts/notifications | Persisted `kpis.currentValue` -> `checkPerformanceAlerts`/immediate email path -> latest-row guard -> notification/email audit | Proven locally for duplicate latest-row behavior; provider delivery external |
 | Scheduled/test/manual/direct snapshot reports | Report preflight -> GA4 recompute result check -> PDF builder -> KPI rows from storage -> send/snapshot creation or direct PDF download | Proven locally for covered send/test/manual/direct PDF paths; direct snapshot PDF deployed validation passed after commit `4d3a3838`; deployed scheduler/provider behavior remains external |
@@ -215,7 +216,7 @@ Root cause of the remaining certification failure:
 | KPI delete | Access guard and notification visibility behavior traced; user-confirmed deployed UI validation passed |
 | Revenue source add/edit/delete | Proven locally for GA4 recompute ordering via route guard tests; user-confirmed deployed source mutation validation passed for KPI value and alert refresh |
 | Spend source add/edit/delete | Proven locally for GA4 recompute ordering via route guard tests; user-confirmed deployed source mutation validation passed for KPI value and alert refresh |
-| Scheduler refresh | Proven locally for recompute call paths and formulas; deployed scheduler timing not locally verifiable |
+| Scheduler refresh | GA4 daily scheduler timing user-validated on Render with `trigger=scheduled`; scheduled GA4 report execution remains a separate validation gate |
 | Manual/on-demand refresh | Partially reviewed through shared recompute coverage; live provider response not locally verifiable |
 | Alerts/notifications | Proven locally for latest-row duplicate guard, breach-only visibility, and GA4 financial notification source parity; user-confirmed deployed bell/Notifications validation passed; provider delivery external |
 | Reports | Proven locally for scheduled/test/manual report creation/send guards and direct GA4 snapshot PDF preflight regeneration; direct snapshot PDF deployed validation passed after commit `4d3a3838`; deployed scheduler/provider behavior remains external |
@@ -288,7 +289,7 @@ Historical validation:
 
 ### 2. KPI Current-Value Calculation
 
-Status: Partially reviewed. Standard formulas, persisted financial source windows, custom/unsupported preservation, duplicate-alert behavior, scheduled/manual/direct snapshot report consumer guards, notification financial-source parity, and damaged-data inventory boundaries now have local fixes and targeted tests; user-confirmed deployed UI validation has passed, target damaged-data dry-run found no apply candidates, and direct snapshot PDF deployed validation passed after commit `4d3a3838`, but production-ready certification remains blocked by deployed scheduler and provider/deployed validation gates.
+Status: Partially reviewed. Standard formulas, persisted financial source windows, custom/unsupported preservation, duplicate-alert behavior, scheduled/manual/direct snapshot report consumer guards, notification financial-source parity, and damaged-data inventory boundaries now have local fixes and targeted tests; user-confirmed deployed UI validation has passed, target damaged-data dry-run found no apply candidates, direct snapshot PDF deployed validation passed after commit `4d3a3838`, and deployed GA4 daily scheduler timing passed, but production-ready certification remains blocked by scheduled GA4 report execution and provider/deployed validation gates.
 
 Resolved blocker:
 
@@ -354,11 +355,11 @@ Not locally verifiable:
 - deployed email provider configuration
 - provider delivery events
 - inbox receipt
-- deployed scheduler runtime
+- deployed scheduled report runtime
 
 ### 5. Refresh, Scheduler, And Recompute
 
-Status: Partially reviewed. Daily, on-demand, auto-refresh, KPI create/update recompute, persisted financial source-window recompute, source mutation route recompute, custom/unsupported preservation, duplicate-alert handling, report guards, notification financial-source parity, and damaged-data inventory now have local forward fixes or guard coverage. Deployed UI validation passed by user, but deployed scheduler timing remains a certification caveat.
+Status: Partially reviewed. Daily, on-demand, auto-refresh, KPI create/update recompute, persisted financial source-window recompute, source mutation route recompute, custom/unsupported preservation, duplicate-alert handling, report guards, notification financial-source parity, and damaged-data inventory now have local forward fixes or guard coverage. Deployed GA4 daily scheduler timing passed on Render, but scheduled GA4 report execution remains a certification caveat.
 
 Proven locally:
 
@@ -468,24 +469,24 @@ Local fix:
 Deployed validation evidence:
 
 - Commit `4d3a3838` was pushed, Render deployed it, and the user confirmed direct GA4 snapshot PDF validation passed on June 29, 2026.
-- This closes the direct snapshot PDF freshness gate for the current deployed app; it does not prove deployed scheduler timing or provider/email delivery.
+- This closes the direct snapshot PDF freshness gate for the current deployed app; it does not prove scheduled GA4 report execution or provider/email delivery.
 
 ### CERT-GAP-4: Deployed/provider behavior is not locally verifiable
 
 Root cause:
 
-- Local tests cannot prove live GA4 provider responses, deployed scheduler timing, provider delivery events, or inbox receipt.
+- Local tests cannot prove live GA4 provider responses, scheduled GA4 report execution, provider delivery events, or inbox receipt. The deployed GA4 daily scheduler timing path was user-validated separately on Render.
 
 Affected paths:
 
 - live GA4 API/token-refresh behavior
-- deployed daily/auto-refresh scheduler execution
+- scheduled GA4 report execution
 - email provider acceptance vs confirmed delivery
 - actual inbox receipt
 
 Required evidence before certification:
 
-- deployed scheduler run evidence or controlled job execution logs
+- scheduled GA4 report run evidence or controlled job execution logs
 - provider/API acceptance evidence separated from confirmed delivery evidence
 - provider delivery events or real inbox validation where delivery is claimed
 
@@ -534,7 +535,7 @@ Validation evidence:
 Remaining certification gate:
 
 - This fix completes the deployed UI alert/notification validation gate for the reported GA4 Revenue case.
-- It does not replace deployed scheduler evidence or provider/inbox delivery evidence.
+- It does not replace scheduled GA4 report execution evidence or provider/inbox delivery evidence.
 
 ## Historical Resolved Blockers
 
@@ -865,7 +866,7 @@ Implementation status:
 
 - Current Commit 7 updates this file with the final certification result from current evidence.
 - Current Commit 7 updates `GA4/KPIS.md` to remove the stale June 27 production-ready statement.
-- The certification result is not production-ready, not because the local fix queue, deployed UI validation, target damaged-data dry-run, or direct snapshot PDF preflight validation is incomplete, but because deployed scheduler/provider behavior remains unproven or not locally verifiable.
+- The certification result is not production-ready, not because the local fix queue, deployed UI validation, target damaged-data dry-run, direct snapshot PDF preflight validation, or GA4 daily scheduler timing validation is incomplete, but because scheduled GA4 report execution/provider behavior remains unproven or not locally verifiable.
 - The complete value inventory, end-to-end trace matrix, downstream propagation matrix, source lifecycle matrix, negative-case matrix, test coverage matrix, and documentation alignment check are recorded in `Current Commit 7 Certification Pass`.
 
 ## Historical Completed Fix Queue
@@ -1032,7 +1033,7 @@ Current covered paths after Commits 1-7 and the notification financial-source fi
 
 Current uncovered or not-finalized paths before certification:
 
-- live GA4 provider behavior, deployed scheduler execution, provider email delivery events, and actual inbox receipt.
+- live GA4 provider behavior beyond the validated scheduled daily run, scheduled GA4 report execution, provider email delivery events, and actual inbox receipt.
 - GA4 Insights or other related non-report consumers that may read KPI context were not reopened in this KPI-only fix queue and must not be treated as proven.
 
 Historical validation run during the June 27, 2026 audit:
@@ -1058,7 +1059,7 @@ Commit 1-6 deployment and UI validation on June 27, 2026:
 Out-of-scope note:
 
 - broader report infrastructure remains outside this KPI-only certification except where reports directly consume GA4 KPI values.
-- scheduled/test/manual/direct GA4 report KPI consumers are locally covered; deployed scheduler/provider evidence remains outside local proof.
+- scheduled/test/manual/direct GA4 report KPI consumers are locally covered; scheduled GA4 report execution and provider evidence remain outside local proof.
 
 ## Not Locally Verifiable
 
@@ -1066,7 +1067,7 @@ The following require provider or explicit product-decision evidence:
 
 - live GA4 API token refresh behavior
 - live GA4 processing latency
-- deployed scheduler execution timing
+- scheduled GA4 report execution timing
 - provider-side email delivery events
 - actual inbox receipt
 

@@ -324,6 +324,7 @@ Important meaning:
 
 - KPI alerts must run only after both the KPI grid state and the KPI `Executive snapshot` state are coherent with the latest recomputed values
 - for GA4 mock/test flows, the stored KPI value used by alerts must be refreshed from the same total-construction model as the live KPI cards
+- `/api/notifications` must also resolve GA4 financial KPI visibility from the same selected financial-source model as the live KPI cards, so stale `performance-alert` rows disappear when the refreshed Revenue/ROAS/ROI/CPA value no longer breaches
 - if the exact report-date daily row is missing for a GA4 campaign, the GA4 KPI recompute path should fall back to the latest available persisted GA4 daily row instead of skipping that campaign's alert reconciliation
 - if duplicate GA4 KPI rows exist for the same `campaign + metric`, only the newest row should remain eligible to emit the active alert
 
@@ -381,7 +382,7 @@ Instead:
 
 - ad hoc GA4 reports use live refreshed page state at generation time
 - scheduled/server-generated reports use saved config plus shared report-generation infrastructure
-- scheduled/server-generated GA4 reports fail closed unless the campaign KPI/Benchmark recompute runs for the target campaign before PDF generation
+- scheduled/server-generated GA4 reports and direct GA4 snapshot PDF downloads fail closed unless the campaign KPI/Benchmark recompute runs for the target campaign before PDF generation
 - platform report test-send uses the same email-provider compatibility rule as scheduled delivery, including Mailgun HTTP API when `MAILGUN_API_KEY` and `MAILGUN_DOMAIN` are configured
 - scheduled/test-send report emails must attach the generated PDF and keep the email body plain and transactional; the PDF is the report artifact
 
@@ -390,7 +391,7 @@ Important meaning:
 - `Reports` is a downstream output layer
 - reports should render from refreshed GA4 tab inputs
 - reports must not become a competing source of truth for campaign metrics
-- report delivery and manual snapshot creation must not continue when GA4 KPI/Benchmark preflight recompute fails or skips the target campaign
+- report delivery, manual snapshot creation, and direct GA4 snapshot PDF download must not continue when GA4 KPI/Benchmark preflight recompute fails or skips the target campaign
 - scheduled reports must be saved with at least one non-empty recipient before the scheduler can process them
 - scheduled report delivery must verify the campaign still exists before snapshot creation, GA4 recompute, PDF generation, email sending, or report send-bookkeeping updates
 - if a campaign-scoped scheduled report points to a missing campaign, the scheduler should mark that scheduled send as skipped/failed and not send the report
@@ -411,6 +412,7 @@ What is true today:
 - external source auto-refresh calls the GA4 KPI/Benchmark recompute helper directly after a campaign's upstream source values change
 - the GA4 KPI/Benchmark recompute helper also reconciles campaign-level KPI and Benchmark persisted `currentValue` fields from connected-platform totals after GA4, revenue, or spend refresh changes
 - when a GA4 KPI/Benchmark recompute runs for a campaign, breached GA4 KPIs and Benchmarks should restore exactly one active in-app alert row if the row is missing
+- active bell and Notifications visibility remains breach-only: alert-enabled GA4 KPI/Benchmark rows that are not currently breached should not appear in `/api/notifications`, even if a stale `performance-alert` row exists; for GA4 financial KPI alerts, the breach check must use the same selected GA4 native revenue plus imported revenue/spend model as the live KPI cards
 - Ad Comparison refreshes indirectly from refreshed inputs
 - Insights refreshes indirectly from refreshed inputs
 - Campaign DeepDive Budget & Financial Analysis refreshes current aggregate financial values while visible and on window focus, and historical trend indicators use compatible `metrics.performanceSummary` snapshots created by the snapshot scheduler

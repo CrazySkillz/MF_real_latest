@@ -589,7 +589,7 @@ The following items are locally proven and should not be reopened unless relevan
 2. GA4 platform report update/delete reject platform mismatches.
 3. GA4 platform report update cannot change campaign or platform ownership through patch payloads.
 4. Report delete status reflects actual row deletion.
-5. Direct snapshot JSON/PDF routes verify report access plus snapshot/report campaign-platform consistency.
+5. Direct snapshot JSON/PDF routes verify report access plus snapshot/report campaign-platform consistency, and direct GA4 snapshot PDF regeneration runs suppress-alert GA4 KPI/Benchmark preflight before the shared PDF builder reads KPI rows.
 6. GA4 scheduled/test-send PDFs use a GA4-specific server builder and refuse generic fallback.
 7. GA4 scheduled/test-send Overview Campaign Breakdown uses `REVENUE`, not `GA4 REVENUE`.
 8. Scheduled report emails require a generated PDF attachment.
@@ -621,7 +621,7 @@ Deferred deployed validation:
 
 These areas are not current local blockers, but future work should not assume they are fully certified beyond the stated evidence:
 
-- manual snapshot POST has no current GA4 frontend caller, but it also does not preflight GA4 PDF output before inserting
+- manual snapshot POST has no current GA4 frontend caller, but source-backed snapshot creation and direct GA4 snapshot PDF regeneration now fail closed before output/insertion when GA4 preflight or source-backed PDF generation is unavailable
 - GA4 Ad Comparison report output is production-ready for the current GA4 code scope except for the Mailgun-dependent deployed scheduled/server PDF revenue-provenance evidence tracked in `GA4/AD_COMPARISON_PRODUCTION_READINESS.md`; it still reflects campaign-row comparison, not true ad/creative-level reporting
 - scheduled Insights PDF uses the supported server sessions trend rather than persisting the live selected trend metric/mode
 - the Drizzle schema does not express the report-send unique index even though startup DDL creates it

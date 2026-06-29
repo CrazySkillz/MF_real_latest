@@ -55,6 +55,18 @@ describe("GA4 KPI report consumer regression guards", () => {
     expect(route.indexOf("const buf = await buildPdfAttachmentForReport")).toBeLessThan(route.indexOf(".insert(reportSnapshots as any)"));
   });
 
+  it("preflights direct GA4 snapshot PDF downloads before regenerating current KPI values", () => {
+    const source = readFileSync(join(process.cwd(), "server", "routes-oauth.ts"), "utf-8");
+    const route = source.slice(
+      source.indexOf('app.get("/api/report-snapshots/:snapshotId/pdf"'),
+      source.indexOf("// Get single benchmark")
+    );
+
+    expect(route).toContain("preflightGA4ReportKPIConsumers(okReport, undefined, { suppressAlerts: true })");
+    expect(route).toContain("snapshot PDF not generated");
+    expect(route.indexOf("preflightGA4ReportKPIConsumers(okReport, undefined, { suppressAlerts: true })")).toBeLessThan(route.indexOf("const buf = await buildPdfAttachmentForReport"));
+  });
+
   it("fails GA4 KPI-section PDF generation when persisted KPI rows cannot be read", () => {
     const source = readFileSync(join(process.cwd(), "server", "ga4-scheduled-report-pdf.ts"), "utf-8");
     const includesStart = source.indexOf("const reportIncludesKPISection");
@@ -84,15 +96,17 @@ describe("GA4 KPI report consumer regression guards", () => {
     expect(sendStart).toBeGreaterThan(-1);
     expect(testStart).toBeGreaterThan(-1);
     expect(routesSource).toContain("preflightGA4ReportKPIConsumers(existing, windowEnd, { suppressAlerts: true })");
+    expect(routesSource).toContain("preflightGA4ReportKPIConsumers(okReport, undefined, { suppressAlerts: true })");
   });
 
   it("documents GA4 report refresh as fail-closed instead of best-effort", () => {
     const refreshDoc = readFileSync(join(process.cwd(), "GA4", "REFRESH_AND_PROCESSING.md"), "utf-8");
     const readinessDoc = readFileSync(join(process.cwd(), "GA4", "KPIS_PRODUCTION_READINESS.md"), "utf-8");
 
-    expect(refreshDoc).toContain("scheduled/server-generated GA4 reports fail closed");
-    expect(refreshDoc).toContain("manual snapshot creation must not continue when GA4 KPI/Benchmark preflight recompute fails");
+    expect(refreshDoc).toContain("scheduled/server-generated GA4 reports and direct GA4 snapshot PDF downloads fail closed");
+    expect(refreshDoc).toContain("manual snapshot creation, and direct GA4 snapshot PDF download must not continue when GA4 KPI/Benchmark preflight recompute fails");
     expect(readinessDoc).toContain("manual GA4 report snapshots are not inserted unless GA4 preflight recompute and PDF generation succeed");
     expect(readinessDoc).toContain("GA4 KPI-section PDF generation fails closed when persisted KPI rows cannot be read");
+    expect(readinessDoc).toContain("direct GA4 snapshot PDF preflight fix");
   });
 });

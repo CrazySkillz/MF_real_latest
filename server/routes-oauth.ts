@@ -25759,7 +25759,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const windowStart = String((row as any).windowStart || (row as any).window_start || payload?.windowStart || "");
       const windowEnd = String((row as any).windowEnd || (row as any).window_end || payload?.windowEnd || "");
-      const { buildPdfAttachmentForReport } = await import("./report-scheduler.js");
+      const { buildPdfAttachmentForReport, preflightGA4ReportKPIConsumers } = await import("./report-scheduler.js");
+      const ga4Preflight = await preflightGA4ReportKPIConsumers(okReport, undefined, { suppressAlerts: true });
+      if (!ga4Preflight.ok) {
+        return res.status(422).json({ success: false, error: `${ga4Preflight.error}; snapshot PDF not generated` });
+      }
       const buf = await buildPdfAttachmentForReport({
         report: okReport,
         windowStart,

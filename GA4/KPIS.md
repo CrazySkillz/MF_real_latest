@@ -6,9 +6,9 @@ This file defines the GA4 `KPIs` tab, KPI creation flow, current-value logic, ga
 
 ## Production Readiness Status
 
-As of June 28, 2026, the GA4 `KPIs` tab is not production-ready for the current GA4 code scope.
+As of June 29, 2026, the GA4 `KPIs` tab is not production-ready for the current GA4 code scope.
 
-The durable source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`. Current local fixes make GA4 KPIs eligible for certification, but the production-readiness answer must remain not production-ready unless the complete current value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, and validation evidence are covered from current code.
+The durable source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`. Current local fixes, user-confirmed deployed UI validation, target-database damaged-data dry-run evidence, and the local direct GA4 snapshot PDF preflight fix make GA4 KPIs eligible for the next certification step, but the production-readiness answer must remain not production-ready unless the complete current value inventory, downstream propagation matrix, lifecycle matrix, negative cases, report consumers, alert/notification paths, scheduler/provider caveats, deploy validation for later follow-ups, and validation evidence are covered from current code and deployed evidence.
 
 For future platforms, use this file only as the functional KPI tab contract. Use `GA4/KPIS_PRODUCTION_READINESS.md` for the reusable production-readiness audit gates and source-specific proof requirements.
 
@@ -226,6 +226,7 @@ Expected behavior:
 - breached KPIs show a red pulsing circle indicator on the KPI card
 - breached KPI alerts should appear in the bell icon and notifications center
 - enabled KPI alerts should not appear in the bell icon or main Notifications page unless the alert condition is currently breached; once the KPI no longer breaches, stale `performance-alert` rows should be hidden/resolved instead of remaining visible
+- for GA4 financial KPI alerts such as `Revenue`, `Total Revenue`, `ROAS`, `ROI`, and `CPA`, the Notifications current value and breach check must use the same selected GA4 financial-source model as the live KPI card; an existing active alert should disappear after refetch/recompute when the card value no longer breaches, and users should not need to create a new alert
 - bell and Notifications `View KPI` navigation should always open the correct campaign, the `KPIs` tab, and the exact KPI card
 - if the user is already on the same GA4 campaign page, the URL change must still switch to the correct KPI tab/item instead of staying on the previously open tab
 - email delivery is optional
@@ -273,6 +274,7 @@ Important meaning:
 - any change that affects KPI current value, target value, progress, or status should trigger recomputation of the tracker counts and `Avg. Progress`
 - KPI alerts should evaluate after KPI recomputation, not before
 - GA4 KPI alerts must use the same current-value source as the live GA4 KPI cards
+- `/api/notifications` must not keep a stale GA4 financial KPI alert visible from a narrower imported-only or persisted-row value when the live KPI card uses selected GA4 native revenue plus imported revenue and no longer breaches
 - if the exact report-date GA4 daily row is missing, GA4 KPI recomputation should fall back to the latest available GA4 daily row for that campaign/property rather than skipping alert reconciliation entirely
 - duplicate active GA4 KPIs for the same `campaign + metric` must not emit competing active alerts; the latest row should win
 - the bell / Notifications center should refetch current notification state when opened so resolved alerts do not linger from client cache

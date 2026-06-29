@@ -13,9 +13,9 @@ Campaign-level KPI/Benchmark production-readiness tracking lives in `CAMPAIGN_LE
 Current GA4 tab production-readiness status:
 
 - GA4 Overview is production-ready for the current GA4 code scope. The durable source of truth is `GA4/OVERVIEW_PRODUCTION_READINESS.md`.
-- GA4 KPIs are production-ready for the current GA4 code scope. The durable source of truth is `GA4/KPIS_PRODUCTION_READINESS.md`.
+- GA4 KPIs are not production-ready for the current GA4 code scope. Current local fixes, user-confirmed deployed UI validation, GA4 Revenue notification financial-source visibility validation, and target-database damaged-data dry-run are complete; final certification is still blocked by the explicit snapshot, scheduler, and provider evidence gates in `GA4/KPIS_PRODUCTION_READINESS.md`.
 - GA4 Benchmarks are production-ready for the current GA4 code scope. The durable source of truth is `GA4/BENCHMARKS_PRODUCTION_READINESS.md`.
-- Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should give the same production-ready answer for these GA4 sections.
+- Absent later code changes, failed validation, contradictory deployed evidence, or changed requirements, future readiness reviews should use the tab-specific readiness doc for each GA4 section and must not infer KPI production readiness from Overview or Benchmark readiness.
 - Mandatory anti-overclaim rule: do not repeat any GA4 production-ready answer from this README unless the requested value path's complete value inventory, post-fetch transforms, fallback branches, negative cases, and downstream propagation matrix are covered by current readiness evidence. If a new bug is found, mark that path unproven until root cause, tests, and docs are updated.
 
 ## How To Use This Folder
@@ -61,7 +61,7 @@ Important meaning:
 - `GA4/KPIS.md`
   Covers KPI creation, display, current-value sourcing, gating, alerts, and KPI refresh behavior.
 - `GA4/KPIS_PRODUCTION_READINESS.md`
-  Canonical whole-tab KPIs production-readiness source of truth. Current status: production-ready for the current GA4 code scope, with only the explicit external/deployed caveats documented in that file. It also contains the future-source reading order and KPI readiness gates for Meta, Google Ads, LinkedIn, Google Sheets, or another source.
+  Canonical whole-tab KPIs production-readiness source of truth. Current status: not production-ready for the current GA4 code scope. Current local fixes, user-confirmed deployed UI validation, target-database damaged-data dry-run, and the local direct GA4 snapshot PDF preflight fix are complete, but deployed scheduler evidence, provider/email caveats, and deploy validation for later follow-ups remain documented in that file. It also contains the future-source reading order and KPI readiness gates for Meta, Google Ads, LinkedIn, Google Sheets, or another source.
 - `GA4/BENCHMARKS.md`
   Covers benchmark creation, custom benchmark values, status/progress, gating, alerts, and benchmark refresh behavior.
 - `GA4/BENCHMARKS_PRODUCTION_READINESS.md`
@@ -151,7 +151,7 @@ These are now part of the GA4 template contract:
 - HubSpot and Salesforce `Review Settings` show the selected deal/opportunity labels together with the amount that will be imported for each selected record, while the confirmed `Total Revenue (to date)` remains the sum of those included confirmed records
 - Shopify `Review Settings` revenue breakdown rows show campaign/value revenue amounts without appending order-count text such as `(1 order)`
 - GA4 KPI creation uses a constrained unit dropdown, highlights `Create Custom KPI` when selected, keeps custom KPI current/target values in generic numeric format until a real unit is selected, disables `Create KPI` until `KPI Name` and `Target Value` are entered, and disables `Update KPI` in edit mode until at least one form value changes
-- GA4 KPI whole-tab status is production-ready for the current GA4 code scope; `GA4/KPIS_PRODUCTION_READINESS.md` is the durable source of truth for future production-readiness answers
+- GA4 KPI whole-tab status is not production-ready for the current GA4 code scope; `GA4/KPIS_PRODUCTION_READINESS.md` is the durable source of truth. The GA4 Revenue notification financial-source visibility fix has been deployed and user-validated, and the target-database damaged-data inventory dry-run found 0 candidates and 9 skipped rows, so no cleanup apply is indicated from that output.
 - GA4 Benchmark creation follows the same custom-entry pattern: `Create Custom Benchmark` is highlighted when selected, shows `Choose name + unit, then set values`, uses a constrained unit dropdown, keeps custom current/benchmark values in generic numeric format until a real unit is selected, disables `Create Benchmark` until `Benchmark Name` and `Benchmark Value` are entered, and disables `Update Benchmark` in edit mode until at least one form value changes
 - GA4 Benchmark whole-tab status is production-ready for the current GA4 code scope; `GA4/BENCHMARKS_PRODUCTION_READINESS.md` is the durable source of truth for future production-readiness answers
 - GA4 `Ad Comparison` leader cards and report output use the same refreshed campaign comparison rows as the live table, including exact campaign-matched imported revenue and mapped-revenue-created rows; `Best Performing`, `Most Efficient`, and `Needs Attention` must not render stale GA4-only values when the underlying revenue/breakdown inputs update, and card CR details use two-decimal exact-rate formatting so close decisions are explainable

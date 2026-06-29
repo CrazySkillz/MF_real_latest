@@ -193,9 +193,10 @@ class EmailService {
         error: result.error,
         providerResponseId: result.id,
         deliveryStatus: result.success ? "accepted" : undefined,
+        providerRegion: result.region,
       });
       if (result.success) {
-        void this.confirmMailgunAlertDelivery(options.auditContext, result.id);
+        void this.confirmMailgunAlertDelivery(options.auditContext, result.id, result.region);
       }
       return result.success;
     }
@@ -247,7 +248,7 @@ class EmailService {
     }
   }
 
-  private async sendViaMailgunAPI(from: string, options: EmailOptions): Promise<{ success: boolean; id?: string; error?: string }> {
+  private async sendViaMailgunAPI(from: string, options: EmailOptions): Promise<{ success: boolean; id?: string; region?: string; error?: string }> {
     try {
       const domain = process.env.MAILGUN_DOMAIN;
       const apiKey = process.env.MAILGUN_API_KEY;
@@ -316,7 +317,7 @@ class EmailService {
         if (response.ok) {
           const result = await response.json();
           console.log(`[Email Service] Email accepted by Mailgun HTTP API (${candidateRegion}):`, result.id);
-          return { success: true, id: result?.id ? String(result.id) : undefined };
+          return { success: true, id: result?.id ? String(result.id) : undefined, region: candidateRegion };
         }
 
         const errorText = await response.text();
@@ -470,25 +471,35 @@ class EmailService {
     return raw.map((item) => String(item || '').trim()).filter(Boolean);
   }
 
-  private async confirmMailgunAlertDelivery(ctx: EmailAuditContext | undefined, providerResponseId: string | undefined): Promise<void> {
+  private async confirmMailgunAlertDelivery(ctx: EmailAuditContext | undefined, providerResponseId: string | undefined, providerRegion?: string): Promise<void> {
     const auditEventId = String(ctx?.auditEventId || "").trim();
     const responseId = String(providerResponseId || "").trim();
     if (ctx?.kind !== "alert" || !auditEventId || !responseId) return;
 
     try {
-      const delivery = await waitForMailgunDelivery(responseId);
+      const delivery = await waitForMailgunDelivery(responseId, providerRegion ? { region: providerRegion } : {});
       const deliveryStatus = mapMailgunDeliveryToAlertEmailStatus(delivery.status);
-      if (deliveryStatus === "accepted") return;
+      const deliveryMetadata = JSON.stringify({
+        providerResponseId: responseId,
+        mailgunDeliveryStatus: delivery.status,
+        mailgunDeliveryError: delivery.error,
+        mailgunRegion: providerRegion,
+      });
+      if (deliveryStatus === "accepted") {
+        await db.update(emailAlertEvents)
+          .set({ providerResponseId: responseId, metadata: deliveryMetadata } as any)
+          .where(eq(emailAlertEvents.id, auditEventId));
+        return;
+      }
 
       const now = new Date();
       const updates: any = {
         deliveryStatus,
         providerResponseId: responseId,
-        metadata: JSON.stringify({
-          providerResponseId: responseId,
-          mailgunDeliveryStatus: delivery.status,
-          mailgunDeliveryError: delivery.error,
-        }),
+        nextAttemptAt: null,
+        failedAt: null,
+        error: delivery.error || null,
+        metadata: deliveryMetadata,
       };
       if (deliveryStatus === "delivered") {
         updates.deliveredAt = now;
@@ -506,6 +517,7 @@ class EmailService {
           providerResponseId: responseId,
           mailgunDeliveryStatus: delivery.status,
           mailgunDeliveryError: delivery.error,
+          mailgunRegion: providerRegion,
           retryExhausted: retryState.retryExhausted,
           nextAttemptAt: retryState.nextAttemptAt?.toISOString(),
         });
@@ -527,6 +539,7 @@ class EmailService {
     error?: string;
     providerResponseId?: string;
     deliveryStatus?: unknown;
+    providerRegion?: string;
   }): Promise<void> {
     try {
       if (!db) return;
@@ -548,6 +561,7 @@ class EmailService {
         providerResponseId: args.providerResponseId,
         retryExhausted: retryState?.retryExhausted,
         nextAttemptAt: retryState?.nextAttemptAt?.toISOString(),
+        mailgunRegion: args.providerRegion,
       });
       const auditValues = {
         kind: ctx?.kind || 'generic',
@@ -564,10 +578,10 @@ class EmailService {
         providerResponseId: auditState.providerResponseId,
         attemptCount: auditState.attemptCount,
         lastAttemptAt: auditState.lastAttemptAt,
-        nextAttemptAt: retryState ? (retryState.nextAttemptAt || null) : auditState.nextAttemptAt,
+        nextAttemptAt: retryState ? (retryState.nextAttemptAt || null) : (args.success ? null : auditState.nextAttemptAt),
         deliveredAt: auditState.deliveredAt,
-        failedAt: retryState ? (retryState.failedAt || null) : auditState.failedAt,
-        error: args.error,
+        failedAt: retryState ? (retryState.failedAt || null) : (args.success ? null : auditState.failedAt),
+        error: args.success ? null : args.error,
         metadata,
       };
 

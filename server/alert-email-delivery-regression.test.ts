@@ -97,12 +97,16 @@ describe("alert email delivery status regression guard", () => {
     const reportScheduler = source("server/report-scheduler.ts");
 
     expect(emailService).toContain('deliveryStatus: result.success ? "accepted" : undefined,');
-    expect(emailService).toContain("void this.confirmMailgunAlertDelivery(options.auditContext, result.id);");
+    expect(emailService).toContain("void this.confirmMailgunAlertDelivery(options.auditContext, result.id, result.region);");
     expect(emailService).toContain('if (ctx?.kind !== "alert" || !auditEventId || !responseId) return;');
     expect(emailService).toContain("mapMailgunDeliveryToAlertEmailStatus(delivery.status)");
-    expect(emailService).toContain('if (deliveryStatus === "accepted") return;');
+    expect(emailService).toContain('const delivery = await waitForMailgunDelivery(responseId, providerRegion ? { region: providerRegion } : {});');
+    expect(emailService).toContain('mailgunRegion: providerRegion');
+    expect(emailService).toContain('.set({ providerResponseId: responseId, metadata: deliveryMetadata } as any)');
+    expect(emailService).toContain('nextAttemptAt: null');
+    expect(emailService).toContain('error: args.success ? null : args.error');
     expect(emailService).not.toMatch(/alert email delivered/i);
-    expect(reportScheduler).toContain('import { waitForMailgunDelivery } from "./utils/mailgun-delivery";');
+    expect(reportScheduler).toContain("waitForMailgunDelivery");
     expect(reportScheduler).toContain("Mailgun accepted the email, but delivery was not confirmed yet");
   });
 });

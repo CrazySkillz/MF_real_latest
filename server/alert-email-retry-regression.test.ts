@@ -61,7 +61,9 @@ describe("alert email retry regression guard", () => {
     expect(auditLogging).toContain('ctx?.kind === "alert" && !args.success');
     expect(auditLogging).toContain("buildAlertEmailRetryState({ attemptCount: auditState.attemptCount })");
     expect(auditLogging).toContain("deliveryStatus: retryState?.deliveryStatus || auditState.deliveryStatus,");
-    expect(auditLogging).toContain("nextAttemptAt: retryState ? (retryState.nextAttemptAt || null) : auditState.nextAttemptAt,");
+    expect(auditLogging).toContain("failedAt: retryState ? (retryState.failedAt || null) : (args.success ? null : auditState.failedAt),");
+    expect(auditLogging).toContain("error: args.success ? null : args.error,");
+    expect(auditLogging).toContain("nextAttemptAt: retryState ? (retryState.nextAttemptAt || null) : (args.success ? null : auditState.nextAttemptAt),");
   });
 
   it("processes due retries through the same audit row and dedupe key", () => {

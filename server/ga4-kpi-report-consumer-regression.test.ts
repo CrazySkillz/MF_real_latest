@@ -14,7 +14,11 @@ describe("GA4 KPI report consumer regression guards", () => {
     expect(preflight).toContain('toLowerCase() !== "google_analytics"');
     expect(preflight).toContain("runGA4DailyKPIAndBenchmarkJobs({ campaignId, ...(date ? { date } : {}), ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) })");
     expect(preflight).toContain("campaignsProcessed");
+    expect(preflight).toContain("reportIncludesGA4BenchmarkSection(report)");
+    expect(preflight).toContain('storage.getPlatformBenchmarks("google_analytics", campaignId)');
+    expect(preflight).toContain("benchmarkIdsUpdated");
     expect(preflight).toContain("GA4 KPI/Benchmark recompute skipped target campaign");
+    expect(preflight).toContain("GA4 Benchmark recompute skipped selected Benchmark rows");
     expect(sendGuard).toContain("preflightGA4ReportKPIConsumers(report, windowEnd)");
     expect(sendGuard).toContain('status: "failed"');
     expect(sendGuard).toContain("skipped scheduled report");

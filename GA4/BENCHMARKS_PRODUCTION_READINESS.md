@@ -37,8 +37,9 @@ Certification result:
 - current deployed Commit 2 evidence: Render validation on June 30, 2026 for campaign 8aa735ee-c02f-41e2-bb1f-7c3f43bb9458, property 542352127, and requested provider window 2026-06-19 through 2026-06-29 returned provider.status = live_provider_error with 401 UNAUTHENTICATED; the same response showed stored Benchmark Revenue 12376.38 versus requested-window candidate 21922.96
 - current Commit 3 deployed validation: Commit 3 deployed validation passed with `provider.status = live_provider_success` and non-null provider totals for the same campaign/property/filter/requested window; revoked-token failure simulation remains unproven
 - current Commit 4 deployed validation: validation-window alignment is implemented, pushed, deployed, and revalidated; `sourceWindows.currentValue` is `2026-06-24` through `2026-06-29`, `currentValueProvider.totals` is non-null, stored Benchmark Revenue `12376.38` equals `schedulerCandidateCurrentValue` `12376.38`, and `storedVsSchedulerDelta = 0`; the `storedVsUiDelta = 0.01` is a one-cent provider-versus-persisted rounding difference, not proven Benchmark damage
-- outstanding production-readiness queue: Current Commit 4 follow-up deployed scheduler/report-preflight proof plus Current Commits 5-7 below must be completed before full unqualified production readiness can be claimed
-- not fully proven: live GA4 provider accuracy beyond the controlled validation endpoint, revoked-token failure handling, GA4 processing latency, provider-confirmed Benchmark alert email delivery, actual inbox receipt, deployed scheduler/report-preflight behavior, browser/deployed UI validation after this document update, and mock industry target-source suitability
+- current Commit 4 Follow-Up local fix: scheduler/report-preflight guards now track updated Benchmark row IDs, fail closed for Benchmark-section reports whose selected rows were not recomputed, and prevent duplicate Benchmark history rows for the same Benchmark/date even when an older report date is reprocessed after newer history exists
+- outstanding production-readiness queue: deployed scheduler/report-preflight observation plus Current Commits 5-7 below must be completed before full unqualified production readiness can be claimed
+- not fully proven: live GA4 provider accuracy beyond the controlled validation endpoint, revoked-token failure handling, GA4 processing latency, deployed scheduler/report-preflight observation, provider-confirmed Benchmark alert email delivery, actual inbox receipt, browser/deployed UI validation after this update, and mock industry target-source suitability
 
 The current safe answer is:
 
@@ -343,8 +344,8 @@ Current rerun result after Current Commit 3 local implementation: 18 test files 
 | Notification visibility | `server/notification-visibility-regression.test.ts` | stale/orphan/cross-campaign/non-breaching notifications fail closed; GA4 deep links and no-store freshness | Browser notification UI not rerun after this doc-only update |
 | Immediate email route behavior | `server/alert-email-regression.test.ts`, `server/alert-email-immediate-route-regression.test.ts` | immediate Benchmark email attempts, audit semantics, no false delivery claims in local code | Provider-confirmed delivery and inbox receipt external |
 | Email idempotency/retry/scheduler | `server/alert-email-idempotency-regression.test.ts`, `server/alert-email-scheduler-regression.test.ts`, `server/alert-email-delivery-regression.test.ts`, `server/alert-email-retry-regression.test.ts` | dedupe, retry, scheduler email audit behavior, provider acceptance handling | Provider event/inbox confirmation external |
-| Report consumers | `server/ga4-kpi-report-consumer-regression.test.ts` plus report route trace | GA4 report consumers can read preflight-recomputed platform Benchmark values | KPI report test name does not convert KPI evidence into Benchmark evidence; only Benchmark assertions in that test count |
-| Auto-refresh and scheduler recompute | `server/ga4-auto-refresh-regression.test.ts`, `server/campaign-scheduler-current-value-regression.test.ts` | GA4 refresh/scheduler paths run Benchmark recompute before alert/report consumers where covered | Deployed scheduler runtime external |
+| Report consumers | `server/ga4-kpi-report-consumer-regression.test.ts` plus report route trace | GA4 scheduled/test/manual snapshot/direct PDF paths run GA4 preflight before report output; Benchmark-section reports require selected Benchmark rows to be recomputed before PDF/snapshot/email continues | Deployed report execution remains external |
+| Auto-refresh and scheduler recompute | `server/ga4-auto-refresh-regression.test.ts`, `server/campaign-scheduler-current-value-regression.test.ts`, `server/ga4-kpi-financial-window-regression.test.ts` | GA4 refresh/scheduler paths run Benchmark recompute before alert/report consumers where covered; scheduler updates Benchmark current values and does not insert duplicate same-date Benchmark history when older report dates are reprocessed | Deployed scheduler runtime external |
 | Source lifecycle recompute | `server/ga4-source-lifecycle-recompute-regression.test.ts` | revenue/spend source changes recompute GA4 Benchmark current values before covered alert checks | Live source-provider correctness external |
 | Existing damaged-data cleanup | dry-run/apply/post-apply cleanup evidence recorded in this file | known persisted ROAS percent-style rows corrected only inside proven boundary; 0 remaining candidates after apply | Skipped rows remain intentionally unmodified because exact boundary was unproven |
 | Deployed/UI validation | Commits 1-6 recorded as committed, pushed, deployed, and UI-validated | current visible GA4 Benchmark ROAS/property-scope fixes were observed in deployed UI | Not rerun after this doc-only rewrite; no runtime behavior changed |
@@ -550,31 +551,38 @@ Implemented, pushed, deployed, and revalidated for validation-window alignment. 
 
 Root cause:
 
-The validation-window fix proves the controlled endpoint compares stored Benchmark current values against the correct scheduler/current-value window. It does not prove that the deployed GA4 daily scheduler actually runs on schedule, selects eligible campaigns, updates Benchmark current values/history in production, or that report preflight recomputes and fails closed before scheduled/server report artifacts are generated.
+The validation-window fix proved the controlled endpoint compared stored Benchmark current values against the correct scheduler/current-value window, but the scheduler/report proof was still too broad in two places:
+
+- `runGA4DailyKPIAndBenchmarkJobs` returned only `benchmarksRecorded`, which counts newly inserted history rows, not Benchmark rows whose `currentValue` was actually refreshed. Report preflight could therefore prove only that the campaign was processed, not that Benchmark-section rows selected for report output were recomputed.
+- Benchmark history de-duplication checked only the latest history row. If an older report date was reprocessed after newer history existed, the job could insert another history row for the same Benchmark/date.
 
 Files expected:
 
-- no production runtime file is expected unless validation exposes a bug
+- `server/ga4-kpi-benchmark-jobs.ts`
+- `server/report-scheduler.ts`
+- `server/ga4-kpi-financial-window-regression.test.ts`
+- `server/ga4-kpi-report-consumer-regression.test.ts`
+- this file, to record exact scheduler/report-preflight evidence
 - optional scheduler/deployment validation artifact if the project keeps one
-- this file, to record exact deployed scheduler and report-preflight evidence
 
 Required behavior:
 
 - The deployed GA4 daily scheduler must run `runGA4DailyKPIAndBenchmarkJobs` for eligible campaigns and update only the intended campaign/property-scoped GA4 Benchmark rows.
-- Scheduler and report preflight must fail closed when the campaign, property, or source context cannot be verified.
+- `runGA4DailyKPIAndBenchmarkJobs` must expose which Benchmark row IDs were updated so report preflight can verify Benchmark-section rows instead of accepting only `campaignsProcessed > 0`.
+- Scheduler and report preflight must fail closed when the campaign, property, source context, or selected Benchmark recompute cannot be verified.
 - Scheduled/server report outputs must use successfully recomputed Benchmark rows or skip/fail without creating misleading sent/downloadable output.
-- Duplicate processing must not produce duplicate Benchmark history rows for the same benchmark/date.
+- Duplicate processing must not produce duplicate Benchmark history rows for the same Benchmark/date, including reprocessing an older date after newer history exists.
 
 Validation:
 
-- Capture deployed scheduler logs or observable persisted Benchmark current/history rows for a controlled campaign/date.
-- Verify report preflight behavior for a GA4 report with Benchmark sections selected.
-- Verify a missing campaign/property/source path fails closed and does not update unrelated Benchmark rows.
-- Re-run focused scheduler/report Benchmark tests after any runtime code change.
+- Local focused validation: `npm test -- server/ga4-kpi-financial-window-regression.test.ts server/ga4-kpi-custom-preservation-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-benchmark-regression.test.ts server/ga4-auto-refresh-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts server/ga4-benchmark-provider-validation-regression.test.ts` passed on June 30, 2026: 8 files, 35 tests. `npm run check` also passed.
+- The scheduler regression proves Benchmark `currentValue` updates are counted in `benchmarksUpdated`/`benchmarkIdsUpdated` and same-date history is not reinserted when the target date is not the latest history row.
+- The report-preflight regression proves GA4 Benchmark-section reports inspect selected Benchmark rows, require `benchmarkIdsUpdated`, and fail closed with `GA4 Benchmark recompute skipped selected Benchmark rows` before scheduled/test/manual/direct report output continues.
+- Deployed follow-up still required: capture Render scheduler logs or observable persisted Benchmark current/history rows for a controlled campaign/date, then verify report preflight behavior for a GA4 report with Benchmark sections selected.
 
 Implementation status:
 
-Not implemented. Blocking for full unqualified GA4 Benchmark scheduler/report production readiness. Not required for the narrower local current-code certification or for the completed validation-window fix.
+Implemented and locally validated for the scheduler/report-preflight code path. This closes the local code defect where report preflight accepted campaign-level processing without proving selected Benchmark rows were recomputed, and it closes the same-Benchmark/same-date duplicate history risk for reprocessed older dates. Deployed scheduler execution and deployed report-preflight observation remain unproven external evidence, so full unqualified GA4 Benchmark production readiness remains blocked until that deployed evidence is captured and recorded.
 
 ### Current Commit 5 - Prove Benchmark Alert Email Provider Delivery And Inbox Receipt
 

@@ -221,6 +221,8 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
   let processed = 0;
   let kpisRecorded = 0;
   let benchmarksRecorded = 0;
+  let benchmarksUpdated = 0;
+  const benchmarkIdsUpdated: string[] = [];
 
   for (const campaign of campaigns) {
     const campaignId = String((campaign as any)?.id || "");
@@ -441,12 +443,14 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
         // even if we skip writing another history point for the same date.
         try {
           await benchmarkStorage.updateBenchmark(benchmarkId, { currentValue: String(round2(currentValue)) } as any);
+          benchmarksUpdated += 1;
+          benchmarkIdsUpdated.push(benchmarkId);
         } catch (_) { /* best-effort */ }
 
         const history = await benchmarkStorage.getBenchmarkHistory(benchmarkId).catch(() => []);
         const hist = Array.isArray(history) ? history : [];
-        const last = hist.length > 0 ? hist[hist.length - 1] : null; // history is ordered asc in DB
-        if (last && isoDateUTC(new Date((last as any)?.recordedAt || 0)) === date) continue;
+        const already = hist.some((h: any) => isoDateUTC(new Date((h as any)?.recordedAt || 0)) === date);
+        if (already) continue;
 
         const benchmarkValue = Number((b as any)?.benchmarkValue || 0) || 0;
         const variance = computeBenchmarkVariance(metricKey, currentValue, benchmarkValue);
@@ -487,7 +491,7 @@ export async function runGA4DailyKPIAndBenchmarkJobs(opts?: { campaignId?: strin
     }
   }
 
-  return { date, campaignsProcessed: processed, kpisRecorded, benchmarksRecorded };
+  return { date, campaignsProcessed: processed, kpisRecorded, benchmarksRecorded, benchmarksUpdated, benchmarkIdsUpdated };
 }
 
 

@@ -118,4 +118,25 @@ describe("GA4 KPI persisted financial source window", () => {
     expect(storageMock.updateKPI).toHaveBeenCalledWith("kpi-cpa", { currentValue: "20" });
     expect(checkPerformanceAlertsMock).toHaveBeenCalledTimes(1);
   });
+
+  it("updates Benchmark current values and skips same-date history even when the target date is not latest", async () => {
+    storageMock.getPlatformKPIs.mockResolvedValue([]);
+    storageMock.getPlatformBenchmarks.mockResolvedValue([
+      { id: "benchmark-revenue", metric: "Revenue", benchmarkValue: "2000" },
+    ]);
+    storageMock.getBenchmarkHistory.mockResolvedValue([
+      { recordedAt: new Date("2026-06-27T23:59:59.000Z"), currentValue: "1300" },
+      { recordedAt: new Date("2026-06-28T23:59:59.000Z"), currentValue: "1400" },
+    ]);
+
+    const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId: "campaign-1", date: "2026-06-27" });
+
+    expect(storageMock.updateBenchmark).toHaveBeenCalledWith("benchmark-revenue", { currentValue: "1300" });
+    expect(storageMock.recordBenchmarkHistory).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      benchmarksUpdated: 1,
+      benchmarksRecorded: 0,
+      benchmarkIdsUpdated: ["benchmark-revenue"],
+    });
+  });
 });

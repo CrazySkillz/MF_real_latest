@@ -231,14 +231,50 @@ function sourceBackedReportOutputUnavailableMessage(platformType: any): string {
   return `${label} source-backed PDF output unavailable`;
 }
 
+function reportIncludesGA4BenchmarkSection(report: any): boolean {
+  const reportType = String((report as any)?.reportType || "overview").trim().toLowerCase();
+  if (reportType === "benchmarks") return true;
+  if (reportType !== "custom") return false;
+  const cfg = parseReportConfiguration((report as any)?.configuration);
+  const selectedBenchmarkIds = [
+    ...(Array.isArray(cfg?.selectedBenchmarkIds) ? cfg.selectedBenchmarkIds : []),
+    ...(Array.isArray(cfg?.benchmarks) ? cfg.benchmarks : []),
+  ].map((id: any) => String(id || "").trim()).filter(Boolean);
+  return Boolean(cfg?.sections?.benchmarks || cfg?.subsections?.benchmarks?.items || selectedBenchmarkIds.length > 0);
+}
+
+function getGA4ReportSelectedBenchmarkIds(report: any): Set<string> {
+  const cfg = parseReportConfiguration((report as any)?.configuration);
+  return new Set([
+    ...(Array.isArray(cfg?.selectedBenchmarkIds) ? cfg.selectedBenchmarkIds : []),
+    ...(Array.isArray(cfg?.benchmarks) ? cfg.benchmarks : []),
+  ].map((id: any) => String(id || "").trim()).filter(Boolean));
+}
+
 export async function preflightGA4ReportKPIConsumers(report: any, date?: string, opts?: { suppressAlerts?: boolean }): Promise<{ ok: boolean; error?: string }> {
   if (String((report as any)?.platformType || "").trim().toLowerCase() !== "google_analytics") return { ok: true };
   const campaignId = String((report as any)?.campaignId || "").trim();
   if (!campaignId) return { ok: false, error: "GA4 report campaign is missing" };
   try {
+    let requiredBenchmarkIds = new Set<string>();
+    if (reportIncludesGA4BenchmarkSection(report)) {
+      const selectedBenchmarkIds = getGA4ReportSelectedBenchmarkIds(report);
+      const reportBenchmarks = await storage.getPlatformBenchmarks("google_analytics", campaignId);
+      requiredBenchmarkIds = new Set((Array.isArray(reportBenchmarks) ? reportBenchmarks : [])
+        .filter((row: any) => selectedBenchmarkIds.size === 0 || selectedBenchmarkIds.has(String(row?.id || "")))
+        .filter((row: any) => String(row?.metric || "").trim())
+        .map((row: any) => String(row?.id || "").trim())
+        .filter(Boolean));
+    }
+
     const result = await runGA4DailyKPIAndBenchmarkJobs({ campaignId, ...(date ? { date } : {}), ...(opts?.suppressAlerts ? { suppressAlerts: true } : {}) });
     if (Number((result as any)?.campaignsProcessed || 0) <= 0) {
       return { ok: false, error: "GA4 KPI/Benchmark recompute skipped target campaign" };
+    }
+    if (requiredBenchmarkIds.size > 0) {
+      const updatedBenchmarkIds = new Set((Array.isArray((result as any)?.benchmarkIdsUpdated) ? (result as any).benchmarkIdsUpdated : []).map((id: any) => String(id || "").trim()).filter(Boolean));
+      const missing = Array.from(requiredBenchmarkIds).filter((id) => !updatedBenchmarkIds.has(id));
+      if (missing.length > 0) return { ok: false, error: "GA4 Benchmark recompute skipped selected Benchmark rows" };
     }
     return { ok: true };
   } catch (e: any) {

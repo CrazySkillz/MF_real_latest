@@ -23,7 +23,7 @@ Full, unqualified GA4 Benchmark production readiness is **not clean-certified ye
 Status split:
 
 - local current-code GA4 Benchmark tab certification: passed for the traced UI/API/storage/scheduler/alert/notification/report paths covered by this document and the focused Benchmark tests
-- full unqualified production readiness: not certified yet because provider, deployed scheduler, deployed token-refresh, provider/inbox email delivery, browser/deployed UI evidence, and mock industry target-source status remain unproven
+- full unqualified production readiness: not certified yet because broader provider accuracy, deployed scheduler, deployed token-refresh failure simulation, browser/deployed UI evidence, and mock industry target-source status remain unproven
 - future platform readiness: unproven; GA4 Benchmark evidence is only a template for Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source
 
 Certification result:
@@ -40,13 +40,13 @@ Certification result:
 - current Commit 4 Follow-Up local fix: scheduler/report-preflight guards now track updated Benchmark row IDs, fail closed for Benchmark-section reports whose selected rows were not recomputed, and prevent duplicate Benchmark history rows for the same Benchmark/date even when an older report date is reprocessed after newer history exists
 - current Commit 4 Follow-Up deployed report-preflight validation: Render validation on June 30, 2026 for Benchmark `989de4b3-e1e9-4891-8094-a010bcd59c43` and GA4 Benchmark report `eae94163-5608-4590-8dcd-7d927ba6b421` returned manual snapshot `200`, created snapshot `a5713490-f9b1-4548-9660-cbde32e372d5`, changed Benchmark `updatedAt` from `2026-06-30T12:16:31.780Z` to `2026-06-30T18:11:34.767Z`, kept `currentValue = 12376.38`, and kept Benchmark history count `5 -> 5`
 - current Commit 4 Follow-Up scheduler-log search: Render log search returned no matching `[GA4 Daily] Pipeline starting`, `[GA4 Daily] Refresh done`, or `[GA4 Daily] Pipeline done` lines, so deployed daily scheduler timer proof remains unproven
-- current Commit 5 local validation-support update: a read-only Benchmark alert email delivery validation endpoint is implemented locally with regression coverage; provider-confirmed delivery and actual inbox receipt remain unproven until deployed endpoint output and inbox evidence are captured
-- outstanding production-readiness queue: deployed daily scheduler timer/scheduled-send observation, deployed Commit 5 provider/inbox evidence, and Current Commits 6-7 below must be completed before full unqualified production readiness can be claimed
-- not fully proven: live GA4 provider accuracy beyond the controlled validation endpoint, revoked-token failure handling, GA4 processing latency, deployed daily scheduler timer and scheduled-send observation, provider-confirmed Benchmark alert email delivery, actual inbox receipt, browser/deployed UI validation after this update, and mock industry target-source suitability
+- current Commit 5 deployed validation: read-only Benchmark alert email delivery validation support is implemented, pushed, deployed, and user-confirmed as passed, including inbox receipt; exact endpoint JSON, provider response ID, delivered timestamp, recipient, and subject were not pasted into this chat, so this file records user-confirmed external validation rather than locally inspected raw evidence
+- outstanding production-readiness queue: deployed daily scheduler timer/scheduled-send observation and Current Commits 6-7 below must be completed before full unqualified production readiness can be claimed
+- not fully proven: live GA4 provider accuracy beyond the controlled validation endpoint, revoked-token failure handling, GA4 processing latency, deployed daily scheduler timer and scheduled-send observation, browser/deployed UI validation after this update, and mock industry target-source suitability
 
 The current safe answer is:
 
-`GA4 Benchmarks are locally code-certified for the current GA4 Benchmarks tab path. Full unqualified production readiness is not clean-certified yet because the Current Commit queue still contains provider/deployed/browser/email/industry-source proof work.`
+`GA4 Benchmarks are locally code-certified for the current GA4 Benchmarks tab path. Full unqualified production readiness is not clean-certified yet because the Current Commit queue still contains provider/deployed/browser/industry-source proof work.`
 
 This status should change only after:
 
@@ -69,7 +69,7 @@ In a new chat session or on a later date, absent later GA4 Benchmark code change
 
 Do not reopen closed local-code GA4 Benchmark blockers solely because time has passed. Reopen only when a changed implementation, new value path, failed validation, or new bug affects the certified local Benchmark scope.
 
-Do not claim full production readiness, provider delivery, deployed scheduler safety, deployed token-refresh safety, live provider accuracy, browser/deployed UI proof, or future-platform readiness until the relevant Current Commit evidence exists.
+Do not claim full production readiness, deployed scheduler safety, deployed token-refresh failure safety, broad live provider accuracy, browser/deployed UI proof, or future-platform readiness until the relevant Current Commit evidence exists. Benchmark alert email provider/inbox validation is user-confirmed complete for the controlled Commit 5 send only; future sends still require their own audit/inbox evidence before delivery is claimed.
 
 This certification method is reusable as the Benchmark refinement and validation template for Meta, Google Ads, LinkedIn, Google Sheets, Custom Integration, or another source. It is never proof that those sources are production-ready.
 ## How To Use This File In A New Chat
@@ -347,9 +347,9 @@ Current Commit 5 focused validation on June 30, 2026: `npm test -- server/benchm
 | Route isolation/access | `server/benchmark-route-isolation-regression.test.ts` | campaign/platform route isolation, guarded access, and platform create alias alert reconciliation ordering | Alias timing covered locally; provider/deployed evidence remains separate |
 | Commit 2/3/4 provider validation support | `server/ga4-benchmark-provider-validation-regression.test.ts` plus deployed endpoint evidence | campaign-scoped validation route reads requested provider, scheduler/current-value provider, persisted daily, financial, and Benchmark inputs; compares stored Benchmark current values to scheduler/current-value-window candidates; does not mutate Benchmark rows, history, sources, alerts, notifications, or reports; token metadata may refresh only after provider auth failure | Controlled deployed validation now passes for provider auth and validation-window alignment; revoked-token failure simulation, broad provider availability, scheduler runtime, and UI remain external |
 | Notification visibility | `server/notification-visibility-regression.test.ts` | stale/orphan/cross-campaign/non-breaching notifications fail closed; GA4 deep links and no-store freshness | Browser notification UI not rerun after this doc-only update |
-| Immediate email route behavior | `server/alert-email-regression.test.ts`, `server/alert-email-immediate-route-regression.test.ts` | immediate Benchmark email attempts, audit semantics, no false delivery claims in local code | Provider-confirmed delivery and inbox receipt external |
-| Benchmark alert email delivery validation endpoint | `server/benchmark-alert-email-delivery-validation-regression.test.ts` | read-only Benchmark-scoped audit evidence endpoint is access-guarded, filters exact Benchmark alert email rows, exposes provider response/delivery status, and does not send or mutate email records | Deployed provider event and inbox confirmation external |
-| Email idempotency/retry/scheduler | `server/alert-email-idempotency-regression.test.ts`, `server/alert-email-scheduler-regression.test.ts`, `server/alert-email-delivery-regression.test.ts`, `server/alert-email-retry-regression.test.ts` | dedupe, retry, scheduler email audit behavior, provider acceptance handling | Provider event/inbox confirmation external |
+| Immediate email route behavior | `server/alert-email-regression.test.ts`, `server/alert-email-immediate-route-regression.test.ts` | immediate Benchmark email attempts, audit semantics, no false delivery claims in local code | Future sends still need per-send provider/inbox evidence before delivery is claimed |
+| Benchmark alert email delivery validation endpoint | `server/benchmark-alert-email-delivery-validation-regression.test.ts` plus user-confirmed deployed validation | read-only Benchmark-scoped audit evidence endpoint is access-guarded, filters exact Benchmark alert email rows, exposes provider response/delivery status, and does not send or mutate email records; controlled deployed provider/inbox validation passed by user confirmation | Exact raw endpoint JSON and inbox metadata were not pasted into this chat |
+| Email idempotency/retry/scheduler | `server/alert-email-idempotency-regression.test.ts`, `server/alert-email-scheduler-regression.test.ts`, `server/alert-email-delivery-regression.test.ts`, `server/alert-email-retry-regression.test.ts` | dedupe, retry, scheduler email audit behavior, provider acceptance handling | Future provider event/inbox confirmation remains per-send evidence, not a blanket guarantee |
 | Report consumers | `server/ga4-kpi-report-consumer-regression.test.ts` plus report route trace | GA4 scheduled/test/manual snapshot/direct PDF paths run GA4 preflight before report output; Benchmark-section reports require selected Benchmark rows to be recomputed before PDF/snapshot/email continues | Deployed report execution remains external |
 | Auto-refresh and scheduler recompute | `server/ga4-auto-refresh-regression.test.ts`, `server/campaign-scheduler-current-value-regression.test.ts`, `server/ga4-kpi-financial-window-regression.test.ts` | GA4 refresh/scheduler paths run Benchmark recompute before alert/report consumers where covered; scheduler updates Benchmark current values and does not insert duplicate same-date Benchmark history when older report dates are reprocessed | Deployed scheduler runtime external |
 | Source lifecycle recompute | `server/ga4-source-lifecycle-recompute-regression.test.ts` | revenue/spend source changes recompute GA4 Benchmark current values before covered alert checks | Live source-provider correctness external |
@@ -627,7 +627,7 @@ Validation:
 
 Implementation status:
 
-Partially implemented for validation support. The local code now exposes a read-only Benchmark-scoped alert email delivery validation endpoint and regression coverage proving it is access-guarded, audit-only, filtered to the exact Benchmark alert email rows, and does not mutate or send email. Provider-confirmed delivery and actual inbox receipt remain unproven until deployed endpoint output and inbox evidence are captured and recorded. This remains blocking for full unqualified GA4 Benchmark email-delivery readiness and any claim that Benchmark alert emails are delivered.
+Complete for the controlled Current Commit 5 validation. The local code exposes a read-only Benchmark-scoped alert email delivery validation endpoint and regression coverage proving it is access-guarded, audit-only, filtered to the exact Benchmark alert email rows, and does not mutate or send email. The deployed validation and inbox receipt were user-confirmed as passed on June 30, 2026. Exact endpoint JSON, provider response ID, delivered timestamp, recipient, subject, and received time were not pasted into this chat, so future audits should treat those raw details as externally confirmed but not locally visible in this transcript. This closes Current Commit 5 for the controlled GA4 Benchmark alert email proof, but it is not a blanket guarantee that every future Benchmark alert email is delivered; each future delivery claim still requires provider/inbox evidence.
 
 ### Current Commit 6 - Browser And Deployed UI Validation For The GA4 Benchmarks Tab
 
@@ -723,8 +723,6 @@ The items below are unproven until their Current Commit evidence exists. They ar
 | GA4 processing latency / delayed attribution behavior | Current Commit 2 | No | Yes |
 | Deployed OAuth token refresh and tenant-specific provider failures | Current Commit 3 | No | Yes |
 | Deployed daily scheduler timer and scheduled-send runtime observation | Current Commit 4 Follow-Up | No | Yes |
-| Provider-confirmed Benchmark alert email delivery | Current Commit 5 | No for local attempt/audit behavior | Yes for email-delivery readiness |
-| Actual Benchmark alert email inbox receipt | Current Commit 5 | No | Yes for inbox-delivery claims |
 | Browser/deployed GA4 Benchmarks tab validation | Current Commit 6 | No | Yes for user-facing production readiness |
 | Mock/industry Benchmark target source suitability | Current Commit 7 | No for user-entered targets | Yes if industry targets are part of the certified product surface |
 | Future source mixes or new financial source types | New future Current Commit when introduced | Yes for changed/new path | Yes for changed/new path |
@@ -733,7 +731,8 @@ The items below are unproven until their Current Commit evidence exists. They ar
 Provider/email wording rule:
 
 - It is acceptable to say local code attempts and audits Benchmark alert emails correctly for covered paths.
-- It is not acceptable to say a Benchmark alert email was delivered unless provider delivery events or actual inbox receipt prove delivery.
+- It is acceptable to say Current Commit 5 passed for the controlled deployed Benchmark alert email send based on user-confirmed endpoint/inbox validation.
+- It is not acceptable to say any future Benchmark alert email was delivered unless provider delivery events or actual inbox receipt prove that specific send.
 
 Production-readiness wording rule:
 

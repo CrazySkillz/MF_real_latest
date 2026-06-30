@@ -31,9 +31,11 @@ Certification result:
 - completed historical local fixes: persisted GA4 Benchmark ROAS ratio semantics, GA4 primary-property campaign scoping, selected-property UI alignment after `Set as Primary`, ROAS copy correction, shared evaluated Benchmark route access hardening, and bounded persisted ROAS cleanup
 - completed target cleanup evidence: pre-apply dry-run found 46 repair candidates and 56 skipped campaign-level reasons; apply updated 46 persisted ROAS rows; post-apply dry-run found 0 remaining repair candidates
 - completed local Benchmark evidence: the June 29, 2026 focused Benchmark validation run passed 17 test files and 136 tests covering Benchmark math, current values, route isolation, alert lifecycle, notifications, email audit/idempotency/retry semantics, report consumers, auto-refresh, source lifecycle recompute, and scheduler current-value reconciliation
-- current strict revalidation evidence: the June 30, 2026 focused Benchmark validation run passed the same 17 test files and 136 tests after re-tracing the current UI/API/storage/scheduler/alert/notification/report paths
+- current strict revalidation evidence: the June 30, 2026 focused Benchmark validation run passed 18 test files and 139 tests, including the Commit 3 provider-validation token-refresh guard, after re-tracing the current UI/API/storage/scheduler/alert/notification/report paths
 - current documentation update: Current Commit 0 rewrites this file into the strict KPI-style certification structure without changing runtime behavior
-- current validation-support update: Current Commit 2 adds a read-only GA4 Benchmark provider validation endpoint and regression coverage; live provider evidence has not been captured locally
+- current validation-support update: Current Commit 2 adds a GA4 Benchmark provider validation endpoint and regression coverage; deployed validation found live provider/token freshness and stored-current mismatch blockers
+- current deployed Commit 2 evidence: Render validation on June 30, 2026 for campaign 8aa735ee-c02f-41e2-bb1f-7c3f43bb9458, property 542352127, and 2026-06-19 through 2026-06-29 returned provider.status = live_provider_error with 401 UNAUTHENTICATED; the same response showed stored Benchmark Revenue 12376.38 versus recalculated candidate 21922.96 (storedVsSchedulerDelta = 9546.58)
+- current Commit 3 local fix: the validation endpoint now refreshes and persists GA4 OAuth token metadata only after provider auth failure, then retries the same campaign/property/filter/date window; deployed validation is still pending
 - outstanding production-readiness queue: Current Commit 2 live evidence plus Current Commits 3-7 below must be completed before full unqualified production readiness can be claimed
 - not proven: live GA4 provider accuracy, deployed OAuth/token refresh, GA4 processing latency, provider-confirmed Benchmark alert email delivery, actual inbox receipt, deployed scheduler behavior after this document update, browser/deployed UI validation after this document update, and mock industry target-source suitability
 
@@ -326,7 +328,7 @@ Focused validation recorded June 29, 2026 and rerun June 30, 2026 during strict 
 
 `npm test -- server/benchmark-math.test.ts server/ga4-benchmark-regression.test.ts server/ga4-kpi-benchmark-roas-regression.test.ts server/ga4-kpi-benchmark-summary-regression.test.ts server/benchmark-alert-lifecycle-regression.test.ts server/benchmark-route-isolation-regression.test.ts server/notification-visibility-regression.test.ts server/alert-email-regression.test.ts server/alert-email-immediate-route-regression.test.ts server/alert-email-idempotency-regression.test.ts server/alert-email-scheduler-regression.test.ts server/alert-email-delivery-regression.test.ts server/alert-email-retry-regression.test.ts server/ga4-kpi-report-consumer-regression.test.ts server/ga4-auto-refresh-regression.test.ts server/ga4-source-lifecycle-recompute-regression.test.ts server/campaign-scheduler-current-value-regression.test.ts`
 
-Current rerun result: 17 test files passed, 136 tests passed.
+Current rerun result after Current Commit 3 local implementation: 18 test files passed, 139 tests passed. `npm run check` also passed.
 
 | Coverage area | Test / validation source | What it proves for Benchmarks | Remaining gap |
 | --- | --- | --- | --- |
@@ -336,7 +338,7 @@ Current rerun result: 17 test files passed, 136 tests passed.
 | Benchmark summary/tracker | `server/ga4-kpi-benchmark-summary-regression.test.ts` | tracker counts and averages exclude blocked/insufficient rows | Does not prove future UI redesigns |
 | Alert lifecycle | `server/benchmark-alert-lifecycle-regression.test.ts` | one active alert, stale resolution, deletion/disable behavior, dismissed still-breached recreation | Provider email delivery remains external |
 | Route isolation/access | `server/benchmark-route-isolation-regression.test.ts` | campaign/platform route isolation, guarded access, and platform create alias alert reconciliation ordering | Alias timing covered locally; provider/deployed evidence remains separate |
-| Commit 2 provider validation support | `server/ga4-benchmark-provider-validation-regression.test.ts` | read-only route is campaign-scoped, reads live provider/persisted daily/financial/Benchmark inputs, compares stored Benchmark current values to scheduler and UI candidates, and does not mutate Benchmark rows, history, tokens, alerts, or notifications | Live provider evidence still must be captured against a real connected property |
+| Commit 2 provider validation support | `server/ga4-benchmark-provider-validation-regression.test.ts` | campaign-scoped validation route reads live provider/persisted daily/financial/Benchmark inputs, compares stored Benchmark current values to scheduler and UI candidates, and does not mutate Benchmark rows, history, sources, alerts, notifications, or reports; token metadata may refresh only after provider auth failure | Deployed evidence currently failed with `401 UNAUTHENTICATED` and a stored-current mismatch; rerun after Current Commit 3 deployment |
 | Notification visibility | `server/notification-visibility-regression.test.ts` | stale/orphan/cross-campaign/non-breaching notifications fail closed; GA4 deep links and no-store freshness | Browser notification UI not rerun after this doc-only update |
 | Immediate email route behavior | `server/alert-email-regression.test.ts`, `server/alert-email-immediate-route-regression.test.ts` | immediate Benchmark email attempts, audit semantics, no false delivery claims in local code | Provider-confirmed delivery and inbox receipt external |
 | Email idempotency/retry/scheduler | `server/alert-email-idempotency-regression.test.ts`, `server/alert-email-scheduler-regression.test.ts`, `server/alert-email-delivery-regression.test.ts`, `server/alert-email-retry-regression.test.ts` | dedupe, retry, scheduler email audit behavior, provider acceptance handling | Provider event/inbox confirmation external |
@@ -456,7 +458,7 @@ Files expected:
 Required behavior:
 
 - For a controlled GA4 campaign/property/date range, verify live provider values for users, sessions, pageviews, conversions, engagement rate, GA4 native revenue, imported GA4 revenue, spend, ROAS, ROI, CPA, conversion rate, and any selected Benchmark row using those inputs.
-- Expose a read-only validation-support path that is campaign-access guarded and reports live provider totals, persisted daily inputs, active imported revenue/spend inputs, stored Benchmark current values, scheduler-candidate current values, and UI-candidate current values without mutating Benchmark rows, history, tokens, alerts, notifications, reports, or source records.
+- Expose a validation-support path that is campaign-access guarded and reports live provider totals, persisted daily inputs, active imported revenue/spend inputs, stored Benchmark current values, scheduler-candidate current values, and UI-candidate current values without mutating Benchmark rows, history, alerts, notifications, reports, or source records. Token metadata may refresh only as part of Current Commit 3 auth-failure handling.
 - Confirm the same source window and campaign/property filter used by the UI is visible beside the scheduler/recompute source window for persisted Benchmark current values; where UI and scheduler windows intentionally differ, record that distinction instead of hiding it.
 - Document GA4 processing-latency expectations: what is considered normal delay, what must fail closed, and what must not be called a local defect without provider evidence.
 - If provider values differ from local outputs, lower the affected Benchmark path to unproven and add a narrower runtime fix commit before certification.
@@ -472,38 +474,43 @@ Validation:
 
 Implementation status:
 
-Partially implemented. Read-only validation-support endpoint added in `server/routes-oauth.ts` with regression coverage in `server/ga4-benchmark-provider-validation-regression.test.ts`. The endpoint is campaign-access guarded, uses provider totals only when a live access token succeeds, reports persisted daily and financial source inputs, compares stored Benchmark current values to scheduler and UI candidates, and is read-only. It deliberately does not refresh OAuth tokens, and it does not call GA4 acquisition breakdown because that helper can refresh and persist tokens; token-refresh proof remains Current Commit 3 and `/api/campaigns/:id/ga4-breakdown` evidence must be captured separately if the visible UI is using breakdown fallback.
+Failed/unproven with deployed evidence. Deployed Commit 2 validation failed with `provider.status = live_provider_error` and `401 UNAUTHENTICATED` for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, campaign filter `yesop_email_nurture` + `yesop_retargeting` + `yesop_paid_social`, and provider window `2026-06-19` through `2026-06-29`.
 
-However, live provider evidence has not been captured locally. Full unqualified GA4 Benchmark production readiness remains blocked until this endpoint or equivalent evidence is run against a controlled real GA4 campaign/property/date range, provider values are compared to visible and persisted Benchmark values, and the evidence is recorded here. This partial implementation is not enough to call GA4 Benchmarks fully production-ready.
+The same deployed response showed persisted daily inputs for 9 rows and a recalculated Benchmark Revenue candidate of `21922.96`, while the stored Benchmark current value `12376.38` did not match the recalculated candidate `21922.96` (`storedVsSchedulerDelta = 9546.58`). This may be stale Benchmark recompute/window evidence, but it must not be fixed or certified until the live provider path can be validated after token refresh.
+
+Current Commit 3 token-refresh support is locally implemented for this validation endpoint: it refreshes and persists GA4 OAuth token metadata only after a provider auth failure, then retries the same campaign/property/filter/date window. The route still does not mutate Benchmark rows, Benchmark history, sources, alerts, notifications, reports, or source records. Full unqualified GA4 Benchmark production readiness remains blocked until the fix is deployed, the endpoint returns live provider totals, stored-current freshness is reconciled, and the evidence is recorded here.
 
 ### Current Commit 3 - Prove Deployed OAuth Token Refresh And Tenant Failure Handling
 
 Root cause:
 
-Local code traces show token refresh branches, but clean production readiness needs deployed tenant-context proof that expired or near-expired GA4 OAuth tokens refresh correctly and fail closed when refresh is invalid, revoked, or missing.
+Local code traces showed token refresh branches in other GA4 paths, but deployed Commit 2 validation proved the GA4 Benchmark provider validation path itself failed with `401 UNAUTHENTICATED` instead of refreshing the campaign/property-scoped OAuth token and retrying. That made the validation tool unable to prove live GA4 provider accuracy for the selected Benchmark input window.
 
 Files expected:
 
-- no production runtime file is expected unless the validation exposes a bug
-- optional deployed validation runbook/artifact if the project keeps one
+- `server/routes-oauth.ts`
+- `server/ga4-benchmark-provider-validation-regression.test.ts`
 - this file, to record exact deployed validation evidence
+- optional deployed validation runbook/artifact if the project keeps one
 
 Required behavior:
 
-- A deployed GA4 Benchmark refresh path with an expired access token and valid refresh token must refresh, persist updated token metadata, and continue using the same campaign/property scope.
-- A revoked, missing, or invalid refresh token must fail closed and must not substitute unrelated property/account/campaign data.
+- A deployed GA4 Benchmark provider validation path with an expired access token and valid refresh token must refresh, persist updated token metadata, and retry using the same campaign/property/filter/date window.
+- A revoked, missing, or invalid refresh token must fail closed with `provider.status = live_provider_refresh_failed` and must not substitute unrelated property/account/campaign data.
+- The validation path must not mutate Benchmark rows, Benchmark history, sources, alerts, notifications, reports, or source records.
 - The visible tab, scheduler/recompute, notification freshness, and report preflight paths must either use valid refreshed data or expose/hide unavailable values without misleading Benchmark results.
 
 Validation:
 
-- Run a deployed tenant-context validation with a controlled expired-token scenario.
+- Run the deployed validation endpoint again for campaign `8aa735ee-c02f-41e2-bb1f-7c3f43bb9458`, property `542352127`, `startDate=2026-06-19`, and `endDate=2026-06-29` after this fix is deployed.
+- Confirm the response returns `provider.status = live_provider_success_after_refresh` or `live_provider_success`, includes non-null `provider.totals`, and keeps the same campaign/property/filter/window.
 - Confirm refreshed token persistence and unchanged campaign/property scope.
 - Run or observe GA4 Benchmark list/current-value, scheduler/recompute, notification freshness, and report preflight behavior after refresh.
 - Capture failure behavior for invalid refresh credentials or document why it cannot be safely simulated.
 
 Implementation status:
 
-Not implemented. Blocking for full unqualified GA4 Benchmark production readiness. Not required for the narrower local current-code certification.
+Partially implemented locally. The smallest safe fix adds auth-error detection to the GA4 Benchmark provider validation endpoint, refreshes with the existing refresh token/client metadata, persists updated token metadata through `storage.updateGA4ConnectionTokens`, and retries the same campaign/property/filter/date window. The endpoint returns `live_provider_success_after_refresh` on a successful retry and `live_provider_refresh_failed` if refresh or retry fails. It does not mutate Benchmark rows, Benchmark history, sources, alerts, notifications, reports, or source records. Deployed validation is still pending, so Current Commit 3 is not clean-certified yet.
 
 ### Current Commit 4 - Prove Deployed Scheduler And Report-Preflight Benchmark Recompute
 

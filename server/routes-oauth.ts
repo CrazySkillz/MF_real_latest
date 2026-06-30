@@ -7581,8 +7581,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Read-only GA4 Benchmark input validation. This exposes provider, persisted, and
-  // Benchmark-current-value inputs side by side without recomputing or mutating rows.
+  // Benchmark-read-only GA4 input validation. This exposes provider, persisted, and
+  // Benchmark-current-value inputs side by side without recomputing or mutating Benchmark rows.
   app.get("/api/campaigns/:id/ga4-benchmark-provider-validation", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-store");
@@ -7662,15 +7662,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let providerStatus = "not_attempted";
       let providerError: string | null = null;
       let providerResult: any = null;
+      const isGA4ProviderAuthError = (error: any) => {
+        const msg = String(error?.message || error || "").toLowerCase();
+        return (
+          msg.includes('"code": 401') ||
+          msg.includes("unauthenticated") ||
+          msg.includes("invalid authentication credentials") ||
+          msg.includes("request had invalid authentication credentials") ||
+          msg.includes("invalid_grant") ||
+          msg.includes("401") ||
+          msg.includes("403")
+        );
+      };
+      const fetchProviderTotals = async (token: string) =>
+        ga4Service.getTotalsWithRevenue(propertyId, token, startDate, endDate, campaignFilter);
       if (isYesopMockProperty(propertyId)) {
         providerStatus = "simulated_property_not_live_provider";
       } else if (selectedConnection?.method === "access_token" && selectedConnection?.accessToken) {
         try {
-          providerResult = await ga4Service.getTotalsWithRevenue(propertyId, String(selectedConnection.accessToken), startDate, endDate, campaignFilter);
+          providerResult = await fetchProviderTotals(String(selectedConnection.accessToken));
           providerStatus = "live_provider_success";
         } catch (e: any) {
-          providerStatus = "live_provider_error";
-          providerError = String(e?.message || e || "Unknown GA4 provider error");
+          if (isGA4ProviderAuthError(e) && selectedConnection?.refreshToken && selectedConnection?.id) {
+            try {
+              const refresh = await ga4Service.refreshAccessToken(
+                String(selectedConnection.refreshToken),
+                selectedConnection.clientId || undefined,
+                selectedConnection.clientSecret || undefined
+              );
+              await storage.updateGA4ConnectionTokens(selectedConnection.id, {
+                accessToken: refresh.access_token,
+                refreshToken: String(selectedConnection.refreshToken),
+                expiresAt: new Date(Date.now() + refresh.expires_in * 1000),
+              });
+              providerResult = await fetchProviderTotals(String(refresh.access_token));
+              providerStatus = "live_provider_success_after_refresh";
+            } catch (refreshError: any) {
+              providerStatus = "live_provider_refresh_failed";
+              providerError = String(refreshError?.message || refreshError || "GA4 token refresh failed");
+            }
+          } else {
+            providerStatus = "live_provider_error";
+            providerError = String(e?.message || e || "Unknown GA4 provider error");
+          }
         }
       } else {
         providerStatus = "no_readable_access_token";
@@ -7760,9 +7794,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         certificationStatus: "validation_output_only",
-        productionReadinessNote: "This read-only endpoint supports Current Commit 2 evidence capture. It is not clean certification by itself until live evidence is reviewed and recorded.",
+        productionReadinessNote: "This Benchmark-read-only validation endpoint supports Current Commit 2 evidence capture. It is not clean certification by itself until live evidence is reviewed and recorded.",
         limitations: [
-          "Does not refresh OAuth tokens; deployed token-refresh proof remains Current Commit 3.",
+          "Refreshes and persists GA4 OAuth token metadata only after a provider auth failure; it does not mutate Benchmark, source, alert, notification, report, or history rows.",
           "Does not call GA4 acquisition breakdown because that helper can refresh and persist tokens; capture /ga4-breakdown evidence separately if the visible UI is using breakdown fallback.",
           "A successful response is evidence to review, not production-readiness certification by itself.",
         ],
